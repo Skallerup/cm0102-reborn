@@ -11,9 +11,14 @@ import { cmActive } from './cmPlayerData';
 import { rng } from './rng';
 import { A, naturalRole, roleScore } from './attributes';
 import { addDays, ageOn, daysBetween } from './dates';
+import { ATTRS } from './attributes';
+import { cmAttrVisible, cmKnowDaily, cmKnowInit, cmKnowLevel, cmKnowOn, cmKnowSee, KNOW_PCT } from './cmKnow';
+import { cmStaffAttr } from './cmStaff';
 
 export function initKnowledge() {
   const g = gs();
+  // CM 01/02 (original database, ægte tilstand, Attribute Masking): originalens kendskabstabel 0x5aff00/0x5b03e0 (cmKnow.ts)
+  if (cmKnowOn(g)) { cmKnowInit(g); return; }
   g.knowledge = {};
   const club = g.clubs[g.userClub];
   for (const p of Object.values(g.players)) {
@@ -31,8 +36,21 @@ export function initKnowledge() {
 export function knowledgeOf(p: Player): number {
   const g = gs();
   if (!g.options.masking) return 100;
+  if (cmKnowOn(g)) return KNOW_PCT[cmKnowLevel(g, p)];
   if (p.club && p.club === g.userClub) return 100;
   return g.knowledge[p.id] ?? 0;
+}
+
+/** fuldt kendskab til en spiller, der kommer til klubben (ikke i CM 01/02's kendskab – dér klarer opslaget 0x5b02f0 det, og tabellen røres ikke) */
+export function knowFull(pid: number) {
+  const g = gs();
+  if (!cmKnowOn(g)) g.knowledge[pid] = 100;
+}
+
+/** CM 01/02 (Attribute Masking 0x543280): egenskaben vises som "-" */
+export function attrMasked(p: Player, idx: number): boolean {
+  const g = gs();
+  return cmKnowOn(g) && !cmAttrVisible(g, p, ATTRS[idx]);
 }
 
 export function addKnowledge(pid: number, amount: number) {
@@ -43,6 +61,8 @@ export function addKnowledge(pid: number, amount: number) {
 /** Interval for en attribut. Den sande værdi ligger altid i intervallet. */
 export function attrRange(p: Player, idx: number, k = knowledgeOf(p)): [number, number] {
   const v = Math.round(p.attrs[idx]);
+  // CM 01/02: den præcise værdi eller "-" (hele skalaen) – aldrig intervaller
+  if (cmKnowOn(gs())) return attrMasked(p, idx) ? [1, 20] : [v, v];
   if (k >= 100) return [v, v];
   const width = Math.ceil(((100 - k) / 100) * 6);
   const off = Math.floor(hash01(p.id, idx, 17) * (width + 1));
@@ -112,6 +132,8 @@ export function clubLevel(cid: number): number {
 /** Dagligt: scouts arbejder på deres opgaver */
 export function scoutDaily() {
   const g = gs();
+  // CM 01/02: kendskabets daglige opdatering 0x5afce0 → 0x5b0260 (cmKnow.ts) – også for en manager uden klub
+  cmKnowDaily(g);
   if (!g.userClub) return;
   const scouts = Object.values(g.staff).filter((s) => s.club === g.userClub && s.role === 'scout');
   // CM 01/02: påmindelser om scoutens kontrakt 12, 6, 3 og 2 måneder, 1 måned og 1 uge før udløb
@@ -306,7 +328,10 @@ function scoutOppReport(s: { first: string; last: string }, opp: number) {
 function scoutKnowledge(pid: number, amount: number, scoutId: number, direct = false) {
   const g = gs();
   const before = g.knowledge[pid] ?? 0;
-  addKnowledge(pid, amount);
+  // CM 01/02: spejderen ser spilleren – 0x5b09d0 med hans Judging Player Ability (cmKnow.ts)
+  const sc = g.staff[scoutId];
+  if (cmKnowOn(g) && g.players[pid]) cmKnowSee(g, g.players[pid], sc ? cmStaffAttr(sc, 'judgingAbility') : null, scoutId);
+  else addKnowledge(pid, amount);
   if (before < 60 && (g.knowledge[pid] ?? 0) >= 60) {
     const finds = g.scoutFinds ?? (g.scoutFinds = {});
     finds[pid] = g.date;
@@ -325,6 +350,9 @@ function scoutKnowledge(pid: number, amount: number, scoutId: number, direct = f
 
 /** Efter en kamp kender man modstanderens spillere bedre */
 export function knowledgeAfterMatch(oppClub: number, playerIds: number[]) {
+  const g = gs();
+  // CM 01/02 0x5afe00: modstanderens 11 og de indskiftede er set (0x5b09d0 uden spejder → fuldt kendskab)
+  if (cmKnowOn(g)) { for (const id of playerIds) if (g.players[id]) cmKnowSee(g, g.players[id], null); return; }
   for (const id of playerIds) addKnowledge(id, 15);
   void oppClub;
 }

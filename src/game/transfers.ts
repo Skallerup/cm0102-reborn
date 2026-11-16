@@ -12,7 +12,7 @@ import { Rng, hash, hash01, rng } from './rng';
 import { recordDevelopment } from './training';
 import { merchStarSigning } from './finance';
 import { addNews, addPlayer, gs, inSetup, newsRelevant, setClub, squad } from './state';
-import { clubLevel, registerAskingPrice } from './scouting';
+import { clubLevel, knowFull, registerAskingPrice } from './scouting';
 import { clubStrategy } from './strategy';
 import { SHIFT_WEEKS } from './board';
 import { fansOnDeparture, fansOnRenewal, fansOnSigning } from './fans';
@@ -796,7 +796,7 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
       asOwner(buyer.id, () => {
         if (g.tactic) g.tactic = { ...g.tactic, lineup: g.tactic.lineup.map((pid2) => (pid2 === x.id ? 0 : pid2)), bench: g.tactic.bench.filter((pid2) => pid2 !== x.id) };
       });
-      asOwner(seller.id, () => { g.knowledge[x.id] = 100; });
+      asOwner(seller.id, () => { knowFull(x.id); });
       forEachHuman(() => { if (buyer.id === g.userClub || seller.id === g.userClub) addNews({ cat: 'transfer', key: 'transfer.swapPart', params: { player: pname(x), from: buyer.name, to: seller.name }, link: { kind: 'player', id: x.id } }); });
     }
     if (buyer.tactic) buyer.tactic = null;
@@ -815,7 +815,7 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
   p.morale = Math.min(20, p.morale + 2);
   p.form = [];
   o.status = 'completed';
-  asOwner(buyer.id, () => { g.knowledge[p.id] = 100; recordDevelopment(p); });
+  asOwner(buyer.id, () => { knowFull(p.id); recordDevelopment(p); });
   // fjern fra AI-taktik
   if (seller?.tactic) seller.tactic = null;
   if (seller) asOwner(seller.id, () => {

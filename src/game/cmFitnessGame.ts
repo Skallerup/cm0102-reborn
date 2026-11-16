@@ -41,6 +41,8 @@ export function fitCtx(g: GameState, salt: number, today = dayNum(g.date)): FitC
 /** landsholdsopholdet (staff +0x24 og datoen 0x76e040) – international.ts sætter den (undgår en cirkulær import) */
 let intlDuty: ((p: Player) => boolean) | null = null;
 export function setIntlDuty(f: (p: Player) => boolean): void { intlDuty = f; }
+/** spilleren er på landsholdsophold lige nu (staff +0x24 ≠ 0) – cmKnow.ts */
+export const intlOnDuty = (p: Player): boolean => intlDuty?.(p) ?? false;
 
 /** club +0x1db: den europæiske turnering, klubben er med i lige nu (−1 = ingen). Skrives af de europæiske turneringers kode
  *  (0x4c6430 ved tildelingen af pladserne, 0x585ab0/0x586330 videre til næste turnering eller −1 ved udslagning); oraklets værdier

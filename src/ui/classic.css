@@ -1952,3 +1952,13 @@ button.cx-bid-swap.removing { cursor: pointer; color: #fff21f; }
 .cx-mt-list .c-name { position: relative; }
 .cx-mt-list .cx-ycard { position: absolute; left: -22px; top: 50%; width: 22px; height: 30px; margin-top: -15px; background: #fff21f; border: 1px solid #8a8400; }
 .cx-mt-list tr.cx-mt-blank td { color: transparent; }
+/* CM 01/02 budskærm (ejerens billeder 143/144, 16/11): tre flader – tekst og rækker, Exchange/Remove på et lyst bånd i fuld bredde,
+   Total Value i en flade for sig, der går ned til Back/Offer */
+.cx-bid > .cx-bid-tools { margin: 4px 6px; }
+@media (min-width: 761px) {
+  .cx-bid .cx-bid-top { min-height: 39vh; }
+  .cx-bid > .cx-bid-tools { margin: 4px 16px; background: rgba(255, 255, 255, 0.22); }
+  .cx-bid .cx-bid-bot { min-height: 29vh; padding-top: 14px; }
+  .cx-bid .cx-bid-bot .cx-bid-total { margin-top: 0; }
+  .cx-bid .cx-ts-intro { font-size: 20px; line-height: 1.4; }
+}

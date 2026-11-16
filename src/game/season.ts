@@ -32,7 +32,8 @@ import { clubLevel } from './scouting';
 import { CHALLENGES } from './challenges';
 import { monthlyAwards, seasonGala, surpriseOfSeason, teamOfYear } from './awards';
 import { cmAwardsRollover, cmAwOn } from './cmAwards';
-import { initKnowledge } from './scouting';
+import { initKnowledge, knowFull } from './scouting';
+import { cmKnowOn } from './cmKnow';
 import type { Club, Player, RegenSeed, SeasonFinance, SeasonSummary } from './types';
 import { subPos } from './data/cm0102';
 import { asOwner, forEachHuman, isHumanClub } from './humans';
@@ -215,7 +216,7 @@ function contractsAndLoans() {
         setClub(p, to);
         p.joined = today;
         const msg = { cat: 'transfer' as const, key: 'transfer.bosmanDone', params: { player: pname(p), from: fromName, to: g.clubs[to].name } };
-        asOwner(to, () => { g.knowledge[p.id] = 100; addNews(msg); });
+        asOwner(to, () => { knowFull(p.id); addNews(msg); });
         if (fromClub !== to) asOwner(fromClub, () => addNews(msg));
       } else leaveOnFree(p);
     }
@@ -300,7 +301,7 @@ function spawnRegenQueue() {
   queue.forEach((seed, n) => {
     const p = spawnRegen(seed, n);
     // originalens genfødsel sub_7abac0 sender ingen nyhed (player_regen.cpp) – "X – the new Y?" kun i udvidet spil
-    if (p.club && isHumanClub(p.club)) asOwner(p.club, () => { g.knowledge[p.id] = 100; if (!originalRegens()) addNews({ cat: 'youth', key: 'youth.regen', params: { player: pname(p), legend: seed.from }, link: { kind: 'player', id: p.id } }); });
+    if (p.club && isHumanClub(p.club)) asOwner(p.club, () => { knowFull(p.id); if (!originalRegens()) addNews({ cat: 'youth', key: 'youth.regen', params: { player: pname(p), legend: seed.from }, link: { kind: 'player', id: p.id } }); });
   });
 }
 
@@ -448,7 +449,7 @@ export function youthIntake() {
   queue.forEach((seed, n) => {
     const p = spawnRegen(seed, n);
     // originalens genfødsel sub_7abac0 sender ingen nyhed (player_regen.cpp) – "X – the new Y?" kun i udvidet spil
-    if (p.club && isHumanClub(p.club)) asOwner(p.club, () => { g.knowledge[p.id] = 100; if (!originalRegens()) addNews({ cat: 'youth', key: 'youth.regen', params: { player: pname(p), legend: seed.from }, link: { kind: 'player', id: p.id } }); });
+    if (p.club && isHumanClub(p.club)) asOwner(p.club, () => { knowFull(p.id); if (!originalRegens()) addNews({ cat: 'youth', key: 'youth.regen', params: { player: pname(p), legend: seed.from }, link: { kind: 'player', id: p.id } }); });
   });
   if (originalRegens()) return; // originalen: kun regens (de kommer ved pensioneringen) – ingen årgange skabt af ingenting
   const active = new Set(g.activeNations);
@@ -473,7 +474,7 @@ export function youthIntake() {
       addPlayer(p);
       added.push([p, sp.sub]);
       // årgangen samles i én nyhed ("youth.intakeDay") – ikke én pr. spiller
-      if (human) asOwner(c.id, () => { g.knowledge[p.id] = 100; });
+      if (human) asOwner(c.id, () => { knowFull(p.id); });
     }
     if (human && added.length) {
       const [best, pos] = added.slice().sort((a, b) => b[0].pa - a[0].pa)[0];
@@ -765,6 +766,8 @@ export function seasonRollover() {
 
 function initKnowledgeKeep() {
   const g = gs();
+  // CM 01/02's kendskab nulstilles ikke ved sæsonskiftet (0x5b0260 glemmer efter 540 dage)
+  if (cmKnowOn(g)) return;
   const old = g.knowledge;
   initKnowledge();
   for (const [k, v] of Object.entries(old)) g.knowledge[Number(k)] = Math.max(g.knowledge[Number(k)] ?? 0, v * 0.85);

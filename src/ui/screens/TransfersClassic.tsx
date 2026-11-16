@@ -9,7 +9,7 @@ import { ATTRS } from '../../game/attributes';
 import { interestedClubs, transferRealism } from '../../game/transfers';
 import { nationLanguage } from '../../game/languages';
 import { willJoin } from '../../game/staff';
-import { attrRange, knowledgeOf, scoutStars } from '../../game/scouting';
+import { attrMasked, attrRange, knowledgeOf, scoutStars } from '../../game/scouting';
 import type { Trait } from '../../game/personality';
 import type { GameState, Player, ScoutAssignment, Staff, StaffRole } from '../../game/types';
 import { compName, dateFmt, money, natName, t } from '../../i18n';
@@ -607,7 +607,7 @@ export function ClassicPlayerTable({ players, title, desc, view: viewProp, initi
   const attrCol = (k: string): CxCol<Player> => {
     const i = ATTRS.indexOf(k as never);
     return { key: `a${i}`, label: t(`cl.at.${k}`), title: t(`attr.${k}`), cls: 'c-num c-yel', sort: (p) => { const [lo, hi] = attrRange(p, i); return lo + hi; },
-      render: (p) => { const [lo, hi] = attrRange(p, i); return lo === hi ? lo : `${lo}-${hi}`; } };
+      render: (p) => { if (attrMasked(p, i)) return '-'; const [lo, hi] = attrRange(p, i); return lo === hi ? lo : `${lo}-${hi}`; } };
   };
   const cols: CxCol<Player>[] = view === 'scouting'
     ? [...base, club, age, pos,

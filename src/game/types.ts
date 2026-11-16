@@ -847,6 +847,9 @@ export interface ManagerProfile {
   cmRep?: [number, number, number];
   cmJoined?: string;
   cmB59?: number;
+  /** kendskabet (cmKnow.ts, fog_of_war 0x5aff00): datoen objektet blev oprettet og spillere set siden (tabellens +1..+8, ISO) */
+  cmKnowStart?: string;
+  cmKnowSeen?: Record<number, string>;
   /** Indbyrdes resultater mod AI-trænere: staff-id → [V, U, T] */
   rivals?: Record<number, [number, number, number]>;
   /** Klubber der har fyret manageren */

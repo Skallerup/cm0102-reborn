@@ -148,7 +148,7 @@ View Finances (der læser Bonuses fra blokken) viste 0 bonusser, selv om pengene
 7. Venskabskampe for mennesket: **porteret 16/11** (cmFriendlyOffers.ts, FriendlyClassic.tsx – Home/Away Friendly, Tour, Choose Friendly Teams, Invite Club, svaret 0x5c5f40 efter omdømmet, også for computerens egne; noter ~/cm0102-engine/notes/friendly-human.md). Mangler: Friendly Cup/League (Tournament).
 8. Priser: Team of the Week (hvornår), Fans Player of the Year, internationale priser, andre landes priser.
 9. Økonomi for ikke-valgte lande: klubber i minus 150 → ~450 over 3 år.
-10. Spejdere/kendskab: `scoutDaily`/knowledge-modellen er vores; Rec-stjernernes tilfældige tal er faste hash-værdier.
+10. Spejdere/kendskab: **kendskabet porteret 16/11** (`src/game/cmKnow.ts`, fog_of_war: oprettelsen 0x5aff00/startniveauet 0x5b03e0, dagligt 0x5afce0 → 0x5b0260 med gulvet 0x5b06e0 og glemsel efter 540 dage, opslaget 0x5b02f0, "set" 0x5b09d0 fra spejdere/kampe 0x5afe00, attribute masking 0x543280 – tabellen i `GameState.knowledge` som 0/33/66/100, datoerne i `manager.cmKnowSeen`; tests/cmKnow.test.ts). Bruges af budskærmens loft og linje (0x598800/0x8ea327), profilens og Player Search' "-" og spejdernes fremskridt. Tilbage: spejdermanagerens egne opgaver/tider (0x7f8750 → 0x7b5be0/0x7b3e20/0x7bd310) er stadig `scoutDaily`'s – kun deres "set" er originalens; B-hold-kæden 0x540a50 i opslaget/gulvet (ingen B-hold hos os); historikkens årstal i 0x7c6e30. Rec-stjernernes tilfældige tal er faste hash-værdier.
 11. Bestyrelsens/økonomiens begivenheder – **0x59ed70 porteret 16/11** (`src/game/cmFinEvents.ts`, tests/cmFinEvents.test.ts): FinanceTable::
    process_club_finance_events ved månedens udgang (0x59cbfd, alle aktive klubber) og dagligt for klubber i krise (0x59cd4d, +0x165 ∈ {1,2}, flag
    rand(max(10,(11000 − omdømme)/250)) = 0). Krisetilstanden +0x165 efter formuebåndet 0x5986b0: −2 → betalingsstandsning (0x177b "Receivers called
@@ -215,6 +215,7 @@ View Finances (der læser Bonuses fra blokken) viste 0 bonusser, selv om pengene
 
 
 ### Småting (ejerens fund, lav prioritet)
+- ~~Kendskabssystemet (ejerens fund 16/11)~~ – **porteret 16/11** (se punkt 10): Harris (Millwall) niveau 3 "will allow", Koch (Kaiserslautern) niveau 0 med loft 0,32 × værdien (originalen 11/33 = 0,33). Budskærmen: tre flader og sælgerens korte navn som ejerens billeder 143/144.
 - News-skærmen (ejerens billede 16/11, images/153.png) – **rettet 16/11**: datoen med tidspunktet ("Fri 24th Aug EVE" – `NewsItem.tod`, sat ved
   oprettelsen af cmTimeOfDay), datoen i listens skriftstørrelse, "Filter :" i originalens grå boks fra ~43 % til Next Unread, Next Unread med hvid tekst,
   større overskrift (22 px) og brødtekst (21 px), overskriften ikke understreget. Tilbage: originalens liste viser altid rullebjælken med pile (vores

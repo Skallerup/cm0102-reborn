@@ -10,7 +10,8 @@ import { ageOn, daysBetween } from '../../game/dates';
 import { traits } from '../../game/personality';
 import { playerLanguages } from '../../game/languages';
 import { expectedStatus } from '../../game/squadStatus';
-import { attrRange, knowledgeOf } from '../../game/scouting';
+import { attrMasked, attrRange, knowledgeOf } from '../../game/scouting';
+import { cmKnowOn } from '../../game/cmKnow';
 import { authentic, extended } from '../../game/rules';
 import { avgRating } from '../../game/season';
 import { SCHEDULES } from '../../game/training';
@@ -179,7 +180,8 @@ function ProfileTab({ p }: { p: Player }) {
   const orig = authentic();
   const val = (a: AttrKey) => {
     if (orig) {
-      if (k < 45) return <span className="cx-v">-</span>;
+      // originalens kendskab (0x543280 – cmKnow.ts) pr. egenskab; uden den (anden database) en grænse på spillets kendskab
+      if (cmKnowOn(g) ? attrMasked(p, A[a]) : k < 45) return <span className="cx-v">-</span>;
       const v = Math.round(p.attrs[A[a]]);
       return <span className={`cx-v ${tone(v)}`}>{v}</span>;
     }

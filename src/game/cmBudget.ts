@@ -6,6 +6,7 @@ import { buildWantMem } from './cmContractGame';
 import { GEN } from './cmGen/index';
 import { ensureImpls } from './cmGen/impls';
 import { cmActive } from './cmPlayerData';
+import { cmKnowLevel } from './cmKnow';
 
 const GBP = 0.86;
 
@@ -37,22 +38,20 @@ export function cmTransferFunds(g: GameState, cid: number): number | null {
 }
 
 /** Budskærmens bestyrelseslinje (transfer_screens 0x8e9760, 0x8ea28e–0x8ea3d5): 0x598800(spiller, 0, &begrænset, 1, 0) – med attribute masking
- *  og spejdernes kendskab ([0x9cc270], [0xae2a60]) trækker 0x598800 (0x5994c0–0x5997d8) budgettet ned for en spiller, menneskets manager ikke
- *  kender: kendskabet 0x5b02f0 (0 intet, 1 meget lidt, 2 noget, 3 fuldt) giver et loft af klubbens omdømme (+0x80)² × 0,005/0,01/0,02/0,04 (lav
- *  division og omdømme under 4250 halverer), ganget med spillerens klubs og divisionens omdømme, og budgettet bliver loftet minus 1/8 af resten
- *  (højst 1,75 × loftet fra £125.000). `limited` = 0x598800's ud-flag → teksten "only allow … because they know very little/don't know anything"
- *  (0xa9e560/0xa9e730, ved £0 "free-transfer" 0xa9e5e4/0xa9e7b8/0xa9e6d0). Kendskabet: originalens tabel pr. spiller findes ikke hos os –
- *  *estimeret* af spillets kendskab (scouting.ts knowledgeOf 0–100): 100 → 3, ≥ 60 → 2, > 0 → 1, ellers 0. */
+ *  trækker 0x598800 (0x5994c0–0x5997d8) budgettet ned for en spiller, menneskets manager ikke kender fuldt: kendskabet 0x5b02f0 (cmKnow.ts – 0 intet,
+ *  1 meget lidt, 2 noget, 3 fuldt) giver et loft af klubbens omdømme (+0x80)² × 0,01/0,02/0,04 (niveau 0/1/2; 0,005/0,01 for 0/1, når landets
+ *  +0x85 < 9 og omdømmet under 4250), ganget med managerens omdømme/klubbens (ikke-spillerpost +0xa, klemt til 0,1..1) og landets +0x85 × 0,05
+ *  (klemt til 0,25..1); budgettet bliver loftet + 1/8 af resten (højst 1,75 × loftet, fra £125.000). Niveau 3 = hele budgettet. Linjen vælges af
+ *  niveauet alene (0x8ea327): 1 "know very little", 2 "only allow", 3 "will allow", 0 "don't know anything"; beløbet 0 → free-transfer-teksterne
+ *  (0xa9e5e4/0xa9e6d0/0xa9e7b8). Beløbet i linjen er 0x598800's svar. */
 export interface CmBidBudget { budget: number; level: number; limited: boolean }
 export function cmKnowledgeLevel(g: GameState, p: import('./types').Player): number {
-  if (!g.options.masking || (p.club && p.club === g.userClub)) return 3;
-  const k = g.knowledge?.[p.id] ?? 0;
-  return k >= 100 ? 3 : k >= 60 ? 2 : k > 0 ? 1 : 0;
+  return cmKnowLevel(g, p);
 }
 export function cmBidBudget(g: GameState, p: import('./types').Player, buyer: number): CmBidBudget | null {
   if (!cmActive(g) || !g.clubs[buyer] || !p.club) return null;
   const level = cmKnowledgeLevel(g, p);
-  const KOBJ = 0x6a000000, OUTF = 0x6a000100;
+  const KOBJ = 0x6a000000, OUTF = 0x6a000100, MNP = 0x6a000200;
   const M = buildWantMem(g, [buyer, p.club], {
     useLog: (adr) => adr === 0x600a50 || adr === 0x849f00 || adr === 0x5afde0 || adr === 0x5b02f0,
     call: (adr) => (adr === 0x5afde0 ? KOBJ : adr === 0x5b02f0 ? level : undefined),
@@ -66,20 +65,23 @@ export function cmBidBudget(g: GameState, p: import('./types').Player, buyer: nu
   m.w8(club + 0x6d, /^(Bright|Wimble)/.test(cl.name) ? 0 : 1);
   const sa = m.u32(club + 0x69);
   if (sa && cr && cr[3] >= 0) m.w32(sa + 0x3c, cr[5]);
+  // menneskets manager (+0xcf): ikke-spillerposten med hans aktuelle omdømme +0xa (0x599618–0x599683: omdømme / klubbens, klemt 0,1..1)
+  const ms = m.u32(club + 0xcf), rep = g.manager.cmRep?.[1];
+  if (ms && rep !== undefined && !m.u32(ms + 0x69)) { m.w32(ms + 0x69, MNP); m.w16(MNP + 0xa, rep); }
   const old = m.u32(0xae2a60);
   m.w32(0xae2a60, KOBJ); m.w32(OUTF, 0);
   ensureImpls();
   let v: number;
   try { v = GEN[0x598800](M.c, fin, [st, 0, OUTF, 1, 0]) | 0; } finally { m.w32(0xae2a60, old); }
   const limited = m.u32(OUTF) === 1;
-  return { budget: limited ? Math.max(0, v) / GBP : Math.max(0, cl.transferBudget ?? 0), level, limited };
+  return { budget: Math.max(0, v) / GBP, level, limited };
 }
 
-/** bestyrelseslinjen på budskærmen (0x8ea2da–0x8ea3c8): kendskabet og om 0x598800 begrænsede budgettet */
+/** bestyrelseslinjen på budskærmen (0x8ea327–0x8ea3c8): kendskabet vælger teksten, beløbet 0 free-transfer-varianten */
 export function cmBoardLine(b: CmBidBudget): string {
   const zero = b.budget < 1;
-  if (!b.limited) return 'cl.bid.board';
+  if (b.level === 3) return zero ? 'cl.bid.boardFree' : 'cl.bid.board';
+  if (b.level === 2) return zero ? 'cl.bid.boardFree' : 'cl.bid.boardOnly';
   if (b.level === 1) return zero ? 'cl.bid.boardFreeLittle' : 'cl.bid.boardLittle';
-  if (b.level === 0) return zero ? 'cl.bid.boardFreeNothing' : 'cl.bid.boardNothing';
-  return zero ? 'cl.bid.boardFree' : b.level === 2 ? 'cl.bid.boardOnly' : 'cl.bid.board';
+  return zero ? 'cl.bid.boardFreeNothing' : 'cl.bid.boardNothing';
 }

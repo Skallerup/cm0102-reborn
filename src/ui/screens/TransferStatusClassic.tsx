@@ -483,9 +483,9 @@ export function CoachesPanel({ onClose }: { onClose: () => void }) {
 
 /** Rækkerne på originalens budskærm: Transfer Fee (− ▾ + =), Monthly Installments, Percentage of Next Sale, Fee after N League/International
  *  Apps. (− ▾ +), Make transfer bid public, Exchange/Remove(/Reset), bytte-linjerne og Total Value. Grå etiket = slået fra (klik slår til). */
-function CmBidRows({ terms, set, value, budget, swapValue, onExchange, reset }: {
+function CmBidRows({ terms, set, value, budget, swapValue, onExchange, reset, intro, after }: {
   terms: BidTerms; set: (t: BidTerms) => void; value: number; budget?: number; swapValue: (id: number) => number;
-  onExchange: () => void; reset?: () => void;
+  onExchange: () => void; reset?: () => void; intro?: ReactNode; after?: ReactNode;
 }) {
   const g = useGame()!;
   const [removing, setRemoving] = useState(false);
@@ -507,7 +507,10 @@ function CmBidRows({ terms, set, value, budget, swapValue, onExchange, reset }: 
   );
   const total = terms.fee + Math.max(0, terms.lgFee) + Math.max(0, terms.intFee) + terms.swap.reduce((x, id) => x + swapValue(id), 0);
   const over = budget !== undefined && terms.fee > budget;
+  // originalens tre flader (ejerens billeder 143/144): tekst og rækker øverst, Exchange/Remove på et lyst bånd, Total Value i en flade for sig
   return <>
+    <div className="cx-ts-body cx-bid-top">
+    {intro}
     {row(true, <span className="cx-bid-label">{t('cl.bid.fee')}</span>, 'feeDown',
       <CxDrop className={`cx-bid-amt ${over ? 'over' : ''}`} label={money(terms.fee)} fixed items={amounts((v) => set({ ...terms, fee: v }))} />,
       'feeUp', terms.fee <= 0, feeAtMax(terms.fee),
@@ -526,12 +529,15 @@ function CmBidRows({ terms, set, value, budget, swapValue, onExchange, reset }: 
       <button className="cx-bid-label cx-bid-tog" disabled={terms.pub === 1} onClick={() => act2('pub')}>{t('cl.bid.public')}</button>
       <button className="cx-bid-val wide cx-bid-yn" disabled={terms.pub === 1} onClick={() => act2('pub')}>{t(terms.pub ? 'common.yes' : 'common.no')}</button>
     </div>
+    {after}
+    </div>
     <div className="cx-bid-tools">
       <button className="cx-greybtn" disabled={terms.swap.length >= MAX_SWAP} onClick={onExchange}>{t('cl.bid.exchange')}</button>
       <button className={`cx-greybtn ${removing ? 'on' : ''}`} disabled={!terms.swap.length} onClick={() => setRemoving(!removing)}>{t('cl.bid.remove')}</button>
       <span className="cx-grow" />
       {reset && <button className="cx-greybtn" onClick={reset}>{t('cl.bid.reset')}</button>}
     </div>
+    <div className="cx-ts-body cx-bid-bot">
     {terms.swap.map((id) => (
       <button key={id} className={`cx-bid-swap ${removing ? 'removing' : ''}`} disabled={!removing}
         onClick={() => { set(removeSwap(terms, id, swapValue(id))); setRemoving(false); }}>
@@ -539,6 +545,7 @@ function CmBidRows({ terms, set, value, budget, swapValue, onExchange, reset }: 
       </button>
     ))}
     <div className="cx-bid-total"><span>{t('cl.bid.total')}</span><b>{moneyFull(total)}</b></div>
+    </div>
   </>;
 }
 
@@ -594,7 +601,8 @@ function CmBidPanel({ p, onClose, onSent, onAsk, change }: { p: Player; loan: bo
   const [terms, setTerms] = useState<BidTerms>(() => pend ? termsOf(pend) : live?.cmCounter ? { ...live.cmCounter, swap: [...live.cmCounter.swap] } : newTerms(g, p, g.userClub, Math.min(budget, known?.fee ?? p.value)));
   const [exch, setExch] = useState(false);
   const [err, setErr] = useState('');
-  const seller = g.clubs[p.club]?.name ?? '';
+  // 0x8e9760: sælgerens korte navn ("Kaiserslautern's Georg Koch", ejerens billede 144)
+  const seller = g.clubs[p.club]?.short || g.clubs[p.club]?.name || '';
   const name = `${p.first} ${p.last}`.trim();
   const swapValue = (id: number) => g.players[id]?.value ?? 0;
   if (exch) return <CmExchange giver={g.userClub} receiver={p.club} p={p} taken={terms.swap} onBack={() => setExch(false)}
@@ -618,15 +626,13 @@ function CmBidPanel({ p, onClose, onSent, onAsk, change }: { p: Player; loan: bo
   return (
     <div className="cx-tstatus cx-bid">
       <div className="cx-subtitle">{t('cl.bid.title', { club: me?.short ?? '', player: p.last })}</div>
-      <div className="cx-ts-body">
-        {/* 0x8e9760: beløbene i de to linjer er knapper – 0x26 sætter Transfer Fee til værdien +0x52, 0x25 til bestyrelsens loft (0x8ed4c0/0x8ed552) */}
-        <p className="cx-ts-intro">
+      {/* 0x8e9760: beløbene i de to linjer er knapper – 0x26 sætter Transfer Fee til værdien +0x52, 0x25 til bestyrelsens loft (0x8ed4c0/0x8ed552) */}
+      <CmBidRows terms={terms} set={setTerms} value={p.value} budget={budget} swapValue={swapValue} onExchange={() => setExch(true)}
+        intro={<p className="cx-ts-intro">
           <CxAmountText text={t('cl.bid.valued', { club: seller, player: name, value: '\u0000' })} amount={moneyFull(p.value)} cls="cx-bid-setval" onClick={() => setTerms({ ...terms, fee: p.value })} /><br />
           <CxAmountText text={t(boardKey, { fee: '\u0000' })} amount={moneyFull(budget)} cls="cx-bid-setmax" onClick={() => setTerms({ ...terms, fee: budget })} />
-        </p>
-        <CmBidRows terms={terms} set={setTerms} value={p.value} budget={budget} swapValue={swapValue} onExchange={() => setExch(true)} />
-        {err && <div className="cx-bid-err">{err}</div>}
-      </div>
+        </p>}
+        after={err ? <div className="cx-bid-err">{err}</div> : undefined} />
       <ClassicFoot cols="3fr 1fr">
         <button onClick={onClose}>{t('common.back')}</button>
         <button className="primary" onClick={() => asking(true)}>{t('cl.bid.offer')}</button>
@@ -686,10 +692,8 @@ function CmIncomingBidPanel({ offer, onClose }: { offer: TransferOffer; onClose:
   return (
     <div className="cx-tstatus cx-bid">
       <div className="cx-subtitle">{t('cl.bid.negotiate', { club: buyer.short, player: p.last })}</div>
-      <div className="cx-ts-body">
-        <p className="cx-ts-intro">{t('cl.bid.valued', { club: me?.short ?? '', player: name, value: moneyFull(p.value) })}</p>
-        <CmBidRows terms={terms} set={setTerms} value={p.value} swapValue={swapValue} onExchange={() => setExch(true)} reset={changed ? () => setTerms(orig()) : undefined} />
-      </div>
+      <CmBidRows terms={terms} set={setTerms} value={p.value} swapValue={swapValue} onExchange={() => setExch(true)} reset={changed ? () => setTerms(orig()) : undefined}
+        intro={<p className="cx-ts-intro">{t('cl.bid.valued', { club: me?.short ?? '', player: name, value: moneyFull(p.value) })}</p>} />
       <ClassicFoot cols="3fr 1fr 1fr 1fr" className="cx-bid-answer">
         <button onClick={() => onClose()}>{t('common.back')}</button>
         <button onClick={() => { setWhy(reasonForStatus(statusCode(p))); setRejecting(true); }}>{t('cl.bid.reject')}</button>
