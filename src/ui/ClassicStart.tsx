@@ -388,17 +388,17 @@ export function ClassicStart({ onLang, onHome, onGo, onLook, online }: { onLang:
     return (
       <Frame {...common} title={t('cxs.title')}>
         <div className="cxs-grid">
-          <F testid="database" className="cxs-db" onClick={() => go('db')}><b className="gold">{curOpt.big}</b><small>{curOpt.small}</small></F>
+          <F testid="database" className="cxs-db" onClick={() => go('db')}><b className="gold">{curOpt.big}</b><small>{curOpt.small}</small><i className="cxs-hint">{t('cxs.hint.db')}</i></F>
           {/* originalens "Changing rules"-felt er tomt for nu: samme mørke boks, intet indhold og ingen funktion */}
           <div className="cxs-field static" data-field="rules" aria-hidden />
           <F testid="new" onClick={startNew}>{t('cxs.startNew')}</F>
           <F testid="quick" onClick={quickStart}>{t('cxs.quick')}</F>
           <F testid="restore" onClick={() => go('restore')}>{t('cxs.restore')}</F>
           <F testid="delete" onClick={() => go('delete')}>{t('cxs.delete')}</F>
-          <F testid="network" onClick={() => onGo('online')}>{t('cxs.network')}</F>
-          <F testid="settings" onClick={() => go('settings')}>{t('cxs.settings')}</F>
-          <F testid="opts" onClick={() => go('opts')}>{t('cxs.rebornOpts')}</F>
-          <F testid="extras" onClick={() => go('extras')}>{t('cxs.extras')}</F>
+          <F testid="network" onClick={() => onGo('online')}>{t('cxs.network')}<i className="cxs-hint">{t('cxs.hint.network')}</i></F>
+          <F testid="settings" onClick={() => go('settings')}>{t('cxs.settings')}<i className="cxs-hint">{t('cxs.hint.settings')}</i></F>
+          <F testid="opts" onClick={() => go('opts')}>{t('cxs.rebornOpts')}<i className="cxs-hint">{t('cxs.hint.opts')}</i></F>
+          <F testid="extras" onClick={() => go('extras')}>{t('cxs.extras')}<i className="cxs-hint">{t('cxs.hint.extras')}</i></F>
         </div>
         {note}
       </Frame>

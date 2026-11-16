@@ -1,401 +1,409 @@
 {
- "minLetters": 2,
- "prefixes": [
-  {
-   "prefix": "land.",
-   "reason": "Forside/landing (uden for spillet)"
-  },
-  {
-   "prefix": "start.",
-   "reason": "Moderne startside; klassisk start bruger cl.* (ClassicStart)"
-  },
-  {
-   "prefix": "dr.",
-   "reason": "Draft/fællesspil – CM Reborn"
-  },
-  {
-   "prefix": "dl.",
-   "reason": "Draft-lobby – CM Reborn"
-  },
-  {
-   "prefix": "chat.",
-   "reason": "Fællesspil/chat – CM Reborn"
-  },
-  {
-   "prefix": "mp.",
-   "reason": "Multiplayer/Network Play – CM Reborn"
-  },
-  {
-   "prefix": "rank.",
-   "reason": "Rankings – CM Reborn (Game Options)"
-  },
-  {
-   "prefix": "acc.",
-   "reason": "Konto – CM Reborn (Game Options)"
-  },
-  {
-   "prefix": "ach.",
-   "reason": "Achievements – CM Reborn"
-  },
-  {
-   "prefix": "bots.",
-   "reason": "AI-managere i fællesspil – CM Reborn"
-  },
-  {
-   "prefix": "ed.",
-   "reason": "Database-editoren – CM Reborn"
-  },
-  {
-   "prefix": "consent.",
-   "reason": "Samtykke/cookies"
-  },
-  {
-   "prefix": "inapp.",
-   "reason": "Banner i apps' indbyggede browsere"
-  },
-  {
-   "prefix": "sendDev.",
-   "reason": "Send spil til udvikleren – CM Reborn (Game Options)"
-  },
-  {
-   "prefix": "crash.",
-   "reason": "Fejlskærm"
-  },
-  {
-   "prefix": "cur.",
-   "reason": "Valutanavne (sprog/valuta)"
-  },
-  {
-   "prefix": "changelog.",
-   "reason": "Ændringslog – CM Reborn"
-  },
-  {
-   "prefix": "mode.",
-   "reason": "Spiltilstand (Game Options → CM Reborn)"
-  },
-  {
-   "prefix": "authentic.",
-   "reason": "CM Reborns tilstandsvalg"
-  },
-  {
-   "prefix": "region.",
-   "reason": "Verdensdelsnavne (sprog)"
-  },
-  {
-   "prefix": "pkg.",
-   "reason": "Logo-/baggrundspakker – tilladt"
-  },
-  {
-   "prefix": "foot.",
-   "reason": "Sidefod på forsiden"
-  },
-  {
-   "prefix": "ai.",
-   "reason": "AI-tekster (slået fra)"
-  },
-  {
-   "prefix": "ng.",
-   "reason": "Moderne nyt spil-forløb"
-  },
-  {
-   "prefix": "camp.",
-   "reason": "Træningslejre – kun udvidet"
-  },
-  {
-   "prefix": "ffp.",
-   "reason": "FFP – kun udvidet"
-  },
-  {
-   "prefix": "auction.",
-   "reason": "Auktion – kun udvidet"
-  },
-  {
-   "prefix": "bet.",
-   "reason": "Kun udvidet"
-  },
-  {
-   "prefix": "chem.",
-   "reason": "Kemi – kun udvidet"
-  },
-  {
-   "prefix": "pers.",
-   "reason": "Personlighedskort – kun udvidet"
-  },
-  {
-   "prefix": "clique.",
-   "reason": "Klikker – kun udvidet"
-  },
-  {
-   "prefix": "challenge.",
-   "reason": "Udfordringer – CM Reborn"
-  },
-  {
-   "prefix": "dev.",
-   "reason": "Spillerudvikling (moderne spillerprofil)"
-  },
-  {
-   "prefix": "an.",
-   "reason": "Moderne analyse"
-  },
-  {
-   "prefix": "radar.",
-   "reason": "Moderne spillerprofil"
-  },
-  {
-   "prefix": "stars.",
-   "reason": "Moderne spillerprofil"
-  },
-  {
-   "prefix": "press.",
-   "reason": "Pressekonference – kun udvidet"
-  },
-  {
-   "prefix": "c.",
-   "reason": "Moderne kommentar-varianter (klassisk bruger matchTexts.json fra exe)"
-  },
-  {
-   "prefix": "hub.",
-   "reason": "Fællesskabets hub – CM Reborn"
-  },
-  {
-   "prefix": "hl.",
-   "reason": "Moderne højdepunkter"
-  },
-  {
-   "prefix": "rp.",
-   "reason": "Moderne spillerrapport"
-  },
-  {
-   "prefix": "ba.",
-   "reason": "Moderne bestyrelsespanel/assistent"
-  },
-  {
-   "prefix": "tt.",
-   "reason": "Holdsnak – kun udvidet"
-  },
-  {
-   "prefix": "opt.",
-   "reason": "Moderne Options"
-  },
-  {
-   "prefix": "talk.",
-   "reason": "Samtaler – kun udvidet"
-  },
-  {
-   "prefix": "onb.",
-   "reason": "Første arbejdsdag – kun udvidet"
-  },
-  {
-   "prefix": "complaint.",
-   "reason": "Samtaleklager – kun udvidet"
-  },
-  {
-   "prefix": "ll.",
-   "reason": "Moderne kampanalyse"
-  },
-  {
-   "prefix": "ti.",
-   "reason": "Moderne kampanalyse"
-  },
-  {
-   "prefix": "story.",
-   "reason": "Sæsonhistorie – kun udvidet"
-  },
-  {
-   "prefix": "team.",
-   "reason": "Holdmøder – kun udvidet"
-  },
-  {
-   "prefix": "tag.",
-   "reason": "Moderne spillermærker"
-  },
-  {
-   "prefix": "trait.",
-   "reason": "Moderne personlighed"
-  },
-  {
-   "prefix": "reform.",
-   "reason": "Moderne udviklingsplan"
-  },
-  {
-   "prefix": "oi.",
-   "reason": "Moderne modstanderinstruktioner"
-  },
-  {
-   "prefix": "recb.",
-   "reason": "Moderne rekordbog"
-  },
-  {
-   "prefix": "pub.",
-   "reason": "Offentlig profil – CM Reborn"
-  },
-  {
-   "prefix": "week.",
-   "reason": "Ugeoversigt – kun udvidet"
-  },
-  {
-   "prefix": "notify.",
-   "reason": "Browsernotifikation"
-  },
-  {
-   "prefix": "prof.",
-   "reason": "Profil – CM Reborn"
-  },
-  {
-   "prefix": "jab.",
-   "reason": "Moderne medieskænderier"
-  },
-  {
-   "prefix": "fc.",
-   "reason": "Moderne økonomiprognose"
-  },
-  {
-   "prefix": "fr.",
-   "reason": "Moderne venskabskampsarrangør"
-  },
-  {
-   "prefix": "friendly.",
-   "reason": "Moderne venskabskampe"
-  },
-  {
-   "prefix": "rc.",
-   "reason": "Rumchat – CM Reborn"
-  },
-  {
-   "prefix": "swap.",
-   "reason": "Moderne byttehandler"
-  },
-  {
-   "prefix": "pih.",
-   "reason": "Moderne taktikhjælp"
-  },
-  {
-   "prefix": "tih.",
-   "reason": "Moderne taktikhjælp"
-  },
-  {
-   "prefix": "ment.",
-   "reason": "Moderne taktikhjælp"
-  },
-  {
-   "prefix": "pi.",
-   "reason": "Moderne taktikhjælp"
-  },
-  {
-   "prefix": "sp.",
-   "reason": "Moderne taktikhjælp"
-  },
-  {
-   "prefix": "mom.",
-   "reason": "Moderne kamplinje"
-  },
-  {
-   "prefix": "merch.",
-   "reason": "Moderne merchandise"
-  },
-  {
-   "prefix": "rec.",
-   "reason": "Moderne rådgivning"
-  },
-  {
-   "prefix": "adv.",
-   "reason": "Moderne assistentråd"
-  },
-  {
-   "prefix": "fan.",
-   "reason": "Moderne fanbegivenheder"
-  },
-  {
-   "prefix": "fans.",
-   "reason": "Moderne fanreaktioner"
-  },
-  {
-   "prefix": "v.",
-   "reason": "Moderne kampanalyse"
-  },
-  {
-   "prefix": "as.",
-   "reason": "Moderne assistent"
-  },
-  {
-   "prefix": "react.",
-   "reason": "Moderne mediereaktioner"
-  },
-  {
-   "prefix": "war.",
-   "reason": "Budkrige – kun udvidet"
-  },
-  {
-   "prefix": "db.",
-   "reason": "Databasevalg (Game Options/CM Reborn)"
-  },
-  {
-   "prefix": "lg.",
-   "reason": "Valg af spilbare nationer (CM Reborn)"
-  },
-  {
-   "prefix": "update.",
-   "reason": "PWA-opdatering"
-  },
-  {
-   "prefix": "draft.",
-   "reason": "Draft – CM Reborn"
-  },
-  {
-   "prefix": "trial.",
-   "reason": "Prøvespillere – kun udvidet"
-  },
-  {
-   "prefix": "agent.",
-   "reason": "Moderne agentkrav"
-  },
-  {
-   "prefix": "real.",
-   "reason": "Moderne realisme"
-  },
-  {
-   "prefix": "rumour.",
-   "reason": "Rygter – slået fra i ægte tilstand"
-  }
- ],
- "keys": [
-  {
-   "key": "common.ok",
-   "reason": "OK findes i exe'en som del af knapper; fælles ord"
-  }
- ],
- "patterns": [
-  {
-   "regex": "^cl\\.(opt|go|gopt|settings|font|goal|skin|look|sound|about|lang|cur|account|login|rank|comm|hub|rebornopt|lookpick)\\b",
-   "reason": "Game Options: CM Reborns eget område (indstillinger, konto, fællesskab, Rankings, About this game, sprog, valuta)"
-  },
-  {
-   "regex": "^cxs\\.(lang|cur|reborn|acct|rank|comm|about)",
-   "reason": "Game Options: CM Reborns eget område"
-  },
-  {
-   "regex": "^cm\\.(intro|trending|new|roadmap|allCats|votes|budgetHint|reportBug|suggest|none|dev|released|footer|copyLink|cat\\.|st\\.|needProfile|pollHint|notFound|noComments|write|share|report|reported|bug|title|body|screenshot|autoMeta|similar|err\\.)",
-   "reason": "Game Options: Fællesskab (forslag, afstemninger, fejlrapporter) – CM Reborns eget område"
-  },
-  {
-   "regex": "^news\\.(title|titleAcct|intro|introAcct|perk\\d|consent|yes|later|no|privacy|done|doneNews|toggle)$",
-   "reason": "Game Options: konto og opdateringsmails – CM Reborns eget område"
-  },
-  {
-   "regex": "^cl\\.sv\\.(where|local|cloud|makeProfile|why|infoLocal|infoCloud)$",
-   "reason": "Game Options: konto/skygemte spil på Save Game-skærmen – CM Reborn"
-  },
-  {
-   "regex": "^cl\\.set\\.",
-   "reason": "Game Options → Settings: CM Reborns egne indstillinger (skin, lyd, baggrunde, skrifttyper, målblink, realisme)"
-  },
-  {
-   "regex": "^top\\.(notify|install)",
-   "reason": "PWA: notifikationer/installér – CM Reborn (uden for spilskærmene)"
-  },
-  {
-   "regex": "^cl\\.locale$",
-   "reason": "Sprogkode, ikke en tekst"
-  }
- ]
+  "minLetters": 2,
+  "prefixes": [
+    {
+      "prefix": "land.",
+      "reason": "Forside/landing (uden for spillet)"
+    },
+    {
+      "prefix": "start.",
+      "reason": "Moderne startside; klassisk start bruger cl.* (ClassicStart)"
+    },
+    {
+      "prefix": "dr.",
+      "reason": "Draft/fællesspil – CM Reborn"
+    },
+    {
+      "prefix": "dl.",
+      "reason": "Draft-lobby – CM Reborn"
+    },
+    {
+      "prefix": "chat.",
+      "reason": "Fællesspil/chat – CM Reborn"
+    },
+    {
+      "prefix": "mp.",
+      "reason": "Multiplayer/Network Play – CM Reborn"
+    },
+    {
+      "prefix": "rank.",
+      "reason": "Rankings – CM Reborn (Game Options)"
+    },
+    {
+      "prefix": "acc.",
+      "reason": "Konto – CM Reborn (Game Options)"
+    },
+    {
+      "prefix": "ach.",
+      "reason": "Achievements – CM Reborn"
+    },
+    {
+      "prefix": "bots.",
+      "reason": "AI-managere i fællesspil – CM Reborn"
+    },
+    {
+      "prefix": "ed.",
+      "reason": "Database-editoren – CM Reborn"
+    },
+    {
+      "prefix": "consent.",
+      "reason": "Samtykke/cookies"
+    },
+    {
+      "prefix": "inapp.",
+      "reason": "Banner i apps' indbyggede browsere"
+    },
+    {
+      "prefix": "sendDev.",
+      "reason": "Send spil til udvikleren – CM Reborn (Game Options)"
+    },
+    {
+      "prefix": "crash.",
+      "reason": "Fejlskærm"
+    },
+    {
+      "prefix": "cur.",
+      "reason": "Valutanavne (sprog/valuta)"
+    },
+    {
+      "prefix": "changelog.",
+      "reason": "Ændringslog – CM Reborn"
+    },
+    {
+      "prefix": "mode.",
+      "reason": "Spiltilstand (Game Options → CM Reborn)"
+    },
+    {
+      "prefix": "authentic.",
+      "reason": "CM Reborns tilstandsvalg"
+    },
+    {
+      "prefix": "region.",
+      "reason": "Verdensdelsnavne (sprog)"
+    },
+    {
+      "prefix": "pkg.",
+      "reason": "Logo-/baggrundspakker – tilladt"
+    },
+    {
+      "prefix": "foot.",
+      "reason": "Sidefod på forsiden"
+    },
+    {
+      "prefix": "ai.",
+      "reason": "AI-tekster (slået fra)"
+    },
+    {
+      "prefix": "ng.",
+      "reason": "Moderne nyt spil-forløb"
+    },
+    {
+      "prefix": "camp.",
+      "reason": "Træningslejre – kun udvidet"
+    },
+    {
+      "prefix": "ffp.",
+      "reason": "FFP – kun udvidet"
+    },
+    {
+      "prefix": "auction.",
+      "reason": "Auktion – kun udvidet"
+    },
+    {
+      "prefix": "bet.",
+      "reason": "Kun udvidet"
+    },
+    {
+      "prefix": "chem.",
+      "reason": "Kemi – kun udvidet"
+    },
+    {
+      "prefix": "pers.",
+      "reason": "Personlighedskort – kun udvidet"
+    },
+    {
+      "prefix": "clique.",
+      "reason": "Klikker – kun udvidet"
+    },
+    {
+      "prefix": "challenge.",
+      "reason": "Udfordringer – CM Reborn"
+    },
+    {
+      "prefix": "dev.",
+      "reason": "Spillerudvikling (moderne spillerprofil)"
+    },
+    {
+      "prefix": "an.",
+      "reason": "Moderne analyse"
+    },
+    {
+      "prefix": "radar.",
+      "reason": "Moderne spillerprofil"
+    },
+    {
+      "prefix": "stars.",
+      "reason": "Moderne spillerprofil"
+    },
+    {
+      "prefix": "press.",
+      "reason": "Pressekonference – kun udvidet"
+    },
+    {
+      "prefix": "c.",
+      "reason": "Moderne kommentar-varianter (klassisk bruger matchTexts.json fra exe)"
+    },
+    {
+      "prefix": "hub.",
+      "reason": "Fællesskabets hub – CM Reborn"
+    },
+    {
+      "prefix": "hl.",
+      "reason": "Moderne højdepunkter"
+    },
+    {
+      "prefix": "rp.",
+      "reason": "Moderne spillerrapport"
+    },
+    {
+      "prefix": "ba.",
+      "reason": "Moderne bestyrelsespanel/assistent"
+    },
+    {
+      "prefix": "tt.",
+      "reason": "Holdsnak – kun udvidet"
+    },
+    {
+      "prefix": "opt.",
+      "reason": "Moderne Options"
+    },
+    {
+      "prefix": "talk.",
+      "reason": "Samtaler – kun udvidet"
+    },
+    {
+      "prefix": "onb.",
+      "reason": "Første arbejdsdag – kun udvidet"
+    },
+    {
+      "prefix": "complaint.",
+      "reason": "Samtaleklager – kun udvidet"
+    },
+    {
+      "prefix": "ll.",
+      "reason": "Moderne kampanalyse"
+    },
+    {
+      "prefix": "ti.",
+      "reason": "Moderne kampanalyse"
+    },
+    {
+      "prefix": "story.",
+      "reason": "Sæsonhistorie – kun udvidet"
+    },
+    {
+      "prefix": "team.",
+      "reason": "Holdmøder – kun udvidet"
+    },
+    {
+      "prefix": "tag.",
+      "reason": "Moderne spillermærker"
+    },
+    {
+      "prefix": "trait.",
+      "reason": "Moderne personlighed"
+    },
+    {
+      "prefix": "reform.",
+      "reason": "Moderne udviklingsplan"
+    },
+    {
+      "prefix": "oi.",
+      "reason": "Moderne modstanderinstruktioner"
+    },
+    {
+      "prefix": "recb.",
+      "reason": "Moderne rekordbog"
+    },
+    {
+      "prefix": "pub.",
+      "reason": "Offentlig profil – CM Reborn"
+    },
+    {
+      "prefix": "week.",
+      "reason": "Ugeoversigt – kun udvidet"
+    },
+    {
+      "prefix": "notify.",
+      "reason": "Browsernotifikation"
+    },
+    {
+      "prefix": "prof.",
+      "reason": "Profil – CM Reborn"
+    },
+    {
+      "prefix": "jab.",
+      "reason": "Moderne medieskænderier"
+    },
+    {
+      "prefix": "fc.",
+      "reason": "Moderne økonomiprognose"
+    },
+    {
+      "prefix": "fr.",
+      "reason": "Moderne venskabskampsarrangør"
+    },
+    {
+      "prefix": "friendly.",
+      "reason": "Moderne venskabskampe"
+    },
+    {
+      "prefix": "rc.",
+      "reason": "Rumchat – CM Reborn"
+    },
+    {
+      "prefix": "swap.",
+      "reason": "Moderne byttehandler"
+    },
+    {
+      "prefix": "pih.",
+      "reason": "Moderne taktikhjælp"
+    },
+    {
+      "prefix": "tih.",
+      "reason": "Moderne taktikhjælp"
+    },
+    {
+      "prefix": "ment.",
+      "reason": "Moderne taktikhjælp"
+    },
+    {
+      "prefix": "pi.",
+      "reason": "Moderne taktikhjælp"
+    },
+    {
+      "prefix": "sp.",
+      "reason": "Moderne taktikhjælp"
+    },
+    {
+      "prefix": "mom.",
+      "reason": "Moderne kamplinje"
+    },
+    {
+      "prefix": "merch.",
+      "reason": "Moderne merchandise"
+    },
+    {
+      "prefix": "rec.",
+      "reason": "Moderne rådgivning"
+    },
+    {
+      "prefix": "adv.",
+      "reason": "Moderne assistentråd"
+    },
+    {
+      "prefix": "fan.",
+      "reason": "Moderne fanbegivenheder"
+    },
+    {
+      "prefix": "fans.",
+      "reason": "Moderne fanreaktioner"
+    },
+    {
+      "prefix": "v.",
+      "reason": "Moderne kampanalyse"
+    },
+    {
+      "prefix": "as.",
+      "reason": "Moderne assistent"
+    },
+    {
+      "prefix": "react.",
+      "reason": "Moderne mediereaktioner"
+    },
+    {
+      "prefix": "war.",
+      "reason": "Budkrige – kun udvidet"
+    },
+    {
+      "prefix": "db.",
+      "reason": "Databasevalg (Game Options/CM Reborn)"
+    },
+    {
+      "prefix": "lg.",
+      "reason": "Valg af spilbare nationer (CM Reborn)"
+    },
+    {
+      "prefix": "update.",
+      "reason": "PWA-opdatering"
+    },
+    {
+      "prefix": "draft.",
+      "reason": "Draft – CM Reborn"
+    },
+    {
+      "prefix": "trial.",
+      "reason": "Prøvespillere – kun udvidet"
+    },
+    {
+      "prefix": "agent.",
+      "reason": "Moderne agentkrav"
+    },
+    {
+      "prefix": "real.",
+      "reason": "Moderne realisme"
+    },
+    {
+      "prefix": "rumour.",
+      "reason": "Rygter – slået fra i ægte tilstand"
+    }
+  ],
+  "keys": [
+    {
+      "key": "common.ok",
+      "reason": "OK findes i exe'en som del af knapper; fælles ord"
+    },
+    {
+      "key": "cxs.network",
+      "reason": "Network Play omdøbt til Online Multiplayer (ejerens ønske 16/11)"
+    }
+  ],
+  "patterns": [
+    {
+      "regex": "^cl\\.(opt|go|gopt|settings|font|goal|skin|look|sound|about|lang|cur|account|login|rank|comm|hub|rebornopt|lookpick)\\b",
+      "reason": "Game Options: CM Reborns eget område (indstillinger, konto, fællesskab, Rankings, About this game, sprog, valuta)"
+    },
+    {
+      "regex": "^cxs\\.(lang|cur|reborn|acct|rank|comm|about)",
+      "reason": "Game Options: CM Reborns eget område"
+    },
+    {
+      "regex": "^cm\\.(intro|trending|new|roadmap|allCats|votes|budgetHint|reportBug|suggest|none|dev|released|footer|copyLink|cat\\.|st\\.|needProfile|pollHint|notFound|noComments|write|share|report|reported|bug|title|body|screenshot|autoMeta|similar|err\\.)",
+      "reason": "Game Options: Fællesskab (forslag, afstemninger, fejlrapporter) – CM Reborns eget område"
+    },
+    {
+      "regex": "^news\\.(title|titleAcct|intro|introAcct|perk\\d|consent|yes|later|no|privacy|done|doneNews|toggle)$",
+      "reason": "Game Options: konto og opdateringsmails – CM Reborns eget område"
+    },
+    {
+      "regex": "^cl\\.sv\\.(where|local|cloud|makeProfile|why|infoLocal|infoCloud)$",
+      "reason": "Game Options: konto/skygemte spil på Save Game-skærmen – CM Reborn"
+    },
+    {
+      "regex": "^cl\\.set\\.",
+      "reason": "Game Options → Settings: CM Reborns egne indstillinger (skin, lyd, baggrunde, skrifttyper, målblink, realisme)"
+    },
+    {
+      "regex": "^top\\.(notify|install)",
+      "reason": "PWA: notifikationer/installér – CM Reborn (uden for spilskærmene)"
+    },
+    {
+      "regex": "^cl\\.locale$",
+      "reason": "Sprogkode, ikke en tekst"
+    },
+    {
+      "regex": "^cxs\\.hint\\.",
+      "reason": "Startmenuens små forklaringer under felterne (ejerens ønske 16/11, CM Reborn-tilføjelse)"
+    }
+  ]
 }
