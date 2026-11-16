@@ -110,6 +110,7 @@ console.log(`\n${seasons} sæsoner på ${Math.round((Date.now() - t0) / 1000)} s
 const spam = Object.entries(newsCount).filter(([, v]) => v / seasons > 60).sort((a, b) => b[1] - a[1]);
 if (spam.length) warn(`mange nyheder pr. sæson: ${spam.map(([k, v]) => `${k} ${Math.round(v / seasons)}`).join(', ')}`);
 console.log(`nyhedstyper set: ${Object.keys(newsCount).length}`);
+if (process.env.NEWS_KEYS) console.log('NEWSKEYS ' + JSON.stringify(newsCount));
 for (const w2 of warns) console.log(`⚠ ${w2}`);
 for (const e of errors) console.log(`✗ ${e}`);
 console.log(errors.length ? `\n${errors.length} fejl, ${warns.length} advarsler` : `\nIngen fejl · ${warns.length} advarsler`);

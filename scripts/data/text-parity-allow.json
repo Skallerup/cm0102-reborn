@@ -372,6 +372,30 @@
   {
    "regex": "^cxs\\.(lang|cur|reborn|acct|rank|comm|about)",
    "reason": "Game Options: CM Reborns eget område"
+  },
+  {
+   "regex": "^cm\\.(intro|trending|new|roadmap|allCats|votes|budgetHint|reportBug|suggest|none|dev|released|footer|copyLink|cat\\.|st\\.|needProfile|pollHint|notFound|noComments|write|share|report|reported|bug|title|body|screenshot|autoMeta|similar|err\\.)",
+   "reason": "Game Options: Fællesskab (forslag, afstemninger, fejlrapporter) – CM Reborns eget område"
+  },
+  {
+   "regex": "^news\\.(title|titleAcct|intro|introAcct|perk\\d|consent|yes|later|no|privacy|done|doneNews|toggle)$",
+   "reason": "Game Options: konto og opdateringsmails – CM Reborns eget område"
+  },
+  {
+   "regex": "^cl\\.sv\\.(where|local|cloud|makeProfile|why|infoLocal|infoCloud)$",
+   "reason": "Game Options: konto/skygemte spil på Save Game-skærmen – CM Reborn"
+  },
+  {
+   "regex": "^cl\\.set\\.",
+   "reason": "Game Options → Settings: CM Reborns egne indstillinger (skin, lyd, baggrunde, skrifttyper, målblink, realisme)"
+  },
+  {
+   "regex": "^top\\.(notify|install)",
+   "reason": "PWA: notifikationer/installér – CM Reborn (uden for spilskærmene)"
+  },
+  {
+   "regex": "^cl\\.locale$",
+   "reason": "Sprogkode, ikke en tekst"
   }
  ]
 }

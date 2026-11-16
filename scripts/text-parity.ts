@@ -16,6 +16,7 @@ import { gunzipSync } from 'node:zlib';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { en } from '../src/i18n/en';
+import { ORIGINAL_OFF_NEWS } from '../src/game/newsFilter';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DATA = join(ROOT, 'scripts', 'data');
@@ -91,6 +92,8 @@ export function analyze(): Result {
   for (const k of keys) {
     if (allow.prefixes.some((p) => k.startsWith(p.prefix)) || allow.keys.some((a) => a.key === k) || pats.some((r) => r.test(k))) { res.allowed++; continue; }
     if (!refd.has(k)) { res.unreferenced++; continue; }
+    // nyheder, der ikke sendes i ægte tilstand (src/game/newsFilter.ts), og deres brødtekster/varianter
+    if (ORIGINAL_OFF_NEWS.some((o) => (o.endsWith('.') ? k.startsWith(o) : k === o || k.startsWith(o + '.')))) { res.allowed++; continue; }
     const text = en[k];
     const letters = (text.match(/\p{L}/gu) || []).length;
     if (letters < allow.minLetters) { res.allowed++; continue; }

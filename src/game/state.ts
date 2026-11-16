@@ -19,7 +19,8 @@ export function hasGame(): boolean {
 import { setEconomy } from './econ';
 import { setSavedModern } from '../ui/modernFlag';
 import { cmPermitMove } from './cmPermit';
-import { cmStaffStateMove } from './cmPlayerData';
+import { cmActive, cmStaffStateMove } from './cmPlayerData';
+import { offInOriginal } from './newsFilter';
 
 /**
  * Admin-preview: en spillers gemte spil åbnet til fejlsøgning (Admin → Saves / New careers). Intet gemmes, og intet
@@ -221,6 +222,7 @@ export function newsRelevant(...clubIds: (number | undefined)[]): boolean {
 /** Ny besked til den aktive manager. all=true sender til alle menneskelige managere (multiplayer). */
 export function addNews(n: Omit<NewsItem, 'id' | 'date' | 'read'> & { date?: string }, opts?: { all?: boolean }) {
   const g = gs();
+  if (offInOriginal(n.key) && cmActive(g)) return; // nyheder uden modstykke i originalen (newsFilter.ts)
   const muted = !!g.options.mutedNews?.includes(n.cat);
   const item = { id: g.nextId.news++, date: n.date ?? g.date, read: muted, ...n, ...(muted ? { muted: true } : {}) };
   g.news.unshift(item);

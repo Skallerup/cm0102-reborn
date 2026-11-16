@@ -816,7 +816,7 @@ export const da: Record<string, string> = {
   'transfer.bidCountered': '{club} vil have {fee} for {player}', 'transfer.bidRejected': '{club} har afvist dit bud på {player}',
   'transfer.notForSale': '{club}: {player} er ikke til salg!', 'transfer.loanAccepted': '{club} udlejer {player} til dig', 'transfer.loanRejected': '{club} vil ikke udleje {player}',
   'transfer.done': '{player} skifter fra {from} til {to} for {fee}', 'transfer.freeDone': '{player} skriver under med {to} på en fri transfer',
-  'transfer.loanDone': '{player} lejes ud fra {from} til {to}', 'transfer.bosmanDone': '{player} skifter gratis fra {from} til {to} (Bosman)',
+  'transfer.loanDone': '{player} lejes ud fra {from} til {to}', 'transfer.bosmanDone': '{player} har besluttet at forlade {from} og skifte til {to} på en fri transfer efter Bosman-reglen, når hans kontrakt er udløbet.',
   'transfer.incomingLoan': '{club} vil leje {player}', 'transfer.incomingLoan.body': 'Svar under Transfers → Bud inden for fem dage.', 'transfer.incomingBid': "{club}s transferbud på {last}", 'transfer.incomingBid.body': "{club} har budt {fee} for {player}.",
   'transfer.aiWithdrew': '{club} har trukket buddet på {player} tilbage', 'transfer.playerRefusedMove.body': "{player} har afvist skiftet til {club}.", 'transfer.playerRefusedMove': "{last} afviser skifte til {club}",
   'transfer.refuseRep': '{player} er ikke interesseret i at spille for en klub af {club}s format', 'transfer.refuseHappy': '{player} er glad i sin nuværende klub og afviser {club}',
@@ -825,7 +825,7 @@ export const da: Record<string, string> = {
 
   // kontrakter
   'contract.expiring': '{player}s kontrakt udløber til sommer', 'contract.expiring.body': 'Forlæng kontrakten fra spillerprofilen, eller lad ham gå gratis.',
-  'contract.leavingBosman': '{player} har aftalt at skifte til {club} til sommer', 'contract.left': '{player} har forladt klubben (kontraktudløb)',
+  'contract.leavingBosman': '{player} har aftalt at skifte til {club} til sommer', 'contract.left': '{player} er nu uden kontrakt',
   'contract.renewed': '{player} har forlænget med {years} år',
 
   // scouting
@@ -1490,7 +1490,7 @@ export const da: Record<string, string> = {
   // nyheder
   'news.welcome': 'Velkommen til {club}, {manager}!', 'news.welcome.body': 'Bestyrelsen har givet dig nøglerne. Tjek truppen, sæt din taktik og tryk Fortsæt. Held og lykke!',
   'news.champions': '{club} er mestre i {comp}!', 'news.cupWin': '{club} vinder {comp}!', 'news.playoffWin': '{club} vinder {comp}',
-  'news.split': '{comp} er delt i mesterskabs- og nedrykningsspil', 'news.promoted': '{club} rykker op i {comp}', 'news.relegated': '{club} rykker ned i {comp}',
+  'news.split': '{comp} er delt i mesterskabs- og nedrykningsspil', 'news.promoted': '{club} rykker op', 'news.relegated': '{club} rykker ned',
   'news.retired': '{player} stopper karrieren som {age}-årig', 'news.newSeason': 'Sæsonen {season} begynder',
   'news.injury': '{player} er skadet: {injury} ({days} dage)', 'news.recovered': "{last} træner fuldt igen",
   'news.reservesPromoted': 'Truppen var for lille – {n} spillere er rykket op fra reserveholdet', 'news.reservesPromoted.body': 'Husk at forlænge kontrakter og hente nye spillere, så truppen er stærk nok.',
