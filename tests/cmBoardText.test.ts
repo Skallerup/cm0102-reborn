@@ -1,7 +1,9 @@
 // Bestyrelsens tekster, nyhederne ved spilstarten og startdatoen som i CM 01/02 (den originale database i ægte tilstand):
 // 0x6a4ae0/0x694440 (forventningen), 0x690d80 (tilliden, 504 blade), 0x6a8810/0x6a9470 (Board Request), 0x6a3060 (ansættelsen),
 // Bosman Editions turneringsnavne (Seasons/names.tsv) og spilstarten 0x830520 for det først valgte land.
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+// en import trækker analytics.ts med (window ved indlæsning) – i Node en tom stand-in
+vi.hoisted(() => { (globalThis as { window?: unknown }).window ??= { addEventListener() {}, removeEventListener() {}, location: { search: '', hostname: 'localhost', href: '' }, matchMedia: () => ({ matches: false, addEventListener() {} }) }; });
 import { readFileSync } from 'node:fs';
 import { confidenceText, expectBody, expectTitle, requestReply, requestTitle } from '../src/game/cmBoardText';
 import { cmCompName, compLabel, setCompEra } from '../src/i18n/comps';
