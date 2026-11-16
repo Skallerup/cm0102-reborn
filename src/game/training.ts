@@ -7,6 +7,7 @@ import { gs } from './state';
 import type { CoachArea, Player, Role, Staff } from './types';
 import { valueFromCA } from './data/generate';
 import { formulaValueGbp, originalValueGbp, repTriple } from './originalValue';
+import { cmValuesApply } from './cmValueGame';
 import { ROLE_WEIGHTS, naturalRole } from './attributes';
 import { isHumanClub } from './humans';
 import { squad } from './state';
@@ -180,12 +181,16 @@ function bump(p: Player, i: number, d: number) {
  *  Set Staff Transfer Status, 0x8f77ac, og loftet for udbudsprisen i 0x8ce0e0 – cmTransferList.ts) */
 export function valueTarget(p: Player): number {
   const g = gs();
+  // ægte tilstand: originalens 0x4d0c60 regnes for alle med kontrakt (cmValueGame.ts) og står i Player.value – eller ved siden af menneskets
+  // udbudspris (cmAsk.f)
+  if (p.club && p.contract && p.value > 0 && cmActive(g)) { if (!(p.cmAsk && p.cmAsk.club === p.club)) return p.value; if (p.cmAsk.f) return p.cmAsk.f; }
   const original = !!g.econ && g.dbKind === 'cm0102';
   const age = ageOn(p.dob, g.date);
   // den originale database: originalens værdiformel (klubbens omdømme, løn og liga tæller med – originalValue.ts)
   const c = g.clubs[p.club];
   const lg = c ? g.leagues[c.league] : undefined;
-  // klubber med originalens felter: sub_4d0c60 (om originalen bruger den samme formel hver måned, vides ikke – *estimeret*)
+  // klubber med originalens felter: den ældre udgave af sub_4d0c60 (originalValue.ts) – kun for de klubløse og spillere uden udregnet værdi; originalen
+  // regner +0x52 hver anden dag (0x4c7ec5, cmValueGame.ts)
   return original && c?.vc && p.cmRep
     ? formulaValueGbp({ pa: p.pa, age, pos: p.pos, attrs: p.attrs, rep: p.cmRep, caps: p.caps, staffId: p.id, clubId: c.id, vc: c.vc }) / 0.86
     : original
@@ -199,9 +204,9 @@ export function monthlyValues() {
     // menneskets udbudspris er originalens værdi +0x52 (0x8ce0e0, cmTransferList.ts) – den står, til han skifter klub (*estimeret*: om
     // originalen regner +0x52 om hver måned, vides ikke)
     if (p.cmAsk && p.cmAsk.club === p.club && isHumanClub(p.club)) { p.value = p.cmAsk.v; continue; }
+    // ægte tilstand (original DB): spillere med kontrakt får originalens +0x52 nedenfor (cmValueGame.ts); de klubløse (originalen: 0) spillets formel
+    if (cmActive(g)) { if (!p.club || !p.contract) p.value = cashRound(Math.max(1000, valueTarget(p))); continue; }
     const target = valueTarget(p);
-    // ægte tilstand: originalens værdiformel direkte (ingen glidning, formfaktor, udløbsrabat eller p.rep-drift)
-    if (cmActive(g)) { p.value = cashRound(Math.max(1000, target)); continue; }
     // glid mod modelværdien og påvirkes af form
     const form = p.form.length ? p.form.reduce((s, x) => s + x, 0) / p.form.length : 6.5;
     const formF = 1 + (form - 6.7) * 0.06;
@@ -213,6 +218,8 @@ export function monthlyValues() {
     p.value = g.econ ? cashRound(Math.max(1000, v)) : roundV(Math.max(1000, v));
     p.rep = Math.max(1, Math.min(100, p.rep * 0.97 + ((p.ca - 40) * 0.55) * 0.03));
   }
+  // originalens værdi 0x4d0c60 for alle med kontrakt (de valgte landes klubber også på ulige dage – cmValuesDaily)
+  if (cmActive(g)) cmValuesApply(g);
 }
 
 function roundV(v: number) {

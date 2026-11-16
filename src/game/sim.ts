@@ -57,6 +57,7 @@ import { fixtureCodesOf, gameCrowd } from './engine/grid/gameInputs';
 import { cmEuroCatchUp, cmEuroDay, cmEuroPlayDay } from './cmEurope';
 import { compHooks } from './hooks';
 import { cmCmOn, cmContractManagerDay } from './cmContractManager';
+import { cmValuesDaily } from './cmValueGame';
 import { cmExpireOutsideDaily, endDueLoansDaily, freeAgentDrift, monthlyClubReps, seasonRollover, youthIntake, youthPreview } from './season';
 import { cmShortlistOn } from './cmShortlistGame';
 import { squadStrength } from './board';
@@ -568,6 +569,8 @@ function newDay() {
   cmContractDaily(g, squad);
   // CONTRACT_MANAGER::daily_update 0x4c7ac0: computerklubbernes forlængelser, udløb og frigivelser (cmContractManager.ts)
   cmContractManagerDay(g);
+  // 0x4c7ec5: spillernes værdi +0x52 (0x4d0c60 – cmValueGame.ts)
+  cmValuesDaily(g);
   // … og spillets eget udløb for dem, originalen ikke har i hukommelsen (season.ts)
   cmExpireOutsideDaily();
   // lejeaftaler i sæsonen (England: tre måneder, rules2001.ts) slutter – kun ægte tilstand med den originale database

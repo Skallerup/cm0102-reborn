@@ -200,7 +200,8 @@ export interface Player {
   /** Udbudspris sat af manageren når spilleren er til salg */
   listPrice?: number;
   /** den originale database i ægte tilstand: menneskets udbudspris = originalens værdi +0x52 (0x8ce0e0 – cmTransferList.ts), gælder i klubben */
-  cmAsk?: { v: number; club: number };
+  /** `f`: formlens værdi 0x4d0c60 (€) imens – cmValueGame.ts regner den videre, men +0x52 er udbudsprisen (training.ts valueTarget) */
+  cmAsk?: { v: number; club: number; f?: number };
   /** den originale database i ægte tilstand: transferanmodningens nyhed (0xbbf) venter på svar (id) – cmTransferList.ts */
   cmReq?: number;
   /** Status i truppen sat af manageren (Squad Status) og udlejningsliste */

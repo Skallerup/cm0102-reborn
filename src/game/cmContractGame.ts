@@ -168,7 +168,7 @@ export function buildWantMem(g: GameState, clubs: Iterable<number>, opts: { full
     if (n !== undefined) m.w8(W.natOf(n) + 0x11c, 1);
     m.w32(a + 4, !nm && r >= 3 ? CONT0 + 0x100 * (r - 3) : 0);
   });
-  // landenes felter (ud over buildWageMem: +0x71 verdensdelen, +0x77 sproget, +0x8e)
+  // landenes felter (ud over buildWageMem: +0x71 verdensdelen, +0x77 sproget, +0x8e – nation.dat (GameState.cmNationRep), ellers klubbernes vc[1])
   const nat8e = new Map<number, number>();
   for (const cl of Object.values(g.clubs)) if (cl.vc && !nat8e.has(cl.nation)) nat8e.set(cl.nation, cl.vc[1]);
   const natDone = new Set<number>();
@@ -177,7 +177,7 @@ export function buildWantMem(g: GameState, clubs: Iterable<number>, opts: { full
     if (a && !natDone.has(a)) {
       natDone.add(a);
       const nm = g.nations[n!]?.name;
-      m.w32(a + 0x71, contOf(nm)); m.w8(a + 0x77, nationLanguage(nm)); m.w16(a + 0x8e, nat8e.get(n!) ?? 0);
+      m.w32(a + 0x71, contOf(nm)); m.w8(a + 0x77, nationLanguage(nm)); m.w16(a + 0x8e, g.cmNationRep?.[n!] ?? nat8e.get(n!) ?? 0);
     }
     return a;
   };

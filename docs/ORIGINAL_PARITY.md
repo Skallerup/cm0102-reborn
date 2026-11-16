@@ -58,7 +58,7 @@ ad gangen (eller ret sn_trace.c til kun at skrive `pre` og ingen log).
 |---|---|---|---|
 | lån | 14/7 | originalen har 40 engelske spillere udlejet allerede ved spilstarten (fx 4 Arsenal-unge i KSK Beveren) – i databasen (pre-0) ingen: forkørslens marked 1/1–13/7 laver dem; vi har 0 lejeaftaler fra engelske klubber HELE sæsonen (originalen 40 · 40 · 101 · 20, 226 lejehandler) | udlejet 40 · 40 · 101 · 20 |
 | trupstatus | 14/7 | +0x4f: klubber uden for de fire ligaer får ingen status hos os (0x83a1b0 springer skjulte klubber over, *estimeret*) – originalen sætter den for alle | 267/267; ligaklubberne 976/3286 |
-| værdi | 14/7 | staff +0x52 med kendte inddata (CA/PA/omdømme/dato i databasen) kun 28 % inden for ±10 %; snit £789K mod £607K (+30 %) – spillets `p.value` er ikke originalens +0x52 ved start | 901/1251 |
+| værdi | 14/7 | (rettet 16/11, punkt 17) staff +0x52 med kendte inddata 56 % inden for ±10 % (før 28 %), 20/7 53 %; snit £599K mod £607K (før £789K), tilfældige inddata 38 % – resten er 0x6e86d0's id-hash, trupplanens +0x3d og forkørslens kontrakter | 552/1251 · 591/1255 |
 | skader | 14/7 | startskader 6 % mod 4 % af spillerne | andel 0,06/0,04 |
 | økonomi | 14/7 | (timing) Intertoto 14/7 er spillet i billedet; saldo inden for 0,92–1,08 som den skal. Senere: sæsonposterne Prize 0 (originalen £231K snit 1/2: pokal-/Europapræmier), TV 88K/193K, Investments 34K/4,8M (PLC-begivenheder 0x59ed70), Interest ud 222K/119K, saldo 1/2 1,37M/3,02M og 30/6 0,76M/7,64M, nye sæsons tv-penge betales i originalen før 30/6 (create_table efter 20/6) | se scriptet |
 | moral | 20/7 | +0x45 skilles allerede efter 6 dage (2.295/3.559; snit 10,7/11,2, originalen spreder mere – fx 5–16 i forsæsonen) | 60 · 2295 · 3160 · 3122 |
@@ -79,7 +79,7 @@ View Finances (der læser Bonuses fra blokken) viste 0 bonusser, selv om pengene
 1. **Lejeaftaler for computerklubber** (0 i hele sæsonen mod 226) og **klubløse, der skriver under** (1 mod 95) – ønskelisterne/markedet
    (`SL_ON`, arbejdsliste 1.1) + udløbne kontrakter, der frigives (0 mod 65).
 2. **Forkørslens marked 1/1–13/7** (0x5cc850 med transfer-/lejemarkedet): 40 lejeaftaler og trupændringer ved spilstarten (Arsenal 48 mod 43).
-3. **Værdien +0x52 ved start** (+30 % med kendte inddata) – find hvem der skriver +0x52 i create_game (0x8ce0e0/0x4d1600?) og brug det til `p.value`.
+3. ~~**Værdien +0x52 ved start**~~ – gjort 16/11 (punkt 17): `p.value` = 0x4d0c60 som 0x4c7ec5 (cmValueGame.ts).
 4. **Trupstatus for klubber uden for ligaerne** (0x83a1b0 for alle indlæste klubber – fjern *estimeret* spring) og de 976 ligaspillere med anden status.
 5. **Moral i forsæsonen** (+0x45 skilles på 6 dage) og **klubomdømmet** +0x80 (ændres dagligt/efter venskabskampe i originalen).
 6. **Managerskifter**: for mange fyringer/skifter (41 % mod 25 % af klubberne til 1/2) – 0x697c40/0x69aba0 på spillets data.
@@ -111,7 +111,20 @@ View Finances (der læser Bonuses fra blokken) viste 0 bonusser, selv om pengene
 
 ### 2. Data
 16. Parserfejl: fødselsdato/fod/nationalitetsord (Stuart Edwards) – kontrollér alle felter mod originalens hukommelse (K8).
-17. Spillerværdier: originalen viser Edwards £80K, vi £1,3M – værdiformel/inddata.
+17. **Spillerværdier – gjort 16/11** (`src/game/cmValueGame.ts`): `Player.value` er originalens +0x52 = 0x4d0c60 (håndporteret i cmValue.ts) som
+    CONTRACT_MANAGER's 0x4c7ec5 – ved spilstarten, menneskets spillere hver dag, computerens på ulige dage (de valgte landes klubber; resten den 1. i
+    måneden – *estimeret* for hastigheden: ~22 ms/dag + ~0,4 s/måned), klemt af en aktiv frikøbsklausul; menneskets udbudspris (`cmAsk`) står som +0x52,
+    formlen ved siden af (`cmAsk.f`, valueTarget). Posterne er buildWantMem's med tre rettelser: menneskets manager er en person i klubben (kendskab 0,
+    oraklets ikke-spillerpost), managere uden for originalens hukommelse (`Staff.cmMem`) er ingen manager, landets +0x8e fra nation.dat. Kontrol:
+    tests/cmValueGame.test.ts (0x4d0c60 på oraklets egne bytes = +0x52 for Beckham, Stuart Edwards, Cherno Samba, Pires, Dixon, Carlos Edwards) og
+    `scripts/cm-value-diff.ts` (inddata felt for felt mod oraklets spilstart; `SUBST=1` = hvor meget hver gruppe inddata betyder).
+    **Tal:** K8 kendte inddata 27 % → 49 % inden for ±10 % (median vores/oraklet 1,01, p10/p90 0,76/1,95); K2 14/7 28 % → 56 %, 20/7 53 %. Stuart Edwards
+    £1,3M → £124K (originalen £80.500 – databasen mangler hans PA, originalens træk gav 55, vores 97), Beckham £18,95M (£18,83M), Samba £481K (£617K, PA −2).
+    **Hvorfor ikke 90 %:** 0x4d0c60 på originalens hukommelse giver +0x52 for 2.366/2.372, så resten er inddata: (1) 0x6e86d0's spredning er en hash af
+    personens og managerens hukommelses-id + frø – id'erne er rækkefølgen af de indlæste efter 0x524d70's terningslag og kan ikke genskabes (vi bruger
+    stabile id'er); med oraklets bedømmelse 48 % → 68 %; (2) trupplanens kontrakt +0x3d (menneskets klub har 50 i originalen, vores 70–77; computerklubberne
+    efter forkørslen), (3) forkørslens forlængelser (restløbetiden), (4) udfyldte egenskaber/PA. Alle inddata fra oraklet: 85 % (med oraklets managere for
+    størrelse 2: 90 %). Ikke koblet: ønskelisternes og ønskekontraktens egne 0x4d0c60-kald (cmSlMem/cmContractGame `valueOf` – formulaValueGbp).
 18. Klubbernes korte navne i resultatlister og ligafarver (dansk liga rød).
 
 ### 3. Skærme og tekster

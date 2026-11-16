@@ -118,10 +118,11 @@ export function setSquadStatus(g: GameState, p: Player, asking: number | null, n
   const c = cmContractOf(p);
   const human = isHumanClub(p.club);
   // 0x8ce19e: kontrakttype 2 og spillerdata: udbudsprisen bliver værdien +0x52 – for et menneske kun, hvis den ikke er over formlen 0x4d0c60
-  if (asking !== null && asking > 0 && !p.contract?.partTime && (!human || asking <= valueTarget(p))) {
+  const formula = valueTarget(p);
+  if (asking !== null && asking > 0 && !p.contract?.partTime && (!human || asking <= formula)) {
     p.value = asking;
-    if (human) p.cmAsk = { v: asking, club: p.club }; else p.cmAsk = undefined;
-  } else if (asking !== null && human) p.cmAsk = undefined;
+    if (human) p.cmAsk = { v: asking, club: p.club, f: formula }; else p.cmAsk = undefined;
+  } else if (asking !== null && human) { if (p.cmAsk?.f) p.value = p.cmAsk.f; p.cmAsk = undefined; }
   if (next === 0xff) return;                                                   // 0x8ce229: −1 = statusen røres ikke
   const old = ((c.b4f ?? statusCode(p) << 4) >> 4) & 0xf;
   // 0x8ce1f8: ny status 7 (og ikke allerede 7): +0x3d −= 100

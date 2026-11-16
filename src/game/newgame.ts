@@ -49,6 +49,7 @@ import { cmPermitNewGame } from './cmPermit';
 import { cmSquadPlanStart } from './cmSquadPlanGame';
 import { cmWageFillNewGame } from './cmWageGame';
 import { cmShortlistStart } from './cmShortlistGame';
+import { cmValuesApply } from './cmValueGame';
 import { cmContractManagerDay } from './cmContractManager';
 import { GRID_ENGINE_DEFAULT } from './engine/liveSim';
 
@@ -545,6 +546,8 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   cmShortlistStart(g);
   // startdagens CONTRACT_MANAGER::daily_update 0x4c7ac0 (originalen kører den også på [0xdd6ec8] – cmContractManager.ts)
   cmContractManagerDay(g);
+  // spillernes værdi = originalens +0x52 (0x4d0c60 – cmValueGame.ts)
+  cmValuesApply(g);
   progress('scouting', 0.9);
   initKnowledge();
   monthlyDevelopment();
