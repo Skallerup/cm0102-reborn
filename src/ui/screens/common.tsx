@@ -4,6 +4,7 @@ import { useNav } from '../core';
 import { ClubLink, PlayerLink } from '../components';
 import type { NewsItem } from '../../game/types';
 import { gs } from '../../game/state';
+import { cmBanAnswerBody, cmBanBody, cmBanParams } from '../cmBanText';
 import { requestBodyKind, requestReasons } from '../../game/cmTransferList';
 import type { GameState } from '../../game/types';
 import { isRetro } from '../theme';
@@ -53,6 +54,8 @@ export function newsParams(n: NewsItem): Record<string, string | number> {
     if (typeof p.pos === 'string') p.posw = t(`cmaw.pos.${p.pos}`);
     if (typeof p.num === 'number') p.numw = has(`num.${p.num}`) ? t(`num.${p.num}`) : String(p.num);
   }
+  // CM 01/02's karantæner (cmDiscipline.ts): længden i overskriften (0x7e5780), "Keane's" og forbundets nationalitetsord
+  if (n.key.startsWith('cmban.')) cmBanParams(n, p);
   // Discipline Player: grunden med små bogstaver som originalens 0x5a73a0(…, 1)
   if (n.key.startsWith('cmfine.') && typeof p.why === 'number') p.reason = t(`cmfine.why.${p.why}`);
   if (n.key === 'eur.request' && typeof p.phase === 'string') p.phase = t(`eur.phase.${p.phase}`);
@@ -168,6 +171,8 @@ function cmRequestBody(n: NewsItem): string {
 
 export function newsBody(n: NewsItem) {
   if (n.key === 'board.update' && n.params?.lvl) return boardUpdate(n);
+  if (n.key.startsWith('cmban.h')) return cmBanBody(n);
+  if (n.key.startsWith('cmban.fa.')) return cmBanAnswerBody(n);
   if (n.key === 'cm.req') return cmRequestBody(n);
   const k = bodyKey(n);
   if (!has(k)) return '';
@@ -310,6 +315,8 @@ export function NewsTitle({ n }: { n: NewsItem }) {
 
 export function NewsBody({ n }: { n: NewsItem }) {
   if (n.key === 'board.update' && n.params?.lvl) return <>{boardUpdate(n)}</>;
+  if (n.key.startsWith('cmban.h')) return <>{cmBanBody(n)}</>;
+  if (n.key.startsWith('cmban.fa.')) return <>{cmBanAnswerBody(n)}</>;
   if (n.key === 'cm.req') return <>{cmRequestBody(n)}</>;
   const k = bodyKey(n);
   return has(k) ? <>{linked(n, k)}{offerAnswer(n)}</> : null;

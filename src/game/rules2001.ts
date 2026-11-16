@@ -151,8 +151,8 @@ export function boardEventsSeason() {
 }
 
 /**
- * Anke af et rødt kort (CM 01/02: knappen "Appeal" på nyheden om karantænen – kun den originale database). Forbundet
- * frafalder karantænen, stadfæster den eller forlænger den med én kamp for en grundløs anke. Fordelingen er *estimeret*.
+ * Det udvidede spils egen anke af et rødt kort (CM Reborn – ikke originalens regler: dem har ægte tilstand i cmDiscipline.ts, 0x6ab800).
+ * Forbundet frafalder karantænen, stadfæster den eller forlænger den med én kamp for en grundløs anke.
  */
 export function appealBan(pid: number): 'won' | 'lost' | 'extended' | 'error' {
   const g = gs();

@@ -31,6 +31,7 @@ import { ClassicSub, cxShortDate } from '../classic';
 import { IncomingBidPanel, JobOfferPanel, TransferRequestPanel } from './TransferStatusClassic';
 import { requestOpen } from '../../game/cmTransferList';
 import { cmConfirmOpen, cmConfirmScreen, cmTalksOpen } from '../../game/cmTransferTalks';
+import { cmAppealAsk, cmAppealOpen } from '../../game/cmDiscipline';
 
 /** Klassisk tema: nyhedsfiltre som faner (øverst) og under-knapper (nederst) */
 const CX_TOP = ['all', 'messages', 'competitions', 'injuries'] as const;
@@ -190,6 +191,12 @@ export function Inbox() {
           {acceptedBid && <button className="cx-grey cx-respond cx-offer-contract" onClick={() => setTalkOpen(acceptedBid.id)}>{t('cl.offerContract')}</button>}
           {agreeOffer && cmConfirmOpen(g, agreeOffer) && <button className="cx-grey cx-respond cx-confirm-transfer" onClick={() => setConfirmOpen(agreeOffer.id)}>{t('cl.bid.respond')}</button>}
           {rejPlayer !== undefined && <button className="cx-grey cx-respond cx-negotiate" onClick={() => setRenewOpen(rejPlayer)}>{t('cl.negotiate')}</button>}
+          {/* CM 01/02 (0x782b70 → 0x55e620): karantænenyheden har knappen Appeal → "Appeal against the 3 game ban …" (0x55ea10) → 0x6ab800 */}
+          {cmAppealOpen(g, item) && item && <button className="cx-grey cx-respond cx-appeal" onClick={() => {
+            const id = item.id, ask = cmAppealAsk(item);
+            void askConfirm(t(ask.key, { n: ask.n, player: ask.player }), { head: t('cl.mt.confirm') })
+              .then((ok) => { if (ok) act({ t: 'cmAppeal', news: id }); });
+          }}>{t('cmban.appeal')}</button>}
           {/* CM 01/02 (0x782c6f): bestyrelsens afslag på en anmodning har knappen Ultimatum → "Please Confirm" (0x906610) → 0x6ad610 */}
           {ultReq !== null && item && <button className="cx-grey cx-respond cx-ultimatum" onClick={() => {
             const id = item.id;
@@ -349,7 +356,8 @@ function NewsSettings({ onClose }: { onClose: () => void }) {
 function AppealBox({ item }: { item: NewsItem }) {
   const g = useGame()!;
   const [res, setRes] = useState('');
-  if (item.key !== 'ban.red' || !isOriginal2001()) return null;
+  // ægte tilstand med den originale database: originalens Appeal-knap i nyhedens bjælke (cmDiscipline.ts) – ikke denne
+  if (item.key !== 'ban.red' || !isOriginal2001() || cmActive(g)) return null;
   const p = g.players[Number(item.params.pid)];
   if (!p || p.club !== g.userClub) return null;
   if (res) return <div className="insight">{t(`ban.appeal.${res}.short`)}</div>;

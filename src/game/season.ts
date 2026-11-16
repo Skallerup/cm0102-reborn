@@ -1,4 +1,5 @@
 // Sæsonskifte: priser, historik, op/nedrykning, kontrakter, pensioneringer, regens.
+import { cmDiscSeason } from './cmDiscipline';
 import { cmBoardOn, cmBoardSeasonSetup } from './cmBoardGame';
 import { cmActive } from './cmPlayerData';
 import { cmCmOn, cmCmScope } from './cmContractManager';
@@ -512,6 +513,8 @@ function archiveStats() {
     p.banned = 0;
     p.form = [];
   }
+  // CM 01/02 0x7e7ed0: organernes tællere nulstilles, men karantænerne fortsætter ind i den nye sæson (cmDiscipline.ts)
+  cmDiscSeason(gs());
 }
 
 /**

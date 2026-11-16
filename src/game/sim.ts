@@ -8,6 +8,7 @@ import { cmSquadPlanDaily } from './cmSquadPlanGame';
 import { cmDevDaily } from './cmDevelop';
 import { cmRelDaily } from './cmRelations';
 import { cmFineDaily } from './cmFine';
+import { cmBanPreMatch, cmDiscAfterMatch, cmDiscDaily } from './cmDiscipline';
 import { cmAwardsAfterMatch, cmAwardsDaily, cmAwOn } from './cmAwards';
 import { cmRecordsDaily } from './cmMedia';
 import { cmTrainSquads } from './cmTraining';
@@ -175,6 +176,8 @@ export function prepareMatch(f: Fixture, userAuto = false): { home: EngineTeam; 
   cmVirtualMatch(gs(), f.home, f.away);
   // konditionsmodulet (original database, ægte tilstand): holdenes kondition og skader læses før udtagelsen (0x62c590/0x62c400)
   cmFitPreMatch(gs(), [f.home, f.away]);
+  // 0x55d270/0x7e85b0: udelukket i netop denne turnering (cmDiscipline.ts – organ 0 og turneringens organ)
+  cmBanPreMatch(gs(), f);
   const ht = tacticFor(f.home, f.away, true, userAuto, f.comp);
   const at = tacticFor(f.away, f.home, false, userAuto, f.comp);
   if (cmFitOn(gs())) { setMatchSquad(f.home, [...ht.lineup, ...ht.bench].filter(Boolean)); setMatchSquad(f.away, [...at.lineup, ...at.bench].filter(Boolean)); }
@@ -351,15 +354,19 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
     // (konditionsmodulet sætter konditionen og skaderne efter kampen i ægte tilstand med den originale database – cmFitAfterMatch nedenfor)
     if (!cm) p.condition = g.draft ? 100 : Math.max(20, Math.min(100, line.cond));
     const bannedBefore = p.banned;
-    if (line.yellow) {
+    // den originale database i ægte tilstand: karantænerne efter originalens organer (cmDiscipline.ts, efter løkken)
+    if (cm) { if (line.yellow) s.yellows++; if (line.red) { s.reds++; p.lastRed = g.date; } }
+    if (line.yellow && !cm) {
       s.yellows++;
       p.yellowCount++;
       if (p.yellowCount >= 5) { p.banned = Math.max(p.banned, 1); p.yellowCount = 0; (p.banLog ??= []).push({ d: g.date, n: 1, red: false }); }
       else if (p.yellowCount === 4 && isHumanClub(p.club)) asOwner(p.club, () => addNews({ cat: 'injury', key: 'ban.oneAway', params: { player: pname(p) }, link: { kind: 'player', id: p.id } }));
     }
-    if (line.red) { s.reds++; p.banned = Math.max(p.banned, rng.int(1, 3)); p.lastRed = g.date; p.appealed = false; (p.banLog ??= []).push({ d: g.date, n: p.banned, red: true }); if (p.banLog.length > 30) p.banLog.shift(); }
+    if (line.red && !cm) { s.reds++; p.banned = Math.max(p.banned, rng.int(1, 3)); p.lastRed = g.date; p.appealed = false; (p.banLog ??= []).push({ d: g.date, n: p.banned, red: true }); if (p.banLog.length > 30) p.banLog.shift(); }
     // karantæne (CM 01/02: "[spiller] banned for [n] matches") – til spillerens egen manager
-    if (p.banned > bannedBefore && isHumanClub(p.club)) {
+    if (cm && comp && line.red && isHumanClub(p.club) && (line.team === 0 ? hs.goals < as.goals : as.goals < hs.goals))
+      asOwner(p.club, () => addNews({ cat: 'general', key: 'media.redCostly', params: { player: pname(p), club: g.clubs[p.club]?.name ?? '' }, link: { kind: 'player', id: p.id } }));
+    if (!cm && p.banned > bannedBefore && isHumanClub(p.club)) {
       const n = p.banned;
       asOwner(p.club, () => addNews({ cat: 'injury', key: line.red ? 'ban.red' : 'ban.yellows', params: { player: pname(p), n, pid: p.id }, link: { kind: 'player', id: p.id } }));
       // "[spiller] indiscipline costs [klub] dear": rødt kort i et tabt opgør
@@ -380,6 +387,8 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
   // originalens spillerdata efter kampen (0x7c0d70 statistikken, 0x4ca6d0 kontraktens tællere) – kun den originale database i ægte tilstand,
   // ingen tal fra spillets rng (cmPlayerData.ts)
   cmAfterMatch(g, f, rep, squad);
+  // Discipline::process_match 0x55ca00 (0x6b60df – lige efter 0x4ca6d0, før konditionsmodulet 0x62c080): karantænerne (cmDiscipline.ts)
+  cmDiscAfterMatch(g, f, rep);
   // AWARD_MANAGER::process_fixture 0x4134c0 + Staff_Records 0x868830: priserne (månedens karakterer, ligaens tal, managernes point – cmAwards.ts)
   cmAwardsAfterMatch(g, f, rep);
   // 0x8c39f0: arbejdstilladelsens historik (kampe spillet/ikke spillet – cmPermit.ts)
@@ -393,7 +402,7 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
   // karantæner afsones for spillere der ikke spillede
   for (const club of [f.home, f.away]) {
     for (const p of squad(club)) {
-      if (!played.has(p.id) && p.banned > 0) p.banned--;
+      if (!cm && !played.has(p.id) && p.banned > 0) p.banned--;
       if (!played.has(p.id) && isHumanClub(club)) p.unhappy = Math.min(100, (p.unhappy ?? 0) + (p.attrs[42] > 13 ? 3 : 1) * unhappyMult(p));
       else if (played.has(p.id)) p.unhappy = Math.max(0, (p.unhappy ?? 0) - 5);
     }
@@ -520,6 +529,8 @@ function newDay() {
   // MANAGER_MANAGER::daily_update 0x68f9c0 for dagen, der lige er spillet (efter dagens kampe – cmBoardGame.ts; kun den originale database i ægte tilstand)
   cmBoardDaily(g);
   g.date = addDays(g.date, 1);
+  // MANAGER_MANAGER 0x6abef0 (appellernes svar) og karantænerne for klubbernes næste kamp (cmDiscipline.ts)
+  cmDiscDaily(g);
   g.dayDone = false;
   const d = g.date;
   // draft-liga: kun kondition, moral og skader – ingen økonomi, transfers, bestyrelse eller ny sæson

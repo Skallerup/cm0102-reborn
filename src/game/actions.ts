@@ -40,6 +40,7 @@ import type { SquadStatus } from './squadStatus';
 import { startScoutAssignment } from './scouting';
 import { answerNationalOffer, resignNational, selectNationalSquad } from './international';
 import { appealBan } from './rules2001';
+import { cmAppeal } from './cmDiscipline';
 import { authentic } from './rules';
 import { A } from './attributes';
 import { rng } from './rng';
@@ -72,6 +73,8 @@ export type Action =
   | { t: 'staffDelay'; news: number; delay: boolean }
   | { t: 'faRequest'; kind: import('./board').FaKind }
   | { t: 'appealBan'; pid: number }
+  /** CM 01/02: knappen "Appeal" på karantænenyheden (0x55e620 → 0x55ed00 → 0x6ab800 – cmDiscipline.ts) */
+  | { t: 'cmAppeal'; news: number }
   | { t: 'bid'; pid: number; fee: number; loan: boolean; sellOn?: number; addOn?: number; swap?: number[]; terms?: import('./cmTransferBid').BidTerms }
   | { t: 'enquire'; pid: number }
   | { t: 'preContract'; pid: number }
@@ -240,6 +243,7 @@ export function applyAction(a: Action): unknown {
     }
     case 'faRequest': return faRequest(a.kind);
     case 'appealBan': return appealBan(a.pid);
+    case 'cmAppeal': return cmAppeal(g, a.news) ? 'ok' : 'blocked';
     case 'enquire': return enquire(a.pid);
     case 'bid': return makeBid(a.pid, a.fee, a.loan, { sellOn: a.sellOn, addOn: a.addOn, swap: a.swap, terms: a.terms });
     case 'preContract': return startPreContract(a.pid);
