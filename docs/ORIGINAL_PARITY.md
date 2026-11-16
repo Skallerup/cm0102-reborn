@@ -19,7 +19,7 @@ funktioner placeres her – aldrig på originalens skærme.
 | K5 | **\*estimeret\*-budget i CI**: antallet af `estimeret`-markeringer i src/game må ikke stige (nu 240 forekomster) | nye gæt sniger sig ind | **bygget 16/11**: `tests/estimateBudget.test.ts`, baseline `tests/estimateBudget.baseline.json` |
 | K6 | **Funktionskort**: alle exe-funktioner, spillet kalder, med status porteret/oversat/estimeret/mangler | huller i dækningen | delvis (ENGINE_PORT_PLAN.md, ~1.300 kortlagte) |
 | K7 | **Langtidstest mod oraklet**: 3–5 sæsoner – sammenlign fordelinger (mål, transfers, økonomi, klubber i minus, udløbne kontrakter, regens, udvikling af CA) | drift over tid | delvis (soak.ts uden orakel-sammenligning) |
-| K8 | **Data-tjek**: hver spillers/klubs/stabs felter i world-filen mod originalens hukommelse ved spilstart (fødselsdato, fod, nationalitet, kontrakt, løn, omdømme) | parserfejl (fx Stuart Edwards' fødselsdato/fod) | mangler |
+| K8 | **Data-tjek**: hver spillers/klubs/stabs felter i world-filen mod originalens hukommelse ved spilstart (fødselsdato, fod, nationalitet, kontrakt, løn, omdømme) | parserfejl (fx Stuart Edwards' fødselsdato/fod) | findes: `scripts/cm-data-check.ts` + tests/cmDataCheck.test.ts (spillere/klubber/stab mod pre-0/pre-194; fordelinger for tilfældige felter) – kør efter hver ændring af parser/newgame |
 
 ## Arbejdsliste – skal undersøges / rettes
 

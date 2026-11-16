@@ -6,8 +6,9 @@
 //   * Databasen har ingen dato (dag 31, år 1900): 0x4c7560 trækker den (0x4c7632–0x4c776d): år = spilårets år + rand(6) + 1,
 //     måned = måneden for (nationens sæsonslut + 10 dage) (nationstabellen 0xb63d60, 0x669bd0), dag = rand(28) + 1.
 //     Målt: år 2002–2007 jævnt, dagene 1–28 jævnt, juni for England.
-//   * Udløbet er mindre end startdatoen + 8 dage (0x4c777e–0x4c77be): læg 52 uger (364 dage) til, så længe det gælder
-//     (30/6-2001 → 29/6-2002; 30/6-1999 → 26/6-2002).
+//   * Udløbet er før transfervinduets slutdato [0xae2330] (31/8-2001, derefter 1/2-2002 – K8, scripts/cm-data-check.ts mod oraklet: alle
+//     databasedatoer til og med 31/8-2001 er flyttet, ingen fra 14/9; før antog vi startdatoen + 8 dage): læg 52 uger (364 dage) til, så længe
+//     det gælder (30/6-2001 → 29/6-2002; 30/6-1999 → 26/6-2002; 31/8-2001 → 30/8-2002).
 // *Estimeret:* nationens sæsonslutmåned for nationer uden post i tabellen (juni); selve tabellens datoer er målt i øjebliksbilledet
 // (de står i NATION_MONTH som måneden for dato + 10 dage).
 import { cmRand } from './cmPlayerData';
@@ -32,7 +33,10 @@ export function cmContractEnd(dbEnd: string, today: string, nation: string | und
     const day = rand(28) + 1;
     end = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
   }
-  const limit = dayNum(today) + 8;
+  // [0xae2330]: transfervinduets slutdato (31/8, derefter 1/2); udløb til og med den dato flyttes
+  const y = Number(today.slice(0, 4));
+  const win = today <= `${y}-08-31` ? `${y}-08-31` : today <= `${y + 1}-02-01` ? `${y + 1}-02-01` : `${y + 1}-08-31`;
+  const limit = Math.max(dayNum(today) + 8, dayNum(win) + 1);
   let n = dayNum(end);
   while (n < limit) n += 364;
   return isoOf(n);

@@ -155,10 +155,12 @@ export function initForClub(g: GameState, c: Club, dbBal: number, rand: (n: numb
   let x: number;
   if (dbBal !== 0 && dbBal < 1.5 * rep * rep) {
     // 0x5962f3: databasens beløb ± rand(B/5)
-    const a = rand(idiv(dbBal, 5)), b = rand(idiv(dbBal, 5));
+    // K8 (scripts/cm-data-check.ts, 755 klubber i oraklet): saldoen ligger mellem 0,91 og 1,09 × databasen (trekantfordeling) – rand(B/10), ikke B/5
+    const a = rand(idiv(dbBal, 10)), b = rand(idiv(dbBal, 10));
     x = (b - a) + dbBal;
   } else if (c.name.slice(0, 6) === 'Rushde') {
-    const a = rand(idiv(dbBal, 5)), b = rand(idiv(dbBal, 5));
+    // K8 (scripts/cm-data-check.ts, 755 klubber i oraklet): saldoen ligger mellem 0,91 og 1,09 × databasen (trekantfordeling) – rand(B/10), ikke B/5
+    const a = rand(idiv(dbBal, 10)), b = rand(idiv(dbBal, 10));
     x = (b - a) + dbBal;
   } else {
     let idx = ((idiv(rep, 500) - 1) << 24) >> 24;

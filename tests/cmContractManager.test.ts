@@ -78,7 +78,10 @@ describe('cmContractEnd (0x4c7560)', () => {
     expect(cmContractEnd('2001-06-30', '2001-07-14', 'England', 1, 5)).toBe('2002-06-29');
     expect(cmContractEnd('1999-06-30', '2001-07-14', 'England', 1, 5)).toBe('2002-06-26');
     expect(cmContractEnd('2001-07-20', '2001-07-14', 'England', 1, 5)).toBe('2002-07-19');
-    expect(cmContractEnd('2001-07-22', '2001-07-14', 'England', 1, 5)).toBe('2001-07-22');
+    expect(cmContractEnd('2001-07-22', '2001-07-14', 'England', 1, 5)).toBe('2002-07-21');
+    // oraklet (K8): til og med 31/8 flyttes, fra 14/9 ikke
+    expect(cmContractEnd('2001-08-31', '2001-07-14', 'England', 1, 5)).toBe('2002-08-30');
+    expect(cmContractEnd('2001-09-14', '2001-07-14', 'England', 1, 5)).toBe('2001-09-14');
   });
   it('manglende dato trækkes: år +1…+6, dag 1…28, nationens måned', () => {
     const years = new Set<string>(), days = new Set<number>();

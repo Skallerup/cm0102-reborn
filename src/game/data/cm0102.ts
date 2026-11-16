@@ -569,6 +569,8 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
       const bx = [S.i16(np + 8), S.i16(np + 12)];
       for (let k = 0x56; k <= 0x5d; k++) bx.push(S.u8(o + k));
       bx.push(S.u8(o + 0x22));
+      // [11] = databasens ugeløn (staff.dat +78, £; −1/0 = ingen) – stabens startkontrakt 0x85e960 (K8: oraklets stab har databasens løn)
+      bx.push(S.i32(o + 78));
       const row: NonNullable<CMWorld['staff']>[number] = [core && here ? club : 0, fn, ln, nation, dob, core ? (here ? job : 0) : job, att, ca, S.i16(np + 10), S.i32(o), tac, raw, bx, S.date(o + 62) ?? '', [S.i32(o + 0x24), S.u8(o + 0x28)]];
       // [15] = hukommelsen (0x524d70), [16] = [klubben +0x39 (databasens id, −1 = ingen), jobbet +0x3d] – kun til Staff Search
       if (mem) { const m = mem(o); if (m === 0 && !core) continue; row.push(m === 0 ? [] : m, [club, job]); }

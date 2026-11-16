@@ -652,12 +652,16 @@ export function initSquadFitness(c: FitCtx, players: Player[]): void {
   for (const p of players) {
     if (!real(p) || !p.club || !p.cmFit) continue;
     const club = c.g.clubs[p.club];
-    const [inSeason, , end] = clubSeason(club?.nation, c.today);
+    const [inSeason, start] = clubSeason(club?.nation, c.today);
     let ebx = 0;
-    if (!inSeason) { ebx = end - c.today; if (ebx > 80) ebx = 40; else if (ebx > 40) ebx = s8(80 - ebx); }
+    // dage til NÆSTE sæsonstart (oraklet, K8: England 14/7 → ~35 dage → Fitness ~8.500; lande i sæson 9.925) – før 'end' (en dato i fortiden → altid 9.925)
+    if (!inSeason) { ebx = start - c.today; if (ebx > 80) ebx = 40; else if (ebx > 40) ebx = s8(80 - ebx); }
     let v = ebx - ftol(NF(p) / 2) - (prof(p) >> 2);
     if (v < 1) v = 1; else if (v > 40) v = 40;
     p.cmFit.f = 10000 - 75 * v;
+    // oraklet (K8, scripts/cm-data-check.ts): posten står med dagens dato efter 0x62a920 (194/2001 hos 2148 af de første 3000) – uden den ville
+    // den første aflæsning opdatere 194 dage fra databasens dato og hæve Fitness fra ~8.500 til 9.906
+    p.cmFit.d = c.today;
   }
 }
 

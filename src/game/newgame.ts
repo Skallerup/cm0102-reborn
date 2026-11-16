@@ -8,7 +8,7 @@ import { initialTransferList } from './transfers';
 import { startScoreSeason } from './rating';
 import { naturalRole } from './attributes';
 import { europeanQualifiers, setupChampionsLeague, setupCmCharity, setupCmLeagueCup, setupCup, setupLeague, setupSuperCup, setupUefaCup } from './competitions';
-import { ageOn } from './dates';
+import { addDays, ageOn } from './dates';
 import {
   caFromValue, defaultTraining, makePlayer, makeStaff, randomDob, randomName, SUB_ROLE, valueFromCA, wageFor, type SubPos,
 } from './data/generate';
@@ -270,7 +270,9 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
         // staff +0x1e (anden nationalitet) og +0x3e (kom til klubben) – arbejdstilladelsens historik (cmPermit.ts)
         if (rt.n2 !== undefined) p.cmNation2 = rt.n2;
         if (cmStartGame && (rt.tm === 1 || rt.tf === 1)) p.cmMem = 1;
-        if (rt.j) p.cmJoined = rt.j;
+        // oraklet (K8): ankomstdatoen står som databasens, dog højst 5 uger før spilstarten (9/6-2001 for 14/7: databasens senere datoer, fx 27/7,
+        // klippes); klubløse får databasens indlæsningsdato (1/1) – før stod de fremtidige datoer og 1996-01-02 uændret
+        if (rt.j) p.cmJoined = cmStartGame ? (club ? (rt.j > addDays(date, -35) ? addDays(date, -35) : rt.j) : `${date.slice(0, 4)}-01-01`) : rt.j;
       }
       let attrs = rec.attrs;
       if (stored) {
@@ -674,6 +676,9 @@ let npInit: { pool: NpTemplate[]; nations: string[]; seed: number; sel: Set<numb
 const memOf = (row: NonNullable<CMWorld['staff']>[number]): boolean => !!npInit?.sel && (row[15] === 1 || (Array.isArray(row[15]) && row[15].some((n) => npInit!.sel!.has(n))));
 
 /** Stab fra databasen: navn, nation, alder og de egenskaber, databasen har (resten som en genereret på samme niveau) */
+/** stab med databasens egen løn (K8): røres ikke af lønloftet i createClubStaff */
+const dbWaged = new WeakSet<Staff>();
+
 function addDbStaff(row: NonNullable<CMWorld['staff']>[number], club: number, role: StaffRole, date: string, seed: number): Staff {
   const g = gs();
   const [, first, last, nation, dob, , a, ca, rep, , tac] = row;
@@ -685,6 +690,10 @@ function addDbStaff(row: NonNullable<CMWorld['staff']>[number], club: number, ro
   if (rep > 0) s.rep = Math.max(1, Math.min(100, Math.round(rep / 2)));
   if (tac?.some((v) => v > 0)) s.tac = tac.slice();
   if (ca > 0) s.ca = ca;
+  // den originale database: databasens ugeløn (staff.dat +78, £) for stab med en – oraklet (K8) har den i startkontrakten (42 af 55); de øvrige får
+  // originalens standardløn 0x864550 (cmWage.ts – endnu ikke koblet til stab), her spillets egen
+  const dbWage = row[12]?.[11] ?? 0;
+  if (npInit && club && dbWage > 0) { s.wage = Math.round(dbWage / GBP); dbWaged.add(s); }
   // (forholdene) databasens person-id og de skjulte egenskaber +0x56..+0x5d (kun den originale database – cmRelations.ts)
   if (npInit) { s.cmId = row[9]; if (row[12]) s.cmHid = row[12].slice(2, 11); if (row[14]) s.cmNat = [row[14][0], row[14][1]]; }   // [12] = [+8, +0xc, +0x56..+0x5d, +0x22] (cmBoard)
   // den originale database: ikke-spillerposten som i originalens hukommelse efter spilstarten (sub_535a80 – cmStaffInit.ts):
@@ -755,9 +764,11 @@ function createClubStaff(c: Club, world: WorldData, seed: number, date: string, 
   for (let i = have.scout; i < scouts; i++) mk('scout', lvl - 8 + r.int(-6, 6));
   // stabens løn følger klubbens lønniveau: højst 20 % af spillernes lønsum (*estimeret*) – ellers kostede seks stabsfolk i en
   // lille klub lige så meget som hele truppen, og hundredvis af små klubber gik i minus i første sæson
-  const mine = Object.values(g.staff).filter((s) => s.club === c.id);
+  // (K8) databasens egne stabslønninger (oraklet har dem som de står) ligger fast; kun de genererede skaleres ned
+  const mine = Object.values(g.staff).filter((s) => s.club === c.id && !dbWaged.has(s));
+  const fixed = Object.values(g.staff).filter((s) => s.club === c.id && dbWaged.has(s)).reduce((x, s) => x + s.wage, 0);
   const total = mine.reduce((x, s) => x + s.wage, 0);
-  const cap = squad(c.id).reduce((x, p) => x + (p.contract?.wage ?? 0), 0) * 0.2;
+  const cap = Math.max(0, squad(c.id).reduce((x, p) => x + (p.contract?.wage ?? 0), 0) * 0.2 - fixed);
   if (total > cap) for (const s of mine) s.wage = Math.max(50, Math.round((s.wage * cap) / total / 50) * 50);
 }
 
