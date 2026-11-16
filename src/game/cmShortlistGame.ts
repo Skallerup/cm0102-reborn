@@ -28,17 +28,17 @@ import { buildSlWantMem, slMemPages, SLMEM_DEFER } from './cmSlMem';
 import { buildWantMem, type WantMem } from './cmContractGame';
 import { cmActive, cmRand, clubRepMem, nationRepMem } from './cmPlayerData';
 import { slCall } from './cmShortlist';
-import { playerValue_4d0c60, knowsNation_53d980, seenRep_5407e0, knowledge_5408c0 } from './cmValue';
+import { playerValue_4d0c60, knowsNation_53d980, seenRep_5407e0, knowledge_5408c0, judge_6e86d0, JUDGE_HI, euCitizen_53d740 } from './cmValue';
 import { contractForClub_4cf5f0, expiryBand_867d30, setToDesiredContract_85fc50, hasActiveReleaseClause_867b50 } from './cmContractWant';
 import { addDays_54c5b0, subDays_54c8e0, listRemove_68d1f0, offerContract_4cda70 } from './cmContract';
 import { entryOf, storeEntry, fromRow } from './cmSquadPlanGame';
 import { newPlanEntry, type PlanEntry } from './cmSquadPlan';
-import { registerImpl, enter, QSORT_CMP, QSORT_CMP8, SHARED, PC_HOOK, FASTHOST, stackBelow, type X86 } from './cmGen/x86';
+import { registerImpl, enter, QSORT_CMP, QSORT_CMP8, SHARED, PC_HOOK, FASTHOST, stackBelow, FAKE_RET, type X86 } from './cmGen/x86';
 import { getClubFinance_5a0590 } from './cmWage';
 import { leagueClash } from './cmBoardInterest';
 import { GEN } from './cmGen/index';
 import { humanClub_600a50 } from './cmWageGame';
-import { contractFlag_5445x0, value_840d80_impl } from './cmSlEval';
+import { contractFlag_5445x0, value_840d80_impl, value_840d80_any } from './cmSlEval';
 import { ensureImpls } from './cmGen/impls';
 import { isHumanClub } from './humans';
 import { ageOn } from './dates';
@@ -112,6 +112,8 @@ export interface SlMem {
     rd: Map<string, ReturnType<typeof roleDataOf>> };
   /** spillerne pr. klub (refreshClub) */
   byClub?: Map<number, [Player, number][]>;
+  /** (runde 13) frasorteringens faste dele pr. person og liste for dagens hukommelse (frBits, skipRun) */
+  frDay?: FrDay;
 }
 
 /** 0x844300 shortlist_staff_fits_slot_position: spillerposten (+0x61) har ≥ 15 på positionen/siden; 15 = en ikke-spiller med post */
@@ -705,11 +707,14 @@ function mgNp(g: GameState, cid: number): number[] | null {
 const ADAPTED = new Set([0x8d0590, 0x600a50, 0x6e6340, 0x62ed70, 0x8c7950, 0x8d0040, 0x8ced40, 0x8be300, 0x8bed60, 0x4cda70, 0x85fc50, 0x68d1f0, 0x66f4e0, 0x4d9460,
   0x58d710, 0x4cc490, 0x4cd230, 0x4cd6d0, 0x587220, 0x754740, 0x6181d0, 0x5fea50, 0x5a8f60, 0x5cc7d0, 0x690890, 0x8c1f80, 0x8c2060, 0x4cc9e0,
   0x5a0590, 0x4b02e0, 0x4a4850, 0x8cf470, 0x8cf0e0, 0x8c61e0, 0x549c90, 0x944cff, 0x90d130, 0x944c9f, 0x5e8290]);
+const SHARED_ON = ENV.CM_SL_SHARED !== '0';
+/** (process.env er langsom pr. opslag – læst én gang) */
+const LAZYV = ENV.CM_SL_LAZYVALUES !== '0', TOUCHBIDS = ENV.CM_SL_TOUCHBIDS === '1';
 /** de oversatte funktioner kører på delt processortilstand (x86.ts SHARED) – uden nye X86 og argumentlister pr. kald */
 function shared<T>(f: () => T, S?: SlMem): T {
   const was = SHARED.on, wasS = ACTIVE, wasM = FASTHOST.m;
   if (S) ACTIVE = S;
-  SHARED.on = ENV.CM_SL_SHARED !== '0';
+  SHARED.on = SHARED_ON;
   if (FAST_ON) { ensureFast(); FASTHOST.m = ACTIVE ? ACTIVE.m : null; }
   try { return f(); } finally { SHARED.on = was; ACTIVE = wasS; FASTHOST.m = wasM; }
 }
@@ -757,7 +762,12 @@ function fastRejectLoop(R: X86): number {
   const fc = FRHOIST && ACTIVE ? frCtx(R, ACTIVE) : null;
   for (;;) {
     const np = fc ? fastReject1(R, fc) : fastReject0(R);
-    if (np !== 0x840a81) return np;
+    if (np === 0x8400da && fc && fc.flag && INLOOP) {
+      // (runde 13) vurderingen 0x8400da–0x840153 her: 0x840d80 og grænserne [esp+0x68] / [esp+0x58] − 10000 – afvist → næste kandidat uden at
+      // forlade løkken; ellers videre i de oversatte instruktioner ved 0x840159 med registrene som efter 0x840153
+      const r = evalInLoop(R, fc);
+      if (r !== 0x840a81) return r;
+    } else if (np !== 0x840a81) return np;
     const esp = R.esp >>> 0;
     R.eax = m.u32(esp + 0x40) | 0;                                           // 840a81: mov eax, [esp + 0x40]
     R.ecx = m.u32(esp + 0x8c) | 0;                                           // 840a85: mov ecx, [esp + 0x8c]
@@ -770,7 +780,8 @@ function fastRejectLoop(R: X86): number {
     if (fc && SKIP && !fc.human && fc.flag) {
       const L = m.u32(esp + 0x90) >>> 0, n = R.ecx | 0, i0 = R.eax | 0;
       let j = i0;
-      while (j < n && frSkip(m, fc, L, j)) j++;
+      if (fc.day && NEXT) j = skipRun(R, m, fc, L, n, j);
+      else while (j < n && frSkip(m, fc, L, j, R)) j++;
       if (j > i0) {
         m.w32(esp + 0x40, (j - 1) >>> 0);
         R.eax = m.u32(esp + 0x40) | 0;
@@ -785,23 +796,229 @@ function fastRejectLoop(R: X86): number {
     R.ecx = m.u32(esp + 0x40) | 0;                                           // 83fa21: mov ecx, [esp + 0x40]
   }
 }
+/** CM_SL_INLOOP=0: vurderingen i de oversatte instruktioner (0x8400da) */
+const SB = { esp: 0 };
+const INLOOP = ENV.CM_SL_INLOOP !== '0';
+/** 0x8400e2–0x840153 (flag ≠ 0): 0x840d80(klub, staff = esi, plads, &[esp+0x2c], [esp+0x58], 1) med this = [esp+0x10]; [esp+0x18/0x1c] = svaret
+ *  (cdq); [esp+0x2c] < [esp+0x68] eller < [esp+0x58] − 10000 → 0x840a81, ellers 0x840159 (ecx = [esp+0x2c], eax = [esp+0x58] − 10000) */
+function evalInLoop(R: X86, f: FrCtx): number {
+  const m = R.m, esp = f.esp, c = ACTIVE!.c;
+  const thr = m.s32(esp + 0x58), st = R.esi >>> 0, self = m.u32(esp + 0x10);
+  // stakken som ved det oversatte kald (push ×6, call med den falske returadresse) og de kaldte funktioners rammer samme sted (top = esp − 0x20
+  // som X86.shared) – de oversatte, 0x840d80 kalder, kan læse ikke-initialiserede lokale variabler
+  m.w32(esp - 4, 1); m.w32(esp - 8, thr >>> 0); m.w32(esp - 12, esp + 0x2c); m.w32(esp - 16, f.slot); m.w32(esp - 20, st); m.w32(esp - 24, f.club); m.w32(esp - 28, FAKE_RET);
+  SB.esp = esp + 0x20;
+  const r = stackBelow(SB as X86, () => value_840d80_any(c, self, f.club, st, f.slot, esp + 0x2c, thr, 1));
+  const o = m.s32(esp + 0x2c), hi = r < 0 ? -1 : 0;
+  m.w32(esp + 0x18, r >>> 0); m.w32(esp + 0x1c, hi >>> 0);
+  if (o < m.s32(esp + 0x68)) return 0x840a81;
+  const lim = (thr - 10000) | 0;
+  if (o < lim) return 0x840a81;
+  R.eax = lim; R.ecx = o; R.edx = hi;
+  R.sub(o >>> 0, lim >>> 0, 32);                                             // 840151: cmp ecx, eax (flagene som efter instruktionen)
+  return 0x840159;
+}
 /** CM_SL_SKIP=0: ingen spring (hver kandidat gennem fastReject1) */
 const SKIP = ENV.CM_SL_SKIP !== '0';
 /** kandidat j afvises af fastReject1 uden sidevirkninger (ikke menneskets klub, flag ≠ 0): ungdomspladsen og alder > 23 (rj 8 – eller en af de
  *  tidligere afvisninger 0–7), eller ikke-lejepladsen med pladsens +7 < kandidatens værdi · 1,3 (rj 9 – eller 0–8). Kun personer med id under
- *  grænsen og ikke pladsens egen indehaver (de går den normale vej). Læser de samme bytes som fastReject1 (personpostens side og listen). */
-function frSkip(m: CmMem, f: FrCtx, L: number, j: number): boolean {
+ *  grænsen og ikke pladsens egen indehaver (de går den normale vej). Læser de samme bytes som fastReject1 (personpostens side og listen).
+ *  (Runde 13, `FRDAY`) desuden personens faste afvisninger for dagens hukommelse (frBits: rj 2–5/7 og rj 14) og – når ingen af de
+ *  sidevirkningsfulde veje imellem kan nås (leje → rz 103, 0x8cca10's flag → rz 104, [esp+0x84], id-prøven, indenlandsk → vurdering) –
+ *  rj 18 (0x53d980 pr. land, frKnows) og rj 21. CM_SL_SKIPCHECK=1: hver af de nye afvisninger også gennem fastReject1 (skal afvise uden rand). */
+function frSkip(m: CmMem, f: FrCtx, L: number, j: number, R: X86): boolean {
   const entry = (L + 12 * j) >>> 0;
   const id = m.s32(entry);
   if (id < 0 || id >= f.cnt16) return false;
   const st = (f.staff + 0x6e * id) >>> 0;
   if (st === f.self) return false;
   if (!(f.b24 & 1) && f.slot7 < m.s32(entry + 8) * 1.3) return true;
-  return (f.b24 & 0x1e) === 0xa && s8(m.u8(st + 0x18)) > 0x17;
+  if ((f.b24 & 0x1e) === 0xa && s8(m.u8(st + 0x18)) > 0x17) return true;
+  const D = f.day;
+  if (!D) return false;
+  const b = D.bits[id] || frBits(D, m, f, id, st);
+  if (b & B_REJ) return SKIPCHECK ? skipCheck(R, f, L, j) : true;
+  if (f.b24 & 1 || f.e84) return false;
+  if (f.kk !== 0 && ((id + f.idClub) | 0) % f.kk === 0) return false;
+  if (m.u8((f.tm86e + 8 * id) >>> 0) & 0x10) return false;
+  const cn = f.cn;
+  if (!cn || cn === D.pn[id] || b & B_B22 || D.scn[id] === cn) return false;
+  const g2 = f.b24 & 0x1e;
+  if ((b & B_PRE18 && frKnows(D, f, id, st)) || b & (g2 === 0xa || g2 === 0xc ? B_R21Y : B_R21)) return SKIPCHECK ? skipCheck(R, f, L, j) : true;
+  return false;
+}
+/** (runde 13) frasorteringens faste dele pr. person i dagens hukommelse – bygget, første gang personen er kandidat (`S.frDay`; ny SlMem = ny
+ *  dag). Læser kun personpostens, spillerpostens og kontraktens bytes, som ingen skriver, mens ønskelisterne kører (kontrol: CM_SL_SKIPCHECK=1). */
+interface FrDay { bits: Uint8Array; pn: Int32Array; scn: Int32Array; kn: Map<number, Uint8Array>; dY: number; dD: number; sorted: Map<number, boolean>; cls: Map<number, Map<number, ListCls>>; ids: Map<number, Int32Array> }
+const B_DONE = 1, B_REJ = 2, B_B22 = 4, B_PRE18 = 8, B_R21Y = 16, B_R21 = 32;
+const FRDAY = ENV.CM_SL_FRDAY !== '0';
+const SKIPCHECK = ENV.CM_SL_SKIPCHECK === '1';
+export const SKIP_STATS = { n: 0, bad: 0, tail: 0 };
+function frDayOf(S: SlMem, m: CmMem): FrDay | null {
+  if (!FRDAY || !FRPORT) return null;
+  let D = S.frDay;
+  if (!D) {
+    const n = Math.max(0, m.s32(G.STAFF_COUNT));
+    const d = subDays_54c8e0(m, G.TODAY, 200);
+    D = { bits: new Uint8Array(n), pn: new Int32Array(n), scn: new Int32Array(n), kn: new Map(), dY: d.y, dD: d.d, sorted: new Map(), cls: new Map(), ids: new Map() };
+    S.frDay = D;
+  }
+  return D;
+}
+/** rj 2–5/7 (posten), rj 14 (kontrakten udløber, 0x544520) → B_REJ; ellers rj 18/21's dele, landet og klubbens land */
+function frBits(D: FrDay, m: CmMem, f: FrCtx, id: number, st: number): number {
+  let b = B_DONE;
+  const b3d = m.u8(st + 0x3d), b28 = m.u8(st + 0x28), rec = m.u32(st + 0x61), pn = m.u32(st + 0x1a);
+  if (b3d === 5 || b28 === 5 || b3d !== 0xb || !rec || (pn && m.s32(pn) === f.x9cf)) b |= B_REJ;
+  else {
+    const sc = m.u32(st + 0x39);
+    if (sc) {
+      const y = m.u16(st + 0x40), dd = m.s16(st + 0x3e);
+      if (D.dY < y || (D.dY === y && D.dD < dd)) {
+        const id0 = m.s32(st), ix0 = id0 < f.cnt ? m.s32((f.rows + 79 * id0) >>> 0) : -1;
+        const k = ix0 < 0 ? 0 : (f.cmArr + 80 * ix0) >>> 0;
+        // ([0xae1080], som 0x544520 skriver, bevares – bitsene kan regnes, før kandidaten nås)
+        if (k && (m.u8(k + 0x4f) & 0xf0) !== 0x70 && !m.u32(k + 0x45)) { const sv = m.u32(0xae1080); if (!contractFlag_5445x0(ACTIVE!.c, st, 0, 9)) b |= B_REJ; m.w32(0xae1080, sv); }
+      }
+    }
+    const age = s8(m.u8(st + 0x18)), rd = m.s16(rec + 0xd);
+    if (age < 0x17 && rd < 0xcb2) b |= B_PRE18;
+    if (rd < 0x6d6) b |= B_R21Y;
+    if (rd < 0xabe) b |= B_R21;
+    if (m.u8(st + 0x22)) b |= B_B22;
+    D.pn[id] = pn | 0; D.scn[id] = sc ? m.u32(sc + 0x53) | 0 : 0;
+  }
+  D.bits[id] = b;
+  return b;
+}
+/** 0x53d980(staff, klubbens land, 1) pr. land og person for dagen */
+function frKnows(D: FrDay, f: FrCtx, id: number, st: number): boolean {
+  let a = D.kn.get(f.cn);
+  if (!a) { a = new Uint8Array(D.bits.length); D.kn.set(f.cn, a); }
+  const v = a[id];
+  if (v) return v === 1;
+  const r = !!knowsNation_53d980(ACTIVE!.c, st, f.cn, 1);
+  a[id] = r ? 1 : 2;
+  return r;
+}
+/** CM_SL_TAIL=0: ingen spring til listens slutning */
+const TAIL = { on: ENV.CM_SL_TAIL !== '0' };
+/** positionslisten L (n poster à 12 bytes) er stigende i +8 – én gang pr. liste og dag (listerne skrives kun af buildPositionLists) */
+function listSorted(D: FrDay, m: CmMem, L: number, n: number): boolean {
+  const k = L * 65536 + n;
+  let v = D.sorted.get(k);
+  if (v === undefined || SKIPCHECK) {
+    v = true;
+    let prev = m.s32(L + 8);
+    for (let i = 1; i < n && v; i++) { const x = m.s32(L + 12 * i + 8); if (x < prev) v = false; prev = x; }
+    D.sorted.set(k, v);
+  }
+  return v;
+}
+const NEXT = ENV.CM_SL_NEXT !== '0';
+/** (runde 13) positionslistens klasser pr. (liste, land, pladsgruppe) for dagen – regnet første gang posten nås:
+ *  1 = altid afvist uden sidevirkninger (frBits B_REJ, id over grænsen, ungdomspladsen og alder > 23), 2 = afvist af rj 18/21, medmindre
+ *  passagen er en lejeplads/[esp+0x84] eller kandidaten rammes af id-prøven eller 0x8cca10's flag (de tjekkes hver gang), 3 = den normale vej */
+interface ListCls { cls: Uint8Array; ids: Int32Array }
+function listCls(D: FrDay, m: CmMem, f: FrCtx, L: number, n: number): ListCls {
+  const g2 = f.b24 & 0x1e, v = g2 === 0xa ? 2 : g2 === 0xc ? 1 : 0;
+  const k1 = f.cn * 4 + v;
+  let A = D.cls.get(k1);
+  if (!A) { A = new Map(); D.cls.set(k1, A); }
+  let C = A.get(L);
+  if (!C || C.cls.length !== n) {
+    let ids = D.ids.get(L);
+    if (!ids || ids.length !== n) { ids = new Int32Array(n); for (let i = 0; i < n; i++) ids[i] = m.s32(L + 12 * i); D.ids.set(L, ids); }
+    C = { cls: new Uint8Array(n), ids };
+    A.set(L, C);
+  }
+  return C;
+}
+function clsOf(D: FrDay, m: CmMem, f: FrCtx, L: number, i: number): number {
+  const id = m.s32(L + 12 * i);
+  if (id < 0) return 3;
+  if (id >= f.cnt16) return 1;
+  const st = (f.staff + 0x6e * id) >>> 0;
+  const b = D.bits[id] || frBits(D, m, f, id, st);
+  if (b & B_REJ) return 1;
+  const g2 = f.b24 & 0x1e;
+  if (g2 === 0xa && s8(m.u8(st + 0x18)) > 0x17) return 1;
+  const cn = f.cn;
+  if (!cn || cn === D.pn[id] || b & B_B22 || D.scn[id] === cn) return 3;
+  if ((b & B_PRE18 && frKnows(D, f, id, st)) || b & (g2 === 0xa || g2 === 0xc ? B_R21Y : B_R21)) return 2;
+  return 3;
+}
+/** de afviste kandidater fra j: listens hale efter rj 9 (stigende +8, binær søgning) og klasserne 1/2 → den første kandidat, der skal den normale
+ *  vej (eller n) */
+function skipRun(R: X86, m: CmMem, f: FrCtx, L: number, n: number, j: number): number {
+  const D = f.day!;
+  let end = n;
+  if (TAIL.on && !(f.b24 & 1) && listSorted(D, m, L, n)) {
+    // den første post med pladsens +7 < værdien · 1,3 (alle derefter afvises af rj 9 – eller rj 0/1)
+    let lo = j, hi = n;
+    while (lo < hi) { const mid = (lo + hi) >> 1; if (f.slot7 < m.s32(L + 12 * mid + 8) * 1.3) hi = mid; else lo = mid + 1; }
+    end = lo;
+  }
+  const LC = listCls(D, m, f, L, n), C = LC.cls, ids = LC.ids;
+  const two = !(f.b24 & 1) && !f.e84, kk = f.kk, idc = f.idClub, tm = f.tm86e;
+  while (j < end) {
+    let k = C[j];
+    if (!k) { k = clsOf(D, m, f, L, j); C[j] = k; }
+    if (k === 1) { if (SKIPCHECK) nextCheck(R, f, L, j); j++; continue; }
+    if (k === 2 && two) {
+      const id = ids[j];
+      if (!(kk !== 0 && ((id + idc) | 0) % kk === 0) && !(m.u8((tm + 8 * id) >>> 0) & 0x10)) { if (SKIPCHECK) nextCheck(R, f, L, j); j++; continue; }
+    }
+    return j;                                                                 // den normale vej (frSkip ville også svare nej)
+  }
+  if (end < n && SKIPCHECK) tailCheck(m, f, L, end, n);
+  return n;
+}
+/** CM_SL_SKIPCHECK: en sprunget kandidat afvises af fastReject1 (rj 0/1 uden at køre den) */
+function nextCheck(R: X86, f: FrCtx, L: number, i: number): void {
+  const id = R.m.s32(L + 12 * i);
+  if (id >= f.cnt16 || (f.staff + 0x6e * id) >>> 0 === f.self) { SKIP_STATS.tail++; return; }
+  skipCheck(R, f, L, i);
+}
+/** CM_SL_SKIPCHECK: alle de sprungne kandidater j..n−1 afvises af rj 0/1/9 */
+function tailCheck(m: CmMem, f: FrCtx, L: number, j: number, n: number): void {
+  for (let i = j; i < n; i++) {
+    const e = (L + 12 * i) >>> 0, id = m.s32(e), st = (f.staff + 0x6e * id) >>> 0;
+    SKIP_STATS.tail++;
+    if (st === f.self || id >= f.cnt16 || f.slot7 < m.s32(e + 8) * 1.3) continue;
+    if (SKIP_STATS.bad++ < 10) console.log(`listens hale afviger: ${id} på ${i}`);
+  }
+}
+/** CM_SL_SKIPCHECK: kandidat j gennem fastReject1 – den skal afvise (0x840a81) uden at trække et tilfældigt tal */
+function skipCheck(R: X86, f: FrCtx, L: number, j: number): true {
+  const m = R.m, c = ACTIVE!.c, esp = f.esp;
+  const sv = [R.ecx, R.edx, R.esi, m.u32(esp + 0x24), m.u32(esp + 0x34), m.u32(0xae1080)];
+  const rnd = c.rand;
+  let drew = false;
+  c.rand = (n: number) => { drew = true; return rnd(n); };
+  R.ecx = j; R.edx = L | 0;
+  const dSet = f.dSet;
+  const np = fastReject1(R, f);
+  f.dSet = dSet;
+  c.rand = rnd;
+  [R.ecx, R.edx, R.esi] = sv;
+  m.w32(esp + 0x24, sv[3]); m.w32(esp + 0x34, sv[4]); m.w32(0xae1080, sv[5]);
+  SKIP_STATS.n++;
+  if (np !== 0x840a81 || drew) { if (SKIP_STATS.bad++ < 10) console.log(`frSkip afviger: kandidat ${m.s32(L + 12 * j)} → ${np.toString(16)} rand ${drew}`); }
+  return true;
 }
 /** (hastighed, 14/11) frasorteringens kald i TS i stedet for de oversatte instruktioner (CM_SL_FRPORT=0: de oversatte): 0x53d980/0x5407e0 fra
  *  cmValue.ts, 0x544520/0x544590 og 0x84b180 her – kontrol: cm-sl-bench.ts mod CM_SL_FRPORT=0 */
 const FRPORT = ENV.CM_SL_FRPORT !== '0';
+/** 0x53d740 i TS (cmValue.ts; CM_SL_53D740=0: den oversatte) – CM_SL_53D740=check: begge, sammenlignet */
+const EU_MODE = ENV.CM_SL_53D740 ?? '1';
+export const EU_STATS = { n: 0, bad: 0 };
+function eu53d740(c: CmCtx, st: number, cn: number): number {
+  if (EU_MODE === '0') return slCall(c, 0x53d740, 0, st, cn);
+  const v = euCitizen_53d740(c.m, st, cn);
+  if (EU_MODE === 'check') { EU_STATS.n++; const w = slCall(c, 0x53d740, 0, st, cn); if ((w & 0xff ? 1 : 0) !== v && EU_STATS.bad++ < 10) console.log(`0x53d740 afviger: ${v} mod ${w}`); }
+  return v;
+}
 /** 0x84b180 (staff, hans klub, klub): må han spille i klubben – britisk klub (+0x76 = 0xe) og ikke landets/EU-borger (0x53d740, oversat) uden
  *  +0x24/+0x22: 0; ellers 0x8c7950 (arbejdstilladelsen – adapteren). Kun al bruges. */
 function permitOk_84b180(c: CmCtx, st: number, club: number): number {
@@ -809,7 +1026,7 @@ function permitOk_84b180(c: CmCtx, st: number, club: number): number {
   const nat = m.u32(st + 0x1a);
   if (!nat) return 0;
   const cn = m.u32(club + 0x53);
-  if (m.u8(cn + 0x76) !== 0xe || nat === cn || m.u32(st + 0x1e) === cn || slCall(c, 0x53d740, 0, st, cn)) return 1;
+  if (m.u8(cn + 0x76) !== 0xe || nat === cn || m.u32(st + 0x1e) === cn || eu53d740(c, st, cn)) return 1;
   if (!m.u32(st + 0x24) && !m.u8(st + 0x22)) return 0;
   return c.call(0x8c7950, m.u32(0xde1f54), st, cn, 0, 0, 0);
 }
@@ -820,7 +1037,7 @@ function permitFails(c: CmCtx, st: number, club: number): boolean {
   if (!nat) return true;
   const cn = m.u32(club + 0x53);
   if (m.u8(cn + 0x76) !== 0xe || nat === cn || m.u32(st + 0x1e) === cn || m.u32(st + 0x24) || m.u8(st + 0x22)) return false;
-  return !slCall(c, 0x53d740, 0, st, cn);
+  return !eu53d740(c, st, cn);
 }
 function fastReject0(R: X86): number {
   const S = ACTIVE;
@@ -873,7 +1090,7 @@ function fastReject0(R: X86): number {
   if (!((FRPORT ? permitOk_84b180(c, st, club) : slCall(c, 0x84b180, 0, st, m.u32(st + 0x39), club)) & 0xff)) return rj(16);
   // 0x8c7560(staff, klub, 1): britisk klub (land +0x76 = 0xe) og ikke EU-borger (0x53d740) → kun pladsernes grupper 1/2/3
   const cn0 = club ? m.u32(club + 0x53) : 0;
-  if (cn0 && m.u8(cn0 + 0x76) === 0xe && !slCall(c, 0x53d740, 0, st, 0)) { const gr = b24 & 0x1e; if (gr !== 2 && gr !== 4 && gr !== 6) return rj(17); }
+  if (cn0 && m.u8(cn0 + 0x76) === 0xe && !eu53d740(c, st, 0)) { const gr = b24 & 0x1e; if (gr !== 2 && gr !== 4 && gr !== 6) return rj(17); }
   if (b24 & 1) return rz(103);                                                     // leje (0x8d0040 …) – oversat
   // 0x8cca10: et aftalt fremtidigt skifte (TRANSFER_MANAGER +0x86e's flag 0x10) – kun da oversat
   if (m.u8((m.u32(m.u32(0xde1f54) + 0x86e) + 8 * id) >>> 0) & 0x10) return rz(104);
@@ -915,10 +1132,12 @@ interface FrCtx {
   dSet: boolean; dY: number; dD: number;
   /** dagens hukommelse som SparseMem (readPage) – ellers null */
   sp: SparseMem | null;
+  /** (runde 13) personernes faste dele for dagen (frSkip) */
+  day: FrDay | null;
 }
 const FRHOIST = ENV.CM_SL_FRHOIST !== '0';
 const FC: FrCtx = { ebp: 0, esp: 0, slot: 0, club: 0, self: 0, staff: 0, cnt16: 0, flag: 0, human: false, x9cf: 0, b24: 0, slot7: 0, clubs: 0, rows: 0, cmArr: 0, cnt: 0, list10: 0,
-  clubId: 0, cn0: 0, brit: false, tm86e: 0, e84: 0, kk: 0, idClub: 0, cn: 0, mgc: 0, dNp: 0, cr: 0, cn75: 0, cn85: 0, dSet: false, dY: 0, dD: 0, sp: null };
+  clubId: 0, cn0: 0, brit: false, tm86e: 0, e84: 0, kk: 0, idClub: 0, cn: 0, mgc: 0, dNp: 0, cr: 0, cn75: 0, cn85: 0, dSet: false, dY: 0, dD: 0, sp: null, day: null };
 function frCtx(R: X86, S: SlMem): FrCtx {
   const m = R.m, c = S.c, f = FC;
   const ebp = R.ebp >>> 0, esp = R.esp >>> 0;
@@ -946,6 +1165,7 @@ function frCtx(R: X86, S: SlMem): FrCtx {
   f.cn75 = f.cn ? m.u8(f.cn + 0x75) : 0; f.cn85 = f.cn ? m.u8(f.cn + 0x85) : 0;
   f.dSet = false;
   f.sp = m instanceof SparseMem ? m : null;
+  f.day = frDayOf(S, m);
   return f;
 }
 const pg32 = (pg: Uint8Array, o: number) => (pg[o] | (pg[o + 1] << 8) | (pg[o + 2] << 16) | (pg[o + 3] << 24)) >>> 0;
@@ -1002,7 +1222,7 @@ function fastReject1(R: X86, f: FrCtx): number {
   }
   if ((rb & 0xf) && f.list10 && pairFound(m, S.slm, id, f.clubId)) return rj(15);
   if (!((FRPORT ? permitOk_84b180(c, st, club) : slCall(c, 0x84b180, 0, st, sc, club)) & 0xff)) return rj(16);
-  if (f.brit && !slCall(c, 0x53d740, 0, st, 0)) { const gr = b24 & 0x1e; if (gr !== 2 && gr !== 4 && gr !== 6) return rj(17); }
+  if (f.brit && !eu53d740(c, st, 0)) { const gr = b24 & 0x1e; if (gr !== 2 && gr !== 4 && gr !== 6) return rj(17); }
   if (b24 & 1) return rz(103);
   if (m.u8((f.tm86e + 8 * id) >>> 0) & 0x10) return rz(104);
   const esp = f.esp;
@@ -1070,7 +1290,7 @@ function fastReject1m(R: X86, f: FrCtx, S: SlMem, m: CmMem, c: CmCtx, entry: num
   }
   if ((rb & 0xf) && f.list10 && pairFound(m, S.slm, id, f.clubId)) return rj(15);
   if (!((FRPORT ? permitOk_84b180(c, st, club) : slCall(c, 0x84b180, 0, st, sc, club)) & 0xff)) return rj(16);
-  if (f.brit && !slCall(c, 0x53d740, 0, st, 0)) { const gr = b24 & 0x1e; if (gr !== 2 && gr !== 4 && gr !== 6) return rj(17); }
+  if (f.brit && !eu53d740(c, st, 0)) { const gr = b24 & 0x1e; if (gr !== 2 && gr !== 4 && gr !== 6) return rj(17); }
   if (b24 & 1) return rz(103);
   if (m.u8((f.tm86e + 8 * id) >>> 0) & 0x10) return rz(104);
   const esp = f.esp;
@@ -1124,7 +1344,7 @@ function staffSlot(R: X86, S: SlMem, st: number, entry: number, slot: number, cl
   if (!((FRPORT ? permitOk_84b180(c, st, club) : slCall(c, 0x84b180, 0, st, m.u32(st + 0x39), club)) & 0xff)) return rj(16);
   const b24 = m.u8(slot + 0x24);
   const cn0 = club ? m.u32(club + 0x53) : 0;
-  if (cn0 && m.u8(cn0 + 0x76) === 0xe && !slCall(c, 0x53d740, 0, st, 0)) { const gr = b24 & 0x1e; if (gr !== 2 && gr !== 4 && gr !== 6) return rj(17); }
+  if (cn0 && m.u8(cn0 + 0x76) === 0xe && !eu53d740(c, st, 0)) { const gr = b24 & 0x1e; if (gr !== 2 && gr !== 4 && gr !== 6) return rj(17); }
   if (b24 & 1 || m.u8((m.u32(m.u32(0xde1f54) + 0x86e) + 8 * id) >>> 0) & 0x10) return rz(103);   // leje / 0x8cca10 – oversat fra 0x83fcbb
   // 0x83fed8: vurdér (0x8400da; flag 0 → 0x84010f 0x69d1b0) eller afvis
   const EVAL = (pc: number) => { FR_STATS[201] = (FR_STATS[201] ?? 0) + 1; R.ebx = club | 0; return pc; };
@@ -1192,13 +1412,33 @@ function ensureCmp(): void {
     reg(0x5407e0, (c, m, sp) => seenRep_5407e0(c, m.u32(sp + 4), m.u32(sp + 8), m.s32(sp + 12)));
     reg(0x544520, (c, m, sp) => contractFlag_5445x0(c, m.u32(sp + 4), m.u32(sp + 8), 9));
     reg(0x544590, (c, m, sp) => contractFlag_5445x0(c, m.u32(sp + 4), m.u32(sp + 8), 2));
+    // (runde 13) også for de oversatte kaldere (0x4d1600, 0x846920 …): 0x53d980 (cdecl, svarer 0/1) og 0x6e86d0 (cdecl; eax's øverste halvdel
+    // som originalens `mov ax, …`, JUDGE_HI)
+    if (ENV.CM_SL_TSHELP2 !== '0') {
+      reg(0x53d740, (_c, m, sp) => euCitizen_53d740(m, m.u32(sp + 4), m.u32(sp + 8)));
+      reg(0x53d980, (c, m, sp) => knowsNation_53d980(c, m.u32(sp + 4), m.u32(sp + 8), m.s32(sp + 12)));
+      reg(0x6e86d0, (c, m, sp) => { const v = judge_6e86d0(c, m.u32(sp + 4), m.u32(sp + 8), m.u32(sp + 12), m.s32(sp + 16), m.s32(sp + 20)); return (JUDGE_HI.v | (v & 0xffff)) | 0; });
+    }
   }
+  // (runde 13) 0x849ce0 find_slot(klub, staff, rolle ≠ 0xb?, også +0x13?) i TS (CM_SL_849=0: den oversatte)
+  if (ENV.CM_SL_849 !== '0') registerImpl(0x849ce0, (c, ecx, a) => findSlot_849ce0(c.m, ecx >>> 0, a[0] >>> 0, a[1] >>> 0, a[2], a[3]));
   // (hastighed, runde 10) 0x840d80 håndporteret (cmSlEval.ts – CM_SL_840TS=0: de oversatte; CM_SL_840CHECK=1: begge, sammenlignet)
   registerImpl(0x840d80, (c, e, a) => value_840d80_impl(c, e, a, enter), true);
   registerImpl(0x757ea0, (c, _e, a) => byP(c.m, a[0] >>> 0, a[1] >>> 0));
   registerImpl(0x844740, (c, _e, a) => byC(c.m, a[0] >>> 0, a[1] >>> 0));
 }
 
+/** 0x849ce0 Shortlist_Manager (this) find_slot(klub, staff, b, e): klubbens 40 pladser à 0x25 bytes ([this+0xdc] + 9 · klub-id) – den første med
+ *  målet +0xf = personens id (eller, med e ≠ 0, budmærket +0x13) og rollen +0 ≠ 0xb (b ≠ 0) / = 0xb (b = 0); 0 = ingen */
+export function findSlot_849ce0(m: CmMem, self: number, club: number, staff: number, b: number, e: number): number {
+  const base = m.u32((m.u32(self + 0xdc) + 9 * m.s32(club)) >>> 0), id = m.s32(staff);
+  for (let i = 0; i < 0x28; i++) {
+    const sl = (base + 0x25 * i) >>> 0;
+    if (m.s32(sl + 0xf) !== id && (!e || m.s32(sl + 0x13) !== id)) continue;
+    if (b ? m.u8(sl) !== 0xb : m.u8(sl) === 0xb) return sl;
+  }
+  return 0;
+}
 /** CM_SL_MEMCHECK: antal kontroller og afvigelser */
 export const MEMCHECK = { n: 0, bad: 0, pages: 0 };
 /** de sider, der afviger mellem to hukommelser (en side, der kun findes i den ene, sammenlignes med nuller): [side, første afvigende adresse] */
@@ -1377,7 +1617,7 @@ function writeValues(S: SlMem): void {
       const home = p.loan?.from ?? p.club;
       if (!human && !loaded(p) && !all) {
         if (!plan[home]) { skipped.add(p.id); continue; }
-        if (!active.has(g.clubs[home]?.nation ?? -1) && !inPairs.has(p.id) && ENV.CM_SL_LAZYVALUES !== '0') {
+        if (!active.has(g.clubs[home]?.nation ?? -1) && !inPairs.has(p.id) && LAZYV) {
           lazy.set(p.id, [st, club, k]);
           if (check) { VALCHECK.eager.set(st, valueAt(S, st, club, k, false)); VALCHECK.pending.add(st); VALCHECK.lazyTotal++; }
           continue;
@@ -1565,7 +1805,7 @@ export function makeBids(S: SlMem, cid: number, day: number): void {
   else { const div = m.u32(club + 0x57); due = !!div && m.s32(div) !== m.s32(0x9cf764) ? true : (day + cid) % 7 === 0; }
   if (!due) return;
   // (de udskudte spillere: 0x84a020 læser kun klubbens egne, der er mål eller indehaver af en plads med et andet mål – kontrakten +0x3d/+0x44)
-  if (ENV.CM_SL_TOUCHBIDS === '1') touchClub(S, cid);
+  if (TOUCHBIDS) touchClub(S, cid);
   else { const ids = new Set<number>(); for (const r of g.cmPlan?.[cid]?.s ?? []) if (r[3] > -1 && r[3] !== r[4]) { ids.add(r[3]); if (r[4] > -1) ids.add(r[4]); } touchClub(S, cid, ids); }
   writeSlots(S, cid, entryOf(g, cid), true);
   S.M.setRand(cmRand(g.seed ?? 0, cid, dayNum(g.date), 0x84a020));

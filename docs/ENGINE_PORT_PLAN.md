@@ -312,6 +312,35 @@ Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.m
   + 0x840d80/planScore + 0x4d1600 + 0x846920 + 0x849ce0) som én TS-funktion uden x86-emulering og uden SparseMem-opslag pr. felt (posterne som
   JS-objekter/typed arrays), og 0x84a020/0x8e5d60 ligeså – i alt ~15.000 instruktioner med samme rand-rækkefølge og x87-semantik. Alternativt et
   produktvalg: ønskelisterne i en Web Worker ved siden af spillet (dagen venter stadig ~3 s), eller kun de valgte landes klubber køres (ikke originalt).
+- **Hastighed, runde 13 (16/11, stadig slået fra – ≤ 0,3 s er ikke nået; mellemrapport):** Maximum-world-filen, esbuild-bundt, maskinen
+  meget belastet (load 3–13 – andre agenter; vægurets tal svinger ×2 mellem kørsler). Skiftevis A/B (5 dage, origin/main mod etape 4 af 9):
+  **4,9/4,6 → 3,1/2,9 s pr. dag (−37 %)**, med alle 9 etaper (6 dage, load 6–10) **10,9/8,7 → 6,0/4,6 s pr. dag (−45–47 %)**; 30 dage (lige efter hinanden, load ~10–11): 5.986 → 4.059 ms pr. dag, CPU 5.874 → 4.544; ønskelisterne
+  ved spilstarten 52,7 → 18,1 s. **Bit for bit:** cm-sl-bench 30 dage sha1 hver dag ens med origin/main; `CM_SL_SKIPCHECK=1` (hver sprunget kandidat
+  også gennem fastReject1 – den skal afvise uden rand) 14,2 mio. + 10,8 mio. i listernes hale, 0 afvigelser; `CM_SL_53D740=check` 1,09 mio. og
+  `CM_SL_53D980K9=check` 483.000 kald, 0 afvigelser; tests/cmShortlist + cmAiBid + cmValue grønne. **Profilen før** (5 dage): kandidater gennem
+  fastReject1 990.000 pr. dag (rj 18 446.000, rj 21 132.000, rj 14 123.000), 186.000 vurderinger, heraf kun 7 % over 0x84013e's grænse.
+  **Gjort** (`cmShortlistGame.ts`): (1) `frBits`/`FrDay` – personens faste afvisninger for dagens hukommelse (rj 2–5/7, rj 14 med 0x544520; rj 18/21's
+  dele, landet, klubbens land), 0x53d980 pr. (land, person) (`frKnows`); `frSkip` springer også rj 14/18/21 over, når ingen sidevirkningsfuld vej kan
+  nås imellem (leje → rz 103, 0x8cca10's flag → rz 104, [esp+0x84], id-prøven, indenlandsk → vurdering). (2) `skipRun`: listen er stigende i +8
+  (0x83b670, tjekket én gang pr. liste og dag) → efter rj 9 er resten afvist (binær søgning til halen); klasser pr. (liste, land, pladsgruppe) for
+  dagen (1 = altid afvist, 2 = rj 18/21 medmindre id-prøven/0x8cca10's flag rammer – tjekket hver gang). Kandidater gennem fastReject1: 990.000 →
+  355.000 pr. dag. (3) `evalInLoop`: 0x8400e2–0x840153 (0x840d80 og grænserne [esp+0x68] / [esp+0x58] − 10000) i TS-løkken – de 93 % afviste
+  vurderinger forlader ikke længere løkken (ingen frCtx, PC_HOOK, R.call pr. vurdering). **Fund: stakkens indhold under esp betyder noget** – uden de
+  seks skubbede argumenter + den falske returadresse og med de kaldte funktioners rammer et andet sted (top) afveg dag 3 (en oversat funktion
+  under 0x840d80 læser en ikke-initialiseret lokal variabel). evalInLoop skriver dem og kører med top = esp − 0x20 som X86.shared – en håndport af
+  0x83f3a0/0x4d1600 skal gøre det samme (eller finde læsningen). (4) TS for de oversatte kaldere (registerImpl): 0x53d740 (`euCitizen_53d740`),
+  0x53d980 – også Englands gren 0x53dab6 (0x53d740 + kontraktdatoen mod Date(1/1-1998), `k9`) – og 0x6e86d0 (eax's øverste halvdel som originalens
+  `mov ax, …`: spillerpostens adresse eller 0x6666 – `JUDGE_HI`), 0x849ce0 find_slot (`findSlot_849ce0`). (5) process.env læst én gang (0x840d80's
+  CM_SL_840TS pr. kald, shared(), writeValues pr. spiller). Slå fra: CM_SL_FRDAY/TAIL/NEXT/INLOOP/TSHELP2/849/53D740/53D980K9=0.
+  **Tilbage pr. dag** (profil efter, andel af dagen): oversat 22 % (0x4d1600 6,8 % – heraf ~2 % fra cmAskingPrice –, 0x846920 4 %, 0x83f3a0 2,9 %,
+  0x843e10 1,1 %), vurderingen i TS ~17 % (0x840d80 3,6, 0x5408c0 3,1, planValue 3,2, planScore 1,8, 0x4cf5f0 1,8, 0x53d980 1,6, judgeCur 1),
+  kandidatløkken ~8 % (fastReject1 3,5, skipRun 3), cmAiAiDue → cmAskingPrice ~8 % (buildWantMem for to klubber pr. bud 5 %), buildSlMem ~9 %,
+  GC 3 %. Profilen er flad: en håndport af 0x4d1600 (3.185 instruktioner i listingen) sparer ≤ 6 %, 0x846920 (3.881) ≤ 4 %, resten af 0x83f3a0 ≤ 3 %,
+  0x843e10 ~1 %. **Næste:** ≤ 0,3 s (×10) kræver stadig den store omlægning (posterne som typed arrays pr. spiller/klub/plads i stedet for SparseMem,
+  og vurderingen 0x840d80 + planScore uden PlanInput-objekter); de målrettede veje herfra: (a) cmAskingPrice uden en ny buildWantMem pr. bud (en
+  hukommelse pr. dag med en ændringstæller – runde 12: ikke bit for bit på dagens), (b) 0x4d1600 håndporteret med CHECK (stakken!), (c) 0x5408c0
+  pr. (vurderingsmand, land) for dagen, (d) en øvre grænse i 0x840d80 efter planValue (ageBlock ≤ ×1,46, aldersloftet ≤ 1) – vurderinger, der ikke
+  kan nå [esp+0x68], kan stoppe der (kun fra evalInLoop).
 - **Formændene** (koblet ind): sub_535a80's personlige egenskaber 0x535ea4– for alle personer – uden for 1..20: −1 → rand(16)+5, ellers to terninger:
   Ambition snittet, Loyalty den mindste (`cmStaffInit.ts personalFill_535a80`, cmFinance.ts' og cmBoardGame.ts' formand). Ønskelønnen
   (`scripts/cm-want-game.ts`): ens 1.142 → 1.148, inden for 2 % 1.470 → 1.483, inden for 10 % 1.852 → 1.848, 10/50/90 % 0,59/1,00/1,42 → 0,60/1,00/1,42.

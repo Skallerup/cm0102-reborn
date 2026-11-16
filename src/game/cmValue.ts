@@ -36,8 +36,42 @@ export function knowsNation_53d980(c: CmCtx, person: number, nat: number, flag: 
     if (id === u || id === v) { const x = m.s32(pn); if (x === u || x === v) return 0; }
   }
   if (id === K[7] && pn && m.s32(pn) === K[8]) return 0;
-  if (id === K[9]) return slCall(c, 0x53d980, 0, person, nat, flag) | 0;   // 0x53d740 + kontraktens dato – oversat
+  if (id === K[9]) {
+    // 0x53dab6 (runde 13 i TS; CM_SL_53D980K9=0: de oversatte): EU-borger (0x53d740) → 1; uden kontrakt → 1; ellers kontraktens dato +0x25/+0x27
+    // mod Date(1, januar, 1998) 0x549f70 – senere (år ja / dag setg) → 0
+    if (K9 === '0') return slCall(c, 0x53d980, 0, person, nat, flag) | 0;
+    const v = k9(m, person);
+    if (K9 === 'check') { K9_STATS.n++; const w = slCall(c, 0x53d980, 0, person, nat, flag) | 0; if (w !== v && K9_STATS.bad++ < 10) console.log(`0x53d980 (England) afviger: ${v} mod ${w}`); }
+    return v;
+  }
   return 1;
+}
+const K9 = (typeof process !== 'undefined' ? process.env?.CM_SL_53D980K9 : undefined) ?? '1';
+export const K9_STATS = { n: 0, bad: 0 };
+function k9(m: CmMem, person: number): number {
+  if (euCitizen_53d740(m, person, 0)) return 1;
+  const k = getContract(m, person);
+  if (!k) return 1;
+  const ky = m.u16(k + 0x27);
+  if (0x7ce > ky) return 0;
+  if (0x7ce < ky) return 1;
+  return s16(m.s16(0x9b8448) + 1) > m.s16(k + 0x25) ? 0 : 1;
+}
+/** 0x53d740 (staff, land): EU-borger – en af hans nationer har +0x7f = 2, eller hans nation er [0x9cf4ac]; med landet desuden 0x9cf314's
+ *  verdensdel (+0x71), 0x9cf360, og 0x9cf2c0 for tre nationer (0x9cf348/0x9cf408/0x9cf3a0). Svarer 0/1 (eax). */
+export function euCitizen_53d740(m: CmMem, person: number, nat: number): number {
+  const pn = m.u32(person + 0x1a);
+  if (m.u8(pn + 0x7f) === 2) return 1;
+  const pid = m.s32(pn);
+  if (pid === m.s32(0x9cf4ac)) return 1;
+  const p2 = m.u32(person + 0x1e);
+  if (p2 && m.u8(p2 + 0x7f) === 2) return 1;
+  if (!nat) return 0;
+  const nid = m.s32(nat);
+  if (nid === m.s32(0x9cf314)) { const e = m.s32(0x9cfa10); if (m.u32(pn + 0x71) === ((m.u32(0xae23a4) + 198 * e) >>> 0)) return 1; }
+  if (nid === m.s32(0x9cf360)) return 1;
+  if (nid === m.s32(0x9cf2c0) && (pid === m.s32(0x9cf348) || pid === m.s32(0x9cf408) || pid === m.s32(0x9cf3a0))) return 1;
+  return 0;
 }
 /** (hastighed, runde 12) landenes id-globaler, 0x53d980 sammenligner med – faste for en hukommelse (writeKeyIds skriver dem, før noget kaldes) */
 const KEY_ADR = [0x9cf2e4, 0x9cf45c, 0x9cf510, 0x9cf3e4, 0x9cf2dc, 0x9cf224, 0x9cf3f4, 0x9cf360, 0x9cf4f0, 0x9cf434];
@@ -117,7 +151,7 @@ export function judge_6e86d0(c: CmCtx, mgr: number, st: number, club: number, ki
     esi = (esi + m.s32(mgr)) | 0;
     if (np && kb === 2 && s16(edi) > 0x32) {
       const v = s8(shownAttr_544410(m, np, m.u8(np + 0x17))) - 10;
-      if (((s16(edi) + 10 * v) | 0) > esi % 200) return m.s16(m.u32(st + 0x61) + 5);
+      if (((s16(edi) + 10 * v) | 0) > esi % 200) { const rec = m.u32(st + 0x61); JUDGE_HI.v = rec & 0xffff0000; return m.s16(rec + 5); }
     }
   }
   const f = f32((esi % 101) * 0.01);
@@ -134,8 +168,11 @@ export function judge_6e86d0(c: CmCtx, mgr: number, st: number, club: number, ki
   const base = m.s16(m.u32(st + 0x61) + (kb === 2 ? 5 : 7));
   const w = s8((Math.trunc(bl / 2) + 10) & 0xff);
   const sum = (Math.imul(base + si, w) + Math.imul(20 - w, s16(edi))) | 0;
+  JUDGE_HI.v = 0x66660000;
   return s16(Math.trunc(sum / 20));
 }
+/** eax's øverste 16 bit ved 0x6e86d0's ret (`mov ax, …`): spillerpostens adresse (0x6e87c1) eller 0x6666 fra 0x66666667 (0x6e88fd) */
+export const JUDGE_HI = { v: 0 };
 
 /** 0x544670 (land): 1 = spilleren må gå (spillets indstilling [0xae233c], landet [0x9cf260], eller verdensdelen [0x9cfa10] uden de fire lande) */
 function nationOk_544670(m: CmMem, n: number): number {

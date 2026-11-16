@@ -306,6 +306,8 @@ function fail(c: CmCtx, st: number, slot: number, out: number): number {
 const ENV = typeof process !== 'undefined' ? process.env ?? {} : {};
 const CHECK = ENV.CM_SL_840CHECK === '1';
 const HELP_TS = ENV.CM_SL_840HELP !== '0';
+/** CM_SL_840TS=0: de oversatte (læst én gang – process.env er langsom pr. kald) */
+const TS840 = ENV.CM_SL_840TS !== '0';
 /** 0x544410 (ikke-spillerpost, b) – cmValue.ts' port (CM_SL_840CHECK: også den oversatte, sammenlignet) */
 function attr(c: CmCtx, np: number, b: number): number {
   if (!HELP_TS) return gcall(c, 0x544410, 0, np, b);
@@ -319,6 +321,28 @@ function nat53d980(c: CmCtx, st: number, nat: number): number {
   const v = knowsNation_53d980(c, st, nat, 1);
   if (CHECK) { const w = gcall(c, 0x53d980, 0, st, nat, 1); if (!v !== !w) { EVAL_STATS.bad++; console.log(`0x53d980 afviger: TS ${v}, oversat ${w}`); } }
   return v;
+}
+/** 0x840d80 som value_840d80_impl regner den (TS, de oversatte for menneskets klub/manageren uden ikke-spillerpost; CM_SL_840CHECK: begge) – til
+ *  0x83f3a0's kandidatløkke i TS (cmShortlistGame.ts evalInLoop) */
+export function value_840d80_any(c: CmCtx, self: number, club: number, st: number, slot: number, out: number, thr: number, flag: number): number {
+  const m = c.m;
+  if (CHECK) {
+    const a = [club | 0, st | 0, slot | 0, out | 0, thr, flag];
+    const o0 = m.s32(out);
+    const r1 = value_840d80(c, self, club, st, slot, out, thr, flag);
+    const o1 = m.s32(out);
+    m.w32(out, o0);
+    const r2 = GEN[0x840d80](c, self, a) | 0;
+    if (r1 !== null) {
+      EVAL_STATS.ts++;
+      if ((r1 !== r2 || o1 !== m.s32(out)) && EVAL_STATS.bad++ < 10) console.log(`0x840d80 afviger: TS ${r1}/${o1}, oversat ${r2}/${m.s32(out)}`, a.map((x) => (x >>> 0).toString(16)));
+    } else EVAL_STATS.gen++;
+    return r2;
+  }
+  const r = !TS840 ? null : value_840d80(c, self, club, st, slot, out, thr, flag);
+  if (r === null) { EVAL_STATS.gen++; return GEN[0x840d80](c, self, [club | 0, st | 0, slot | 0, out | 0, thr, flag]) | 0; }
+  EVAL_STATS.ts++;
+  return r;
 }
 /** registreres som 0x840d80 for de oversatte kaldere (delt tilstand: argumenterne på stakken, ret 0x18) */
 export function value_840d80_impl(c: CmCtx, ecx: number, args: number[], enter: (c: CmCtx, ecx: number, args: number[]) => { esp: number; eax: number; ret(n: number): number }): number {
@@ -342,7 +366,7 @@ export function value_840d80_impl(c: CmCtx, ecx: number, args: number[], enter: 
     R.eax = r2;
     return R.ret(6);
   }
-  let r = ENV.CM_SL_840TS === '0' ? null : value_840d80(c, ecx, club, st, slot, out, thr, flag);
+  let r = !TS840 ? null : value_840d80(c, ecx, club, st, slot, out, thr, flag);
   if (r === null) { EVAL_STATS.gen++; r = GEN[0x840d80](c, ecx, args6()) | 0; } else EVAL_STATS.ts++;
   R.eax = r;
   return R.ret(6);
