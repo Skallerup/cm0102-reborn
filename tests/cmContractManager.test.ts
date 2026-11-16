@@ -21,11 +21,11 @@ beforeAll(() => {
 }, 600_000);
 
 describe('0x4c7ac0 på spillets data', () => {
-  it('kun computerklubber i de spilbare lande – menneskets spillere og de udlejede har spillets eget system', () => {
+  it('kun computerklubber i de spilbare lande (+ hukommelsens udvalgte andre steder) – menneskets spillere og de udlejede har spillets eget system', () => {
     const ps = scoped();
     expect(ps.length).toBeGreaterThan(3000);
     expect(ps.some((p) => p.club === g.userClub)).toBe(false);
-    expect(ps.every((p) => !p.loan && g.clubs[p.club].nation === g.clubs[g.userClub].nation)).toBe(true);
+    expect(ps.every((p) => !p.loan && (g.clubs[p.club].nation === g.clubs[g.userClub].nation || p.cmMem === 1))).toBe(true);
   });
 
   it('juli: forlængelsestilbuddene ([0xae2330] − 42 = 20/7) afgøres 1–14 dage senere og bliver spillets kontrakter', () => {

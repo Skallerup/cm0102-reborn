@@ -161,13 +161,13 @@ export function ClassicStaffProfile({ id }: { id: number }) {
   // Negotiate i indbakken åbner kontrakttilbuddet direkte (route-state stoffer = jobbet)
   const [offerRole, setOfferRole] = useRouteState<StaffRole | ''>('stoffer', '');
   const [panel, setPanel] = useState<'role' | 'nick' | 'note' | null>(null);
-  const [msg, setMsg] = useState('');
   if (!s) return <div><Head menu={false} title={t('player.gone')} /></div>;
   const mine = !!g.userClub && s.club === g.userClub;
   const name = staffName(s);
   const club = cmStaffClub(g, s);
   const title = `${name}${club ? ` (${club.name})` : ''}`;
-  if (offerRole) return <div><ClassicStaffNegotiation staffId={s.id} role={offerRole} onClose={(sent) => { setOfferRole(''); if (sent) setMsg(t('cm.neg.sent', { name })); }} /></div>;
+  // CM 01/02: efter "Offer contract to X ?" Yes er man tilbage på profilen uden besked – svaret kommer som nyhed (før "Your contract offer has been sent …")
+  if (offerRole) return <div><ClassicStaffNegotiation staffId={s.id} role={offerRole} onClose={() => setOfferRole('')} /></div>;
   if (panel === 'role') return <div><SetRolePanel s={s} onBack={() => setPanel(null)} onSet={(r) => { setPanel(null); setOfferRole(r); }} /></div>;
   if (panel === 'nick') return <div><Head menu={false} title={title} /><TextPanel title={t('cl.pl.nickTitle')} value={s.nick ?? ''} onClose={() => setPanel(null)}
     onSave={(v) => { act({ t: 'staffNote', id: s.id, nick: v }); setPanel(null); }} onRemove={() => { act({ t: 'staffNote', id: s.id, nick: null }); setPanel(null); }} /></div>;
@@ -188,7 +188,6 @@ export function ClassicStaffProfile({ id }: { id: number }) {
       <Head title={title} action={<ActionMenu items={items} clubId={s.club || undefined} />} />
       {/* Injuries & Bans er grå for stab uden spillerpost (som i originalen) */}
       <Tabs tabs={tabs} value={tab} onChange={(v) => setTab(v as Tab)} disabled={['injuries']} />
-      {msg && <div className="insight">{msg}</div>}
       <div className="cx-pl">
         {tab !== 'history' && <BornLine s={s} />}
         {tab === 'profile' && <ProfileTab s={s} />}

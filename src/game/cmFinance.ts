@@ -84,14 +84,31 @@ const KEY_CLUB: Record<string, string> = { Chelsea: 'CHELSEA', Arsenal: 'ARSENAL
 const keyClub = (c: Club) => KEY_CLUB[c.name] ?? '';
 const rawOf = (g: GameState, c: Club) => g.cmFinRaw?.[c.id] ?? [-1, 0, 0, 0];
 
-/** klubbens liga er indlæst ([0xadadfc][division] ≠ 0) */
-function hasTable(g: GameState, div: number): boolean {
-  const comp = g.comps[`CM${div}`];
-  return !!comp && comp.type === 'league';
+/** klubbens liga er indlæst ([0xadadfc][division] ≠ 0): spillet har ligaen, og dens land er indlæst */
+function hasTable(g: GameState, c: Club): boolean {
+  const comp = g.comps[`CM${rawOf(g, c)[0]}`];
+  return !!comp && comp.type === 'league' && nationLoaded(g, comp.nation >= 0 ? comp.nation : c.nation);
 }
-/** nation +0x11c: landet har spilbare ligaer */
-function nationLoaded(g: GameState, n: number): boolean {
+/** nation +0x11c: landet har indlæste ligaer – i originalen kun de valgte lande og baggrundslandene (Select League(s) = g.activeNations).
+ *  Spillet kører også de andre landes ligaer, men i originalen findes de ikke: ingen tabel, ingen kampe, kun personerne i hukommelsen
+ *  (0x524d70) – deres klubber har 0x59bfef's klemme (omdømme < 5000) eller dagen/måneden uden kampe (billetindtægt af omdømme · tilskuere,
+ *  lønsum af hukommelsens kontrakter). Ældre spil uden activeNations: landet har en spilbar liga. */
+export function nationLoaded(g: GameState, n: number): boolean {
+  if (g.activeNations?.length) return g.activeNations.includes(n);
   return Object.values(g.comps).some((x) => x.type === 'league' && g.leagues[x.id]?.nation === n && !g.leagues[x.id]?.hidden);
+}
+/** personen er i originalens hukommelse (0x524d70): alle i klubber i de indlæste lande, ellers databasestørrelsen Maximum's udvalgte
+ *  (Player.cmMem); spil fra en world-fil uden den oplysning: alle */
+function inMemory(g: GameState, c: Club, p: Player): boolean {
+  return !memKnown(g) || p.cmMem === 1 || nationLoaded(g, c.nation);
+}
+/** spillet har hukommelsens udvalgte i klubberne (world-filen med `tm` – spil startet før 15/11-2026 har kun de klubløse) */
+const MEM_KNOWN = new WeakMap<GameState, boolean>();
+function memKnown(g: GameState): boolean {
+  if (!g.cmMaxMem) return false;
+  let v = MEM_KNOWN.get(g);
+  if (v === undefined) { v = Object.values(g.players).some((p) => p.club && p.cmMem === 1); MEM_KNOWN.set(g, v); }
+  return v;
 }
 /** filtret i 0x59bf09/0x59c19e: klubben har land og division; indlæst land og ikke "A Lower Division", eller omdømme ≥ 5000 */
 function active(g: GameState, c: Club): boolean {
@@ -134,7 +151,7 @@ export function initForClub(g: GameState, c: Club, dbBal: number, rand: (n: numb
   const rep = repOf(g, c);
   let status = g.cmClubStat?.[c.id]?.[0] ?? 1;
   // 0x596280: amatørklub med en liga (division eller reservedivision) → semiprofessionel
-  if (status === 3 && hasTable(g, rawOf(g, c)[0])) status = 2;
+  if (status === 3 && hasTable(g, c)) status = 2;
   let x: number;
   if (dbBal !== 0 && dbBal < 1.5 * rep * rep) {
     // 0x5962f3: databasens beløb ± rand(B/5)
@@ -242,8 +259,10 @@ const supporters = (g: GameState, c: Club) => g.cmSup?.[c.id] ?? 5000;
 export type WageIdx = { loanOut: Map<number, Player[]>; staff: Map<number, Staff[]> };
 export function updateWageBill(g: GameState, c: Club, r: CmFinRec, idx?: WageIdx): void {
   let wb = 0, top = 0, n = 0;
+  // kontrakterne i CONTRACT_MANAGER (+0): kun personerne i hukommelsen – i et ikke-indlæst land er resten af truppen ikke med i originalen
+  const all = nationLoaded(g, c.nation);
   for (const p of squad(c.id)) {
-    if (!p.contract) continue;
+    if (!p.contract || (!all && !inMemory(g, c, p))) continue;
     n++;
     // 0x5983fa: lejekontrakten trækkes fra (spillets model: lejeklubben betaler andelen `share`)
     const w = Math.round(p.contract.wage * (p.loan ? p.loan.share ?? 1 : 1) * GBP);
@@ -251,10 +270,10 @@ export function updateWageBill(g: GameState, c: Club, r: CmFinRec, idx?: WageIdx
     wb += w;
   }
   // udlejede spillere: moderklubben betaler resten (spillets lejemodel)
-  for (const p of idx ? idx.loanOut.get(c.id) ?? [] : Object.values(g.players)) if (p.loan?.from === c.id && p.contract) wb += Math.round(p.contract.wage * (1 - (p.loan.share ?? 1)) * GBP);
+  for (const p of idx ? idx.loanOut.get(c.id) ?? [] : Object.values(g.players)) if (p.loan?.from === c.id && p.contract && (all || inMemory(g, c, p))) wb += Math.round(p.contract.wage * (1 - (p.loan.share ?? 1)) * GBP);
   // stabens kontrakter (+0x19f/+0x1b3/+0x1cf)
   for (const s of idx ? idx.staff.get(c.id) ?? [] : Object.values(g.staff)) {
-    if (s.club !== c.id || !s.wage) continue;
+    if (s.club !== c.id || !s.wage || (!all && g.cmStaffMem && !s.cmMem)) continue;
     const w = Math.round(s.wage * GBP);
     if (w > top) top = w;
     wb += w;
@@ -436,7 +455,7 @@ function monthEndClub(g: GameState, c: Club, r: CmFinRec, rand: (n: number) => n
   const tcost = tf < 6 ? tf * 400 : tf < 16 ? (tf - 2) * 1000 : tf >= 20 && rep >= 6250 ? 40000 : (tf - 12) * 4000;
   book(g, c, K.maintenance, tcost);
   // 0x59c4ba: divisionen har ingen tabel → billetindtægt af omdømme · tilskuere
-  if (!hasTable(g, rawOf(g, c)[0])) book(g, c, K.gate, ftol(rep * avgOf(g, c) * 0.005));
+  if (!hasTable(g, c)) book(g, c, K.gate, ftol(rep * avgOf(g, c) * 0.005));
   // 0x59c516: renter
   const bal = balGbp(c);
   if (bal > 0) book(g, c, K.interestIn, ftol(bal * 0.0025));
@@ -532,6 +551,9 @@ export function cmMatchIncome(g: GameState, f: Fixture, att: number, codes: Matc
   if (!rh || !ra) return 0;
   const rand = cmRand(g.seed ?? 0, f.id, 0x59a5d0);
   const gate = gateReceipts(g, f, att, codes);
+  // kampe i et ikke-indlæst lands liga/pokal (og venskabskampe mellem to af dets klubber) findes ikke i originalen – intet bogføres
+  const comp = g.comps[f.comp];
+  if (comp ? comp.nation >= 0 && !nationLoaded(g, comp.nation) : !nationLoaded(g, H.nation) && !nationLoaded(g, A.nation)) return gate;
   const repH = repOf(g, H);
   // 0x59a80d: 1,75 · tilskuerne (1/(rand(10) + 2) er heltalsdivision = 0)
   let plus = 0;
@@ -615,6 +637,9 @@ const LEAGUE_MONEY: Record<number, { unit: number; tv?: number; tvBy?: [number, 
 /** League::pay_prize_money 0x682e10: (n − plads) · enhed til hver klub, når ligaen er færdigspillet (League::check_complete 0x689ad0) */
 export function cmLeaguePrize(g: GameState, compId: string, order: number[]): boolean {
   if (!cmFinOn(g)) return false;
+  // et ikke-indlæst lands liga har ingen tabel i originalen – ingen præmie (heller ikke spillets egen)
+  const comp = g.comps[compId];
+  if (comp && comp.nation >= 0 && !nationLoaded(g, comp.nation)) return true;
   const m = /^CM(\d+)$/.exec(compId);
   const lm = m ? LEAGUE_MONEY[+m[1]] : undefined;
   if (!lm) return false;
@@ -629,6 +654,8 @@ export function cmLeagueTv(g: GameState, compId: string, clubs: number[]): void 
   const m = /^CM(\d+)$/.exec(compId);
   const lm = m ? LEAGUE_MONEY[+m[1]] : undefined;
   if (!lm) return;
+  const comp = g.comps[compId];
+  if (comp && comp.nation >= 0 && !nationLoaded(g, comp.nation)) return;
   for (const cid of clubs) {
     const c = g.clubs[cid];
     if (!c) continue;

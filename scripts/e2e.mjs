@@ -1005,8 +1005,16 @@ async function run(look) {
     await go({ name: 'inbox' });
     await page.locator('.cx-nrow').first().click();
     await page.locator('.cx-nbar .cx-respond').click({ timeout: 5000 });
-    await page.waitForSelector('.cx-job-answer', { timeout: 5000 });
+    await page.waitForSelector('.cx-job-answer, .cx-job-confirm', { timeout: 5000 });
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-jobtilbud.png` });
+    // ægte CM 01/02 (ejerens fund A11): kun "Accept the position as manager of … ?" No/Yes – ingen Transfer budget/Wage budget
+    if (await page.locator('.cx-job-confirm').count()) {
+      const txt = await page.locator('.cx-job-confirm').innerText();
+      if (!/Accept the position as manager of .+ \?/.test(txt) || /Wage budget|Transfer budget/i.test(txt)) throw new Error(`jobtilbuddets bekræftelse: ${txt}`);
+      await page.locator('.cx-foot-btns button', { hasText: 'No' }).click();
+      await gs((id) => { const g = window.__cm.gs(); g.jobOffers = g.jobOffers.filter((x) => x !== id); window.__cm.notify(); }, cid);
+      return;
+    }
     await page.locator('.cx-job-answer button', { hasText: 'Reject' }).click();
     if (await gs((id) => window.__cm.gs().jobOffers.includes(id), cid)) throw new Error('jobtilbuddet blev ikke afvist');
   });
@@ -1083,7 +1091,17 @@ async function run(look) {
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-bytte-original.png` });
     await page.locator('.cx-foot-btns button', { hasText: 'Back' }).click();
     await page.waitForSelector('.cx-bid .cx-bid-row', { timeout: 5000 });
+    // ejerens fund 16/11 (A1/A2): køberens egen titelbjælke, bestyrelseslinjen, og Offer → "Submit transfer bid for X to Y ?" No/Yes
+    const myShort = await gs(() => { const g = window.__cm.gs(); return g.clubs[g.userClub].short; });
+    const head = (await page.locator('.cx-head .cx-title h2').first().innerText()).trim();
+    if (head !== myShort) throw new Error(`budskærmens titelbjælke er "${head}" (ikke køberens "${myShort}")`);
+    if (!/Your board will (only )?allow/.test(await page.locator('.cx-bid .cx-ts-intro').first().innerText())) throw new Error('bestyrelseslinjen mangler');
     await page.locator('.cx-foot-btns button.primary', { hasText: 'Offer' }).click();
+    await page.waitForSelector('.cx-bid-confirm', { timeout: 3000 });
+    if ((await page.locator('.cx-bid-confirm .cx-subtitle').innerText()).trim().indexOf('Transfer offer for') !== 0) throw new Error('bekræftelsen mangler "Transfer offer for …"');
+    if (!/^Submit transfer bid for .+ to .+ \?$/.test((await page.locator('.cx-bid-confirm .cx-ts-intro').innerText()).trim())) throw new Error('spørgsmålet er ikke "Submit transfer bid for … to … ?"');
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-bud-bekraeft.png` });
+    await page.locator('.cx-foot-btns button.primary', { hasText: 'Yes' }).click();
     await page.waitForTimeout(300);
     const o = await gs((id) => window.__cm.gs().offers.filter((x) => x.player === id).at(-1), pid);
     if (o && (o.months !== 12 || o.sellOn !== 10 || o.lgApps !== 20 || !o.intFee || !o.pub)) throw new Error(`buddets vilkår blev ikke gemt (${JSON.stringify(o)})`);

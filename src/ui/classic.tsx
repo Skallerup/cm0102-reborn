@@ -509,19 +509,21 @@ function TitleMenu({ clubId, playerId }: { clubId?: number; playerId?: number })
  * Skærmhovedet i klassisk stil: titelbjælke, hub-faner og en værktøjslinje med skærmens egne kontroller.
  * Har hubben ingen faner, fylder skærmens egne faner (Tabs i Head) hovedfanerækken.
  */
-export function ClassicHead({ title, children, action, menu }: { title: ReactNode; children?: ReactNode; action?: ReactNode; menu?: boolean }) {
+export function ClassicHead({ title, children, action, menu, club }: { title: ReactNode; children?: ReactNode; action?: ReactNode; menu?: boolean;
+  /** skærmen hører til denne klub (farver og logo) – fx budskærmen, der har køberens egen titelbjælke (CM 01/02 0x8e9760) */
+  club?: number }) {
   const { route } = useNav();
   const setup = useSetup();
   const slots = useClassicSlots();
   const g = gs();
   const hub = HUBS[route.name];
-  const text = hub?.title ? hub.title(g, route, title) : title;
+  const text = club === undefined && hub?.title ? hub.title(g, route, title) : title;
   // klubbens farvetema: skærme uden egen klub (nyheder, manager, hjælp …) bruger ens egen klubs farver
   const own2 = hub?.colors?.(g, route);
-  const col = own2 ? { ...own2, neutral: false } : titleColors(hub?.club ? hub.club(g, route) : g.userClub || undefined);
+  const col = club !== undefined ? titleColors(club || undefined) : own2 ? { ...own2, neutral: false } : titleColors(hub?.club ? hub.club(g, route) : g.userClub || undefined);
   // klubbens logo i titelbjælken (kun på klubbens egne skærme)
-  const logoClub = hub?.club ? hub.club(g, route) : undefined;
-  const logoNation = hub?.nation?.(g, route);
+  const logoClub = club !== undefined ? club || undefined : hub?.club ? hub.club(g, route) : undefined;
+  const logoNation = club !== undefined ? undefined : hub?.nation?.(g, route);
   // turneringens logo (spillerønske – ikke i originalen): ligaskærmen og kampdagen
   const compId = route.name === 'competitions' ? shownComp(route) ?? g.clubs[g.userClub]?.league
     : route.name === 'matchday' ? (() => { const { comps } = matchDayComps(g, Number(route.id)); return comps[Math.min(Number(route.state?.mdi ?? 0), comps.length - 1)]; })()

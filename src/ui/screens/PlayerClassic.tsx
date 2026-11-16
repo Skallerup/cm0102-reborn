@@ -274,7 +274,9 @@ function TransferTab({ p, mine }: { p: Player; mine: boolean }) {
     : p.listed ? `${t('tag.listed')}${p.listPrice ? ` (${money(p.listPrice)})` : ''}`
     : p.contract?.futureClub ? t('tag.leaving')
     : k >= 40 ? t('cl.pl.av.asking', { fee: money(askingPrice(p)) }) : t('cl.pl.unknown');
-  const offers = g.offers.filter((o) => o.player === p.id && (o.status === 'pending' || o.status === 'negotiating'));
+  // alle åbne bud på spilleren (TRANSFER_OFFER-listen: også andre klubbers og bud, der forhandles/venter på modbud) – computer → computer-buddene
+  // findes kun, når ønskelisterne er slået til (cmShortlistGame.ts SL_ON)
+  const offers = g.offers.filter((o) => o.player === p.id && (o.status === 'pending' || o.status === 'negotiating' || o.status === 'countered'));
   const offerText = <ClubList ids={offers.map((o) => o.buyer)} empty={t('common.none')} suffix={(_, i) => ` (${offers[i].loan ? t('tag.loan') : money(offers[i].fee)})`} />;
   const interestIds = interestedClubs(p).map((i) => i.club);
   // hele Future-blokken (0x87ee70–0x8853ba) inkl. den tilfredse blok og "Unknown" (0x8852f9), når intet er skrevet
@@ -410,6 +412,7 @@ export function ClassicPlayer({ id }: { id: number }) {
   const [tab, setTab] = useRouteState<Tab>('ptab', (useNav().route.tab as Tab | undefined) ?? 'profile');
   const [bid, setBid] = useState<boolean | number>(false);
   const [bidPanel, setBidPanel] = useState<'buy' | 'loan' | null>(null);
+  const [bidAsk, setBidAsk] = useState(false);
   const [neg, setNeg] = useState<{ offer?: TransferOffer; renew?: number } | null>(null);
   const [msg, setMsg] = useState('');
   const [loanOutOpen, setLoanOut] = useState(false);
@@ -505,8 +508,10 @@ export function ClassicPlayer({ id }: { id: number }) {
   if (repRole && mine) return <div><Head menu={false} title={`${p.first} ${p.last}`.trim()} /><StaffReportPanel p={p} role={repRole} onClose={() => setRepRole(null)} onDone={() => { setRepRole(null); nav({ name: 'inbox' }); }} /></div>;
   if (discOpen && mine) return <div><Head menu={false} title={`${p.first} ${p.last}`} /><DisciplinePanel p={p} onClose={() => setDiscOpen(false)} onDone={(m) => { setDiscOpen(false); setMsg(m); }} /></div>;
   // CM 01/02: buddet på sin egen side; svaret kommer som en nyhed (udvidet tilstand: klubbens svar med det samme)
-  if (bidPanel && !mine) return <div><Head menu={false} title={`${p.first} ${p.last}`} /><BidPanel p={p} loan={bidPanel === 'loan'} onClose={() => setBidPanel(null)} onSent={(o) => {
-    setBidPanel(null);
+  // CM 01/02 (0x8e9760): budskærmen har køberens egen titelbjælke ("Vejle"), bekræftelsen klubbens fulde navn ("Vejle Boldklub")
+  const own = authentic() ? g.clubs[g.userClub] : undefined;
+  if (bidPanel && !mine) return <div><Head menu={false} club={own?.id} title={own ? (bidAsk ? own.name : own.short) : `${p.first} ${p.last}`} /><BidPanel p={p} loan={bidPanel === 'loan'} onAsk={setBidAsk} onClose={() => { setBidPanel(null); setBidAsk(false); }} onSent={(o) => {
+    setBidPanel(null); setBidAsk(false);
     if (o.status === 'negotiating') setNeg({ offer: o });
     else if (extended()) { dispatch({ t: 'bidNow', offer: o.id }); setBid(o.id); }
     else setMsg(t('player.bidSent'));

@@ -20,6 +20,7 @@
 //            assistent/træner; Coach (8) fra 30 år undtagen fysioterapeuter, ellers kun manager/assistent/træner; Scout (9) kun for en
 //            spejder; Physio (10) kun for en fysioterapeut. Ledige har jobkoden 0 (Unemployed).
 import { addDays, ageOn } from './dates';
+import { econ } from './econ';
 import { addNews } from './state';
 import { regionOf } from './leagues';
 import { hash01 } from './rng';
@@ -152,9 +153,18 @@ export function cmCapsLine(caps: number, goals: number | undefined): { key: stri
 
 // ---------------------------------------------------------------- Set Role At Club
 
+/** personpostens jobkode +0x3d, som 0x4cb990 læser: databasens job – også for en ledig (Augusto Terzi: staff.dat-jobbet 10 uden klub; Staff
+ *  Search viser "Unemployed", men posten er stadig fysioterapeutens). Ældre spil uden `cmDbJob`: ledige fra databasens ekstra personer efter
+ *  rollen (fysioterapeut/spejder kun fra job 10/9); spillets øvrige ledige har world-filens job 0. */
+export function cmDbJob(s: Staff): number {
+  if (s.cmDbJob !== undefined) return s.cmDbJob;
+  if (s.cmExtra) return s.cmJob || (s.role === 'physio' ? 10 : s.role === 'scout' ? 9 : 0);
+  return cmJobCode(s);
+}
+
 /** 0x4cb990(job, staff) for de fire job, en stabsperson uden spillerpost kan få */
 export function cmRolesFor(s: Staff, date: string): StaffRole[] {
-  const age = ageOn(s.dob, date), job = cmJobCode(s);
+  const age = ageOn(s.dob, date), job = cmDbJob(s);
   const out: StaffRole[] = [];
   if (age >= 30 || [5, 6, 8].includes(job)) out.push('assistant');
   if ((age >= 30 && job !== 10) || [5, 6, 8].includes(job)) out.push('coach');
@@ -235,10 +245,18 @@ export function cmStaffInterestedIn(g: GameState, s: Staff, role: StaffRole): bo
   return mine.rep > theirs.rep + 3 || (promo && mine.rep >= theirs.rep - 5);
 }
 
-/** lønkravet *estimeret* (som spillets staffDemand: lønnen, +10 % for at forlade en klub) */
-export const cmStaffDemand = (s: Staff): number => Math.round((s.wage * (s.club > 0 ? 1.1 : 1)) / 50) * 50;
+/** lønkravet *estimeret* (som spillets staffDemand: lønnen, +10 % for at forlade en klub). En person uden løn i spillet (databasens ekstra
+ *  personer og ledige, cmExtra – løn 0) kræver jobbets løn efter spillets stabsformel (data/generate.ts makeStaff: grundløn for jobbet ·
+ *  1,05^niveau + 300, i klubbens prisniveau) – før stod kravet på £0 (originalens 0x85fc50 ikke-spiller-gren 0x864550 er ikke koblet ind). */
+export function cmStaffDemand(s: Staff, role: StaffRole = s.role): number {
+  if (s.wage > 0) return Math.round((s.wage * (s.club > 0 ? 1.1 : 1)) / 50) * 50;
+  const level = Math.max(0, Math.round((s.ca ?? (s.rep ?? 0) * 2) / 2));
+  const base = role === 'manager' ? 800 : role === 'assistant' ? 330 : 250;
+  return Math.round((base * econ() * Math.pow(1.05, level)) / 50) * 50 + Math.round(300 * econ());
+}
 
-export interface CmStaffOffer { staff: number; club: number; role: StaffRole; wage: number; years: number; signOn: number; date: string; /** venter på svar på "Delay Transfer Offer" (nyhedens id) */ hold?: number }
+export interface CmStaffOffer { staff: number; club: number; role: StaffRole; wage: number; years: number; signOn: number; date: string; /** venter på svar på "Delay Transfer Offer" (nyhedens id) */ hold?: number;
+  /** personen har sagt ja (nyheden "accepts" er sendt) – venter kun på plads */ agreed?: boolean }
 
 /** Offer → "Offer contract to X ?" Yes: tilbuddet sendes, svaret kommer som nyhed næste dag (som originalens kontrakttilbud) */
 export function cmOfferStaff(g: GameState, o: Omit<CmStaffOffer, 'club' | 'date'>): string {
@@ -265,13 +283,16 @@ export function cmStaffOffersDaily(g: GameState): void {
     // *estimeret*: interesseret i jobbet, lønnen mindst 95 % af kravet, plads i staben og penge til kompensationen
     const fee = s.club ? poachFee(s) : 0;
     const roomOk = staffCountFor(g, o.club, o.role) < STAFF_LIMITS[o.role];
-    const willing = cmStaffInterestedIn(g, s, o.role) && o.wage >= cmStaffDemand(s) * 0.95 && club.balance >= fee
+    const willing = cmStaffInterestedIn(g, s, o.role) && o.wage >= cmStaffDemand(s, o.role) * 0.95 && club.balance >= fee
       && hash01(g.seed, o.staff, o.club, g.date.length) < 0.98;
     // CM 01/02 (0x…, strengen "… do not currently have enough spaces at their club for this transfer to go through. Delay the transfer for a
     // week ?"): han vil gerne, men staben er fuld – mennesket svarer med Back · Cancel · Delay
+    // Først "X accepts {Club} offer" (strengen "<Staff Name> accepts {Club} offer"), så Delay-spørgsmålet – før kom Delay alene, og det lignede et
+    // svar på en anden persons afslag samme dag (ejerens fund 16/11: "Trapattoni rejects Vejle" + "Delay Transfer Offer")
     if (willing && !roomOk) {
+      if (!o.agreed) addNews({ cat: 'contract', key: 'cm.staffAgrees', params: { last: s.last, name, club: club.short || club.name } });
       addNews({ cat: 'contract', key: 'cm.staffNoRoom', params: { club: club.name, name, sid: s.id } });
-      g.cmStaffOffers.push({ ...o, hold: g.news[0]?.id ?? 0 });
+      g.cmStaffOffers.push({ ...o, agreed: true, hold: g.news[0]?.id ?? 0 });
       continue;
     }
     const yes = willing && roomOk;

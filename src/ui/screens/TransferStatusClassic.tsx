@@ -21,6 +21,8 @@ import { exchangeOk } from '../../game/transfers';
 import { BID_AMOUNTS_GBP, MAX_SWAP, addSwap, bidAct, clauseAtMin, feeAtMax, feeEquals, fromGbp, toGbp, newTerms, stepDown, stepUp, reasonForStatus, rejectReasonValid, removeSwap, sameTerms, termsOf,
   type BidAct, type BidTerms, type RejectKey } from '../../game/cmTransferBid';
 import { ClassicFirstSquad } from './SquadClassic';
+import { authentic } from '../../game/rules';
+import { cmBidBudget, cmBoardLine } from '../../game/cmBudget';
 
 /** "£0", "£100K", "£2.5M" (originalens beløbsliste, i spillerens valuta) */
 const amountLabel = (a: number) => {
@@ -201,7 +203,7 @@ export function DisciplinePanel({ p, onClose, onDone }: { p: Player; onClose: ()
 }
 
 /** "Approach To Buy/Loan" (CM 01/02 "Man Utd transfer bid for Inamoto"): beløb med − / + / =, klausuler, bytte og samlet værdi */
-export function BidPanel(props: { p: Player; loan: boolean; onClose: () => void; onSent: (o: TransferOffer) => void }) {
+export function BidPanel(props: { p: Player; loan: boolean; onClose: () => void; onSent: (o: TransferOffer) => void; onAsk?: (asking: boolean) => void }) {
   const g = useGame()!;
   // den originale database i ægte tilstand: originalens budskærm (cmTransferBid.ts); ellers spillets egen
   return cmActive(g) && !props.loan ? <CmBidPanel {...props} /> : <OldBidPanel {...props} />;
@@ -392,6 +394,17 @@ export function JobOfferPanel({ cid, onClose }: { cid: number; onClose: () => vo
   const terms = jobTerms(cid);
   const accept = () => { act({ t: 'acceptJob', club: cid }); onClose(); };
   const decline = () => { act({ t: 'declineJob', club: cid }); onClose(); };
+  // ægte CM 01/02: Respond giver kun bekræftelsen "Accept the position as manager of {club} ?" (No/Yes) – vilkårene står i nyheden
+  // ("{club} offer you the position of manager." + forventningen og transferpengene); ingen boks med Transfer budget/Wage budget
+  if (authentic()) return (
+    <div className="cx-tstatus cx-job-confirm">
+      <div className="cx-ts-body center"><p className="cx-ts-intro">{t('cm.job.acceptQ', { club: c.name })}</p></div>
+      <ClassicFoot cols="3fr 1fr">
+        <button onClick={onClose}>{t('common.no')}</button>
+        <button className="primary" onClick={accept}>{t('common.yes')}</button>
+      </ClassicFoot>
+    </div>
+  );
   return (
     <div className="cx-tstatus">
       <div className="cx-subtitle">{t('cl.job.title', { club: c.name })}</div>
@@ -521,11 +534,17 @@ function CmExchange({ giver, receiver, p, onPick, onBack }: { giver: number; rec
 }
 
 /** Eget bud (CM 01/02 "{klub} transfer bid for {spiller}") */
-function CmBidPanel({ p, onClose, onSent }: { p: Player; loan: boolean; onClose: () => void; onSent: (o: TransferOffer) => void }) {
+function CmBidPanel({ p, onClose, onSent, onAsk }: { p: Player; loan: boolean; onClose: () => void; onSent: (o: TransferOffer) => void; onAsk?: (asking: boolean) => void }) {
   const g = useGame()!;
   useClassicDialog();
   const me = g.clubs[g.userClub];
-  const budget = me?.transferBudget ?? 0;
+  // bestyrelsens loft (0x598800 med spillerens kendskab – cmBudget.ts cmBidBudget) og linjen 0x8ea2da–0x8ea3c8
+  const [bb] = useState(() => cmBidBudget(g, p, g.userClub));
+  const budget = bb?.budget ?? me?.transferBudget ?? 0;
+  const boardKey = bb ? cmBoardLine(bb) : 'cl.bid.board';
+  // "Submit transfer bid for X to Y ?" (No/Yes, 0x8ec420 → strengen "Submit transfer bid for …"): Offer spørger først
+  const [ask, setAsk] = useState(false);
+  const asking = (v: boolean) => { setAsk(v); onAsk?.(v); };
   const known = knownEnquiry(p.id);
   // et modbud fra sælgeren står i skærmen, når man byder igen (0x8f1830 "Respond" på modbuddet)
   const live = g.offers.slice().reverse().find((o) => o.player === p.id && o.buyer === g.userClub && o.status === 'countered' && o.cmCounter);
@@ -539,20 +558,31 @@ function CmBidPanel({ p, onClose, onSent }: { p: Player; loan: boolean; onClose:
     onPick={(id) => { setTerms(addSwap(terms, id, swapValue(id))); setExch(false); }} />;
   const submit = () => {
     setErr('');
+    asking(false);
     const r = act<TransferOffer | string>({ t: 'bid', pid: p.id, fee: terms.fee, loan: false, swap: terms.swap, terms });
     if (typeof r === 'string') setErr(t(r)); else onSent(r);
   };
+  if (ask) return (
+    <div className="cx-tstatus cx-bid cx-bid-confirm">
+      <div className="cx-subtitle">{t('cl.bid.offerFor', { player: name })}</div>
+      <div className="cx-ts-body center"><p className="cx-ts-intro">{t('cl.bid.submitQ', { player: name, club: g.clubs[p.club]?.short ?? seller })}</p></div>
+      <ClassicFoot cols="3fr 1fr">
+        <button onClick={() => asking(false)}>{t('common.no')}</button>
+        <button className="primary" onClick={submit}>{t('common.yes')}</button>
+      </ClassicFoot>
+    </div>
+  );
   return (
     <div className="cx-tstatus cx-bid">
       <div className="cx-subtitle">{t('cl.bid.title', { club: me?.short ?? '', player: p.last })}</div>
       <div className="cx-ts-body">
-        <p className="cx-ts-intro">{t('cl.bid.valued', { club: seller, player: name, value: moneyFull(p.value) })}<br />{t('cl.bid.board', { fee: moneyFull(budget) })}</p>
+        <p className="cx-ts-intro">{t('cl.bid.valued', { club: seller, player: name, value: moneyFull(p.value) })}<br />{t(boardKey, { fee: moneyFull(budget) })}</p>
         <CmBidRows terms={terms} set={setTerms} value={p.value} budget={budget} swapValue={swapValue} onExchange={() => setExch(true)} />
         {err && <div className="cx-bid-err">{err}</div>}
       </div>
       <ClassicFoot cols="3fr 1fr">
         <button onClick={onClose}>{t('common.back')}</button>
-        <button className="primary" onClick={submit}>{t('cl.bid.offer')}</button>
+        <button className="primary" onClick={() => asking(true)}>{t('cl.bid.offer')}</button>
       </ClassicFoot>
     </div>
   );

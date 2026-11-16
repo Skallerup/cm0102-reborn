@@ -516,19 +516,11 @@ function cmRespond(o: TransferOffer, p: Player, buyer: Club, action: 'accept' | 
       asOwner(buyer.id, () => addNews({ cat: 'transfer', key: 'transfer.bidCountered', params: { player: pname(p), club: myName, fee: cm.terms!.fee }, link: { kind: 'offer', id: o.id } }));
       return null;
     }
-    // 0x8c0810: computerens køber vurderer modbuddet mod sin værdisætning M (0x840d80 – hos os buddets loft maxFee, *estimeret*)
-    const c = valueCtx(g, p);
-    const M = toGbp(o.maxFee ?? Math.min(buyer.transferBudget, Math.round(o.fee * 1.25)));
-    const r = aiReview(cm.terms, c, M, (id) => toGbp(g.players[id] ? askingPrice(g.players[id]) : 0), toGbp(buyer.transferBudget));
-    if (r.kind === 'withdraw') {
-      o.status = 'withdrawn';
-      addNews({ cat: 'transfer', key: 'transfer.aiWithdrew', params: { club: buyer.name, player: pname(p) } });
-      return null;
-    }
-    putTerms(o, r.terms);
-    o.final = true;
-    o.respondBy = addDays(g.date, 3);
-    addNews({ cat: 'transfer', key: 'transfer.aiFinalOffer', params: { club: buyer.name, player: pname(p), fee: o.fee }, link: { kind: 'offer', id: o.id } });
+    // add_transfer_negotiation 0x8be9d0: modbuddet gemmes (tilstand 1), og computerens køber svarer først, når det forfalder (2 dage – som
+    // computer → computer-buddene i cmAiAiDue) – før kom "… is our final offer" samme dag (ejerens fund 16/11)
+    o.status = 'countered';
+    o.cmCounter = { ...cm.terms, swap: [...cm.terms.swap] };
+    o.respondBy = addDays(g.date, 2);
     return null;
   }
   if (cm.terms) putTerms(o, cm.terms);
@@ -545,6 +537,29 @@ function cmRespond(o: TransferOffer, p: Player, buyer: Club, action: 'accept' | 
   }
   completeTransfer(o, wageDemand(p, buyer), preferredYears(p));
   return null;
+}
+
+/** 0x8c0810 (process_due_offer, tilstand 1): computerens køber vurderer menneskets modbud mod sin værdisætning M (0x840d80 – hos os buddets
+ *  loft maxFee, *estimeret*) – trækker buddet eller byder endeligt */
+function cmReviewHumanCounter(o: TransferOffer): void {
+  const g = gs();
+  const p = g.players[o.player], buyer = g.clubs[o.buyer];
+  const t = o.cmCounter;
+  o.cmCounter = undefined;
+  if (!p || !buyer || !t || p.club !== o.seller) { o.status = 'withdrawn'; return; }
+  const c = valueCtx(g, p);
+  const M = toGbp(o.maxFee ?? Math.min(buyer.transferBudget, Math.round(o.fee * 1.25)));
+  const r = aiReview(t, c, M, (id) => toGbp(g.players[id] ? askingPrice(g.players[id]) : 0), toGbp(buyer.transferBudget));
+  if (r.kind === 'withdraw') {
+    o.status = 'withdrawn';
+    asOwner(o.seller, () => addNews({ cat: 'transfer', key: 'transfer.aiWithdrew', params: { club: buyer.name, player: pname(p) } }));
+    return;
+  }
+  putTerms(o, r.terms);
+  o.final = true;
+  o.status = 'pending';
+  o.respondBy = addDays(g.date, 3);
+  asOwner(o.seller, () => addNews({ cat: 'transfer', key: 'transfer.aiFinalOffer', params: { club: buyer.name, player: pname(p), fee: o.fee }, link: { kind: 'offer', id: o.id } }));
 }
 
 /** Kontraktforhandling: brugeren tilbyder løn og længde */
@@ -938,6 +953,8 @@ export function processOffers() {
       o.status = 'withdrawn'; // den anden manager svarede ikke
     } else if (o.status === 'pending' && o.buyer === g.userClub && !isHumanClub(o.seller) && g.date >= o.respondBy) {
       aiAnswerBid(o);
+    } else if (o.status === 'countered' && o.cmCounter && cmActive(g) && isHumanClub(o.seller) && !isHumanClub(o.buyer) && g.date >= o.respondBy) {
+      cmReviewHumanCounter(o);
     } else if ((o.status === 'negotiating' || o.status === 'countered') && g.date > o.respondBy) {
       o.status = 'collapsed';
       // budkrigen tabt: rivalen køber spilleren
@@ -1437,7 +1454,9 @@ export function exerciseLoanOption(p: Player): boolean {
 /** AI fornyer kontrakter for spillere den vil beholde (januar-maj) */
 export function aiRenewals() {
   const g = gs();
-  const seasonEnd = `${year(g.date)}-06-30`;
+  const cm = cmCmOn(g);
+  // den originale database i ægte tilstand: hver måned de næste fem måneders udløb (datoerne følger landets sæsonslut – cmContractEnd.ts)
+  const seasonEnd = cm ? addDays(g.date, 150) : `${year(g.date)}-06-30`;
   // hvor mange spillere har hver klub efter sommeren, hvis ingen fornyes?
   const staying = new Map<number, number>();
   for (const p of Object.values(g.players)) {
@@ -1445,7 +1464,6 @@ export function aiRenewals() {
     if (!p.contract || p.contract.expires > seasonEnd) staying.set(p.club, (staying.get(p.club) ?? 0) + 1);
   }
   // den originale database i ægte tilstand: originalens CONTRACT_MANAGER 0x4c7ac0 forlænger computerklubbernes kontrakter (cmContractManager.ts)
-  const cm = cmCmOn(g);
   const expiring = Object.values(g.players)
     .filter((p) => p.club && !isHumanClub(p.club) && p.contract && !p.loan && p.contract.expires <= seasonEnd && !p.contract.futureClub && !(cm && cmCmScope(g, p)))
     .sort((a, b) => b.ca - a.ca);
@@ -2156,8 +2174,11 @@ export function initialTransferList() {
 }
 
 /** CM 01/02: læg et kontrakttilbud til en egen spiller frem – han svarer i morgen (nyhed) */
-export function offerRenewalLater(pid: number, wage: number, years: number, clauses?: ContractClauses): 'pending' {
+export function offerRenewalLater(pid: number, wage: number, years: number, clauses?: ContractClauses): 'pending' | 'refused' {
   const g = gs();
+  // CM 01/02: en spiller med et aftalt skifte (Next club) forhandler ikke en ny kontrakt ("… does not wish to negotiate a new contract at the
+  // current time", 0x9b0964 i Offer Contract 0x4e06e0) – kun i ægte tilstand
+  if (authentic() && g.players[pid]?.contract?.futureClub) return 'refused';
   (g.pendingRenewals ??= []).push({ pid, club: g.userClub, wage, years, clauses, date: g.date });
   return 'pending';
 }

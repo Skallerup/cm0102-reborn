@@ -25,7 +25,7 @@ import { addNews, gs } from './state';
 import { asOwner } from './humans';
 import { addDays, year } from './dates';
 import { cmActive, cmRand } from './cmPlayerData';
-import { cmContractAnswer, cmMoveCheck, cmTalkDemand, type CmOfferTerms, type CmTerms } from './cmContractGame';
+import { cmContractAnswer, cmMoveCheck, cmTalkDemand, cmTalkStatus, type CmOfferTerms, type CmTerms } from './cmContractGame';
 import { isHumanClub } from './humans';
 import { regionOf } from './leagues';
 import { cmCheckOffer } from './cmOfferCheck';
@@ -126,6 +126,17 @@ export function cmTalksDemand(o: TransferOffer): CmTerms | null {
   const g = gs();
   const p = g.players[o.player];
   return p ? cmTalkDemand(g, p, o.buyer) : null;
+}
+
+/** Offer Contract 0x4e06e0, grenen 0x4e0ff9–0x4e118b: teksten, når spilleren ikke vil forhandle (kravet ≥ 1,5 × bestyrelsens loft) – efter
+ *  trupstatussen (1–2 uden tilføjelse, 3 rotation, 4 backup, 5 hot prospect, 6 youngster) og med grundene 0x8e4ae0 (`why`, cmWhy), når
+ *  interessen 0x846920 er over 1,25 */
+export function cmNoInterest(g: GameState, p: Player, buyer: number): { key: string; why: string } {
+  const st = cmTalkStatus(g, p, buyer);
+  const chk = cmMoveCheck(g, p, buyer);
+  const why = chk && chk.x > 1.25 ? cmWhy(g, p, buyer, chk.mask).join('|') : '';
+  const base = st === 3 ? 'cm.neg.noIntRot' : st === 4 ? 'cm.neg.noIntBackup' : st === 5 ? 'cm.neg.noIntProspect' : st === 6 ? 'cm.neg.noIntYouth' : 'cm.neg.noIntTerms';
+  return { key: why ? `${base}.because` : base, why };
 }
 
 const expiryOf = (g: GameState, years: number) => `${year(g.date) + Math.max(1, years)}-06-30`;

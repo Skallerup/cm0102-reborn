@@ -132,6 +132,26 @@ const REPLY: Record<number, [string[], string]> = {
     "The {club} board indicate that they don't believe that the club's training facilities require improvement.",
     "The {club} board politely remind you that they have already approved the improvement of the club's training facilities."],
   "The {club} board indicate that they don't believe that the club's training facilities require improvement."],
+  // 3 transferpenge (0x6a9812: koder 0..8; kode 2 har tre varianter efter omdømme/forbrug – her 0xa108c8)
+  3: [['The {club} board indicate that they will make extra transfer funds available to you immediately.',
+    'The {club} board have already indicated that they are unwilling to give you extra transfer funds.\n\nThey would also prefer not have their time wasted repeatedly on this issue.',
+    'The {club} board indicate that the club cannot afford to allocate you any extra transfer funds.',
+    'The {club} board have already indicated that they are unwilling to give you extra transfer funds.\n\nThey would also prefer not have their time wasted repeatedly on this issue.',
+    'The {club} board feel that you have adequate resources available with which to do your job.',
+    'The {club} board feel that you have adequate resources available with which to do your job.',
+    'The {club} board politely remind you that they have already given you extra transfer funds recently.',
+    'The {club} board feel that you have adequate resources available with which to do your job.',
+    'The {club} board politely remind you that they have yet to see a return from the money you have already spent this season.'],
+  'The {club} board feel that you have adequate resources available with which to do your job.'],
+  // 4 løn (0x6a99f5: koder 0..6)
+  4: [["The {club} board indicate that they will change the club's wage structure slightly to allow you to attract more players to the club.",
+    'The {club} board have already indicated that they are unwilling to change the wage structure at the club.\n\nThey would also prefer not have their time wasted repeatedly on this issue.',
+    "The {club} board have already indicated that they are unwilling to change the wage structure at the club as they feel this would jeopardise the club's financial stability.",
+    'The {club} board have already indicated that they are unwilling to change the wage structure at the club.\n\nThey would also prefer not have their time wasted repeatedly on this issue.',
+    'The {club} board feel that the current wage structure at the club should allow you to attract players of a sufficient calibre to succeed.',
+    'The {club} board feel that the current wage structure at the club should allow you to attract players of a sufficient calibre to succeed.',
+    'The {club} board politely remind you that they have already changed the wage structure of the club for you recently.'],
+  'The {club} board feel that the current wage structure at the club should allow you to attract players of a sufficient calibre to succeed.'],
 };
 /** anmodning 5 (tid): kode 0, 4, 6; ellers 0xa10234 */
 const TIME: Record<number, string> = {

@@ -411,10 +411,11 @@ export function cmBoardScreenText(g: GameState): string | null {
   return confidenceOf(g, env, g.userClub, days);
 }
 
-/** 0x6a8810 handle_board_request(klub, anmodning) – porteret for 1 stadion, 2 træningsanlæg og 5 tid (3 transferpenge og 4 løn kræver
- *  Finance::get_transfer_budget 0x598800 og adjust_max_wage, som ikke er porteret – de bruger spillets regler). Svaret er nyheden 0x1786 (tekst
+/** 0x6a8810 handle_board_request(klub, anmodning) – 1 stadion, 2 træningsanlæg, 3 transferpenge, 4 løn og 5 tid (notes/board/notes-C-match.md
+ *  §6c). *Estimeret* i 3/4: sæsonen i gang (inWin), lønloftet Finance +0x14 (klubbens højeste ugeløn) og adjust_max_wage 0x598340 (lønbudgettet
+ *  + R.b5 %). Svaret er nyheden 0x1786 (tekst
  *  0x6a9470); null = ikke porteret / intet svar. Bevillingerne (b2 0x40/0x80) bygger først ved sæsonslut i originalen (0x59cfa0 – ikke porteret). */
-export function cmBoardRequest(g: GameState, req: 1 | 2 | 5): string | null {
+export function cmBoardRequest(g: GameState, req: 1 | 2 | 3 | 4 | 5): string | null {
   if (!cmBoardOn(g)) return null;
   const c = g.userClub, club = g.clubs[c];
   const env = boardEnv(g);
@@ -462,6 +463,55 @@ export function cmBoardRequest(g: GameState, req: 1 | 2 | 5): string | null {
       || (ch ? s8(ch.amb) - tf + 10 : 20 - tf) >= rand(20);
     if (!grant) return reply(4);
     R.b2 |= 0x80;
+    return reply(0);
+  }
+  // inWin (0x6a89a0): landets sæson er i gang ([0xb63d8a + 72·x] start/slut) – hos os: klubben har spillet og har ligakampe tilbage (*estimeret*)
+  const inWin = () => {
+    let played = false, left = false;
+    for (const f of Object.values(g.fixtures)) {
+      if (f.comp !== club.league || (f.home !== c && f.away !== c)) continue;
+      if (f.result) played = true; else left = true;
+      if (played && left) return true;
+    }
+    return false;
+  };
+  // dd = bestyrelsens mål for placeringen (R +0x2c) − tabellens placering (e +0x72)
+  const ddPos = () => s8(R.t2c - (env.entry(c)?.pos ?? R.t2c));
+  const business = g.cmFin?.[c]?.chair?.[0] ?? 10;                          // formandens Business (np +0xf)
+  if (req === 3) {
+    // 0x6a8a3c (transferpenge)
+    if (!okRep(5000)) return reply(0xb);
+    if (R.d28) return reply(6);
+    if (bal < 2500000) return reply(2);
+    if (R.d38 > R.q30) return reply(8);
+    if (rand(ch ? s8(ch.amb) : 5) === 0) return reply(4);
+    const bud = env.transferBudget(c) + Math.trunc(R.d38);
+    let lim = rep > 7500 ? 5000 * rep - 25000000 : rep > 5250 ? 1000 * rep - 2250000 : 100 * rep - 450000;
+    if (inWin()) { const d = ddPos(); lim = d > 4 ? Math.trunc(lim * 1.5) : d > 0 ? lim : Math.trunc(lim * 0.25); } else lim = Math.trunc(lim * 0.75);
+    if (bud > lim) return reply(4);
+    const amt = rep > 7500 ? 5000 * rep - 32500000 : rep > 4250 ? 1000 * rep - 2250000 : 100 * rep + 50000;
+    if (amt > bal && rand(ch ? s8(business) : 10) !== 0) return reply(2);
+    R.d28 = amt;
+    // "… will make extra transfer funds available to you immediately" – beløbet lægges til klubbens Transfer Funds (0x598800 læser R +0x28)
+    club.transferBudget = Math.round((club.transferBudget ?? 0) + amt / GBP);
+    return reply(0);
+  }
+  if (req === 4) {
+    // 0x6a8e60 (løn): Finance +0x14 (lønloftet get_max_wage) > 60000 → nej – hos os klubbens højeste ugeløn (£, *estimeret*)
+    if (!okRep(5000)) return reply(0xb);
+    if (R.b5) return reply(6);
+    let top = 0;
+    for (const p of squad(c)) top = Math.max(top, (p.contract?.wage ?? 0) * GBP);
+    if (top > 60000) return reply(4);
+    let x = ch ? s8(10 - business) : 0;
+    const k = env.wealthBand(c);
+    x = s8(x + (k === -1 ? -5 : k === 0 ? 5 : k === 1 ? 10 : k === 2 ? 15 : -15));
+    if (inWin()) { const d = ddPos(); x = s8(d > 4 ? Math.trunc(x * 1.5) : d > 0 ? x : Math.trunc(x * 0.25)); } else x = s8(Math.trunc(x * 0.75));
+    const a = x > 0 ? rand(x) : 0, b = rand(100);   // rand med x ≤ 0 (åbent spørgsmål i notes-C-match.md): 0
+    if (a <= b) return reply(4);
+    R.b5 = (ch ? (s8(ch.amb) > 5 ? s8(ch.amb) - 5 : 5) : rand(10) + 5) & 0xff;
+    // Finance::adjust_max_wage(fin, R.b5) 0x598340 (ikke porteret): lønbudgettet hæves med R.b5 % (*estimeret*)
+    club.wageBudget = Math.round((club.wageBudget * (1 + s8(R.b5) / 100)) / 100) * 100;
     return reply(0);
   }
   if (R.b3 & 1) return reply(6);

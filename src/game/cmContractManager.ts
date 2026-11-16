@@ -67,9 +67,16 @@ const BANDS = new Set([182, 152, 121, 91, 60, 30, 7]);
 export function cmCmScope(g: GameState, p: Player): boolean {
   if (!p.club || !p.contract || p.loan || p.virtual || p.contract.futureClub) return false;
   const c = g.clubs[p.club];
-  if (!c || isHumanClub(c.id) || g.leagues[c.league]?.hidden) return false;
-  return g.activeNations?.includes(c.nation) ?? true;
+  if (!c || isHumanClub(c.id)) return false;
+  if (g.leagues[c.league]?.hidden) return false;
+  if (g.activeNations?.includes(c.nation) ?? true) return true;
+  // de andre lande: originalens personløkke går over ALLE personer i hukommelsen – med databasestørrelsen Maximum også de udvalgte i
+  // klubber uden for de valgte lande (0x524d70, Player.cmMem). Skjulte klubber har ingen trupplan (cmSquadPlanGame.ts – trupstatus +0x4f),
+  // og uden den giver 0x4c7ac0 aldrig et tilbud
+  return FOREIGN && !!g.cmMaxMem && p.cmMem === 1;
 }
+/** CM_CM_FOREIGN=0: kun de valgte lande (målinger) */
+const FOREIGN = ENV.CM_CM_FOREIGN !== '0';
 /** Porten styrer computerklubbernes kontrakter i dette spil */
 export const cmCmOn = (g: GameState) => !OFF && cmActive(g) && !g.draft;
 

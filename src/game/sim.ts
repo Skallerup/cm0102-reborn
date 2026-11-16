@@ -55,8 +55,8 @@ import { cmFinanceDay, cmFinOn, cmMatchIncome, GBP as CM_GBP } from './cmFinance
 import { fixtureCodesOf, gameCrowd } from './engine/grid/gameInputs';
 import { cmEuroCatchUp, cmEuroDay, cmEuroPlayDay } from './cmEurope';
 import { compHooks } from './hooks';
-import { cmContractManagerDay } from './cmContractManager';
-import { endDueLoansDaily, freeAgentDrift, monthlyClubReps, seasonRollover, youthIntake, youthPreview } from './season';
+import { cmCmOn, cmContractManagerDay } from './cmContractManager';
+import { cmExpireOutsideDaily, endDueLoansDaily, freeAgentDrift, monthlyClubReps, seasonRollover, youthIntake, youthPreview } from './season';
 import { cmShortlistOn } from './cmShortlistGame';
 import { squadStrength } from './board';
 import { chemistryMorale, monthlyPersonality } from './personality';
@@ -546,6 +546,8 @@ function newDay() {
   cmContractDaily(g, squad);
   // CONTRACT_MANAGER::daily_update 0x4c7ac0: computerklubbernes forlængelser, udløb og frigivelser (cmContractManager.ts)
   cmContractManagerDay(g);
+  // … og spillets eget udløb for dem, originalen ikke har i hukommelsen (season.ts)
+  cmExpireOutsideDaily();
   // lejeaftaler i sæsonen (England: tre måneder, rules2001.ts) slutter – kun ægte tilstand med den originale database
   if (cmShortlistOn(g)) endDueLoansDaily();
   // 0x5ce0b0 (efter 0x5ce2d0): truppens moral efter førernes indflydelse og kontrakternes +0x44 (cmPlayerData.ts, runde 10A)
@@ -643,7 +645,8 @@ function newDay() {
       if (month(d) === 6) summerManagerChanges();
     }
     awolMonthly();
-    if (month(d) >= 1 && month(d) <= 5) aiRenewals();
+    // den originale database i ægte tilstand: kun dem uden for CONTRACT_MANAGER, hver måned med fem måneders udsyn (udløbene følger landets sæson)
+    if ((month(d) >= 1 && month(d) <= 5) || cmCmOn(g)) aiRenewals();
     if (month(d) === 1 || month(d) === 3) forEachHuman(contractReminders);
   }
   if (month(d) >= 1 && month(d) <= 5 && weekday(d) === 3) forEachHuman(aiBosman);

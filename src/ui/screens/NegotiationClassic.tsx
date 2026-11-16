@@ -12,7 +12,8 @@ import { CxDrop, titleColors, useClassicDialog } from '../classic';
 import { SQUAD_STATUSES, expectedStatus, statusAllowed, type SquadStatus } from '../../game/squadStatus';
 import { ageOn, year } from '../../game/dates';
 import { authentic } from '../../game/rules';
-import { cmTalksDemand } from '../../game/cmTransferTalks';
+import { cmNoInterest, cmTalksDemand } from '../../game/cmTransferTalks';
+import { cmWhyText } from './common';
 
 type Tab = 'basic' | 'bonuses' | 'clauses';
 const r50 = (v: number) => Math.max(0, Math.round(v / 50) * 50);
@@ -48,7 +49,7 @@ export function ClassicStaffNegotiation({ staffId, role, onClose }: { staffId: n
   const g = gs();
   const s = g.staff[staffId];
   const club = g.clubs[g.userClub];
-  const demand = r50(cmStaffDemand(s));
+  const demand = r50(cmStaffDemand(s, role));
   const [wage, setWage] = useState(demand);
   const [years, setYears] = useState(2);
   const [signOn, setSignOn] = useState(0);
@@ -103,7 +104,9 @@ export function ClassicNegotiation({ offer, renewPid, onClose }: { offer?: Trans
   const wantYears = cmWant ? Math.max(1, Number(cmWant.expires.slice(0, 4)) - year(g.date)) : offer?.demand?.years ?? preferredYears(p);
   const [tab, setTab] = useState<Tab>('basic');
   // egen spiller (CM 01/02): først "Set Role At Club" – status i truppen og jobbeskrivelse
-  const [roleStep, setRoleStep] = useState(!offer);
+  // ægte CM 01/02: et aftalt skifte (Next club) – Offer Contract viser kun "… does not wish to negotiate a new contract at the current time." (0x9b0964)
+  const noRenew = !offer && authentic() && !!p.contract?.futureClub;
+  const [roleStep, setRoleStep] = useState(!offer && !noRenew);
   const [status, setStatus] = useState<SquadStatus | undefined>(p.squadStatus);
   const [job, setJob] = useState<'player' | 'assistant' | 'coach'>(p.jobRole ?? 'player');
   const [wage, setWage] = useState(demand);
@@ -115,6 +118,16 @@ export function ClassicNegotiation({ offer, renewPid, onClose }: { offer?: Trans
   const name = `${p.first} ${p.last}`.trim();
   const bill = Object.values(g.players).filter((x) => x.club === club.id).reduce((s, x) => s + (x.contract?.wage ?? 0), 0);
   const allow = Math.max(0, club.wageBudget - bill + (offer ? 0 : p.contract?.wage ?? 0));
+  // CM 01/02 Offer Contract-skærmen 0x4e06e0 (0x4e0ad5): et krav på mindst 1,5 × det, bestyrelsen tillader (skærmparameter 0x18), giver
+  // "X has no interest in negotiating terms …" efter trupstatussen (0x4e0ff9: 1–2 uden tilføjelse, 3 rotation, 4 backup, 5 hot prospect,
+  // 6 youngster) med grundene 0x8e4ae0, når interessen (0x846920) er over 1,25 – og intet tilbud kan gives. Det fanger også 0x85fc50's
+  // spærre (kravet sat til 250.000 p/w). Skærmparameteren 0x16 (grenen 0x4e0f1f) er ikke fundet – *estimeret* aldrig over 1,5 × loftet.
+  const [noInt] = useState(() => {
+    if (noRenew) return { key: 'cm.neg.noRenewNow', reasons: '' };
+    if (!cmWant || demand < 1.5 * allow) return null;
+    const r = cmNoInterest(g, p, club.id);
+    return { key: r.key, reasons: r.why ? cmWhyText(r.why) : '' };
+  });
   const end = (y: number) => `${t('cl.neg.jun')} ${g.season + y}`;
   const col = titleColors(p.club || undefined);
   const set = (k: keyof ContractClauses, v: number | undefined) => setCl((c) => ({ ...c, [k]: v || undefined }));
@@ -180,7 +193,13 @@ export function ClassicNegotiation({ offer, renewPid, onClose }: { offer?: Trans
           </div>
           <div className="cx-dlg-body">
             {msg && <p className="cx-ts-intro cx-neg-msg">{msg}</p>}
-            {tab === 'basic' && (
+            {tab === 'basic' && noInt && (
+              <>
+                <p className="cx-ts-intro">{t(noInt.key, { player: name, reasons: noInt.reasons })}</p>
+                <p className="cx-ts-intro">{t('cl.neg.allow', { allow: money(allow) })}</p>
+              </>
+            )}
+            {tab === 'basic' && !noInt && (
               <>
                 <p className="cx-ts-intro">{t(signReq ? 'cl.neg.wantsSign' : 'cl.neg.wants', { player: name, wage: money(demand), until: end(wantYears), fee: money(signReq) })}</p>
                 <p className="cx-ts-intro">{t('cl.neg.allow', { allow: money(allow) })}</p>
@@ -219,7 +238,7 @@ export function ClassicNegotiation({ offer, renewPid, onClose }: { offer?: Trans
       )}
       <div className="cx-ts-buttons cx-dlg-foot">
         {ask ? <><button onClick={() => setAsk(false)}>{t('common.no')}</button><button className="primary" onClick={submit}>{t('common.yes')}</button></>
-          : <><button onClick={onClose}>{t('common.cancel')}</button><button className="primary" onClick={() => setAsk(true)}>{t('cl.neg.offer')}</button></>}
+          : <><button onClick={onClose}>{t('common.cancel')}</button><button className="primary" disabled={!!noInt} onClick={() => setAsk(true)}>{t('cl.neg.offer')}</button></>}
       </div>
     </div>
   );

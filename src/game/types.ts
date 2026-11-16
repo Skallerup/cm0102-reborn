@@ -356,6 +356,8 @@ export interface Staff {
   cmExtra?: boolean;
   /** originalens job +0x3d (0x53ad00), når det ikke følger af rollen (cmExtra) */
   cmJob?: number;
+  /** databasens jobkode (staff.dat) – også for ledige; 0x4cb990's +0x3d (Set Role At Club) */
+  cmDbJob?: number;
   /** databasens klub +0x39 for en cmExtra-person (navnet i g.clubs eller g.cmClubNames) */
   cmClub?: number;
   id: number;

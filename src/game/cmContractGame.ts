@@ -466,6 +466,9 @@ export function cmMoveCheck(g: GameState, p: Player, clubId: number): { x: numbe
   return { x, mask: c.m.u32(OUT) >>> 0 };
 }
 
+/** trupstatussen, køberen tilbyder (newClubStatus – samme som kravet 0x85fc50 bruger) */
+export function cmTalkStatus(g: GameState, p: Player, clubId: number): number { return newClubStatus(g, p, clubId); }
+
 /** Spillerens krav i Offer Contract (0x85fc50 med køberens trupstatus, job 0xb – samme som 0x4ce4e0 sammenligner med) */
 export function cmTalkDemand(g: GameState, p: Player, clubId: number): CmTerms | null {
   const T = talkMem(g, p, clubId, 0x85fc50);

@@ -863,8 +863,9 @@ export function meetBoardAvailable(kind: MeetBoardKind): boolean {
 export function meetBoard(kind: MeetBoardKind): string {
   // den originale database i ægte tilstand: originalens beslutning 0x6a8810 og svartekst 0x6a9470 (stadion 1, træningsanlæg 2, tid 5)
   if (cmBoardOn(gs())) {
-    const req = kind === 'stadium' ? 1 : kind === 'youth' ? 2 : kind === 'time' ? 5 : 0;
-    if (req) { const r = cmBoardRequest(gs(), req as 1 | 2 | 5); if (r !== null) return r; }
+    // 3 transferpenge og 4 løn: originalens svartekster (0x6a9470) i stedet for spillets "The board have raised the wage budget by 9%"
+    const req = kind === 'stadium' ? 1 : kind === 'youth' ? 2 : kind === 'transfer' ? 3 : kind === 'wage' ? 4 : kind === 'time' ? 5 : 0;
+    if (req) { const r = cmBoardRequest(gs(), req as 1 | 2 | 3 | 4 | 5); if (r !== null) return r; }
   }
   if (!meetBoardAvailable(kind)) return 'blocked';
   if (kind === 'stadium' || kind === 'youth') return `mb.project.${requestProject(kind)}`;

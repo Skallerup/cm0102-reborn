@@ -9,11 +9,19 @@ import type { GameState } from '../../game/types';
 import { isRetro } from '../theme';
 import { ClassicHead } from '../classic';
 
+/** spillerens grunde (cmTransferTalks.ts cmWhy, "k:argument|k") som tekst: "… og …" (0x8e4ae0) */
+export function cmWhyText(why: string): string {
+  return why.split('|').map((w) => {
+    const i = w.indexOf(':'), k = i < 0 ? w : w.slice(0, i), a = i < 0 ? '' : w.slice(i + 1);
+    return t(`cm.why.${k}`, { club: a, nation: a, comp: compName(a) ?? a, continent: k === 'continent' ? t(`cm.why.cont.${a}`) : a });
+  }).join(` ${t('cm.why.and')} `);
+}
+
 /** action: kun klassisk tema – fx en Action-menu i titelbjælkens højre hjørne */
-export function Head({ title, children, action, menu }: { title: ReactNode; children?: ReactNode; action?: ReactNode; menu?: boolean }) {
+export function Head({ title, children, action, menu, club }: { title: ReactNode; children?: ReactNode; action?: ReactNode; menu?: boolean; club?: number }) {
   const { back, canBack } = useNav();
   // klassisk tema: titelbjælke + hub-faner (Tilbage ligger i den brede bundbjælke)
-  if (isRetro()) return <ClassicHead title={title} action={action} menu={menu}>{children}</ClassicHead>;
+  if (isRetro()) return <ClassicHead title={title} action={action} menu={menu} club={club}>{children}</ClassicHead>;
   return (
     <div className="screen-head">
       {canBack && <button className="back small" onClick={back}>‹ {t('common.back')}</button>}
@@ -32,13 +40,7 @@ export function newsParams(n: NewsItem): Record<string, string | number> {
   if (n.key.startsWith('injury.o.')) p.injury = p.injuryLc;
   if (typeof p.comp === 'string') p.comp = compName(p.comp) ?? p.comp;
   // spillerens grunde til at afvise et skifte (cmWhy): "k:argument|k" → "han vil ikke … og …"
-  if (typeof p.why === 'string' && p.why) {
-    const parts = p.why.split('|').map((w) => {
-      const i = w.indexOf(':'), k = i < 0 ? w : w.slice(0, i), a = i < 0 ? '' : w.slice(i + 1);
-      return t(`cm.why.${k}`, { club: a, nation: a, comp: compName(a) ?? a, continent: k === 'continent' ? t(`cm.why.cont.${a}`) : a });
-    });
-    p.reasons = parts.join(` ${t('cm.why.and')} `);
-  }
+  if (typeof p.why === 'string' && p.why) p.reasons = cmWhyText(p.why);
   // månedens priser (CM 01/02: "<spiller> wins February award"): måneden før nyhedens dato
   if (n.key.startsWith('award.month') && p.month === undefined) {
     const d = new Date(`${n.date.slice(0, 7)}-15T00:00:00Z`); d.setUTCMonth(d.getUTCMonth() - 1);

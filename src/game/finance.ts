@@ -5,7 +5,7 @@ import { gs, squad } from './state';
 import { rng } from './rng';
 import { extended } from './rules';
 import type { Club, ClubFinance, Fixture } from './types';
-import { book, cmFinOn, hasLeagueMoney, K as CMK } from './cmFinance';
+import { book, cmFinOn, hasLeagueMoney, nationLoaded, K as CMK } from './cmFinance';
 
 export function weeklyWages() {
   const g = gs();
@@ -172,7 +172,7 @@ export function seasonPrizeMoney() {
   }
   for (const comp of Object.values(g.comps)) {
     if (comp.type !== 'league') continue;
-    if (cm && hasLeagueMoney(comp.id)) continue;
+    if (cm && (hasLeagueMoney(comp.id) || (comp.nation >= 0 && !nationLoaded(g, comp.nation)))) continue;
     const order = finalOrder(comp);
     const wealth = rulesFor(comp.id, order.length).wealth;
     order.forEach((cid, i) => {

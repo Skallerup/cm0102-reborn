@@ -469,6 +469,8 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
       s.cmExtra = true;
       // uden klub viser originalen "Unemployed" (jobbet følger klubben – *antaget* efter Terzi/Ferguson i ejerens billede)
       s.cmJob = club >= 0 ? row[5] : 0;
+      // 0x4cb990 læser jobkoden +0x3d – databasens job, også uden klub (en ledig fysioterapeut kan ansættes som fysioterapeut)
+      s.cmDbJob = row[5];
       s.cmMem = true;
       s.wage = 0;
       if (club >= 0 && row[5]) {

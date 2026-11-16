@@ -213,13 +213,31 @@ function contractsAndLoans() {
         const msg = { cat: 'transfer' as const, key: 'transfer.bosmanDone', params: { player: pname(p), from: fromName, to: g.clubs[to].name } };
         asOwner(to, () => { g.knowledge[p.id] = 100; addNews(msg); });
         if (fromClub !== to) asOwner(fromClub, () => addNews(msg));
-      } else {
-        asOwner(p.club, () => addNews({ cat: 'contract', key: 'contract.left', params: { player: pname(p) } }));
-        if (g.clubs[p.club]) fansOnDeparture(p, g.clubs[p.club], 'free');
-        setClub(p, 0);
-        p.contract = null;
-      }
+      } else leaveOnFree(p);
     }
+  }
+}
+
+/** kontrakten er udløbet: spilleren forlader klubben uden kontrakt */
+function leaveOnFree(p: Player) {
+  const g = gs();
+  asOwner(p.club, () => addNews({ cat: 'contract', key: 'contract.left', params: { player: pname(p) } }));
+  if (g.clubs[p.club]) fansOnDeparture(p, g.clubs[p.club], 'free');
+  setClub(p, 0);
+  p.contract = null;
+}
+
+/** (den originale database i ægte tilstand) computerklubbernes spillere, som originalen ikke har i hukommelsen (0x524d70 – uden for
+ *  CONTRACT_MANAGER, cmCmScope): i originalen findes de ikke, så intet afgør deres kontrakter. Spillets eget udløb gælder dem, men dagen efter
+ *  udløbsdatoen i stedet for næste 1/7 – datoerne følger landets sæsonslut (cmContractEnd.ts), og ellers stod de med en udløbet kontrakt i op
+ *  til et år (langtidstesten 15/11: 520 spillere i lande med sæsonslut i november–december). Forlængelserne: transfers.ts aiRenewals. *estimeret* */
+export function cmExpireOutsideDaily() {
+  const g = gs();
+  if (!cmCmOn(g)) return;
+  for (const p of Object.values(g.players)) {
+    const k = p.contract;
+    if (!p.club || p.loan || !k || k.futureClub || k.expires >= g.date || isHumanClub(p.club) || cmCmScope(g, p)) continue;
+    leaveOnFree(p);
   }
 }
 
