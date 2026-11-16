@@ -2245,3 +2245,24 @@ setRequestHooks({
   human: (p, c) => { const g = gs(); cmRequestNews(g, p, c, cmRand(g.seed ?? 0, p.id, daysBetween('2000-01-01', g.date), 0x4d8610)); },
   isHuman: (club) => isHumanClub(club),
 });
+
+/** CM 01/02 "Go on holiday": assistenten fylder huller i truppen (under 20 spillere eller under to målmænd) med frie agenter – højst én om ugen.
+ *  `onlyShortlist` = kun spillere, managerens ønskeliste (`g.shortlist`) rummer. *Estimeret*: originalens assistent-køb (0x8f2ec0-kæden) er ikke afkodet. */
+export function holidaySignings(onlyShortlist: boolean) {
+  const g = gs();
+  const club = g.clubs[g.userClub];
+  if (!club || !windowOpen(g.date, club.id) || new Date(`${g.date}T12:00:00Z`).getUTCDay() !== 1) return;
+  const sq = squad(club.id);
+  const needGk = sq.filter((p) => naturalRole(p) === 'GK').length < 2;
+  if (sq.length >= 20 && !needGk) return;
+  const level = clubLevel(club.id);
+  const pool = onlyShortlist ? g.shortlist.map((id) => g.players[id]).filter(Boolean) : Object.values(g.players);
+  const cand = pool.filter((p) => !p.club && p.ca >= 30 && p.ca <= level + 10 && p.ca >= level - 35 && (!needGk || naturalRole(p) === 'GK') && playerInterest(p, club) === 'yes')
+    .sort((a, b) => b.ca - a.ca)[0];
+  if (!cand) return;
+  const wage = wageDemand(cand, club);
+  if (currentBill(club.id) + wage > club.wageBudget) return;
+  const o = makeBid(cand.id, 0);
+  if (typeof o === 'string') return;
+  completeTransfer(o, wage, preferredYears(cand));
+}

@@ -49,7 +49,7 @@ export interface Contract {
 
 /** Klausuler i et kontrakttilbud */
 /** CM 01/02 "Go on holiday": hvad assistenten gør imens */
-export interface HolidaySettings { rejectAll?: boolean; rejectBelow?: boolean; noBuy?: boolean; applyJobs?: boolean }
+export interface HolidaySettings { rejectAll?: boolean; rejectBelow?: boolean; noBuy?: boolean; onlyShortlist?: boolean; applyJobs?: boolean; useTactics?: boolean; useSelection?: boolean }
 
 export interface ContractClauses {
   /** CM 01/02 Contract Type: deltid (klik på "Full Time") */

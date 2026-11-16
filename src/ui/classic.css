@@ -1918,3 +1918,5 @@ button.cx-bid-swap.removing { cursor: pointer; color: #fff21f; }
 .cx-frt .cx-greybtn.on { color: #fff21f; }
 .cx-frt .cx-muted { color: #8a8fa3; }
 @media (max-width: 760px) { .cx-frd-row .cx-frd-st { grid-column: 2 / 5; font-size: 13px; } }
+/* Go on holiday ? (Please Confirm): afstanden før "Apply for manager position" som i originalen */
+.cx-hol-gap { height: 24px; }

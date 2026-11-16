@@ -17,7 +17,7 @@ import { cmDatabase } from '../game/newgame';
 import { APP_VERSION } from './changelogData';
 import { askConfirm, askNotice } from './confirm';
 import { ClassicManagerHistory } from './screens/ManagerHistoryClassic';
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
+import { Fragment, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { flushAutosave, forgetLast, saveGame, scheduleAutosave } from '../game/save';
 import { runUntil, watchedDay } from '../game/sim';
 import { runDays } from './dayRunner';
@@ -171,7 +171,7 @@ export function Shell() {
   const [winNote, setWinNote] = useState<{ head: string; text: string } | null>(null);
   const stopRef = useRef(false);
   const onHolidayRef = useRef(false);
-  const holidaySetRef = useRef<HolidaySettings>({ rejectAll: true });
+  const holidaySetRef = useRef<HolidaySettings>({});
   const mainRef = useRef<HTMLElement>(null);
   useEffect(() => { setScrollElement(mainRef.current); return () => setScrollElement(null); }, []);
   useLayoutEffect(() => {
@@ -773,14 +773,10 @@ function HolidayPanel({ untilMatch, onClose, onGo }: { untilMatch: boolean; onCl
   useClassicDialog();
   const g = gs();
   const col = titleColors(g.userClub || undefined);
-  const [set, setSet] = useState<HolidaySettings>({ rejectAll: true, applyJobs: true });
-  const keys: (keyof HolidaySettings)[] = ['rejectAll', 'rejectBelow', 'noBuy', 'applyJobs'];
-  const toggle = (k: keyof HolidaySettings) => setSet((s) => {
-    const x = { ...s, [k]: !s[k] };
-    if (k === 'rejectAll' && x.rejectAll) x.rejectBelow = false;
-    if (k === 'rejectBelow' && x.rejectBelow) x.rejectAll = false;
-    return x;
-  });
+  const [set, setSet] = useState<HolidaySettings>({});
+  // originalens rækkefølge; afstanden efter 'onlyShortlist' (blank linje i skærmen)
+  const keys: (keyof HolidaySettings)[] = ['rejectAll', 'rejectBelow', 'noBuy', 'onlyShortlist', 'applyJobs', 'useTactics', 'useSelection'];
+  const toggle = (k: keyof HolidaySettings) => setSet((s) => ({ ...s, [k]: !s[k] }));
   return (
     <div className="cx-dlg cx-confirm" role="dialog">
       <div className="cx-title" style={{ background: col.bg, color: col.fg }}><h2>{g.manager.name}</h2></div>
@@ -788,7 +784,7 @@ function HolidayPanel({ untilMatch, onClose, onGo }: { untilMatch: boolean; onCl
       <div className="cx-dlg-body">
         <p className="cx-ts-intro" style={{ alignSelf: 'center' }}>{t(untilMatch ? 'cl.hol.qMatch' : 'cl.hol.q')}</p>
         <p className="cx-ts-intro">{t('cl.hol.settings')}</p>
-        {keys.map((k) => <button key={k} className={`cx-opt ${set[k] ? 'on' : ''}`} onClick={() => toggle(k)}>{t(`cl.hol.${k}`)}</button>)}
+        {keys.map((k) => <Fragment key={k}>{k === 'applyJobs' && <div className="cx-hol-gap" />}<button className={`cx-opt ${set[k] ? 'on' : ''}`} data-hol={k} onClick={() => toggle(k)}>{t(`cl.hol.${k}`)}</button></Fragment>)}
       </div>
       <div className="cx-ts-buttons cx-dlg-foot"><button onClick={onClose}>{t('common.no')}</button><button className="primary" onClick={() => onGo(set)}>{t('common.yes')}</button></div>
     </div>

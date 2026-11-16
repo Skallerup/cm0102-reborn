@@ -929,6 +929,19 @@ async function run(look) {
     await page.keyboard.press('Escape'); await page.mouse.click(5, 5);
     if (await page.locator('.modal-bg').count()) await page.locator('.modal-bg').first().click({ position: { x: 3, y: 3 } });
   });
+  // Go on holiday ?: originalens syv valg i rækkefølge, alle slået fra
+  if (look === 'klassisk') await step('Go on holiday ? har de 7 valg, alle fra', async () => {
+    await page.click('.cx-mgr');
+    await page.locator('.cx-drop-pop button', { hasText: 'Go on Holiday' }).first().click();
+    await page.waitForSelector('.cx-confirm [data-hol]', { timeout: 5000 });
+    const opts = await page.locator('.cx-confirm [data-hol]').evaluateAll((els) => els.map((e) => ({ t: e.textContent.trim(), on: e.classList.contains('on') })));
+    const want = ['Reject all offers for players', 'Reject all offers below asking price', 'Do not buy any players', 'Only buy players from shortlist', 'Apply for manager position at higher reputation clubs', 'Use current match tactics', 'Use current team selection when possible'];
+    if (JSON.stringify(opts.map((o) => o.t)) !== JSON.stringify(want)) throw new Error('ferie-valgene: ' + JSON.stringify(opts.map((o) => o.t)));
+    if (opts.some((o) => o.on)) throw new Error('ferie-valg slået til som standard');
+    await page.screenshot({ path: `${OUT}/klassisk-ferie.png` });
+    await page.locator('.cx-confirm .cx-dlg-foot button', { hasText: 'No' }).click();
+    await page.waitForTimeout(300);
+  });
   // fællesspil i klassisk: lobby som klassisk skærm, Ready-knappen (før/efter), Invite/Host/Install/Cloud i Game Options – ingen moderne elementer
   if (look === 'klassisk') await step('fællesspil: klassisk lobby, Ready før/efter, Invite/Host/Install/Cloud i Game Options', async () => {
     const mkRoom = (ready) => ({ code: 'ABCDE', host: 'p1', status: 'playing', version: 1, snapshot: '', date: '2001-07-14', lastApplied: 0, actionCount: 0, settings: {}, processing: null, lastTurn: '',

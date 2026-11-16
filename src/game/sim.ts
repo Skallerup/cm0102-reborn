@@ -47,7 +47,7 @@ import { counterPlan, type CounterPlan } from './aitactics';
 import { autoSelect, available, lineupComplete, newTactic, slotValue, validateTactic } from './tactics';
 import type { Fixture, GameState, MatchReport, MatchResultShort, NewsItem, Player, Tactic } from './types';
 import { monthlyDevelopment, monthlyTrainingReport, monthlyValues, weeklyDevelopment } from './training';
-import { aiLoanOptions, aiPursuits, aiBidsForListed, aiBosman, aiFillSquads, aiReleaseClauses, aiRenewals, aiTransferTick, answerPendingRenewals, contractReminders, processOffers, refreshShortlists, resolveAuctions, resolveSignings, weeklyTransferDigest, windowNews, respondToOffer, askingPrice, cmMonthlyInstalments, cmAppsAfterMatch } from './transfers';
+import { aiLoanOptions, aiPursuits, aiBidsForListed, aiBosman, aiFillSquads, aiReleaseClauses, aiRenewals, aiTransferTick, answerPendingRenewals, contractReminders, processOffers, refreshShortlists, resolveAuctions, resolveSignings, weeklyTransferDigest, windowNews, respondToOffer, askingPrice, cmMonthlyInstalments, cmAppsAfterMatch, holidaySignings } from './transfers';
 import { afterAppearance } from './clauses';
 import { cmBonusPaid } from './cmContractInit';
 import { knowledgeAfterMatch, scoutDaily } from './scouting';
@@ -839,7 +839,13 @@ export function quickPlayUserMatch(): MatchReport | null {
   const g = gs();
   const f = g.fixtures[g.pendingFixture!];
   if (!f) return null;
-  const m = prepareMatch(f, false);
+  // på ferie vælger assistenten holdet, medmindre managerens udtagelse/taktik skal bruges ("Use current team selection/match tactics")
+  const h = g.manager?.holiday;
+  const assistant = !!h && !h.useSelection;
+  const ownTactic = g.tactic;
+  if (h && !h.useTactics && !h.useSelection) g.tactic = null;   // assistentens egen formation og elleve (gendannes efter kampen)
+  const m = prepareMatch(f, assistant);
+  if (h) g.tactic = ownTactic;   // assistentens valg gælder kun kampen – managerens egen taktik røres ikke
   const rep = makeMatch(m.home, m.away, { commentary: true, neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, var: m.var, weather: m.weather, aggregate: m.aggregate, finish: m.finish, homeAdv: m.homeAdv, finSlope: m.finSlope, squash: m.squash, squashAtt: m.squashAtt, squashDef: m.squashDef, ease: m.ease, cards: m.cards, corners: m.corners, countBlocked: m.countBlocked, close: m.close, closeSlope: m.closeSlope, onTarget: m.onTarget, offside: m.offside, shotSpread: m.shotSpread, oneOnOneK: m.oneOnOneK, level: m.level, openDamp: m.openDamp, rules: m.rules, pitch: m.pitch, referee: m.referee, subs: maxSubs(), fixtureId: f.id, aiSubs: [true, true], date: g.date }, rng).runToEnd();
   finishUserMatch(rep);
   return rep;
@@ -1031,8 +1037,10 @@ function holidayDaily() {
   for (const o of g.offers.filter((x) => x.status === 'pending' && x.seller === g.userClub)) {
     const p = g.players[o.player];
     if (h.rejectAll) respondToOffer(o.id, 'reject');
-    else if (h.rejectBelow && p) respondToOffer(o.id, o.fee >= askingPrice(p) ? 'accept' : 'reject');
+    else if (h.rejectBelow && p && !o.loan && o.fee < askingPrice(p)) respondToOffer(o.id, 'reject');
   }
+  // assistentens køb (kun hvis "Do not buy any players" er fra; "Only buy players from shortlist" begrænser til ønskelisten)
+  if (!h.noBuy) holidaySignings(!!h.onlyShortlist);
   // søg en ledig stilling i en klub med større omdømme (højst én om ugen)
   const myRep = g.clubs[g.userClub]?.rep ?? 0;
   if (h.applyJobs && g.date.endsWith('1') ) {
