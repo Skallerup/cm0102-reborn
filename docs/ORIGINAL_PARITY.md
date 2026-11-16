@@ -3,6 +3,11 @@
 Mål (ejeren 16/11): "Der må ikke være forskel på det vi bygger og det originale." Gælder ægte tilstand med den originale
 database (`cmActive(g)`), classic look. Udvidet spil/2026/27 er uden for målet.
 
+**Undtagelse – Game Options (ejeren 16/11):** menuen Game Options er CM Reborns eget område. Her ligger tilføjelser, der gerne
+må afvige fra originalen: nye features, konto/bruger, fællesskab, rangliste og på sigt støtte og køb af pakker. De skal
+holdes adskilt fra originalens egne Game Options-punkter (tydeligt som CM Reborn) og undtages fra K3/K4. Nye ikke-originale
+funktioner placeres her – aldrig på originalens skærme.
+
 ## Sådan sikrer vi det (kontroller, der skal køre hele tiden)
 
 | # | Kontrol | Hvad den fanger | Status |

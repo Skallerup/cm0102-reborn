@@ -15,6 +15,9 @@ og læg ændringen i samme push.
   præfikset `stg:`, så staging deler databasen uden at røre produktionens data. Brug aldrig `new Redis()` direkte,
   og hverken `pipeline`/`multi`/`eval` (understøttes ikke med præfiks). Staging har sin egen `ADMIN_TOKEN` (Preview);
   login-mails, Discord og den ugentlige mail er kun sat op i produktionen.
+- **1:1-reglen:** det klassiske spil skal være 1:1 med CM 01/02 (plan: docs/ORIGINAL_PARITY.md). Eneste undtagelse er menuen
+  Game Options: CM Reborns egne tilføjelser (features, konto, fællesskab, senere støtte/køb af pakker) ligger dér, adskilt fra
+  originalens punkter – aldrig på originalens skærme.
 - Alt er gratis: betaling/Stripe/supportere er fjernet (2026-11-05). `season.ts` kalder stadig `rng.chance(0.04)` for
   supporter-regens, så tilfældighederne i gamle spil er uændrede – lad det stå.
 - Node: `export PATH="$HOME/.local/node/bin:$PATH"`. Før push: `npx tsc --noEmit -p tsconfig.app.json` og de berørte testfiler; CI tager resten.
