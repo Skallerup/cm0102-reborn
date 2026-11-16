@@ -3,20 +3,21 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ATTRS, GROUPS, A } from '../game/attributes';
 import type { CMRatings, CMWorld } from '../game/data/cm0102';
-import { changeCount, emptyDb, NEW_ID0, POS_KEYS, SIDE_KEYS, type ClubEdit, type CustomDb, type DbBase, type NewPlayer, type PlayerEdit } from '../game/dbEdit';
+import { changeCount, emptyDb, NEW_ID0, POS_KEYS, SIDE_KEYS, type ClubEdit, type CustomDb, type DbBase, type DbVer, DB_VERS, type NewPlayer, type PlayerEdit } from '../game/dbEdit';
 import type { WorldData } from '../game/newgame';
 import { natName, t } from '../i18n';
 import { askConfirm } from './confirm';
 import { Panel, Tabs } from './components';
 import { Select } from './select';
 import { nameQuery } from './search';
-import { baseWorld, deleteDb, exportDb, importDb, listDbs, saveDb } from './customDb';
+import { baseWorld, dbVerLabel, deleteDb, exportDb, importDb, listDbs, saveDb } from './customDb';
 
 export function Editor({ onBack, onPlay }: { onBack: () => void; onPlay: (id: string) => void }) {
   const [dbs, setDbs] = useState<CustomDb[] | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [base, setBase] = useState<DbBase>('original');
+  const [ver, setVer] = useState<DbVer>('3.9.60');
   const [err, setErr] = useState('');
   const refresh = () => listDbs().then(setDbs);
   useEffect(() => { void refresh(); }, []);
@@ -24,7 +25,7 @@ export function Editor({ onBack, onPlay }: { onBack: () => void; onPlay: (id: st
   if (cur) return <DbEditor key={cur.id} db={cur} onClose={() => { setOpen(null); void refresh(); }} onPlay={() => onPlay(cur.id)} />;
 
   const create = async () => {
-    const db = emptyDb(name.trim() || t('ed.untitled'), base);
+    const db = emptyDb(name.trim() || t('ed.untitled'), base, undefined, ver);
     await saveDb(db);
     setName('');
     await refresh();
@@ -52,6 +53,11 @@ export function Editor({ onBack, onPlay }: { onBack: () => void; onPlay: (id: st
             <option value="original">{t('db.original')}</option>
             <option value="modern">{t('db.modern')}</option>
           </select>
+          {base === 'original' && (
+            <select value={ver} onChange={(e) => setVer(e.target.value as DbVer)} aria-label={t('ed.version')} data-testid="ed-ver">
+              {DB_VERS.map((v) => <option key={v} value={v}>{v}</option>)}
+            </select>
+          )}
           <button className="primary" onClick={() => void create()}>{t('ed.create')}</button>
         </div>
         {!dbs && <div className="muted">{t('start.loading')}</div>}
@@ -59,7 +65,7 @@ export function Editor({ onBack, onPlay }: { onBack: () => void; onPlay: (id: st
         {dbs?.map((d) => (
           <div key={d.id} className="choice">
             <div className="grow" onClick={() => setOpen(d.id)}>
-              <b>{d.name}</b> <span className="muted">— {d.base === 'original' ? t('db.original') : t('db.modern')}</span>
+              <b>{d.name}</b> <span className="muted">— {d.base === 'original' ? `${t('db.original')} ${dbVerLabel(d)}` : t('db.modern')}</span>
               <div className="muted">{t('ed.changes', { n: changeCount(d) })} · {t('start.savedAt')} {new Date(d.updated).toLocaleString()}</div>
             </div>
             <button className="small" onClick={() => onPlay(d.id)}>{t('ed.play')}</button>
@@ -93,7 +99,8 @@ function DbEditor({ db: initial, onClose, onPlay }: { db: CustomDb; onClose: () 
   const [clubFilter, setClubFilter] = useState(0);
   const [sel, setSel] = useState<Sel>(null);
   const [msg, setMsg] = useState('');
-  useEffect(() => { void baseWorld(db).then((x) => setW(x as WorldData & Partial<CMWorld>)); }, [db.base]);
+  const [otherVer, setOtherVer] = useState<string[]>([]);
+  useEffect(() => { void baseWorld(db).then((x) => setW(x as WorldData & Partial<CMWorld>)); }, [db.base, db.ver]);
 
   const idx = useMemo(() => {
     if (!w) return null;
@@ -109,6 +116,25 @@ function DbEditor({ db: initial, onClose, onPlay }: { db: CustomDb; onClose: () 
     await saveDb(next);
     if (note) { setMsg(note); setTimeout(() => setMsg(''), 2500); }
   };
+
+  // ingen fundet: findes navnet i en anden udgave af den originale database? (public/data/popular-versions.json)
+  useEffect(() => {
+    setOtherVer([]);
+    const nq = norm(q.trim());
+    if (tab !== 'players' || nq.length < 2 || db.base !== 'original') return;
+    const cur = DB_VERS.indexOf(db.ver ?? '3.9.60');
+    let live = true;
+    void fetch(`${import.meta.env.BASE_URL}data/popular-versions.json`).then((r) => r.json()).then((d: { v: string[]; p: [string, unknown[]][] }) => {
+      const match = nameQuery(q);
+      const vs = new Set<string>();
+      for (const [name, byVer] of d.p) {
+        if (!match?.(name)) continue;
+        byVer.forEach((x, i) => { if (x && i !== cur && d.v[i]) vs.add(d.v[i]); });
+      }
+      if (live) setOtherVer([...vs]);
+    }).catch(() => {});
+    return () => { live = false; };
+  }, [q, tab, db.base, db.ver]);
 
   if (!w || !idx) return <Panel title={db.name}><div className="muted">{t('start.loadingDb')}</div></Panel>;
   const { F, rows, clubs, clubOpts, nationOpts } = idx;
@@ -226,14 +252,21 @@ function DbEditor({ db: initial, onClose, onPlay }: { db: CustomDb; onClose: () 
   return (
     <Panel title={<span>{db.name} <button className="small" onClick={() => void rename()} title={t('ed.rename')}>✎</button></span>} right={
       <div className="row">
-        {msg && <span className="good">{msg}</span>}
-        <button className="small" onClick={() => exportDb(db)}>{t('ed.export')}</button>
+                <button className="small" onClick={() => exportDb(db)}>{t('ed.export')}</button>
         <button className="small primary" onClick={onPlay}>{t('ed.play')}</button>
         <button className="small" onClick={onClose}>{t('common.back')}</button>
       </div>
     }>
       <div className="col">
-        <div className="muted">{db.base === 'original' ? t('db.original') : t('db.modern')} · {t('ed.changes', { n: changeCount(db) })}</div>
+        {msg && <div className="ed-banner" role="status" data-testid="ed-banner">{msg}</div>}
+        <div className="row muted">
+          <span>{db.base === 'original' ? `${t('db.original')} ${dbVerLabel(db)}` : t('db.modern')} · {t('ed.changes', { n: changeCount(db) })}</span>
+          {db.base === 'original' && (
+            <select value={db.ver ?? '3.9.60'} aria-label={t('ed.version')} onChange={(e) => { const v = e.target.value as DbVer; const { ver: _o, ...rest } = db; void persist(v === '3.9.60' ? rest : { ...rest, ver: v }, t('ed.saved')); setSel(null); }}>
+              {DB_VERS.map((v) => <option key={v} value={v}>{v}</option>)}
+            </select>
+          )}
+        </div>
         <Tabs tabs={[['players', t('ed.players')], ['clubs', t('ed.clubs')], ['changes', t('ed.changesTab')]]} value={tab} onChange={(v) => { setTab(v as typeof tab); setSel(null); }} />
         {tab !== 'changes' && !sel && (
           <div className="row">
@@ -250,7 +283,9 @@ function DbEditor({ db: initial, onClose, onPlay }: { db: CustomDb; onClose: () 
                 <td>{String(rows.get(id)?.[F.pos] ?? '')}</td><td className="num">{e.ca}</td><td className="num">{e.pa < 0 ? `${e.pa}` : e.pa}</td>
               </tr>); })}</tbody></table></div>
         )}
-        {tab === 'players' && !sel && q.trim().length >= 2 && results.length === 0 && <div className="muted">{t('ed.noHits')}</div>}
+        {tab === 'players' && !sel && q.trim().length >= 2 && results.length === 0 && (
+          <div className="muted">{t('ed.noHits')}{otherVer.length > 0 && <> <b data-testid="ed-otherver">{t('ed.otherVer', { v: otherVer.join(' / ') })}</b></>}</div>
+        )}
         {tab === 'clubs' && !sel && results.length > 0 && (
           <table className="grid"><thead><tr><th>{t('ed.name')}</th><th>{t('ed.nation')}</th><th>{t('ed.stadium')}</th></tr></thead>
             <tbody>{results.map((id) => { const c = clubs.get(id)!; return (

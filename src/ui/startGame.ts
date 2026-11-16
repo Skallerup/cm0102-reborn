@@ -32,7 +32,8 @@ export async function loadStartWorld(db: Db, ver: OriginalVersion): Promise<Worl
     const id = db.slice(7);
     const d = (await listDbs()).find((x) => x.id === id);
     if (!d) return null;
-    return withCommunityEdits(await loadCustomWorld(id), d.base === 'original' ? 'original' : 'cm');
+    const w = await loadCustomWorld(id);
+    return d.base === 'original' && d.ver && d.ver !== '3.9.60' ? w : withCommunityEdits(w, d.base === 'original' ? 'original' : 'cm');
   }
   // fællesskabets rettelser gælder 3.9.60 (de andre udgaver bruges præcis som originalen)
   if (db === 'original') { const w = await loadOriginalWorld(ver); return ver === '3.9.60' ? withCommunityEdits(w, 'original') : w; }

@@ -228,7 +228,7 @@ function NewGame({ challenge, onBack, setBusy, setProg, online, onDraft, initial
       const d = all.find((x) => x.id === customId);
       // databasen findes ikke længere (slettet): tilbage til standard
       if (!d) { setDb('modern'); return null; }
-      return loadCustomWorld(customId).then((w) => withCommunityEdits(w, d.base === 'original' ? 'original' : 'cm'));
+      return loadCustomWorld(customId).then((w) => (d.base === 'original' && d.ver && d.ver !== '3.9.60' ? w : withCommunityEdits(w, d.base === 'original' ? 'original' : 'cm')));
     // fællesskabets rettelser gælder 3.9.60 (de andre udgaver bruges præcis som originalen)
     }) : db === 'original' ? loadOriginalWorld(ver).then((w) => (ver === '3.9.60' ? withCommunityEdits(w, 'original') : w)) : loadWorld().then((w) => withCommunityEdits(w, 'cm'));
     load.then((w) => {
@@ -272,7 +272,7 @@ function NewGame({ challenge, onBack, setBusy, setProg, online, onDraft, initial
         )}
         {mine.map((d) => (
           <button key={d.id} className={`db-opt ${db === `custom:${d.id}` ? 'on' : ''}`} onClick={() => setDb(`custom:${d.id}`)}>
-            <b>🛠 {d.name}</b><span>{t('db.customHint', { base: d.base === 'original' ? t('db.original') : t('db.modern'), n: changeCount(d) })}</span>
+            <b>🛠 {d.name}</b><span>{t('db.customHint', { base: d.base === 'original' ? `${t('db.original')} ${d.ver ?? '3.9.60'}` : t('db.modern'), n: changeCount(d) })}</span>
           </button>
         ))}
         {onDraft && !online && (

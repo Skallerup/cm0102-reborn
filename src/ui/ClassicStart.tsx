@@ -204,7 +204,7 @@ export function ClassicStart({ onLang, onHome, onGo, onLook, online }: { onLang:
   const dbOpts = useMemo(() => [
     ...ORIGINAL_VERSIONS.map((v) => ({ db: 'original' as Db, ver: v, big: '2001/02', small: t('cxs.dataN', { v }), hint: t(`db.ver.${v.replace(/\./g, '')}`), tag: v === '3.9.60' ? t('db.ver.default') : '' })),
     { db: 'modern' as Db, ver, big: '2026/27', small: t('cxs.dataModern'), hint: t('db.modernHint'), tag: '' },
-    ...mine.map((d) => ({ db: `custom:${d.id}` as Db, ver, big: d.name, small: t('db.customHint', { base: d.base === 'original' ? t('db.original') : t('db.modern'), n: changeCount(d) }), hint: '', tag: '' })),
+    ...mine.map((d) => ({ db: `custom:${d.id}` as Db, ver, big: d.name, small: t('db.customHint', { base: d.base === 'original' ? `${t('db.original')} ${d.ver ?? '3.9.60'}` : t('db.modern'), n: changeCount(d) }), hint: '', tag: '' })),
   ], [mine, ver]);
   const curOpt = dbOpts.find((o) => o.db === db && (db !== 'original' || o.ver === ver)) ?? dbOpts[0];
   const versionLabel = db === 'original' ? ver : db === 'modern' ? '2026/27' : t('cxs.custom');

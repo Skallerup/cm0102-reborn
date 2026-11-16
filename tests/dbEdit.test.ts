@@ -53,3 +53,13 @@ describe('database-editor', () => {
     expect(sanitizeDb({ name: 'x', base: 'nope' })).toBeNull();
   });
 });
+
+describe('databaseudgave', () => {
+  it('sanitizeDb tåler ver; gamle filer uden ver er 3.9.60', () => {
+    const a = emptyDb('x', 'original', undefined, '3.9.68');
+    expect(sanitizeDb(JSON.parse(JSON.stringify(a)))?.ver).toBe('3.9.68');
+    expect(sanitizeDb({ ...a, ver: 'rod' })?.ver).toBeUndefined();
+    expect(sanitizeDb({ ...a, base: 'modern' })?.ver).toBeUndefined();
+    expect(emptyDb('y', 'original').ver).toBeUndefined();
+  });
+});

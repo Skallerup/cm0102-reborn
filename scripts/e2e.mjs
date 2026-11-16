@@ -1683,6 +1683,16 @@ async function editor() {
     await page.waitForSelector('.cxl', { timeout: 10000 });
     await page.getByPlaceholder(await t('ed.newName')).fill('E2E Legends');
     await page.getByRole('button', { name: await t('ed.create'), exact: true }).click();
+    // udgaven: Skalidis findes kun i 3.9.68 – i 3.9.60 foreslår editoren udgaven, i 3.9.68 findes han
+    const verSel = page.getByLabel(await t('ed.version'));
+    await page.getByPlaceholder(await t('ed.searchPlayer')).fill('Skalidis', { timeout: 60000 });
+    await page.getByTestId('ed-otherver').waitFor({ timeout: 20000 });
+    await verSel.selectOption('3.9.68');
+    await page.getByRole('row', { name: /Skalidis/ }).first().click({ timeout: 60000 });
+    await page.getByRole('button', { name: await t('ed.save'), exact: true }).first().click();
+    await page.getByTestId('ed-banner').waitFor({ timeout: 5000 });
+    await page.getByRole('button', { name: await t('common.close'), exact: true }).first().click();
+    await verSel.selectOption('3.9.60');
     await page.getByPlaceholder(await t('ed.searchPlayer')).fill('Tsigalko', { timeout: 60000 });
     await page.getByRole('row', { name: /Maxim Tsigalko/ }).click();
     await page.getByRole('textbox', { name: await t('ed.first') }).fill('Maksim');

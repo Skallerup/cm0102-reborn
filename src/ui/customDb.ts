@@ -25,11 +25,14 @@ export async function getDb(id: string): Promise<CustomDb | undefined> {
   return (await listDbs()).find((d) => d.id === id);
 }
 
-export function baseWorld(db: Pick<CustomDb, 'base'>): Promise<WorldData> {
-  return db.base === 'original' ? loadOriginalWorld() : loadWorld();
+export function baseWorld(db: Pick<CustomDb, 'base' | 'ver'>): Promise<WorldData> {
+  return db.base === 'original' ? loadOriginalWorld(db.ver ?? '3.9.60') : loadWorld();
 }
 
 /** Grunddatabasen med ændringerne lagt ovenpå (til et nyt spil) */
+/** Udgavens navn til visning ('3.9.60' for gamle databaser) */
+export const dbVerLabel = (d: Pick<CustomDb, 'base' | 'ver'>) => (d.base === 'original' ? d.ver ?? '3.9.60' : '2026/27');
+
 export async function loadCustomWorld(id: string): Promise<WorldData> {
   const db = await getDb(id);
   if (!db) throw new Error('database not found');

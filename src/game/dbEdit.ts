@@ -5,6 +5,9 @@ import { subPos, type CMRatings, type CMWorld } from './data/cm0102';
 import { ATTR_COUNT } from './attributes';
 
 export type DbBase = 'modern' | 'original';
+/** Udgave af den originale database (mangler = 3.9.60) */
+export type DbVer = '3.9.60' | '3.9.65' | '3.9.68';
+export const DB_VERS: readonly DbVer[] = ['3.9.60', '3.9.65', '3.9.68'];
 
 export interface PlayerEdit {
   first?: string; last?: string; dob?: string; nation?: number;
@@ -38,7 +41,7 @@ export interface ClubEdit {
 }
 
 export interface CustomDb {
-  id: string; name: string; base: DbBase; created: string; updated: string;
+  id: string; name: string; base: DbBase; ver?: DbVer; created: string; updated: string;
   players: Record<number, PlayerEdit>;
   clubs: Record<number, ClubEdit>;
   added: NewPlayer[];
@@ -49,8 +52,8 @@ export const NEW_ID0 = 9_000_000;
 export const POS_KEYS = ['GK', 'SW', 'D', 'DM', 'M', 'AM', 'ST', 'WB'] as const;
 export const SIDE_KEYS = ['L', 'C', 'R'] as const;
 
-export function emptyDb(name: string, base: DbBase, now = new Date().toISOString()): CustomDb {
-  return { id: `db${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, name, base, created: now, updated: now, players: {}, clubs: {}, added: [] };
+export function emptyDb(name: string, base: DbBase, now = new Date().toISOString(), ver?: DbVer): CustomDb {
+  return { id: `db${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, name, base, ...(base === 'original' && ver && ver !== '3.9.60' ? { ver } : {}), created: now, updated: now, players: {}, clubs: {}, added: [] };
 }
 
 export function changeCount(db: CustomDb): number {
@@ -107,7 +110,7 @@ export function sanitizeDb(raw: unknown): CustomDb | null {
     added.push({ ...e, id: a.id, first: e.first ?? '', last: e.last, dob: e.dob, nation: e.nation, club: e.club ?? 0, ca: e.ca, pa: e.pa });
   }
   const now = new Date().toISOString();
-  return { id: typeof d.id === 'string' ? d.id.slice(0, 40) : emptyDb('', d.base).id, name: d.name.slice(0, 60) || 'Database', base: d.base, created: str(d.created, 30) ?? now, updated: str(d.updated, 30) ?? now, players, clubs, added };
+  return { id: typeof d.id === 'string' ? d.id.slice(0, 40) : emptyDb('', d.base).id, name: d.name.slice(0, 60) || 'Database', base: d.base, ...(d.base === 'original' && DB_VERS.includes(d.ver as DbVer) && d.ver !== '3.9.60' ? { ver: d.ver as DbVer } : {}), created: str(d.created, 30) ?? now, updated: str(d.updated, 30) ?? now, players, clubs, added };
 }
 
 /** Spillerens ratings, som de ser ud efter ændringerne (null hvis databasen ikke har ratings) */
