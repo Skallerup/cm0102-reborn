@@ -90,6 +90,9 @@ export interface RoleInput {
   /** kun under kampen (arg3): kampspilleren og uret – rating- og konditionsleddet tages derfra */
   match?: { p: SubPlayer; ctx: QualityContext };
   data: RoleData;
+  /** 0x6e6007–0x6e608e (kun landsholdenes udtagelse 0x76c120 giver den): flag 0x100000 − min(5 · landskampe +0x22, 50); ellers flag 4 for rigtige spillere:
+   *  uden klub og hjemmeomdømme < 5000 − 30, med klub (leagueRep = klubbens turnering +0x57 → +0x69) + (leagueRep − 16) · 5 */
+  tail?: { caps: number; hasClub: boolean; leagueRep: number | null };
 }
 
 /** 0x6e2f20 – værdien af spilleren på pladsen (P · Q, se combineScore). */
@@ -189,6 +192,13 @@ export function roleScore(i: RoleInput): number {
     } else if (status === 7) b -= 20;
     if (i.match) b = ftol((1 - i.match.ctx.clock * 0.0008333333333333334) * b);
     Q += b;
+  }
+  if (i.tail) {
+    if (flags & 0x100000) Q -= Math.min(5 * (i.tail.caps & 0xff), 50);
+    else if (flags & 4 && real) {
+      if (!i.tail.hasClub) { if (W(rec, 9) < 5000) Q -= 30; }
+      else if (i.tail.leagueRep !== null) Q += ftol((i.tail.leagueRep - 16) * 5);
+    }
   }
   // 0x6e6092: en genereret spiller (id ≥ [0xae2364]) i et land med klubnationens +0x11c: Q − 70, P − 120
   let P2 = P;

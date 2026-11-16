@@ -30,7 +30,9 @@ import { addNews, gs } from './state';
 import { withNationFillers } from './cmPrerunMatches';
 import { registerPrerun } from './cmPrerun';
 import { intlHooks } from './hooks';
-import { callUpNews, intlState, playNation, setNationFillers, u21Squad, type IntlRow, type IntlTie } from './international';
+import { intlState, playNation, setNationFillers, u21Squad, type IntlRow, type IntlTie } from './international';
+import { cmIntlSquadDaily, initSquads, selectForFixture, type SelFixture } from './cmIntlSquad';
+import { cmFifaDaily, cmFifaInit } from './cmFifa';
 
 export const cmIntlOn = (g: GameState): boolean => cmActive(g) && !g.draft;
 
@@ -167,26 +169,38 @@ function arrange(g: GameState, d: string, entries: { cont: number }[]): void {
       break;
     }
   }
-  // CM 01/02 kalder truppen ind, når kampen er lagt (0x76bab0 – 14 dage før; venskabskampene lægges 12 dage før)
-  if (made.length && !inPrerun) {
-    const opp = new Map<number, number>();
-    for (const [h, a] of made) { opp.set(h, a); opp.set(a, h); }
-    callUpNews([...opp.keys()], opp);
-  }
+  void made;
 }
 
 /** add_fixture 0x5aa680 + 0x7e6720's U21-gren */
 function addFixture(g: GameState, f: CmIntlFix): void {
   const s = cmState(g);
   s.fix.push(f);
-  if (teamRep(g, f.h) < 2500 || teamRep(g, f.a) < 2500) return;
+  // add_fixture 0x5aa680 → 0x76bab0: truppen kaldes ind, når kampen ligger højst 14 dage frem (venskabskampene lægges 12 dage før; U21-kampen først)
+  const sel = () => { if (!inPrerun) selectForFixture(g, selFix(f), (n) => oppsOf(g, n, f.d)); };
+  if (teamRep(g, f.h) < 2500 || teamRep(g, f.a) < 2500) { sel(); return; }
   const y = +f.d.slice(0, 4);
   if (y % 4 === 0) {
     // Date(1, 2, 2000)/Date(1, 8, 2000): dagene i et skudår (60, 244) – fixturens dag i året
     const doy = Math.round((Date.UTC(y, +f.d.slice(5, 7) - 1, +f.d.slice(8, 10)) - Date.UTC(y, 0, 1)) / 86400000);
     if (doy > 60 && doy < 244) return;
   }
-  s.fix.push({ d: addDays(f.d, -1), h: f.h, a: f.a, u21: 1 });
+  const u: CmIntlFix = { d: addDays(f.d, -1), h: f.h, a: f.a, u21: 1 };
+  s.fix.push(u);
+  if (!inPrerun) selectForFixture(g, selFix(u), (n) => oppsOf(g, n, u.d, true));
+  sel();
+}
+
+const selFix = (f: CmIntlFix): SelFixture => ({ d: f.d, h: f.h, a: f.a, kind: 'friendly', slot: f.u21 ? 2 : 0 });
+
+/** 0x76d560: landets modstandere i kampen på `from` og de næste 13 dages kampe (ikke slutrunder) – samme slags hold */
+function oppsOf(g: GameState, n: number, from: string, u21?: boolean): number[] {
+  const to = addDays(from, 13), out: number[] = [];
+  const add = (h: number, a: number, d: string) => { if (d < from || d > to) return; if (h === n && !out.includes(a)) out.push(a); else if (a === n && !out.includes(h)) out.push(h); };
+  for (const f of g.intl?.cm?.fix ?? []) if (!!f.u21 === !!u21) add(f.h, f.a, f.d);
+  const q = g.intl?.qual;
+  if (!u21 && q?.cm && q.dates && q.sched) q.dates.forEach((d, r) => { for (const [h, a] of q.sched![r] ?? []) add(h, a, d); });
+  return out;
 }
 
 let inPrerun = false;
@@ -323,12 +337,9 @@ function cmEuroQualDay(g: GameState): void {
   if (g.date === addDays(EURO04_Q_DATES[0], -14) && !st.qual && !st.history.some((h) => h.name === 'euro' && h.year === 2004)) startEuroQual(g);
   const q = st.qual;
   if (!q?.cm || !q.dates || !q.sched) return;
+  // 0x76b100: kampene 14 dage frem → 0x76bab0
   const r = q.dates.indexOf(addDays(g.date, 14));
-  if (r >= 0) {
-    const opp = new Map<number, number>();
-    for (const [h, a] of q.sched[r]) { opp.set(h, a); opp.set(a, h); }
-    callUpNews([...opp.keys()], opp);
-  }
+  if (r >= 0) for (const [h, a] of q.sched[r]) selectForFixture(g, { d: q.dates[r], h, a, kind: 'euroq', slot: 0 }, (n) => oppsOf(g, n, q.dates![r]));
   const ri = q.dates.indexOf(g.date);
   if (ri >= 0) {
     for (const [h, a] of q.sched[ri]) {
@@ -391,5 +402,13 @@ function dutyNations(): number[] {
 
 // Friendly::update_for_date er en af turneringerne (0x5cc850's vtbl+0x14(dato, 1)): også i forkørslen – dage før starten lægger kampe efter den
 registerPrerun('comps1', (g, _day, iso) => { inPrerun = true; try { cmIntlFriendlyDay(g, iso); } finally { inPrerun = false; } });
-intlHooks.cmDay = () => { const g = gs(); cmIntlFriendlyDay(g, g.date); cmIntlPlayDay(g); };
+intlHooks.cmDay = () => {
+  const g = gs();
+  // NationalTeams (0x76a4e0/0x76a840) og FIFA_RANKINGS (0x58dd50) bygges ved spilstarten – hos os på den første dag
+  if (!g.intl?.cmSq) { cmFifaInit(g); initSquads(g); }
+  cmIntlSquadDaily(g);
+  cmFifaDaily(g);
+  cmIntlFriendlyDay(g, g.date);
+  cmIntlPlayDay(g);
+};
 intlHooks.dutyNations = dutyNations;

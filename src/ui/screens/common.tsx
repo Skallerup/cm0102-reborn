@@ -124,6 +124,8 @@ export function newsParams(n: NewsItem): Record<string, string | number> {
     p.extras = [p.strength ? t('scout.x.strength', { what: t(`scout.str.${p.strength}`) }) : '', p.skill ? t('scout.x.skill', { what: t(`scout.skill.${p.skill}`) }) : '',
       p.weakness ? t('scout.x.weakness', { what: t(`scout.weak.${p.weakness}`) }) : '', p.permit ? t('scout.x.permit') : ''].filter(Boolean).join(' ');
   }
+  // landsholdenes nyheder som originalen (cmIntlSquad.ts: 0x76e3b0, 0x76f370, 0x770d20)
+  if (n.key.startsWith('cmint.')) cmIntParams(n, p);
   return p;
 }
 
@@ -133,7 +135,25 @@ export function newsTitle(n: NewsItem) {
 
 /** Hvilken skabelon brødteksten bruger (nogle nyheder har varianter efter indholdet) */
 const SCOUT_EXP: Record<number, string> = { 365: '12m', 182: '6m', 91: '3m', 61: '2m', 30: '1m', 7: '1w' };
+/** "A & B & C" → "A, B and C" (navne og lande) */
+const andList = (s: string, f: (x: string) => string = (x) => x) => { const x = s.split(' & ').filter(Boolean).map(f); return x.length > 1 ? `${x.slice(0, -1).join(', ')} ${t('common.and')} ${x.at(-1)}` : x[0] ?? ''; };
+const numWord = (v: number) => { const w = has(`num.${v}`) ? t(`num.${v}`) : String(v); return w.charAt(0).toUpperCase() + w.slice(1); };
+function cmIntParams(n: NewsItem, p: Record<string, string | number>): void {
+  for (const k of ['nation', 'opp'] as const) if (typeof p[k] === 'string' && p[k]) p[k] = natName(String(p[k]));
+  if (typeof p.opps === 'string') p.opps = andList(p.opps, natName);
+  for (const k of ['list', 'others'] as const) if (typeof p[k] === 'string') p[k] = andList(String(p[k]));
+  if (typeof n.params?.n === 'number') p.num = numWord(n.params.n);
+  if (typeof n.params?.n1 === 'number') p.num1 = numWord(n.params.n1);
+  if (typeof p.fix === 'string') p.fix = t(`cmint.fix.${p.fix}`);
+  if (n.key.startsWith('cmint.r.') && typeof p.body === 'string') {
+    p.main = t(`cmint.r.${p.body}`, p);
+    p.more = typeof p.tail === 'string' && p.tail ? t(`cmint.r.${p.tail}`, p) : '';
+  }
+}
+
 function bodyKey(n: NewsItem): string {
+  // landsholdenes nyheder (cmIntlSquad.ts): brødteksten er valgt i spillet
+  if (n.key.startsWith('cmint.') && typeof n.params?.body === 'string') return n.key.startsWith('cmint.r.') ? 'cmint.r.body' : `cmint.b.${n.params.body}`;
   // CM 01/02 (0x5982 ff.): "Kim Rømer's contract is due to expire in twelve months time." – efter dagene til udløbet (ældre nyheder uden days: datoen)
   if (n.key === 'scout.contractReminder' && typeof n.params?.days === 'number' && SCOUT_EXP[n.params.days]) return `scout.contractReminder.d${SCOUT_EXP[n.params.days]}`;
   // CM 01/02's priser (cmAwards.ts): brødteksten er valgt i spillet (0x767580 / 0x930880)

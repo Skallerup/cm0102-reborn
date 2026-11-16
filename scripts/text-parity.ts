@@ -157,9 +157,10 @@ export function analyze(): Result {
     if (letters < allow.minLetters) { res.allowed++; continue; }
     res.checked++;
     // genitiv efter en pladsholder ("{player}'s loan") = originalens "<navn>{s} loan" (blob'en tømmer {s})
-    const segs = text.replace(/\b\d+\b/g, '{n}').replace(/(\{[^}]*\})['’]s\b/g, '$1').replace(/(\{[^}]*\})\s*p\/w\b/g, '$1').split(/\{[^}]*\}/).map(norm).filter((s) => s.length > 0);
-    if (!segs.length) { res.allowed++; res.checked--; continue; }
-    if (found(blob, segs)) { res.original++; continue; }
+    // hvert afsnit for sig: exe'ens strengudtræk deler originalens tekster ved linjeskiftene (fx 0x770d20's "…\n\nMan of the match …")
+    const paras = text.split(/\n+/).map((t) => t.replace(/\b\d+\b/g, '{n}').replace(/(\{[^}]*\})['’]s\b/g, '$1').replace(/(\{[^}]*\})\s*p\/w\b/g, '$1').split(/\{[^}]*\}/).map(norm).filter((s) => s.length > 0)).filter((x) => x.length);
+    if (!paras.length) { res.allowed++; res.checked--; continue; }
+    if (paras.every((segs) => found(blob, segs))) { res.original++; continue; }
     res.non[k] = text;
     const area = k.split('.')[0];
     res.areas[area] = (res.areas[area] || 0) + 1;

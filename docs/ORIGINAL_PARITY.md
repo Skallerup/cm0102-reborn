@@ -115,6 +115,18 @@ View Finances (der læser Bonuses fra blokken) viste 0 bonusser, selv om pengene
    30/27 mod 24/24 (14/11), 25/21 mod 20/18 (23/3) – resten er databasestørrelsen (oraklet: størrelse 2) og tilfældighederne. Åbent: Afrikas og
    CONCACAFs datoer (22/7, 19/8, 30/9, 20/10, 18/11) giver 9–24 kampe mod oraklets 2–3 – i originalen er landene optaget af VM-zonernes
    2000-kampagne (0x90f210/0x9149f0 "kører" i 2001, men oraklet logger ingen kampe i 391/394); ikke porteret.
+   **Etape 2 delvis 16/11** (`src/game/cmIntlSquad.ts`, `src/game/cmFifa.ts`, tests/cmIntlSquad.test.ts, `scripts/cm-intl-squads.ts`): **porteret** udtagelsen
+   (init_tables 0x76a840 – puljestørrelser og spilstartens trupper; puljerne 0x76abf0 1/1, 15/4, 1/8 efter hjemmeomdømme i fire grupper 0x76d810; 0x76bab0 ved
+   kampens oprettelse og 14 dage før, forlængelse af en trup ≤ 14 dage fra slutdatoen; select_squad 0x76c120 – skabelonerne 26/24/22 masker, 0x6e2000 med
+   0x6e2f20-flag 0x814/0x2100914/0x2000814 inkl. halen 0x6e6007 (`RoleInput.tail`), verdensdels-/omdømmereglerne, andet statsborgerskab, Australiens grænser),
+   nyhederne 0x76e0b0/0x76e3b0 (0x1d), 0x76f1a0 (0x1e, menneskets landshold) og 0x7706c0/0x770d20 (0x24, alle 106 tekster med originalens valgtræ,
+   rand(2) af cmRand), FIFA_RANKINGS (0x58dd50, 0x58cf70, 0x58d460, 0x58dfc0, 0x58e190; continent.dat +0xbe). ***Estimeret*:** 0x53b620(+0x3d), 0x547d30,
+   0x55d270, [this+0x24]/kontrakt +0x3d i venskabskampreglen, nøglelandet 0x9cf434, 23. slutrundemaske, turneringsklassen 0x48dd70 pr. vores turneringer,
+   rundenavnet i teksterne for kvalifikation/slutrunder, koefficienten med én decimal. **Mangler stadig:** afbud/erstatninger 0x775cd0/0x775f90 og
+   nyhederne 0x20/0x21/0x22, landskampe i gittermotoren (originalens kampstart for landshold, fyldspillerne 0x90dc66), VM 2002/Afrikamesterskabet/Copa
+   med HostCountry-datoerne (0x5f9970: rækkens dato = dag i året for finalen, flyttes rand(−35..34) 0x5fa664; VM 2002 = 10/7-1997-dagen; 0x92c290 +
+   tabellen 0x92ccd0 ikke læst), 'B'-landskampe (0x7e6720's B-gren kræver 0x542740 → 0x540a50 – landets B-hold, som ikke findes i world-filerne),
+   landstrænerjob og fyring (0x775000/0x775220 – forbundets tillid), Confederations Cup/OFC/OL, VM-zonerne fra 2004.
 5. Sæsonskiftet og pensioneringer (0x7a7f20, INT_RETIREMENT), end_season pr. nation.
 6. ~~Reservekampe (fixtures −2, 0x84be20)~~ – **porteret 16/11** (cmReserves.ts, noter ~/cm0102-engine/notes/reserve-matches.md): originalen har
    INGEN reservekampe for klubber i de spilbare ligaer ("Reserve"-turneringen [0x9cf684] har ingen klubber/kampe; reserveskærmene viser altid

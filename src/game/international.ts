@@ -16,6 +16,8 @@ import type { MiniReport, Player } from './types';
 import { packReport } from './miniReport';
 import { cmActive, recordPlayerMatch } from './cmPlayerData';
 import { intlHooks } from './hooks';
+import { cmSquadOf, cmIntlMatchReport, selectFinals, type FixName } from './cmIntlSquad';
+import { cmFifaRanking, cmFifaRecord, type FifaComp } from './cmFifa';
 
 export interface IntlRow { n: number; p: number; w: number; d: number; l: number; gf: number; ga: number; pts: number }
 export interface IntlTie { stage: string; a: number; b: number; hg?: number; ag?: number; pens?: boolean; winner?: number }
@@ -53,6 +55,10 @@ export interface IntlState {
   plan?: { date: string; friendlies: [number, number][] };
   /** (ægte tilstand) originalens landskampkalender – cmIntl.ts */
   cm?: import('./cmIntl').CmIntlState;
+  /** (ægte tilstand) originalens udtagelse (cmIntlSquad.ts – national_teams.cpp) */
+  cmSq?: import('./cmIntlSquad').CmIntlSquads;
+  /** (ægte tilstand) originalens FIFA-rangliste (cmFifa.ts) */
+  cmFifa?: import('./cmFifa').CmFifa;
 }
 
 
@@ -99,10 +105,23 @@ export function nationSquad(n: number): Player[] {
     const extra = (byNation().get(n) ?? []).filter((p) => !picked.includes(p)).slice(0, Math.max(0, 20 - picked.length));
     return [...picked, ...extra];
   }
+  // ægte tilstand (original DB): originalens udtagelse 0x76c120 (cmIntlSquad.ts) – skadede melder afbud
+  const cq = cmActive(g) && !g.draft ? cmSquadOf(g, n, 0) : null;
+  if (cq) return topUp(cq.ids.map((id) => g.players[id]).filter((p): p is Player => !!p && !p.injury), byNation().get(n) ?? []);
   const all = byNation().get(n) ?? [];
   const gk = all.filter((p) => naturalRole(p) === 'GK').slice(0, 3);
   const out = all.filter((p) => naturalRole(p) !== 'GK').slice(0, 23 - gk.length);
   return [...gk, ...out];
+}
+
+/** (ægte tilstand) en udtaget trup med for få spillere eller uden målmand (afbud – originalens erstatninger 0x775f90 er ikke porteret, små lande) fyldes op
+ *  af landets øvrige spillere og fyldspillerne (kampmotoren kræver en målmand) – se cmIntlSquad.ts' filhoved */
+function topUp(sq: Player[], pool: Player[]): Player[] {
+  if (sq.length >= 16 && sq.some((p) => naturalRole(p) === 'GK')) return sq;
+  const out = sq.slice();
+  if (!out.some((p) => naturalRole(p) === 'GK')) { const gk = pool.find((p) => naturalRole(p) === 'GK' && !out.includes(p)); if (gk) out.push(gk); }
+  for (const p of pool) { if (out.length >= 16) break; if (!out.includes(p)) out.push(p); }
+  return out;
 }
 
 /** Landets styrke: snit af de 16 bedste (bruges til udvælgelse af deltagere og seedning) */
@@ -124,17 +143,22 @@ export function playNation(home: number, away: number, kind: IntlResult['kind'],
   const u21 = kind === 'u21';
   const cm = cmFitOn(g);
   const r = new Rng(hash(g.seed, home, away, Number(g.date.replace(/-/g, '')), u21 ? 21 : 0));
+  const caps: [number | undefined, number | undefined] = [undefined, undefined];
   const team = (n: number) => {
     // klubbens reservehold og karantæner gælder ikke på landsholdet (før kunne et U21-hold af reservespillere stille med
     // så få, at der efter skader ingen var tilbage på banen – MatchSim fandt ingen målmand)
     const real = u21 ? u21Squad(n) : nationSquad(n);
     cmFitSync(g, real);                                                       // konditionsmodulet (ægte tilstand, original DB): 0x62c590 før kampen
     const sq = real.map((p) => ({ ...p, reserves: false, banned: 0, attrs: p.attrs.slice(), condition: cm ? p.condition : Math.max(80, p.condition) }) as Player);
-    return { club: -1 - n, tactic: autoSelect(newTactic('4-4-2'), sq), players: new Map(sq.map((p) => [p.id, p])) };
+    const tactic = autoSelect(newTactic('4-4-2'), sq);
+    caps[n === home ? 0 : 1] = tactic.captain;
+    return { club: -1 - n, tactic, players: new Map(sq.map((p) => [p.id, p])) };
   };
   const sim = new MatchSim(team(home), team(away), { commentary: false, aiSubs: [true, true], importance: kind === 'friendly' ? 0.3 : 1, neutral: kind !== 'friendly', ...(needsWinner ? { needsWinner: () => true } : {}), date: g.date }, r);
   const rep = sim.runToEnd();
   const [hs, as] = rep.stats;
+  // ægte tilstand (original DB): klubbernes nyhed efter kampen 0x7706c0 og FIFA-ranglisten 0x58cf70 (cmIntlSquad.ts, cmFifa.ts) i stedet for spillets egne
+  const cmRep = cmActive(g) && !g.draft && !u21;
   // 0x62c080 også for landskampe: kampkondition, træthed og skader (venskabskampe halvt) – i stedet for spillets egne nedenfor
   if (cm) cmFitMatch(g, rep, kind !== 'friendly', -1);
   for (const line of rep.players) {
@@ -149,6 +173,7 @@ export function playNation(home: number, away: number, kind: IntlResult['kind'],
     p.stats.intApps = (p.stats.intApps ?? 0) + 1;
     p.stats.intGoals = (p.stats.intGoals ?? 0) + line.goals;
     // kampreferat til spillerens klub (CM 01/02: "scored", "hat-trick", "sent off", "man of the match")
+    if (cmRep) continue;
     const pk = line.goals >= 3 ? 'intl.p.hattrick' : line.red ? 'intl.p.red' : line.goals > 0 ? 'intl.p.scored' : rep.mom === p.id ? 'intl.p.mom' : '';
     if (pk && isHumanClub(p.club)) asOwner(p.club, () => addNews({ cat: 'general', key: pk, params: { player: `${p.first} ${p.last}`.trim(), nation: g.nations[p.nation]?.name ?? '', opp: g.nations[p.nation === home ? away : home]?.name ?? '', n: line.goals }, link: { kind: 'player', id: p.id } }));
     if (cm) continue;
@@ -164,7 +189,12 @@ export function playNation(home: number, away: number, kind: IntlResult['kind'],
   const st = state();
   st.results = [res, ...st.results].slice(0, 150);
   if (u21) return res;
-  updateFifa(home, away, res.hg, res.ag, kind);
+  if (cmRep) {
+    const fc: FifaComp = kind === 'friendly' ? 'friendly' : kind === 'wc' ? 'wc' : kind === 'euro' ? 'euro' : kind === 'wcq' ? 'world' : kind === 'euroq' ? 'qual' : 'finals';
+    cmFifaRecord(g, home, away, res.hg, res.ag, fc, kind === 'friendly' || kind === 'euroq' || kind === 'wcq', g.date);
+    const fx: FixName = kind === 'friendly' ? 'friendly' : kind === 'euroq' || kind === 'wcq' ? 'qual' : !stage ? 'group' : (stage as FixName);
+    cmIntlMatchReport(g, rep, home, away, res.hg, res.ag, fx, caps);
+  } else updateFifa(home, away, res.hg, res.ag, kind);
   // brugerens landshold: resultat og statistik
   forEachHuman(() => {
     const nj = g.manager.national;
@@ -264,7 +294,8 @@ function startTournament(name: 'wc' | 'euro', year: number) {
   for (const n of field) t.table[n] = { n, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 };
   state().tournament = t;
   state().qual = undefined;
-  callUpNews(field, new Map(), name);
+  if (cmActive(g) && !g.draft) selectFinals(g, field, name, `${year}-${GROUP_DAYS[0]}`, `${year}-${KO_DAYS.F}`);
+  else callUpNews(field, new Map(), name);
   forEachHuman(() => addNews({ cat: 'general', key: `intl.start.${name}`, params: { year, n: field.length } }));
 }
 
@@ -289,7 +320,8 @@ function startContinental(name: 'copa' | 'afcon' | 'asian', year: number) {
   for (const n of field) t.table[n] = { n, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 };
   const st = state();
   st.cont = [...(st.cont ?? []).filter((x) => x.name !== name), t];
-  callUpNews(field, new Map(), name);
+  if (cmActive(g) && !g.draft) selectFinals(g, field, name, `${year}-${c.days.g[0]}`, `${year}-${c.days.ko.F}`);
+  else callUpNews(field, new Map(), name);
   forEachHuman(() => addNews({ cat: 'general', key: `intl.start.${name}`, params: { year, n: field.length } }));
 }
 
@@ -348,6 +380,8 @@ const rowsOf2 = (table: Record<number, IntlRow>, grp: number[]) => grp.map((n) =
 /** U21-landsholdet: de 20 bedste spillere på 21 år eller yngre */
 export function u21Squad(n: number): Player[] {
   const g = gs();
+  const cq = cmActive(g) && !g.draft ? cmSquadOf(g, n, 2) : null;
+  if (cq) return topUp(cq.ids.map((id) => g.players[id]).filter((p): p is Player => !!p && !p.injury), (byNation().get(n) ?? []).filter((p) => ageOn(p.dob, g.date) <= 21));
   const all = (byNation().get(n) ?? []).filter((p) => ageOn(p.dob, g.date) <= 21);
   // to målmænd og 18 markspillere (uden målmand kan kampen ikke spilles)
   const gk = all.filter((p) => naturalRole(p) === 'GK').slice(0, 2);
@@ -512,6 +546,8 @@ export function resignNational(): string {
 
 /** FIFA-point: start fra originalens koefficient (eller landets styrke), opdateret efter hver landskamp som Elo */
 export function fifaPoints(n: number): number {
+  const g = gs();
+  if (cmActive(g) && !g.draft) return cmFifaRanking(g).find((r) => r.n === n)?.pts ?? 0;
   const st = state();
   st.fifa ??= {};
   if (st.fifa[n] === undefined) st.fifa[n] = Math.round(st.info?.[n]?.fifa || nationStrength(n) * 5);
@@ -529,6 +565,7 @@ function updateFifa(home: number, away: number, hg: number, ag: number, kind: In
 /** FIFA-ranglisten: alle nationer med en trup, flest point først */
 export function fifaRanking(): { n: number; pts: number }[] {
   const g = gs();
+  if (cmActive(g) && !g.draft) return cmFifaRanking(g).filter((r) => nationSquad(r.n).length >= 11 || state().info?.[r.n]).map((r) => ({ n: r.n, pts: Math.round(r.pts * 100) / 100 }));
   return g.nations.map((_, n) => n).filter((n) => nationSquad(n).length >= 11 || state().info?.[n]).map((n) => ({ n, pts: fifaPoints(n) })).sort((x, y) => y.pts - x.pts);
 }
 
