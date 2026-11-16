@@ -1,0 +1,98 @@
+name: Udgiv staging → live
+
+# Hvert push til staging testes her (vitest delt i 4, build, e2e klassisk med den originale database og den almindelige e2e),
+# og er alt grønt, spoles main frem til samme commit – så udgiver Vercel cm0102reborn.com. Ejerens ønske 16/11: rettelser
+# skal ud på staging og live i samme omgang, og lokalt testes kun det berørte (tsc + de berørte tests).
+on:
+  push:
+    branches: [staging]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-staging
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx vitest run --dir tests --testTimeout=900000 --shard=${{ matrix.shard }}/4
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+
+  e2e:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        engine: [original, default]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: e2e (${{ matrix.engine }})
+        run: |
+          if [ "${{ matrix.engine }}" = "original" ]; then E2E_ENGINE=original node scripts/e2e.mjs klassisk; else npm run e2e; fi
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-shots-${{ matrix.engine }}
+          path: e2e-shots
+
+  promote:
+    # alt grønt → main = denne commit (kun fremspoling; er main gået sine egne veje, stopper jobbet)
+    needs: [test, build, e2e]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: |
+          git fetch origin main
+          git push origin "${{ github.sha }}:refs/heads/main"
+
+  indexnow:
+    # push med GITHUB_TOKEN starter ikke andre workflows, så IndexNow køres her efter udgivelsen
+    needs: [promote]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Vent på at udgivelsen er live
+        run: |
+          for i in $(seq 1 60); do
+            live=$(curl -s --max-time 10 https://cm0102reborn.com/build.json | sed -n 's/.*"sha":"\([0-9a-f]*\)".*/\1/p')
+            echo "forsøg $i: live=$live"
+            if [ "$live" = "${{ github.sha }}" ]; then exit 0; fi
+            sleep 20
+          done
+          echo "udgivelsen blev ikke live inden for 20 min – springer over"; exit 1
+      - run: npx --yes tsx scripts/indexnow.ts --remote --days 3

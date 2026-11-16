@@ -1,9 +1,8 @@
 name: Test og byg
 
 # Siden udgives af Vercel (cm0102reborn.com); her tjekkes kun at tests og build går igennem.
+# Udgivelser går via release.yml (push til staging → test → main). Denne kører kun på pull requests og manuelt.
 on:
-  push:
-    branches: [main]
   pull_request:
   workflow_dispatch:
 

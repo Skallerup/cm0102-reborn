@@ -7,14 +7,17 @@ og læg ændringen i samme push.
 - Svar på dansk. Ejeren sender skærmbilleder fra CM 01/02 som spec (nogle gange som filer på skrivebordet).
 - **Staging først:** udvikl på branchen `staging` → push → https://staging.cm0102reborn.com (Vercel Preview, kræver
   login på Vercel). Når ejeren har godkendt det på staging: merge `staging` → `main`.
-- "Skyd live" = merge/push til `main`. Vercel udgiver cm0102reborn.com; GitHub Actions kører kun test og build.
+- **Udgivelse (fra 16/11, ejerens ønske):** push til `staging` → `.github/workflows/release.yml` kører vitest (4 dele), build og e2e
+  (klassisk med original DB + almindelig) → er alt grønt, spoles `main` frem til samme commit, og Vercel udgiver cm0102reborn.com
+  (staging og live i samme omgang). Lokalt kun tsc + de berørte tests før push; se resultatet med `gh run list -w release.yml`.
+  Fejler en kørsel, går intet live – ret og push igen. Push aldrig direkte til main.
 - Redis oprettes altid med `makeRedis()` fra `api/_lib/redis.ts`. På staging (VERCEL_ENV=preview) får alle nøgler
   præfikset `stg:`, så staging deler databasen uden at røre produktionens data. Brug aldrig `new Redis()` direkte,
   og hverken `pipeline`/`multi`/`eval` (understøttes ikke med præfiks). Staging har sin egen `ADMIN_TOKEN` (Preview);
   login-mails, Discord og den ugentlige mail er kun sat op i produktionen.
 - Alt er gratis: betaling/Stripe/supportere er fjernet (2026-11-05). `season.ts` kalder stadig `rng.chance(0.04)` for
   supporter-regens, så tilfældighederne i gamle spil er uændrede – lad det stå.
-- Node: `export PATH="$HOME/.local/node/bin:$PATH"`. Tjek altid `npm run build` og `npx vitest run` før push.
+- Node: `export PATH="$HOME/.local/node/bin:$PATH"`. Før push: `npx tsc --noEmit -p tsconfig.app.json` og de berørte testfiler; CI tager resten.
 - `npm run e2e` (scripts/e2e.mjs) klikker igennem klassisk og moderne udseende i Chromium: alle hovedskærme, taktik
   (byt, flyt pladser, instruktioner, skift udseende) og en hel kamp. Kører også i CI. Nye skærme/knapper: udvid testen.
 - Ejeren spiller originalen lokalt ("CM 01-02 Bosman Edition.app"). Claude kan selv tage billeder af vinduet med
