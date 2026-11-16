@@ -321,7 +321,7 @@ function NewGame({ challenge, onBack, setBusy, setProg, online, onDraft, initial
     setBusy(online ? t('mp.creating') : t('start.creating'));
     const opts = {
       managerName: name.trim(), managerNation: clubNation ?? 0, clubId: club, activeNations: [...active],
-      lang: getLang(), masking, seed, challenge, mode: (retro ? 'authentic' : 'extended') as 'authentic' | 'extended',
+      lang: getLang(), masking, seed, challenge, mode: (retro || !modernOn() ? 'authentic' : 'extended') as 'authentic' | 'extended', // uden det moderne er alt det originale (ejeren 16/11)
     };
     // nyt spil: nulstil sidemenuen, så "Holdet" er foldet ud fra start (resten huskes derefter)
     try { localStorage.setItem(GROUP_KEY, JSON.stringify(NAV_CLOSED_DEFAULT)); } catch { /* ignorer */ }
