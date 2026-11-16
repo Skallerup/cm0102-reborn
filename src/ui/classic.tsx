@@ -19,6 +19,7 @@ import { compLogoUrl } from './logos';
 import { realCompName } from '../i18n/comps';
 import { titleLogo } from './classicOptions';
 import { matchDayComps } from './screens/MatchDayClassic';
+import { friendlyInvite, friendlyInviteFor } from './screens/FriendlyClassic';
 import { authentic } from '../game/rules';
 import { cmActive } from '../game/cmPlayerData';
 
@@ -244,7 +245,7 @@ const HUBS: Partial<Record<ScreenName, Hub>> = {
   // den turnering, der vises (rullemenuen gemmer valget i route.state.cid – route.id er den, man kom fra)
   competitions: { colors: (_g, r) => compColors(shownComp(r)) },
   // "Championship Manager" (Nations & Clubs, CM 01/02): rød titel
-  nations: { title: () => t('cl.nc.title'), colors: () => ({ bg: '#e8322a', fg: '#ffffff' }) },
+  nations: { title: (_g, r) => (r.state?.ncfr ? t('cl.fr.choose') : t('cl.nc.title')), colors: () => ({ bg: '#e8322a', fg: '#ffffff' }) },
   ranking: { title: () => t('cl.go.hall'), colors: () => ({ bg: '#e8322a', fg: '#ffffff' }) },
   mgrstatus: { title: () => t('cl.nc.title'), colors: () => ({ bg: '#e8322a', fg: '#ffffff' }) },
   leagues: { title: () => t('cl.nc.title'), colors: () => ({ bg: '#e8322a', fg: '#ffffff' }) },
@@ -562,7 +563,10 @@ export function ClassicHead({ title, children, action, menu, club }: { title: Re
         {menu !== false && (hub?.tabs === CLUB_TABS || route.name === 'player') && <TitleMenu clubId={hub?.club ? hub.club(g, route) : undefined} playerId={route.name === 'player' && route.id !== undefined ? Number(route.id) : undefined} />}
         {logoClub ? <span className="cx-title-logo"><Crest id={logoClub} size={44} />{titleLogo() && <KitBrand club={logoClub} />}</span> : logoNation !== undefined ? <span className="cx-title-logo"><NationCrest nation={logoNation} size={44} /></span> : compUrl ? <span className="cx-title-logo"><img src={compUrl} alt="" width={44} height={44} style={{ objectFit: 'contain' }} /></span> : null}
         <h2>{text}</h2>
-        {action ? <div className="cx-action">{action}</div> : setup && hub?.sub === CLUB_SUB ? <div className="cx-action"><button className="cx-take" onClick={setup.takeControl} data-take>{t('cxs.takeControl')}</button></div> : null /* Print er fjernet overalt (ejerens ønske 13/11) */}
+        {action ? <div className="cx-action">{action}</div> : setup && hub?.sub === CLUB_SUB ? <div className="cx-action"><button className="cx-take" onClick={setup.takeControl} data-take>{t('cxs.takeControl')}</button></div>
+          // CM 01/02 0x482a40: "Invite Club" på en anden klubs skærm, mens en venskabskamp/turné venter på en modstander
+          : !setup && hub?.sub === CLUB_SUB && logoClub && friendlyInviteFor(g, logoClub) ? <div className="cx-action"><button className="cx-take cx-invite-club" onClick={() => void friendlyInvite(g, logoClub)}>{t('cl.fr.inviteClub')}</button></div>
+          : null /* Print er fjernet overalt (ejerens ønske 13/11) */}
       </div>
       {tabs.length ? <ButtonRow items={tabs} className="cx-tabrow" /> : <div className="cx-tabslot" ref={slotRef} />}
       {children && <div className="cx-tools">{children}</div>}

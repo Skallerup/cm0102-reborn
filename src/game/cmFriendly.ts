@@ -10,21 +10,23 @@
 //             to eller flere → 0x5c4040: datoen i vinduet, kampene hver anden dag hos modstanderen (0x5c6f00 flag 0: hjemme = modstanderen)
 //   0x5c4770  hjemlige: pr. klub (samme filtre) niveau omdømme/1000 + (rand(3) + 1, 3 → 2 ved rand(4) = 0), rand(3) + 4 kampe mod 0x5c4cb0's
 //             modstandere, 0x5c4380: datoen i begges vinduer, hjemme = det svageste hold (niveau +5); listen +0x34d8 (sorteret på dato)
-// Friendly::process_pending 0x5c2ae0 (dagligt): den hjemlige kamp en uge før datoen → tilbuddet 0x5c6f00 → kampen.
-// *estimeret*: tilbuddets svar (0x5c5570/0x5c5f40 – computerens og menneskets klub siger altid ja), ledigheden 0x5c75a0/0x5c6b70 (ingen anden kamp
-// for klubben dagen før, samme dag eller dagen efter), [0x9cf6f8] = Intertoto (cmClubEuro 330), bsearch-startpladsen i 0x5c4cb0 (første med
-// niveauet). Modstanderens trup: originalen fylder trupper med for få spillere op med genererede spillere før kampen (cmVirtual.ts).
+// Friendly::process_pending 0x5c2ae0 (dagligt): den hjemlige kamp en uge før datoen → begge klubbers dag 0x5c75a0 = 1 → tilbuddet 0x5c6f00
+// (arrangøren = den planlæggende klub) → 0x5c5570; svaret 0x5c5f40 efter omdømmet samme opdatering (cmFriendlyOffers.ts) → kampen.
+// Turnéernes kampe går samme vej (0x5c4040 → 0x5c6f00(klub, dato, modstander, ude) → 0x5c5570). Er den indbudte et menneske, får han
+// nyheden "… friendly proposal" og svarer selv (Respond – invitationsskærmen 0x4744b0).
+// *estimeret*: [0x9cf6f8] = Intertoto (cmClubEuro 330), bsearch-startpladsen i 0x5c4cb0 (første med niveauet), turnéens ledighed (0x5c6b70
+// for begge klubber). Modstanderens trup: originalen fylder trupper med for få spillere op med genererede spillere før kampen (cmVirtual.ts).
 import type { GameState } from './types';
 import { cmActive, cmRand, clubRepMem } from './cmPlayerData';
 import { dayNum, seasonRow } from './cmFitness';
 import { cmClubEuro } from './cmFitnessGame';
 import { CM_NATION_FR } from './data/cmPreseason';
 import { registerPrerun } from './cmPrerun';
-import { newFixture } from './competitions';
 import { fixturesOn } from './state';
 import { isHumanClub } from './humans';
+import { FRIENDLY_COMP, cmFrAddMatch, cmFrDateStatus, cmFrSend, cmFrUpdate, setFrPrerun } from './cmFriendlyOffers';
 
-export const FRIENDLY_COMP = 'FRIENDLY';
+export { FRIENDLY_COMP };
 export const isCmFriendly = (comp: string | undefined) => comp === FRIENDLY_COMP;
 export const cmFriendlyOn = (g: GameState) => cmActive(g) && !g.draft;
 
@@ -60,16 +62,18 @@ function rows(g: GameState, today: number): { nation: number; start: number; end
   });
 }
 
-/** en kamp for klubben dagen før, samme dag eller dagen efter (*estimeret* for 0x5c75a0/0x5c6b70/0x5acbe0) */
+/** 0x5c6b70(dato, klub, 0): en kamp for klubben dagen før, samme dag eller dagen efter (0x5acbe0) */
 function busyDay(g: GameState, club: number, d: number): boolean {
   for (let k = -1; k <= 1; k++) for (const id of fixturesOn(isoOf(d + k))) { const f = g.fixtures[id]; if (f && (f.home === club || f.away === club)) return true; }
   return false;
 }
 
-function addFriendly(g: GameState, home: number, away: number, d: number): boolean {
-  if (busyDay(g, home, d) || busyDay(g, away, d)) return false;
-  const wd = new Date(d * 86400000).getUTCDay();
-  newFixture(FRIENDLY_COMP, isoOf(d), home, away, 1, { slot: wd === 0 || wd === 6 ? 1 : 2 });       // 0x5af2f0: England lør/søn 1, ellers 2
+/** turnéens kamp: 0x5c6b70 (ledig) → 0x5c6f00(klub, dato, modstander, ude) → 0x5c5570 */
+function tourMatch(g: GameState, club: number, opp: number, d: number): boolean {
+  if (busyDay(g, opp, d) || busyDay(g, club, d)) return false;
+  const m = cmFrAddMatch(g, club, d, opp, false);
+  if (!m) return false;
+  cmFrSend(g, m);
   return true;
 }
 
@@ -174,7 +178,7 @@ export function cmFriendlyPlan(g: GameState, today: number): void {
     let d = 0;
     for (let k = 0; k < 5; k++) { d = today + e + rand(f - e); if (!r.busy?.length) break; }   // 0x5c4162: et optaget datosæt giver altid et nyt forsøg (sic)
     for (const o of opps) {
-      if (addFriendly(g, o.club, r.club, d)) { (r.busy ??= []).push(d); (o.busy ??= []).push(d); }
+      if (tourMatch(g, r.club, o.club, d)) { (r.busy ??= []).push(d); (o.busy ??= []).push(d); }
       d += 2;
     }
   }
@@ -198,7 +202,7 @@ export function cmFriendlyPlan(g: GameState, today: number): void {
           if (e >= f) continue;
           const d = today + e + rand(f - e);
           if (busyNear(h, d) || busyNear(a, d)) continue;
-          pending.push({ d: isoOf(d), h: h.club, a: a.club });
+          pending.push({ d: isoOf(d), h: h.club, a: a.club, o: r.club });
           (h.busy ??= []).push(d); (a.busy ??= []).push(d);
           link(r, o);
         }
@@ -209,7 +213,7 @@ export function cmFriendlyPlan(g: GameState, today: number): void {
   pending.sort((x, y) => x.d.localeCompare(y.d));                                             // qsort 0x778e90
 }
 
-/** 0x5c2ae0: de hjemlige venskabskampe en uge før datoen bliver til kampe */
+/** 0x5c2ae0: de hjemlige venskabskampe en uge før datoen: begge klubbers dag (0x5c75a0) skal være ledig → tilbuddet fra arrangøren */
 function processPending(g: GameState, today: number): void {
   const list = g.cmFrPending;
   if (!list?.length) return;
@@ -217,7 +221,12 @@ function processPending(g: GameState, today: number): void {
   const keep: typeof list = [];
   for (const p of list) {
     if (p.d > target) { keep.push(p); continue; }
-    if (p.d === target && g.clubs[p.h] && g.clubs[p.a]) addFriendly(g, p.h, p.a, today + 7);
+    if (p.d !== target || !g.clubs[p.h] || !g.clubs[p.a]) continue;
+    const d = today + 7;
+    if (cmFrDateStatus(g, p.h, d, [], false, today).s !== 1 || cmFrDateStatus(g, p.a, d, [], false, today).s !== 1) continue;
+    const o = p.o ?? p.h;
+    const m = o === p.h ? cmFrAddMatch(g, p.h, d, p.a, true) : cmFrAddMatch(g, o, d, p.h, false);
+    if (m) cmFrSend(g, m);
   }
   g.cmFrPending = keep;
 }
@@ -229,7 +238,8 @@ export function cmFriendlyDay(g: GameState, today = dayNum(g.date)): void {
   const start = dayNum(g.cmFitStart ?? g.date);
   if ((doy === 174 || doy === 2) && start <= today + 56) cmFriendlyPlan(g, today);
   processPending(g, today);
+  cmFrUpdate(g, today);
 }
 
 // forkørslen 0x5cc850: turneringernes vtbl+0x14(dato, 1) ved tidspunkt 2
-registerPrerun('comps1', (g, day) => { inPrerun = true; try { cmFriendlyDay(g, day); } finally { inPrerun = false; } });
+registerPrerun('comps1', (g, day) => { inPrerun = true; setFrPrerun(true); try { cmFriendlyDay(g, day); } finally { inPrerun = false; setFrPrerun(false); } });

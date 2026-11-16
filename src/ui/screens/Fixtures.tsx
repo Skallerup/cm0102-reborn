@@ -7,10 +7,12 @@ import type { Fixture } from '../../game/types';
 import { compName, dateFmt, money, t } from '../../i18n';
 import { ClubLink, Crest, Modal, Panel } from '../components';
 import { isRetro } from '../theme';
-import { useGame, useNav } from '../core';
+import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
 import { CxDrop, cxShortDate } from '../classic';
 import { authentic } from '../../game/rules';
+import { cmFriendlyOn } from '../../game/cmFriendly';
+import { FriendlyDates, FriendlyTourClubs, FriendlyTourNations, cmFrCancelRow, cmFrCancellable, cmFrFixtureRows } from './FriendlyClassic';
 
 export function stageLabel(f: Fixture): string {
   if (!f.stage) return `${t('fix.round')} ${f.round}`;
@@ -44,7 +46,11 @@ export function ClassicFixtures({ clubId, embedded }: { clubId?: number; embedde
   // CM 01/02: Cancel aflyser den valgte venskabskamp; Arrange ▾ arrangerer en
   const [picked, setPicked] = useState<string | null>(null);
   const orig = authentic();
-  type Row = { key: string; date: string; opp: number; home?: boolean; comp: string; cup?: boolean; friendly?: boolean; cmFr?: boolean; res?: string; win: number; fid?: number };
+  // originalens venskabskampe (FriendlyClassic.tsx): Arrange ▾ Home Friendly / Away Friendly / Tour / Tournament og skærmene bagved
+  const cmFr = cmFriendlyOn(g) && mine && !embedded;
+  const [arr, setArr] = useRouteState<string>('fxarr', '');
+  const [arrNat, setArrNat] = useRouteState<number>('fxnat', -1);
+  type Row = { key: string; date: string; opp: number; home?: boolean; comp: string; cup?: boolean; friendly?: boolean; cmFr?: boolean; res?: string; win: number; fid?: number; label?: string; frKind?: 'match' | 'tour'; tour?: number };
   const rows: Row[] = Object.values(g.fixtures).filter((f) => f.home === cid || f.away === cid).map((f) => {
     const home = f.home === cid, r = f.result;
     const my = r ? (home ? r.hg : r.ag) : 0, their = r ? (home ? r.ag : r.hg) : 0;
@@ -53,10 +59,26 @@ export function ClassicFixtures({ clubId, embedded }: { clubId?: number; embedde
     const fr = f.comp === 'FRIENDLY';
     return { key: `f${f.id}`, date: f.date, opp: home ? f.away : f.home, home: f.stage === 'F' ? undefined : home, comp: fr ? t('cl.fx.friendly') : `${compName(g.comps[f.comp]?.name) ?? ''}${f.stage && f.stage !== 'LP' ? ` – ${stageLabel(f)}` : ''}`, cup: !fr && g.comps[f.comp]?.type !== 'league', cmFr: fr, res: r ? `${my}:${their}${r.pens ? ` (${home ? r.pens[0] : r.pens[1]}:${home ? r.pens[1] : r.pens[0]} ${t('fix.pens')})` : r.et ? ` ${t('fix.aet')}` : ''}` : undefined, win, fid: f.id };
   });
+  if (cmFr) for (const r of cmFrFixtureRows(g, cid)) rows.push({ key: r.key, date: r.date, opp: r.opp, home: r.home, comp: r.comp, cmFr: true, win: 0, label: r.label, frKind: r.kind, tour: r.tour });
   if (mine) for (const fr of g.manager.friendlies ?? []) rows.push({ key: `fr${fr.date}`, date: fr.date, opp: fr.opp, comp: t('cl.fx.friendly'), friendly: true, res: fr.result ? `${fr.result[0]}:${fr.result[1]}` : undefined, win: fr.result ? Math.sign(fr.result[0] - fr.result[1]) : 0, fid: undefined });
   rows.sort((a, b) => a.date.localeCompare(b.date));
   const myNation = g.clubs[cid]?.nation;
   const d = cxShortDate;
+  if (cmFr && (arr === 'home' || arr === 'away')) return <FriendlyDates kind={arr} onBack={() => setArr('')} onDone={(ds) => {
+    if (act<string>({ t: 'cmFrArrange', date: ds[0], home: arr === 'home' }) === 'ok') { setArr(''); nav({ name: 'nations', state: { ncfr: 1, nctab: 'league', ncnat: g.clubs[g.userClub]?.nation ?? 0 } }); }
+  }} />;
+  if (cmFr && arr === 'tour') return <FriendlyTourNations onBack={() => setArr('')} onPick={(n) => { setArrNat(n); setArr('tourdates'); }} />;
+  if (cmFr && arr === 'tourdates') return <FriendlyDates kind="tour" nation={arrNat} onBack={() => setArr('tour')} onDone={(ds) => { if (act<string>({ t: 'cmFrTour', nation: arrNat, dates: ds }) === 'ok') setArr('tourclubs'); }} />;
+  if (cmFr && arr === 'tourclubs') return <FriendlyTourClubs nation={arrNat} onBack={() => setArr('')} />;
+  const pickedRow = rows.find((x) => x.key === picked);
+  const cancelPicked = () => {
+    if (!pickedRow) return;
+    if (pickedRow.friendly && !pickedRow.res) act({ t: 'friendlyCancel', date: pickedRow.date });
+    else if (pickedRow.frKind) void cmFrCancelRow(g, { kind: pickedRow.frKind, date: pickedRow.date, opp: pickedRow.opp, tour: pickedRow.tour });
+    else if (cmFrCancellable(g, pickedRow.fid)) void cmFrCancelRow(g, { kind: 'fixture', date: pickedRow.date, opp: pickedRow.opp, fid: pickedRow.fid });
+    setPicked(null);
+  };
+  const pickable = (r: Row) => (r.friendly && !r.res) || !!r.frKind || (cmFr && cmFrCancellable(g, r.fid));
   return (
     <div>
       {!embedded && <Head title={t('nav.fixtures')}>
@@ -64,8 +86,15 @@ export function ClassicFixtures({ clubId, embedded }: { clubId?: number; embedde
         <button className="cx-greybtn" disabled>{t('cl.fx.next')}</button>
         <span className="grow" />
         {orig ? <>
-          <button className="cx-greybtn" disabled={!picked || !mine} onClick={() => { const fr = rows.find((x) => x.key === picked && x.friendly && !x.res); if (fr) act({ t: 'friendlyCancel', date: fr.date }); setPicked(null); }}>{t('cl.fx.cancel')}</button>
-          <CxDrop label={t('cl.fx.arrangeMenu')} align="right" items={[{ key: 'fr', label: t('cl.fx.arrFriendly'), disabled: !!g.draft || !g.userClub, onClick: () => setArrange(true) }]} />
+          <button className="cx-greybtn cx-fx-cancel" disabled={!picked || !mine} onClick={cancelPicked}>{t('cl.fx.cancel')}</button>
+          {cmFr
+            ? <CxDrop label={t('cl.fx.arrangeMenu')} align="right" className="cx-fx-arrange" items={[
+              { key: 'home', label: t('cl.fx.homeFr'), onClick: () => setArr('home') },
+              { key: 'away', label: t('cl.fx.awayFr'), onClick: () => setArr('away') },
+              { key: 'tour', label: t('cl.fx.tourM'), onClick: () => setArr('tour') },
+              { key: 'tournament', label: t('cl.fx.tournament'), disabled: true, onClick: () => undefined },
+            ]} />
+            : <CxDrop label={t('cl.fx.arrangeMenu')} align="right" items={[{ key: 'fr', label: t('cl.fx.arrFriendly'), disabled: !!g.draft || !g.userClub, onClick: () => setArrange(true) }]} />}
         </> : !g.draft && g.userClub > 0 && <button className="cx-greybtn" onClick={() => setArrange(true)}>{t('cl.fx.arrange')}</button>}
       </Head>}
       <div className={`cx-subtitle ${orig ? 'cx-orig-band' : ''}`}>{t('cl.fx.season', { s: `${g.season}/${String((g.season + 1) % 100).padStart(2, '0')}` })}</div>
@@ -75,10 +104,10 @@ export function ClassicFixtures({ clubId, embedded }: { clubId?: number; embedde
           const foreign = c && c.nation !== myNation;
           const open = hasMatchView(g, r.fid);
           return (
-            <div key={r.key} className={`cx-fx-row ${open ? 'clickable' : ''} ${picked === r.key ? 'picked' : ''}`} onClick={() => { if (r.friendly && !r.res) setPicked(picked === r.key ? null : r.key); else if (open) nav({ name: 'report', id: r.fid! }); }}>
+            <div key={r.key} className={`cx-fx-row ${open ? 'clickable' : ''} ${picked === r.key ? 'picked' : ''}`} onClick={() => { if (pickable(r) && !open) setPicked(picked === r.key ? null : r.key); else if (open) nav({ name: 'report', id: r.fid! }); }}>
               <span className="cx-fx-date">{g.draft ? '' : d(r.date)}</span>
-              <span className="cx-fx-opp" onClick={(e) => { e.stopPropagation(); if (c) nav({ name: 'club', id: r.opp }); }}>{(orig ? c?.short : c?.name) ?? '?'}</span>
-              <span className="cx-fx-nat">{foreign ? g.nations[c.nation]?.code : ''}</span>
+              <span className="cx-fx-opp" onClick={(e) => { if (r.label) return; e.stopPropagation(); if (c) nav({ name: 'club', id: r.opp }); }}>{r.label ?? (orig ? c?.short : c?.name) ?? '?'}</span>
+              <span className="cx-fx-nat">{foreign && !r.label ? g.nations[c.nation]?.code : ''}</span>
               <span className="cx-fx-ha">{r.home === undefined ? '' : r.home ? t('cl.fx.h') : t('cl.fx.a')}</span>
               <span className={`cx-fx-comp ${r.friendly || r.cmFr ? 'friendly' : r.cup ? 'cup' : ''}`}>{r.comp}</span>
               <span className={`cx-fx-res ${r.win > 0 ? 'w' : r.win < 0 ? 'l' : ''}`}>

@@ -13,6 +13,7 @@ import { submitEuroSquad } from './euroSquad';
 import { replacePlayer } from './draft';
 import { endTrial, inviteTrial } from './trials';
 import { arrangeFriendly, cancelFriendly, type FriendlyKind } from './friendlies';
+import { cmFrAnswer, cmFrArrange, cmFrCancel, cmFrInvite, cmFrTour, frDn } from './cmFriendlyOffers';
 import { applyStyle, briefing, type StyleKey } from './onboarding';
 import { cancelCamp, planCamp, type CampDest } from './camp';
 import { cmBoardUltimatum, cmUltimatumReq } from './cmBoardGame';
@@ -113,6 +114,12 @@ export type Action =
   | { t: 'trial'; pid: number; end?: boolean }
   | { t: 'friendly'; opp: number; date: string; kind: FriendlyKind }
   | { t: 'friendlyCancel'; date: string }
+  // originalens venskabskampe (cmFriendlyOffers.ts – kun den originale database i ægte tilstand)
+  | { t: 'cmFrArrange'; date: string; home: boolean }
+  | { t: 'cmFrInvite'; club: number }
+  | { t: 'cmFrTour'; nation: number; dates: string[] }
+  | { t: 'cmFrCancel'; fixture?: number; match?: string; tour?: number }
+  | { t: 'cmFrAnswer'; date: string; org: number; yes: boolean }
   | { t: 'onboard'; step: 'weak' | 'style' | 'needs' | 'brief' | 'skip'; style?: StyleKey; needs?: string[] }
   | { t: 'managerProfile'; name?: string; nation?: number; motto?: string }
   | { t: 'talk'; pid: number; choice: 'promise' | 'list' | 'refuse' }
@@ -301,6 +308,11 @@ export function applyAction(a: Action): unknown {
     case 'trial': if (a.end) { endTrial(a.pid); return 'ok'; } return inviteTrial(a.pid);
     case 'friendly': return arrangeFriendly(a.opp, a.date, a.kind);
     case 'friendlyCancel': cancelFriendly(a.date); return 'ok';
+    case 'cmFrArrange': return cmFrArrange(g, frDn(a.date), a.home);
+    case 'cmFrInvite': return cmFrInvite(g, a.club);
+    case 'cmFrTour': return cmFrTour(g, a.nation, a.dates.map(frDn));
+    case 'cmFrCancel': return cmFrCancel(g, a);
+    case 'cmFrAnswer': return cmFrAnswer(g, a.date, a.org, a.yes);
     case 'onboard': {
       const ob = (g.manager.onboard ??= {});
       if (a.step === 'weak') ob.weak = true;

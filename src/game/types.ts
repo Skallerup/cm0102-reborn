@@ -1219,7 +1219,9 @@ export interface GameState {
   /** konditionsmodulet (cmFitness.ts): spillets startdato [0xdd6ec8] og sygdomsudbruddene (Injury +0x1c, 17-bytes poster) */
   cmFitStart?: string;
   /** (forsæsonen) originalens hjemlige venskabskampe, der venter på at blive oprettet en uge før datoen (Friendly +0x34d8 – cmFriendly.ts) */
-  cmFrPending?: { d: string; h: number; a: number }[];
+  cmFrPending?: { d: string; h: number; a: number; o?: number }[];
+  /** originalens tilbud om venskabskampe (Friendly +0x34c8/+0x34d4) og menneskets turnéer (+0x34cc) – cmFriendlyOffers.ts */
+  cmFrH?: { m: import('./cmFriendlyOffers').CmFrMatch[]; t: import('./cmFriendlyOffers').CmFrTour[] };
   cmOutbreaks?: import('./cmFitness').CmOutbreak[];
   /** originalens arbejdstilladelses-historik (TRANSFER_MANAGER +0x93a, cmPermit.ts): staff-id → [kampe spillet, ikke spillet, året, landet] */
   cmPermit?: Record<number, import('./cmPermit').PermitEntry>;

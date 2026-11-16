@@ -99,7 +99,7 @@ View Finances (der læser Bonuses fra blokken) viste 0 bonusser, selv om pengene
 4. Landsholdsfodbold: NationalTeams 0x76b100, udtagelse 0x7757d0, kvalifikation/VM/EM/OL-format, landstrænere – hele `international.ts` er vores eget.
 5. Sæsonskiftet og pensioneringer (0x7a7f20, INT_RETIREMENT), end_season pr. nation.
 6. Reservekampe (fixtures −2, 0x84be20) og B-hold 0x540a50.
-7. Venskabskampe for mennesket: originalens menuer (Arrange Friendly At Home/Away/Tour/League/Cup, invitationer, svar 0x5c5570/0x5c5f40), billetindtægt.
+7. Venskabskampe for mennesket: **porteret 16/11** (cmFriendlyOffers.ts, FriendlyClassic.tsx – Home/Away Friendly, Tour, Choose Friendly Teams, Invite Club, svaret 0x5c5f40 efter omdømmet, også for computerens egne; noter ~/cm0102-engine/notes/friendly-human.md). Mangler: Friendly Cup/League (Tournament).
 8. Priser: Team of the Week (hvornår), Fans Player of the Year, internationale priser, andre landes priser.
 9. Økonomi for ikke-valgte lande: klubber i minus 150 → ~450 over 3 år.
 10. Spejdere/kendskab: `scoutDaily`/knowledge-modellen er vores; Rec-stjernernes tilfældige tal er faste hash-værdier.

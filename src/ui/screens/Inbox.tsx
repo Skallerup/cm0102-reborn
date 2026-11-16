@@ -1,4 +1,5 @@
 
+import { friendlyAnswer, friendlyProposalOpen } from './FriendlyClassic';
 import { isOriginal2001 } from '../../game/rules2001';
 import { FirstDay } from '../FirstDay';
 import { useEffect, useRef, useState } from 'react';
@@ -180,6 +181,7 @@ export function Inbox() {
         <div className="cx-nbar">
           {/* CM 01/02: "Respond" på et bud, der venter på svar – ellers kun "Filter :" og Next Unread */}
           {pendingBid && <button className="cx-grey cx-respond" onClick={() => setRespond(pendingBid.id)}>{t('cl.bid.respond')}</button>}
+          {item && friendlyProposalOpen(g, item) && <button className="cx-grey cx-respond cx-fr-respond" onClick={() => void friendlyAnswer(g, item)}>{t('cl.bid.respond')}</button>}
           {item?.key === 'sqn.request' && squadNumbersDue(g.userClub) && <button className="cx-grey cx-respond" onClick={() => setSqnOpen(true)}>{t('cl.bid.respond')}</button>}
           {item?.key === 'eur.request' && euroDue(g.userClub) && <button className="cx-grey cx-respond" onClick={() => setEurOpen(true)}>{t('cl.bid.respond')}</button>}
           {requestOpen(g, item) && <button className="cx-grey cx-respond cx-req-respond" onClick={() => setReqOpen(true)}>{t('cl.bid.respond')}</button>}

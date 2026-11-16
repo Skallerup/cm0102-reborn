@@ -1329,6 +1329,54 @@ async function run(look) {
       g.options.mode = window.__e2eMode ?? g.options.mode; window.__cm.notify();
     }, pid);
   });
+  // CM 01/02's venskabskampe (FriendlyClassic.tsx / cmFriendlyOffers.ts): Arrange ▾ Home Friendly → datoskærmen → Choose Friendly Teams →
+  // klubskærmens Invite Club → Please Confirm → "{klub} ?" i Fixtures → Cancel
+  if (look === 'klassisk' && ENGINE_GRID) await step('venskabskamp: Home Friendly → Choose Friendly Teams → Invite Club → Cancel (original)', async () => {
+    await gs(() => { const g = window.__cm.gs(); window.__e2eFrMode = g.options.mode; g.options.mode = 'authentic'; window.__cm.notify(); });
+    try {
+      await go({ name: 'fixtures' });
+      await page.locator('.cx-fx-arrange .cx-drop-btn').click();
+      const items = await page.locator('.cx-drop-pop button').allInnerTexts();
+      for (const x of ['Home Friendly', 'Away Friendly', 'Tour', 'Tournament']) if (!items.some((s) => s.includes(x))) throw new Error(`Arrange-menuen mangler ${x}: ${items.join(' | ')}`);
+      await page.locator('.cx-drop-pop button', { hasText: 'Home Friendly' }).click();
+      await page.waitForSelector('.cx-frd', { timeout: 5000 });
+      if (!(await page.locator('.cx-title h2').first().innerText()).includes('Arrange Friendly At Home')) throw new Error('datoskærmens titel');
+      for (let i = 0; i < 6 && !(await page.locator('.cx-frd-row[data-frd="1"]').count()); i++) await page.locator('.cx-frd-pages button', { hasText: /^>$/ }).click();
+      await page.locator('.cx-frd-row[data-frd="1"]').first().click();
+      await page.locator('.cx-frd-row[data-frd="4"]').first().waitFor({ timeout: 3000 });
+      if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-venskab-datoer.png` });
+      await page.locator('.cx-frd-next').click();
+      await page.waitForFunction(() => document.querySelector('.cx-title h2')?.textContent?.includes('Choose Friendly Teams'), null, { timeout: 5000 });
+      // en klub i eget land uden kamp omkring datoen
+      const opp = await gs(() => {
+        const g = window.__cm.gs();
+        const m = g.cmFrH.m.find((x) => x.open && x.org === g.userClub);
+        const d = Date.parse(`${m.d}T00:00:00Z`) / 864e5;
+        const busy = (c) => Object.values(g.fixtures).some((f) => (f.home === c || f.away === c) && Math.abs(Date.parse(`${f.date}T00:00:00Z`) / 864e5 - d) <= 1);
+        const c = Object.values(g.clubs).filter((x) => x.id !== g.userClub && x.nation === g.clubs[g.userClub].nation && !g.leagues[x.league]?.hidden && g.comps[x.league]).sort((a, b) => a.rep - b.rep).find((x) => !busy(x.id));
+        return { id: c.id, short: c.short };
+      });
+      await page.locator('.cx-nc-list .cx-link', { hasText: new RegExp(`^${opp.short.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`) }).first().click();
+      await page.locator('.cx-invite-club').click({ timeout: 5000 });
+      await page.waitForSelector('.cx-confirm', { timeout: 3000 });
+      const q = await page.locator('.cx-confirm').innerText();
+      if (!/Invite .* for a friendly match on .* \?/.test(q)) throw new Error(`bekræftelsen: ${q}`);
+      await page.locator('.cx-confirm button.primary').click();
+      await page.waitForFunction((id) => window.__cm.gs().cmFrH.m.some((x) => x.pend && x.away === id), opp.id, { timeout: 5000 });
+      await go({ name: 'fixtures' });
+      const row = page.locator('.cx-fx-row', { hasText: `${opp.short} ?` }).first();
+      await row.waitFor({ timeout: 5000 });
+      if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-venskab-fixtures.png` });
+      await row.click();
+      await page.locator('.cx-fx-cancel').click();
+      await page.waitForSelector('.cx-confirm', { timeout: 3000 });
+      if (!(await page.locator('.cx-confirm').innerText()).includes('Cancel the proposed friendly match')) throw new Error('aflysningens tekst');
+      await page.locator('.cx-confirm button.primary').click();
+      await page.waitForFunction((id) => !window.__cm.gs().cmFrH.m.some((x) => x.away === id), opp.id, { timeout: 5000 });
+    } finally {
+      await gs(() => { const g = window.__cm.gs(); g.options.mode = window.__e2eFrMode ?? g.options.mode; window.__cm.notify(); });
+    }
+  });
   await step('landshold', async () => { await go({ name: 'international', id: await gs(() => window.__cm.gs().clubs[window.__cm.gs().userClub].nation) }); await page.screenshot({ path: `${OUT}/${look}-landshold.png` }); });
   // Squad Numbers: skift en spillers nummer – en holdkammerat med samme nummer bytter
   await step('trøjenumre: skift nummer', async () => {

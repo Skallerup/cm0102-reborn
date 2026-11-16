@@ -1905,3 +1905,16 @@ button.cx-bid-swap.removing { cursor: pointer; color: #fff21f; }
 
 /* Startmenuen: lille forklaring under felterne (ejeren 16/11) */
 :root[data-skin='retro'] .cxs-field .cxs-hint { display: block; margin-top: 6px; font-style: normal; font-size: 12px; font-weight: 400; color: #c9d3ff; opacity: .85; }
+
+/* CM 01/02's venskabskampe (FriendlyClassic.tsx): datoskærmen "Arrange Friendly At Home" (0x470400) og turnéens lande (0x471a90) */
+.cx-frd-row .cx-frd-st { grid-column: 2 / 6; font-size: 15px; font-weight: 700; text-shadow: 1px 1px 0 #000; }
+.cx-frd-row .cx-frd-st.s1 { color: #fff; }
+.cx-frd-row .cx-frd-st.s4 { color: #fff21f; }
+.cx-frd-row .cx-frd-st.s2 { color: #9aa0b4; }
+.cx-frd-row.clickable:hover .cx-frd-st { color: #fff21f; }
+.cx-frd-pages { display: flex; gap: 4px; margin: 4px; }
+.cx-frd-pages .cx-greybtn { min-width: 44px; }
+.cx-frt-filter { color: #fff; font-weight: 700; margin-right: 4px; }
+.cx-frt .cx-greybtn.on { color: #fff21f; }
+.cx-frt .cx-muted { color: #8a8fa3; }
+@media (max-width: 760px) { .cx-frd-row .cx-frd-st { grid-column: 2 / 5; font-size: 13px; } }

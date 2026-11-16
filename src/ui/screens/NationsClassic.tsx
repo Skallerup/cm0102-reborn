@@ -17,6 +17,8 @@ export function ClassicNations({ pick, onBack }: { pick?: (club: number) => void
   const g = useGame()! as GameState;
   const { nav } = useNav();
   const [tab, setTab] = useRouteState<Tab>(pick ? 'pkctab' : 'nctab', pick ? 'league' : 'nations');
+  // "Choose Friendly Teams" (0x5a0650/0x5a0840, klubber: Major Clubs · League · Non-League · Other – åbner på League med eget land)
+  const [fr] = useRouteState<number>('ncfr', 0);
   const own = g.clubs[g.userClub]?.nation;
   const [reg, setReg] = useRouteState<UiRegion>('ncreg', regionOfNation(g.nations[own ?? -1]?.name));
   const [nat, setNat] = useRouteState<number>('ncnat', own ?? 0);
@@ -43,10 +45,10 @@ export function ClassicNations({ pick, onBack }: { pick?: (club: number) => void
   const col = (list: Row[]) => <div className="cx-nc-col">{list.map((r) => (
     <div key={r.key} className="cx-nc-row"><span className="cx-link" role="link" onClick={r.go}>{r.name}</span><span className="code">{r.code}</span><span className="extra">{r.extra}</span></div>
   ))}</div>;
-  const TOP: Tab[] = ['nations', 'u21', 'major'], BOTTOM: Tab[] = ['league', 'nonleague', 'other'];
+  const TOP: Tab[] = fr ? ['major'] : ['nations', 'u21', 'major'], BOTTOM: Tab[] = ['league', 'nonleague', 'other'];
   return (
     <div className="cx-nc">
-      <Head title={pick ? t('cm.sc.pick') : t('cl.nc.title')} />
+      <Head title={pick ? t('cm.sc.pick') : fr ? t('cl.fr.choose') : t('cl.nc.title')} />
       <Tabs tabs={TOP.map((x) => [x, t(`cl.nc.t.${x}`)] as [string, string])} value={TOP.includes(tab) ? tab : ''} onChange={(v) => setTab(v as Tab)} />
       <div className="cx-tools">
         {tab === 'league'

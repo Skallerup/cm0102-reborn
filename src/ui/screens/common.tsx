@@ -128,6 +128,8 @@ function bodyKey(n: NewsItem): string {
   if (n.key === 'intl.tourSel') return !n.params?.names ? 'intl.tourSel.many' : n.params?.n === 1 ? 'intl.tourSel.body1' : 'intl.tourSel.bodyN';
   // Discipline Player (cmFine.ts): originalens brødtekst er valgt i spillet (0x5a76e0/0x5a7ed0/0x5a8090)
   if (n.key.startsWith('cmfine.') && typeof n.params?.body === 'string') return `cmfine.b.${n.params.body}`;
+  // venskabskampens tilbud til mennesket (0x77ce44): arrangøren hjemme "have offered …", ellers "have challenged …"
+  if (n.key === 'cmfr.proposal') return `cmfr.proposal.${n.params?.body === 'challenged' ? 'challenged' : 'offered'}`;
   return `${n.key}.body`;
 }
 
