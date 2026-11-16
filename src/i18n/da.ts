@@ -304,7 +304,7 @@ export const da: Record<string, string> = {
   'player.release': 'Ophæv kontrakt', 'player.releaseConfirm': 'Vil du virkelig fritstille {player}? {club} skal betale {pay} i kompensation.', 'transfer.releaseBlocked': 'Bestyrelsen blokerer salg af {player}', 'transfer.releaseBlocked.body': 'Bestyrelsen i {club} har blokeret fritstillingen af {player}. Han anses for at være for værdifuld til at blive sluppet fri.',
   'player.bid': 'Byd', 'player.offerContract': 'Tilbyd kontrakt', 'player.preContract': 'Bosman: tilbyd fri kontrakt',
   'player.shortlist': 'Tilføj til shortlist', 'player.unshortlist': 'Fjern fra shortlist', 'player.sendScout': 'Send en scout…',
-  'player.scoutSent': '{scout} er sendt for at se spilleren.', 'player.notes': 'Noter', 'player.attributes': 'Attributter',
+  'scout.already': 'Du er allerede ved at scoute denne spiller.', 'player.scoutSent': '{scout} er sendt for at se spilleren.', 'player.notes': 'Noter', 'player.attributes': 'Attributter',
   'player.rangeHint': 'Intervaller indsnævres jo mere spilleren scoutes', 'player.positions': 'Positioner', 'player.thisSeason': 'Denne sæson',
   'player.mom': 'Kampens spiller', 'player.cards': 'Gule / røde', 'player.career': 'Karriere', 'player.noHistory': 'Ingen tidligere sæsoner',
   'player.bidSent': 'Buddet er sendt. Svaret kommer i indbakken.', 'player.done': 'Udført.', 'player.clubRep': 'Klubbens omdømme',

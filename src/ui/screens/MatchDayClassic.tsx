@@ -1,5 +1,6 @@
 // Kampdag i klassisk tema: dagens kampe pr. turnering (som originalens "Evening Fixtures"), én turnering ad gangen.
 // Continue Game i venstre kolonne fører videre til ens egen kamp.
+import { useEffect } from 'react';
 import type { Fixture, GameState } from '../../game/types';
 import { compName, natName, t } from '../../i18n';
 import { intlDayResults } from '../../game/international';
@@ -7,6 +8,9 @@ import { authentic } from '../../game/rules';
 import { useGame, useNav, useRouteState } from '../core';
 import { CxLink, clubRoute, compAbbr } from '../classic';
 import { Head } from './common';
+import { Tabs } from '../components';
+import { unpackReport } from '../../game/miniReport';
+import { CxMatchStats } from './Match';
 import { stageLabel } from './Fixtures';
 import { ordinal } from './Competitions';
 import { leagueRows, sortTable } from '../../game/competitions';
@@ -117,6 +121,9 @@ function IntlDayList() {
   const [i, setI] = useRouteState('idi', 0);
   const kind = kinds[Math.min(i, kinds.length - 1)];
   const list = all.filter((x) => x.r.kind === kind);
+  // en dag uden slutrundekampe (ruten blev stående, da datoen rykkede videre): ingen tom skærm uden turneringsnavn – tilbage til indbakken
+  useEffect(() => { if (!all.length) nav({ name: 'inbox' }); }, [all.length]);
+  if (!all.length) return null;
   const wd = new Date(`${g.date}T12:00:00`).getDay();
   const title = t(`cl.md.res${list.length === 1 ? '1' : 'N'}`, { when: t(wd === 0 || wd === 6 ? 'cl.md.afternoon' : 'cl.md.evening') });
   const label = (x: (typeof list)[number]) => (x.group !== undefined ? t('cl.md.group', { g: String.fromCharCode(65 + x.group) }) : t(`stage.${x.r.stage}`));
@@ -152,16 +159,21 @@ function IntlDayList() {
   );
 }
 
-/** En landskamp (resultatet i Afternoon Results er klikbart): Match Overview med stilling, runde/gruppe og dato – landskampe gemmer hverken målscorere eller rapport */
+/** En landskamp (resultatet i Afternoon Results er klikbart): Match Overview med målscorere og kort, Match Stats og opstillinger af slutrundekampens kompakte rapport (IntlResult.mini) */
 function IntlMatch({ match }: { match: string }) {
   const g = useGame()!;
-  const { back, nav } = useNav();
+  const { nav } = useNav();
+  const [tab, setTab] = useRouteState('itab', 'overview');
   const [h, a, date, kind] = match.split(':');
   const x = intlDayResults(date).find((y) => String(y.r.home) === h && String(y.r.away) === a && y.r.kind === kind);
-  if (!x) return <div><Head title={t('report.missing')} /><div className="cx-md-tools"><button className="cx-greybtn" onClick={back}>{t('common.back')}</button></div></div>;
+  if (!x) return <div><Head title={t('report.missing')} /></div>;
   const r = x.r;
+  const rep = r.mini ? unpackReport(r.mini, 0, r.home, r.away, undefined, r.pens) : undefined;
   const label = x.group !== undefined ? t('cl.md.group', { g: String.fromCharCode(65 + x.group) }) : r.stage ? t(`stage.${r.stage}`) : '';
   const nat = (n: number) => <span className="cx-link" role="link" onClick={() => nav({ name: 'international', id: n })}>{natName(g.nations[n]?.name) ?? '?'}</span>;
+  const pn = (id: number) => { const p = g.players[id]; return p ? `${p.first ? `${p.first[0]}. ` : ''}${p.last}`.trim() : '?'; };
+  const evs = (rep?.events ?? []).filter((e) => e.k === 'goal' || e.k === 'yellow' || e.k === 'red').sort((p, q) => p.m - q.m);
+  const ev = (e: (typeof evs)[number]) => `${e.k === 'goal' ? '⚽ ' : e.k === 'yellow' ? '🟨 ' : '🟥 '}${pn(e.p ?? 0)}${e.og ? ' (og)' : e.pen ? ' (pen)' : ''}`;
   return (
     <div data-testid="intl-match">
       <Head title={t(`intl.name.${r.kind}`)} />
@@ -173,9 +185,27 @@ function IntlMatch({ match }: { match: string }) {
             <span className="cx-md-res">{r.hg}:{r.ag}</span>
             <span className="cx-md-away">{nat(r.away)}</span><span className="cx-md-code">{g.nations[r.away]?.code ?? ''}</span>
           </div>
+          {r.pens && <div className="cx-md-stage">{t('report.shootout')} {r.pens[0]}-{r.pens[1]}</div>}
         </div>
+        {rep && <>
+          <Tabs tabs={[['overview', t('match.overview')], ['stats', t('cl.mt.stats')], ['players', t('report.players')]]} value={tab} onChange={setTab} />
+          {tab === 'overview' && <div className="cx-md" data-testid="intl-events">{evs.map((e, k) => (
+            <div key={k} className="cx-md-row">
+              <span className="cx-md-code">{e.m}'</span>
+              <span className="cx-md-home">{e.t === 0 ? ev(e) : ''}</span>
+              <span className="cx-md-v" />
+              <span className="cx-md-away">{e.t === 1 ? ev(e) : ''}</span>
+              <span className="cx-md-code" />
+            </div>
+          ))}</div>}
+          {tab === 'stats' && <CxMatchStats st={rep.stats} />}
+          {tab === 'players' && <div className="cx-md">{[0, 1].map((side) => (
+            <div key={side}><div className="cx-md-stage">{natName(g.nations[side === 0 ? r.home : r.away]?.name)}</div>
+              {rep.players.filter((l) => l.team === side).map((l) => <div key={l.id} className="cx-md-row"><span className="cx-md-code">{rep.nums?.[l.id] ?? ''}</span><span className="cx-md-home">{pn(l.id)}{l.sub ? ' (sub)' : ''}</span><span className="cx-md-res">{l.rating}</span><span className="cx-md-away">{l.goals ? `⚽ ${l.goals}` : ''}</span><span className="cx-md-code" /></div>)}
+            </div>
+          ))}</div>}
+        </>}
       </div>
-      <div className="cx-md-tools"><button className="cx-greybtn" onClick={back}>{t('common.back')}</button></div>
     </div>
   );
 }

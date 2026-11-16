@@ -395,6 +395,8 @@ export interface Staff {
   cmNat?: [number, number];
   /** spejderens seneste liste (Scout #n), når søgningen er færdig eller han er kaldt hjem */
   scoutList?: number[];
+  /** spillere, spejderen er sat til at vurdere (Action → Scout Player): de afdækkes én ad gangen ved siden af en eventuel søgning, og en rapport kommer, når kendskabet er fuldt */
+  watch?: number[];
   /** CM 01/02 (klassisk): Set Nickname og Create Manager Note på en stabsperson */
   nick?: string;
   notes?: string;

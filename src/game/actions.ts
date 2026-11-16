@@ -251,7 +251,7 @@ export function applyAction(a: Action): unknown {
       g.shortlist = g.shortlist.filter((x) => x !== a.pid);
       if (a.on) g.shortlist.push(a.pid);
       return 'ok';
-    case 'scout': startScoutAssignment(a.staffId, a.assignment); return 'ok';
+    case 'scout': return startScoutAssignment(a.staffId, a.assignment) ?? 'ok';
     case 'cmOfferRole': { const o = myOffer(a.pid); if (!o) return 'error'; o.cmRole = a.role; return 'ok'; }
     case 'negotiate': { const o = myOffer(a.pid); return o ? negotiate(o.id, a.wage, a.years, a.clauses) : 'refused'; }
     case 'cmConfirm': { const o = gs().offers.find((x) => x.id === a.offer); return o ? cmConfirmAnswer(o, a.answer, completeTransfer) : 'refused'; }

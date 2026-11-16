@@ -1047,9 +1047,11 @@ async function run(look) {
     // resultatet kan klikkes (C6): Match Overview for landskampen, og tilbage igen
     await page.locator('[data-testid=intl-result]').first().click();
     await page.waitForSelector('[data-testid=intl-match]', { timeout: 5000 });
-    await page.locator('[data-testid=intl-match] .cx-greybtn').click();
-    await page.waitForSelector('.cx-md-panel .cx-md-res', { timeout: 5000 });
+    if (await page.locator('[data-testid=intl-match] .cx-greybtn').count()) throw new Error('den løse Back-knap på landskampen er tilbage (bundbjælkens Back findes)');
     await gs(() => { window.__cm.gs().intl.results.shift(); });
+    // en dag uden slutrundekampe viser ikke en tom skærm uden turneringsnavn – tilbage til indbakken
+    await go({ name: 'intlday' });
+    await page.waitForSelector('.cx-inbox', { timeout: 5000 });
   });
   if (look === 'klassisk') await step('jobtilbud (Respond i nyhederne)', async () => {
     const cid = await gs(() => {

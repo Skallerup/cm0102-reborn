@@ -500,7 +500,7 @@ function ScoutTab({ scout, n, onPick }: { scout?: Staff; n: number; onPick?: (f:
     : x.kind === 'league' ? compName(g.leagues[x.target as string]?.name) ?? String(x.target)
     : x.kind === 'club' ? g.clubs[x.target as number]?.name ?? '' : x.kind === 'region' ? t(`region.${x.target}`)
     : x.kind === 'nextOpp' ? t('cl.sc.nextOpp') : x.kind === 'youth' ? t('cl.sc.youth') : `${g.players[x.target as number]?.first ?? ''} ${g.players[x.target as number]?.last ?? ''}`.trim();
-  const players = !a ? (cm ? (scout.scoutList ?? []).map((id) => g.players[id]).filter(Boolean) : []) : a.kind === 'player' ? [g.players[a.target as number]].filter(Boolean) : (a.found ?? []).map((id) => g.players[id]).filter(Boolean);
+  const players = !a ? (cm ? [...(scout.watch ?? []), ...(scout.scoutList ?? [])].map((id) => g.players[id]).filter(Boolean) : []) : a.kind === 'player' ? [g.players[a.target as number]].filter(Boolean) : (a.found ?? []).map((id) => g.players[id]).filter(Boolean);
   // "Assign scout Mick Brown to Argentina ?" (Please Confirm) – derefter går han i gang
   const assign = async (x: Omit<ScoutAssignment, 'since' | 'found'>) => {
     // 0x4830ce: "Send scout to watch all Bradford matches ?" (Assign Scout ? / Please Confirm)

@@ -12,7 +12,8 @@ import { Rng, hash, rng } from './rng';
 import { addNews, gs } from './state';
 import { cmAppsAfterMatch } from './transfers';
 import { autoSelect, newTactic } from './tactics';
-import type { Player } from './types';
+import type { MiniReport, Player } from './types';
+import { packReport } from './miniReport';
 
 export interface IntlRow { n: number; p: number; w: number; d: number; l: number; gf: number; ga: number; pts: number }
 export interface IntlTie { stage: string; a: number; b: number; hg?: number; ag?: number; pens?: boolean; winner?: number }
@@ -28,7 +29,9 @@ export interface IntlTournament {
 export interface OfcQual { year: number; groups: number[][]; table: Record<number, IntlRow>; final: IntlTie[]; winner?: number }
 /** Kvalifikationen til næste VM/EM: grupper af fire i hver verdensdel, spillet i landsholdsvinduerne (*estimeret* format) */
 export interface IntlQual { name: 'wc' | 'euro'; year: number; groups: number[][]; region: string[]; table: Record<number, IntlRow>; round: number; qualified?: number[] }
-export interface IntlResult { date: string; home: number; away: number; hg: number; ag: number; kind: 'friendly' | 'wc' | 'euro' | 'copa' | 'afcon' | 'asian' | 'wcq' | 'euroq' | 'u21'; stage?: string }
+export interface IntlResult { date: string; home: number; away: number; hg: number; ag: number; kind: 'friendly' | 'wc' | 'euro' | 'copa' | 'afcon' | 'asian' | 'wcq' | 'euroq' | 'u21'; stage?: string;
+  /** slutrundekampenes kompakte rapport (miniReport.ts) – målscorere, kort, opstillinger, statistik; resultatet i Afternoon Results åbner den */
+  mini?: MiniReport; pens?: [number, number] }
 export interface NatInfo { stadium: string; cap: number; fifa: number; coach: string; rep: number; titles: Record<string, number> }
 export interface PastFinal { c: string; y: number; w: string; r: string; t?: string; h: string }
 export interface IntlState {
@@ -147,7 +150,7 @@ export function playNation(home: number, away: number, kind: IntlResult['kind'],
       if (isHumanClub(p.club)) asOwner(p.club, () => addNews({ cat: 'injury', key: 'intl.injured', params: { player: `${p.first} ${p.last}`.trim(), nation: g.nations[p.nation]?.name ?? '', days }, link: { kind: 'player', id: p.id } }));
     }
   }
-  const res: IntlResult & { pens?: [number, number] } = { date: g.date, home, away, hg: hs.goals, ag: as.goals, kind, stage, ...(rep.pens ? { pens: rep.pens } : {}) };
+  const res: IntlResult & { pens?: [number, number] } = { date: g.date, home, away, hg: hs.goals, ag: as.goals, kind, stage, ...(rep.pens ? { pens: rep.pens } : {}), ...(TOUR_KINDS.has(kind) ? { mini: packReport(rep, (id) => g.players[id]?.number) } : {}) };
   const st = state();
   st.results = [res, ...st.results].slice(0, 150);
   if (u21) return res;

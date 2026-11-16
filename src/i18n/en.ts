@@ -293,7 +293,7 @@ export const en: Record<string, string> = {
   'player.release': 'Release', 'player.releaseConfirm': 'Are you sure you want to release {player} on a free transfer? {club} will have to pay {pay} in compensation.', 'transfer.releaseBlocked': 'Board block {player} departure', 'transfer.releaseBlocked.body': 'The {club} board have blocked the free transfer of {player}. He is considered to be too valuable a player to release.',
   'player.bid': 'Make offer', 'player.offerContract': 'Offer contract', 'player.preContract': 'Bosman: offer free contract',
   'player.shortlist': 'Add to shortlist', 'player.unshortlist': 'Remove from shortlist', 'player.sendScout': 'Send a scout…',
-  'player.scoutSent': '{scout} has been sent to watch him.', 'player.notes': 'Notes', 'player.attributes': 'Attributes',
+  'scout.already': 'You are already scouting this player.', 'player.scoutSent': '{scout} has been sent to watch him.', 'player.notes': 'Notes', 'player.attributes': 'Attributes',
   'player.rangeHint': 'Ranges narrow the more the player is scouted', 'player.positions': 'Positions', 'player.thisSeason': 'This season',
   'player.mom': 'Man of the match', 'player.cards': 'Yellow / red', 'player.career': 'Career', 'player.noHistory': 'No previous seasons',
   'player.bidSent': 'Offer sent. The reply will arrive in your inbox.', 'player.done': 'Done.', 'player.clubRep': 'Club reputation',

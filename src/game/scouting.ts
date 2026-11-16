@@ -122,7 +122,14 @@ export function scoutDaily() {
   }
   for (const s of scouts) {
     const a = s.assignment;
-    const skill = (s.attrs.judgingAbility + s.attrs.judgingPotential) / 40;
+    const skill = ((s.attrs.judgingAbility || 0) + (s.attrs.judgingPotential || 0)) / 40;
+    // Scout Player: de bestilte spillere afdækkes én ad gangen, uden at en igangværende søgning afbrydes – rapporten kommer ved fuldt kendskab
+    if (s.watch?.length) {
+      const pid = s.watch[0];
+      const wp = g.players[pid];
+      if (wp) scoutKnowledge(pid, 9 + 8 * skill, s.id, true);
+      if (!wp || (g.knowledge[pid] ?? 0) >= 100) { s.watch.shift(); if (wp) scoutReport(`${s.first} ${s.last}`, wp); }
+    }
     if (!a) {
       // Uden opgave: scouter tilfældige spillere i egen liga
       if (rng.chance(0.3)) {
@@ -220,13 +227,20 @@ export function scoutTarget(a: ScoutAssignment): { target: string; targetKey?: s
 }
 
 /** En opgave begynder (CM 01/02: "Scout [navn] has started his … search, and will report back with his findings") */
-export function startScoutAssignment(staffId: number, a: ScoutAssignment | null) {
+export function startScoutAssignment(staffId: number, a: ScoutAssignment | null): string | undefined {
   const g = gs();
   const s = g.staff[staffId];
   if (!s || s.club !== g.userClub) return;
+  // Action → Scout Player (originalens "Already scouted": "You are already scouting this player.") – en ny bestilling afbryder hverken scoutens søgning eller de andre spillere
+  if (a?.kind === 'player') {
+    const t = a.target as number;
+    if (Object.values(g.staff).some((x) => x.club === g.userClub && (x.watch?.includes(t) || (x.assignment?.kind === 'player' && x.assignment.target === t)))) return 'scout.already';
+    (s.watch ??= []).push(t);
+    return;
+  }
   if (s.assignment && s.assignment.kind !== 'player') s.scoutList = s.assignment.found?.slice();   // Recall: listen bliver stående
   s.assignment = a;
-  if (a && a.kind !== 'player') addNews({ cat: 'scout', key: 'scout.started', params: { scout: `${s.first} ${s.last}`, ...scoutTarget(a) } });
+  if (a) addNews({ cat: 'scout', key: 'scout.started', params: { scout: `${s.first} ${s.last}`, ...scoutTarget(a) } });
 }
 
 /** Næste modstander for brugerens klub */
@@ -289,7 +303,7 @@ function scoutOppReport(s: { first: string; last: string }, opp: number) {
 }
 
 /** Kendskab fra en scout: når en spiller er godt afdækket, kommer han på listen over fund */
-function scoutKnowledge(pid: number, amount: number, scoutId: number) {
+function scoutKnowledge(pid: number, amount: number, scoutId: number, direct = false) {
   const g = gs();
   const before = g.knowledge[pid] ?? 0;
   addKnowledge(pid, amount);
@@ -300,7 +314,7 @@ function scoutKnowledge(pid: number, amount: number, scoutId: number) {
     const p = g.players[pid];
     // en spiller, der lige er skiftet klub, anbefales ikke (han kan ikke sælges videre så hurtigt – *estimeret*, ejerens fund 13/11)
     const justMoved = !!p && !!p.club && !!p.joined && (p.joined > addDays(g.date, -120) || (!p.listed && p.joined > addDays(g.date, -300)));
-    if (asg && asg.kind !== 'player' && !justMoved) (asg.found ??= []).push(pid);
+    if (!direct && asg && asg.kind !== 'player' && !justMoved) (asg.found ??= []).push(pid);
     const s = g.staff[scoutId];
     // Gode fund meldes i indbakken – ikke i CM 01/02 (der kommer kun "… search completed, after finding N suitable players")
     if (p && s && !justMoved && !cmActive(g) && p.club !== g.userClub && scoutStars(p).potential[0] >= 4 && realistic(p)) {
