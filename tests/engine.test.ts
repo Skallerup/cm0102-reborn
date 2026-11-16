@@ -123,10 +123,10 @@ describe('instruktioner mod modstanderen', () => {
       return sp.eff[A.finishing];
     };
     expect(effOf(true) / effOf(false)).toBeCloseTo(0.92, 2);
+    // flere frø (effekten er lille, og én talrække kan skjule den)
     const fouls = (oi: boolean) => {
-      const r = new Rng(3);
       let n = 0;
-      for (let i = 0; i < 300; i++) n += quickMatch(oi ? withOi(team(h)) : team(h), team(a), { fixtureId: 1 }, r).stats[0].fouls;
+      for (const seed of [3, 4, 5, 6, 7]) { const r = new Rng(seed); for (let i = 0; i < 300; i++) n += quickMatch(oi ? withOi(team(h)) : team(h), team(a), { fixtureId: 1 }, r).stats[0].fouls; }
       return n;
     };
     expect(fouls(true)).toBeGreaterThan(fouls(false));
