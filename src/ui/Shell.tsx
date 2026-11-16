@@ -20,6 +20,7 @@ import { ClassicManagerHistory } from './screens/ManagerHistoryClassic';
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { flushAutosave, forgetLast, saveGame, scheduleAutosave } from '../game/save';
 import { runUntil, watchedDay } from '../game/sim';
+import { runDays } from './dayRunner';
 import { realCompName, setCompEra } from '../i18n/comps';
 import { authentic } from '../game/rules';
 import { cmTimeOfDay } from '../game/cmCalendar';
@@ -161,6 +162,8 @@ export function Shell() {
   const inMatch = route.name === 'match' && !!g.pendingFixture && (route as { id?: number }).id === g.pendingFixture;
   const [menuOpen, setMenuOpen] = useState(false);
   const [running, setRunning] = useState<string | null>(null);
+  // brøkdelen af den dag, der regnes (dagens Web Worker – ui/dayRunner.ts): bjælken bevæger sig også inden for en lang dag
+  const [runFrac, setRunFrac] = useState(0);
   // sæsonskiftet (1/7) er én tung dag uden delfremdrift: bjælken fortæller, hvad der sker, mens den kører
   const [runNote, setRunNote] = useState<string | null>(null);
   const spanRef = useRef({ start: '', end: '' });
@@ -409,8 +412,12 @@ export function Shell() {
     // klassisk: bjælken vises MED DET SAMME og tegnes, før første dag simuleres (en tung første dag gav før 3 s uden noget på skærmen – ejeren
     // 13/11); derefter opdateres den efter hver dag (runUntil giver plads med setTimeout(0) mellem dagene)
     if (cmNav) { setRunning(g0.date); await painted(); }
-    const r = await runUntil({ ...opts, shouldStop: () => stopRef.current, onProgress: (d) => { if (cmNav || Date.now() - t0 > 60) setRunning(d); setRunNote(d.slice(5, 10) === '06-30' && !authentic() ? t('cl.run.season') : null); } });
-    setRunning(null); setRunNote(null);
+    setRunFrac(0);
+    const r = await runDays({ ...opts, shouldStop: () => stopRef.current,
+      onProgress: (d) => { if (cmNav || Date.now() - t0 > 60) { setRunning(d); setRunFrac(0); } setRunNote(d.slice(5, 10) === '06-30' && !authentic() ? t('cl.run.season') : null); },
+      // (arbejderen) dagen d regnes: datoen før og brøkdelen
+      onFrac: (d, f) => { if (cmNav || Date.now() - t0 > 60) { setRunning(addDays(d, -1)); setRunFrac(f); } } });
+    setRunning(null); setRunNote(null); setRunFrac(0);
     if (r.stop === 'news') { notify(); return r; }
     handle(r);
     return r;
@@ -600,7 +607,7 @@ export function Shell() {
               {(() => {
                 const sp = spanRef.current;
                 const tot = Math.max(1, daysBetween(sp.start, sp.end));
-                const pct = Math.max(2, Math.min(100, Math.round((daysBetween(sp.start, running) / tot) * 100)));
+                const pct = Math.max(2, Math.min(100, Math.round(((daysBetween(sp.start, running) + runFrac) / tot) * 100)));
                 if (runNote) return <><span className="cx-run-l">{cxLongDate(running)}</span><span className="cx-run-bar busy" role="progressbar" data-testid="run-note"><i style={{ width: '100%' }}><b>{runNote}</b></i></span></>;
                 return <><span className="cx-run-l">{cxLongDate(running)}</span><span className="cx-run-bar" role="progressbar" aria-valuenow={pct}><i style={{ width: `${pct}%` }} /><b className="cx-run-pct">{pct}%</b></span></>;
               })()}{onHolidayRef.current && <small className="cx-running-hint">{t('cl.hol.bar')}</small>}

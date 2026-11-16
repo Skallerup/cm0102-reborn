@@ -76,7 +76,8 @@ export function refusedBy(p: Player, buyer: number): boolean {
  *  (ejerens fund 16/11: Club de Fútbol México bød på en Vejle-spiller). */
 function inPlayedNation(c: Club): boolean {
   const g = gs();
-  return !cmActive(g) || g.activeNations.includes(c.nation);
+  // med ønskelisterne (cmShortlistOn) afgør de selv, hvem der byder (0x84a020) – reglen gælder kun spillets egne skøn
+  return !cmActive(g) || cmShortlistOn(g) || g.activeNations.includes(c.nation);
 }
 
 function canBidOnHuman(p: Player, buyer: number): boolean {
@@ -1273,6 +1274,8 @@ export function findTarget(club: Club, role: Role): Player | null {
 
 export function aiTransferTick() {
   const g = gs();
+  // ønskelisterne (0x83b6e0/0x84a020) står for computerens køb og salg – spillets eget marked er slået fra
+  if (cmShortlistOn(g)) return;
   if (!cmActive(g) && !windowOpen()) return;   // ægte tilstand: hver klubs eget lands vindue (aiClubTurn)
   const m = month(g.date);
   const rate = m === 7 || m === 8 ? 1 / 5 : m === 1 ? 1 / 9 : m === 6 ? 1 / 12 : 1 / 60;
@@ -1384,6 +1387,7 @@ function startPursuit(o: TransferOffer) {
 /** Dagligt: klubber der jagter en spiller kommer igen med forhøjet bud */
 export function aiPursuits() {
   const g = gs();
+  if (cmShortlistOn(g)) return;   // ønskelisternes genudfyldning efter et afslag (0x843e10) erstatter jagten
   if (!g.pursuits?.length || (!cmActive(g) && !windowOpen())) return;
   const keep: typeof g.pursuits = [];
   for (const pu of g.pursuits) {
@@ -1509,6 +1513,8 @@ export function aiRenewals() {
  */
 export function aiFillSquads(minSize = 22) {
   const g = gs();
+  // ønskelisterne: originalen fylder ikke trupperne op med klubløse (fyldspillerne cmVirtual.ts står i hullerne før kampene)
+  if (cmShortlistOn(g)) return;
   const free = Object.values(g.players).filter((p) => !p.club && p.ca >= 30).sort((a, b) => b.ca - a.ca);
   const taken = new Set<number>();
   for (const c of Object.values(g.clubs)) {
@@ -1565,6 +1571,7 @@ export function contractReminders() {
 /** AI-klubber laver pre-contracts med brugerens spillere (Bosman) */
 export function aiBosman() {
   const g = gs();
+  if (cmShortlistOn(g)) return;   // ønskelisternes bud på spillere med udløbende kontrakt erstatter skønnet
   for (const p of squad(g.userClub)) {
     if (!canPreContractAny(p) || p.contract!.futureClub) continue;
     // spillere, der har sagt nej til at forlænge, er meget mere åbne over for andre klubber
@@ -1842,6 +1849,7 @@ setSlApply(cmShortlistApply);
  */
 export function aiReleaseClauses() {
   const g = gs();
+  if (cmShortlistOn(g)) return;   // ønskelisternes bud (build_bid 0x8e5d60) erstatter skønnet
   if (!cmActive(g) && !windowOpen()) return;
   const clubs = Object.values(g.clubs).filter((c) => !isHumanClub(c.id) && c.balance > 0 && (!cmActive(g) || windowOpen(g.date, c.id)));
   for (const p of Object.values(g.players)) {

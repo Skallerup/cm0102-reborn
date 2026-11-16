@@ -76,8 +76,10 @@ ad gangen (eller ret sn_trace.c til kun at skrive `pre` og ingen log).
 View Finances (der læser Bonuses fra blokken) viste 0 bonusser, selv om pengene blev trukket. Test i tests/cmFinance.test.ts.
 
 ### K2 – prioriteret liste (porte/rettelser)
-1. **Lejeaftaler for computerklubber** (0 i hele sæsonen mod 226) og **klubløse, der skriver under** (1 mod 95) – ønskelisterne/markedet
-   (`SL_ON`, arbejdsliste 1.1) + udløbne kontrakter, der frigives (0 mod 65).
+1. **Lejeaftaler for computerklubber** og **klubløse, der skriver under** – ønskelisterne er SLÅET TIL 16/11 (Web Worker, ENGINE_PORT_PLAN.md):
+   sæsonen (Maximum, scripts/sl-season.ts) 441 køb / 162 leje / 200 klubløse mod originalens 621 / 226 / 95 (før 346 / 0 / 1). Tilbage: for mange
+   klubløse skriver under (Maximum-hukommelsen har ~6× oraklets engelske klubløse – kør cm-day-lockstep med størrelse 2), for få køb/lån,
+   frigivne tælles ikke i Player.moves (0 mod 65).
 2. **Forkørslens marked 1/1–13/7** (0x5cc850 med transfer-/lejemarkedet): 40 lejeaftaler og trupændringer ved spilstarten (Arsenal 48 mod 43).
 3. ~~**Værdien +0x52 ved start**~~ – gjort 16/11 (punkt 17): `p.value` = 0x4d0c60 som 0x4c7ec5 (cmValueGame.ts).
 4. **Trupstatus for klubber uden for ligaerne** (0x83a1b0 for alle indlæste klubber – fjern *estimeret* spring) og de 976 ligaspillere med anden status.
@@ -93,7 +95,7 @@ View Finances (der læser Bonuses fra blokken) viste 0 bonusser, selv om pengene
 ## Arbejdsliste – skal undersøges / rettes
 
 ### 1. Spilsystemer der stadig er vores egne eller estimerede
-1. Ønskelisterne (Shortlist_Manager) – porteret, men slået fra (`SL_ON`): hastighed ~2,5–4,5 s/dag med Maximum-hukommelsen (`tm`, runde 12 – runde 11's 0,6 s var uden `tm`) → 0,3 s/dag kræver genudfyldningen 0x843e10 → 0x83f3a0 og 0x84a020 i TS uden x86-emulering (ENGINE_PORT_PLAN.md, runde 12); derefter computerens interesse/bud/handler fra originalen og vores `cmInterested`, `aiPursuits`, `weeklyRumours`, `aiBosman`, `aiReleaseClauses`, `aiFillSquads`, `freeAgentDrift` slået fra.
+1. Ønskelisterne (Shortlist_Manager) – SLÅET TIL 16/11 (dagene i en Web Worker, ~2–4 s pr. dag; spillets egne computer-transfers slået fra). Historik: porteret, men slået fra (`SL_ON`): hastighed ~2,5–4,5 s/dag med Maximum-hukommelsen (`tm`, runde 12 – runde 11's 0,6 s var uden `tm`) → 0,3 s/dag kræver genudfyldningen 0x843e10 → 0x83f3a0 og 0x84a020 i TS uden x86-emulering (ENGINE_PORT_PLAN.md, runde 12); derefter computerens interesse/bud/handler fra originalen og vores `cmInterested`, `aiPursuits`, `weeklyRumours`, `aiBosman`, `aiReleaseClauses`, `aiFillSquads`, `freeAgentDrift` slået fra.
 2. Transferbudget/lønbudget: 0x598800 bygget (`cmBudget.ts`) men giver 33,6M mod originalens 24M for Man Utd – mangler et input (fin+0xc m.fl.).
 3. Arbejdstilladelse: tildelingen 0x8c7950 ikke porteret (kun "skal have").
 4. Landsholdsfodbold – **etape 1 delvis 16/11** (`src/game/cmIntl.ts`, noter ~/cm0102-engine/notes/international.md, `scripts/cm-intl-check.ts`,

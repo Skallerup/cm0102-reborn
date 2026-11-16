@@ -84,6 +84,17 @@ export function rebuildIndexes() {
   for (const f of Object.values(G.fixtures)) indexFixture(f.id, f.date);
 }
 
+/** indeksernes rækkefølge (squad() og fixturesOn() følger den) – dagens Web Worker (ui/dayRunner.ts) sender den med spillet begge veje, så
+ *  en kørsel i arbejderen giver præcis det samme som i hovedtråden (rebuildIndexes bygger dem i spillerrækkefølge, ikke i skifternes) */
+export type IndexSnapshot = { sq: [number, number[]][]; fx: [string, number[]][] };
+export function indexSnapshot(): IndexSnapshot {
+  return { sq: [...squadIndex], fx: [...fixturesByDate] };
+}
+export function restoreIndexes(s: IndexSnapshot) {
+  squadIndex = new Map(s.sq);
+  fixturesByDate = new Map(s.fx);
+}
+
 export function indexFixture(id: number, date: string) {
   let arr = fixturesByDate.get(date);
   if (!arr) fixturesByDate.set(date, (arr = []));

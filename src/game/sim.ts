@@ -242,12 +242,16 @@ function tacticFor(club: number, opp: number, home: boolean, userAuto: boolean, 
 // gittermotoren (originalens kampmotor) – bruges kun, når gridEngineOn(g) er sand
 setGridFactory(gridFactory);
 
+/** udviklerkontakten `cm0102.engine`, sat af dagens Web Worker (undefined = læs localStorage) */
+export const ENGINE_DEV: { v?: string | null } = {};
 export function gridEngineOn(g: GameState): boolean {
   if (cmDatabase(g) !== 'original' || !authentic()) return false;
   // udviklerkontakten localStorage `cm0102.engine`: 'original' slår gittermotoren til, 'zone' fra (også i nye spil, hvor den er standard –
   // GRID_ENGINE_DEFAULT i engine/liveSim.ts)
   let dev: string | null = null;
-  try { dev = typeof localStorage !== 'undefined' ? localStorage.getItem('cm0102.engine') : null; } catch { dev = null; }
+  // (Web Worker – ui/dayRunner.ts) arbejderen har ingen localStorage: hovedtrådens værdi sendes med
+  if (ENGINE_DEV.v !== undefined) dev = ENGINE_DEV.v;
+  else try { dev = typeof localStorage !== 'undefined' ? localStorage.getItem('cm0102.engine') : null; } catch { dev = null; }
   if (dev === 'zone') return false;
   // GRID_ENGINE_DEFAULT (staging, 12/11 – ejerens ønske): også spil uden valg (gemt før runde 8) får gittermotoren; 'zone' fravælger den
   return g.options.engine === 'original' || dev === 'original' || (g.options.engine === undefined && GRID_ENGINE_DEFAULT);

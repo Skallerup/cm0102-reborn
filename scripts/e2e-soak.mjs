@@ -237,8 +237,9 @@ for (let s = 1; s <= SEASONS; s++) {
     if (st.club === 'ARBEJDSLØS') {
       const got = await page.evaluate(async () => {
         const m = await import('/cm0102-reborn/src/game/actions.ts');
-        const g = window.__cm.gs();
-        for (let i = 0; i < 40 && !g.userClub; i++) {
+        // (advance kan køre i dagens Web Worker og giver så et nyt spilobjekt – hent det igen hver gang)
+        let g = window.__cm.gs();
+        for (let i = 0; i < 40 && !g.userClub; i++, g = window.__cm.gs()) {
           const offer = g.jobOffers.find((id) => g.clubs[id]?.manager === 0);
           if (offer) { m.act({ t: 'acceptJob', club: offer }); break; }
           for (const id of g.vacancies.slice(0, 3)) m.act({ t: 'applyJob', club: id });

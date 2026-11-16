@@ -1538,7 +1538,7 @@ async function run(look) {
   await step('spil en hel kamp', async () => {
     // sæsonen starter i juli, første kamp i midten af august – spol frem til dagen før
     // (begge databaser: ellers bruger løkken op mod 120 klik på dag-for-dag-Continue før kampdagen)
-    await page.evaluate(async () => { const c = window.__cm; const g = c.gs(); const f = Object.values(g.fixtures).filter((x) => x.home === g.userClub || x.away === g.userClub).sort((a, b) => a.date.localeCompare(b.date))[0]; if (!f) return; const days = Math.round((Date.parse(f.date) - Date.parse(g.date)) / 864e5) - 1; if (days > 0) await c.advance(days); const me = g.clubs[g.userClub]; me.sqnDue = undefined; me.euroDue = undefined; for (const n of g.news) n.read = true; });
+    await page.evaluate(async () => { const c = window.__cm; const g = c.gs(); const f = Object.values(g.fixtures).filter((x) => x.home === g.userClub || x.away === g.userClub).sort((a, b) => a.date.localeCompare(b.date))[0]; if (!f) return; const days = Math.round((Date.parse(f.date) - Date.parse(g.date)) / 864e5) - 1; if (days > 0) await c.advance(days); const g2 = c.gs(); const me = g2.clubs[g2.userClub]; me.sqnDue = undefined; me.euroDue = undefined; for (const n of g2.news) n.read = true; });
     // klassisk (CM 01/02): Continue Game → "Proceed to the match ?" (Yes) → Kick Off Match i sidebjælken
     const kick = await t(look === 'klassisk' ? 'cl.mt.kickoff' : 'match.kickoff');
     const labels = [await t('top.toTheMatch'), await t('top.toMatch'), await t('cl.continue'), await t('top.continue')].filter(Boolean);
@@ -1684,7 +1684,8 @@ async function run(look) {
     const d0 = await gs(() => window.__cm.gs().date);
     await go({ name: 'competitions' });
     for (const [k, id] of ids.entries()) {
-      await page.locator('.cx-side .cx-continue').first().click({ timeout: 10000 });
+      // (ønskelisterne: en kørsel kan tage et minut i dagens Web Worker – vent, til bjælken er væk, før næste klik)
+      await page.waitForSelector('.cx-running', { state: 'detached', timeout: 300000 }).catch(() => {}); await page.locator('.cx-side .cx-continue').first().click({ timeout: 10000 });
       await page.waitForSelector(`.cx-nrow.on[data-id="${id}"]`, { timeout: 5000 });
       await page.waitForTimeout(150);
       const unread = await gs((x) => x.filter((i) => !window.__cm.gs().news.find((n) => n.id === i)?.read), ids);
@@ -1721,7 +1722,8 @@ async function run(look) {
         });
         ob.observe(document.body, { childList: true, subtree: true });
       });
-      await page.locator('.cx-side .cx-continue').first().click({ timeout: 10000 });
+      // (ønskelisterne: en kørsel kan tage et minut i dagens Web Worker – vent, til bjælken er væk, før næste klik)
+      await page.waitForSelector('.cx-running', { state: 'detached', timeout: 300000 }).catch(() => {}); await page.locator('.cx-side .cx-continue').first().click({ timeout: 10000 });
       await page.waitForFunction(() => window.__bar.off >= 0 || performance.now() - window.__bar.t0 > 120000, null, { timeout: 130000, polling: 50 });
       const m = await gs(() => window.__bar);
       const days = await gs((d0) => Math.round((Date.parse(window.__cm.gs().date) - Date.parse(d0)) / 86400000), saved.date);
@@ -1746,7 +1748,8 @@ async function run(look) {
       if (await yes.isVisible().catch(() => false)) { await yes.click().catch(() => {}); await page.waitForTimeout(200); continue; }
       if (await answerSquadNumbers()) continue;
       if (await page.locator('.cx-md-panel').isVisible().catch(() => false) && !st.done) { watched++; if (process.env.SHOTS && watched === 1) await page.screenshot({ path: `${OUT}/klassisk-kampdag-uden-egen.png` }); }
-      await page.locator('.cx-side .cx-continue').first().click({ timeout: 10000 });
+      // (ønskelisterne: en kørsel kan tage et minut i dagens Web Worker – vent, til bjælken er væk, før næste klik)
+      await page.waitForSelector('.cx-running', { state: 'detached', timeout: 300000 }).catch(() => {}); await page.locator('.cx-side .cx-continue').first().click({ timeout: 10000 });
       await page.waitForTimeout(250);
       if (i === 199) throw new Error(`Continue Game nåede ikke næste kamp (dato ${st.date})`);
     }

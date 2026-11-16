@@ -53,7 +53,31 @@ Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.m
   (gæld/boost/overtagelse), stadionarbejderne i 0x59cfa0, pokal-/Europapræmierne (0x522240 m.fl.), bonusserne 0x4ca6d0, fixture +0x40,
   B-hold, venskabskampenes billetindtægt (spillets venskabskampe går ikke gennem applyMatchResult), lejekontrakternes løn (spillets andel).
 
-## Ønskelisterne – Shortlist_Manager på spillets data (2026-11-14, SLÅET FRA – `src/game/cmShortlistGame.ts`, `SL_ON`; databasestørrelsen Maximum fra runde 9)
+## Ønskelisterne – Shortlist_Manager på spillets data (2026-11-14; SLÅET TIL 16/11 – `src/game/cmShortlistGame.ts`, `SL_ON`; databasestørrelsen Maximum fra runde 9)
+- **Slået til (16/11, ejerens beslutning):** `SL_ON` er sand i browseren og i Node (scripts) – under vitest falsk (testene ville tage minutter), `CM_SL=0/1`
+  tvinger. Med cmShortlistOn er spillets egne computer-transfers slået fra: aiTransferTick (aiClubTurn), aiPursuits, weeklyRumours, aiBosman,
+  aiReleaseClauses, aiFillSquads (også ved sæsonskiftet) og freeAgentDrift (kun regens); cmBidsForListed og startPursuit var det allerede.
+  Reglen "kun valgte lande byder på menneskets spillere" (`inPlayedNation`) gælder kun uden ønskelisterne – de afgør selv, hvem der byder (0x84a020).
+  Nyt spil-forløbets midlertidige verden kører ikke cmShortlistStart (spillet bygges igen ved Take Control). Rettet: refreshClub skrev kontrakten for
+  en udskudt spiller, der havde mistet den samme dag (sæsonen gik ned 20/8).
+- **Web Worker (ui/dayWorker.ts + ui/dayRunner.ts `runDays`, Shell's Continue Game/ferie og DEV `__cm.advance`):** hele runUntil kører i arbejderen
+  (valg (a)): spillet sendes som struktureret kopi + indeksernes rækkefølge (`indexSnapshot/restoreIndexes` i state.ts – rebuildIndexes ville give
+  spillerrækkefølgen i squad()), arbejderen sender datoen efter hver dag og dagens brøkdel fra klubløkken (`SL_PROGRESS`), og spillet tilbage ved
+  stop. Valg (b) (kun ønskelisterne i arbejderen) blev fravalgt: dagen skriver i spillet midt i klubløkken (trupplanen 0x83cb40 fritstiller/sætter
+  status, cmAiAiDue gennemfører handler på dagens hukommelse), så (b) kræver en kopi af spillet hver dag og en diff tilbage. Kun med cmShortlistOn,
+  ikke fællesspil/nyt spil-forløbet; uden Worker eller ved fejl i hovedtråden (spillet er urørt, til arbejderen svarer). **Bit for bit:**
+  `scripts/day-worker-check.ts` (CLONE=1: kopi via v8.serialize før hver dag) giver samme sha1 pr. dag som en kørsel i ét stræk (8 dage) – efter to
+  rettelser af tilstand uden for spillet: cmFitnessGame's linkPlayerCtx holdt gårsdagens GameState (newDay's landskampe kører før cmFitDay – også en
+  fejl efter indlæsning af et gemt spil), og international.ts' byNation-cache gjaldt kun datoen. Tilbage uden for spillet: cmFitness `staleSev`
+  (sjælden gren) og aiTeam's `chosenTactic` (inden for én kamp). **Prisen:** kopien 64–68 MB; serialize 0,20–0,26 s (hovedtråden, ved start),
+  deserialize 0,52–0,64 s (hovedtråden, ved stop) – i Node; pr. Continue Game, ikke pr. dag.
+- **Sæsonen (16/11, `scripts/sl-season.ts`, Maximum-world-filen, Arsenal, frø 1, England, 14/7-2001 → 30/6-2002, 352 dage, intet nedbrud):** England
+  (køber eller sælger) 441 køb med sum (£155,3M), 162 lejeaftaler, 200 klubløse skriver under; originalen (K2, størrelse 2) 621 / 226 / 95 / 65 frigivne
+  (vores frigivne står ikke i Player.moves – ikke talt). Uden ønskelisterne (CM_SL=0, samme kode): 363 køb (£545,9M), 0 leje, 12 klubløse. Bud på
+  Arsenals spillere 65 (før 9). Computer → computer: 18.871 bud, 2.287 handler. Økonomien: de engelske ligaklubbers saldo £367M → £28M, i minus
+  12 → 59 (uden: → £111M, 63 i minus) – ingen eksplosion, men pengene bruges. Trupper min/median/max 26/37/48 (uden 35/39/48), klubløse i alt 4.561.
+  **Tid (tsx, belastet maskine):** 3,69 s pr. dag i snit (ønskelisterne 2,30 s), langsomste 9,7 s (lørdage med kampe); uden 1,46 s. Klubløse
+  skriver for meget under (Maximum har ~1.600 engelske klubløse mod oraklets ~280) og leje/køb for lidt – næste K2-punkt.
 - **Oversat (cmGen/, x86ts.py, 78 nye funktioner):** 0x83b6e0 allocate_transfer_budget, 0x83f3a0 fill_shortlist_slot, 0x840d80 value_player_for_club,
   0x4d1600 calc_asking_price (+0x4d42d0), 0x598800 get_transfer_budget, 0x84a020 make_club_bids, 0x8e5d60 build_bid, 0x842e10, 0x843800, 0x843e10,
   0x842180, 0x8423f0, 0x844540, 0x844660, 0x84af00, 0x84b180, 0x84b6f0, 0x842740, 0x8ce990, 0x8c7950 m.fl. De 121 ældre oversættelser er genereret

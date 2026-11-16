@@ -547,7 +547,8 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   // 0x83a1b0 efter trupplanen: lønnen for kontrakterne uden løn (0x862720 – cmWageGame.ts)
   cmWageFillNewGame(g, unsetWages);
   // 0x83a1b0's slutning: positionslisterne 0x83a780 og budgettets fordeling/målene 0x83b6e0 for alle klubber (cmShortlistGame.ts)
-  cmShortlistStart(g);
+  // (nyt spil-forløbets midlertidige verden: ikke – den bruges kun til Select Team, og spillet bygges igen ved Take Control)
+  if (!o.preview) cmShortlistStart(g);
   // startdagens CONTRACT_MANAGER::daily_update 0x4c7ac0 (originalen kører den også på [0xdd6ec8] – cmContractManager.ts)
   cmContractManagerDay(g);
   // spillernes værdi = originalens +0x52 (0x4d0c60 – cmValueGame.ts)

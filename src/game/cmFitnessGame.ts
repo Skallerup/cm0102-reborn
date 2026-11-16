@@ -7,7 +7,7 @@ import {
   applyMatchEffects, clearKnocks, clubSeason, condition, currentInjury, dayNum, fatigue, fitIso, fitRand, hasSeasonRow, initRecords, initSquadFitness, injuryDaily, injuryStatus,
   newFit, recordKnock, recoverFatigue, setKnockHook, syncPlayer, trainingLoad, updateFitness, type CmInjury, type FitCtx, type MatchEntry,
 } from './cmFitness';
-import { addNews, squad } from './state';
+import { addNews, gs, hasGame, squad } from './state';
 import { asOwner, isHumanClub } from './humans';
 import { cmRand, statCategory } from './cmPlayerData';
 import { cmTrainPlayer, humanLevels, setTrainCtx } from './cmTraining';
@@ -82,23 +82,26 @@ function injuryNews(g: GameState, kind: 'injury' | 'recovered', p: Player, inj: 
 
 /** konditionsmodulets aflæsninger til kontraktens opdatering 0x4cb250 (cmPlayerData.ts): 0x62c400 og sæsontabellen for klubbens land
  *  (0x669340 → 0xb63d60 +0x2a/+0x39: i dag efter starten og før slutningen – tabellens år følger clubSeason, *estimeret*) */
-function linkPlayerCtx(g: GameState): void {
+function linkPlayerCtx(g0: GameState): void {
+  // spillet læses ved kaldet, ikke ved koblingen: newDay's landskampe (intlDaily) kører før dagens cmFitDay og brugte ellers gårsdagens
+  // GameState-objekt – efter en indlæsning (eller dagens Web Worker, ui/dayRunner.ts) et andet objekt end det aktuelle
+  const cur = () => (hasGame() ? gs() : g0);
   // træningen 0x8b1750 (0x8b39f0: skadestatus 2 → skemaet "No Training") og udviklingen 0x5ce2d0 (trætheden 0x62c3d0, skadens +0x2c 0x62ed70)
   setTrainCtx({
-    injured: (p) => injuryStatus(fitCtx(g, SALT.read), p) === 2,
+    injured: (p) => injuryStatus(fitCtx(cur(), SALT.read), p) === 2,
     human: (club) => isHumanClub(club),
-    rand: (p, salt) => cmRand(g.seed ?? 0, p.id, dayNum(g.date), 0x8b1750, salt),
+    rand: (p, salt) => cmRand(cur().seed ?? 0, p.id, dayNum(cur().date), 0x8b1750, salt),
   });
   setDevCtx({
     fatigue: (p) => fatigue(p),
-    injuryW2c: (p) => { const e = currentInjury(fitCtx(g, SALT.read), p); return e ? e.w2c : null; },
+    injuryW2c: (p) => { const e = currentInjury(fitCtx(cur(), SALT.read), p); return e ? e.w2c : null; },
   });
   setCmPlayerCtx({
     fatigue: (p) => fatigue(p),
-    injury: (p) => injuryStatus(fitCtx(g, SALT.read), p),
-    injuryW2c: (p) => { const e = currentInjury(fitCtx(g, SALT.read), p); return e ? e.w2c : null; },
+    injury: (p) => injuryStatus(fitCtx(cur(), SALT.read), p),
+    injuryW2c: (p) => { const e = currentInjury(fitCtx(cur(), SALT.read), p); return e ? e.w2c : null; },
     inSeason: (club) => {
-      const n = g.clubs[club]?.nation, today = dayNum(g.date);
+      const g = cur(), n = g.clubs[club]?.nation, today = dayNum(g.date);
       if (!hasSeasonRow(n)) return false;
       const [inS, start, end] = clubSeason(n, today);
       return inS && today > start && today < end;

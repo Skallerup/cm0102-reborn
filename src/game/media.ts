@@ -9,6 +9,7 @@ import { addNews, gs, squad } from './state';
 import { leagueRows } from './competitions';
 import { LEAGUE_RULES } from './leagues';
 import { cmActive } from './cmPlayerData';
+import { cmShortlistOn } from './cmShortlistGame';
 import type { Player, Club } from './types';
 
 const pname = (p: Player) => `${p.first} ${p.last}`.trim();
@@ -17,6 +18,8 @@ const avgForm = (p: Player) => (p.form.length ? p.form.reduce((s, x) => s + x, 0
 /** Ugentligt: rygter om større klubbers interesse for brugerens bedste/formstærke spillere */
 export function weeklyRumours() {
   const g = gs();
+  // ønskelisterne: rygterne har ingen modstykke i originalen (interessen ses på spillerens Transfer-fane, 0x842180)
+  if (cmShortlistOn(g)) return;
   const me = g.clubs[g.userClub];
   if (!me) return;
   const m = Number(g.date.slice(5, 7));

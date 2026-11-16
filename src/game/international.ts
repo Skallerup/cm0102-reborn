@@ -72,10 +72,11 @@ let fillers: Map<number, Player[]> | null = null;
 export function setNationFillers(m: Map<number, Player[]> | null): void { fillers = m; cache = null; }
 
 /** Landets spillere pr. nation (bygges én gang pr. dag) */
-let cache: { date: string; by: Map<number, Player[]> } | null = null;
+let cache: { date: string; g: unknown; by: Map<number, Player[]> } | null = null;
 function byNation(): Map<number, Player[]> {
   const g = gs();
-  if (cache?.date === g.date) return cache.by;
+  // også spillet selv: et nyt GameState-objekt samme dag (indlæst spil, dagens Web Worker – ui/dayRunner.ts) har nye spillerobjekter
+  if (cache?.date === g.date && cache.g === g) return cache.by;
   const by = new Map<number, Player[]>();
   for (const p of Object.values(g.players)) {
     const age = ageOn(p.dob, g.date);
@@ -84,7 +85,7 @@ function byNation(): Map<number, Player[]> {
   }
   if (fillers) for (const [n, list] of fillers) by.set(n, [...(by.get(n) ?? []), ...list]);
   for (const list of by.values()) list.sort((a, b) => b.ca - a.ca);
-  cache = { date: g.date, by };
+  cache = { date: g.date, g, by };
   return by;
 }
 

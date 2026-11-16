@@ -2,6 +2,7 @@
 import { cmDiscSeason } from './cmDiscipline';
 import { cmBoardOn, cmBoardSeasonSetup } from './cmBoardGame';
 import { cmActive } from './cmPlayerData';
+import { cmShortlistOn } from './cmShortlistGame';
 import { cmRetireOn } from './cmRetire';
 import { cmCmOn, cmCmScope } from './cmContractManager';
 import { cmRegenWage } from './cmWageGame';
@@ -617,6 +618,8 @@ function updateClubReps() {
  */
 export function freeAgentDrift() {
   const g = gs();
+  // ønskelisterne: originalen lader de klubløse blive (de skriver under via 0x84a020 eller forbliver klubløse) – kun regens
+  if (cmShortlistOn(g)) { if (originalRegens()) spawnRegenQueue(); return; }
   const all = Object.values(g.players);
   const free = all.filter((p) => !p.club && p.ca < 130 && p.pa < 150 && p.rep < 70);
   // selvregulerende: kun det, puljen er over ~6 % af alle spillere, forsvinder (ellers skrumper verden)

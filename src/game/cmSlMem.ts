@@ -268,10 +268,11 @@ function writeRec(m: SparseMem, e: Ent, date: string, nNat: number): void {
   else { const v = Math.round(p.rep * 2 * 50); m.w16(pr + 9, v); m.w16(pr + 0xb, v); m.w16(pr + 0xd, v); }
   for (let i = 0; i < 7; i++) m.w8(pr + 0xf + i, p.pos[i] ?? 1);
   m.w32(st + 0x52, Math.round((p.value ?? 0) * GBP));
-  if (e.hasK) {
+  // (en udskudt spiller – refreshClub – kan have mistet kontrakten i løbet af dagen: fritstillet eller solgt før klubbens tur; sæsonen 16/11 gik ned her)
+  if (e.hasK && p.contract) {
     const k = K0 + 80 * id;
     m.w32(ROWS0 + 79 * id, id); m.w32(ROWS0 + 79 * id + 4, -1);
-    m.w32(k + 4, cid); m.w32(k + 0xc, Math.round(p.contract!.wage * GBP));
+    m.w32(k + 4, cid); m.w32(k + 0xc, Math.round(p.contract.wage * GBP));
     m.w8(k + 0x35, p.contract?.partTime ? 0x80 : 0); m.w8(k + 0x45, p.cmContract?.b45 ?? 0); m.w8(k + 0x4f, p.cmContract?.b4f ?? 0);
   }
 }

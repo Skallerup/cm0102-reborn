@@ -65,11 +65,12 @@ const s16 = (v: number) => (v << 16) >> 16;
 
 /** ønskelisterne kører (den originale database i ægte tilstand, ikke draft) */
 const ENV = typeof process !== 'undefined' ? process.env ?? {} : {};
-/** Ønskelisterne er SLÅET FRA i spillet (14/11-2026): de finder mål som originalen (spilstarten 300 mål i 172 klubber mod originalens 258 i
- *  137 – scripts/cm-shortlist.ts / cm-shortlist-orig.ts; udbudsprisen 0x4d1600 median 1,00 × originalens), men en hel sæson koster ~0,49 s pr.
- *  dag (målet er ≤ 0,3 s; de første 45 dage ~0,3 s – scripts/cm-sl-bench.ts, scripts/ct-season-game.ts; runde 5: trupplanernes 0x83b6e0 →
- *  0x83f3a0 er ~0,2 s pr. dag i sæsonen; runde 10 med databasestørrelsen Maximum: 0,58 s pr. dag over en sæson; runde 11 −15–17 % på 30 dage) – se docs/ENGINE_PORT_PLAN.md "Ønskelisterne". Slås til i måleværktøjerne med CM_SL=1 (og i spillet med SL_ON.on = true). */
-export const SL_ON = { on: ENV.CM_SL === '1' };
+/** Ønskelisterne er SLÅET TIL i spillet (ejerens beslutning 16/11-2026) for den originale database i ægte tilstand: computerens køb, lejeaftaler,
+ *  klubløse og bud på menneskets spillere kommer herfra (0x83b6e0/0x84a020/0x8e5d60), og spillets egne skøn (aiClubTurn, aiPursuits,
+ *  weeklyRumours, aiBosman, aiReleaseClauses, aiFillSquads, freeAgentDrift, cmBidsForListed) er slået fra. Dagen koster ~1,5–2,5 s med
+ *  databasestørrelsen Maximum (docs/ENGINE_PORT_PLAN.md "Ønskelisterne", runde 14) – i browseren kører Continue Game/ferien derfor i en Web Worker
+ *  (ui/dayRunner.ts), så siden ikke fryser. I Node: til, undtagen under vitest (testene ville tage minutter) og med CM_SL=0; CM_SL=1 tvinger dem til. */
+export const SL_ON = { on: ENV.CM_SL ? ENV.CM_SL === '1' : !ENV.VITEST };
 /** ønskelisterne kører (den originale database i ægte tilstand, ikke draft, og SL_ON) */
 export const cmShortlistOn = (g: GameState) => SL_ON.on && cmActive(g) && !g.draft;
 
@@ -1913,6 +1914,8 @@ export const SL_DIAG: { after?: (S: SlMem) => void; end?: (S: SlMem) => void } =
 export const SL_T: Record<string, number> = {};
 const now = () => (typeof performance !== 'undefined' ? performance.now() : 0);
 const tick = (k: string, t: number) => { const n = now(); SL_T[k] = (SL_T[k] ?? 0) + n - t; return n; };
+/** dagens fremdrift (0..1) undervejs i klubløkken – sat af ui/dayWorker.ts (rører intet i spillet) */
+export const SL_PROGRESS: { cb?: (frac: number) => void } = {};
 /** målinger: antal dage, tid (ms), bud */
 export const SL_STATS = { days: 0, ms: 0, bids: 0, free: 0, startMs: 0, skipHit: 0, cpuMs: 0 };
 /** processens CPU-tid (ms, Node) – målingerne svinger mindre end vægurets på en belastet maskine */
@@ -1928,7 +1931,11 @@ export function cmShortlistDaily(g: GameState, planClub: (cid: number) => { drop
   dropDeadBids(S);
   let tt = now();
   const off = bidDay(g);
-  for (const c of Object.values(g.clubs)) {
+  const clubs = Object.values(g.clubs), prog = SL_PROGRESS.cb;
+  for (let ci = 0; ci < clubs.length; ci++) {
+    const c = clubs[ci];
+    // fremdriftsbjælken (dagens Web Worker – ui/dayWorker.ts): dagens brøkdel, klubløkken er det meste af dagen
+    if (prog && (ci & 15) === 0) prog(0.1 + 0.8 * (ci / clubs.length));
     if (!c.league || g.leagues[c.league]?.hidden || !g.cmPlan[c.id]) continue;
     const bids = slotsWithBids(S, c.id);
     readSlots(S, c.id);
