@@ -16,6 +16,7 @@ import { avgRating } from '../../game/season';
 import { SCHEDULES } from '../../game/training';
 import { askingPrice, canPreContract, interestedClubs, nextWindow, releaseCost, windowOpen } from '../../game/transfers';
 import { cmActive } from '../../game/cmPlayerData';
+import { DEMONYM } from '../demonyms';
 import { cmAvailability, cmFutureLines } from '../../game/cmTransferList';
 import { trialOf } from '../../game/trials';
 import type { Player, TransferOffer } from '../../game/types';
@@ -66,6 +67,15 @@ export function positionLong(p: Player): string {
   return sides.length ? `${names.join('/')} (${sides.join('/')})` : names.join('/');
 }
 
+/** Preferred Foot som originalens profil 0x87aa24: venstre ≥ 15 → Left Only (højre < 8) / Left (< 14) / Either; ellers Right Only
+ *  (venstre < 8) / Right – ud fra fødderne (Player.feet), når de kendes */
+function footKey(p: Player): string {
+  if (!p.feet) return p.foot || 'R';
+  const [l, r] = p.feet;
+  if (l >= 15) return r < 8 ? 'LO' : r < 14 ? 'L' : 'B';
+  return l < 8 ? 'RO' : 'R';
+}
+
 /** "Born 30.6.76 (Age 25). Holland (19 caps/7 goals)." – uden landskampe som i originalen kun "Danish." */
 function BornLine({ p }: { p: Player }) {
   const g = useGame()!;
@@ -73,7 +83,8 @@ function BornLine({ p }: { p: Player }) {
   const v = { date: dob, age: ageOn(p.dob, g.date), nation: '\u0000', caps: p.caps, goals: p.intGoals };
   // nationen kan klikkes (åbner landets liga)
   const [before, after] = t(p.caps ? 'cl.pl.born' : 'cl.pl.bornNoCaps', v).split('\u0000');
-  const nat = natName(g.nations[p.nation]?.name) ?? '';
+  // uden landskampe nationalitetsordet som originalen ("English." – nation.dat +87), ellers landets navn
+  const nat = (!p.caps && (g.nations[p.nation]?.adj ?? DEMONYM[g.nations[p.nation]?.name ?? ''])) || (natName(g.nations[p.nation]?.name) ?? '');
   return <div className="cx-pl-born">{before}{after !== undefined ? <><CxLink to={nationRoute(p.nation)}>{nat}</CxLink>{after}</> : null}</div>;
 }
 
@@ -163,7 +174,7 @@ function ProfileTab({ p }: { p: Player }) {
   const form = p.form.slice(-5);
   const phys: [string, ReactNode][] = [
     ...sorted(GROUPS.physical.filter((a) => a !== 'naturalFitness')),
-    [t('cl.pl.foot'), <span className="cx-v v-gold">{t(`foot.${p.foot || 'R'}`)}</span>],
+    [t('cl.pl.foot'), <span className="cx-v v-gold">{t(`foot.${footKey(p)}`)}</span>],
     [t('col.form'), <span className="cx-v v-gold">{form.length ? form.map((x) => Math.round(x)).join('-') : '-'}</span>],
     [t('col.morale'), <span className="cx-v v-gold">{g.draft ? '-' : t(moraleKey(p.morale))}</span>],
     [t('cl.pl.condition'), <span className="cx-v v-gold">{Math.round(p.condition)}%</span>],

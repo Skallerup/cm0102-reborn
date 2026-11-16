@@ -18,6 +18,7 @@ import { isRetro } from '../theme';
 import { Head } from './common';
 import { ClassicSub, CxDrop, CxLink, clubRoute, type Item } from '../classic';
 import { ClassicClubSquad } from './SquadClassic';
+import { ClassicTournament, TOUR_KEYS, type TourKey } from './IntlTourClassic';
 
 export function International({ nation }: { nation?: number }) {
   const g = useGame()!;
@@ -262,6 +263,9 @@ function CxNatName({ name, cls = 'c-name' }: { name: string; cls?: string }) {
 
 function ClassicInternational({ tab, setTab }: { tab: string; setTab: (v: string) => void }) {
   const g = useGame()!;
+  // en bestemt landsholdsturnering (Competitions ▸ World Cup/International): originalens turneringsskærm
+  const [itour] = useRouteState<string>('itour', '');
+  if ((TOUR_KEYS as string[]).includes(itour)) return <ClassicTournament k={itour as TourKey} />;
   const st = g.intl;
   const tour = st?.tournament;
   const cur = (INTL_TABS as readonly string[]).includes(tab) ? tab : 'tournament';

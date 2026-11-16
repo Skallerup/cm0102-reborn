@@ -5,6 +5,7 @@ import type { GameState } from '../../game/types';
 import { compName, money, natName, t } from '../../i18n';
 import { useGame, useRouteState } from '../core';
 import { act } from '../../game/actions';
+import { openVacancies } from '../../game/board';
 import { CxDrop, CxLink, clubRoute } from '../classic';
 import { Head } from './common';
 import { Pager } from './TransfersClassic';
@@ -77,7 +78,7 @@ function JobInfo({ nation, name }: { nation: number; name: string }) {
   const g = useGame()!;
   // arbejdsløs: alle lande, så de ledige job kan ses med det samme
   const [scope, setScope] = useRouteState<'nation' | 'all'>('nscope', g.userClub ? 'nation' : 'all');
-  const vac = g.vacancies.map((cid) => g.clubs[cid]).filter((c) => c && c.manager === 0 && !g.leagues[c.league]?.hidden && (scope === 'all' || c.nation === nation))
+  const vac = openVacancies(g).map((cid) => g.clubs[cid]).filter((c) => c && c.manager === 0 && !g.leagues[c.league]?.hidden && (scope === 'all' || c.nation === nation))
     .sort((a, b) => (g.leagues[a.league]?.tier ?? 9) - (g.leagues[b.league]?.tier ?? 9) || b.rep - a.rep);
   return (
     <>

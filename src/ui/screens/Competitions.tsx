@@ -12,6 +12,7 @@ import { ClubLink, Panel, PlayerLink, Rating, Table, Tabs, type Col } from '../c
 import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
 import { isRetro } from '../theme';
+import { authentic } from '../../game/rules';
 import { resultStr, stageLabel } from './Fixtures';
 import { ClassicCup } from './CupClassic';
 import { ClassicCompHistory } from './CompHistoryClassic';
@@ -107,6 +108,9 @@ export function LeagueTable({ rows, comp, compact, offset = 0, zones }: { rows: 
   const rank = nationRanking().indexOf(comp.nation);
   const cl = comp.tier === 1 && rank >= 0 ? CL_SPOTS[rank] ?? 0 : 0;
   const uefa = comp.tier === 1 && rank >= 0 ? UEFA_SPOTS[rank] ?? 0 : 0;
+  // ægte CM 01/02 med den originale database: originalens streger (tabellens tekst 0x7d8457): efter mesteren i den øverste række, efter de
+  // automatiske oprykkere, efter playoff-pladserne og før nedrykkerne – ingen Europa-zoner (Danish Superliga: efter 1. og 10.)
+  const orig = isRetro() && authentic() && g.dbKind === 'cm0102' && (g.dbYear ?? 2026) < 2020;
   const cls = (i: number, club: number) => {
     const c: string[] = [];
     if (club === g.userClub) c.push('me');
@@ -116,7 +120,7 @@ export function LeagueTable({ rows, comp, compact, offset = 0, zones }: { rows: 
     if (rules?.promoted && i < rules.promoted) c.push('promo');
     else if (rules?.playoff && rules.playoff.seeds.some(([lg, pos]) => lg === comp.id && pos === i + 1)) c.push('playoff');
     else if (rules?.relegated && i >= n - rules.relegated) c.push('releg');
-    else if (i < cl + uefa && !rules?.promoted) c.push('euro');
+    else if (orig ? comp.tier === 1 && i === 0 : i < cl + uefa && !rules?.promoted) c.push(orig ? 'champ' : 'euro');
     return c.join(' ');
   };
   if (isRetro() && !compact) {

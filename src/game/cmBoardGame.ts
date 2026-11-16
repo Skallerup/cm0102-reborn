@@ -22,7 +22,7 @@ import { financeStatus } from './cmSquadPlan';
 import { clubSeason } from './cmFitness';
 import { CL_SPOTS, UEFA_SPOTS, UEFA_NATIONS, rulesFor } from './leagues';
 import { leagueRows, nationRanking } from './competitions';
-import { ageOn } from './dates';
+import { ageOn, daysBetween } from './dates';
 import { careerEnd, careerStart } from './careers';
 import { fixtureCodesOf } from './engine/grid/gameInputs';
 import {
@@ -226,6 +226,10 @@ export function boardEnv(g: GameState, todayIso = g.date, startIso?: string): Bo
     nat85: (n) => g.cmNationBoard?.[n]?.[1] ?? 0,
     nat7e: (n) => g.cmNation7e?.[n] ?? 0,
     isHumanClub: (c) => g.clubs[c]?.manager === -1,
+    dismissedBy: (p, c) => {
+      const d = p.human && p.id === HUMAN0 ? g.manager.cmDismissed?.[c] : undefined;
+      return !!d && daysBetween(d, g.date) < 180;
+    },
     humanOnHolidaySearching: (p) => p.human && !!humanRefs(g)[p.id - HUMAN0]?.get().manager.holiday?.applyJobs,
     fluency: (p, c) => {
       const cl = g.nations[g.clubs[c]?.nation ?? -1]?.lang?.[0], pl = g.nations[p.nation]?.lang?.[0];
@@ -363,10 +367,19 @@ function boardNews(g: GameState, _env: BoardEnv, n: BoardNews): void {
       }
       return;
     case 'applyReply':
-      if (n.human.id === HUMAN0) addNews({ cat: 'job', key: 'job.applied', params: { club: clubName(n.club) }, link: { kind: 'club', id: n.club } });
+      // 0x69c6b0: "{klub} acknowledge / dismiss your job application" (nyhed 0x1773, samme dag)
+      if (n.human.id === HUMAN0) addNews({ cat: 'job', key: n.dismissed ? 'job.cmDismiss' : 'job.cmAck', params: { club: g.clubs[n.club]?.short ?? clubName(n.club) }, link: { kind: 'club', id: n.club } });
       return;
     case 'departed':
-      if (n.manager.human) { if (mine(n.club)) addNews({ cat: 'job', key: n.type === 2 ? 'job.resigned' : 'board.sacked', params: { club: clubName(n.club) } }); }
+      // 0x69b790: afgangen skrives før nyheden (humanLeaves har allerede nulstillet userClub) – derfor managerens id, ikke mine(); før kom
+      // fyringen uden besked (ejerens test 16/11: fyret på ferie uden nyhed). runUntil stopper ferien, når klubben er væk.
+      if (n.manager.human) {
+        if (n.manager.id === HUMAN0) {
+          addNews({ cat: 'job', key: n.type === 2 ? 'job.resigned' : 'board.sacked', params: { club: clubName(n.club) } });
+          // klubbens historik (Staff_Records, type 150): fyret – læses af 0x69ca00 (dismissedBy)
+          if (n.type !== 2) g.manager.cmDismissed = { ...g.manager.cmDismissed, [n.club]: g.date };
+        }
+      }
       else if (newsOn(g, n.club)) addNews({ cat: 'job', key: 'news.managerSacked', params: { club: clubName(n.club), manager: mname(n.manager) }, link: { kind: 'club', id: n.club } });
       return;
     case 'appointed':

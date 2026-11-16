@@ -829,7 +829,11 @@ export async function runUntil(opts: { untilDate?: string; untilMatch?: boolean;
   let steps = 0;
   const firstNews = g.nextId.news;
   const startDate = g.date;
+  const startClub = g.userClub;
   for (;;) {
+    // fyret undervejs (fx på ferie): stop, så fyringen ses – før kørte ferien videre, og assistenten søgte job hos klubben, der lige
+    // havde fyret ham (ejerens test 16/11; *estimeret*: originalen afbryder ferien ved fyringen)
+    if (startClub && !g.userClub && g.dayDone) return { stop: 'news' };
     // stop når der er kommet en ny ulæst besked (Fortsæt: kør til der sker noget)
     if (opts.untilNews && g.dayDone && g.news.some((n) => n.id >= firstNews && !n.read && needsAttention(n))) return { stop: 'news' };
     if (opts.maxDays && g.dayDone && daysBetween(startDate, g.date) >= opts.maxDays) return {};

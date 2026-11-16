@@ -548,6 +548,13 @@ export function applyForJob(cid: number): 'sent' | 'offer' | 'error' {
   return 'sent';
 }
 
+/** De ledige managerjob: i ægte tilstand med originalens bestyrelse (cmBoardOn) originalens ledighedsliste [MM+8] (g.cmBoard.vac) –
+ *  spillets egen liste (g.vacancies) holdes ikke ved lige dér, så Job Information stod med "There are no vacancies", mens klubberne tilbød job */
+export function openVacancies(g = gs()): number[] {
+  if (cmBoardOn(g)) return [...new Set(g.cmBoard!.vac.map((v) => v.club))].filter((c) => g.clubs[c]?.manager === 0);
+  return g.vacancies;
+}
+
 /** Dagligt: klubber man har søgt, svarer */
 export function processJobTalks() {
   const g = gs();

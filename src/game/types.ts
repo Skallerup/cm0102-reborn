@@ -328,6 +328,8 @@ export interface ClubRecords {
   bigWin?: RecMatch;
   bigLoss?: RecMatch;
   topAtt?: { att: number; opp: number; date: string };
+  /** laveste tilskuertal hjemme i en turneringskamp (originalens "… is a new record low") */
+  lowAtt?: { att: number; opp: number; date: string };
   buy?: RecMove;
   sale?: RecMove;
   seasonGoals?: { pid: number; name: string; goals: number; season: number };
@@ -839,6 +841,8 @@ export interface ManagerProfile {
   rivals?: Record<number, [number, number, number]>;
   /** Klubber der har fyret manageren */
   sackedBy?: number[];
+  /** (originalens bestyrelse) klub → datoen han blev fyret (Staff_Records type 150 – 0x69ca00 afviser ansøgninger inden for 180 dage) */
+  cmDismissed?: Record<number, string>;
   /** Afviste jobtilbud: klub-id → dato (klubben spørger ikke igen foreløbig) */
   declinedJobs?: Record<number, string>;
   /** Jobsamtaler: søgte stillinger (venter på svar) og tilbud med vilkår, man kan forhandle om */
@@ -1161,6 +1165,8 @@ export interface GameState {
   /** Staff Search: world-filen havde originalens hukommelse (Staff.cmMem) – og navnene på klubber uden for spillet [kort navn, nation] */
   cmStaffMem?: boolean;
   cmClubNames?: Record<number, [string, number]>;
+  /** (den originale database) tidligere vindere (club_comp_history.dat): CM<id>/CL/UEFA/ESC/`cup:<navn>` → [år, vinder, nr. 2] */
+  cmCompHist?: Record<string, [number, number, number][]>;
   /** [0xdd6ec8] spillets start (ISO) */
   cmBoardStart?: string;
   /** club.dat +100/+119 (status, mindste tilskuertal) og club_comp.dat +105 (turneringens omdømme) – computerens trupplan (cmSquadPlanGame.ts) */
@@ -1228,7 +1234,7 @@ export interface GameState {
   options: Options;
   activeNations: number[];
   /** lang = nation.dat +0x77/+0x78/+0x79 (den originale database – cmLanguage.ts) */
-  nations: { name: string; code: string; lang?: number[] }[];
+  nations: { name: string; code: string; lang?: number[]; /** nationalitetsordet fra nation.dat (+87) – kun den originale database */ adj?: string; /** (original DB) titelbjælkens farver [baggrund, tekst] fra nation.dat +0x94/+0xa0 */ col?: [string, string] }[];
   leagueOrder: string[];
   leagues: Record<string, { name: string; nation: number; tier: number; hidden?: boolean }>;
   players: Record<number, Player>;

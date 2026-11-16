@@ -3,7 +3,7 @@
 // igangværende sæson, "Current"); de øvrige faner viser én rekord pr. sæson, valgt under View. Tallene kommer fra
 // game/compHistory.ts (de afsluttede sæsoner gemmes ved sæsonskiftet i `g.compRecs`).
 import { compSeasonRec, initialName, type CompSeasonRec } from '../../game/compHistory';
-import type { Competition } from '../../game/types';
+import type { Competition, GameState } from '../../game/types';
 import { compName, t } from '../../i18n';
 import { ClassicSub, CxDrop, classicDate } from '../classic';
 import { useGame, useRouteState } from '../core';
@@ -37,12 +37,25 @@ const SCORE: Record<Key, [(r: never) => number, boolean]> = {
   young: [(r: { n: number }) => r.n, true], old: [(r: { n: number }) => r.n, false],
 } as never;
 
+/** databasens historik for turneringen: ligaen (CM<id>), CL/UEFA/ESC eller landspokalen (`cup:<pokalens navn>` – CUP-<nation> har ligaens pokal) */
+function compHistRows(g: GameState, comp: Competition): [number, number, number][] {
+  const H = g.cmCompHist;
+  if (!H) return [];
+  if (H[comp.id]) return H[comp.id];
+  if (comp.id.startsWith('CUP-')) {
+    const top = Object.entries(g.leagues).find(([, l]) => l.nation === comp.nation && l.tier === 1)?.[0];
+    const cup = top ? (g.customRules?.[top] as { cup?: string } | undefined)?.cup : undefined;
+    return (cup && H[`cup:${cup}`]) || H[`cup:${comp.name}`] || [];
+  }
+  return [];
+}
+
 export function ClassicCompHistory({ comp }: { comp: Competition }) {
   const g = useGame()!;
   const [tab, setTab] = useRouteState<Tab>('chtab', 'winners');
   const [stat, setStat] = useRouteState<string>('chstat', '');
   const [view, setView] = useRouteState<'all' | 'cur'>('chview', 'all');
-  const short = (id: number) => g.clubs[id]?.short ?? '?';
+  const short = (id: number) => g.clubs[id]?.short ?? g.cmClubNames?.[id]?.[0] ?? '?';
   const yr = (s: number) => `${s}/${String((s + 1) % 100).padStart(2, '0')}`;
   const d = (iso: string) => classicDate(iso)[1];
   const mine = (id?: number) => !!id && id === g.userClub;
@@ -76,6 +89,10 @@ export function ClassicCompHistory({ comp }: { comp: Competition }) {
       const ru = comp.type === 'league' ? comp.table.slice().sort((a, b) => b.pts - a.pts || (b.gf - b.ga) - (a.gf - a.ga) || b.gf - a.gf)[1]?.club : fin ? (fin.a === comp.winner ? fin.b : fin.a) : undefined;
       out.push({ year: g.season + 1, w: comp.winner, ru });
     }
+    // (den originale database) databasens tidligere vindere før spillets første sæson (club_comp_history.dat – originalen viste fx Champions
+    // League-vinderne tilbage til 1956, vi kun spillets egne)
+    const first = (g.seasonHistory[0]?.season ?? g.season) + 1;
+    for (const [year, w, ru] of compHistRows(g, comp)) if (year < first && !out.some((x) => x.year === year)) out.push({ year, w, ru: ru >= 0 ? ru : undefined });
     return out.sort((a, b) => b.year - a.year);
   };
 

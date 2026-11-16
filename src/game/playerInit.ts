@@ -323,6 +323,25 @@ export function shownFromStored(stored: number[], ca: number, gk: number, feet: 
 
 // ---------------- positioner (sub_535a80 0x536f01..0x5374f4 – sikkert) ----------------
 /** pos = [GK SW D DM M AM F WB R L C] (11); ændres på stedet */
+/** sub_535a80 0x5374f4–0x537636: fødderne [venstre, højre] efter positionsreparationen (`left`/`right` = siderne L/R). Står ingen af dem
+ *  på 20: kendes begge, bliver den største 20 (lige = venstre); kendes kun den ene, er det den svage – den anden bliver 20; mangler begge,
+ *  bliver foden på den stærkeste side 20 (venstre kun når L > R). En manglende fod får rand(rand(20)) + 1. (Før blev venstre altid 20,
+ *  når begge manglede – Stuart Edwards (Defender Right) var venstrebenet hos os, "Right Only" i originalen.) */
+export function cmFeet(f: [number, number], left: number, right: number, rand: Rand): [number, number] {
+  let [a, c] = f;
+  const ok = (v: number) => v >= 1 && v <= 20;
+  if (a !== 20 && c !== 20) {
+    if (ok(a)) { if (ok(c) && c <= a) a = 20; else c = 20; }
+    else if (ok(c)) a = 20;
+    else if (left > right) { a = 20; c = rand(rand(20)) + 1; }
+    else { c = 20; a = rand(rand(20)) + 1; }
+  }
+  if (!ok(c)) c = rand(rand(20)) + 1;
+  if (!ok(a)) a = rand(rand(20)) + 1;
+  if (a !== 20 && c !== 20) { if (rand(4)) c = 20; else a = 20; }
+  return [a, c];
+}
+
 export function repairPositions(pos: number[], rand: Rand): void {
   const [GK, SW, D, DM, M, AM, F, WB, Rr, L, C] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
   if (pos[GK] >= 16 && pos[GK] <= 19) {                                             // ren målmand

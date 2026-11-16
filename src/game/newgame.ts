@@ -2,7 +2,7 @@
 import { cmLeagueRules } from './cmCalendar';
 import { cashRound } from './cmTransferBid';
 import { CLUB_INFO_2026 } from './data/clubInfo2026';
-import { capCA, fillMissing, freeAgentCA, initialisePA, makePool, makeRand, missingCA, repairPositions, shownFromStored } from './playerInit';
+import { capCA, cmFeet, fillMissing, freeAgentCA, initialisePA, makePool, makeRand, missingCA, repairPositions, shownFromStored } from './playerInit';
 import { splitReserves } from './reserves';
 import { initialTransferList } from './transfers';
 import { startScoreSeason } from './rating';
@@ -23,7 +23,7 @@ import { refreshShortlists, windowLastDay, windowOpen } from './transfers';
 import { autoSelect, neutralPlayerInstructions, newTactic, FORMATIONS } from './tactics';
 import { cmLoadPreset } from './engine/grid/tacticTable';
 import type { Club, GameState, Lang, Player, Role, Staff, StaffRole } from './types';
-import { subPos, type CMWorld } from './data/cm0102';
+import { cmRandomDob, subPos, type CMWorld } from './data/cm0102';
 import { setBoardExpectation } from './board';
 import { appointBody, cmBoardHumanAppoint, cmBoardInit, cmBoardOn, cmInitStaffRep } from './cmBoardGame';
 import { fairTicketPrice, transferBudgetFor } from './finance';
@@ -56,7 +56,7 @@ export interface WorldData {
   source: string;
   season: number;
   /** lang = nation.dat +0x77/+0x78/+0x79 (sproget og to andre sprog – den originale database, cmLanguage.ts) */
-  nations: { name: string; code: string; lang?: number[] }[];
+  nations: { name: string; code: string; lang?: number[]; /** nationalitetsordet fra nation.dat (+87) – kun den originale database */ adj?: string; /** (original DB) titelbjælkens farver [baggrund, tekst] fra nation.dat +0x94/+0xa0 */ col?: [string, string] }[];
   /** `hidden`: klubber uden for de spilbare ligaer (originalens ikke-spilbare lande) – ligaen spilles aldrig */
   leagues: { id: string; name: string; nation: number; tier: number; hidden?: boolean }[];
   clubs: [number, string, string, number, string, string, number, string][];
@@ -223,7 +223,10 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     if (tf !== undefined) {
       if (cmStartGame ? tf === 0 || (Array.isArray(tf) && !tf.some((n) => o.activeNations.includes(n))) : rtOf(r[F.id] as number)!.ca < 120) continue;
     }
-    const dob = r[F.dob] as string;
+    // (den originale database) kun fødselsåret i databasen: dag og måned trækkes ved hvert nyt spil som originalens indlæsning
+    // (sub_535a80 0x536859, cmRandomDob – egen talrække, så spillets øvrige tal ikke flytter sig)
+    const rd = cm && season < 2020 ? rtOf(r[F.id] as number)?.rd : undefined;
+    const dob = rd ? cmRandomDob(Number((r[F.dob] as string).slice(0, 4)), cmRand(seed, r[F.id] as number, 536)) : r[F.dob] as string;
     const age = ageOn(dob, date);
     const value = r[F.value] as number;
     const league = club ? g.clubs[club].league : '';
@@ -271,10 +274,8 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
       }
       let attrs = rec.attrs;
       if (stored) {
-        // fødderne: den stærke bliver 20, en manglende rand(rand(20)) + 1 (sub_535a80); bruges i afbalanceringen
-        const feet: [number, number] = rt.feet ? [rt.feet[0], rt.feet[1]] : [0, 0];
-        if (feet[0] >= feet[1]) feet[0] = 20; else feet[1] = 20;
-        for (const k of [0, 1]) if (feet[k] < 1) feet[k] = rand(rand(20)) + 1;
+        // fødderne efter positionsreparationen (sub_535a80 0x5374f4–0x537636); bruges i afbalanceringen
+        const feet = cmFeet(rt.feet ? [rt.feet[0], rt.feet[1]] : [0, 0], pos11[9], pos11[8], rand);
         // de viste værdier ved spilstart: intern → sub_538ec0 → sub_538bc0 → sub_544380 (playerInit.ts)
         const internals: number[] = [];
         attrs = shownFromStored(attrs, ca, pos11[0], feet, internals);
@@ -480,6 +481,13 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     }
   }
   npInit = null;
+  // (den originale database) turneringernes tidligere vindere fra club_comp_history.dat – "<turnering> History" → Winners
+  if (cm?.compHist && season < 2020) {
+    g.cmCompHist = cm.compHist;
+    for (const rows of Object.values(cm.compHist)) for (const [, a, b] of rows) for (const c of [a, b]) {
+      if (c >= 0 && !g.clubs[c] && cm.clubNames?.[c]) (g.cmClubNames ??= {})[c] = cm.clubNames[c];
+    }
+  }
   for (let i = 0; i < 160; i++) {
     const r = new Rng(hash(seed, 5000 + i));
     const nation = rng.pick(o.activeNations.length ? o.activeNations : [0]);

@@ -213,8 +213,23 @@ export function compAbbr(name: string): string {
 }
 /** Turneringen, som turneringsskærmen viser lige nu */
 export const shownComp = (r: Route): string | undefined => (r.state?.cid as string | undefined) ?? (r.id !== undefined ? String(r.id) : undefined);
-/** Turneringernes titelbjælke i CM 01/02 */
-const compColors = (id?: string) => (id === 'CL' ? { bg: '#000000', fg: '#e3262a' } : id === 'UEFA' ? { bg: '#2f5bd6', fg: '#ffffff' } : { bg: '#ffffff', fg: '#1a2a8c' });
+/** Turneringernes titelbjælke i CM 01/02 – landets turneringer i landets farver fra databasen (nation.dat +0x94 baggrund, +0xa0 tekst; uden tekstfarve
+ *  mørkeblå): Danish Superliga rød/hvid, FA Premier League hvid/mørkeblå (*estimeret* ud fra originalens skærme) */
+const compColors = (id?: string) => {
+  if (id === 'CL') return { bg: '#000000', fg: '#e3262a' };
+  if (id === 'UEFA') return { bg: '#2f5bd6', fg: '#ffffff' };
+  const g = gs();
+  const comp = id ? g.comps[id] : undefined;
+  const col = comp && comp.nation >= 0 ? g.nations[comp.nation]?.col : undefined;
+  return col ? { bg: col[0], fg: col[1] || '#1a2a8c' } : { bg: '#ffffff', fg: '#1a2a8c' };
+};
+
+/** titelbjælken pr. turnering (originalens skærme: VM guld, EM blå med gul tekst, OL rød) */
+function tourColors(k?: string): { bg: string; fg: string } {
+  if (k === 'euro') return { bg: '#1747d6', fg: '#ffe23a' };
+  if (k === 'olympic') return { bg: '#e00000', fg: '#ffffff' };
+  return { bg: '#d6b24c', fg: '#ffffff' };
+}
 
 const CLUB_TABS: ScreenName[] = ['squad', 'transfers', 'assistant', 'fixtures', 'club'];
 // CM 01/02: Tactics ▸ · Training ▸ · Last Match ▸ · "FA Premier League" ▸ (ligaens navn) · History ▸
@@ -271,7 +286,7 @@ const HUBS: Partial<Record<ScreenName, Hub>> = {
     club: () => undefined,
     nation: (_g, r) => (r.id !== undefined ? Number(r.id) : undefined),
     // uden land: turneringernes gyldne bjælke (som "FIFA World Cup History" i originalen)
-    colors: (g, r) => (r.id !== undefined ? nationColors(g.nations[Number(r.id)]?.name) : { bg: '#d6b24c', fg: '#ffffff' }),
+    colors: (g, r) => (r.id !== undefined ? nationColors(g.nations[Number(r.id)]?.name) : tourColors(r.state?.itour as string | undefined)),
   },
   history: { title: mgrName, tabs: MGR_TABS, sub: MGR_SUB },
   // ægte tilstand med den originale database: originalens Awards-skærm med sin egen titel ("English Awards", AwardsClassic.tsx)

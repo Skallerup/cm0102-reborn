@@ -80,11 +80,25 @@ const CM_ROUND_RULES: Record<string, { rounds: number; split?: { after: number; 
 const SUPER_TO_CUP: Record<string, string> = { 'Portuguese Super Cup': 'Portuguese Cup', 'Japanese Super Cup': 'Japanese Cup' };
 export const cmCupName = (name: string): string => SUPER_TO_CUP[name] ?? name;
 
+/** Op-/nedrykning fra ligaklassernes opsætning (+0xbe automatisk op, +0xbf playoff, +0xc0 nedryknings-playoff, +0xc1 ned): Danish Superliga
+ *  0x553a00 (3 runder, +0xc1 = 2 – originalens tabel har stregen efter 10.), 1st Division 0x5523b0 (+0xbe = 2, +0xc1 = 3), England Second
+ *  Division 0x576780 (+0xbe 2, +0xbf 4, +0xc1 4) og Third Division 0x5780c0 (+0xbe 3, +0xbf 4, +0xc1 1). Databasens regler (parseren) sagde 3/3 for
+ *  alle. Playoffs findes ikke for originalens ligaer i spillet – vinderen tælles med som oprykker (England 3. → 2.: 3 + 1 = 4). */
+const CM_ZONE_RULES: Record<string, { relegated?: number; promoted?: number }> = {
+  CM4: { relegated: 2 }, CM5: { promoted: 2 }, CM9: { relegated: 4 }, CM10: { promoted: 4 },
+};
 export function cmLeagueRules<T extends Record<string, any> | undefined>(rules: T): T {
   if (!rules) return rules;
   const out: Record<string, any> = { ...rules };
   for (const [id, o] of Object.entries(out)) if (o?.cup && SUPER_TO_CUP[o.cup]) out[id] = { ...o, cup: SUPER_TO_CUP[o.cup] };
   for (const [id, o] of Object.entries(CM_ROUND_RULES)) if (out[id]) out[id] = { ...out[id], ...o };
+  for (const [id, o] of Object.entries(CM_ZONE_RULES)) {
+    if (!out[id]) continue;
+    const r = { ...out[id] };
+    if (o.relegated !== undefined && r.relegated) r.relegated = o.relegated;
+    if (o.promoted !== undefined && r.promoted) r.promoted = o.promoted;
+    out[id] = r;
+  }
   return out as T;
 }
 

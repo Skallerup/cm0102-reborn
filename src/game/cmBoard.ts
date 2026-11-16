@@ -167,6 +167,8 @@ export interface BoardEnv {
   /** menneskeklub (0x600a50) og på ferie med ferievalg 1 */
   isHumanClub(c: number): boolean;
   humanOnHolidaySearching(p: Person): boolean;
+  /** Staff_Records.get_club_history(c): en post type 150 (fyret) for personen inden for 180 dage (0x69ce4c–0x69cef5) */
+  dismissedBy(p: Person, c: number): boolean;
   /** 0x7c6830 sproget (0..10) for personen i klubben */
   fluency(p: Person, c: number): number;
   /** 0x53d980(s, n, 1) udlænding */
@@ -680,7 +682,9 @@ export function applyForJob(env: BoardEnv, st: CmBoardState, c: number, a: Perso
   const score = a.np ? scoreStaffForJob(env, a, c, 5) : -250000;
   let e = st.vac.find((x) => x.club === c);
   if (!e) { addVacancy(env, st, c, null, rand); e = st.vac.find((x) => x.club === c); if (!e) return; }
-  // (Staff_Records' historik "afvist inden for 180 dage" findes ikke i spillet)
+  // 0x69ce2a: var han klubbens forrige manager (+0xa), slår klubbens historik op – fyret af den inden for 180 dage → "dismiss your job
+  // application" og aldrig kandidat (før søgte ejeren på ferie igen og igen hos Vejle, der lige havde fyret ham, og fik jobbet tilbudt)
+  if (e.prev === a.id && env.dismissedBy(a, c)) { env.news({ t: 'applyReply', club: c, human: a, dismissed: true }); return; }
   env.news({ t: 'applyReply', club: c, human: a, dismissed: false });
   if (score > e.score && e.cand !== (a.id === 0 ? 1 : 0)) {
     const loc = { ...e, cand: a.id, score };

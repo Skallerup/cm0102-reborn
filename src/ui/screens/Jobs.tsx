@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { authentic } from '../../game/rules';
 import { askConfirm } from '../confirm';
 import { act } from '../../game/actions';
-import { jobTerms, managerRegion } from '../../game/board';
+import { jobTerms, managerRegion, openVacancies } from '../../game/board';
 import { regionOf } from '../../game/leagues';
 import { compName, dateFmt, money, t } from '../../i18n';
 import { ClubLink, Panel } from '../components';
@@ -13,7 +13,7 @@ export function Jobs() {
   const g = useGame()!;
   const [scope, setScope] = useRouteState<'region' | 'world'>('scope', 'region');
   const region = managerRegion();
-  const vac = g.vacancies.map((id) => g.clubs[id]).filter((c) => c && c.manager === 0 && !g.leagues[c.league]?.hidden)
+  const vac = openVacancies(g).map((id) => g.clubs[id]).filter((c) => c && c.manager === 0 && !g.leagues[c.league]?.hidden)
     .filter((c) => scope === 'world' || regionOf(g.nations[c.nation]?.name) === region)
     .sort((a, b) => b.rep - a.rep);
   const pending = Object.entries(g.manager.jobTalks ?? {}).filter(([, tk]) => tk.stage === 'applied').map(([id, tk]) => [Number(id), tk] as const);

@@ -293,7 +293,8 @@ function spawnRegenQueue() {
   g.regenQueue = [];
   queue.forEach((seed, n) => {
     const p = spawnRegen(seed, n);
-    if (p.club && isHumanClub(p.club)) asOwner(p.club, () => { g.knowledge[p.id] = 100; addNews({ cat: 'youth', key: 'youth.regen', params: { player: pname(p), legend: seed.from }, link: { kind: 'player', id: p.id } }); });
+    // originalens genfødsel sub_7abac0 sender ingen nyhed (player_regen.cpp) – "X – the new Y?" kun i udvidet spil
+    if (p.club && isHumanClub(p.club)) asOwner(p.club, () => { g.knowledge[p.id] = 100; if (!originalRegens()) addNews({ cat: 'youth', key: 'youth.regen', params: { player: pname(p), legend: seed.from }, link: { kind: 'player', id: p.id } }); });
   });
 }
 
@@ -434,7 +435,8 @@ export function youthIntake() {
   g.regenQueue = [];
   queue.forEach((seed, n) => {
     const p = spawnRegen(seed, n);
-    if (p.club && isHumanClub(p.club)) asOwner(p.club, () => { g.knowledge[p.id] = 100; addNews({ cat: 'youth', key: 'youth.regen', params: { player: pname(p), legend: seed.from }, link: { kind: 'player', id: p.id } }); });
+    // originalens genfødsel sub_7abac0 sender ingen nyhed (player_regen.cpp) – "X – the new Y?" kun i udvidet spil
+    if (p.club && isHumanClub(p.club)) asOwner(p.club, () => { g.knowledge[p.id] = 100; if (!originalRegens()) addNews({ cat: 'youth', key: 'youth.regen', params: { player: pname(p), legend: seed.from }, link: { kind: 'player', id: p.id } }); });
   });
   if (originalRegens()) return; // originalen: kun regens (de kommer ved pensioneringen) – ingen årgange skabt af ingenting
   const active = new Set(g.activeNations);

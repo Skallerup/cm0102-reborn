@@ -232,6 +232,12 @@ if (w.staff) {
     const known = new Set(w.clubs.map((c) => c[0] as number));
     const names: Record<number, [string, number]> = {};
     for (const s of w.staffX) { const c = s[16]?.[0] ?? -1; if (c >= 0 && !known.has(c) && w.clubNames?.[c]) names[c] = w.clubNames[c]; }
+    // turneringernes tidligere vindere (compHist): kun de turneringer, spillet har, og navnene på klubberne uden for spillet
+    if (w.compHist) {
+      const keep = new Set(w.leagues.map((l) => l.id));
+      for (const k of Object.keys(w.compHist)) if (k.startsWith('CM') && !keep.has(k)) delete w.compHist[k];
+      for (const rows of Object.values(w.compHist)) for (const [, a, b] of rows) for (const c of [a, b]) if (c >= 0 && !known.has(c) && w.clubNames?.[c]) names[c] = w.clubNames[c];
+    }
     w.clubNames = names;
     console.log(`Staff Search: ${w.staff.length} i spillets stab + ${before} andre ikke-spillere (${Object.keys(names).length} klubber uden for spillet)`);
   } else { delete w.staffX; delete w.clubNames; }

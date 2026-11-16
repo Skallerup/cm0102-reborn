@@ -66,7 +66,7 @@ export function MatchDay({ id }: { id: number }) {
     }
     return '';
   };
-  const name = (club: number) => <span className={club === g.userClub ? 'me' : ''}>{g.clubs[club] ? <CxLink to={clubRoute(club)}>{g.clubs[club].name}</CxLink> : '?'}</span>;
+  const name = (club: number) => <span className={club === g.userClub ? 'me' : ''}>{g.clubs[club] ? <CxLink to={clubRoute(club)}>{g.clubs[club].short}</CxLink> : '?'}</span>;
   // weekendkampe spilles om eftermiddagen, resten om aftenen (CM 01/02: "Afternoon Result" / "Evening Fixtures")
   const wd = new Date(`${date}T12:00:00`).getDay();
   const title = t(`cl.md.${played ? 'res' : 'fix'}${list.length === 1 ? '1' : 'N'}`, { when: t(wd === 0 || wd === 6 ? 'cl.md.afternoon' : 'cl.md.evening') });

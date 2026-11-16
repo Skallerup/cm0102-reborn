@@ -11,7 +11,7 @@ import { rulesFor } from './leagues';
 import { Rng, hash, hash01, rng } from './rng';
 import { recordDevelopment } from './training';
 import { merchStarSigning } from './finance';
-import { addNews, addPlayer, gs, newsRelevant, setClub, squad } from './state';
+import { addNews, addPlayer, gs, inSetup, newsRelevant, setClub, squad } from './state';
 import { clubLevel, registerAskingPrice } from './scouting';
 import { clubStrategy } from './strategy';
 import { SHIFT_WEEKS } from './board';
@@ -2020,7 +2020,9 @@ export function interestedClubs(p: Player): Interest[] {
   const g = gs();
   const out: Interest[] = [];
   // den originale database i ægte tilstand, menneskets spiller: computerklubberne efter 0x842180 (cmTransferList.ts, *estimeret*)
-  const cm = cmActive(g) && (isHumanClub(p.club) || cmShortlistOn(g));
+  // nyt spil-forløbet (Take Control): klubben vises, som den bliver efter indlæsningen – før stod spillets egne ønskelister som røde Wnt-mærker,
+  // der forsvandt, når spillet var indlæst (ejerens test 16/11)
+  const cm = cmActive(g) && (isHumanClub(p.club) || cmShortlistOn(g) || inSetup());
   if (cm) for (const id of cmShortlistOn(g) ? cmInterestedClubs(g, p) : cmInterested(g, p, clubLevel)) out.push({ club: id });
   for (const c of Object.values(g.clubs)) {
     if (c.id === p.club || cm) continue;

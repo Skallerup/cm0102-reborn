@@ -105,7 +105,10 @@ export function newsTitle(n: NewsItem) {
 }
 
 /** Hvilken skabelon brødteksten bruger (nogle nyheder har varianter efter indholdet) */
+const SCOUT_EXP: Record<number, string> = { 365: '12m', 182: '6m', 91: '3m', 61: '2m', 30: '1m', 7: '1w' };
 function bodyKey(n: NewsItem): string {
+  // CM 01/02 (0x5982 ff.): "Kim Rømer's contract is due to expire in twelve months time." – efter dagene til udløbet (ældre nyheder uden days: datoen)
+  if (n.key === 'scout.contractReminder' && typeof n.params?.days === 'number' && SCOUT_EXP[n.params.days]) return `scout.contractReminder.d${SCOUT_EXP[n.params.days]}`;
   // CM 01/02's priser (cmAwards.ts): brødteksten er valgt i spillet (0x767580 / 0x930880)
   if (n.key.startsWith('cmaw.mh.') && typeof n.params?.body === 'string') return `cmaw.mb.${n.params.body}`;
   if (n.key.startsWith('cmaw.yh.') && typeof n.params?.body === 'string') return `cmaw.yb.${n.params.body}`;

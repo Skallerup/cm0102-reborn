@@ -56,13 +56,23 @@ export function recordsAfterMatch(f: Fixture, rep: MatchReport, att: number) {
     if (margin > 0 && (!r.bigWin || margin > r.bigWin.gf - r.bigWin.ga || (margin === r.bigWin.gf - r.bigWin.ga && gf > r.bigWin.gf))) {
       const old = r.bigWin;
       r.bigWin = m;
-      if (old && margin >= 4) news('recb.news.bigWin', { score: `${gf}-${ga}`, opp: g.clubs[opp]?.name ?? '', club: c.name, comp: g.comps[f.comp]?.name ?? '' }, { kind: 'fixture', id: f.id });
+      if (old && margin >= 4 && g.comps[f.comp]) news('recb.news.bigWin', { score: `${gf}-${ga}`, opp: g.clubs[opp]?.name ?? '', club: c.name, comp: g.comps[f.comp]?.name ?? '' }, { kind: 'fixture', id: f.id });
     }
     if (margin < 0 && (!r.bigLoss || -margin > r.bigLoss.ga - r.bigLoss.gf || (-margin === r.bigLoss.ga - r.bigLoss.gf && ga > r.bigLoss.ga))) r.bigLoss = m;
-    if (side === 0 && att > 0 && (!r.topAtt || att > r.topAtt.att)) {
-      const old = r.topAtt;
-      r.topAtt = { att, opp, date: g.date };
-      if (old) news('recb.news.att', { att: att.toLocaleString(), opp: g.clubs[opp]?.name ?? '', club: c.name, comp: g.comps[f.comp]?.name ?? '' });
+    // tilskuerrekorderne (originalens club records: "… attendance of N at home to X in the <turnering> is a new record high/low") – kun
+    // turneringskampe (en venskabskamp har ingen turnering: før stod der "in the is a new record high" efter en venskabskamp mod Ajax, ejeren 16/11)
+    if (side === 0 && att > 0 && g.comps[f.comp]) {
+      const at = { att: att.toLocaleString(), opp: g.clubs[opp]?.name ?? '', club: c.name, comp: g.comps[f.comp].name };
+      if (!r.topAtt || att > r.topAtt.att) {
+        const old = r.topAtt;
+        r.topAtt = { att, opp, date: g.date };
+        if (old) news('recb.news.att', at);
+      }
+      if (!r.lowAtt || att < r.lowAtt.att) {
+        const old = r.lowAtt;
+        r.lowAtt = { att, opp, date: g.date };
+        if (old) news('recb.news.attLow', at);
+      }
     }
   }
 }
