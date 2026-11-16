@@ -176,3 +176,4 @@ View Finances (der læser Bonuses fra blokken) viste 0 bonusser, selv om pengene
 
 ### Småting (ejerens fund, lav prioritet)
 - Player & Staff Search (og øvrige spillerlister): shortlistede spillere står med GULT navn (og bud-mærket "Bid" i Inf-kolonnen, grå), som i originalen (ejerens billede 16/11, images/148.png).
+- Økonomien: kontraktbonusser (mål-/assist-/clean sheet-bonus efter kamp, 0x4ca6d0) og signing on fees skal bogføres i originalens poster (View Finances: Bonuses/Signing On Fees) og trækkes fra saldoen som originalen – tjek mod oraklet (K2: cm-day-lockstep.ts sammenligner de 18 sæsonposter). Ejerens billede 16/11 (images/150.png: Fortune, 1.700DKr Assist Bonus). Delvist gjort 16/11 (K2-agenten: køb/salg/signing-on/bonusser bogføres via bookBlock), mangler kontrol.
