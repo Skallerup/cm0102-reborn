@@ -166,6 +166,23 @@ View Finances (der læser Bonuses fra blokken) viste 0 bonusser, selv om pengene
 12. Kalendere – **delvis gjort 16/11**: Norge 1. division (NorFirst::create_schedule 0x790040 tæller ligaens klubber: 16 → 30 runder, ellers 26) og USA (UsaMls 0x9072d0 stage −1: 32 runder for 12 klubber; spillet spiller en tredobbelt turnering, der stopper efter 32 runder – `CM_LEAGUE_CUT`, *estimeret*: originalens egen kampfordeling 0x908xxx er ikke porteret) har originalens skema (36 klasser, fixture-test 352 nøgler mod emulatoren; `tools/sched/gen_all.py` har en `PRE`-krog, der lægger 16 klubber i hukommelsen). Tilbage: **Australien** (AusNsl 0x4111a0: 24 rækker til 14 klubbers 26 spillerunder – rundefølgen 0x68a030 genbruger rækker med rand(4) – og 10 rækker slutspil i stage 0, som spillet ikke har) og **Polen** (PolFirst 0x7c8df0: stage −1/0 = to grupper à 8 med 14 runder, stage 1/2 = mesterskabs-/nedrykningsgrupper à 14 – kræver grupper før splittet i spillets liga). **Tjekkiet/Østrig/Mexico/Schweiz** findes ikke i originalen (exe'ens `comp\leagues\*.cpp` har ingen aut/cze/swi/mex, og landene har ingen række i nøglelandstabellen 0xb63d60) – spillets egen kalender.
 13. ~~Næste sæsons europæiske turneringer synlige i slutningen af juni (ejerens fund B12)~~ – **gjort 16/11** (`cmEuroNextSeason` i cmEurope.ts): på dagen for næste sæsons første lodtrækning (CL-kvalifikationen 26/6-2002, Intertoto 28/6) oprettes CL/UEFA/Intertoto/Super Cup for den nye sæson med seedingen af de afsluttede ligaer og pokalvindere; den gamle sæsons turneringer ligger i `g.cmEuroPrev` og lægges tilbage ved sæsonskiftet (`cmEuroRolloverStart`), så priser, omdømme, historik og trofæer regnes af dem, mens de nye og deres kampe (Intertoto 29/6, CL Q1 10/7) holdes til side og lægges ind igen i setupSeasonComps (`cmEuroRestoreNext`). Skærmene filtrerer turneringens kampe på `meta.cmFrom`. *Estimeret*: hvornår originalen opretter dem (tidligst landenes sæsonopdatering 20/6, senest lodtrækningen). Test i tests/cmEurope.test.ts (27/6 og 2/7-2002).
 14. Menneskeligt styret hold: managertillægget (ferie bruger en *estimeret* managerpost).
+14b. **Stabsskifter mellem klubber – porteret 16/11** (`src/game/cmStaffMove.ts`, ejerens billede 153.png "Fulham sign Collier"): trupplanens hale
+   0x83ebfb–0x83f32b (stabens 15 pladser: 1 assistent, 1 reserveholdsmanager, 5 trænere, 1 fysioterapeut, 7 spejdere; grænsen min(0x7bca90/5, 5000);
+   indehaveren vurderet med 0x69d1b0), budgettet 0x83b6e0 (kun helt ledige pladser i professionelle klubber: B/(10n) assistent/træner, B/(20n)
+   spejder/fysioterapeut), målet 0x83f3a0's stabsgren (restkontrakten under pladsens budget og højst (omdømme + 500)·10, landet/verdensdelen,
+   omdømmet set af manageren ≥ rand(2000) + 3250), vurderingen 0x69d1b0 for jobbene 6–10 (`cmBoard.ts` scoreStaffForJob: jobblokkene 0x69db39/
+   0x69deb6/0x69e22d/0x69e4e7 med managerens taktiske syn, egenskaber og personlighed og den fælles hale – før kun job 5), buddet med kompensationen
+   0x8d0780 (ftol(dage til udløb · ugeløn / 7), £1.000–£1.000.000; sælgeren siger ja straks 0x8c8160), bogført som køb/salg, nyheden 0x8dbef0/0x8dc370
+   (overskrift get/moves to/seal … deal/sign, brødtekst "have appointed … as a/an <job>"; modtagerne efter 0x8d1130 med ikke-spillerpostens omdømme,
+   ×0,25 for træner/spejder/fysioterapeut). Menneskets eget tilbud til en ansat i en anden klub bruger nu 0x8d0780 (Offer Contract: "X will be due £Y
+   in compensation." kun når beløbet er over 0). *Estimeret*: målets mindstekrav (grænsen T), n i budgettet, budtidspunktet (straks i stedet for
+   0x84a020's uge), personens svar (viljen 0x844780 for jobbet ≥ 0,75, svar efter 1–5 dage – kontrakttilbuddet 0x4cda70/0x864550 ikke porteret),
+   kontrakten (lønkrav, 2 år), overskriftens variant (id mod 4; originalen (arg0 + arg4·arg15) mod 4), kun klubber i de valgte lande. **Ikke porteret:**
+   bud på menneskets stab (originalen sender buddet til mennesket med 28 tidsenheders frist 0x8be884 – mennesket mister ikke stab hos os), fyringen
+   ved et managerskifte (0x690890, første kørsel med +4 = 2), reserveholdets manager (rolle 7), arbejdstilladelser for stab. **Målt**
+   (`scripts/cm-staff-moves.ts`, frø 1, Arsenal, 14/7–12/8-2001): 446 bud ved spilstarten i England, 13 skifter (11 spejdere, 2 trænere; 3 fra en anden
+   klub), resten sagde nej; ingen nåede Arsenals nyheder (originalen viste Man Utd "Fulham sign Collier" – modtagerreglen for stab bør kontrolleres
+   mod oraklet).
 15. Konvertering af gamle originale gemte spil (afventer ejerens 4 svar).
 
 ### 2. Data
@@ -198,6 +215,10 @@ View Finances (der læser Bonuses fra blokken) viste 0 bonusser, selv om pengene
 
 
 ### Småting (ejerens fund, lav prioritet)
+- News-skærmen (ejerens billede 16/11, images/153.png) – **rettet 16/11**: datoen med tidspunktet ("Fri 24th Aug EVE" – `NewsItem.tod`, sat ved
+  oprettelsen af cmTimeOfDay), datoen i listens skriftstørrelse, "Filter :" i originalens grå boks fra ~43 % til Next Unread, Next Unread med hvid tekst,
+  større overskrift (22 px) og brødtekst (21 px), overskriften ikke understreget. Tilbage: originalens liste viser altid rullebjælken med pile (vores
+  kun når listen kan rulle), og skrifttypen (originalens er kommerciel – se Design Kit-noten i CLAUDE.md).
 - Kendskabssystemet (ejerens fund 16/11): originalens kendskab afgør bestyrelsens loft ved bud – startniveau ud fra nation/klub/division/omdømme, daglig opdatering og spejdernes løft. Vi gætter i dag.
 - Spillerprofilens statistiktabel som originalen: rækkerne Non Competitive/League/Cup/Continental/International/Senior Club og kolonnerne Apps/Con | Gls/Asts/MoM/Pass/Tck/Drb/Sh Tar/Av R – kræver kampstatistik pr. spiller (afleveringer, tacklinger, driblinger, skud på mål).
 - Player & Staff Search (og øvrige spillerlister): shortlistede spillere står med GULT navn (og bud-mærket "Bid" i Inf-kolonnen, grå), som i originalen (ejerens billede 16/11, images/148.png).

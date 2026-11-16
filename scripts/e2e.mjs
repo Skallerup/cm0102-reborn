@@ -44,7 +44,8 @@ async function run(look) {
   // NB: ægte CM 01/02 er standard ved nyt spil – testen kører det udvidede spil (træningskampe, pressemøder m.m.)
   const t = (k) => page.evaluate((key) => window.__cm.t(key), k);
   const go = (r) => page.evaluate((route) => window.__cmNav(route), r);
-  const gs = (fn, arg) => page.evaluate(fn, arg);
+  // venter på testkrogen (window.__cm) – efter genindlæsning/nyt spil sættes den først, når spillet er hentet
+  const gs = async (fn, arg) => { await page.waitForFunction(() => !!window.__cm && !!window.__cmNav, null, { timeout: 30000 }); return page.evaluate(fn, arg); };
   // klassisk taktik (CM 01/02): ændringer er en kladde, der først gemmes med Ok i bundbjælken
   const tacOk = async () => { if (look !== 'klassisk') return; await page.locator('.cx-foot .cx-tac-ok').click(); await page.waitForTimeout(150); };
   // klassisk (CM 01/02): Continue Game venter på trøjenummerlisten (beskeden 4/8) – Respond → Submit → Yes

@@ -236,23 +236,53 @@ export function repFor(env: BoardEnv, s: Person, v: Viewer | null): number {
 
 // ---------------------------------------------------------------- 0x69d1b0 score_staff_for_job (job 5 = manager)
 
-export function scoreStaffForJob(env: BoardEnv, s: Person, c: number, job: number): number {
+/** 0x69d1b0's jobblokke for stab (arg job 6/7/13/14 → 0x69db39, 8/15 → 0x69deb6, 9 → 0x69e22d, 10 → 0x69e4e7): forenelighed med seeren
+ *  (|seer − staff| på ikke-spillerpostens bytes, kun med en seer med post: sc = ftol(sc·1,5) og ftol((1 − |Δ|·k)·sc) pr. byte), egenskaberne
+ *  ftol((1 + a·k)·sc) og personligheden ftol((1 + (b − 10)·k)·sc) for +0x59, +0x58, +0x5a, +0x5b (konstanterne fra 0x96xxxx) */
+const C150 = 0.006666666666666667, C225 = 0.0044444444444444444, C750 = 0.0013333333333333333, C1500 = 0.0006666666666666666, C1200 = 0.0008333333333333334;
+const STAFF_BLOCK: Record<number, { compat: [number, number][] | null; attr: [number, number][]; pers: number }> = {
+  6: { compat: [[0xe, C150], [0x12, C150], [0x13, 0.01], [0x14, C225], [0x15, C150], [0x1a, 0.01], [0x1c, 0.01], [0x1f, C150], [0x22, 0.004]],
+    attr: [[0x11, 0.002], [0x10, 0.002], [0x17, C750], [0x18, C750], [0x19, C1500], [0x1b, C750], [0x21, 0.002]], pers: 0.005 },
+  8: { compat: [[0xe, C150], [0x12, 0.01], [0x13, 0.01], [0x14, C225], [0x15, C150], [0x1a, 0.01], [0x1c, 0.01], [0x1f, C150], [0x22, 0.004]],
+    attr: [[0x11, 0.005], [0x10, 0.005], [0x17, C750], [0x18, C750], [0x19, C750], [0x1b, C1200], [0x21, 0.004]], pers: 0.02 },
+  9: { compat: [0xe, 0x12, 0x13, 0x14, 0x15, 0x1a, 0x1c, 0x1f, 0x22].map((o) => [o, 0.002] as [number, number]),
+    attr: [[0x17, 0.005], [0x18, 0.005]], pers: 0.002 },
+  10: { compat: null, attr: [[0x1e, 0.01]], pers: 0.02 },
+};
+const BLOCK_OF: Record<number, number> = { 6: 6, 7: 6, 13: 6, 14: 6, 8: 8, 15: 8, 9: 9, 10: 10 };
+
+/** `seer` (arg 3): en person med ikke-spillerpost – stabens planlægger (0x83cb40's hale) giver klubbens manager; uden ham formanden (club +0xbf) */
+export function scoreStaffForJob(env: BoardEnv, s: Person, c: number, job: number, seer: Person | null = null): number {
   if (!s.np) return -10000;
   const ch = env.chair(c);
+  const sp = seer && seer.np ? seer : null;
   const age = s8(s.age);
   let cur = s8(s.job);
   if (cur === 0) cur = 11;                                             // (landsholdsjob +0x28 findes ikke i spillet)
   const crep = s16(env.clubRep(c));
-  // seeren: formanden med ikke-spillerpost, ellers den falske post (klubbens nation, klub = c)
+  // seeren: arg 3 med ikke-spillerpost, ellers formanden med ikke-spillerpost, ellers den falske post (klubbens nation, klub = c)
   const viewer: Viewer = { club: ch ? (ch.nation === -1 ? 0 : c) : c, nation: ch ? ch.nation : env.clubNation(c) };
-  let sc = s16(repFor(env, s, ch ? { club: c, nation: ch.nation } : viewer));
+  let sc = s16(repFor(env, s, sp ? { club: sp.club, nation: sp.nation } : ch ? { club: c, nation: ch.nation } : viewer));
   if ((cur === 12 || cur === 5) && crep > 4250) {
     sc += 25 * s16(s.ca);
     if (s16(s.rep[2]) > 3250) sc += 5 * s16(s.pa);
   }
   if (s.club === c) sc += s.human ? 100 : s8(s.b59) * s8(s.b59);
   // klubbens og formandens likes/dislikes: listerne findes ikke i spillet (0)
-  if (job !== 5) return -10000;                                        // (kun managerjobbet bruges af MANAGER_MANAGER)
+  const blk = STAFF_BLOCK[BLOCK_OF[job] ?? -1];
+  if (blk) {
+    // stabens jobblok (0x69db39/0x69deb6/0x69e22d/0x69e4e7). Formanden som seer har ingen taktiske bytes i spillet (kun +0x16/+0x1d) –
+    // foreneligheden regnes kun med en person som seer (managerens ikke-spillerpost)
+    if (blk.compat && sp) {
+      const [o0, k0] = blk.compat[0];
+      sc = ftol((1.0 - Math.abs(s8(sp.at(o0)) - s8(s.at(o0))) * k0) * ftol(sc * 1.5));
+      for (let i = 1; i < blk.compat.length; i++) { const [o, k] = blk.compat[i]; sc = ftol((1.0 - Math.abs(s8(sp.at(o)) - s8(s.at(o))) * k) * sc); }
+    }
+    for (const [o, k] of blk.attr) sc = ftol((s8(s.at(o)) * k + 1.0) * sc);
+    for (const b of [s.b59, s.det, s.pres, s.prof]) sc = ftol(((s8(b) - 10) * blk.pers + 1.0) * sc);
+    return scoreTail(env, s, c, job, cur, crep, sc);
+  }
+  if (job !== 5 && job !== 12) return -10000;                          // (11 → 0x69d5fc; 16 → 0x69d65a: ikke brugt)
   if (!s.human) {
     const atClub = s.club === c;
     switch (cur) {
@@ -290,7 +320,10 @@ export function scoreStaffForJob(env: BoardEnv, s: Person, c: number, job: numbe
     sc = ftol(sc * (1 + (s8(s.pres) - 10) * 0.005));
     sc = ftol(sc * (1 + (s8(s.prof) - 10) * 0.005));
   }
-  // TAIL
+  return scoreTail(env, s, c, job, cur, crep, sc);
+}
+/** 0x69e5b9–0x69eae4: fælles hale (landets styrke, topklubbernes krav, sproget, verdensdelen +0x7e) – job 9 springer verdensomdømmefaktoren over (0x69e978/0x69e9fd) */
+function scoreTail(env: BoardEnv, s: Person, c: number, job: number, cur: number, crep: number, sc: number): number {
   const cn = env.clubNation(c);
   const NAT = s.club && env.clubNation(s.club) === cn ? cn : s.nation;
   if (crep > 4750 && cn >= 0 && s.nation >= 0 && env.foreign(s, cn) && !(s.club && env.clubNation(s.club) === cn)) {
@@ -321,8 +354,8 @@ export function scoreStaffForJob(env: BoardEnv, s: Person, c: number, job: numbe
       }
       const wr = s16(s.rep[2]);
       const f = cur !== 12 && cur !== 5 ? wr * 2.5e-5 + 0.5 : env.foreign(s, cn) ? wr * 5e-5 + 0.5 : wr * 2.5e-5 + 0.75;
-      sc = ftol(f * sc);
-    } else if (env.foreign(s, cn)) {
+      if (job !== 9) sc = ftol(f * sc);
+    } else if (env.foreign(s, cn) && job !== 9) {
       sc = ftol((s16(s.rep[2]) * 5e-5 + 0.5) * sc);
     }
   }

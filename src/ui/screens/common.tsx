@@ -1,5 +1,5 @@
 import { Fragment, type ReactNode } from 'react';
-import { compName, dateFmt, has, money, natName, t } from '../../i18n';
+import { compName, dateFmt, getLang, has, money, natName, t } from '../../i18n';
 import { useNav } from '../core';
 import { ClubLink, PlayerLink } from '../components';
 import type { NewsItem } from '../../game/types';
@@ -52,6 +52,7 @@ export function newsParams(n: NewsItem): Record<string, string | number> {
       p[`d${i}`] = cxLongDate(String(p[`fd${i}`]));
     }
   }
+  if (n.key.startsWith('cm.stm.') && typeof p.job === 'number') { const jn = t(`cm.stm.j.${p.job}`); p.job = getLang() === 'en' ? `${/^[aeiou]/i.test(jn) ? 'an' : 'a'} ${jn}` : jn; }
   if (typeof p.injury === 'string') { p.injury = t(`injury.${p.injury}`); p.injuryLc = String(p.injury).toLowerCase(); }
   // originalens skadenyhed: periodens ord ("about three weeks") og skaden med lille forbogstav i brødteksten
   if (typeof p.range === 'string' && p.range.startsWith('injury.r.')) p.range = t(p.range);
@@ -157,6 +158,8 @@ function bodyKey(n: NewsItem): string {
   if (n.key.startsWith('cmfe.') && typeof n.params?.body === 'string') return `cmfe.b.${n.params.body}`;
   // venskabskampens tilbud til mennesket (0x77ce44): arrangøren hjemme "have offered …", ellers "have challenged …"
   if (n.key === 'cmfr.proposal') return `cmfr.proposal.${n.params?.body === 'challenged' ? 'challenged' : 'offered'}`;
+  // stabsskifter (cmStaffMove.ts, 0x8dc370): én brødtekst til de fire overskrifter
+  if (n.key.startsWith('cm.stm.')) return n.params?.from ? 'cm.stm.bodyFrom' : 'cm.stm.body';
   return `${n.key}.body`;
 }
 

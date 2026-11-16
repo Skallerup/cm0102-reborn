@@ -1,6 +1,7 @@
 // Spillets dag-for-dag-løkke.
 import { cmBoardAfterMatch, cmBoardDaily, cmBoardOn } from './cmBoardGame';
 import { cmStaffOffersDaily } from './cmStaff';
+import { cmStaffMovesDaily } from './cmStaffMove';
 import { cmActive, cmAfterMatch, cmContractDaily, cmFlagSet, cmRand, cmSquadMoraleDaily, MORALE_OFF, withFlagCtx } from './cmPlayerData';
 import { cmFitAfterMatch, cmFitDay, cmFitMatch, cmFitOn, cmFitPreMatch, setMatchSquad } from './cmFitnessGame';
 import { cmPermitAfterMatch, cmPermitDaily } from './cmPermit';
@@ -664,7 +665,7 @@ function newDay() {
   forEachHuman(windowNews);
   forEachHuman(processOffers);
   answerPendingRenewals();
-  if (cmActive(g)) cmStaffOffersDaily(g);
+  if (cmActive(g)) { cmStaffOffersDaily(g); cmStaffMovesDaily(g); }
   holidayDaily();
   squadNumbersDaily();
   euroSquadDaily();

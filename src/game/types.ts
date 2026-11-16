@@ -739,6 +739,8 @@ export interface NewsItem {
   link?: { kind: 'player' | 'club' | 'fixture' | 'offer' | 'comp' | 'awards' | 'press' | 'chat'; id: number | string };
   /** Ugentligt transferoverblik: ugens handler mellem andre klubber */
   deals?: TransferDeal[];
+  /** originalens kalender: tidspunktet på dagen, da nyheden kom (0 AM, 1 PM, 2 EVE – News-listens dato) */
+  tod?: 0 | 1 | 2;
   /** Dæmpet kategori: markeret som læst og kun vist, når man filtrerer på kategorien */
   muted?: boolean;
 }
@@ -1304,6 +1306,8 @@ export interface GameState {
   pendingRenewals?: { pid: number; club: number; wage: number; years: number; clauses?: ContractClauses; date: string }[];
   /** CM 01/02 (cmStaff.ts, original DB i ægte tilstand): kontrakttilbud til stabsfolk – svaret kommer som nyhed næste dag */
   cmStaffOffers?: import('./cmStaff').CmStaffOffer[];
+  /** computerklubbernes bud på stab (cmStaffMove.ts: 0x84a020/0x8e5d60 – kompensationen 0x8d0780), besvares på `due` */
+  cmStaffMoves?: import('./cmStaffMove').CmStaffMove[];
   /** Lokalt spil mod AI-managere (ingen server): værten spiller sine kampe live */
   localMp?: boolean;
   /** Beskeder mellem managere, der går gennem spillet (AI-managere og lokale spil) */

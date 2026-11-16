@@ -232,11 +232,15 @@ export function newsRelevant(...clubIds: (number | undefined)[]): boolean {
 }
 
 /** Ny besked til den aktive manager. all=true sender til alle menneskelige managere (multiplayer). */
+/** nyhedens tidspunkt (AM/PM/EVE = 0/1/2) – sat af cmCalendar.ts (ingen cirkulær import) */
+export const newsStamp: { tod?: (g: GameState) => 0 | 1 | 2 | null } = {};
 export function addNews(n: Omit<NewsItem, 'id' | 'date' | 'read'> & { date?: string }, opts?: { all?: boolean }) {
   const g = gs();
   if (offInOriginal(n.key) && cmActive(g)) return; // nyheder uden modstykke i originalen (newsFilter.ts)
   const muted = !!g.options.mutedNews?.includes(n.cat);
-  const item = { id: g.nextId.news++, date: n.date ?? g.date, read: muted, ...n, ...(muted ? { muted: true } : {}) };
+  // originalens kalender: nyhedens tidspunkt på dagen (News-listens "Fri 24th Aug EVE" – cmCalendar.ts registrerer cmTimeOfDay)
+  const tod = n.date === undefined || n.date === g.date ? newsStamp.tod?.(g) ?? null : null;
+  const item = { id: g.nextId.news++, date: n.date ?? g.date, read: muted, ...n, ...(muted ? { muted: true } : {}), ...(tod !== null ? { tod } : {}) };
   g.news.unshift(item);
   if (g.news.length > 700) g.news.length = 700;
   if (opts?.all && g.humans) {

@@ -29,7 +29,7 @@ import { addDays, daysBetween, toDate } from './dates';
 import { CM_FA_CUP, CM_SCHEDULES, type SchedRound, type SchedTv, type SchedVar } from './data/cmSchedules';
 import { seasonStartDay } from './cmFitness';
 import { cmActive, cmRand } from './cmPlayerData';
-import { fixturesOn, indexFixture, unindexFixture } from './state';
+import { fixturesOn, indexFixture, newsStamp, unindexFixture } from './state';
 
 /** kalenderen gælder: den originale database i ægte tilstand (ikke draft-ligaen) */
 export const cmCalendarOn = (g: GameState): boolean => cmActive(g) && !g.draft;
@@ -257,3 +257,4 @@ export function cmTimeOfDay(g: GameState): 0 | 1 | 2 | null {
   }
   return slot as 0 | 1 | 2;
 }
+newsStamp.tod = cmTimeOfDay;

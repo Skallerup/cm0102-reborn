@@ -29,7 +29,8 @@ import { staffShown, judgeAbility, recPositions } from './engine/grid/roleScore'
 import { combineScore, positionFactor } from './engine/grid/subs';
 import { playerRecord } from './engine/grid/aiTeam';
 import { clubRepMem } from './cmPlayerData';
-import { poachFee, STAFF_LIMITS } from './staff';
+import { STAFF_LIMITS } from './staff';
+import { bookBlock, K as CMK, GBP as GBP_CM } from './cmFinance';
 import type { GameState, Staff, StaffRole } from './types';
 
 export { cmActive };
@@ -268,6 +269,16 @@ export function cmOfferStaff(g: GameState, o: Omit<CmStaffOffer, 'club' | 'date'
   return 'ok';
 }
 
+/** 0x8d0780 (ikke-spiller): restkontrakten ftol(dage til udløb · ugeløn / 7) i £ – `clamp` = £1.000..£1.000.000 (kompensationen); uden klub 0 */
+export function cmStaffRestGbp(g: GameState, s: Staff, clamp = true): number {
+  if (!s.club || !(s.wage > 0) || !s.expires) return 0;
+  const days = Math.round((Date.parse(s.expires.slice(0, 10) + 'T00:00:00Z') - Date.parse(g.date.slice(0, 10) + 'T00:00:00Z')) / 86400000);
+  const v = Math.trunc((days * Math.round(s.wage * 0.86)) / 7) | 0;
+  return clamp ? Math.min(1_000_000, Math.max(1000, v)) : v;
+}
+/** kompensationen i spillets valuta (€) */
+export const cmStaffCompensation = (g: GameState, s: Staff): number => Math.round(cmStaffRestGbp(g, s) / 0.86);
+
 /** dagligt: svarene på kontrakttilbuddene (afsendt i går eller før) */
 export function cmStaffOffersDaily(g: GameState): void {
   if (!g.cmStaffOffers?.length) return;
@@ -281,7 +292,8 @@ export function cmStaffOffersDaily(g: GameState): void {
     const name = `${s.first} ${s.last}`.trim();
     const from = s.club ? g.clubs[s.club] : undefined;
     // *estimeret*: interesseret i jobbet, lønnen mindst 95 % af kravet, plads i staben og penge til kompensationen
-    const fee = s.club ? poachFee(s) : 0;
+    // kompensationen 0x8d0780 (som originalens "X will be due £Y in compensation." 0x4e4bf2)
+    const fee = s.club ? cmStaffCompensation(g, s) : 0;
     const roomOk = staffCountFor(g, o.club, o.role) < STAFF_LIMITS[o.role];
     const willing = cmStaffInterestedIn(g, s, o.role) && o.wage >= cmStaffDemand(s, o.role) * 0.95 && club.balance >= fee
       && hash01(g.seed, o.staff, o.club, g.date.length) < 0.98;
@@ -304,9 +316,10 @@ export function cmStaffOffersDaily(g: GameState): void {
         fromEn: fn ? `${fn}${sEnd ? "'" : "'s"}` : '', fromDa: fn ? `${fn}${sEnd ? "'" : 's'}` : '', sid: s.id, role: o.role } });
       continue;
     }
-    if (from) {
-      club.balance -= fee; club.finance.other += fee;
-      from.balance += fee; from.finance.other -= fee;
+    if (from && fee > 0) {
+      // bogført som en transfer (Finance::add_bought 0x599890 / add_sold 0x599800) – kompensationen er buddets beløb (+0x1b, 0x8e7602)
+      club.balance -= fee; club.finance.transfersOut += fee; bookBlock(g, club, CMK.bought, Math.round(fee * GBP_CM));
+      from.balance += fee; from.finance.transfersIn += fee; bookBlock(g, from, CMK.sold, Math.round(fee * GBP_CM));
     }
     const role = o.role;
     s.club = o.club;

@@ -1930,6 +1930,22 @@ button.cx-bid-swap.removing { cursor: pointer; color: #fff21f; }
 .cx-bid .cx-ts-intro .cx-bid-setval, .cx-bid .cx-ts-intro .cx-bid-setmax { cursor: pointer; color: inherit; text-decoration: none; }
 .cx-bid .cx-ts-intro .cx-bid-setval:hover, .cx-bid .cx-ts-intro .cx-bid-setmax:hover { color: #ffff60; }
 
+/* News (CM 01/02, ejerens billede 16/11 – images/153.png "Fulham sign Collier"): datoen i listen har listens skrift og tidspunktet (Fri 24th Aug EVE),
+   "Filter :" står i en grå boks fra ~43 % af bredden til Next Unread, Next Unread med hvid tekst som Back/Next, overskriften og brødteksten ~20 %
+   større end før, overskriften uden understregning (den er ikke et link i originalen) */
+:root[data-skin='retro'] .cx-inbox .cx-ndate { font-size: 13px; }
+:root[data-skin='retro'] .cx-inbox .cx-nbar { background: transparent; }
+:root[data-skin='retro'] .cx-inbox .cx-nfilter { left: 43.4%; right: 203px; padding-left: 3.4%; background: rgba(150, 150, 150, 0.3); font-size: 13px; }
+:root[data-skin='retro'] .cx-inbox .cx-nfilter input { flex: 1; width: auto; min-width: 0; }
+:root[data-skin='retro'] .cx-inbox .cx-nbar .cx-grey:not(.cx-respond) { font-size: 13px; font-weight: 400; color: #eeeeee; text-shadow: 1px 1px 0 #3a3a3a; }
+:root[data-skin='retro'] .cx-inbox .cx-nhead { font-size: 22px; }
+:root[data-skin='retro'] .cx-inbox .cx-nhead :is(.cx-link, [role='link']) { text-decoration: none; }
+:root[data-skin='retro'] .cx-inbox .cx-nbody { font-size: 21px; line-height: 28px; }
+@media (max-width: 760px) {
+  :root[data-skin='retro'] .cx-inbox .cx-nfilter { position: static; padding-left: 6px; background: transparent; }
+  :root[data-skin='retro'] .cx-inbox .cx-nhead { font-size: 18px; }
+  :root[data-skin='retro'] .cx-inbox .cx-nbody { font-size: 16px; line-height: 22px; }
+}
 /* skadet spiller i kamptaktikken (CM 01/02): gennemsigtig cirkel og gråt navn */
 .cx-tac-slot.inj .cx-tac-dot { opacity: 0.3; }
 .cx-tac-slot.inj .cx-tac-nm, .cx-tac-pitch .cx-tac-slot.inj .cx-tac-nm { color: #7c8a6c; opacity: 0.8; }

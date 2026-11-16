@@ -207,8 +207,12 @@ export function cmSquadPlanClub(g: GameState, cid: number, daily: boolean, first
     p.contract = null;
   }
   storeEntry(g, cid, e);
+  // halen 0x83ebfb–0x83f32b (stabens pladser) – cmStaffMove.ts registrerer sig her
+  if (planRes.ran) for (const h of afterPlanHooks) h(g, cid, T, e.slots.filter((s) => s.role === 0xb && s.f === -1).length);
   return planRes;
 }
+/** efter en kørsel af trupplanen: (spil, klub, 0x7bca90's T, åbne spillerpladser) */
+export const afterPlanHooks: ((g: GameState, cid: number, T: number, openPlayerSlots: number) => void)[] = [];
 function syncBack(p: Player, pp: PlanPlayer): void {
   const c = cmContractOf(p), k = pp.contract!;
   c.b3d = k.b3d; c.b3e = k.b3e; c.b3f = k.b3f; c.b45 = k.b45; c.b4e = k.b4e; c.b4f = k.b4f;

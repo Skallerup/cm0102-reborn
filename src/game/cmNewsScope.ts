@@ -86,6 +86,8 @@ export interface TransferNewsIn {
   swap?: number[];
   /** buddet selv (de andre bud på spilleren tæller med for flag 4) */
   offerId?: number;
+  /** en ikke-spiller (stab): ingen leje, shortlist, planlægger-plads eller kampstatistik (0x8d1684 – omdømmet fra ikke-spillerposten) */
+  staff?: boolean;
 }
 
 /** 0x8e7b50(offer, 0, 0, 0, 0, 1) uden formuebåndet (1,0): gebyret + (1 − 25·0,005)·klausulen + byttespillernes værdi (+0x52), i £ */
@@ -109,18 +111,18 @@ export function transferNewsToMe(g: GameState, p: Player, buyer: Club, x: Transf
   if (seller && M.id === seller.id) return true;
   if (M.id === buyer.id) return true;
   // flag 4: moderklubben ved leje (kontrakten 0x4cf6d0 hos en anden end køberen) og de andre bydende mennesker
-  const parent = p.loan?.from;
+  const parent = x.staff ? undefined : p.loan?.from;
   if (parent && p.club !== buyer.id && parent === M.id) return true;
-  if (g.offers.some((o) => o.id !== x.offerId && o.player === p.id && o.buyer === M.id && o.buyer !== buyer.id
+  if (!x.staff && g.offers.some((o) => o.id !== x.offerId && o.player === p.id && o.buyer === M.id && o.buyer !== buyer.id
     && (o.status === 'pending' || o.status === 'negotiating' || o.status === 'countered' || o.status === 'accepted'))) return true;
   // flag 8: mennesker med spilleren på shortlisten (ikke køberen)
-  if (g.shortlist?.includes(p.id) && M.id !== buyer.id) return true;
+  if (!x.staff && g.shortlist?.includes(p.id) && M.id !== buyer.id) return true;
   // flag 0x10 / 0x40
   const [H, C, W] = reps(p);
   const sellerDiv = divisionOf(g, seller), buyerDiv = divisionOf(g, buyer);
   const w = weightedValue(g, x);
   // 0x8d160f: købers planlægger-plads for spilleren (rolle 0xb, gruppe < 3) og gebyret (+0x1b) ≥ £1.000.000
-  const slot = g.cmPlan?.[buyer.id]?.s.find((r) => r[3] === p.id && r[0] === 0xb);
+  const slot = x.staff ? undefined : g.cmPlan?.[buyer.id]?.s.find((r) => r[3] === p.id && r[0] === 0xb);
   let buyerDivFlag = !!slot && ((slot[2] & 0x1e) < 6) && Math.round(x.fee * GBP) >= 1_000_000;
   let all = false, cont = false, nat = false, sellerDivFlag = false;
   const conts: number[] = [], nats: number[] = [];
@@ -145,7 +147,7 @@ export function transferNewsToMe(g: GameState, p: Player, buyer: Club, x: Transf
   } else {
     if (sellerDiv) {
       const lim = 350 * divRep(g, sellerDiv);
-      if ((C > lim && C > 2500) || 9.0 - C * 0.00025 < statAvg(p, 2, 0x12, 6.5)) sellerDivFlag = true;
+      if ((C > lim && C > 2500) || (!x.staff && 9.0 - C * 0.00025 < statAvg(p, 2, 0x12, 6.5))) sellerDivFlag = true;
     }
     if (buyerDiv) {
       if (repSeenByBuyer(g, p, seller, buyer) > 350 * divRep(g, buyerDiv) && C > 1500) buyerDivFlag = true;

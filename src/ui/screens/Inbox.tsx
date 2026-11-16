@@ -177,7 +177,7 @@ export function Inbox() {
           {list.length === 0 && <div className="cx-nempty">{t('inbox.empty')}</div>}
           {shown.map((n) => (
             <div key={n.id} data-id={n.id} className={`cx-nrow ${sel === n.id ? 'on' : ''} ${n.read ? '' : 'unread'}`} onClick={() => setSel(n.id)}>
-              <span className="cx-ndate">{cxDate(n.date)}</span>
+              <span className="cx-ndate">{cxDate(n.date)}{n.tod !== undefined ? ` ${t(`cl.tod.${n.tod}`)}` : ''}</span>
               <span className="cx-ntitle">{newsTitle(n)}</span>
             </div>
           ))}

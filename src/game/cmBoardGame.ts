@@ -827,3 +827,8 @@ postHooks.managerRep = (g, club, v) => {
 
 export const _test = { entryOf, leagueInfo };
 export { squad };
+
+/** 0x844780 staff_interest_in_job_at_club(s, c, 0, job, NULL) for et andet job end manager (stabens skifter, cmStaffMove.ts) */
+export function staffJobInterest(g: GameState, env: BoardEnv, p: Person, c: number, job: number): number {
+  return staffInterest(interestEnv(g, env), p, c, job);
+}

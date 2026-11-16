@@ -18,7 +18,7 @@
 //
 // *Estimeret* (spillet har ikke tilstanden): positionslisterne bygges hver dag i stedet for hver 30. dag, og deres rækkefølge før sorteringen er
 // id-rækkefølgen (lige nøgler kan derfor stå anderledes end i originalen, der sorterer gårsdagens liste); stabens pladser (rolle 6–10) får klubbens
-// nuværende stab som indehaver (0x69d1b0's vurdering af stabsfolk er ikke porteret – stabsansættelser går ikke gennem ønskelisten hos os);
+// nuværende stab som indehaver (0x69d1b0's vurdering af stabsfolk er ikke porteret – stabsansættelser går ikke gennem ønskelisten hos os – de har deres egen port af halen, budgettet og stabsgrenen i cmStaffMove.ts);
 // TRANSFER_MANAGER's tilbud er spillets åbne bud (uden rival- og forhandlingslister); skaderne 0x62ed70 fra konditionsmodulet; arbejdstilladelsen
 // 0x8c7950 = rules2001.ts permitOk; lejeregler 0x8d0040 = rules2001.ts loanBlocked; spillerens svar på et kontrakttilbud til en fri spiller
 // kommer straks (originalen venter på hans beslutningsdato 0x4cd230).

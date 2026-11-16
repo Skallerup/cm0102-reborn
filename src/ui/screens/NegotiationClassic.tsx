@@ -5,7 +5,8 @@ import { act } from '../../game/actions';
 import { gs } from '../../game/state';
 import { preferredYears, renewalDemand, signOnDemand, wageDemand } from '../../game/transfers';
 import type { ContractClauses, StaffRole, TransferOffer } from '../../game/types';
-import { cmStaffDemand, cmStaffInterestedIn } from '../../game/cmStaff';
+import { cmStaffCompensation, cmStaffDemand, cmStaffInterestedIn } from '../../game/cmStaff';
+import { cmActive } from '../../game/cmPlayerData';
 import { poachFee } from '../../game/staff';
 import { money, t } from '../../i18n';
 import { CxDrop, CxPm, titleColors, useClassicDialog } from '../classic';
@@ -62,6 +63,8 @@ export function ClassicStaffNegotiation({ staffId, role, onClose }: { staffId: n
   const allow = Math.max(0, club.wageBudget - bill);
   const end = (y: number) => `${t('cl.neg.jun')} ${g.season + y}`;
   const from = s.club ? g.clubs[s.club] : undefined;
+  // 0x4e4b55: kompensationen 0x8d0780 – vises kun, når den er over 0
+  const comp = from ? (cmActive(g) ? cmStaffCompensation(g, s) : poachFee(s)) : 0;
   const col = titleColors(s.club || undefined);
   const wageOpts = [...new Set([0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 1, 1.05, 1.1, 1.2, 1.3, 1.5, 1.75, 2].map((f) => r50(demand * f)))];
   const send = () => { act({ t: 'cmStaffOffer', id: s.id, role, wage, years, signOn }); onClose(true); };
@@ -71,7 +74,7 @@ export function ClassicStaffNegotiation({ staffId, role, onClose }: { staffId: n
       <div className="cx-subtitle">{t('cl.neg.title')}</div>
       {ask ? (
         <div className="cx-dlg-body"><p className="cx-ts-intro">{t('cl.neg.confirm', { player: name })}</p>
-          {from && <p className="cx-ts-intro">{t('cm.neg.comp', { club: from.short || from.name, fee: money(poachFee(s)) })}</p>}</div>
+          {from && comp > 0 && <p className="cx-ts-intro">{t('cm.neg.comp', { club: from.short || from.name, fee: money(comp) })}</p>}</div>
       ) : (
         <div className="cx-dlg-body">
           <p className="cx-ts-intro">{interested ? t('cl.neg.wants', { player: name, wage: money(demand), until: end(2), fee: '' }) : t('cm.neg.noInterest', { name })}</p>
