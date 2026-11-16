@@ -24,7 +24,7 @@ funktioner placeres her – aldrig på originalens skærme.
 ## Arbejdsliste – skal undersøges / rettes
 
 ### 1. Spilsystemer der stadig er vores egne eller estimerede
-1. Ønskelisterne (Shortlist_Manager) – porteret, men slået fra (`SL_ON`): hastighed 0,6 → 0,3 s/dag; derefter computerens interesse/bud/handler fra originalen og vores `cmInterested`, `aiPursuits`, `weeklyRumours`, `aiBosman`, `aiReleaseClauses`, `aiFillSquads`, `freeAgentDrift` slået fra.
+1. Ønskelisterne (Shortlist_Manager) – porteret, men slået fra (`SL_ON`): hastighed ~2,5–4,5 s/dag med Maximum-hukommelsen (`tm`, runde 12 – runde 11's 0,6 s var uden `tm`) → 0,3 s/dag kræver genudfyldningen 0x843e10 → 0x83f3a0 og 0x84a020 i TS uden x86-emulering (ENGINE_PORT_PLAN.md, runde 12); derefter computerens interesse/bud/handler fra originalen og vores `cmInterested`, `aiPursuits`, `weeklyRumours`, `aiBosman`, `aiReleaseClauses`, `aiFillSquads`, `freeAgentDrift` slået fra.
 2. Transferbudget/lønbudget: 0x598800 bygget (`cmBudget.ts`) men giver 33,6M mod originalens 24M for Man Utd – mangler et input (fin+0xc m.fl.).
 3. Arbejdstilladelse: tildelingen 0x8c7950 ikke porteret (kun "skal have").
 4. Landsholdsfodbold: NationalTeams 0x76b100, udtagelse 0x7757d0, kvalifikation/VM/EM/OL-format, landstrænere – hele `international.ts` er vores eget.

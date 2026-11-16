@@ -24,19 +24,28 @@ export function knowsNation_53d980(c: CmCtx, person: number, nat: number, flag: 
   if (p2 === nat) return 0;
   if (!flag) return 1;
   const id = m.s32(nat);
-  const a = m.s32(0x9cf2e4), b = m.s32(0x9cf45c), d = m.s32(0x9cf510), e = m.s32(0x9cf3e4), f = m.s32(0x9cf2dc);
+  const K = keyIds(m);
+  const a = K[0], b = K[1], d = K[2], e = K[3], f = K[4];
   if (id === a || id === b || id === d || id === e || id === f) {
     const x = m.s32(pn);
     if (x === a || x === b || x === d || x === f || x === e) return 0;
     if (p2) { const y = m.s32(p2); if (y === a || y === b || y === d || y === f || y === e) return 0; }
   }
   if (pn) {
-    const u = m.s32(0x9cf224), v = m.s32(0x9cf3f4);
+    const u = K[5], v = K[6];
     if (id === u || id === v) { const x = m.s32(pn); if (x === u || x === v) return 0; }
   }
-  if (id === m.s32(0x9cf360) && pn && m.s32(pn) === m.s32(0x9cf4f0)) return 0;
-  if (id === m.s32(0x9cf434)) return slCall(c, 0x53d980, 0, person, nat, flag) | 0;   // 0x53d740 + kontraktens dato – oversat
+  if (id === K[7] && pn && m.s32(pn) === K[8]) return 0;
+  if (id === K[9]) return slCall(c, 0x53d980, 0, person, nat, flag) | 0;   // 0x53d740 + kontraktens dato – oversat
   return 1;
+}
+/** (hastighed, runde 12) landenes id-globaler, 0x53d980 sammenligner med – faste for en hukommelse (writeKeyIds skriver dem, før noget kaldes) */
+const KEY_ADR = [0x9cf2e4, 0x9cf45c, 0x9cf510, 0x9cf3e4, 0x9cf2dc, 0x9cf224, 0x9cf3f4, 0x9cf360, 0x9cf4f0, 0x9cf434];
+let KEY_M: CmMem | null = null;
+const KEY_V = new Int32Array(KEY_ADR.length);
+function keyIds(m: CmMem): Int32Array {
+  if (m !== KEY_M) { for (let i = 0; i < KEY_ADR.length; i++) KEY_V[i] = m.s32(KEY_ADR[i]); KEY_M = m; }
+  return KEY_V;
 }
 
 /** 0x5408c0 (staff, manager): 0 samme klub/land som managerens klub, 2 samme nation (eller en han kender), 3 kendt via klubbens land eller

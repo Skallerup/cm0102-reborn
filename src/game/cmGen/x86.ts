@@ -47,6 +47,10 @@ export const SHARED = { on: false };
 export function implGet(adr: number): Impl | undefined { return IMPL.get(adr); }
 export function implOf(adr: number): Impl { const f = IMPL.get(adr); if (!f) throw new Error(`implOf: 0x${adr.toString(16)}`); return f; }
 export function registerImpl(adr: number, f: Impl, gen = false): void { IMPL.set(adr, f); if (gen) { GENSET.add(adr); GENF.set(adr, f); } else { GENSET.delete(adr); GENF.delete(adr); } }
+/** (hastighed, runde 12) værtsfunktioner for kald, hvis svar ejeren af hukommelsen `m` giver uden for de oversatte funktioner (adapterne) –
+ *  springer kaldkæden (argumentlister, genCtx → c.call → adapterens switch) over. Funktionen læser argumenterne af stakken (R.esp = første
+ *  argument, R.ecx = this) og giver svaret; den må ikke kalde oversatte funktioner. Kun når R.m === m (sættes og nulstilles af ejeren). */
+export const FASTHOST: { m: CmMem | null; f: Map<number, (R: X86) => number> } = { m: null, f: new Map() };
 /** falsk returadresse, som de delte kald skubber (kun til fejlsøgning) */
 export const FAKE_RET = 0xfeedf00d;
 let PENDING: X86 | null = null;
@@ -228,6 +232,15 @@ export class X86 {
   /** kald adr med konventionen; argumenterne står på stakken ved esp (returadressen er ikke skubbet) */
   call(adr: number, cv: Conv): void {
     if (adr >= 0x944000 && adr < 0x94c000 && CRT[adr]) { CRT[adr](this); return; }
+    if (FASTHOST.m === this.m) {
+      const h = FASTHOST.f.get(adr);
+      if (h !== undefined) {
+        const r = h(this);
+        if (cv.float) this.fpush(r); else this.eax = r | 0;
+        if (cv.calleeClean) this.esp = (this.esp + 4 * cv.n) | 0;
+        return;
+      }
+    }
     if (SHARED.on) { const f = GENF.get(adr); if (f !== undefined && !(this.c.useLog && this.c.useLog(adr))) { this.shared(f); if (this.c.probe) this.c.probe(adr, cv.float ? this.st[0] : this.eax); return; } }
     const args: number[] = [];
     for (let i = 0; i < cv.n; i++) args.push(this.m.s32((this.esp + 4 * i) >>> 0));

@@ -33,7 +33,9 @@ import { contractForClub_4cf5f0, expiryBand_867d30, setToDesiredContract_85fc50,
 import { addDays_54c5b0, subDays_54c8e0, listRemove_68d1f0, offerContract_4cda70 } from './cmContract';
 import { entryOf, storeEntry, fromRow } from './cmSquadPlanGame';
 import { newPlanEntry, type PlanEntry } from './cmSquadPlan';
-import { registerImpl, enter, QSORT_CMP, QSORT_CMP8, SHARED, PC_HOOK, stackBelow, type X86 } from './cmGen/x86';
+import { registerImpl, enter, QSORT_CMP, QSORT_CMP8, SHARED, PC_HOOK, FASTHOST, stackBelow, type X86 } from './cmGen/x86';
+import { getClubFinance_5a0590 } from './cmWage';
+import { leagueClash } from './cmBoardInterest';
 import { GEN } from './cmGen/index';
 import { humanClub_600a50 } from './cmWageGame';
 import { contractFlag_5445x0, value_840d80_impl } from './cmSlEval';
@@ -705,10 +707,23 @@ const ADAPTED = new Set([0x8d0590, 0x600a50, 0x6e6340, 0x62ed70, 0x8c7950, 0x8d0
   0x5a0590, 0x4b02e0, 0x4a4850, 0x8cf470, 0x8cf0e0, 0x8c61e0, 0x549c90, 0x944cff, 0x90d130, 0x944c9f, 0x5e8290]);
 /** de oversatte funktioner kører på delt processortilstand (x86.ts SHARED) – uden nye X86 og argumentlister pr. kald */
 function shared<T>(f: () => T, S?: SlMem): T {
-  const was = SHARED.on, wasS = ACTIVE;
+  const was = SHARED.on, wasS = ACTIVE, wasM = FASTHOST.m;
   if (S) ACTIVE = S;
   SHARED.on = ENV.CM_SL_SHARED !== '0';
-  try { return f(); } finally { SHARED.on = was; ACTIVE = wasS; }
+  if (FAST_ON) { ensureFast(); FASTHOST.m = ACTIVE ? ACTIVE.m : null; }
+  try { return f(); } finally { SHARED.on = was; ACTIVE = wasS; FASTHOST.m = wasM; }
+}
+/** (hastighed, runde 12) adapterne for de hyppigste kald fra de oversatte funktioner direkte (x86.ts FASTHOST) – samme svar som kæden
+ *  genCtx → base.call → buildSlMem's/buildSlWantMem's switch: 0x600a50 (menneskets klub, 5 argumenter), 0x5a0590 (klubbens økonomipost, this +
+ *  klubben), 0x4b02e0 (ligaopgøret, 2 argumenter). CM_SL_FASTHOST=0: kæden */
+const FAST_ON = ENV.CM_SL_FASTHOST !== '0';
+let fastDone = false;
+function ensureFast(): void {
+  if (fastDone) return;
+  fastDone = true;
+  FASTHOST.f.set(0x600a50, (R) => (humanClub_600a50(ACTIVE!.M.c, R.m.u32(R.esp >>> 0)) ? 1 : 0));
+  FASTHOST.f.set(0x5a0590, (R) => getClubFinance_5a0590(ACTIVE!.M.c, R.m.s32(R.esp >>> 0)));
+  FASTHOST.f.set(0x4b02e0, (R) => { const m = R.m, sp = R.esp >>> 0; return leagueClash(ACTIVE!.M.env(), m.s32(m.s32(sp)), m.s32(m.s32(sp + 4))); });
 }
 // ---------------------------------------------------------------- 0x83f3a0's kandidatløkke: den hurtige frasortering (0x83fa25–0x83fed2)
 // Kandidaterne i positionslisten afvises af en række billige tjek, før 0x840d80 regner (~22.000 pr. klub). De samme tjek her i TS, i samme
@@ -750,9 +765,39 @@ function fastRejectLoop(R: X86): number {
     R.sub(R.eax >>> 0, R.ecx >>> 0, 32);                                     // 840a8d: cmp eax, ecx
     m.w32(esp + 0x40, R.eax >>> 0);                                          // 840a8f: mov [esp + 0x40], eax
     if (!R.cL) return 0x840a99;                                              // 840a93: jl 0x83fa1a
+    // (hastighed, runde 12) de næste kandidater, der under alle omstændigheder afvises uden sidevirkninger (frSkip), springes over: indekset
+    // sættes til den sidste af dem, og løkkens egne instruktioner (840a81–840a93) kører for den – registre, flag og [esp+0x40] som før
+    if (fc && SKIP && !fc.human && fc.flag) {
+      const L = m.u32(esp + 0x90) >>> 0, n = R.ecx | 0, i0 = R.eax | 0;
+      let j = i0;
+      while (j < n && frSkip(m, fc, L, j)) j++;
+      if (j > i0) {
+        m.w32(esp + 0x40, (j - 1) >>> 0);
+        R.eax = m.u32(esp + 0x40) | 0;
+        R.ecx = m.u32(esp + 0x8c) | 0;
+        R.eax = R.incdec(R.eax >>> 0, 1, 32) | 0;
+        R.sub(R.eax >>> 0, R.ecx >>> 0, 32);
+        m.w32(esp + 0x40, R.eax >>> 0);
+        if (!R.cL) return 0x840a99;
+      }
+    }
     R.edx = m.u32(esp + 0x90) | 0;                                           // 83fa1a: mov edx, [esp + 0x90]
     R.ecx = m.u32(esp + 0x40) | 0;                                           // 83fa21: mov ecx, [esp + 0x40]
   }
+}
+/** CM_SL_SKIP=0: ingen spring (hver kandidat gennem fastReject1) */
+const SKIP = ENV.CM_SL_SKIP !== '0';
+/** kandidat j afvises af fastReject1 uden sidevirkninger (ikke menneskets klub, flag ≠ 0): ungdomspladsen og alder > 23 (rj 8 – eller en af de
+ *  tidligere afvisninger 0–7), eller ikke-lejepladsen med pladsens +7 < kandidatens værdi · 1,3 (rj 9 – eller 0–8). Kun personer med id under
+ *  grænsen og ikke pladsens egen indehaver (de går den normale vej). Læser de samme bytes som fastReject1 (personpostens side og listen). */
+function frSkip(m: CmMem, f: FrCtx, L: number, j: number): boolean {
+  const entry = (L + 12 * j) >>> 0;
+  const id = m.s32(entry);
+  if (id < 0 || id >= f.cnt16) return false;
+  const st = (f.staff + 0x6e * id) >>> 0;
+  if (st === f.self) return false;
+  if (!(f.b24 & 1) && f.slot7 < m.s32(entry + 8) * 1.3) return true;
+  return (f.b24 & 0x1e) === 0xa && s8(m.u8(st + 0x18)) > 0x17;
 }
 /** (hastighed, 14/11) frasorteringens kald i TS i stedet for de oversatte instruktioner (CM_SL_FRPORT=0: de oversatte): 0x53d980/0x5407e0 fra
  *  cmValue.ts, 0x544520/0x544590 og 0x84b180 her – kontrol: cm-sl-bench.ts mod CM_SL_FRPORT=0 */
@@ -865,14 +910,14 @@ function fastReject0(R: X86): number {
  *  dem læses her. 0x54c8e0 kaldes først, når en kandidat når den (som før). CM_SL_FRHOIST=0: fastReject0 for hver kandidat. */
 interface FrCtx {
   ebp: number; esp: number; slot: number; club: number; self: number; staff: number; cnt16: number; flag: number; human: boolean; x9cf: number;
-  b24: number; slot7: number; clubs: number; rows: number; list10: number; clubId: number; cn0: number; brit: boolean; tm86e: number;
+  b24: number; slot7: number; clubs: number; rows: number; cmArr: number; cnt: number; list10: number; clubId: number; cn0: number; brit: boolean; tm86e: number;
   e84: number; kk: number; idClub: number; cn: number; mgc: number; dNp: number; cr: number; cn75: number; cn85: number;
   dSet: boolean; dY: number; dD: number;
   /** dagens hukommelse som SparseMem (readPage) – ellers null */
   sp: SparseMem | null;
 }
 const FRHOIST = ENV.CM_SL_FRHOIST !== '0';
-const FC: FrCtx = { ebp: 0, esp: 0, slot: 0, club: 0, self: 0, staff: 0, cnt16: 0, flag: 0, human: false, x9cf: 0, b24: 0, slot7: 0, clubs: 0, rows: 0, list10: 0,
+const FC: FrCtx = { ebp: 0, esp: 0, slot: 0, club: 0, self: 0, staff: 0, cnt16: 0, flag: 0, human: false, x9cf: 0, b24: 0, slot7: 0, clubs: 0, rows: 0, cmArr: 0, cnt: 0, list10: 0,
   clubId: 0, cn0: 0, brit: false, tm86e: 0, e84: 0, kk: 0, idClub: 0, cn: 0, mgc: 0, dNp: 0, cr: 0, cn75: 0, cn85: 0, dSet: false, dY: 0, dD: 0, sp: null };
 function frCtx(R: X86, S: SlMem): FrCtx {
   const m = R.m, c = S.c, f = FC;
@@ -885,7 +930,7 @@ function frCtx(R: X86, S: SlMem): FrCtx {
   f.human = humanClub_600a50(c, club);
   f.x9cf = m.s32(0x9cf458);
   f.b24 = m.u8(f.slot + 0x24); f.slot7 = m.s32(f.slot + 7);
-  f.clubs = m.u32(G.CLUBS); f.rows = m.u32(G.ROWS);
+  f.clubs = m.u32(G.CLUBS); f.rows = m.u32(G.ROWS); f.cmArr = m.u32(m.u32(G.CM)); f.cnt = m.s32(G.STAFF_COUNT);
   f.list10 = m.u32(m.u32((esp + 0x10) >>> 0));
   f.clubId = club ? m.s32(club) : -1;
   f.cn0 = club ? m.u32(club + 0x53) : 0;
@@ -903,6 +948,7 @@ function frCtx(R: X86, S: SlMem): FrCtx {
   f.sp = m instanceof SparseMem ? m : null;
   return f;
 }
+const pg32 = (pg: Uint8Array, o: number) => (pg[o] | (pg[o + 1] << 8) | (pg[o + 2] << 16) | (pg[o + 3] << 24)) >>> 0;
 /** fastReject0 med gennemløbets faste dele (FrCtx) – samme tjek i samme rækkefølge */
 function fastReject1(R: X86, f: FrCtx): number {
   const S = ACTIVE!;
@@ -916,24 +962,23 @@ function fastReject1(R: X86, f: FrCtx): number {
   const so = st & 0xfff;
   if (!f.sp || so + 0x6e > 0x1000) return fastReject1m(R, f, S, m, c, entry, id, st);
   const pg = f.sp.readPage(st);
-  const P32 = (k: number) => (pg[so + k] | (pg[so + k + 1] << 8) | (pg[so + k + 2] << 16) | (pg[so + k + 3] << 24)) >>> 0;
   const b3d = pg[so + 0x3d], b28 = pg[so + 0x28];
   if (b3d === 5 || b28 === 5) return rj(2);
   if (!f.flag) return staffSlot(R, S, st, entry, slot, club);
-  if (P32(0x69)) {
+  if (pg32(pg, so + 0x69)) {
     if (f.human) return rz(102);
     if (b3d !== 0xb) return rj(3);
     const sm = m.u32(0xb67a44);
     if (sm && slCall(c, 0x69fc60, sm, st) & 0xff) return rj(22);
   } else if (f.human) return rz(102);
   if (b3d !== 0xb) return rj(3);
-  const sc = P32(0x39);
-  if (P32(0x24) && b28 === 5) return rj(4);
-  const rec = P32(0x61);
+  const sc = pg32(pg, so + 0x39);
+  if (pg32(pg, so + 0x24) && b28 === 5) return rj(4);
+  const rec = pg32(pg, so + 0x61);
   if (!rec) return rj(5);
   const rb = m.u8((f.rows + 79 * id + 0xb) >>> 0);
   if ((rb & 0x30) === 0x10) return rj(6);
-  const pn = P32(0x1a);
+  const pn = pg32(pg, so + 0x1a);
   if (pn && m.s32(pn) === f.x9cf) return rj(7);
   const b24 = f.b24;
   const age = s8(pg[so + 0x18]);
@@ -941,7 +986,9 @@ function fastReject1(R: X86, f: FrCtx): number {
   if (!(b24 & 1)) { if (f.slot7 < m.s32(entry + 8) * 1.3) return rj(9); }
   else if (!(sc && m.s32(entry + 8) <= 0)) { if (!(FRPORT ? contractFlag_5445x0(c, st, 0, 2) : slCall(c, 0x544590, 0, st, 0))) return rj(10); }
   if (sc === club) return rj(11);
-  const k = getContract(m, st);
+  // (getContract 0x4cf5a0 med gennemløbets faste dele: personens id fra posten, rækkerne og kontrakttabellen)
+  const id0 = pg32(pg, so) | 0, ix0 = id0 < f.cnt ? m.s32((f.rows + 79 * id0) >>> 0) : -1;
+  const k = ix0 < 0 ? 0 : (f.cmArr + 80 * ix0) >>> 0;
   if ((k ? (f.clubs + 0x245 * m.s32(k + 4)) >>> 0 : 0) === club) return rj(12);
   if ((rb & 0xf) >= 0xa) return rj(13);
   let k34 = 0;

@@ -291,6 +291,27 @@ Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.m
   scanOf), cmAiAiDue → cmAskingPrice → buildWantMem pr. bud ~8 %, GC ~8 %. Hukommelsen med dirty-markering (opgave 3) er ikke lavet: fingeraftrykkene
   (fpInto) koster ~13 ms pr. dag; det dyre er id-/løkkedelen og dagens kopi, ikke de ændrede poster. **Næste:** håndporter 0x4d1600 (5.170
   oversatte linjer, 23 kaldte funktioner) og 0x846920 med et `CHECK`-tjek som 840CHECK, og cmAskingPrice på en hukommelse pr. dag (efter applyHook).
+- **Hastighed, runde 12 (16/11, stadig slået fra – ≤ 0,3 s er langt fra nået):** **Ny baseline:** world-filen fra ed7b9b0 (16/11) har igen `tm`
+  (databasestørrelsen Maximum: 13.150 spillere i klubber uden for de valgte lande i hukommelsen – world-filen, runde 10 og 11 målte på, havde intet
+  `tm`, så deres 583/600 ms/dag gjaldt kun de valgte landes spillere + de klubløse). Med `tm` (bisect: 12d22af 920 ms/dag → ed7b9b0 3.666 ms/dag
+  i samme belastning; samme kode med 12d22af's world-fil 1.251 ms/dag) er dagen **~2,5–4,5 s** (30 dage, esbuild-bundt, belastning 3–5; 6.031
+  bud på 30 dage mod ~2.000) – flere kandidater i positionslisterne, flere udenlandske bud og afslag → flere genudfyldninger. Profil (6 dage):
+  0x83f3a0 ~67 % (dropDeadBids → 0x843e10 ~57 %, makeBids → 0x84a020 ~15 %), heraf frasorteringen ~22 %, 0x840d80 ~22 % (planValue ~11 %),
+  oversatte 0x4d1600 ~10 %, 0x846920 ~4 %; cmAiAiDue ~8 % (cmAskingPrice ~6 %, deraf buildWantMem ~5 %), buildSlMem ~7 %, GC ~3 %.
+  **Gjort (bit for bit: cm-sl-bench 30 dage sha1 hver dag ens med origin/staging's, cm-sl-stalecheck 5 dage 0 afvigende læsninger, tests/cmShortlist +
+  cmAiBid + cmValue grønne):** (1) `frSkip` i fastRejectLoop – kandidater, der under alle omstændigheder afvises uden sidevirkninger (ungdomsplads og
+  alder > 23 = rj 8, ikke-lejeplads med pladsens +7 < værdien · 1,3 = rj 9; ikke menneskets klub, flag ≠ 0), springes over med løkkens egne
+  instruktioner for den sidste (8,3 mio. af ~29 mio. kandidater på spilstarten + 2 dage; `CM_SL_SKIP=0` slår det fra); (2) fastReject1 uden lukning pr.
+  kald (`pg32`) og med getContract af gennemløbets faste dele; (3) 0x53d980's ti id-globaler gemt pr. hukommelse (cmValue.ts `keyIds`);
+  (4) `FASTHOST` (x86.ts): 0x600a50 (336.000 kald på spilstarten + 1 dag), 0x5a0590 og 0x4b02e0 direkte i stedet for kæden genCtx → c.call →
+  adapterens switch (`CM_SL_FASTHOST=0`). Gevinst kun ~5–13 % (forholdet ønskelisterne/resten af dagene 3,8 → 3,3; vægurets tal svinger mere end det).
+  **Ikke gjort – og hvorfor:** 0x4d1600 kører i snit 1.114 instruktioner pr. kald (65.000 kald på spilstarten + 1 dag, 470 af 696 blokke, varm sti
+  ~1.200–2.200 instruktioner, 23 kaldte funktioner), 0x846920 1.479 pr. kald (463 af 886 blokke); en fuld håndport af begge sparer højst ~12 % af
+  dagen. cmAskingPrice på dagens hukommelse er ikke bit for bit (dagens hukommelse har dagens budmærker/slots, en frisk buildWantMem spillets tilstand
+  efter applyHook) – ~5 %. **Hvad ≤ 0,3 s kræver (×8–15):** hele genudfyldningen 0x843e10 → 0x83f3a0 (frasortering + vurderingsløkken 0x8400da–0x840a81
+  + 0x840d80/planScore + 0x4d1600 + 0x846920 + 0x849ce0) som én TS-funktion uden x86-emulering og uden SparseMem-opslag pr. felt (posterne som
+  JS-objekter/typed arrays), og 0x84a020/0x8e5d60 ligeså – i alt ~15.000 instruktioner med samme rand-rækkefølge og x87-semantik. Alternativt et
+  produktvalg: ønskelisterne i en Web Worker ved siden af spillet (dagen venter stadig ~3 s), eller kun de valgte landes klubber køres (ikke originalt).
 - **Formændene** (koblet ind): sub_535a80's personlige egenskaber 0x535ea4– for alle personer – uden for 1..20: −1 → rand(16)+5, ellers to terninger:
   Ambition snittet, Loyalty den mindste (`cmStaffInit.ts personalFill_535a80`, cmFinance.ts' og cmBoardGame.ts' formand). Ønskelønnen
   (`scripts/cm-want-game.ts`): ens 1.142 → 1.148, inden for 2 % 1.470 → 1.483, inden for 10 % 1.852 → 1.848, 10/50/90 % 0,59/1,00/1,42 → 0,60/1,00/1,42.
