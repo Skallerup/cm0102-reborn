@@ -203,8 +203,9 @@ export function cmAgreed(o: TransferOffer, p: Player, terms: { wage: number; yea
   const g = gs();
   const params = { player: pname(p), last: p.last || pname(p), seller: short(g, o.seller), buyer: short(g, o.buyer) };
   const human = isHumanClub(o.buyer);
-  asOwner(o.buyer, () => addNews({ cat: 'transfer', key: 'transfer.cmAgrees', params, link: human ? { kind: 'offer', id: o.id } : { kind: 'player', id: p.id } }));
-  if (!human) { complete(o, terms.wage, terms.years, terms.clauses); return; }
+  asOwner(o.buyer, () => addNews({ cat: 'transfer', key: 'transfer.cmAgrees', params, link: human && !o.preContract ? { kind: 'offer', id: o.id } : { kind: 'player', id: p.id } }));
+  // forkontrakt (Bosman): aftalen indgås straks – der er intet bud at bekræfte
+  if (!human || o.preContract) { complete(o, terms.wage, terms.years, terms.clauses); return; }
   o.cmTalks = { ...(o.cmTalks ?? { rounds: 0 }), state: 5, agreed: terms };
 }
 

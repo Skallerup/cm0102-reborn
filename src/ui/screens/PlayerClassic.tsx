@@ -447,7 +447,7 @@ export function ClassicPlayer({ id }: { id: number }) {
   const act = (r: TransferOffer | string) => {
     if (typeof r === 'string') {
       if (r.startsWith('enquiry.') && r !== 'enquiry.human') { setMsg(''); setTab('transfer'); } // svaret står på Transfer-fanen
-      else if (r !== 'ok') setMsg(t(r)); else setMsg(t('player.done'));
+      else if (r !== 'ok') setMsg(t(r)); else if (!authentic()) setMsg(t('player.done'));
     }
     else if (r.status === 'negotiating') setNeg({ offer: r });
     else setMsg(t('player.bidSent'));
@@ -493,7 +493,7 @@ export function ClassicPlayer({ id }: { id: number }) {
     }
     if (canPreContract(p)) items.push({ key: 'pre', label: t('player.preContract'), onClick: () => act(dispatch<TransferOffer | string>({ t: 'preContract', pid: p.id })) });
     if (scouts.length > 0 && g.options.masking && k < 100) {
-      items.push({ key: 'scout', label: t('cl.pl.scoutPlayer'), sub: scouts.map((s) => ({ key: `sc${s.id}`, label: `${s.first} ${s.last}`, onClick: () => { dispatch({ t: 'scout', staffId: s.id, assignment: { kind: 'player', target: p.id } }); setMsg(t('player.scoutSent', { scout: `${s.first} ${s.last}` })); } })) });
+      items.push({ key: 'scout', label: t('cl.pl.scoutPlayer'), sub: scouts.map((s) => ({ key: `sc${s.id}`, label: `${s.first} ${s.last}`, onClick: () => { dispatch({ t: 'scout', staffId: s.id, assignment: { kind: 'player', target: p.id } }); if (!authentic()) setMsg(t('player.scoutSent', { scout: `${s.first} ${s.last}` })); } })) });
     }
     items.push({ key: 'nick', label: t(p.realName ? 'cl.pl.editNick' : 'cl.pl.setNick'), onClick: () => setNickOpen(true) });
   }

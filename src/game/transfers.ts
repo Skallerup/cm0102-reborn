@@ -928,6 +928,8 @@ export function startPreContract(pid: number): TransferOffer | string {
   const p = g.players[pid];
   if (!p || !canPreContract(p)) return 'error';
   const o: TransferOffer = { id: g.nextId.offer++, player: pid, buyer: g.userClub, seller: p.club, fee: 0, loan: false, status: 'negotiating', created: g.date, respondBy: addDays(g.date, 7), preContract: true };
+  // CM 01/02 (ægte tilstand): Set Role At Club → Offer Contract → svaret som nyhed efter 1–5 dage (cmTransferTalks.ts), ingen frist
+  if (cmActive(g)) { o.cmTalks = { rounds: 0, state: 0 }; o.respondBy = addDays(g.date, 3650); }
   g.offers.push(o);
   return o;
 }
@@ -938,7 +940,7 @@ export function processOffers() {
   const g = gs();
   const skip = (o: TransferOffer) => !!o.signing || !!o.cmTalks || !!o.cmAi;
   // CM 01/02: forhandlingerne efter et accepteret bud (svarene, fristerne)
-  for (const o of g.offers.slice()) if (o.cmTalks) cmTalksDaily(o, completeTransfer);
+  for (const o of g.offers.slice()) if (o.cmTalks) cmTalksDaily(o, (x, w, y, c) => (x.preContract ? completePreContract(x, w, y, c ?? {}) : completeTransfer(x, w, y, c)));
   // ældre saves: flere åbne bud fra samme AI-klub på samme spiller → behold kun det højeste
   const best = new Map<string, TransferOffer>();
   for (const o of g.offers) {

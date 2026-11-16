@@ -95,7 +95,7 @@ export function ClassicStaffNegotiation({ staffId, role, onClose }: { staffId: n
 /** Offer Contract efter et accepteret bud / til en klubløs (CM 01/02 0x4dd0f0): først Set Role At Club – trupstatus hos KØBEREN med forvalget "* expected
  *  by the player" (hans plads i købers trup) – derefter Offer Contract, hvor kravet 0x85fc50 og viljen 0x4e06e0 afhænger af den valgte rolle. */
 export function ClassicNegotiation({ offer, renewPid, onClose }: { offer?: TransferOffer; renewPid?: number; onClose: () => void }) {
-  const [rolePicked, setRolePicked] = useState(!offer || offer.loan || !!offer.preContract);
+  const [rolePicked, setRolePicked] = useState(!offer || offer.loan);
   if (!rolePicked && offer) return <OfferRoleStep offer={offer} onClose={onClose} onSet={() => setRolePicked(true)} />;
   return <NegotiationBody offer={offer} renewPid={renewPid} onClose={onClose} />;
 }
@@ -272,7 +272,7 @@ function NegotiationBody({ offer, renewPid, onClose }: { offer?: TransferOffer; 
       )}
       <div className="cx-ts-buttons cx-dlg-foot">
         {ask ? <><button onClick={() => setAsk(false)}>{t('common.no')}</button><button className="primary" onClick={submit}>{t('common.yes')}</button></>
-          : <><button onClick={onClose}>{t('common.cancel')}</button><button className="primary" disabled={!!noInt} onClick={() => setAsk(true)}>{t('cl.neg.offer')}</button></>}
+          : <><button onClick={onClose}>{t('common.cancel')}</button><button className="primary" disabled={!!noInt || (!!offer?.cmTalks && wage > allow)} onClick={() => setAsk(true)}>{t('cl.neg.offer')}</button></>}
       </div>
     </div>
   );
