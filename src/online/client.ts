@@ -16,7 +16,7 @@ import { rng } from '../game/rng';
 import { mpAdvance } from '../game/sim';
 import { deserializeState, serializeState } from '../game/snapshot';
 import { addNews, gs, notify, setGame } from '../game/state';
-import { rememberLast } from '../game/save';
+import { forceMultiplayerAuthentic, rememberLast } from '../game/save';
 import type { Tactic } from '../game/types';
 import type { DraftSettings, GameState } from '../game/types';
 import { BENCH_PLACE, KEEPER_SECONDS, NOM_SECONDS, PICK_SECONDS, aiBidLimit, allKeepers, autoKeepers, autoPick, buildDraftGame, clubIdOf, draftPool, nextDraftOrder, nominatorSlot, openPlaces, placesFor, slotForPick, type DraftPick, type DraftTeam } from '../game/draft';
@@ -492,6 +492,7 @@ export class OnlineSession {
     const { blob, state } = await downloadSnapshot(room.snapshot);
     this.pristine = blob;
     this.version = room.version;
+    forceMultiplayerAuthentic(state);
     setGame(state);
     if (state.humans?.some((h) => h.pid === this.creds.pid)) activate(this.creds.pid, state);
     // genanvend egne handlinger der ikke nåede med i dette træk
@@ -547,6 +548,7 @@ export class OnlineSession {
       this.emit();
       await new Promise((r) => setTimeout(r, 30));
       const state = await deserializeState(this.pristine);
+      forceMultiplayerAuthentic(state);
       setGame(state);
       let last = state.lastActionIdx ?? 0;
       for (const { idx, pid, a } of res.actions) {
@@ -603,6 +605,16 @@ export async function openSession(c: Credentials): Promise<OnlineSession> {
   current = new OnlineSession(c);
   await current.start();
   return current;
+}
+
+/** Kun til e2e (DEV): en session uden server, så fællesspillets skærme kan prøves i browseren */
+export function devFakeSession(room: RoomInfo, pid: string, inGame: boolean): OnlineSession {
+  const s = new OnlineSession({ code: room.code, pid, token: 'dev', name: room.players.find((p) => p.pid === pid)?.name ?? '' });
+  s.room = room;
+  Object.defineProperty(s, 'inGame', { get: () => inGame });
+  current = s;
+  notify();
+  return s;
 }
 
 export function closeSession() {

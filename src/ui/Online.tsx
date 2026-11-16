@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { DraftJoin } from './Draft';
 import { askConfirm } from './confirm';
 import type { GameState } from '../game/types';
@@ -7,12 +7,15 @@ import {
   downloadSnapshot, fetchRoom, forgetRoom, joinOnlineGame, openSession, savedRooms, session, skippedMatches, type RoomInfo,
 } from '../online/client';
 import { Modal, Panel } from './components';
-import { gs, hasGame } from '../game/state';
+import { gs, hasGame, setGame } from '../game/state';
 import { act } from '../game/actions';
 import { useNav } from './core';
 import { focusNews } from './inboxFocus';
 import { notifyUser } from './notify';
 import { modernOn } from './modernFlag';
+import { titleColors, useClassicDialog } from './classic';
+import { closeSession } from '../online/client';
+import { forgetLast } from '../game/save';
 
 /** Startmenuens online-del: opret, deltag eller genoptag */
 export function OnlineMenu({ onBack, onCreate, onCreateDraft, setBusy, initialCode }: { onBack: () => void; onCreate: () => void; onCreateDraft: () => void; setBusy: (s: string) => void; initialCode?: string }) {
@@ -185,8 +188,8 @@ export function OnlineControls({ cx }: { cx?: boolean }) {
   const onMyMatch = !!myMatch && route.name === 'match' && (route as { id?: number }).id === myMatch;
   return (
     <>
-      {!gs().draft && <button className={cx ? 'cx-sbtn cx-invite' : 'small'} data-testid="invite" title={link} onClick={() => setInviteOpen(true)}>{cx ? '' : '🔗 '}{t('mp.invite')} · {s.creds.code}</button>}
-      {inviteOpen && (
+      {!cx && !gs().draft && <button className="small" data-testid="invite" title={link} onClick={() => setInviteOpen(true)}>🔗 {t('mp.invite')} · {s.creds.code}</button>}
+            {inviteOpen && !cx && (
         <Modal title={t('mp.inviteTitle')} onClose={() => setInviteOpen(false)}>
           <div className="col">
             <p className="muted">{t('mp.inviteText')}</p>
@@ -204,17 +207,20 @@ export function OnlineControls({ cx }: { cx?: boolean }) {
         if (!dl || !waiting.length || s.room.processing) return null;
         const left = dl - Date.now();
         const h = Math.floor(left / 3_600_000), m = Math.max(0, Math.floor((left % 3_600_000) / 60_000));
-        return <span className="muted nowrap" title={t('mp.deadlineTip')}>⏱ {left > 0 ? t('mp.deadlineLeft', { h, m }) : t('mp.deadlinePassed')}</span>;
+        return <span className={cx ? 'cx-online-note' : 'muted nowrap'} title={t('mp.deadlineTip')}>{cx ? '' : '⏱ '}{left > 0 ? t('mp.deadlineLeft', { h, m }) : t('mp.deadlinePassed')}</span>;
       })()}
-      {s.isHost && s.room.players.length > 1 && <button className={cx ? 'cx-sbtn' : 'small'} title={t('mp.hostTitle')} onClick={() => setHostOpen(true)}>{cx ? '' : '👑 '}{t('mp.host')}</button>}
+      {!cx && s.isHost && s.room.players.length > 1 && <button className="small" title={t('mp.hostTitle')} onClick={() => setHostOpen(true)}>👑 {t('mp.host')}</button>}
       {hostOpen && <HostModal onClose={() => setHostOpen(false)} />}
       {!me && s.inGame && <span className="bad nowrap">{t('mp.youWereRemoved')}</span>}
       {othersWaiting && !onMyMatch && !cx && <div className="waiting-banner" role="alert">⏳ {t('mp.allWaitingBanner')}</div>}
       {!cx && !solo && !simHidden && s.status !== 'error' && (s.status === 'processing' || !!s.room.processing || s.room.players.every((p) => p.ready)) && <SimOverlay onHide={() => setSimHidden(true)} />}
-      {!onMyMatch && <><span className={cx ? 'cx-online-note' : othersWaiting ? 'waiting-me nowrap' : 'muted nowrap'}>
-        {othersWaiting ? t('mp.othersWaitingShort') : s.status === 'processing' ? t('mp.processing') : s.room.processing ? t('mp.otherProcessing') : solo ? '' : waiting.length ? t('mp.waitingFor', { names: waiting.join(', ') }) : t('mp.allReady')}
-      </span>
-      <button data-testid="online-continue" className={cx ? `cx-sbtn cx-continue continue ${me?.ready ? 'unready' : ''}` : `${me?.ready ? 'unready' : 'continue primary'} ${othersWaiting ? 'nudge' : ''}`} title={othersWaiting ? t('mp.othersWaiting') : undefined} disabled={s.status !== 'idle' || !!s.room.processing} onClick={() => {
+      {!onMyMatch && <>{(() => {
+        const others = s.room.players.filter((p) => !p.ready && p.pid !== s.creds.pid).map((p) => p.name);
+        // klassisk: originalens "Waiting for other players..." (exe'ens streng) når man selv er klar, ellers hvem de andre venter på
+        const note = othersWaiting ? t('mp.othersWaitingShort') : s.status === 'processing' ? t('mp.processing') : s.room.processing ? t('mp.otherProcessing') : solo ? '' : cx ? (me?.ready ? t('mp.cxWaitOthers') : others.length ? t('mp.waitingFor', { names: others.join(', ') }) : '') : waiting.length ? t('mp.waitingFor', { names: waiting.join(', ') }) : t('mp.allReady');
+        return <span data-testid="online-note" className={cx ? 'cx-online-note' : othersWaiting ? 'waiting-me nowrap' : 'muted nowrap'}>{note}</span>;
+      })()}
+      <button data-testid="online-continue" className={cx ? `cx-sbtn cx-continue continue ${me?.ready ? 'on' : ''}` : `${me?.ready ? 'unready' : 'continue primary'} ${othersWaiting ? 'nudge' : ''}`} title={me?.ready && !solo ? t('mp.cxUnreadyHint') : othersWaiting ? t('mp.othersWaiting') : undefined} disabled={s.status !== 'idle' || !!s.room.processing} onClick={() => {
         // kampdag: spil først din kamp (eller tag et hurtigt resultat på kampskærmen)
         if (!me?.ready && myMatch) { nav({ name: 'match', id: myMatch }); return; }
         // som i enkeltspiller: læs først de ulæste beskeder én ad gangen (ældste først), før man melder klar
@@ -224,7 +230,7 @@ export function OnlineControls({ cx }: { cx?: boolean }) {
         }
         void s.setReady(!me?.ready);
       }}>
-        {!me?.ready && myMatch ? t('top.toTheMatch') : solo ? (me?.ready ? t('mp.processingShort') : cx ? t('cl.continue') : t('mp.continueSolo')) : me?.ready ? t('mp.notReady') : t('mp.ready')}
+        {!me?.ready && myMatch ? t('top.toTheMatch') : solo ? (me?.ready ? t('mp.processingShort') : cx ? t('cl.continue') : t('mp.continueSolo')) : cx ? (me?.ready ? t('mp.isReady') : t('cl.continue')) : me?.ready ? t('mp.notReady') : t('mp.ready')}
         {!cx && !me?.ready && unread > 0 && <span className="cont-badge">{unread}</span>}
       </button>
       </>}
@@ -291,6 +297,95 @@ function HostModal({ onClose }: { onClose: () => void }) {
         </div>
       </div>
     </Modal>
+  );
+}
+
+/** Klassisk dialog (som SaveGameClassic): titelbjælke, grå brødtekst, knapper i foden */
+function CxDialog({ title, sub, onClose, foot, children, full }: { title: string; sub?: string; onClose?: () => void; foot: ReactNode; children: ReactNode; full?: boolean }) {
+  useClassicDialog();
+  const col = titleColors((hasGame() ? gs().userClub : 0) || undefined);
+  return (
+    <div className={`cx-dlg cx-online-dlg${full ? ' cx-full' : ''}`} role="dialog" onClick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}>
+      <div className="cx-title" style={{ background: col.bg, color: col.fg }}><h2>{title}</h2></div>
+      {sub && <div className="cx-subtitle">{sub}</div>}
+      <div className="cx-dlg-body">{children}</div>
+      <div className="cx-ts-buttons cx-dlg-foot">{foot}</div>
+    </div>
+  );
+}
+
+export function ClassicInvite({ code, link, onClose }: { code: string; link: string; onClose: () => void }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <CxDialog title={t('mp.inviteTitle')} sub={t('mp.inviteText')} onClose={onClose} foot={<>
+      <button onClick={onClose}>{t('common.close')}</button>
+      {'share' in navigator && <button onClick={() => { void navigator.share({ title: 'CM Reborn', text: t('mp.shareText', { code }), url: link }).catch(() => {}); }}>{t('mp.share')}</button>}
+      <button className="primary" onClick={async () => { try { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { prompt(t('mp.inviteLink'), link); } }}>{copied ? t('mp.copied') : t('mp.copyLink')}</button>
+    </>}>
+      <div className="invite-code">{code}</div>
+      <input className="cx-dlg-input" readOnly value={link} onFocus={(e) => e.target.select()} />
+    </CxDialog>
+  );
+}
+
+export function ClassicHost({ onClose }: { onClose: () => void }) {
+  const s = session();
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  if (!s?.room) return null;
+  const notReady = s.room.players.filter((p) => !p.ready);
+  const run = async (f: () => Promise<void>) => { setBusy(true); setErr(''); try { await f(); } catch (e) { setErr(String((e as Error).message)); } setBusy(false); };
+  return (
+    <CxDialog title={t('mp.hostTitle')} sub={t('mp.kickHint')} onClose={onClose} foot={<>
+      <button onClick={onClose}>{t('common.cancel')}</button>
+      <button className="primary" disabled={busy || notReady.length === 0} title={t('mp.forceHint')} onClick={async () => { if (await askConfirm(t('mp.forceConfirm', { names: notReady.map((p) => p.name).join(', ') }), { head: t('cl.mt.confirm') })) void run(async () => { await s.forceContinue(); onClose(); }); }}>{t('mp.force')}</button>
+    </>}>
+      <ClassicPlayers kick={(pid, name) => { void askConfirm(t('mp.kickConfirm', { name }), { head: t('cl.mt.confirm') }).then((ok) => { if (ok) void run(() => s.kick(pid)); }); }} busy={busy} />
+      {err && <div className="cx-online-err">{err}</div>}
+    </CxDialog>
+  );
+}
+
+/** Managerne i fællesspillet som originalens grå tabel (Manager · Club · Status) */
+function ClassicPlayers({ kick, busy }: { kick?: (pid: string, name: string) => void; busy?: boolean }) {
+  const s = session();
+  if (!s?.room) return null;
+  const clubs = hasGame() ? gs().clubs : {};
+  return (
+    <table className="cx-tbl cx-online-tbl" data-testid="online-players">
+      <thead><tr><th>{t('mp.colManager')}</th><th>{t('mp.colClub')}</th><th>{t('mp.colStatus')}</th>{kick && <th className="btn-col" />}</tr></thead>
+      <tbody>
+        {s.room.players.map((p) => (
+          <tr key={p.pid} className={p.pid === s.creds.pid ? 'me' : ''}>
+            <td>{p.name}{p.pid === s.room!.host ? ` (${t('mp.host')})` : ''}</td>
+            <td>{clubs[p.club]?.short ?? ''}</td>
+            <td className={p.ready ? 'ok' : ''}>{p.ready ? t('mp.isReady') : t('mp.cxStatusWait')}</td>
+            {kick && <td>{p.pid !== s.room!.host && <button className="cx-greybtn" disabled={busy} onClick={() => kick(p.pid, p.name)}>{t('mp.kick')}</button>}</td>}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+/** Klassisk: vises, når man har tilmeldt sig, men endnu ikke er med i spillet – en hel klassisk skærm (som en CM 01/02-dialog) */
+export function ClassicLobby() {
+  const s = session();
+  const [inviteOpen, setInviteOpen] = useState(false);
+  if (!s?.room) return null;
+  const link = `${location.origin}${location.pathname}?room=${s.creds.code}`;
+  const quit = async () => { if (await askConfirm(t('mp.leaveConfirm'), { head: t('cl.mt.confirm') })) { void closeSession(); forgetLast(); setGame(null); } };
+  return (
+    <>
+      <CxDialog full title={`${t('mp.title')} – ${s.creds.code}`} sub={t('mp.lobbyText')} foot={<>
+        <button onClick={() => void quit()}>{t('nav.quit')}</button>
+        <button data-testid="invite" onClick={() => setInviteOpen(true)}>{t('mp.invite')} · {s.creds.code}</button>
+      </>}>
+        <div data-testid="online-lobby" style={{ width: '100%' }}><ClassicPlayers /></div>
+        <div className="cx-online-note cx-lobby-note">{t('mp.cxWaitOthers')}</div>
+      </CxDialog>
+      {inviteOpen && <ClassicInvite code={s.creds.code} link={link} onClose={() => setInviteOpen(false)} />}
+    </>
   );
 }
 

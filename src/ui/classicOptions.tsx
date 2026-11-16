@@ -1,6 +1,6 @@
 // Klassisk tema: "Game Options"-menuen i venstre kolonne og dialogen "Game Settings" (som i originalen).
 import { AccountBar } from './Login';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { act } from '../game/actions';
 import { regionOf } from '../game/leagues';
 import { notify } from '../game/state';
@@ -17,9 +17,14 @@ import { communityAvailable } from '../online/community';
 import { getProfile } from '../online/rank';
 import { CxDrop, type DropItem } from './classic';
 import { bgPack, bgSet, setBgPack, setBgSet, type BgSet } from './backgrounds';
-import { askConfirm } from './confirm';
+import { askConfirm, askNotice } from './confirm';
+import { LoginModal } from './Login';
+import { ClassicHost, ClassicInvite } from './Online';
+import { session } from '../online/client';
+import { getAccount } from '../online/account';
+import { saveGame } from '../game/save';
 import { useGame, useNav } from './core';
-import { notifyEnabled, notifySupported, setNotify } from './notify';
+import { canInstall, installApp, notifyEnabled, notifySupported, onInstallChange, setNotify } from './notify';
 import { getTheme, modernOn, setTheme, type Theme } from './theme';
 import { authentic } from '../game/rules';
 import { matchSound, setMatchSound } from './matchSound';
@@ -89,6 +94,17 @@ export function GameOptionsMenu({ onSave, onQuit, online, allowed }: { onSave: (
   const [settings, setSettings] = useState(false);
   const [show, setShow] = useState<'changelog' | 'bug' | 'suggest' | 'info' | null>(null);
   const go = (k: string) => () => nav({ name: k as never });
+  const [, setInst] = useState(0);
+  useEffect(() => onInstallChange(() => setInst((x) => x + 1)), []);
+  const [login, setLogin] = useState(false);
+  const [dlg, setDlg] = useState<'invite' | 'host' | null>(null);
+  const os = online ? session() : null;
+  const standalone = (() => { try { return window.matchMedia('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true; } catch { return false; } })();
+  const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const cloudSave = async () => {
+    try { await saveGame({ cloud: true }); await askNotice(t('cl.go.cloudSaved'), { head: t('cl.go.cloud') }); }
+    catch (e) { await askNotice(t('cl.go.cloudFail', { err: String((e as Error).message ?? e) }), { head: t('cl.go.cloud') }); }
+  };
   const items: DropItem[] = [];
   if (!online) items.push({ key: 'save', label: t('cl.go.save'), onClick: onSave });
   const add = (k: string, label: string) => { if (allowed(k)) items.push({ key: k, label, onClick: go(k) }); };
@@ -106,11 +122,22 @@ export function GameOptionsMenu({ onSave, onQuit, online, allowed }: { onSave: (
   // som i det moderne tema: hvad er nyt, fejlrapport og feedback (sendes til fællesskabets forslag)
   items.push({ key: 'sep0', sep: true }, { key: 'news', label: t('cl.go.whatsNew', { v: APP_VERSION }), onClick: () => { try { localStorage.setItem('cm0102.seenVersion', APP_VERSION); } catch { /* ignorer */ } setShow('changelog'); } });
   if (communityAvailable()) items.push({ key: 'bug', label: t('cm.reportBug'), onClick: () => setShow('bug') }, { key: 'idea', label: t('cl.go.feedback'), onClick: () => setShow('suggest') });
+  // CM Reborns egne punkter (ikke i originalen): installér som app, gem i skyen (ikke i fællesspil – det gemmes allerede online)
+  const canInst = !standalone && (canInstall() || ios);
+  if (canInst || !online || os) items.push({ key: 'sepR', sep: true });
+  // fællesspil: invitationen og værtens boks hører til her (ikke i sidebjælken)
+  if (os && !os.room?.draft) items.push({ key: 'invite', label: `${t('mp.invite')} · ${os.creds.code}`, onClick: () => setDlg('invite') });
+  if (os?.isHost && (os.room?.players.length ?? 0) > 1) items.push({ key: 'host', label: t('mp.hostTitle'), onClick: () => setDlg('host') });
+  if (canInst) items.push({ key: 'install', label: t('cl.go.install'), onClick: () => { if (canInstall()) void installApp(); else void askNotice(t('cl.go.installIos'), { head: t('cl.go.install') }); } });
+  if (!online) items.push({ key: 'cloud', label: t('cl.go.cloud'), onClick: () => { if (getAccount()) void cloudSave(); else setLogin(true); } });
   items.push({ key: 'sep', sep: true }, { key: 'restart', label: t('cl.go.restart'), onClick: onQuit }, { key: 'quit', label: t('cl.go.exit'), onClick: onQuit });
   return (
     <>
       <CxDrop className="cx-gameopt" fixed caret={false} label={t('cl.options')} items={items} btn={{ className: 'cx-sbtn cx-gopt' }} />
       {settings && <GameSettings onClose={() => setSettings(false)} />}
+      {dlg === 'invite' && os && <ClassicInvite code={os.creds.code} link={`${location.origin}${location.pathname}?room=${os.creds.code}`} onClose={() => setDlg(null)} />}
+      {dlg === 'host' && <ClassicHost onClose={() => setDlg(null)} />}
+      {login && createPortal(<LoginModal onClose={() => setLogin(false)} onDone={() => { setLogin(false); void cloudSave(); }} />, document.body)}
       {show === 'changelog' && createPortal(<ChangelogModal onClose={() => setShow(null)} />, document.body)}
       {show === 'info' && createPortal(<Modal title={t('info.title')} onClose={() => setShow(null)}><GameInfoTable route={route.name} /></Modal>, document.body)}
       {(show === 'bug' || show === 'suggest') && createPortal(getProfile()

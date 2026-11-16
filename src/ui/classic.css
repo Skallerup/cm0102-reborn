@@ -1875,6 +1875,19 @@ button.cx-bid-swap.removing { cursor: pointer; color: #fff21f; }
 .cx-sbtn.cx-continue.unready { color: #fff21f; }
 .cx-online-note { display: block; margin: -2px 6px 6px; font-size: 10px; line-height: 1.25; color: #fff21f; text-align: center; }
 
+/* Fællesspil (klassisk): lobbyen som hel skærm, dialoger for invitation/vært, klar-knappen */
+.cx-online-dlg .cx-ts-buttons { display: flex; justify-content: flex-end; gap: 4px; }
+.cx-online-dlg .cx-ts-buttons button { min-width: 120px; padding: 0 18px; font-size: 15px; }
+.cx-online-dlg.cx-full { inset: 0; }
+.cx-online-dlg .invite-code { font-size: 34px; font-weight: 800; letter-spacing: 6px; color: #fff21f; align-self: center; }
+.cx-online-dlg .cx-dlg-input { width: 100%; max-width: 100%; margin: 6px 0 0; }
+.cx-online-tbl { width: 100%; }
+.cx-online-tbl td { padding: 2px 8px; background: rgba(0, 0, 0, 0.35); color: #fff; }
+.cx-online-tbl tr.me td { color: #fff21f; }
+.cx-online-tbl td.ok { color: #7dff7d; }
+.cx-online-err { color: #ff8a8a; font-weight: 700; }
+.cx-lobby-note { margin: 8px 0 0; text-align: left; font-size: 13px; }
+.cx-sbtn.cx-continue.on { background: #222eae; color: #7dff7d; }
 /* Editoren: bekræftelsesbanner ved Save (grøn bjælke øverst, forsvinder af sig selv) */
 .ed-banner { position: fixed; top: 0; left: 0; right: 0; z-index: 120; padding: 6px 12px; text-align: center; background: #1f7a2a; color: #fff; font-weight: bold; border-bottom: 2px solid #5fd36b; box-shadow: 0 2px 6px rgba(0,0,0,0.5); pointer-events: none; }
 /* Start/editor i klassisk (.cxl): det valgte kort skal kunne ses (ejeren 16/11 – "knapperne er ens") */

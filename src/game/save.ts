@@ -134,6 +134,11 @@ function repairCupNames() {
   if (g.customRules) g.customRules = cmLeagueRules(g.customRules);
 }
 
+/** fællesspil er altid det originale (classic + ægte tilstand) – også et rum, der blev oprettet i udvidet tilstand (kaldes for hvert øjebliksbillede, alle klienter ens) */
+export function forceMultiplayerAuthentic(g: GameState) {
+  if (g.humans?.length && !modernEnabledHere() && g.options.mode !== 'authentic') { g.options.mode = 'authentic'; g.options.rules = 'classic'; }
+}
+
 export function upgradeLoaded() {
   repairCupNames();
   repairInjuryWave();
@@ -142,7 +147,7 @@ export function upgradeLoaded() {
   const g = gs();
   // gamle gemte spil i udvidet tilstand åbnes, som de blev gemt (moderne udseende + udvidet) – tilstanden ændres ikke (setGame → setSavedModern)
   // fællesspil er altid det originale (classic + ægte tilstand) – alle klienter stiller samme spil om ens
-  if (g.humans?.length && !modernEnabledHere() && g.options.mode !== 'authentic') { g.options.mode = 'authentic'; g.options.rules = 'classic'; }
+  forceMultiplayerAuthentic(g);
   if (addMissingConference()) {
     const club = g.clubs[g.userClub];
     if (club && g.comps.UECL?.clubs.includes(club.id)) addNews({ cat: 'general', key: 'news.ueclQualified', params: { club: club.name } });

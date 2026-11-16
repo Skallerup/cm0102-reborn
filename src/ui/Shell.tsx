@@ -31,7 +31,7 @@ import { cmActive } from '../game/cmPlayerData';
 import { compName, dateFmt, money, setMoneyRounding, t } from '../i18n';
 import { Crest } from './components';
 import { Icon } from './icons';
-import { Lobby, OnlineControls, onlineSimLabel } from './Online';
+import { ClassicLobby, Lobby, OnlineControls, onlineSimLabel } from './Online';
 import { closeSession, session } from '../online/client';
 import { submitPending } from '../online/rank';
 import { focusNews } from './inboxFocus';
@@ -421,6 +421,8 @@ export function Shell() {
   const nextMatch = club ? Object.values(g.fixtures).filter((f) => !f.result && (f.home === g.userClub || f.away === g.userClub)).sort((a, b) => a.date.localeCompare(b.date))[0] : undefined;
 
 
+  // fællesspil i klassisk: lobbyen er en hel klassisk skærm (ingen moderne venstremenu/topbjælke)
+  if (isRetro() && online && !online.inGame) return <ClassicLobby />;
   return (
     <div className={`shell ${cmNav ? 'cx' : ''} ${cmNav && running ? 'cx-busy' : ''} ${cmNav && matchPhoto && night ? 'cx-night' : ''}`}>
       <div className="topbar">
@@ -603,6 +605,8 @@ export function Shell() {
                 return <><span className="cx-run-l">{cxLongDate(running)}</span><span className="cx-run-bar" role="progressbar" aria-valuenow={pct}><i style={{ width: `${pct}%` }}>{pct >= 10 && <b>{pct}%</b>}</i></span></>;
               })()}{onHolidayRef.current && <small className="cx-running-hint">{t('cl.hol.bar')}</small>}
             </button>
+          ) : cmNav && online && (online.status === 'loading' || (online.status === 'processing' && (online.room?.players.length ?? 1) <= 1)) ? (
+            <div className="cx-running" role="progressbar"><span className="cx-run-l">{cxLongDate(g.date)}</span><span className="cx-run-bar busy"><i style={{ width: '100%' }}><b>{online.status === 'processing' ? t('mp.processing') : t('mp.loading')}</b></i></span></div>
           ) : onlineSimLabel() ? (
             // fællesspil: "Simulating next turn …" som originalens fremdriftsbjælke (samme som Continue Game)
             <div className="cx-running" role="progressbar" data-testid="online-sim"><span className="cx-run-l">{cxLongDate(g.date)}</span><span className="cx-run-bar busy"><i style={{ width: '100%' }}><b>{t('mp.simTitle')} – {onlineSimLabel()}</b></i></span></div>
@@ -636,7 +640,7 @@ export function Shell() {
         </footer>
       )}
       {/* med flere spillere viser simuleringsvisningen (Online.tsx) trækket – her kun ved indlæsning og alene-spil */}
-      {online && (online.status === 'loading' || (online.status === 'processing' && (online.room?.players.length ?? 1) <= 1)) && (
+      {online && !cmNav && (online.status === 'loading' || (online.status === 'processing' && (online.room?.players.length ?? 1) <= 1)) && (
         <div className="progress"><div>{online.status === 'processing' ? t('mp.processing') : t('mp.loading')}</div></div>
       )}
       {running && !cmNav && (

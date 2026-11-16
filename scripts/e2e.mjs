@@ -929,6 +929,63 @@ async function run(look) {
     await page.keyboard.press('Escape'); await page.mouse.click(5, 5);
     if (await page.locator('.modal-bg').count()) await page.locator('.modal-bg').first().click({ position: { x: 3, y: 3 } });
   });
+  // fællesspil i klassisk: lobby som klassisk skærm, Ready-knappen (før/efter), Invite/Host/Install/Cloud i Game Options – ingen moderne elementer
+  if (look === 'klassisk') await step('fællesspil: klassisk lobby, Ready før/efter, Invite/Host/Install/Cloud i Game Options', async () => {
+    const mkRoom = (ready) => ({ code: 'ABCDE', host: 'p1', status: 'playing', version: 1, snapshot: '', date: '2001-07-14', lastApplied: 0, actionCount: 0, settings: {}, processing: null, lastTurn: '',
+      players: [{ pid: 'p1', name: 'Host M', club: 1, ready, joined: '' }, { pid: 'p2', name: 'Other M', club: 2, ready: false, joined: '' }] });
+    let me = false;
+    await page.route(/\/api\/mp\?op=ready/, async (r) => { me = JSON.parse(r.request().postData() ?? '{}').ready; await r.fulfill({ contentType: 'application/json', body: JSON.stringify(mkRoom(me)) }); });
+    const wsel = (sel, ms = 8000) => page.waitForSelector(sel, { timeout: ms }).catch(async () => { const h = await page.evaluate((q) => { const e = document.querySelector(q); const r = e?.getBoundingClientRect(); const cs = e && getComputedStyle(e); return `${r ? [r.x, r.y, r.width, r.height].join(',') : 'ingen'} ${cs?.visibility} ${cs?.display} ${cs?.opacity}`; }, sel); throw new Error(`mangler ${sel}: ${h.replace(/\n/g, ' ')}`); });
+    const noModern = async (what) => {
+      if (await page.locator('.sidenav:visible, .topbar:visible, .fullscreen-btn:visible, .app-btn:visible').count()) throw new Error(`${what}: moderne elementer synlige`);
+    };
+    // lobby (jeg er ikke med i spillet endnu, pid p3)
+    await page.evaluate((room) => { window.__cm.devFakeSession(room, 'p2', false); }, mkRoom(false));
+    await wsel('[data-testid=online-lobby]');
+    await noModern('lobby');
+    if (!(await page.locator('.cx-dlg .cx-title').count()) || !(await page.locator('.cx-online-tbl').count())) throw new Error('lobbyen er ikke klassisk (titelbjælke + tabel)');
+    const lobbyTxt = await page.locator('.cx-dlg').innerText();
+    if (!/Waiting for other players\.\.\./.test(lobbyTxt) || /[\u{1F300}-\u{1FAFF}\u2713\u23F3]/u.test(lobbyTxt)) throw new Error(`lobby-tekst: ${lobbyTxt.slice(0, 120)}`);
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-fællesspil-lobby.png` });
+    // i spillet: Continue Game før, Ready efter, kun de originale knapper i sidebjælken
+    await page.evaluate((room) => { window.__cm.devFakeSession(room, 'p1', true); }, mkRoom(false));
+    await page.waitForFunction(() => !!document.querySelector('.cx-side [data-testid=online-continue]'), null, { timeout: 10000 });
+    await page.waitForTimeout(500);
+    await noModern('i spillet');
+    const side = await page.locator('.cx-side').innerText();
+    if (/Invite|Host|Install|full screen|Lobby/i.test(side)) throw new Error(`sidebjælken har fællesspil-ekstra: ${side.replace(/\n/g, ' | ')}`);
+    const before = (await page.locator('.cx-side [data-testid=online-continue]').innerText()).trim();
+    if (/Ready/i.test(before)) throw new Error(`knappen siger Ready, før man har trykket: ${before}`);
+    // læs eventuelle ulæste beskeder, så klikket melder klar
+    await page.evaluate(() => { const g = window.__cm.gs(); g.news.forEach((n) => { n.read = true; }); g.pendingFixture = undefined; window.__cm.notify(); });
+    await page.locator('.cx-side [data-testid=online-continue]').click();
+    await page.waitForFunction(() => /^Ready$/i.test(document.querySelector('.cx-side [data-testid=online-continue]')?.textContent?.trim() ?? ''), null, { timeout: 10000 });
+    const note = await page.locator('.cx-side [data-testid=online-note]').innerText();
+    if (!/Waiting for other players\.\.\./.test(note)) throw new Error(`statuslinje efter klar: ${note}`);
+    // Invite og Host ligger i Game Options (CM Reborn-gruppen), ikke i sidebjælken
+    await page.evaluate((room) => { window.__cm.devFakeSession(room, 'p1', true); }, mkRoom(true));
+    await page.click('.cx-gopt');
+    const items = (await page.locator('.cx-drop-pop button').allInnerTexts()).map((x) => x.trim());
+    for (const need of [/^Invite · ABCDE$/, /^Host controls$/]) if (!items.some((x) => need.test(x))) throw new Error(`Game Options mangler ${need}: ${items.join(' | ')}`);
+    if (items.some((x) => /Save game to cloud/.test(x))) throw new Error('Save game to cloud findes i fællesspil');
+    await page.locator('.cx-drop-pop >> text=/^Invite/').click();
+    await wsel('.cx-online-dlg .invite-code');
+    if ((await page.locator('.cx-online-dlg .invite-code').innerText()).trim() !== 'ABCDE') throw new Error('invitationskoden mangler');
+    await page.locator('.cx-online-dlg .cx-ts-buttons button', { hasText: 'Close' }).click();
+    await page.click('.cx-gopt');
+    await page.locator('.cx-drop-pop >> text=Host controls').click();
+    await wsel('.cx-online-dlg [data-testid=online-players]');
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-fællesspil-vært.png` });
+    await page.locator('.cx-online-dlg .cx-ts-buttons button', { hasText: 'Cancel' }).click();
+    await page.evaluate(() => { window.__cm.closeSession(); window.__cm.notify(); });
+    await page.unroute(/\/api\/mp\?op=ready/);
+    // enkeltspil: Save game to cloud findes i Game Options
+    await page.waitForTimeout(300);
+    await page.click('.cx-gopt');
+    const items2 = (await page.locator('.cx-drop-pop button').allInnerTexts()).map((x) => x.trim());
+    if (!items2.includes('Save game to cloud')) throw new Error(`Save game to cloud mangler: ${items2.join(' | ')}`);
+    await page.keyboard.press('Escape'); await page.mouse.click(5, 5);
+  });
   if (look === 'klassisk') await step('turneringsskærm: farver følger den valgte turnering', async () => {
     const lg = await gs(() => { const g = window.__cm.gs(); return g.clubs[g.userClub].league; });
     await go({ name: 'competitions', id: 'CL', state: { cid: lg } });
