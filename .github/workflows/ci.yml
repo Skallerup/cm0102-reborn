@@ -1,7 +1,7 @@
 name: Test og byg
 
-# Siden udgives af Vercel (cm0102reborn.com); her tjekkes kun at tests og build går igennem.
 # Staging er sat på pause (16/11): der pushes direkte til main = live, og denne kører hele testpakken bagefter som kontrol.
+# Vitest i 4 dele (de tunge tests med den originale database tager over 20 s på én GitHub-maskine).
 on:
   push:
     branches: [main]
@@ -16,6 +16,21 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx vitest run --dir tests --testTimeout=900000 --shard=${{ matrix.shard }}/4
+
   build:
     runs-on: ubuntu-latest
     steps:
@@ -25,12 +40,14 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm test
       - run: npm run build
 
   e2e:
-    # klikker igennem klassisk og moderne udseende i en rigtig browser (scripts/e2e.mjs)
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [original, default]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -39,9 +56,11 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: npm run e2e
+      - name: e2e (${{ matrix.engine }})
+        run: |
+          if [ "${{ matrix.engine }}" = "original" ]; then E2E_ENGINE=original node scripts/e2e.mjs klassisk; else npm run e2e; fi
       - if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-shots
+          name: e2e-shots-${{ matrix.engine }}
           path: e2e-shots
