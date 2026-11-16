@@ -2,7 +2,7 @@
 import { cmBoardAfterMatch, cmBoardDaily, cmBoardOn } from './cmBoardGame';
 import { cmStaffOffersDaily } from './cmStaff';
 import { cmActive, cmAfterMatch, cmContractDaily, cmFlagSet, cmRand, cmSquadMoraleDaily, MORALE_OFF, withFlagCtx } from './cmPlayerData';
-import { cmFitAfterMatch, cmFitDay, cmFitOn, cmFitPreMatch, setMatchSquad } from './cmFitnessGame';
+import { cmFitAfterMatch, cmFitDay, cmFitMatch, cmFitOn, cmFitPreMatch, setMatchSquad } from './cmFitnessGame';
 import { cmPermitAfterMatch, cmPermitDaily } from './cmPermit';
 import { cmSquadPlanDaily } from './cmSquadPlanGame';
 import { cmDevDaily } from './cmDevelop';
@@ -41,7 +41,7 @@ import { cmFriendlyDay } from './cmFriendly';
 import { achievementsAfterMatch } from './achievements';
 import { storyAfterMatch } from './story';
 import { gateReceipts, januaryBudgetTopUp, monthlyIncome, snapshotFinanceMonth, sponsorWinBonus, weeklyWages } from './finance';
-import { rng } from './rng';
+import { rng, Rng as RngClass, hash } from './rng';
 import { addNews, fixturesOn, gs, squad } from './state';
 import { counterPlan, type CounterPlan } from './aitactics';
 import { autoSelect, available, lineupComplete, newTactic, slotValue, validateTactic } from './tactics';
@@ -70,7 +70,8 @@ import { expirePress, invitePress, motivation, resolvePressPromise } from './pre
 import { monthlyColumn, weeklyRumours } from './media';
 import { monthlyAwards, snapshotMonth } from './awards';
 import { asOwner, forEachHuman, isHumanClub, isMultiplayer, ownerOf, withHuman } from './humans';
-import { cmVirtualClear, cmVirtualHumans, cmVirtualMatch } from './cmVirtual';
+import { cmVirtualClear, cmVirtualDrop, cmVirtualHumans, cmVirtualMatch } from './cmVirtual';
+import { cmResDaily, cmResOn, setResMatchPlayer } from './cmReserves';
 import { botsDaily, isBotClub } from './bots';
 import { botsAfterMatch } from './chat';
 import { recordH2H } from './h2h';
@@ -307,6 +308,44 @@ export function simulateFixture(f: Fixture, userAuto = true, commentary = false)
   if (!g.reports[f.id] && !g.draft && g.comps[f.comp]) (g.miniReports ??= {})[f.id] = packReport(rep, (id) => g.players[id]?.number);
   return rep;
 }
+
+/** originalens baggrundskamp (fixture −2, 0x84c339–0x84c493 – cmReserves.ts): fyldspillerne, kampmotoren og kun de efterfølgende kald,
+ *  originalen laver for −2-kampe – PlayerStats 0x7c0d70 (kategori pr. hold rand(9) ? 2 : 3), kontrakten og bonusserne 0x4ca6d0, konditionen
+ *  0x62c080 og arbejdstilladelsen 0x8c39f0. Ingen tabel, økonomi, karantæner, bestyrelse eller nyheder; spillets egen talrække røres ikke
+ *  (kampens tal af frøet og kampen – se cmReserves.ts). Zonemotoren med originalens profil (CM_RES_GRID=1: gittermotoren). */
+function playResMatch(f: Fixture): MatchReport | null {
+  const g = gs();
+  const m = prepareMatch(f);
+  if (m.home.tactic.lineup.filter(Boolean).length < 7 || m.away.tactic.lineup.filter(Boolean).length < 7) { cmVirtualDrop(g, f.home); cmVirtualDrop(g, f.away); return null; }
+  const r = new RngClass(hash(g.seed ?? 0, -f.id, 0x6b98c0));
+  const opts = { neutral: false, needsWinner: undefined, importance: m.importance, var: false, weather: m.weather, finish: m.finish, homeAdv: m.homeAdv, finSlope: m.finSlope, squash: m.squash, squashAtt: m.squashAtt, squashDef: m.squashDef, ease: m.ease, cards: m.cards, corners: m.corners, countBlocked: m.countBlocked, close: m.close, closeSlope: m.closeSlope, onTarget: m.onTarget, offside: m.offside, shotSpread: m.shotSpread, oneOnOneK: m.oneOnOneK, level: m.level, openDamp: m.openDamp, rules: m.rules, pitch: m.pitch, referee: m.referee, subs: maxSubs(), fixtureId: f.id, date: g.date };
+  const gridOn = typeof process !== 'undefined' && process.env?.CM_RES_GRID === '1' && gridEngineOn(g);
+  const grid = gridOn ? getGridFactory() : null;
+  const rep = grid ? grid(m.home, m.away, { ...opts, commentary: false, aiSubs: [true, true] }, r).runToEnd() : new MatchSim(m.home, m.away, { ...opts, commentary: false, aiSubs: [true, true] }, r).runToEnd();
+  const pick = cmRand(g.seed ?? 0, -f.id, 0x7c0d70);
+  const cats: [number, number] = [pick(9) ? 2 : 3, pick(9) ? 2 : 3];
+  for (const line of rep.players) {
+    const p = g.players[line.id];
+    if (!p || p.virtual) continue;
+    const s = p.stats;
+    if (line.sub) s.subs++; else s.apps++;
+    if (cats[line.team] === 2) { s.lgApps++; s.lgGoals += line.goals; s.lgAssists = (s.lgAssists ?? 0) + line.assists; s.lgRatingSum = (s.lgRatingSum ?? 0) + line.rating; s.lgRatingCount = (s.lgRatingCount ?? 0) + 1; if (rep.mom === p.id) s.lgMom = (s.lgMom ?? 0) + 1; }
+    s.minutes += line.minutes; s.goals += line.goals; s.assists += line.assists; s.ratingSum += line.rating; s.ratingCount++;
+    if (rep.mom === p.id) s.mom++;
+    if (line.yellow) s.yellows++;
+    if (line.red) { s.reds++; p.lastRed = g.date; }
+    p.form = [...p.form, line.rating].slice(-5);
+    // 0x4ca6d0: +0x3a = 2 (ikke venskabskamp) – bonusserne betales
+    if (p.contract?.goalBonus || p.contract?.cleanSheetBonus || p.contract?.cmAssistBonus || p.addOn) afterAppearance(p, line.goals, rep.stats[1 - line.team].goals === 0, { assists: line.assists, pay: true });
+  }
+  cmAfterMatch(g, f, rep, squad, { cats });
+  cmPermitAfterMatch(g, f, rep, (p) => !!p.injury || p.banned > 0);
+  cmFitMatch(g, rep, true, f.id, [f.home, f.away]);
+  // 0x90d6b0: fyldspillerne ud igen
+  cmVirtualDrop(g, f.home); cmVirtualDrop(g, f.away);
+  return rep;
+}
+setResMatchPlayer(playResMatch);
 
 // ---------- resultatbehandling ----------
 
@@ -554,7 +593,9 @@ function newDay() {
   if (g.draft) { draftDay(); return; }
   if (month(d) === 7 && day(d) === 1) seasonRollover();
   intlDaily();
-  reservesDaily();
+  // ægte tilstand med den originale database: originalens baggrundskampe (fixture −2, 0x84be20 – cmReserves.ts); originalen har ingen
+  // reservekampe for klubberne i de spilbare ligaer, så spillets egne (reserves.ts – nyhederne findes ikke i exe'en) kun i udvidet spil
+  if (cmResOn(g)) cmResDaily(g); else reservesDaily();
   // vinduerne lukket: frie agenter, ingen ville have, forsvinder til lavere rækker/udlandet
   if (day(d) === 2 && (month(d) === 9 || month(d) === 2)) freeAgentDrift();
   // daglige ting – i ægte tilstand med den originale database styrer originalens konditionsmodul kondition og skader (cmFitness.ts; AWOL er spillets egen)

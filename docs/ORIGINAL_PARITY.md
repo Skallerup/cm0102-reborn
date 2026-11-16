@@ -116,6 +116,16 @@ View Finances (der læser Bonuses fra blokken) viste 0 bonusser, selv om pengene
    CONCACAFs datoer (22/7, 19/8, 30/9, 20/10, 18/11) giver 9–24 kampe mod oraklets 2–3 – i originalen er landene optaget af VM-zonernes
    2000-kampagne (0x90f210/0x9149f0 "kører" i 2001, men oraklet logger ingen kampe i 391/394); ikke porteret.
 5. Sæsonskiftet og pensioneringer (0x7a7f20, INT_RETIREMENT), end_season pr. nation.
+6. ~~Reservekampe (fixtures −2, 0x84be20)~~ – **porteret 16/11** (cmReserves.ts, noter ~/cm0102-engine/notes/reserve-matches.md): originalen har
+   INGEN reservekampe for klubber i de spilbare ligaer ("Reserve"-turneringen [0x9cf684] har ingen klubber/kampe; reserveskærmene viser altid
+   "There are no forthcoming reserve matches to be played." / "No recent reserve matches have been played."). 0x84be20 spiller i stedet
+   baggrundskampe for alle klubber UDEN for de spilbare divisioner: grupper à 15–16 efter omdømme (0x84b940, ved nyt spil og sæsonopdateringen),
+   gruppe i på dage med dag-i-året mod 7 = i mod 7, ikke juni/juli, ikke ±2/3 dage om klubbens kampe, parret efter klare spillere; kampen med
+   fyldspillere + motoren og kun PlayerStats (rand(9) ? liga : pokal), kontrakt/bonusser 0x4ca6d0, kondition/skader 0x62c080 og tilladelsen
+   0x8c39f0 – ingen tabel/økonomi/karantæner/nyheder. England: 1.622 klubber, 102 grupper, ~110 kampe pr. kampdag (+0,7–0,9 s pr. dag i tsx).
+   Spillets egne reservekampe (reserves.ts, nyhederne "X Reserves win" findes ikke i exe'en) kun i udvidet spil. *Estimeret*: talrækken
+   (cmRand), zonemotoren i stedet for gittermotoren (CM_RES_GRID=1), landsholdsophold 0x7757d0. Mangler: reserveholdets Fixtures/Last Match-
+   skærme med originalens tomme tekster, "Control Reserve Team" (0x75ebd5/0x7615d0), B-hold 0x540a50.
 4. Landsholdsfodbold: NationalTeams 0x76b100, udtagelse 0x7757d0, kvalifikation/VM/EM/OL-format, landstrænere – hele `international.ts` er vores eget.
 5. Sæsonskiftet og pensioneringer. **Pensioneringerne porteret 16/11** (`src/game/cmRetire.ts`, PLAYER_REGEN): listen ved indlæsningen 0x7a58f0/0x7a79c0
    (databasens dato 1/1), nye kandidater på dag 0/80/173/250 (0x5d6250 → 0x7a5790: check_retirement 0x7a7310 – grænse 34 målmand/30 angriber/31 andre,

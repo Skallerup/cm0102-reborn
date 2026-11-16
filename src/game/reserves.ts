@@ -1,4 +1,5 @@
-// Reserveholdets kampe (CM 01/02: "Man Utd Reserves win" – "Man Utd Reserves have beaten Leeds Reserves 4-2 at Old Trafford").
+// Reserveholdets kampe – KUN udvidet spil: originalen spiller ingen reservekampe for klubber i de spilbare ligaer (ægte tilstand: cmReserves.ts,
+// originalens baggrundskampe 0x84be20), og nyhederne "X Reserves win" findes ikke i exe'en.
 // Én kamp om ugen (onsdag) i sæsonen mod en klub fra samme liga, afgjort af styrken blandt spillerne uden for de 16
 // (*estimeret*: Poisson med 1,4 mål i snit, forskudt efter styrken). Eget frø, så den øvrige simulering ikke ændres.
 import { naturalRole } from './attributes';

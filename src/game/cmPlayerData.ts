@@ -66,14 +66,13 @@ export function statCategory(g: GameState, f: Fixture): number {
 export const ratingByte = (r: number) => Math.max(1, Math.min(10, Math.trunc((Math.round(r * 1000) + 500) / 1000)));
 
 /** 0x7c0d70 for én spiller i én kamp (kaldt for begge hold, alle 20 i kamptruppen der spillede). `res` = holdets mål / modstanderens. */
-export function recordPlayerMatch(g: GameState, p: Player, cat: number, line: { rating: number; goals: number; minutes: number; sub: boolean }, gf: number, ga: number, mom: boolean): void {
+export function recordPlayerMatch(g: GameState, p: Player, cat: number, line: { rating: number; goals: number; minutes: number; sub: boolean }, gf: number, ga: number, mom: boolean, avgOk = true): void {
   if (p.regen) return;                                                       // 0x7c1032: genererede spillere (id ≥ [0xae2364]) får ingen statistik
   const r = ratingByte(line.rating);
   // spillets karaktersnit +0x10/+0x18 (double) – 0x6e2f20 læser det for spillere over 33 (0x6e41a8). Starter på 680/100 (6,8 vægtet med 100
   // kampe, målt i oraklet) og tæller kun kampe med resultat+0x4c = 0 (liga, pokal, Europa, landskampe – ikke de fleste venskabskampe og
   // −2-kampene; vores spil har kun de første)
-  const avg = (g.cmRatingAvg ??= [680, 100]);
-  avg[0] += r; avg[1] += 1;
+  if (avgOk) { const avg = (g.cmRatingAvg ??= [680, 100]); avg[0] += r; avg[1] += 1; }
   const stats = (p.cmStats ??= {});
   for (const k of [1, 2]) {                                                  // 0x7c10b4: kategorien, derefter 6 (ikke for 1 og 5)
     const c = k === 1 ? cat : 6;
@@ -462,9 +461,11 @@ export function cmApplyPost(g: GameState, f: Fixture, rep: MatchReport): void {
 }
 
 /** 0x7c0d70 + 0x4ca6d0 for en klubkamp: statistik pr. kategori, formen, karaktersnittet og kontraktens tællere for begge hold. */
-export function cmAfterMatch(g: GameState, f: Fixture, rep: MatchReport, squadOf: (club: number) => Player[]): void {
+export function cmAfterMatch(g: GameState, f: Fixture, rep: MatchReport, squadOf: (club: number) => Player[],
+  bg?: { cats: [number, number] }): void {
   if (!cmActive(g)) return;
   cmApplyPost(g, f, rep);
+  // baggrundskampene (fixture −2, 0x84be20 – cmReserves.ts): kategorien pr. hold rand(9) ? 2 : 3, og spillets karaktersnit tæller dem ikke
   const cat = statCategory(g, f);
   const goals = [rep.stats[0].goals, rep.stats[1].goals];
   const played = new Set<number>();
@@ -472,7 +473,7 @@ export function cmAfterMatch(g: GameState, f: Fixture, rep: MatchReport, squadOf
     const p = g.players[line.id]; if (!p) continue;
     played.add(p.id);
     const gf = goals[line.team], ga = goals[1 - line.team];
-    recordPlayerMatch(g, p, cat, line, gf, ga, rep.mom === p.id);
+    recordPlayerMatch(g, p, bg ? bg.cats[line.team] : cat, line, gf, ga, rep.mom === p.id, !bg);
     const club = line.team === 0 ? f.home : f.away;
     const mins = line.sub ? Math.max(0, line.minutes) : line.red || line.injured ? line.minutes : 90;
     contractAfterMatch(g, p, { starter: !line.sub, minutes: mins, injured: line.injured, condition: line.cond ?? 100, won: gf > ga, lost: gf < ga,

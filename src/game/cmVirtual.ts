@@ -212,6 +212,12 @@ export function makeVirtual(g: GameState, cid: number, slot: VirtualSlot, crt: C
 /** alle klubbens fyldspillere */
 const virtualsOf = (cid: number) => squad(cid).filter((p) => p.virtual);
 
+/** 0x90d6b0(fixture) for én klub: kampens fyldspillere ud igen lige efter kampen (baggrundskampene 0x84c493 – cmReserves.ts) */
+export function cmVirtualDrop(g: GameState, cid: number): void {
+  if (!cmActive(g) || g.draft) return;
+  for (const p of virtualsOf(cid)) dropPlayer(p);
+}
+
 /** 0x90dae0 for klubben: de gamle fyldspillere ud (0x90d8f0), nye ind efter planen. Returnerer antallet af fyldspillere bagefter. */
 export function cmVirtualSync(g: GameState, cid: number, match: boolean): number {
   if (!cmActive(g) || g.draft || !g.clubs[cid]) return 0;

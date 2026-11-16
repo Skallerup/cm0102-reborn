@@ -1270,8 +1270,11 @@ export interface GameState {
   tactic: Tactic | null; // brugerens taktik
   /** startopstillingen fra brugerens seneste kamp (klassisk Last Match) */
   lastMatchTactic?: Tactic;
-  /** reserveholdets udtagelse (klassisk truppen → Reserves) – påvirker ikke reservekampene */
+  /** reserveholdets udtagelse (klassisk truppen → Reserves) – originalen spiller ingen reservekampe for klubber i de spilbare ligaer, så
+   *  udtagelsen gemmes kun (som i originalen) */
   resTactic?: Tactic;
+  /** originalens baggrundskampe (fixture −2, 0x84b940/0x84be20 – cmReserves.ts): grupperne af klubber uden for de spilbare ligaer */
+  cmRes?: import('./cmReserves').CmResState;
   savedTactics: Tactic[];
   reports: Record<number, MatchReport>;
   /** computerklubbernes kampe i den aktuelle sæson (kompakte rapporter, miniReport.ts) – ryddes med kampprogrammet i prune() */

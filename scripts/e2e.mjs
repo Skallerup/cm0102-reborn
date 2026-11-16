@@ -1551,6 +1551,12 @@ async function run(look) {
   await step('spil en hel kamp', async () => {
     // sæsonen starter i juli, første kamp i midten af august – spol frem til dagen før
     // (begge databaser: ellers bruger løkken op mod 120 klik på dag-for-dag-Continue før kampdagen)
+    await page.evaluate(async () => { const c = window.__cm; const g = c.gs(); const f = Object.values(g.fixtures).filter((x) => x.home === g.userClub || x.away === g.userClub).sort((a, b) => a.date.localeCompare(b.date))[0]; if (!f) return; const days = Math.round((Date.parse(f.date) - Date.parse(g.date)) / 864e5) - 1; if (days > 0) await c.advance(days); const me = g.clubs[g.userClub]; me.sqnDue = undefined; me.euroDue = undefined; for (const n of g.news) n.read = true; });
+    // originalens baggrundskampe (fixture −2, cmReserves.ts): fra 1/8 spiller klubberne uden for de valgte ligaer – ingen "Reserves win"-nyheder
+    if (ENGINE_GRID) {
+      const res = await gs(() => { const g = window.__cm.gs(); return { played: g.cmRes?.played ?? 0, groups: g.cmRes?.groups.length ?? 0, news: g.news.filter((n) => n.key.startsWith('res.')).length, date: g.date }; });
+      if (res.date >= '2001-08-02' && (!res.groups || res.played < 100 || res.news)) throw new Error(`baggrundskampene: ${JSON.stringify(res)}`);
+    }
     await page.evaluate(async () => { const c = window.__cm; const g = c.gs(); const f = Object.values(g.fixtures).filter((x) => x.home === g.userClub || x.away === g.userClub).sort((a, b) => a.date.localeCompare(b.date))[0]; if (!f) return; const days = Math.round((Date.parse(f.date) - Date.parse(g.date)) / 864e5) - 1; if (days > 0) await c.advance(days); const g2 = c.gs(); const me = g2.clubs[g2.userClub]; me.sqnDue = undefined; me.euroDue = undefined; for (const n of g2.news) n.read = true; });
     // klassisk (CM 01/02): Continue Game → "Proceed to the match ?" (Yes) → Kick Off Match i sidebjælken
     const kick = await t(look === 'klassisk' ? 'cl.mt.kickoff' : 'match.kickoff');

@@ -1384,10 +1384,12 @@ export class MatchSim implements LiveSim {
    * skade, hvis alvorligheden > 50, og koster ellers kondition. Spilleren må ud, hvis konditionen falder under 50 % eller
    * under 71 % + 0,25 % × skadesudsathed (AI-hold skifter ud; menneskets hold spiller videre med en træt spiller).
    */
+  /** (ydelse) knockCheck's talrække – én lukning pr. kamp i stedet for én pr. kald (samme tal) */
+  private readonly knockRand: Rand = (n) => (n <= 0 ? 0 : Math.floor(this.r.next() * n));
   private knockCheck(sp: SP) {
     if (sp.off || sp.line.injured) return;
     const t = this.teams[sp.team];
-    const rand: Rand = (n) => (n <= 0 ? 0 : Math.floor(this.r.next() * n));
+    const rand = this.knockRand;
     if (!knockAllowed(rand, t.forcedOff ?? 0)) return;
     const prone = sp.p.attrs[A.injuryProneness];
     if (!knock(rand, sp.cond * 10000, prone, !!sp.p.injury, 1)) return;
