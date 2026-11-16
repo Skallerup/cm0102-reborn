@@ -7,10 +7,10 @@ og læg ændringen i samme push.
 - Svar på dansk. Ejeren sender skærmbilleder fra CM 01/02 som spec (nogle gange som filer på skrivebordet).
 - **Staging først:** udvikl på branchen `staging` → push → https://staging.cm0102reborn.com (Vercel Preview, kræver
   login på Vercel). Når ejeren har godkendt det på staging: merge `staging` → `main`.
-- **Udgivelse (fra 16/11, ejerens ønske):** push til `staging` → `.github/workflows/release.yml` kører vitest (4 dele), build og e2e
-  (klassisk med original DB + almindelig) → er alt grønt, spoles `main` frem til samme commit, og Vercel udgiver cm0102reborn.com
-  (staging og live i samme omgang). Lokalt kun tsc + de berørte tests før push; se resultatet med `gh run list -w release.yml`.
-  Fejler en kørsel, går intet live – ret og push igen. Push aldrig direkte til main.
+- **Udgivelse (fra 16/11 eftermiddag, ejerens ønske): staging er sat på pause.** Der arbejdes direkte på `main` – push til `main` =
+  live (Vercel udgiver cm0102reborn.com med det samme). Lokalt før push: `npx tsc --noEmit -p tsconfig.app.json` + de berørte
+  testfiler (+ én e2e ved UI-ændringer). `.github/workflows/ci.yml` kører hele testpakken efter hvert push til main som kontrol –
+  tjek `gh run list -w ci.yml`, og ret med det samme, hvis den fejler. (`release.yml` staging → main bruges igen, når staging genoptages.)
 - Redis oprettes altid med `makeRedis()` fra `api/_lib/redis.ts`. På staging (VERCEL_ENV=preview) får alle nøgler
   præfikset `stg:`, så staging deler databasen uden at røre produktionens data. Brug aldrig `new Redis()` direkte,
   og hverken `pipeline`/`multi`/`eval` (understøttes ikke med præfiks). Staging har sin egen `ADMIN_TOKEN` (Preview);
