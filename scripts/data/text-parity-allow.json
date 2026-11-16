@@ -634,6 +634,10 @@
     {
       "key": "cl.ct.title.out",
       "reason": "Skabelonen \"<title> - Season <season>\" + \" Players Out\" findes i exe'en som to strenge (Club.tsx sætter dem sammen som originalen)"
+    },
+    {
+      "key": "cl.na.noJobs",
+      "reason": "Originalens Job Information: \"There are no vacancies.\" (ejerens billede owner-1116/generelt-image35.jpg)"
     }
   ],
   "patterns": [
