@@ -350,7 +350,8 @@ function origFilter(f: OrigFilter, p: Player, euro: Set<number> | null): boolean
 
 /** Bytte-skærmen (CM 01/02 0x47c180 "Add Player To … Transfer Bid"): trupskærmen skrivebeskyttet; når Exchange-knappen er trykket ned (`armed`),
  *  vælger et klik på en tilladt spiller (`ok`) ham til buddet (0x4814e0 handling 2) i stedet for at åbne profilen */
-export type SquadPick = { armed: boolean; ok: (p: Player) => boolean; onPick: (pid: number) => void };
+/** `only`: listen viser kun de spillere, `ok` godkender (bytte-skærmen 0x47c180); `empty`: teksten midt i en tom liste */
+export type SquadPick = { armed: boolean; ok: (p: Player) => boolean; onPick: (pid: number) => void; only?: boolean; empty?: string };
 
 /** Ægte CM 01/02: en andens klubs trup – samme skærm som egen trup, skrivebeskyttet (computerens udtagelse i de blå felter) */
 export function ClassicFirstSquad({ reserves = false, cid, pick }: { reserves?: boolean; cid?: number; pick?: SquadPick } = {}) {
@@ -380,7 +381,8 @@ export function ClassicFirstSquad({ reserves = false, cid, pick }: { reserves?: 
   // CM 01/02: spillere på reserveholdet står kun på "{klub} Reserves" (managermenuen), ikke i førsteholdstruppen
   // "{klub} Reserves" (ejerens billede 278): reserverne og de udlejede spillere (blå navne)
   // andre klubber: hele truppen (reserver og udlejede – de blå navne) som i originalen
-  const players = ro ? [...squad(clubId), ...Object.values(g.players).filter((p) => p.loan?.from === clubId && p.club !== clubId)]
+  const players = pick?.only ? squad(clubId).filter((p) => pick.ok(p))
+    : ro ? [...squad(clubId), ...Object.values(g.players).filter((p) => p.loan?.from === clubId && p.club !== clubId)]
     : reserves ? [...squad(g.userClub).filter((p) => p.reserves), ...Object.values(g.players).filter((p) => p.loan?.from === g.userClub && p.club !== g.userClub)]
     : squad(g.userClub).filter((p) => !p.reserves || (orig && of.res));
   const byId = new Map(players.map((p) => [p.id, p]));
@@ -563,6 +565,7 @@ export function ClassicFirstSquad({ reserves = false, cid, pick }: { reserves?: 
           </div>
           {armedTarget && !orig && <div className="cx-sq-filtered">{t('cl.sq.pickSlot', { slot: armedTarget.label })}</div>}
           {reserves && !list.length && <div className="cx-sq-filtered">{authentic() ? '' : t('cl.res.none')}</div>}
+          {pick?.empty && !list.length && <div className="cx-exch-none">{pick.empty}</div>}
           {!orig && fil[0] !== 'all' && <div className="cx-sq-filtered">{t('cl.sq.filtered', { filter: t(`cl.sq.f.${fil[0]}`), n: list.length, total: players.length })}</div>}
           {!trad && (
             <div className="cx-sq-row wide cx-sq-colhead" style={tmpl}>

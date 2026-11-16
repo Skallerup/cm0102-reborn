@@ -1920,3 +1920,7 @@ button.cx-bid-swap.removing { cursor: pointer; color: #fff21f; }
 @media (max-width: 760px) { .cx-frd-row .cx-frd-st { grid-column: 2 / 5; font-size: 13px; } }
 /* Go on holiday ? (Please Confirm): afstanden før "Apply for manager position" som i originalen */
 .cx-hol-gap { height: 24px; }
+
+/* budskærmen: beløbene i de to linjer øverst kan klikkes (0x26/0x25) */
+.cx-bid .cx-ts-intro .cx-bid-setval, .cx-bid .cx-ts-intro .cx-bid-setmax { cursor: pointer; color: inherit; text-decoration: none; }
+.cx-bid .cx-ts-intro .cx-bid-setval:hover, .cx-bid .cx-ts-intro .cx-bid-setmax:hover { color: #ffff60; }

@@ -1157,8 +1157,10 @@ async function run(look) {
     await row('Make transfer bid public').locator('.cx-bid-yn').click();
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-budskaerm-original.png` });
     // Exchange: trupskærmen; knappen trykkes ned, og et klik på en tilladt spiller tager ham med (ellers åbnes profilen – så vi går tilbage)
+    // (0x47c180: kun de spillere, sælgeren vil tage – ellers "{klub} are not interested in a part-exchange deal.")
     await page.locator('.cx-bid .cx-bid-tools button', { hasText: 'Exchange' }).click();
-    await page.waitForSelector('.cx-exch .cx-sq-row', { timeout: 5000 });
+    await page.waitForSelector('.cx-exch .cx-sq-row, .cx-exch .cx-exch-none', { timeout: 15000 });
+    if (!(await page.locator('.cx-exch .cx-sq-row').count()) && !/not interested in a part-exchange deal|players are interested in moving to/.test(await page.locator('.cx-exch .cx-exch-none').innerText())) throw new Error('den tomme bytteliste mangler originalens tekst');
     await page.locator('.cx-exch-btn').click();
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-bytte-original.png` });
     await page.locator('.cx-foot-btns button', { hasText: 'Back' }).click();
@@ -1168,6 +1170,19 @@ async function run(look) {
     const head = (await page.locator('.cx-head .cx-title h2').first().innerText()).trim();
     if (head !== myShort) throw new Error(`budskærmens titelbjælke er "${head}" (ikke køberens "${myShort}")`);
     if (!/Your board will (only )?allow/.test(await page.locator('.cx-bid .cx-ts-intro').first().innerText())) throw new Error('bestyrelseslinjen mangler');
+    // ejerens billeder 142/146: beløbene i de to linjer kan klikkes (0x26 værdien, 0x25 loftet); over loftet står beløbet i rødt, men Offer virker
+    await page.locator('.cx-bid .cx-bid-setmax').click();
+    const atMax = (await page.locator('.cx-bid-amt .cx-drop-btn').first().innerText()).trim();
+    if (await page.locator('.cx-bid-amt.over').count()) throw new Error(`beløbet er rødt ved loftet (${atMax})`);
+    await page.locator('.cx-bid .cx-bid-setval').click();
+    // over loftet: + indtil rødt (højst 60 tryk)
+    if (!(await page.locator('.cx-bid-amt.over').count())) {
+      await page.locator('.cx-bid-amt .cx-drop-btn').first().click();
+      await page.locator('.cx-drop-pop button', { hasText: /^£20(\.00)?M$/ }).first().click();
+    }
+    for (let i = 0; i < 90 && !(await page.locator('.cx-bid-amt.over').count()); i++) await page.locator('.cx-bid-row').first().locator('button[aria-label="+"]').click();
+    if (!(await page.locator('.cx-bid-amt.over').count())) throw new Error('beløbet over loftet blev ikke rødt');
+    if (await page.locator('.cx-foot-btns button.primary', { hasText: 'Offer' }).isDisabled()) throw new Error('Offer er grå over loftet');
     await page.locator('.cx-foot-btns button.primary', { hasText: 'Offer' }).click();
     await page.waitForSelector('.cx-bid-confirm', { timeout: 3000 });
     if ((await page.locator('.cx-bid-confirm .cx-subtitle').innerText()).trim().indexOf('Transfer offer for') !== 0) throw new Error('bekræftelsen mangler "Transfer offer for …"');
@@ -1176,7 +1191,20 @@ async function run(look) {
     await page.locator('.cx-foot-btns button.primary', { hasText: 'Yes' }).click();
     await page.waitForTimeout(300);
     const o = await gs((id) => window.__cm.gs().offers.filter((x) => x.player === id).at(-1), pid);
-    if (o && (o.months !== 12 || o.sellOn !== 10 || o.lgApps !== 20 || !o.intFee || !o.pub)) throw new Error(`buddets vilkår blev ikke gemt (${JSON.stringify(o)})`);
+    if (!o || o.status !== 'pending') throw new Error(`buddet over loftet blev ikke afgivet (${JSON.stringify(o)})`);
+    if (o.months !== 12 || o.sellOn !== 10 || o.lgApps !== 20 || !o.intFee || !o.pub) throw new Error(`buddets vilkår blev ikke gemt (${JSON.stringify(o)})`);
+    // 0x8be300: spilleren kommer på shortlisten; Action-menuen: Withdraw Transfer Bid / Change Transfer Bid (ejerens billede 145)
+    if (!(await gs((id) => window.__cm.gs().shortlist.includes(id), pid))) throw new Error('spilleren kom ikke på shortlisten');
+    await page.waitForSelector('.cx-bid', { state: 'detached', timeout: 5000 });
+    await page.locator('.cx-act .cx-drop-btn').click();
+    const menu = await page.locator('.cx-drop-pop').first().innerText();
+    if (!menu.includes('Remove From Shortlist') || !menu.includes('Withdraw Transfer Bid') || !menu.includes('Change Transfer Bid') || menu.includes('Approach To Buy')) throw new Error(`Action-menuen mens buddet venter: ${menu}`);
+    await page.locator('.cx-drop-pop button, .cx-drop-pop [role=menuitem]', { hasText: 'Withdraw Transfer Bid' }).first().click();
+    await page.waitForSelector('.cx-confirm', { timeout: 3000 });
+    if (!/Are you sure you want to withdraw your transfer bid for/.test(await page.locator('.cx-confirm').innerText())) throw new Error('"Are you sure you want to withdraw …" mangler');
+    await page.locator('.cx-confirm button.primary').click();
+    await page.waitForTimeout(200);
+    if ((await gs((id) => window.__cm.gs().offers.filter((x) => x.player === id).at(-1)?.status, pid)) !== 'withdrawn') throw new Error('buddet blev ikke trukket tilbage');
     await gs(() => { const g = window.__cm.gs(); g.options.mode = window.__e2eBidMode; window.__cm.notify(); });
   });
   // CM 01/02 efter et accepteret bud (cmTransferTalks.ts, 0x8c0080): "<X> transfer offer accepted" og "Offer contract to <X>" samme dag;

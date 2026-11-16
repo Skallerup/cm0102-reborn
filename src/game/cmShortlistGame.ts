@@ -29,7 +29,8 @@ import { buildWantMem, type WantMem } from './cmContractGame';
 import { cmActive, cmRand, clubRepMem, nationRepMem } from './cmPlayerData';
 import { slCall } from './cmShortlist';
 import { playerValue_4d0c60, knowsNation_53d980, seenRep_5407e0, knowledge_5408c0, judge_6e86d0, JUDGE_HI, euCitizen_53d740 } from './cmValue';
-import { contractForClub_4cf5f0, expiryBand_867d30, setToDesiredContract_85fc50, hasActiveReleaseClause_867b50 } from './cmContractWant';
+import { contractForClub_4cf5f0, expiryBand_867d30, setToDesiredContract_85fc50, hasActiveReleaseClause_867b50, constructContract_85e410 } from './cmContractWant';
+import { getMaxWage_5968d0 } from './cmMaxWage';
 import { addDays_54c5b0, subDays_54c8e0, listRemove_68d1f0, offerContract_4cda70 } from './cmContract';
 import { entryOf, storeEntry, fromRow } from './cmSquadPlanGame';
 import { newPlanEntry, type PlanEntry } from './cmSquadPlan';
@@ -1887,6 +1888,44 @@ export function cmAskingPrice(g: GameState, p: Player, buyer?: number): number |
   // (hastighed) siderne tilbage til puljen – hukommelsen bruges ikke mere
   (m as SparseMem).release();
   return v | 0;
+}
+
+/** Bytte-skærmen 0x47c180 ("Add Player To {spiller} Transfer Bid"), 0x47ed52–0x47edec og 0x4811c0–0x481243: for hver af giverens spillere, der
+ *  har bestået de almindelige krav (ikke på leje, ikke i andre bud, can_club_bid_for_player 0x8ce990): er modtageren en computerklub, skal den ville
+ *  have ham (Shortlist_Manager::club_wants_player 0x843800(staff, klub, 0, 0) på modtagerens pladser), ellers tælles han som "ikke interesseret"
+ *  ([esp+0x2d]); hans ønskede løn 0x85fc50(staff, modtager, −1, 2, 0xb) må ikke overstige 1,5 × modtagerens lønloft 0x5968d0(fin, staff, 2)
+ *  ([esp+0x2e]). Er listen tom: "{klub} are not interested in a part-exchange deal." (0x991438), hvis mindst én blev afvist af klubben, ellers
+ *  "No {giver} players are interested in moving to {modtager}." (0x9913c8). Null uden for ønskelisterne. */
+export function cmExchangeCheck(g: GameState, giver: number, receiver: number, cands: Player[]): { ok: Set<number>; refused: number; tooDear: number } | null {
+  if (!cmShortlistOn(g) || !g.clubs[receiver] || !g.clubs[giver]) return null;
+  const M = buildWantMem(g, [receiver, giver]);
+  const club = M.W.clubOf(receiver), fin = M.W.finOf(receiver);
+  if (!club || !fin) return null;
+  M.setRand(cmRand(g.seed ?? 0, receiver, giver, dayNum(g.date), 0x47c180));
+  const m = M.c.m;
+  const memOf = new Map<number, number>(), byMem = new Map<number, Player>();
+  for (const [q, a] of M.W.players) { const id = m.s32(a); memOf.set(q.id, id); byMem.set(id, q); }
+  const S: SlMem = { M, m, c: M.c, g, slm: m.u32(m.u32(0xde1f54) + 0x856), memOf, byMem, clubAdr: (cid) => M.W.clubOf(cid), events: [], slotted: new Set() };
+  if (g.cmPlan?.[receiver]) writeSlots(S, receiver, entryOf(g, receiver), true);
+  const human = humanClub_600a50(M.c, club);
+  const LOCAL_K = 0x5f0f3000;
+  const ok = new Set<number>();
+  let refused = 0, tooDear = 0;
+  for (const p of cands) {
+    const st = M.W.staffOf(p);
+    if (!st) continue;
+    {
+      const k = getContract(m, st), cl = k ? clubAt(m, m.s32(k + 4)) : 0;
+      m.w32(st + 0x52, k && cl ? playerValue_4d0c60(M.c, st, cl, 0, -1, humanClub_600a50(M.c, cl) ? 1 : 0) | 0 : 0);
+    }
+    if (!human && !slCall(M.c, 0x843800, S.slm, st, club, 0, 0)) { refused++; continue; }
+    const cap = Math.trunc(getMaxWage_5968d0(M.c, fin, st, 2) * 1.5);
+    constructContract_85e410(m, LOCAL_K);
+    if ((setToDesiredContract_85fc50(M.c, LOCAL_K, st, club, -1, 2, 0xb, 0, 0) | 0) > cap) { tooDear++; continue; }
+    ok.add(p.id);
+  }
+  (m as SparseMem).release();
+  return { ok, refused, tooDear };
 }
 
 export { isoOf };

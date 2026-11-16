@@ -14,7 +14,7 @@ import { attrRange, knowledgeOf } from '../../game/scouting';
 import { authentic, extended } from '../../game/rules';
 import { avgRating } from '../../game/season';
 import { SCHEDULES } from '../../game/training';
-import { askingPrice, canPreContract, interestedClubs, nextWindow, releaseCost, windowOpen } from '../../game/transfers';
+import { askingPrice, canPreContract, interestedClubs, myPendingBid, nextWindow, releaseCost, windowOpen } from '../../game/transfers';
 import { cmActive } from '../../game/cmPlayerData';
 import { DEMONYM } from '../demonyms';
 import { cmAvailability, cmFutureLines } from '../../game/cmTransferList';
@@ -422,7 +422,7 @@ export function ClassicPlayer({ id }: { id: number }) {
   // fanen kan vælges udefra (fx et klik på Inj/Wnt/Fgn i truppen) og huskes på ruten
   const [tab, setTab] = useRouteState<Tab>('ptab', (useNav().route.tab as Tab | undefined) ?? 'profile');
   const [bid, setBid] = useState<boolean | number>(false);
-  const [bidPanel, setBidPanel] = useState<'buy' | 'loan' | null>(null);
+  const [bidPanel, setBidPanel] = useState<'buy' | 'loan' | 'change' | null>(null);
   const [bidAsk, setBidAsk] = useState(false);
   const [neg, setNeg] = useState<{ offer?: TransferOffer; renew?: number } | null>(null);
   const [msg, setMsg] = useState('');
@@ -476,7 +476,16 @@ export function ClassicPlayer({ id }: { id: number }) {
   if (!g.draft && !mine && g.userClub > 0) {
     // CM 01/02: Add To Shortlist · Approach To Buy · Approach To Loan · Scout Player · Set Nickname · — · Create Manager Note · Compare Players
     items.push({ key: 'short', label: shortlisted ? t('cl.pl.unshortlist') : t('cl.pl.shortlist'), onClick: () => dispatch({ t: 'shortlist', pid: p.id, on: !shortlisted }) });
-    if (p.club > 0) {
+    const pendingBid = cmActive(g) && p.club > 0 ? myPendingBid(p.id) : undefined;
+    if (pendingBid) {
+      // CM 01/02 (ejerens billede 145): mens buddet venter – Withdraw Transfer Bid (0x8f4c70: "Withdraw X transfer bid?" No/Yes) og
+      // Change Transfer Bid (budskærmen med buddet, 0x8e9350) i stedet for Approach To Buy/Loan
+      const nm = `${p.first} ${p.last}`.trim();
+      items.push(
+        { key: 'withdraw', label: t('cl.pl.withdrawBid'), onClick: async () => { if (await askConfirm(t('cl.pl.withdrawBody', { player: nm }), { head: t('cl.pl.withdrawQ', { player: nm }) })) dispatch({ t: 'withdraw', pid: p.id }); } },
+        { key: 'change', label: t('cl.pl.changeBid'), onClick: () => setBidPanel('change') },
+      );
+    } else if (p.club > 0) {
       const me = g.clubs[g.userClub];
       items.push(
         { key: 'bid', label: t('cl.pl.approachBuy'), disabled: !open, title: closedTip, onClick: () => setBidPanel('buy') },
@@ -521,7 +530,7 @@ export function ClassicPlayer({ id }: { id: number }) {
   // CM 01/02: buddet på sin egen side; svaret kommer som en nyhed (udvidet tilstand: klubbens svar med det samme)
   // CM 01/02 (0x8e9760): budskærmen har køberens egen titelbjælke ("Vejle"), bekræftelsen klubbens fulde navn ("Vejle Boldklub")
   const own = authentic() ? g.clubs[g.userClub] : undefined;
-  if (bidPanel && !mine) return <div><Head menu={false} club={own?.id} title={own ? (bidAsk ? own.name : own.short) : `${p.first} ${p.last}`} /><BidPanel p={p} loan={bidPanel === 'loan'} onAsk={setBidAsk} onClose={() => { setBidPanel(null); setBidAsk(false); }} onSent={(o) => {
+  if (bidPanel && !mine) return <div><Head menu={false} club={own?.id} title={own ? (bidAsk ? own.name : own.short) : `${p.first} ${p.last}`} /><BidPanel p={p} loan={bidPanel === 'loan'} change={bidPanel === 'change'} onAsk={setBidAsk} onClose={() => { setBidPanel(null); setBidAsk(false); }} onSent={(o) => {
     setBidPanel(null); setBidAsk(false);
     if (o.status === 'negotiating') setNeg({ offer: o });
     else if (extended()) { dispatch({ t: 'bidNow', offer: o.id }); setBid(o.id); }

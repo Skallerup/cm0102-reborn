@@ -1778,6 +1778,7 @@ export const en: Record<string, string> = {
   'cl.bid.lg1': "Fee after 1 League App.", 'cl.bid.lgN': "Fee after {n} League Apps.", 'cl.bid.int1': "Fee after 1 International App.",
   'cl.bid.intN': "Fee after {n} International Apps.", 'cl.bid.months': "{n} months", 'cl.bid.rejectAll': "Reject All Bids",
   'cl.bid.negotiateBtn': "Negotiate", 'cl.bid.withdraw': "Withdraw", 'cl.bid.exPick': "Click Exchange, then the player to add to the bid.",
+  'cl.bid.exNoPlayers': "No {giver} players are interested in moving to {club}.", 'cl.pl.withdrawBid': "Withdraw Transfer Bid", 'cl.pl.changeBid': "Change Transfer Bid", 'cl.pl.withdrawQ': "Withdraw {player} transfer bid?", 'cl.pl.withdrawBody': "Are you sure you want to withdraw your transfer bid for {player}?",
   'transfer.bidCounteredClause': '{club} want {fee} for {player} plus clauses', 'transfer.bidCounteredClause.body': '{club} have responded to your bid for {player}: they want {fee} up front plus clauses in the deal.',
   'transfer.bidUnacceptable': '{club} have dismissed your offer for {player}', 'transfer.bidUnacceptable.body': '{club} have dismissed your offer for {player} as totally unacceptable.',
   'clause.lgAppsPaid': 'Appearance fee: {fee} for {player}', 'clause.lgAppsPaid.body': '{player} has reached the agreed number of league appearances, so {from} have paid {fee} to {to}.',

@@ -24,7 +24,7 @@ import { cmCmOn, cmCmScope } from './cmContractManager';
 import { cmAcceptBid, cmOfferContract, cmTalksDaily, cmTalksOn } from './cmTransferTalks';
 import { cmBuildBid } from './cmAiBid';
 import { cmWindowOpen } from './cmOfferCheck';
-import { cmAskingPrice, cmInterestedClubs, cmShortlistOn, setSlApply, setSlDue, type SlDueCtx, type SlEvent } from './cmShortlistGame';
+import { cmAskingPrice, cmExchangeCheck, cmInterestedClubs, cmShortlistOn, setSlApply, setSlDue, type SlDueCtx, type SlEvent } from './cmShortlistGame';
 import { ADDON_APPS, bidClauseWorth, cleanClauses, clauseWorth, defaultRelease, settleSellOn } from './clauses';
 import { asOwner, forEachHuman, isHumanClub, isMultiplayer } from './humans';
 import { AGENT_RULES, agentOf } from './agents';
@@ -358,25 +358,54 @@ function offerSwapWorth(o: TransferOffer): number {
 /** CM 01/02's bytte-skærm 0x47c180 (0x47eb98–0x47edec): køberens spillere, der må indgå – ikke på leje, med kontrakt, ikke i andre bud, og en
  *  computerklub skal ville have ham (0x843800 – hos os swapCandidates' behov, *estimeret*) */
 export function exchangeOk(x: Player, receiver: number, target: number): boolean {
+  if (!exchangeBaseOk(x, receiver, target)) return false;
+  if (!isHumanClub(receiver) && !swapCandidates(receiver, target, x.club).some((c) => c.id === x.id)) return false;
+  return true;
+}
+/** de almindelige krav (0x47eb98–0x47ed4c) uden modtagerens vilje (0x843800) og lønkravet – dem afgør cmExchangeCheck (cmShortlistGame.ts) */
+export function exchangeBaseOk(x: Player, receiver: number, target: number): boolean {
   const g = gs();
   if (!x || x.id === target || x.loan || !x.contract || x.contract.futureClub) return false;
   if (g.offers.some((o) => ['pending', 'negotiating', 'countered'].includes(o.status) && o.player !== target && (o.player === x.id || o.swap?.includes(x.id)))) return false;
   if (!permitOk(x, g.clubs[receiver])) return false;
-  if (!isHumanClub(receiver) && !swapCandidates(receiver, target, x.club).some((c) => c.id === x.id)) return false;
   return true;
 }
 
-export function makeBid(pid: number, fee: number, loan = false, extra?: { sellOn?: number; addOn?: number; swap?: number[]; terms?: BidTerms }): TransferOffer | string {
+/** Bytte-skærmen (0x47c180): giverens spillere, der kan tages med i buddet, og – er listen tom – originalens tekst ('refused' = "{klub} are not
+ *  interested in a part-exchange deal.", 'noPlayers' = "No {giver} players are interested in moving to {modtager}."). Med ønskelisterne afgør
+ *  cmExchangeCheck (0x843800 og lønkravet) det; ellers swapCandidates (*estimeret*). */
+export function exchangeList(giver: number, receiver: number, target: number): { ids: number[]; note: 'refused' | 'noPlayers' | null } {
+  const g = gs();
+  const base = squad(giver).filter((x) => exchangeBaseOk(x, receiver, target));
+  const cm = cmActive(g) ? cmExchangeCheck(g, giver, receiver, base) : null;
+  if (!cm) return { ids: base.filter((x) => exchangeOk(x, receiver, target)).map((x) => x.id), note: null };
+  const ids = base.filter((x) => cm.ok.has(x.id)).map((x) => x.id);
+  return { ids, note: ids.length ? null : cm.refused > 0 ? 'refused' : cm.tooDear > 0 ? 'noPlayers' : null };
+}
+
+/** Et ventende bud fra menneskets klub på spilleren (CM 01/02: Action-menuen viser da Withdraw/Change Transfer Bid) */
+export function myPendingBid(pid: number): TransferOffer | undefined {
+  const g = gs();
+  return g.offers.find((o) => o.player === pid && o.buyer === g.userClub && !o.loan && (o.status === 'pending' || o.status === 'countered'));
+}
+
+export function makeBid(pid: number, fee: number, loan = false, extra?: { sellOn?: number; addOn?: number; swap?: number[]; terms?: BidTerms; change?: boolean }): TransferOffer | string {
   const g = gs();
   const p = g.players[pid];
   const buyer = g.clubs[g.userClub];
   if (!p || !buyer) return 'error';
   if (!windowOpen(gs().date, buyer.id)) return 'transfer.windowClosed';
   if (p.club === buyer.id) return 'error';
-  if (!loan && fee > buyer.transferBudget) return 'transfer.overBudget';
+  // CM 01/02: budskærmen (0x8ec420 Offer → 0x8ef9f0 → add_transfer_offer 0x8be300) har intet loft – beløbet står blot i rødt over bestyrelsens
+  // grænse; pengene kontrolleres først ved Confirm Transfer Offer (0x8cfc90: budget × 1,1 → Delay Transfer Offer)
+  if (!loan && fee > buyer.transferBudget && !cmActive(g)) return 'transfer.overBudget';
   if (loan && loanBlocked(p, buyer)) return 'transfer.loanNonEu';
   if (!permitOk(p, buyer)) return 'transfer.noWorkPermit';
+  // Change Transfer Bid (CM 01/02): det ventende bud erstattes af det ændrede (*estimeret*: et nyt bud med ny svartid)
+  if (extra?.change && cmActive(g)) { const old = myPendingBid(pid); if (old) { old.status = 'withdrawn'; old.cmCounter = undefined; } }
   if (g.offers.some((o) => o.player === pid && o.buyer === buyer.id && ['pending', 'negotiating', 'countered'].includes(o.status))) return 'transfer.alreadyBidding';
+  // add_transfer_offer 0x8be300 (0x8be979–0x8be9ad): menneskets køber får spilleren på sin shortliste (SCOUT_MANAGER::add_to_shortlist 0x7f75f0)
+  if (cmActive(g) && p.club && !g.shortlist.includes(pid)) g.shortlist.push(pid);
   const humanSeller = isHumanClub(p.club);
   const o: TransferOffer = {
     id: g.nextId.offer++, player: pid, buyer: buyer.id, seller: p.club, fee: p.club ? fee : 0, loan,
@@ -1126,7 +1155,7 @@ export function acceptCounter(id: number) {
   const o = g.offers.find((x) => x.id === id);
   if (!o || o.status !== 'countered' || !o.counter) return 'error';
   const buyer = g.clubs[o.buyer];
-  if (o.counter > buyer.transferBudget) return 'transfer.overBudget';
+  if (o.counter > buyer.transferBudget && !cmActive(g)) return 'transfer.overBudget';   // CM 01/02: først ved Confirm Transfer Offer (0x8cfc90)
   if (o.cmCounter && cmActive(g)) { putTerms(o, o.cmCounter); o.cmCounter = undefined; }
   o.fee = o.counter;
   // CM 01/02: modbuddet accepteret → 0x8c0080 (de to nyheder og Offer Contract)

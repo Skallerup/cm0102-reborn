@@ -17,7 +17,7 @@ import { useGame } from '../core';
 import { CxDrop, useClassicDialog, ClassicFoot } from '../classic';
 import { cmActive, statusCode } from '../../game/cmPlayerData';
 import { isHumanClub } from '../../game/humans';
-import { exchangeOk } from '../../game/transfers';
+import { exchangeList, myPendingBid } from '../../game/transfers';
 import { BID_AMOUNTS_GBP, MAX_SWAP, addSwap, bidAct, clauseAtMin, feeAtMax, feeEquals, fromGbp, toGbp, newTerms, stepDown, stepUp, reasonForStatus, rejectReasonValid, removeSwap, sameTerms, termsOf,
   type BidAct, type BidTerms, type RejectKey } from '../../game/cmTransferBid';
 import { ClassicFirstSquad } from './SquadClassic';
@@ -228,7 +228,7 @@ export function DisciplinePanel({ p, onClose, onDone }: { p: Player; onClose: ()
 }
 
 /** "Approach To Buy/Loan" (CM 01/02 "Man Utd transfer bid for Inamoto"): beløb med − / + / =, klausuler, bytte og samlet værdi */
-export function BidPanel(props: { p: Player; loan: boolean; onClose: () => void; onSent: (o: TransferOffer) => void; onAsk?: (asking: boolean) => void }) {
+export function BidPanel(props: { p: Player; loan: boolean; onClose: () => void; onSent: (o: TransferOffer) => void; onAsk?: (asking: boolean) => void; change?: boolean }) {
   const g = useGame()!;
   // den originale database i ægte tilstand: originalens budskærm (cmTransferBid.ts); ellers spillets egen
   return cmActive(g) && !props.loan ? <CmBidPanel {...props} /> : <OldBidPanel {...props} />;
@@ -541,15 +541,21 @@ function CmBidRows({ terms, set, value, budget, swapValue, onExchange, reset }: 
 }
 
 /** "Add Player To {spiller} Transfer Bid" (0x47c180): giverens trupskærm; Exchange-knappen trykkes ned, og et klik på en tilladt spiller tager ham med */
-function CmExchange({ giver, receiver, p, onPick, onBack }: { giver: number; receiver: number; p: Player; onPick: (pid: number) => void; onBack: () => void }) {
+function CmExchange({ giver, receiver, p, onPick, onBack, taken }: { giver: number; receiver: number; p: Player; onPick: (pid: number) => void; onBack: () => void; taken: number[] }) {
+  const g = useGame()!;
   const [armed, setArmed] = useState(false);
+  // listen (0x47c180): kun de spillere, modtageren vil tage (0x843800 og lønkravet); tom → originalens tekst
+  const [ex] = useState(() => exchangeList(giver, receiver, p.id));
+  const ids = new Set(ex.ids.filter((id) => !taken.includes(id)));
+  const rc = g.clubs[receiver], gc = g.clubs[giver];
+  const empty = ex.note === 'refused' ? t('cl.bid.notInterested', { club: rc?.short ?? '' }) : ex.note === 'noPlayers' ? t('cl.bid.exNoPlayers', { giver: gc?.short ?? '', club: rc?.short ?? '' }) : undefined;
   return (
     <div className="cx-tstatus cx-bid cx-exch">
       <div className="cx-exch-top">
         <div className="cx-subtitle cx-orig-band">{t('cl.bid.addTitle', { player: p.last })}</div>
         <button className={`cx-exch-btn ${armed ? 'on' : ''}`} onClick={() => setArmed(!armed)} title={authentic() ? undefined : t('cl.bid.exPick')}>{t('cl.bid.exchange')}</button>
       </div>
-      <ClassicFirstSquad key={`ex${giver}`} cid={giver} pick={{ armed, ok: (x) => exchangeOk(x, receiver, p.id), onPick }} />
+      <ClassicFirstSquad key={`ex${giver}`} cid={giver} pick={{ armed, ok: (x) => ids.has(x.id), onPick, only: true, empty }} />
       <ClassicFoot cols="3fr 1fr">
         <button onClick={onBack}>{t('common.back')}</button>
         <button className="primary" disabled>{t('top.next')}</button>
@@ -558,8 +564,15 @@ function CmExchange({ giver, receiver, p, onPick, onBack }: { giver: number; rec
   );
 }
 
+/** en tekstlinje, hvor beløbet (pladsholderen \u0000) kan klikkes */
+function CxAmountText({ text, amount, cls, onClick }: { text: string; amount: string; cls: string; onClick: () => void }) {
+  const i = text.indexOf('\u0000');
+  if (i < 0) return <>{text}</>;
+  return <>{text.slice(0, i)}<span className={`cx-link ${cls}`} role="button" onClick={onClick}>{amount}</span>{text.slice(i + 1)}</>;
+}
+
 /** Eget bud (CM 01/02 "{klub} transfer bid for {spiller}") */
-function CmBidPanel({ p, onClose, onSent, onAsk }: { p: Player; loan: boolean; onClose: () => void; onSent: (o: TransferOffer) => void; onAsk?: (asking: boolean) => void }) {
+function CmBidPanel({ p, onClose, onSent, onAsk, change }: { p: Player; loan: boolean; onClose: () => void; onSent: (o: TransferOffer) => void; onAsk?: (asking: boolean) => void; change?: boolean }) {
   const g = useGame()!;
   useClassicDialog();
   const me = g.clubs[g.userClub];
@@ -573,18 +586,21 @@ function CmBidPanel({ p, onClose, onSent, onAsk }: { p: Player; loan: boolean; o
   const known = knownEnquiry(p.id);
   // et modbud fra sælgeren står i skærmen, når man byder igen (0x8f1830 "Respond" på modbuddet)
   const live = g.offers.slice().reverse().find((o) => o.player === p.id && o.buyer === g.userClub && o.status === 'countered' && o.cmCounter);
-  const [terms, setTerms] = useState<BidTerms>(() => live?.cmCounter ? { ...live.cmCounter, swap: [...live.cmCounter.swap] } : newTerms(g, p, g.userClub, Math.min(budget, known?.fee ?? p.value)));
+  // Change Transfer Bid: skærmen åbnes med det ventende bud (0x8e9350 med buddet). Et nyt bud: build_bid 0x8e5d60 for menneskets køber
+  // (0x8e630c–0x8e633e) = spillerens værdi +0x52, højst bestyrelsens loft 0x598800(spiller, 0, 0, 1, 0) – samme loft som linjen
+  const pend = change ? myPendingBid(p.id) : undefined;
+  const [terms, setTerms] = useState<BidTerms>(() => pend ? termsOf(pend) : live?.cmCounter ? { ...live.cmCounter, swap: [...live.cmCounter.swap] } : newTerms(g, p, g.userClub, Math.min(budget, known?.fee ?? p.value)));
   const [exch, setExch] = useState(false);
   const [err, setErr] = useState('');
   const seller = g.clubs[p.club]?.name ?? '';
   const name = `${p.first} ${p.last}`.trim();
   const swapValue = (id: number) => g.players[id]?.value ?? 0;
-  if (exch) return <CmExchange giver={g.userClub} receiver={p.club} p={p} onBack={() => setExch(false)}
+  if (exch) return <CmExchange giver={g.userClub} receiver={p.club} p={p} taken={terms.swap} onBack={() => setExch(false)}
     onPick={(id) => { setTerms(addSwap(terms, id, swapValue(id))); setExch(false); }} />;
   const submit = () => {
     setErr('');
     asking(false);
-    const r = act<TransferOffer | string>({ t: 'bid', pid: p.id, fee: terms.fee, loan: false, swap: terms.swap, terms });
+    const r = act<TransferOffer | string>({ t: 'bid', pid: p.id, fee: terms.fee, loan: false, swap: terms.swap, terms, change: !!pend });
     if (typeof r === 'string') setErr(t(r)); else onSent(r);
   };
   if (ask) return (
@@ -601,7 +617,11 @@ function CmBidPanel({ p, onClose, onSent, onAsk }: { p: Player; loan: boolean; o
     <div className="cx-tstatus cx-bid">
       <div className="cx-subtitle">{t('cl.bid.title', { club: me?.short ?? '', player: p.last })}</div>
       <div className="cx-ts-body">
-        <p className="cx-ts-intro">{t('cl.bid.valued', { club: seller, player: name, value: moneyFull(p.value) })}<br />{t(boardKey, { fee: moneyFull(budget) })}</p>
+        {/* 0x8e9760: beløbene i de to linjer er knapper – 0x26 sætter Transfer Fee til værdien +0x52, 0x25 til bestyrelsens loft (0x8ed4c0/0x8ed552) */}
+        <p className="cx-ts-intro">
+          <CxAmountText text={t('cl.bid.valued', { club: seller, player: name, value: '\u0000' })} amount={moneyFull(p.value)} cls="cx-bid-setval" onClick={() => setTerms({ ...terms, fee: p.value })} /><br />
+          <CxAmountText text={t(boardKey, { fee: '\u0000' })} amount={moneyFull(budget)} cls="cx-bid-setmax" onClick={() => setTerms({ ...terms, fee: budget })} />
+        </p>
         <CmBidRows terms={terms} set={setTerms} value={p.value} budget={budget} swapValue={swapValue} onExchange={() => setExch(true)} />
         {err && <div className="cx-bid-err">{err}</div>}
       </div>
@@ -644,7 +664,7 @@ function CmIncomingBidPanel({ offer, onClose }: { offer: TransferOffer; onClose:
     onClose(typeof r === 'string' && r !== 'ok' ? t(r) : undefined);
   };
   const name = `${p.first} ${p.last}`.trim();
-  if (exch) return <CmExchange giver={buyer.id} receiver={g.userClub} p={p} onBack={() => setExch(false)}
+  if (exch) return <CmExchange giver={buyer.id} receiver={g.userClub} p={p} taken={terms.swap} onBack={() => setExch(false)}
     onPick={(id) => { setTerms(addSwap(terms, id, swapValue(id))); setExch(false); }} />;
   if (rejecting) return (
     <div className="cx-tstatus">

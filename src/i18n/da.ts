@@ -1809,6 +1809,7 @@ export const da: Record<string, string> = {
   'cl.bid.lg1': "Beløb efter 1 ligakamp", 'cl.bid.lgN': "Beløb efter {n} ligakampe", 'cl.bid.int1': "Beløb efter 1 landskamp",
   'cl.bid.intN': "Beløb efter {n} landskampe", 'cl.bid.months': "{n} måneder", 'cl.bid.rejectAll': "Afvis alle bud",
   'cl.bid.negotiateBtn': "Forhandl", 'cl.bid.withdraw': "Træk tilbage", 'cl.bid.exPick': "Klik på Exchange og derefter på den spiller, der skal med i buddet.",
+  'cl.bid.exNoPlayers': "Ingen spillere fra {giver} er interesseret i at skifte til {club}.", 'cl.pl.withdrawBid': "Træk transferbud tilbage", 'cl.pl.changeBid': "Ændr transferbud", 'cl.pl.withdrawQ': "Træk buddet på {player} tilbage?", 'cl.pl.withdrawBody': "Er du sikker på, at du vil trække dit transferbud på {player} tilbage?",
   'transfer.bidCounteredClause': '{club} vil have {fee} for {player} plus klausuler', 'transfer.bidCounteredClause.body': '{club} har svaret på dit bud på {player}: de vil have {fee} kontant plus klausuler i handlen.',
   'transfer.bidUnacceptable': '{club} har afvist dit bud på {player}', 'transfer.bidUnacceptable.body': '{club} har afvist dit bud på {player} som helt uacceptabelt.',
   'clause.lgAppsPaid': 'Kampbeløb: {fee} for {player}', 'clause.lgAppsPaid.body': '{player} har spillet det aftalte antal ligakampe, så {from} har betalt {fee} til {to}.',
