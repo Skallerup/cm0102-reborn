@@ -172,3 +172,7 @@ View Finances (der læser Bonuses fra blokken) viste 0 bonusser, selv om pengene
 22. De 33 *estimerede* steder i gridMatch.ts + matchSubs/adapter/aiTeam/pass: erstat med porte.
 23. Live-kampen (set kamp) vs hurtigkamp: samme motor og samme inddata – mål forskellen.
 24. Kampe i ikke-valgte lande/Europa/venskabskampe/landskampe kører stadig zonemotoren.
+
+
+### Småting (ejerens fund, lav prioritet)
+- Player & Staff Search (og øvrige spillerlister): shortlistede spillere står med GULT navn (og bud-mærket "Bid" i Inf-kolonnen, grå), som i originalen (ejerens billede 16/11, images/148.png).
