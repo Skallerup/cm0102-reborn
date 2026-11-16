@@ -13,9 +13,13 @@
 //   FA Cup: EngFaCup::create_round_table 0x56f320 (9 runder; spillets pokal har færre – runderne tælles fra finalen).
 //
 // Ligaskemaerne (runde 10D): 34 klasser i data/cmSchedules.ts (England, Tyskland, Belgien, Danmark, Skotland, Sverige, Norge 1, Japan, Rusland, Sydkorea …).
-// IKKE porteret (se ENGINE_PORT_PLAN.md, runde 10A): skemaerne for Australien (24 + 10 finalerunder), Polen (to halvdele à 14), Norge 2 (26 runder, spillet har 16
-// klubber), USA (32 runder, 12 klubber) – antallet af runder passer ikke med spillets liga, så de bruger spillets kalender – og Tjekkiet/Østrig/Mexico/
-// Schweiz (ingen klasse fundet), Liga Cup/Charity Shield/
+// (16/11) + Norge 1. division (NorFirst 0x790040: tæller ligaens klubber – 16 → 30 runder, ellers 26) og USA (UsaMls 0x9072d0: 32 runder for 12
+// klubber – spillet lader den tredje turnering stoppe efter 32 runder, se CM_LEAGUE_CUT) = 36 klasser.
+// IKKE porteret (se ENGINE_PORT_PLAN.md, runde 10A): Australien (AusNsl 0x4111a0: 24 rækker til 14 klubbers 26 spillerunder – originalens
+// rundefølge 0x68a030 genbruger rækker, plus 10 rækker slutspil i stage 0, som spillet ikke har), Polen (PolFirst 0x7c8df0: stage −1/0 = to
+// grupper à 8 med 14 runder, stage 1/2 = mesterskabs-/nedrykningsgrupper à 14 – spillets liga har ikke grupper før splittet). Tjekkiet/Østrig/
+// Mexico/Schweiz har ingen ligaklasse i originalen (exe'ens comp\leagues\*.cpp: ingen aut/cze/swi/mex – landene spilles ikke i CM 01/02;
+// heller ingen række i nøglelandstabellen 0xb63d60). Liga Cup/Charity Shield/
 // Intertoto/landskampene i forkørslen, sammenstødsreglen 0x5ad780/0x5adba0 (kodernes rækkefølge; her: en anden kamp for et af holdene dagen
 // før/samme dag/dagen efter, koden = den anden kamps type), resolve_same_day_clash 0x5ae380, klubbens foretrukne kampdag +0x72 (alle
 // engelske klubber har 5 = lørdag eller 0xff), tv-nyheden (0x77bbe0/0x7861e0) og originalens parring af holdene (league_next_schedule_round
@@ -75,6 +79,10 @@ export interface CmRound { date: string; slot: number; tv: SchedTv[] }
 const CM_ROUND_RULES: Record<string, { rounds: number; split?: { after: number; groups: number; rounds: number } }> = {
   CM4: { rounds: 3 }, CM229: { rounds: 3 }, CM34: { rounds: 3, split: { after: 33, groups: 2, rounds: 1 } },
 };
+/** (16/11) USA's Major League Soccer (UsaMls 0x9072d0, stage −1): 32 spillerunder for 12 klubber – originalens egen kampfordeling (0x908xxx, ikke
+ *  porteret) giver hver klub 32 kampe; spillet bruger en tredobbelt turnering, der stopper efter 32 runder (*estimeret*: hvem der mødes hvor tit).
+ *  Kun med originalens kalender (cmCalendarOn) – den udvidede tilstand beholder databasens 2 runder. */
+export const CM_LEAGUE_CUT: Record<string, { rounds: number; cut: number }> = { CM31: { rounds: 3, cut: 32 } };
 /** Landets pokal i databasen: parseren valgte før den mest prestigefyldte turnering, og for Portugal/Japan er det SUPERpokalen
  *  (Supertaça / Super Cup) – ikke Taça de Portugal / Kejserens pokal (spillerrapport #26/#27) */
 const SUPER_TO_CUP: Record<string, string> = { 'Portuguese Super Cup': 'Portuguese Cup', 'Japanese Super Cup': 'Japanese Cup' };

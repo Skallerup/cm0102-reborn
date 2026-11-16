@@ -1198,6 +1198,11 @@ export interface GameState {
   cmUefa?: import('./cmEurope').CmUefaState;
   /** (runde 10C) de europæiske kampe før spillets start skal spilles (forkørslen – cmEurope.ts cmEuroCatchUp) */
   cmEuroCatchUp?: boolean;
+  /** (16/11) næste sæsons europæiske turneringer er oprettet i juni (cmEurope.ts cmEuroNextSeason): den afsluttede sæsons CL/UEFA/Intertoto/Super Cup
+   *  ligger her til sæsonskiftet 1/7 (så historikken, priserne og omdømmet regnes af dem) */
+  cmEuroPrev?: Record<string, Competition>;
+  /** (16/11) kun under seasonRollover: de nye turneringer og deres kampe, mens den gamle sæson afsluttes (cmEuroRolloverStart → cmEuroRestoreNext) */
+  cmEuroNext?: { comps: Record<string, Competition>; fixtures: Fixture[]; mini: Record<number, MiniReport> };
   cmCrowd?: Record<number, [number, number, number, number, number, number, number, number, number]>;
   cmCities?: number[];
   cmNation7e?: number[];

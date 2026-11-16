@@ -9,7 +9,7 @@ import { celebrateTrophy } from './fans';
 import type { Competition, Fixture, MatchResultShort, TableRow, Tie } from './types';
 import { econIncome } from './econ';
 import { cmActive } from './cmPlayerData';
-import { cmCalendarOn, cmFaCupDate, cmFindNewDate, cmLeagueSchedule, cmPlaceFixture } from './cmCalendar';
+import { CM_LEAGUE_CUT, cmCalendarOn, cmFaCupDate, cmFindNewDate, cmLeagueSchedule, cmPlaceFixture } from './cmCalendar';
 import { cmEuroFinished, cmEuroResult } from './cmEurope';
 import { cmCupKey, cmCupRound, cmFlagsOf, cmLeagueCupStructure } from './cmCups';
 
@@ -159,7 +159,8 @@ export function sortTable(rows: TableRow[]): TableRow[] {
 
 export function setupLeague(id: string, name: string, nation: number, tier: number, clubs: number[], season: number) {
   const g = gs();
-  const rules = rulesFor(id, clubs.length);
+  const cut = cmCalendarOn(g) ? CM_LEAGUE_CUT[id] : undefined;
+  const rules = cut ? { ...rulesFor(id, clubs.length), rounds: cut.rounds } : rulesFor(id, clubs.length);
   const cal = calendar(season);
   const comp: Competition = {
     id, name, type: 'league', nation, tier, clubs: clubs.slice(),
@@ -167,6 +168,7 @@ export function setupLeague(id: string, name: string, nation: number, tier: numb
   };
   g.comps[id] = comp;
   const rounds = multiRoundRobin(clubs, rules.rounds);
+  if (cut) rounds.length = Math.min(rounds.length, cut.cut);
   let total = rounds.length;
   if (rules.split) {
     const per = clubs.length / rules.split.groups;

@@ -10,7 +10,7 @@ import { daysBetween } from '../src/game/dates';
 const FIX = JSON.parse(readFileSync(new URL('./fixtures/cm-schedules.json', import.meta.url), 'utf8')) as Record<string, string>;
 
 describe('originalens ligaskemaer', () => {
-  it('EngPrm/EngFirst/EngSecond/EngThird::create_schedule 2001–2016 (England + 16 andre ligaer) som originalens kode', () => {
+  it('create_schedule 2001–2016 for England, de øvrige nøglelande, Norge 1. division (16 klubber → 30 runder) og USA (32 runder) som originalens kode', () => {
     let n = 0;
     for (const [key, want] of Object.entries(FIX)) {
       const [id, ys] = key.split('-');
@@ -87,4 +87,23 @@ describe('nyt spil med originalens kalender', () => {
     expect(g.comps.CM69.meta?.cmSched).toBe(true);
     expect(first('CM69')).toBe('2001-03-10');
   });
+  it('(16/11) Norge 1. division (NorFirst 0x790040, 16 klubber = 30 runder) og USA (UsaMls 0x9072d0, 32 runder for 12 klubber) bruger originalens skemaer', () => {
+    const nat = (n: string) => world.nations.findIndex((x) => x.name === n);
+    const [nor, usa] = [nat('Norway'), nat('United States')];
+    createGame(world, { managerName: 'T', managerNation: nor, clubId: world.clubs.find((c) => c[4] === 'CM316')![0], activeNations: [nor, usa], lang: 'en', masking: true, seed: 1, mode: 'authentic' });
+    const g = gs();
+    const fx = (id: string) => Object.values(g.fixtures).filter((f) => f.comp === id);
+    for (const [id, rounds] of [['CM316', 30], ['CM31', 32]] as const) {
+      expect(g.comps[id].meta?.cmSched, id).toBe(true);
+      expect(Math.max(...fx(id).map((f) => f.round ?? 0)), id).toBe(rounds);
+      // hver klub spiller én kamp pr. runde
+      const per = new Map<number, number>();
+      for (const f of fx(id)) for (const c of [f.home, f.away]) per.set(c, (per.get(c) ?? 0) + 1);
+      expect([...per.values()].every((n) => n === rounds), id).toBe(true);
+    }
+    // første runde på skemaets dato (Norge 1. division: 20/4-2001 → søndag 22/4; USA lørdag 24/3)
+    const sched = (id: string) => (g.comps[id].meta?.dates as string[]);
+    expect(fx('CM316').filter((f) => f.round === 1).every((f) => f.date === sched('CM316')[0])).toBe(true);
+    expect(fx('CM31').filter((f) => f.round === 1).every((f) => f.date === sched('CM31')[0])).toBe(true);
+   }, 120_000);
 });

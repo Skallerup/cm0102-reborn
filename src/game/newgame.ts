@@ -36,7 +36,7 @@ import { npFromWorld, npTemplate, staffConvert, staffInitRecord, type NpTemplate
 import { initialLanguages } from './cmLanguage';
 import { cmActive } from './cmPlayerData';
 import { cmStartDate } from './cmCalendar';
-import { cmEuroOn, cmSetupEurope } from './cmEurope';
+import { cmEuroOn, cmEuroRestoreNext, cmSetupEurope } from './cmEurope';
 import { compHooks } from './hooks';
 import { cmFitNewGame } from './cmFitnessGame';
 import './cmPrerunMatches';                                      // forkørslens konkurrencekampe (registerPrerun 'matches')
@@ -611,7 +611,8 @@ export function setupSeasonComps(season: number, prevTables: Record<string, numb
   }
   // (runde 10C) den originale database i ægte tilstand: Champions League, UEFA Cup og Super Cup i originalens 2001/02-format (cmEurope.ts)
   if (cmEuroOn(g)) {
-    cmSetupEurope(season, prevTables, cupWinners);
+    // (16/11) næste sæsons turneringer blev oprettet i juni (cmEuroNextSeason) – de bruges; ellers som før
+    if (!cmEuroRestoreNext(g, season)) cmSetupEurope(season, prevTables, cupWinners);
     // (runde 10D) England: Liga Cup og Charity Shield efter originalens rundetabeller (competitions.ts / cmCups.ts)
     if (active.has(60) && g.comps.CM7) {
       const inEurope = new Set([...(g.comps.CL?.clubs ?? []), ...(g.comps.UEFA?.clubs ?? [])]);

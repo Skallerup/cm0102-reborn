@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 
 import { Select } from '../select';
 import { nationRanking, sortTable } from '../../game/competitions';
+import { cmInCompSeason } from '../../game/cmEurope';
 import { CL_SPOTS, CONF_SPOTS, LEAGUE_RULES, UEFA_SPOTS } from '../../game/leagues';
 import { isOriginal2001 } from '../../game/rules2001';
 import { refereeFor } from '../../game/weather';
@@ -252,7 +253,7 @@ function CupView({ comp }: { comp: Competition }) {
 /** Schedule (CM 01/02): alle spilledage med antal kampe – et klik viser dagens kampe */
 function CompSchedule({ comp, onPick }: { comp: Competition; onPick: () => void }) {
   const g = useGame()!;
-  const list = Object.values(g.fixtures).filter((f) => f.comp === comp.id);
+  const list = Object.values(g.fixtures).filter((f) => f.comp === comp.id && cmInCompSeason(comp, f));
   const days = [...new Set(list.map((f) => f.date))].sort();
   const [, setDate] = useRouteState(`date:${comp.id}`, days[0]);
   return (
@@ -266,7 +267,7 @@ function CompSchedule({ comp, onPick }: { comp: Competition; onPick: () => void 
 function CompFixtures({ comp, mode }: { comp: Competition; mode?: 'results' | 'fixtures' }) {
   const g = useGame()!;
   const { nav } = useNav();
-  const all = Object.values(g.fixtures).filter((f) => f.comp === comp.id).sort((a, b) => a.date.localeCompare(b.date));
+  const all = Object.values(g.fixtures).filter((f) => f.comp === comp.id && cmInCompSeason(comp, f)).sort((a, b) => a.date.localeCompare(b.date));
   // Results: kun spillede dage, Fixtures: kun kommende (klassisk)
   const list = mode === 'results' ? all.filter((f) => f.result) : mode === 'fixtures' ? all.filter((f) => !f.result) : all;
   const dates = [...new Set(list.map((f) => f.date))];
@@ -308,7 +309,7 @@ export function Scorers({ comp }: { comp: Competition }) {
     rows = clubs.flatMap((c) => squad(c)).filter((p) => p.stats.lgGoals > 0).map((p) => ({ pid: p.id, goals: p.stats.lgGoals }));
   } else {
     const m = new Map<number, number>();
-    for (const f of Object.values(g.fixtures)) if (f.comp === comp.id && f.result) for (const [, , pid, og] of f.result.scorers) if (!og) m.set(pid, (m.get(pid) ?? 0) + 1);
+    for (const f of Object.values(g.fixtures)) if (f.comp === comp.id && f.result && cmInCompSeason(comp, f)) for (const [, , pid, og] of f.result.scorers) if (!og) m.set(pid, (m.get(pid) ?? 0) + 1);
     rows = [...m.entries()].map(([pid, goals]) => ({ pid, goals }));
   }
   rows.sort((a, b) => b.goals - a.goals);

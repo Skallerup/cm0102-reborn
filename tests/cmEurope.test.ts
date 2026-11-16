@@ -73,5 +73,35 @@ describe('Europa i originalens format', () => {
       expect(rep.home).toBe(orig.away);
       expect(new Date(rep.date).getUTCDay()).toBe(3);
     }
-  }, 600_000);
+    // (16/11, ejerens fund B12) næste sæsons turneringer i juni: CL's 1./2. kvalifikationsrunde trækkes 26/6-2002 (0x583c50 stage −1), før
+    // sæsonskiftet – CL-skærmen 27/6 viser 2002/03's kvalifikation, ikke den gamle finale
+    const clWinner = g.comps.CL.winner;
+    expect(clWinner).toBeDefined();
+    const run = (to: string) => { for (let i = 0; i < 80 && g.date < to; i++) { const r = continueGame(); if (r.match) quickPlayUserMatch(); } };
+    run('2002-06-25');
+    expect(g.comps.CL.meta?.year).toBe(2001);
+    run('2002-06-27');
+    expect(g.season).toBe(2001);
+    expect(g.comps.CL.meta?.year).toBe(2002);
+    expect(g.comps.CL.meta?.drawn).toHaveProperty('Q1', '2002-06-26');
+    expect(g.comps.CL.ties.filter((t) => t.stage === 'Q1').length).toBeGreaterThan(0);
+    expect(g.comps.CL.ties.some((t) => t.stage === 'F')).toBe(false);
+    expect(g.cmEuroPrev?.CL.winner).toBe(clWinner);
+    const newQ1 = Object.values(g.fixtures).filter((f) => f.comp === 'CL' && f.stage === 'Q1' && f.date >= '2002-06-26');
+    expect(newQ1.length).toBeGreaterThan(0);
+    expect(newQ1.every((f) => f.date === '2002-07-10' || f.date === '2002-07-17')).toBe(true);
+    expect(g.comps.UIC.meta?.year).toBe(2002);
+    // sæsonskiftet 1/7: den gamle sæsons historik (vinderen) er gemt, de nye turneringer og deres kampe (Intertoto 29/6) er de samme
+    const ties = g.comps.CL.ties.length;
+    run('2002-07-02');
+    expect(g.season).toBe(2002);
+    expect(g.cmEuroPrev).toBeUndefined();
+    expect(g.cmEuroNext).toBeUndefined();
+    expect(g.seasonHistory.at(-1)!.comps.find((c) => c.id === 'CL')?.winner).toBe(clWinner);
+    expect(g.comps.CL.meta?.year).toBe(2002);
+    expect(g.comps.CL.ties.length).toBe(ties);
+    expect(Object.values(g.fixtures).filter((f) => f.comp === 'CL' && f.stage === 'Q1').length).toBe(newQ1.length);
+    expect(Object.values(g.fixtures).some((f) => f.comp === 'UIC' && f.date === '2002-06-29' && f.result)).toBe(true);
+    expect(Object.values(g.fixtures).some((f) => f.comp === 'CL' && f.date < '2002-06-26')).toBe(false);
+  }, 900_000);
 });

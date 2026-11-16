@@ -32,12 +32,12 @@
 import type { Competition, Fixture, GameState, Tie } from './types';
 import { addDays } from './dates';
 import { rng } from './rng';
-import { addNews, gs } from './state';
+import { addNews, gs, indexFixture, unindexFixture } from './state';
 import { asOwner } from './humans';
 import { cmCalendarOn, cmPlaceFixture } from './cmCalendar';
 import { CM_EURO_DATES, CM_EURO_ROUNDS } from './data/cmEuroTables';
 import { CM_EURO_CFG, CM_NATION_COEF } from './data/cmEuroData';
-import { emptyRow, newFixture, sortTable } from './competitions';
+import { emptyRow, finalOrder, newFixture, sortTable } from './competitions';
 
 export const cmEuroOn = (g: GameState): boolean => cmCalendarOn(g);
 
@@ -128,7 +128,8 @@ interface Entrants { cl: number[][]; uefa: number[][]; uic: number[][] }
 
 function seedEuro(g: GameState, season: number, prevTables: Record<string, number[]>, cupWinners: Record<number, number>): Entrants {
   const s = uefaState(g, season);
-  const first = !g.seasonHistory?.length;
+  // første sæson (euro.cfg): spillets startsæson – ikke næste sæson, der oprettes i juni før det første sæsonskifte
+  const first = !g.seasonHistory?.length && season === g.season;
   const counts = new Map<number, [number, number]>();
   for (const p of Object.values(g.players)) {
     if (!p.club) continue;
@@ -210,7 +211,7 @@ function seedEuro(g: GameState, season: number, prevTables: Record<string, numbe
 // ---------------------------------------------------------------- opsætningen
 
 /** setupSeasonComps (newgame.ts) i ægte tilstand med den originale database: CL, UEFA Cup og Super Cup i originalens format */
-export function cmSetupEurope(season: number, prevTables: Record<string, number[]>, cupWinners: Record<number, number>): void {
+export function cmSetupEurope(season: number, prevTables: Record<string, number[]>, cupWinners: Record<number, number>, from?: string): void {
   const g = gs();
   const s = uefaState(g, season);
   // forrige sæsons vindere (Super Cup og titelforsvarerne); første sæson: databasens 2000/01-vindere
@@ -222,7 +223,7 @@ export function cmSetupEurope(season: number, prevTables: Record<string, number[
   const ent = seedEuro(g, season, prevTables, cupWinners);
   const mk = (id: string, name: string, clubs: number[], entry: Record<string, number[]>) => {
     const comp: Competition = { id, name, type: 'continental', nation: -1, tier: 0, clubs, table: [], ties: [], stage: '', finished: false, pending: 0,
-      meta: { cmEuro: id, year: season, step: 0, entry, drawn: {}, roundsTotal: STEPS[id].length } };
+      meta: { cmEuro: id, year: season, step: 0, entry, drawn: {}, roundsTotal: STEPS[id].length, ...(from ? { cmFrom: from } : {}) } };
     g.comps[id] = comp;
     return comp;
   };
@@ -235,6 +236,79 @@ export function cmSetupEurope(season: number, prevTables: Record<string, number[
     for (const c of ids) asOwner(c, () => addNews({ cat: 'match', key: 'comp.qualified', params: { club: g.clubs[c]?.name ?? '', comp: name }, link: { kind: 'club', id: c } }));
   }
   g.cmEuroCatchUp = true;
+}
+
+// ---------------------------------------------------------------- næste sæson i juni
+
+const EURO_IDS = ['CL', 'UEFA', 'UECL', 'ESC', 'UIC'];
+
+/** Næste sæsons første lodtrækning: CL's 1./2. kvalifikationsrunde (EuropeanCup 0x583c50 stage −1: 26/6-2002, 25/6-2003) eller Intertoto's 1. runde
+ *  (0x633300: 28/6-2002) – før sæsonskiftet 1/7 */
+export function cmEuroFirstDraw(year: number): string {
+  return [iso(year, dates(year, 'CLQ')[0][0]), iso(year, dates(year, 'UIC')[0][0])].sort()[0];
+}
+
+/** (16/11, ejerens fund B12) Originalen trækker næste sæsons CL-kvalifikation 26/6 – den nye sæsons turneringer findes altså før sæsonskiftet 1/7
+ *  (CL-skærmen viste 27/6-02 "Second Qualifying Phase" for 2002/03). Her oprettes de på dagen for den første lodtrækning (*estimeret*: hvornår
+ *  originalen opretter dem – tidligst landenes sæsonopdatering 20/6, senest lodtrækningen), med seedingen af de afsluttede ligaer og pokalvindere
+ *  som ved sæsonskiftet. Den gamle sæsons turneringer gemmes i `g.cmEuroPrev` til sæsonskiftet (cmEuroRolloverStart). Kaldes af newDay før cmEuroDay. */
+export function cmEuroNextSeason(g: GameState): void {
+  if (!cmEuroOn(g) || g.cmEuroPrev || g.cmEuroNext) return;
+  const cl = g.comps.CL;
+  if (!cl?.meta?.cmEuro || metaOf(cl).year !== g.season) return;
+  const year = g.season + 1;
+  if (g.date < cmEuroFirstDraw(year) || g.date >= `${year}-07-01`) return;
+  // de afsluttede ligaer og pokalvinderne (som seasonRollover – op-/nedrykningen er ikke sket endnu, men kun de bedste i de øverste rækker får pladser)
+  const prevTables: Record<string, number[]> = {};
+  for (const c of Object.values(g.comps)) if (c.type === 'league' && c.finished) prevTables[c.id] = finalOrder(c);
+  const cupWinners: Record<number, number> = {};
+  for (const c of Object.values(g.comps)) if (c.type === 'cup' && c.winner && c.nation >= 0 && !c.id.startsWith('SC-')) cupWinners[c.nation] = c.winner;
+  const prev: Record<string, Competition> = {};
+  for (const id of EURO_IDS) if (g.comps[id]) prev[id] = g.comps[id];
+  cmSetupEurope(year, prevTables, cupWinners, g.date);
+  g.cmEuroPrev = prev;
+  // intet at spille før i dag (lodtrækningerne sker i cmEuroDay samme dag)
+  g.cmEuroCatchUp = false;
+}
+
+const fromOf = (c: Competition) => (c.meta?.cmFrom as string | undefined) ?? '';
+/** kampen hører til turneringens sæson (de nye turneringer oprettet i juni deler id med den afsluttede sæsons kampe – CupClassic m.fl.) */
+export const cmInCompSeason = (c: Competition, f: Fixture): boolean => !c.meta?.cmFrom || f.date >= (c.meta.cmFrom as string);
+
+/** seasonRollover's start: den afsluttede sæsons turneringer tilbage i g.comps (priser, omdømme, historik, trofæer regnes af dem), de nye og deres
+ *  kampe til side, til setupSeasonComps (cmEuroRestoreNext) – sæsonskiftet rydder kampprogrammet */
+export function cmEuroRolloverStart(g: GameState): void {
+  const prev = g.cmEuroPrev;
+  if (!prev) return;
+  delete g.cmEuroPrev;
+  const comps: Record<string, Competition> = {};
+  for (const id of EURO_IDS) if (g.comps[id]) { comps[id] = g.comps[id]; delete g.comps[id]; }
+  Object.assign(g.comps, prev);
+  const fixtures: Fixture[] = [];
+  const mini: Record<number, import('./types').MiniReport> = {};
+  for (const f of Object.values(g.fixtures)) {
+    const c = comps[f.comp];
+    if (!c || f.date < fromOf(c)) continue;
+    fixtures.push(f);
+    delete g.fixtures[f.id];
+    unindexFixture(f.id, f.date);
+    const m = g.miniReports?.[f.id];
+    if (m) { mini[f.id] = m; delete g.miniReports![f.id]; }
+  }
+  g.cmEuroNext = { comps, fixtures, mini };
+}
+
+/** setupSeasonComps: de nye turneringer fra juni tilbage (i stedet for cmSetupEurope). false = ingen (opret dem som før) */
+export function cmEuroRestoreNext(g: GameState, season: number): boolean {
+  const n = g.cmEuroNext;
+  if (!n) return false;
+  delete g.cmEuroNext;
+  const any = n.comps.CL ?? Object.values(n.comps)[0];
+  if (!any || metaOf(any).year !== season) return false;
+  Object.assign(g.comps, n.comps);
+  for (const f of n.fixtures) { g.fixtures[f.id] = f; indexFixture(f.id, f.date); }
+  if (Object.keys(n.mini).length) Object.assign((g.miniReports ??= {}), n.mini);
+  return true;
 }
 
 // ---------------------------------------------------------------- dagen (Cup::update_for_date 0x51f890)

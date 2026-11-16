@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { authentic } from '../../game/rules';
 import { sortTable } from '../../game/competitions';
 import { hasMatchView } from '../../game/miniReport';
+import { cmInCompSeason } from '../../game/cmEurope';
 import type { Competition, Fixture } from '../../game/types';
 import { dateFmt, t } from '../../i18n';
 import { Tabs } from '../components';
@@ -95,7 +96,7 @@ function Groups({ comp }: { comp: Competition }) {
 function Days({ comp, played }: { comp: Competition; played: boolean }) {
   const g = useGame()!;
   const { nav } = useNav();
-  const list = useMemo(() => Object.values(g.fixtures).filter((f) => f.comp === comp.id && !!f.result === played).sort((a, b) => a.date.localeCompare(b.date)), [g, comp.id, played]);
+  const list = useMemo(() => Object.values(g.fixtures).filter((f) => f.comp === comp.id && cmInCompSeason(comp, f) && !!f.result === played).sort((a, b) => a.date.localeCompare(b.date)), [g, comp.id, played]);
   const dates = [...new Set(list.map((f) => f.date))];
   const [date, setDate] = useRouteState(`${played ? 'res' : 'fix'}:${comp.id}`, played ? dates[dates.length - 1] ?? '' : dates[0] ?? '');
   const cur = dates.includes(date) ? date : played ? dates[dates.length - 1] : dates[0];
@@ -157,7 +158,7 @@ function Schedule({ comp }: { comp: Competition }) {
   const g = useGame()!;
   const days = useMemo(() => {
     const m = new Map<string, string>();
-    for (const f of Object.values(g.fixtures).filter((x) => x.comp === comp.id).sort((a, b) => a.date.localeCompare(b.date))) if (!m.has(f.date)) m.set(f.date, stageLabel(f));
+    for (const f of Object.values(g.fixtures).filter((x) => x.comp === comp.id && cmInCompSeason(comp, x)).sort((a, b) => a.date.localeCompare(b.date))) if (!m.has(f.date)) m.set(f.date, stageLabel(f));
     return [...m];
   }, [g, comp.id]);
   if (!days.length) return <div className="cx-empty cx-empty-mid">{t('cl.cup.noFixtures')}</div>;
@@ -189,7 +190,7 @@ function Form({ comp }: { comp: Competition }) {
   const g = useGame()!;
   const rows = useMemo(() => {
     const by = new Map<number, { pts: number; gd: number; form: string[] }>(comp.clubs.map((id) => [id, { pts: 0, gd: 0, form: [] }]));
-    for (const f of Object.values(g.fixtures).filter((x) => x.comp === comp.id && x.result).sort((a, b) => a.date.localeCompare(b.date))) {
+    for (const f of Object.values(g.fixtures).filter((x) => x.comp === comp.id && cmInCompSeason(comp, x) && x.result).sort((a, b) => a.date.localeCompare(b.date))) {
       const r = f.result!;
       for (const [id, gf, ga] of [[f.home, r.hg, r.ag], [f.away, r.ag, r.hg]] as const) {
         const e = by.get(id) ?? { pts: 0, gd: 0, form: [] };

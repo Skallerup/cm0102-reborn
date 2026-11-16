@@ -36,6 +36,7 @@ import { subPos } from './data/cm0102';
 import { asOwner, forEachHuman, isHumanClub } from './humans';
 import { econ } from './econ';
 import { extended } from './rules';
+import { cmEuroRolloverStart } from './cmEurope';
 
 const pname = (p: Player) => `${p.first} ${p.last}`.trim();
 
@@ -641,6 +642,8 @@ function prune() {
 /** Kaldes 1. juli */
 export function seasonRollover() {
   const g = gs();
+  // den afsluttede sæsons europæiske turneringer tilbage (de nye blev oprettet i juni – cmEurope.ts)
+  cmEuroRolloverStart(g);
   cmBeforeRollover(g);
   seasonPrizeMoney();
   const cmAw = cmAwOn(g);

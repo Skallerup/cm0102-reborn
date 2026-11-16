@@ -54,7 +54,7 @@ import { knowledgeAfterMatch, scoutDaily } from './scouting';
 import { cmCalendarDay } from './cmCalendar';
 import { cmFinanceDay, cmFinOn, cmMatchIncome, GBP as CM_GBP } from './cmFinance';
 import { fixtureCodesOf, gameCrowd } from './engine/grid/gameInputs';
-import { cmEuroCatchUp, cmEuroDay, cmEuroPlayDay } from './cmEurope';
+import { cmEuroCatchUp, cmEuroDay, cmEuroNextSeason, cmEuroPlayDay } from './cmEurope';
 import { compHooks } from './hooks';
 import { cmCmOn, cmContractManagerDay } from './cmContractManager';
 import { cmValuesDaily } from './cmValueGame';
@@ -559,7 +559,9 @@ function newDay() {
   cmSquadPlanDaily(g);
   // League::update_for_date 0x6847c0: tv-flytningerne 4 uger frem (cmCalendar.ts – originalens skema for de engelske ligaer)
   cmCalendarDay(g);
-  // (runde 10C) Europas lodtrækninger på deres dato (Cup::update_for_date 0x51f890 – cmEurope.ts)
+  // (runde 10C) Europas lodtrækninger på deres dato (Cup::update_for_date 0x51f890 – cmEurope.ts); næste sæsons turneringer fra den første
+  // lodtrækning i juni (CL-kvalifikationen 26/6 – før sæsonskiftet)
+  cmEuroNextSeason(g);
   cmEuroDay(g);
   cmFitDay(g);
   cmPermitDaily(g);

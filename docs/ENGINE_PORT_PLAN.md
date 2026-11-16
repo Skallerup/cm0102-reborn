@@ -1864,3 +1864,13 @@ for alle databaser. Det mangler, i rækkefølge:
   (0x754a30-køen, 0x72c1f0/0x744240/0x733a60/0x735870/0x741020/0x736c00/0x73e870/0x74b060 – kortlagt i noten), Fine 0x5a5980 og AWOL
   0x4190d0/0x41a360/0x419840 (de kalder ikke 0x544710 – kun staffState/forhold), skadernes nyheder 0x630ee0, managerens/formandens historik og
   omdømme i Staff_Records, stadionets +0x44 og forlængelsestilbuddene 0x4cda70 ved mesterskab/op-/nedrykning. World-filerne skal ikke genbygges.
+- 2026-11-16 – **Kalender: Norge 1. division og USA, næste sæsons Europa i juni** (ORIGINAL_PARITY.md punkt 12–13). NorFirst::create_schedule 0x790040
+  tæller ligaens klubber (personerne [0xae23b4] à 0x245, +0x57 → ligaen [0x9cf6c0]): 16 → 30 runder, ellers 26 – `gen_all.py` har `PRE` (lægger 16
+  klubber i unicorn-hukommelsen og rydder bagefter); UsaMls 0x9072d0 stage −1 = 32 runder (stage −2/−3 = 22/12 rækker, ikke brugt af ligaen; klassen
+  laver selv kampene 0x908xxx – ikke porteret) → `CM_LEAGUE_CUT` (cmCalendar.ts: tredobbelt turnering stoppet efter 32 runder, kun med originalens
+  kalender). 36 klasser, de 34 gamle uændrede ved genkørslen; tests/fixtures/cm-schedules.json +32 nøgler. Fundet: originalens ligaklasser (exe'ens
+  `comp\leagues\*.cpp`) har ingen Tjekkiet/Østrig/Schweiz/Mexico. Ikke porteret: AusNsl 0x4111a0 (24 rækker + 10 slutspil for 14 klubber; rundefølgen
+  League::create_fixtures 0x6835c0 → 0x68a030 genbruger rækker med rand(4)) og PolFirst 0x7c8df0 (grupper à 8 i begge faser). **Europa:** `cmEuroNextSeason`
+  opretter næste sæsons turneringer på dagen for den første lodtrækning (CL Q1/Q2 26/6-2002 – *estimeret* tidspunkt), den gamle sæson i `g.cmEuroPrev`
+  til seasonRollover (`cmEuroRolloverStart`/`cmEuroRestoreNext` – de nye kampe holdes uden for prune og historikken); seedingens "første sæson" (euro.cfg)
+  er nu kun spillets startsæson.

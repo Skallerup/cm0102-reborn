@@ -35,7 +35,9 @@ const full = (pid: number) => { const p = gs().players[pid]; return p ? `${p.fir
 export const initialName = (n: string) => { const parts = n.split(' '); return parts.length > 1 ? `${parts[0][0]}.${parts.slice(1).join(' ')}` : n; };
 
 export function compFixtures(comp: Competition, g: GameState = gs()): Fixture[] {
-  return Object.values(g.fixtures).filter((f) => f.comp === comp.id && f.result).sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id);
+  // (16/11) næste sæsons europæiske turneringer oprettes i juni og deler id med den afsluttede sæsons kampe (cmEurope.ts – meta.cmFrom)
+  const from = (comp.meta?.cmFrom as string | undefined) ?? '';
+  return Object.values(g.fixtures).filter((f) => f.comp === comp.id && f.result && f.date >= from).sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id);
 }
 
 /** Sæsonens rekorder for en turnering */
