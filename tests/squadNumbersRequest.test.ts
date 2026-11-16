@@ -37,7 +37,8 @@ describe('Squad Numbers-beskeden', () => {
   it('sendes automatisk, hvis klubben skal spille, før der er svaret', () => {
     start(8);
     const g = gs();
-    until(() => Object.values(g.fixtures).some((f) => f.result && (f.home === g.userClub || f.away === g.userClub)));
+    // første TÆLLENDE kamp efter beskeden 4/8 (forsæsonens venskabskampe/turné spilles før – menneskets klub er med i forkørslen)
+    until(() => g.date > '2001-08-04' && Object.values(g.fixtures).some((f) => f.result && f.date > '2001-08-04' && !f.comp.startsWith('FR') && (f.home === g.userClub || f.away === g.userClub)));
     expect(squadNumbersDue(g.userClub)).toBe(false);
     expect(g.news.find((x) => x.key === 'sqn.request')?.params.done).toBe(1);
   }, 120_000);
