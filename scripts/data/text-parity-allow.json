@@ -404,6 +404,42 @@
     {
       "regex": "^cxs\\.hint\\.",
       "reason": "Startmenuens små forklaringer under felterne (ejerens ønske 16/11, CM Reborn-tilføjelse)"
+    },
+    {
+      "regex": "^bid\\.",
+      "reason": "BidModal (PlayerScreen.tsx): kun det moderne udseende og udvidet tilstand (PlayerClassic åbner den kun med extended(); ægte tilstand bruger BidPanel/cl.bid.*)"
+    },
+    {
+      "regex": "^board\\.(c|exp|project|requestOk|requestNo|kind|warning|sackedSeason|delighted|dividend|takeover)([.]|$)",
+      "reason": "board.ts (spillets egen bestyrelse) er slået fra i ægte tilstand med den originale database: cmBoardOn (cmBoardGame.ts) erstatter boardAfterMatch/boardMonthly/boardSeasonEnd/setBoardExpectation, meetBoard svarer med originalens tekster, rules2001.boardEventsSeason og finance.ts-udbyttet er cmActive/cmFinOn-gatede"
+    },
+    {
+      "regex": "^cl\\.ba\\.(conf|fin|fans|expect|warnings)",
+      "reason": "Spillets egen Board Confidence-udtalelse: Board.tsx boardStatement() bruger originalens tekst (cmBoardScreenText) og returnerer [] i ægte tilstand"
+    },
+    {
+      "regex": "^transfer\\.(digest|digestOne|loanOptionBid|optionExercised|talksOver|aiRaised)$",
+      "reason": "Kun udvidet tilstand: weeklyTransferDigest og aiLoanOptions kører kun med extended() (sim.ts), rebid() kun fra BidModal, respondToOffers gamle gren er forbi cmRespond (cmActive)"
+    },
+    {
+      "regex": "^will\\.(complain|unsettled|contractDemand|leak|demandWantsAway|cliqueUnrest|promiseKept|promiseBrokenTime|targetUpset|targetRequest)",
+      "reason": "Kun udvidet tilstand: will.ts kører ugentligt/månedligt kun med extended() (sim.ts), targetReaction er slået fra med cmActive"
+    },
+    {
+      "regex": "^staff\\.(result\\.|bid|sendOffer$|offer|demand$|explain|buyOut$|poach|source|onlyWilling$|mine$|otherClubs$|hire$|hireBtn$|limit$|noManagerHire$|noMoney$|judging)",
+      "reason": "Staff.tsx/StaffList og game/staff.ts-ansættelsen: ægte tilstand med den originale database bruger StaffClassic/cmStaff (Shell: ClassicStaffProfile/ClubScreen), ikke den moderne ansættelsesskærm"
+    },
+    {
+      "regex": "^scout\\.(clubs|criteriaBtn|dur|explain|focus|found|foundHint|home|maskingOff|noFinds|none|onlyFinds|regions|send|short|showUnreal|status|wellKnown|assignments)",
+      "reason": "Scouting.tsx vises ikke i ægte tilstand med den originale database (Shell: cmActive → Transfers scout1, originalens Scout #n)"
+    },
+    {
+      "regex": "^injury\\.(hamstring|back|cruciate|cmNew|lightTraining\\.body)$",
+      "reason": "Spillets egen skadesmodel: i ægte tilstand med den originale database bruger cmFitness originalens 82 skadestyper (injury.cm0-81) og nyhederne injury.o.h*"
+    },
+    {
+      "regex": "^tr\\.(bidsOnPlayer|noRealistic|noRealisticMaybe|showMaybe|showAll|prevFilters|usePrev|anyPos|anyValue|anyNation|anyLeague|free|listedOnly|expiring|knownOnly|incoming|outgoing|loanOption|rival|sctTip|f\\.(more|less|active|attrHint|money|interested|notLoaned|noTrouble|noInjured|tier|tier1|shortlist))$",
+      "reason": "Transfers.tsx moderne søgeskærm (efter if (classic) return), Offers/Deals (ikke på Player & Staff Search i ægte tilstand) og IncomingOffersFor (!authentic()); det klassiske filter viser de udvidede rækker kun med ext = !authentic() (TransfersClassic.tsx:221)"
     }
   ]
 }

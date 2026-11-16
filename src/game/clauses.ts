@@ -104,7 +104,7 @@ function pay(from: Club | undefined, to: Club | undefined, amount: number) {
 }
 
 /** Ved et salg: betal videresalgsprocent til den tidligere klub. Kaldes før spilleren skifter klub. */
-export function settleSellOn(p: Player, fee: number, seller: Club | undefined, min = 0) {
+export function settleSellOn(p: Player, fee: number, seller: Club | undefined, min = 0, buyer?: Club) {
   const g = gs();
   const so = p.sellOn;
   if (!so) return;
@@ -115,8 +115,10 @@ export function settleSellOn(p: Player, fee: number, seller: Club | undefined, m
   // CM 01/02 0x8cb0f0: beløb under £1000 betales ikke (min)
   if (!amount || !to || amount < min) return;
   pay(seller, to, amount);
-  if (isHumanClub(to.id)) asOwner(to.id, () => addNews({ cat: 'finance', key: 'clause.sellOnPaid', params: { player: pname(p), club: seller.name, pct: so.pct, fee: amount }, link: { kind: 'player', id: p.id } }));
-  if (isHumanClub(seller.id)) asOwner(seller.id, () => addNews({ cat: 'finance', key: 'clause.sellOnOwed', params: { player: pname(p), club: to.name, pct: so.pct, fee: amount }, link: { kind: 'player', id: p.id } }));
+  // CM 01/02: "[klub] get N% of [spiller]'s transfer fee" – samme nyhed for modtageren og for den, der betaler
+  const news = () => addNews({ cat: 'finance', key: 'clause.sellOnPaid', params: { player: pname(p), club: to.name, pct: so.pct, fee: amount, from: seller.name, to: buyer?.name ?? '' }, link: { kind: 'player', id: p.id } });
+  if (isHumanClub(to.id)) asOwner(to.id, news);
+  if (isHumanClub(seller.id) && seller.id !== to.id) asOwner(seller.id, news);
 }
 
 /** Efter hver kamp: kamp- og målbonusser (kun kontrakter med bonusser) og nedtælling af add-ons */

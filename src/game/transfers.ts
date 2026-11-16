@@ -239,12 +239,12 @@ export function sellerDecision(p: Player, fee: number, buyer: Club): { answer: S
  * Med den originale database afgøres modtagerne af originalens regel (cmNewsScope.ts: 0x8dbef0/0x8d1130); ellers et skøn (eget land, udlandet
  * over 8 mio. – *estimeret*).
  */
-function originalTransferNews(p: Player, buyer: Club, seller: Club | undefined, fee: number, loan: boolean, addOn?: number, o?: TransferOffer): boolean {
+function originalTransferNews(p: Player, buyer: Club, seller: Club | undefined, fee: number, loan: boolean, addOn?: number, o?: TransferOffer, own = false): boolean {
   const g = gs();
   const me = g.clubs[g.userClub];
-  if (loan || (g.options.transferNews ?? 'big') === 'own') return false;
+  if (loan || (!own && (g.options.transferNews ?? 'big') === 'own')) return false;
   if (cmActive(g)) {
-    if (!transferNewsToMe(g, p, buyer, { seller, fee, addOn, swap: o?.swap, offerId: o?.id })) return false;
+    if (!own && !transferNewsToMe(g, p, buyer, { seller, fee, addOn, swap: o?.swap, offerId: o?.id })) return false;
   } else {
     if (!me) return false;
     const home = buyer.nation === me.nation || seller?.nation === me.nation;
@@ -485,7 +485,7 @@ export function respondToOffer(id: number, action: 'accept' | 'reject' | 'counte
       const step = o.priceRounds === 1 ? 0.6 : 1;
       o.fee = roundValue(Math.min(max, o.fee + (max - o.fee) * step));
       o.respondBy = addDays(g.date, 3);
-      addNews({ cat: 'transfer', key: o.fee >= max ? 'transfer.aiFinalOffer' : 'transfer.aiRaised', params: { club: buyer.name, player: pname(p), fee: o.fee }, link: { kind: 'offer', id: o.id } });
+      addNews({ cat: 'transfer', key: o.fee >= max ? 'transfer.aiFinalOffer' : 'transfer.aiRaised', params: { club: buyer.name, player: pname(p), last: p.last || pname(p), fee: o.fee }, link: { kind: 'offer', id: o.id } });
       return;
     }
   }
@@ -567,7 +567,7 @@ function cmReviewHumanCounter(o: TransferOffer): void {
   o.final = true;
   o.status = 'pending';
   o.respondBy = addDays(g.date, 3);
-  asOwner(o.seller, () => addNews({ cat: 'transfer', key: 'transfer.aiFinalOffer', params: { club: buyer.name, player: pname(p), fee: o.fee }, link: { kind: 'offer', id: o.id } }));
+  asOwner(o.seller, () => addNews({ cat: 'transfer', key: 'transfer.aiFinalOffer', params: { club: buyer.name, player: pname(p), last: p.last || pname(p), fee: o.fee }, link: { kind: 'offer', id: o.id } }));
 }
 
 /** Kontraktforhandling: brugeren tilbyder løn og længde */
@@ -712,8 +712,8 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
   } else {
     const cm = cmActive(g) && !!seller;
     // en tidligere klub kan have krav på en del af fortjenesten (CM 01/02 0x8cb0f0: procent af hele summen + bytte-spillernes værdi, ≥ £1000)
-    if (cm) { if (p.sellOn) settleSellOn(p, o.fee + (o.swap ?? []).reduce((s2, id) => s2 + (g.players[id]?.value ?? 0), 0), seller, fromGbp(1000)); }
-    else if (o.fee > 0) settleSellOn(p, o.fee, seller);
+    if (cm) { if (p.sellOn) settleSellOn(p, o.fee + (o.swap ?? []).reduce((s2, id) => s2 + (g.players[id]?.value ?? 0), 0), seller, fromGbp(1000), buyer); }
+    else if (o.fee > 0) settleSellOn(p, o.fee, seller, 0, buyer);
     // CM 01/02 0x8ca8a0: med rater betales første rate nu (transferbudgettet trækkes for hele summen, *estimeret*)
     const now = cm ? cmBookClauses(o, p, buyer, seller!) : o.fee;
     buyer.balance -= now;
@@ -1395,7 +1395,7 @@ export function aiPursuits() {
     g.offers.push(o);
     noteInterest(o.buyer, o.player);
     asOwner(p.club, () => {
-      addNews({ cat: 'transfer', key: pu.tries === 0 ? 'transfer.incomingBid' : 'transfer.pursuitReturn', params: { club: club.name, player: pname(p), fee, n: pu.tries + 1 }, link: { kind: 'offer', id: o.id } });
+      addNews({ cat: 'transfer', key: 'transfer.incomingBid', params: { club: club.name, player: pname(p), fee, n: pu.tries + 1 }, link: { kind: 'offer', id: o.id } });
       // en ambitiøs spiller bliver urolig, når en større klub bliver ved med at banke på
       const own = g.clubs[p.club];
       if (pu.tries >= 2 && own && club.rep >= own.rep + 8 && p.attrs[42] >= 14 && !p.wantsAway) {

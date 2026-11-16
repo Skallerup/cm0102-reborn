@@ -179,7 +179,7 @@ export function sackUser(key: string) {
   const g = gs();
   const club = g.clubs[g.userClub];
   if (!club) return;
-  addNews({ cat: 'job', key, params: { club: club.name } });
+  addNews({ cat: 'job', key, params: { club: club.name, manager: g.manager.name } });
   g.manager.sacked++;
   g.manager.sackedBy = [...(g.manager.sackedBy ?? []), club.id].slice(-10);
   g.manager.rep = clamp(g.manager.rep - 8, 1, 100);

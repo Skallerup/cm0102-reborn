@@ -375,7 +375,7 @@ function boardNews(g: GameState, _env: BoardEnv, n: BoardNews): void {
       // fyringen uden besked (ejerens test 16/11: fyret på ferie uden nyhed). runUntil stopper ferien, når klubben er væk.
       if (n.manager.human) {
         if (n.manager.id === HUMAN0) {
-          addNews({ cat: 'job', key: n.type === 2 ? 'job.resigned' : 'board.sacked', params: { club: clubName(n.club) } });
+          addNews({ cat: 'job', key: n.type === 2 ? 'job.resigned' : 'board.sacked', params: { club: clubName(n.club), manager: g.manager.name } });
           // klubbens historik (Staff_Records, type 150): fyret – læses af 0x69ca00 (dismissedBy)
           if (n.type !== 2) g.manager.cmDismissed = { ...g.manager.cmDismissed, [n.club]: g.date };
         }

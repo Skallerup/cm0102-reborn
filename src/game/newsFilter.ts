@@ -9,6 +9,7 @@ export const ORIGINAL_OFF_NEWS: readonly string[] = [
   'res.win', 'res.draw', 'res.loss', // reservekampenes resultater som nyhed
   'intl.p.scored', 'intl.p.hattrick', // enkeltmål for landsholdet
   'intl.start.', 'intl.qual.start.', 'intl.qual.done.', 'intl.winner.', // turneringsnyheder i vores formulering
+  'transfer.swapPart', 'clause.releaseTriggered', 'clause.releaseDeclined', 'will.praise.', 'contract.expiring', // "X moves … as part of the swap deal" (hovedhandlen har originalens nyhed), computerens udløsning af frigivelsesklausuler (aiReleaseClauses – originalens bud kommer via ønskelisterne), spillernes rosende nyheder, "contract expires this summer" (originalen har 12/6/3/2/1 måneders påmindelser, scout.contractReminder)
   'news.scoutTalent', 'news.scoutReturned', 'youth.debut', 'news.reservesPromoted', 'board.wasteWage', 'board.overWage', 'board.meeting',
 ];
 

@@ -37,7 +37,15 @@ function norm(s: string): string {
 function loadBlob(): string {
   const raw = gunzipSync(readFileSync(join(DATA, 'cm0102-strings.txt.gz'))).toString('latin1');
   const out: string[] = [];
-  for (const line of raw.split('\n')) {
+  // pladsholderens eksempel kan indeholde linjeskift ("<%s - wage amount(e.g.\n 20000)> p/w") – `strings` deler strengen der
+  const rawLines = raw.split('\n');
+  const lines: string[] = [];
+  for (let i = 0; i < rawLines.length; i++) {
+    let l = rawLines[i];
+    for (let n = 0; n < 2 && i + 1 < rawLines.length && l.lastIndexOf('<') > l.lastIndexOf('>') && /<%/.test(l.slice(l.lastIndexOf('<'))); n++) l += ' ' + rawLines[++i];
+    lines.push(l);
+  }
+  for (const line of lines) {
     const t = line
       .replace(/<[^<>]*>/g, ' ') // <%s - Club Name (eg. Everton)>
       .replace(/\{\w*\}/g, ' ') // {}, {s}, {b} (stil-koder)
@@ -56,18 +64,65 @@ function walk(dir: string, out: string[] = []): string[] {
   return out;
 }
 
-/** Nøgler, som koden refererer: bogstaveligt eller via et præfiks (`'cl.x.' + n`, `\`cl.x.${n}\``) */
-function referencedKeys(keys: string[]): Set<string> {
-  const src = walk(join(ROOT, 'src')).map((f) => readFileSync(f, 'utf8')).join('\n');
-  const prefixes = new Set<string>();
-  for (const m of src.matchAll(/['"`]([A-Za-z][\w.]*\.)(?:\$\{|['"`]\s*\+)/g)) prefixes.add(m[1]);
-  for (const m of src.matchAll(/['"`]([A-Za-z][\w]*\.[\w.]*?)['"`]\s*\+/g)) prefixes.add(m[1]);
-  const pl = [...prefixes];
-  const ref = new Set<string>();
-  for (const k of keys) {
-    if (src.includes(k) || pl.some((p) => k.startsWith(p))) ref.add(k);
+/** Kildekoden pr. fil som blokke (én pr. deklaration i kolonne 0), uden importlinjer */
+interface Block { file: string; name: string; text: string }
+function sourceBlocks(): { blocks: Block[]; rest: string } {
+  const blocks: Block[] = [];
+  let rest = '';
+  for (const f of walk(join(ROOT, 'src'))) {
+    const src = readFileSync(f, 'utf8').replace(/^import[\s\S]*?from\s+['"][^'"]+['"];?/gm, (m) => '\n'.repeat(m.split('\n').length - 1));
+    let cur: Block | null = null;
+    for (const line of src.split('\n')) {
+      const m = /^(?:export\s+)?(?:default\s+)?(?:async\s+)?(?:function|const|let|class)\s+([A-Za-z_]\w*)/.exec(line);
+      if (m) { cur = { file: f, name: m[1], text: '' }; blocks.push(cur); }
+      if (cur) cur.text += line + '\n'; else rest += line + '\n';
+    }
   }
-  return ref;
+  return { blocks, rest };
+}
+
+/**
+ * Funktioner, der kun nås fra det moderne udseende (slået fra: MODERN_ENABLED = false i ui/modernFlag.ts – kun gamle udvidede gemte spil):
+ * `Modern*`-komponenterne og alt, hvis eneste forekomster ligger i sådanne funktioner (fastpunkt over funktionsnavne i src/).
+ */
+function modernOnlyFunctions(blocks: Block[]): Set<string> {
+  const names = [...new Set(blocks.map((b) => b.name))];
+  const refs = new Map<string, Set<number>>(); // navn → de blokke, der nævner det
+  const known = new Set(names);
+  blocks.forEach((b, i) => {
+    for (const id of new Set(b.text.match(/[A-Za-z_]\w*/g) ?? [])) if (id !== b.name && known.has(id)) (refs.get(id) ?? refs.set(id, new Set()).get(id)!).add(i);
+  });
+  const m = new Set(names.filter((n) => /^Modern[A-Z]/.test(n)));
+  for (let changed = true; changed;) {
+    changed = false;
+    for (const n of names) {
+      if (m.has(n)) continue;
+      const r = refs.get(n);
+      if (!r || !r.size) continue;
+      if ([...r].every((i) => m.has(blocks[i].name))) { m.add(n); changed = true; }
+    }
+  }
+  return m;
+}
+
+/** Nøgler, som koden refererer: bogstaveligt eller via et præfiks (`'cl.x.' + n`, `\`cl.x.${n}\``). `live` = ikke kun fra det moderne udseende. */
+function referencedKeys(keys: string[]): { all: Set<string>; live: Set<string> } {
+  const { blocks, rest } = sourceBlocks();
+  const m = modernOnlyFunctions(blocks);
+  const make = (src: string, only?: Set<string>) => {
+    const prefixes = new Set<string>();
+    for (const x of src.matchAll(/['"`]([A-Za-z][\w.]*\.)(?:\$\{|['"`]\s*\+)/g)) prefixes.add(x[1]);
+    for (const x of src.matchAll(/['"`]([A-Za-z][\w]*\.[\w.]*?)['"`]\s*\+/g)) prefixes.add(x[1]);
+    const pl = [...prefixes];
+    // bogstavelige nøgler: alle punktum-adskilte navne i koden (og deres foranstillede dele) – hurtigere end src.includes pr. nøgle
+    const toks = new Set<string>();
+    for (const x of src.matchAll(/[A-Za-z][\w-]*(?:\.[\w-]+)+/g)) { let s = x[0]; for (;;) { toks.add(s); const i = s.lastIndexOf('.'); if (i < 0) break; s = s.slice(0, i); } }
+    const ref = new Set<string>();
+    for (const k of keys) if ((!only || only.has(k)) && (toks.has(k) || pl.some((p) => k.startsWith(p)) || src.includes(k))) ref.add(k);
+    return ref;
+  };
+  const all = make(rest + blocks.map((b) => b.text).join(''));
+  return { all, live: make(rest + blocks.filter((b) => !m.has(b.name)).map((b) => b.text).join(''), all) };
 }
 
 export interface Result {
@@ -75,6 +130,8 @@ export interface Result {
   checked: number;
   allowed: number;
   unreferenced: number;
+  /** kun refereret fra det moderne udseende (udvidet tilstand, slået fra) */
+  modernOnly: number;
   original: number;
   /** ikke-originale: nøgle → tekst */
   non: Record<string, string>;
@@ -87,18 +144,20 @@ export function analyze(): Result {
   const blob = loadBlob();
   const pats = allow.patterns.map((p) => new RegExp(p.regex));
   const keys = Object.keys(en);
-  const refd = referencedKeys(keys);
-  const res: Result = { total: keys.length, checked: 0, allowed: 0, unreferenced: 0, original: 0, non: {}, areas: {} };
+  const { all: refd, live } = referencedKeys(keys);
+  const res: Result = { total: keys.length, checked: 0, allowed: 0, unreferenced: 0, modernOnly: 0, original: 0, non: {}, areas: {} };
   for (const k of keys) {
     if (allow.prefixes.some((p) => k.startsWith(p.prefix)) || allow.keys.some((a) => a.key === k) || pats.some((r) => r.test(k))) { res.allowed++; continue; }
     if (!refd.has(k)) { res.unreferenced++; continue; }
+    if (!live.has(k)) { res.modernOnly++; continue; }
     // nyheder, der ikke sendes i ægte tilstand (src/game/newsFilter.ts), og deres brødtekster/varianter
     if (ORIGINAL_OFF_NEWS.some((o) => (o.endsWith('.') ? k.startsWith(o) : k === o || k.startsWith(o + '.')))) { res.allowed++; continue; }
     const text = en[k];
     const letters = (text.match(/\p{L}/gu) || []).length;
     if (letters < allow.minLetters) { res.allowed++; continue; }
     res.checked++;
-    const segs = text.split(/\{[^}]*\}/).map(norm).filter((s) => s.length > 0);
+    // genitiv efter en pladsholder ("{player}'s loan") = originalens "<navn>{s} loan" (blob'en tømmer {s})
+    const segs = text.replace(/\b\d+\b/g, '{n}').replace(/(\{[^}]*\})['’]s\b/g, '$1').replace(/(\{[^}]*\})\s*p\/w\b/g, '$1').split(/\{[^}]*\}/).map(norm).filter((s) => s.length > 0);
     if (!segs.length) { res.allowed++; res.checked--; continue; }
     if (found(blob, segs)) { res.original++; continue; }
     res.non[k] = text;
@@ -142,7 +201,7 @@ function main() {
     for (const [k, v] of Object.entries(r.non)) if (k.startsWith(p)) console.log(k + '\t' + v.replace(/\n/g, ' / '));
     return;
   }
-  console.log(`Nøgler: ${r.total} · uden for ægte tilstand (allow-liste/ingen bogstaver): ${r.allowed} · ikke refereret i koden: ${r.unreferenced}`);
+  console.log(`Nøgler: ${r.total} · uden for ægte tilstand (allow-liste/ingen bogstaver): ${r.allowed} · ikke refereret i koden: ${r.unreferenced} · kun i det moderne udseende (udvidet): ${r.modernOnly}`);
   console.log(`Tjekket: ${r.checked} · findes i exe'ens strenge: ${r.original} · IKKE originale: ${nonCount}`);
   console.log('Pr. område:');
   for (const [a, n] of Object.entries(r.areas).sort((x, y) => y[1] - x[1])) console.log('  ' + a.padEnd(12) + n);
