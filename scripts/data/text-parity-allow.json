@@ -356,6 +356,10 @@
     {
       "prefix": "rumour.",
       "reason": "Rygter – slået fra i ægte tilstand"
+    },
+    {
+      "prefix": "help.",
+      "reason": "Info-popups (<Info topic>) og Help-skærmen bruges kun af det moderne udseende/udvidet tilstand: PlayerScreen, Tactics, Board, Transfers, Scouting, Finance, Training, Press og modern-delen af Club.tsx (MODERN_ENABLED = false)"
     }
   ],
   "keys": [
@@ -366,6 +370,270 @@
     {
       "key": "cxs.network",
       "reason": "Network Play omdøbt til Online Multiplayer (ejerens ønske 16/11)"
+    },
+    {
+      "key": "cl.continue",
+      "reason": "set på originalens skærm (billede ~/cm0102-engine/work-ui/owner-1116/generelt-image32.jpg, højre halvdel: sidebjælkens \"Continue Game\")"
+    },
+    {
+      "key": "cl.nations",
+      "reason": "set på originalens skærm (billede ~/cm0102-engine/work-ui/owner-1116/generelt-image32.jpg: sidebjælkens \"Nations & Clubs\")"
+    },
+    {
+      "key": "cl.options",
+      "reason": "set på originalens skærm (billede ~/cm0102-engine/work-ui/owner-1116/generelt-image32.jpg: sidebjælkens \"Game Options\")"
+    },
+    {
+      "key": "cl.youHaveNews",
+      "reason": "set på originalens skærm (billede ~/cm0102-engine/work-ui/owner-1116/generelt-image32.jpg: \"You Have News\" nederst i sidebjælken)"
+    },
+    {
+      "key": "cl.it.name.euro",
+      "reason": "set på originalens skærm (billede ~/cm0102-engine/work-ui/owner-1116/generelt-image32.jpg: titel \"UEFA European Championship\")"
+    },
+    {
+      "key": "cl.it.name.olympic",
+      "reason": "set på originalens skærm (billede ~/cm0102-engine/work-ui/owner-1116/generelt-image7.jpg, højre halvdel: titel \"Football at the Summer Olympics\")"
+    },
+    {
+      "key": "cl.it.name.copa",
+      "reason": "set på originalens skærm (billede ~/cm0102-engine/work-ui/r4/39.png: \"Scout M.Brown assigned to Copa América\")"
+    },
+    {
+      "key": "cl.pl.born",
+      "reason": "set på originalens skærm (billede ~/cm0102-engine/work-ui/r4/45.png: \"Born 12.3.67 (Age 34). Finnish (7 caps/1 goal).\" – originalen sætter linjen af flere strenge i exe'en)"
+    },
+    {
+      "key": "cl.bid.boardNothing",
+      "reason": "set på originalens skærm (billede ~/cm0102-engine/work-ui/owner-1116/generelt-image18.jpg, højre halvdel: \"Your board will only allow transfer fees up to £75,000 because they don't know anything about this player.\")"
+    },
+    {
+      "key": "cl.tn.adv",
+      "reason": "Træningsrådet (\"Adv\") vises ikke i ægte tilstand: TrainingClassic.tsx `if (orig) return null`"
+    },
+    {
+      "key": "cl.tn.moveHint",
+      "reason": "Kun udvidet: TrainingClassic.tsx `!authentic()`"
+    },
+    {
+      "key": "cl.md.hint",
+      "reason": "Kun udvidet: MatchDayClassic.tsx `!authentic()`"
+    },
+    {
+      "key": "cl.sq.selHint",
+      "reason": "Tooltip kun udvidet: SquadClassic.tsx `orig ? undefined : t(...)`"
+    },
+    {
+      "key": "cl.sq.filtered",
+      "reason": "Kun udvidet: SquadClassic.tsx `!orig`"
+    },
+    {
+      "key": "cl.sq.pickSlot",
+      "reason": "Kun udvidet: SquadClassic.tsx `armedTarget && !orig`"
+    },
+    {
+      "key": "cl.sl.hint",
+      "reason": "Kun udvidet (eller Network Play): GameOptionsClassic.tsx `!authentic() || humans`"
+    },
+    {
+      "key": "cl.hol.match",
+      "reason": "Ferie til næste kamp: kun udvidet – classicOptions.tsx skjuler menupunktet `hol2` med authentic()"
+    },
+    {
+      "key": "cl.hol.untilNext",
+      "reason": "Kun via hol2 (kun udvidet): Shell.tsx askHoliday(untilMatch)"
+    },
+    {
+      "key": "cl.hol.noMatch",
+      "reason": "Kun via hol2 (kun udvidet): Shell.tsx askHoliday(untilMatch)"
+    },
+    {
+      "key": "cl.hol.qMatch",
+      "reason": "Kun via hol2 (kun udvidet): Shell.tsx"
+    },
+    {
+      "key": "cl.run.season",
+      "reason": "Kun udvidet: Shell.tsx `&& !authentic()`"
+    },
+    {
+      "key": "cl.bid.feeEq",
+      "reason": "Tooltip kun udvidet: TransferStatusClassic.tsx `authentic() ? undefined : t(...)`"
+    },
+    {
+      "key": "cl.bid.exPick",
+      "reason": "Tooltip kun udvidet: TransferStatusClassic.tsx `authentic() ? undefined : t(...)`"
+    },
+    {
+      "key": "cl.sq.wanted",
+      "reason": "Tooltip kun udvidet: SquadClassic.tsx/TransfersClassic.tsx `authentic() ? '' : t(...)`"
+    },
+    {
+      "key": "cl.tag.yelTitle",
+      "reason": "Tooltip kun udvidet: SquadClassic.tsx `authentic() ? '' : t(...)`"
+    },
+    {
+      "key": "cl.mt.lastHint",
+      "reason": "Tooltip kun udvidet: Match.tsx `authentic() ? undefined : t(...)`"
+    },
+    {
+      "key": "cl.tr.p.listed",
+      "reason": "Faste søgninger kun udvidet: TransfersClassic.tsx `authentic() ? [] : PRESETS`"
+    },
+    {
+      "key": "cl.tr.p.expiring",
+      "reason": "Faste søgninger kun udvidet: TransfersClassic.tsx `authentic() ? [] : PRESETS`"
+    },
+    {
+      "key": "cl.tr.p.young",
+      "reason": "Faste søgninger kun udvidet: TransfersClassic.tsx `authentic() ? [] : PRESETS`"
+    },
+    {
+      "key": "cl.tr.p.realistic",
+      "reason": "Faste søgninger kun udvidet: TransfersClassic.tsx `authentic() ? [] : PRESETS`"
+    },
+    {
+      "key": "cl.st.p.free",
+      "reason": "Faste søgninger kun udvidet: TransfersClassic.tsx `authentic() ? [] : STAFF_PRESETS`"
+    },
+    {
+      "key": "cl.st.p.assistant",
+      "reason": "Faste søgninger kun udvidet: TransfersClassic.tsx `authentic() ? [] : STAFF_PRESETS`"
+    },
+    {
+      "key": "cl.st.p.physio",
+      "reason": "Faste søgninger kun udvidet: TransfersClassic.tsx `authentic() ? [] : STAFF_PRESETS`"
+    },
+    {
+      "key": "cl.ci.budgets",
+      "reason": "Kun udvidet: Club.tsx `!orig`"
+    },
+    {
+      "key": "cl.menu.all",
+      "reason": "Kun udvidet: classic.tsx `!authentic()`"
+    },
+    {
+      "key": "cl.hof.season",
+      "reason": "Hall of Fame/Rankings = Game Options (CM Reborns område): GameOptionsClassic.tsx"
+    },
+    {
+      "key": "cl.hof.mine",
+      "reason": "Hall of Fame/Rankings = Game Options (CM Reborns område): GameOptionsClassic.tsx"
+    },
+    {
+      "key": "cl.hof.you",
+      "reason": "Hall of Fame/Rankings = Game Options (CM Reborns område): GameOptionsClassic.tsx"
+    },
+    {
+      "key": "cl.mt.tapHint",
+      "reason": "Mobil-tilpasning (kun touch, `coarse()`) – ikke en skærm i originalen: Match.tsx"
+    },
+    {
+      "key": "cl.mt.tapPicked",
+      "reason": "Mobil-tilpasning (kun touch, `coarse()`): Match.tsx"
+    },
+    {
+      "key": "cl.na.noManagers",
+      "reason": "Tom liste uden tekst i originalen (ægte tilstand viser intet): NationClassic.tsx `authentic() ? '' :`"
+    },
+    {
+      "key": "cl.na.noJobs",
+      "reason": "Tom liste uden tekst i originalen (ægte tilstand viser intet): NationClassic.tsx"
+    },
+    {
+      "key": "cl.fd.none",
+      "reason": "Tom liste uden tekst i originalen (ægte tilstand viser intet): FindClassic.tsx"
+    },
+    {
+      "key": "cl.cup.notDrawn",
+      "reason": "Tom liste uden tekst i originalen (ægte tilstand viser intet): CupClassic.tsx"
+    },
+    {
+      "key": "cl.cup.noResults",
+      "reason": "Tom liste uden tekst i originalen (ægte tilstand viser intet): CupClassic.tsx"
+    },
+    {
+      "key": "cl.chh.noWinners",
+      "reason": "Tom liste uden tekst i originalen (ægte tilstand viser intet): CompHistoryClassic.tsx"
+    },
+    {
+      "key": "cl.chh.none",
+      "reason": "Tom liste uden tekst i originalen (ægte tilstand viser intet): CompHistoryClassic.tsx"
+    },
+    {
+      "key": "cl.lg.noResults",
+      "reason": "Tom liste uden tekst i originalen (ægte tilstand viser intet): Competitions.tsx"
+    },
+    {
+      "key": "cl.ct.noListed",
+      "reason": "Tom liste uden tekst i originalen (ægte tilstand viser intet): Club.tsx"
+    },
+    {
+      "key": "cl.cn.none",
+      "reason": "Tom liste uden tekst i originalen (ægte tilstand viser intet): Club.tsx"
+    },
+    {
+      "key": "cl.res.none",
+      "reason": "Tom liste uden tekst i originalen (ægte tilstand viser intet): SquadClassic.tsx (2 steder)"
+    },
+    {
+      "key": "cl.sc.none",
+      "reason": "Tom liste uden tekst i originalen (ægte tilstand viser intet): TransfersClassic.tsx"
+    },
+    {
+      "key": "cl.tac.fromBench",
+      "reason": "Tooltip kun udvidet: TacticsClassic.tsx `authentic() ? undefined`"
+    },
+    {
+      "key": "cl.tac.toBench",
+      "reason": "Tooltip kun udvidet: TacticsClassic.tsx `authentic() ? undefined`"
+    },
+    {
+      "key": "cl.sq.empty",
+      "reason": "Tooltip kun udvidet: SquadClassic.tsx `authentic() ? undefined`"
+    },
+    {
+      "key": "cl.sq.dropOut",
+      "reason": "Tekst kun udvidet: SquadClassic.tsx `authentic() ? ''` (slip-zonen er tom i ægte tilstand)"
+    },
+    {
+      "key": "cl.ci.result",
+      "reason": "Kun udvidet: Club.tsx `!orig && v === 'finances'`"
+    },
+    {
+      "key": "cl.pl.fut.time",
+      "reason": "Kun uden den originale database (`!cmActive`): PlayerClassic.tsx futureLines – den originale database bruger cm.fut.* (0x87dd80)"
+    },
+    {
+      "key": "cl.pl.fut.noRenew",
+      "reason": "Kun uden den originale database (`!cmActive`): PlayerClassic.tsx futureLines"
+    },
+    {
+      "key": "cl.pl.fut.hesitant",
+      "reason": "Kun uden den originale database (`!cmActive`): PlayerClassic.tsx futureLines"
+    },
+    {
+      "key": "cl.pl.fut.lowMorale",
+      "reason": "Kun uden den originale database (`!cmActive`): PlayerClassic.tsx futureLines"
+    },
+    {
+      "key": "cl.pl.fut.free",
+      "reason": "Kun uden den originale database (`!cmActive`): PlayerClassic.tsx futureLines"
+    },
+    {
+      "key": "cl.pl.av.asking",
+      "reason": "Kun uden den originale database (`!cmActive`): PlayerClassic.tsx availability – den originale database bruger cm.av.*"
+    },
+    {
+      "key": "cl.cm.euro",
+      "reason": "set på originalens skærm (billede ~/cm0102-engine/work-ui/owner-1116/generelt-image32.jpg: \"UEFA European Championship\") – menupunktet bærer turneringens navn"
+    },
+    {
+      "key": "cl.ct.title.in",
+      "reason": "Skabelonen \"<title> - Season <season>\" + \" Players In\" findes i exe'en som to strenge (Club.tsx sætter dem sammen som originalen)"
+    },
+    {
+      "key": "cl.ct.title.out",
+      "reason": "Skabelonen \"<title> - Season <season>\" + \" Players Out\" findes i exe'en som to strenge (Club.tsx sætter dem sammen som originalen)"
     }
   ],
   "patterns": [

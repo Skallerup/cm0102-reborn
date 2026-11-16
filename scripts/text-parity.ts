@@ -42,7 +42,7 @@ function loadBlob(): string {
   const lines: string[] = [];
   for (let i = 0; i < rawLines.length; i++) {
     let l = rawLines[i];
-    for (let n = 0; n < 2 && i + 1 < rawLines.length && l.lastIndexOf('<') > l.lastIndexOf('>') && /<%/.test(l.slice(l.lastIndexOf('<'))); n++) l += ' ' + rawLines[++i];
+    for (let n = 0; n < 2 && i + 1 < rawLines.length && l.lastIndexOf('<') > l.lastIndexOf('>') && /<\s*%/.test(l.slice(l.lastIndexOf('<'))); n++) l += ' ' + rawLines[++i];
     lines.push(l);
   }
   for (const line of lines) {

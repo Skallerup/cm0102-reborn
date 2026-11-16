@@ -2280,13 +2280,13 @@ export const sv: Record<string, string> = {
   "cl.tac.paste": "Klistra in",
   "cl.tac.capt": "kapt",
   "cl.tac.pen": "str",
-  "cl.tac.fk": "fs",
-  "cl.tac.cor": "hö",
+
+
   "cl.tac.fromBench": "Ta från bänken",
   "cl.tac.toBench": "Sätt på bänken",
   "cl.tac.formation": "Formation",
-  "cl.tac.setFor": "Fasta situationer och lagkapten: {name}",
-  "cl.tac.pickFirst": "Välj en spelare i listan först",
+
+
   "cl.tac.v.cond": "Kondition",
   "cl.tac.v.fit": "Lämplighet för platsen",
   "cl.tac.v.pos": "Positioner",
@@ -2295,10 +2295,10 @@ export const sv: Record<string, string> = {
   "cl.tac.overview": "Översikt",
   "cl.tac.with": "Med boll",
   "cl.tac.without": "Utan boll",
-  "cl.tac.hint": "Klicka på en spelare och sedan på en plats på planen – eller dra honom dit. Klicka på numret för att sätta en reserv på bänken. Högerklicka och dra en spelare för att ge honom ett löp (även diagonalt); ett kort drag tar bort det. Pekplatta: klicka med två fingrar eller ctrl + klick för en meny.",
-  "cl.tac.hintPlace": "Klicka nu på den plats på planen där han ska spela.",
-  "cl.tac.hintPlayer": "Klicka nu på den spelare i listan som ska spela här.",
-  "cl.tac.pickSlot": "Klicka på en spelare på planen för att ge honom instruktioner.",
+
+
+
+
   "hub.tab.suggestions": "Förslag",
   "hub.tab.hall": "Hall of Fame",
   "hub.tab.legends": "Legender",
@@ -2472,7 +2472,7 @@ export const sv: Record<string, string> = {
   "cl.ci.lvl.4": "Bra",
   "cl.ci.lvl.5": "Toppklass",
   "cl.finInfo": "Ekonomi & info",
-  "cl.md.title": "Dagens matcher",
+
   "cl.md.afternoon": "Eftermiddagens",
   "cl.md.evening": "Kvällens",
   "cl.md.fix1": "{when} match",
@@ -3989,7 +3989,7 @@ export const sv: Record<string, string> = {
   "lg.pick": "Välj ett land …",
   "lg.add": "Gör spelbar",
   "lg.addQ": "Göra {nation} spelbart? Ligorna startar nu – matcherna som redan skulle ha spelats den här säsongen simuleras, och cupen startar nästa säsong. Det kan inte ångras.",
-  "cl.tac.hintTouch": "Tryck på en spelare och sedan på en plats på planen eller en annan spelare. Tryck på numret för att sätta en reserv på bänken. Håll fingret på en spelare på planen och dra för att ge honom en löpning – håll utan att dra för menyn.",
+
   "tac.hint2Touch": "Tryck på en plats och välj en spelare · tryck på två spelare på planen för att byta dem · håll fingret på en spelare för instruktioner",
   "cl.mt.tapHint": "Tryck på en spelare och sedan en annan för att byta in eller byta plats. Håll och dra en spelare på planen för en löpning.",
   "cl.mt.tapPicked": "Tryck nu på spelaren att byta med – eller en tom plats på planen för att flytta honom dit.",
@@ -5652,7 +5652,7 @@ export const sv: Record<string, string> = {
   "cl.neg.fullTime": "Heltid",
   "cl.neg.bonusIntro": "Erbjud spelaren följande bonusar:",
   "cl.neg.goalBonus": "Målbonus",
-  "cl.neg.appBonus": "Matchbonus",
+
   "cl.neg.cleanSheetBonus": "Bonus för hållen nolla",
   "cl.neg.clauseIntro": "Erbjud spelaren följande klausuler:",
   "cl.neg.release": "Friköpsklausul (minimipris)",
@@ -5701,11 +5701,11 @@ export const sv: Record<string, string> = {
   "cl.mt.ti.pressing": "Press",
   "cl.mt.ti.offside": "Offsidefälla",
   "cl.mt.ti.counter": "Kontringar",
-  "cl.mt.ti.m0": "Mycket defensiv",
+
   "cl.mt.ti.m1": "Defensiv",
   "cl.mt.ti.m2": "Normal",
   "cl.mt.ti.m3": "Offensiv",
-  "cl.mt.ti.m4": "Mycket offensiv",
+
   "cl.mt.ti.p0": "Korta",
   "cl.mt.ti.p1": "Blandade",
   "cl.mt.ti.p2": "Långa",
@@ -5734,7 +5734,7 @@ export const sv: Record<string, string> = {
   "cl.mt.shootout": "Straffsparksläggning",
   "cl.mt.soScored": "{name} gjorde mål",
   "cl.mt.soMissed": "{name} missade",
-  "cl.md.results": "Kvällens resultat",
+
   "cl.mt.subDone": "{inn} har kommit in istället för {out}. Tillbaka till matchen?",
   "cl.pl.offerNew": "Erbjud nytt kontrakt",
   "cl.pl.releaseFree": "Släpp på fri transfer",
@@ -5836,8 +5836,8 @@ export const sv: Record<string, string> = {
   "cl.mt.default": "Tillbaka till start",
   "cl.mt.condRating": "Kondition och betyg",
   "cl.mt.tacMenu": "Taktik",
-  "cl.mt.ti.tempo": "Tempo",
-  "cl.mt.ti.width": "Bredd",
+
+
   "cl.mt.lvl.g0": "Sällan",
   "cl.mt.lvl.g1": "Blandat",
   "cl.mt.lvl.g2": "Ofta",
@@ -5865,7 +5865,7 @@ export const sv: Record<string, string> = {
   "cl.role.coach": "Spelare/tränare",
   "cl.role.expected": "Det här förväntar sig spelaren",
   "cl.role.notEnding": "Spelaren vill inte avsluta karriären just nu",
-  "cl.role.young": "Inte möjligt för unga spelare",
+
   "cl.neg.wantsSign": "{player} ber om {wage} i veckan till {until} och en signeringsbonus på {fee}.",
   "cl.neg.signOn": "Signeringsbonus",
   "cl.pl.relegate": "Flytta ner till reservlaget",

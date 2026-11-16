@@ -409,7 +409,7 @@ export function Shell() {
     // klassisk: bjælken vises MED DET SAMME og tegnes, før første dag simuleres (en tung første dag gav før 3 s uden noget på skærmen – ejeren
     // 13/11); derefter opdateres den efter hver dag (runUntil giver plads med setTimeout(0) mellem dagene)
     if (cmNav) { setRunning(g0.date); await painted(); }
-    const r = await runUntil({ ...opts, shouldStop: () => stopRef.current, onProgress: (d) => { if (cmNav || Date.now() - t0 > 60) setRunning(d); setRunNote(d.slice(5, 10) === '06-30' ? t('cl.run.season') : null); } });
+    const r = await runUntil({ ...opts, shouldStop: () => stopRef.current, onProgress: (d) => { if (cmNav || Date.now() - t0 > 60) setRunning(d); setRunNote(d.slice(5, 10) === '06-30' && !authentic() ? t('cl.run.season') : null); } });
     setRunning(null); setRunNote(null);
     if (r.stop === 'news') { notify(); return r; }
     handle(r);

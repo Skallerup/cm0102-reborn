@@ -76,7 +76,7 @@ function ClassicClub({ id }: { id?: number }) {
           // originalen: "Old Trafford, Manchester" – byen har vi ikke, så kun stadionet
           [t('club.stadium'), orig ? c.stadium : `${c.stadium}, ${c.short}`],
           [t('cl.ci.facilitiesRow'), t('cl.ci.seats', { n: c.seats })],
-          [t('cl.ci.trainingGround'), `${t(`cl.ci.tg.${c.facilities >= 16 ? 4 : c.facilities >= 12 ? 3 : c.facilities >= 8 ? 2 : c.facilities >= 4 ? 1 : 0}`)}${c.youth >= 14 ? t('cl.ci.tgYouth') : ''}`],
+          [t('cl.ci.trainingGround'), t(`cl.ci.tg.${c.facilities >= 16 ? (c.youth >= 14 ? 5 : 4) : c.facilities >= 12 ? 3 : c.facilities >= 8 ? 2 : c.facilities >= 4 ? 1 : 0}`)],
         ])}
         {/* kun Non-Playing Staff ruller – resten står fast (som originalen) */}
         <div className={orig ? 'cx-ci-staff' : undefined}>
@@ -149,7 +149,7 @@ function ClubTransfers({ cid }: { cid: number }) {
         <CxDrop label={t('cl.sq.view')} align="right" items={(['in', 'out', 'listed'] as const).map((k) => ({ key: k, label: t(`cl.ct.v.${k}`), checked: dir === k, onClick: () => setDir(k) }))} />
       </div>
       <div className="cx-subtitle">{dir === 'listed' ? t('cl.ct.v.listed') : t(`cl.ct.title.${dir}`, { season: yr })}</div>
-      {dir === 'listed' ? (listed.length === 0 ? <div className="cx-empty">{t('cl.ct.noListed')}</div> : <SquadTable players={listed} view="general" userClub={g.userClub} />) : (
+      {dir === 'listed' ? (listed.length === 0 ? <div className="cx-empty">{authentic() ? '' : t('cl.ct.noListed')}</div> : <SquadTable players={listed} view="general" userClub={g.userClub} />) : (
         <div className="cx-ct">
           <div className="cx-ct-total"><span className="c-val">{money(total)}</span></div>
           {rows.length > 0 && <div className="cx-tbl-wrap cx-listpanel"><table className="cx-tbl"><tbody>{rows.map((r, i) => {
@@ -176,7 +176,7 @@ function ClubNextMatch({ cid }: { cid: number }) {
   const list = Object.values(g.fixtures).filter((f) => f.home === cid || f.away === cid).sort((a, b) => a.date.localeCompare(b.date));
   const next = list.find((f) => !f.result);
   const recent = list.filter((f) => f.result).slice(-5).reverse();
-  if (!next) return <div className="cx-empty">{t('cl.cn.none')}</div>;
+  if (!next) return <div className="cx-empty">{authentic() ? '' : t('cl.cn.none')}</div>;
   const home = next.home === cid, opp = home ? next.away : next.home;
   const form = recent.map((f) => { const h = f.home === cid, r = f.result!; const my = h ? r.hg : r.ag, th = h ? r.ag : r.hg; return my > th ? t('cl.cn.w') : my < th ? t('cl.cn.l') : t('cl.cn.d'); }).join(' ');
   return (

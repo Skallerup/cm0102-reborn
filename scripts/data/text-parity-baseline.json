@@ -1,5 +1,5 @@
 {
- "total": 949,
+ "total": 797,
  "areas": {
   "common": 1,
   "top": 8,
@@ -25,7 +25,6 @@
   "loan": 13,
   "enquiry": 6,
   "reject": 25,
-  "cl": 187,
   "job": 6,
   "jobs": 23,
   "budget": 29,
@@ -35,6 +34,7 @@
   "riv": 11,
   "neg": 8,
   "signing": 4,
+  "cl": 76,
   "career": 2,
   "tac": 17,
   "match": 28,
@@ -60,7 +60,6 @@
   "strategy": 6,
   "column": 1,
   "score": 6,
-  "help": 41,
   "clause": 21,
   "att": 13,
   "fac": 12,

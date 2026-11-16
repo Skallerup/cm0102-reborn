@@ -1,6 +1,7 @@
 // Cup- og Europa-turneringer i klassisk tema (som i CM 01/02): fanerne Rounds · Results · Fixtures · Schedule
 // og under-knapperne Seedings · Team Stats · Player Stats · History.
 import { useMemo } from 'react';
+import { authentic } from '../../game/rules';
 import { sortTable } from '../../game/competitions';
 import { hasMatchView } from '../../game/miniReport';
 import type { Competition, Fixture } from '../../game/types';
@@ -73,7 +74,7 @@ function Groups({ comp }: { comp: Competition }) {
   const g = useGame()!;
   // rækkerne ligger i lodtrækningens rækkefølge (efter seedning/nation) – vis dem efter point, målforskel og mål
   const groups = (comp.groups ? Object.entries(comp.groups) : comp.table.length ? [['', comp.table] as const] : []).map(([k, rows]) => [k, sortTable(rows.slice())] as const);
-  if (!groups.length) return <div className="cx-empty cx-empty-mid">{t('cl.cup.notDrawn')}</div>;
+  if (!groups.length) return <div className="cx-empty cx-empty-mid">{authentic() ? '' : t('cl.cup.notDrawn')}</div>;
   return (
     <div className="cx-cup cx-listpanel">
       {groups.map(([k, rows]) => (
@@ -104,7 +105,7 @@ function Days({ comp, played }: { comp: Competition; played: boolean }) {
   return (
     <>
       <div className="cx-subtitle cx-subtitle-nav">
-        <span>{cur ? dateFmt(cur, true) : t(played ? 'cl.cup.noResults' : 'cl.cup.noFixtures')}</span>
+        <span>{cur ? dateFmt(cur, true) : (played && authentic() ? '' : t(played ? 'cl.cup.noResults' : 'cl.cup.noFixtures'))}</span>
         {dates.length > 1 && (
           <span className="cx-month-nav">
             <button onClick={() => setDate(dates[idx - 1])} disabled={idx <= 0} aria-label="previous">‹</button>

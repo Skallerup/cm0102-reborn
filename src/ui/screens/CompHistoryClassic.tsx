@@ -3,6 +3,7 @@
 // igangværende sæson, "Current"); de øvrige faner viser én rekord pr. sæson, valgt under View. Tallene kommer fra
 // game/compHistory.ts (de afsluttede sæsoner gemmes ved sæsonskiftet i `g.compRecs`).
 import { compSeasonRec, initialName, type CompSeasonRec } from '../../game/compHistory';
+import { authentic } from '../../game/rules';
 import type { Competition, GameState } from '../../game/types';
 import { compName, t } from '../../i18n';
 import { ClassicSub, CxDrop, classicDate } from '../classic';
@@ -133,7 +134,7 @@ export function ClassicCompHistory({ comp }: { comp: Competition }) {
               <span className={mine(x.ru) ? 'me' : ''}>{x.ru ? short(x.ru) : ''}</span>
             </div>
           ))}
-          {!winners().length && <div className="cx-empty">{t('cl.chh.noWinners')}</div>}
+          {!winners().length && <div className="cx-empty">{authentic() ? '' : t('cl.chh.noWinners')}</div>}
         </div>
       )}
       {tab === 'records' && <>
@@ -147,7 +148,7 @@ export function ClassicCompHistory({ comp }: { comp: Competition }) {
         <div className="cx-subtitle small">{t(`cl.chh.s.${k}`)}</div>
         <div className="cx-chist-tbl">
           {seasons.map(([s, r]) => <div key={s} className="cx-chist-row date"><span className="cx-chist-btn">{yr(s)}</span><span className="v">{val(k, r)}</span></div>)}
-          {!seasons.length && <div className="cx-empty">{t('cl.chh.none')}</div>}
+          {!seasons.length && <div className="cx-empty">{authentic() ? '' : t('cl.chh.none')}</div>}
         </div>
       </>}
       <ClassicSub items={BOTTOM.map((x) => ({ key: x, label: t(`cl.chh.t.${x}`), on: tab === x, onClick: () => setTab(x) }))} />

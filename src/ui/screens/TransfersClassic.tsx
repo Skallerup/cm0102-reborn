@@ -489,7 +489,7 @@ function ScoutTab({ scout, n, onPick }: { scout?: Staff; n: number; onPick?: (f:
   const g = useGame()!;
   const [named, setNamed] = useRouteState('scname', '');
   const [view, setView] = useRouteState('tview', 'general');
-  if (!scout) return <div className="cx-empty">{t('cl.sc.none', { n })}</div>;
+  if (!scout) return <div className="cx-empty">{authentic() ? '' : t('cl.sc.none', { n })}</div>;
   // den originale database i ægte tilstand (search_screens.cpp 0x80b479/0x80b4bf): "Scout Les Kershaw not assigned" / "Scout L.Kershaw
   // assigned to Bradford", Assign Scout → Club åbner Nations & Clubs, og en tildelt spejder har Recall Scout i stedet for Assign Scout
   const cm = cmActive(g);
@@ -580,7 +580,7 @@ export function ClassicPlayerTable({ players, title, desc, view: viewProp, initi
   const inf = (p: Player): [string, string, boolean] | null => {
     if (p.injury) return ['Inj', t(`injury.${p.injury.key}`), true];
     if (p.banned > 0) return ['Sus', t('tag.ban'), true];
-    if (interestedClubs(p).length) return ['Wnt', t('cl.sq.wanted'), false];
+    if (interestedClubs(p).length) return ['Wnt', authentic() ? '' : t('cl.sq.wanted'), false];
     return null;
   };
   const based = (p: Player) => basedName(g, p.club, p.nation);

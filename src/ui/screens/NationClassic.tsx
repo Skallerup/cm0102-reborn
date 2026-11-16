@@ -1,6 +1,7 @@
 // En nations skærme i klassisk tema (som i CM 01/02, via ▸-menuen ved en klub → nationen):
 // Manager Stats (managernes omdømme i landet), Job Information (ledige stillinger) og Transfers (handler pr. måned).
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { authentic } from '../../game/rules';
 import type { GameState } from '../../game/types';
 import { compName, money, natName, t } from '../../i18n';
 import { useGame, useRouteState } from '../core';
@@ -68,7 +69,7 @@ function ManagerStats({ nation, name }: { nation: number; name: string }) {
             <span className="cx-nval">{repWord(r.rep)}</span>
           </div>
         ))}
-        {!rows.length && <div className="cx-empty">{t('cl.na.noManagers')}</div>}
+        {!rows.length && <div className="cx-empty">{authentic() ? '' : t('cl.na.noManagers')}</div>}
       </div>
     </>
   );
@@ -99,7 +100,7 @@ function JobInfo({ nation, name }: { nation: number; name: string }) {
             <span className="cx-nval">{g.jobOffers.includes(c.id) ? t('cl.na.offered') : g.manager.jobTalks?.[c.id] ? t('cl.na.applied') : <span className="cx-link" role="link" onClick={() => act({ t: 'applyJob', club: c.id })}>{t('cl.na.apply')}</span>}</span>
           </div>
         ))}
-        {!vac.length && <div className="cx-empty">{t('cl.na.noJobs')}</div>}
+        {!vac.length && <div className="cx-empty">{authentic() ? '' : t('cl.na.noJobs')}</div>}
       </div>
     </>
   );

@@ -38,7 +38,7 @@ import { stageLabel } from './Fixtures';
 import { useHotkeys } from '../hotkeys';
 import { TeamTalk } from '../teamtalk';
 import { talkDone } from '../../game/teamtalk';
-import { extended } from '../../game/rules';
+import { authentic, extended } from '../../game/rules';
 import { isOriginal2001 } from '../../game/rules2001';
 import { realCompName } from '../../i18n/comps';
 
@@ -1524,7 +1524,7 @@ function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, lastVie
         <CxDrop className="cx-green" label={t('cl.sq.view')} fixed
           items={[{ key: 'cond', label: t('cl.mt.condRating'), checked: view === 'cond', onClick: () => setView('cond') }, ...VIEW_COLS.map((c) => ({ key: c.k, label: t(`pi.${c.k}`), checked: view === c.k, onClick: () => setView(c.k) }))]} />
         <span className="cx-mt-gap" />
-        <button className="cx-mt-tbtn" disabled={!editable || !g.lastMatchTactic} title={t('cl.mt.lastHint')} onClick={() => onLastMatch?.()}>{t('cl.mt.lastMatch')}</button>
+        <button className="cx-mt-tbtn" disabled={!editable || !g.lastMatchTactic} title={authentic() ? undefined : t('cl.mt.lastHint')} onClick={() => onLastMatch?.()}>{t('cl.mt.lastMatch')}</button>
         <CxDrop className="cx-green" label={t('cl.mt.edit')} fixed align="right" items={editMenu} />
       </div>
       {pane === 'ti' && <TeamInstrDialog tac={tac} on={on.map((x) => x.id)} editable={!!editable} onClose={() => setPane('list')} onOk={(f) => { edit(f); setPane('list'); }} />}
