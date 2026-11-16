@@ -595,14 +595,14 @@ export function Shell() {
             <button className="cx-running" onClick={() => {
               if (!onHolidayRef.current) { stopRef.current = true; return; }
               askReturnFromHoliday();
-            }} title={t('common.stop')}>
+            }}>
               {/* CM 01/02: "Wednesday 29th May 2002" i den grå bjælke – på ferie står der også, at et klik afbryder ferien (brugere ledte efter en stop-knap) */}
               {(() => {
                 const sp = spanRef.current;
                 const tot = Math.max(1, daysBetween(sp.start, sp.end));
                 const pct = Math.max(2, Math.min(100, Math.round((daysBetween(sp.start, running) / tot) * 100)));
                 if (runNote) return <><span className="cx-run-l">{cxLongDate(running)}</span><span className="cx-run-bar busy" role="progressbar" data-testid="run-note"><i style={{ width: '100%' }}><b>{runNote}</b></i></span></>;
-                return <><span className="cx-run-l">{cxLongDate(running)}</span><span className="cx-run-bar" role="progressbar" aria-valuenow={pct}><i style={{ width: `${pct}%` }}>{pct >= 10 && <b>{pct}%</b>}</i></span></>;
+                return <><span className="cx-run-l">{cxLongDate(running)}</span><span className="cx-run-bar" role="progressbar" aria-valuenow={pct}><i style={{ width: `${pct}%` }} /><b className="cx-run-pct">{pct}%</b></span></>;
               })()}{onHolidayRef.current && <small className="cx-running-hint">{t('cl.hol.bar')}</small>}
             </button>
           ) : cmNav && online && (online.status === 'loading' || (online.status === 'processing' && (online.room?.players.length ?? 1) <= 1)) ? (

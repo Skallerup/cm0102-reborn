@@ -627,14 +627,16 @@ export function cmInterested(g: GameState, p: Player, level: (club: number) => n
 let imCache: { key: string; map: Map<number, number[]> } | null = null;
 function interestMap(g: GameState, level: (club: number) => number): Map<number, number[]> {
   const ym = g.date.slice(0, 7);
-  const key = `${g.id}|${ym}`;
+  const key = `${g.id}|${ym}|${g.activeNations.join(',')}`;
   if (imCache?.key === key) return imCache.map;
   const ymN = Number(ym.replace('-', ''));
   const players = Object.values(g.players).filter((p) => p.club && !p.loan && !p.virtual && !g.leagues[g.clubs[p.club]?.league]?.hidden);
   const target = new Map(players.map((p) => [p.id, valueTarget(p)]));
   const picks = new Map<number, { id: number; rep: number }[]>();
   for (const c of Object.values(g.clubs)) {
-    if (isHumanClub(c.id) || g.leagues[c.league]?.hidden) continue;
+    // *estimeret*: kun klubber i de valgte lande (kørende ligaer) byder – originalens baggrundslande handler ikke med menneskets spillere
+    // (ejerens fund 16/11: Club de Fútbol México bød på en Vejle-spiller)
+    if (isHumanClub(c.id) || g.leagues[c.league]?.hidden || !g.activeNations.includes(c.nation)) continue;
     const lv = level(c.id);
     const best: { pid: number; r: number }[] = [];
     for (const p of players) {

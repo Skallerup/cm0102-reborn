@@ -72,9 +72,16 @@ export function refusedBy(p: Player, buyer: number): boolean {
   return g.offers.some((o) => o.player === p.id && o.buyer === buyer && o.status === 'collapsed' && o.created.slice(0, 4) >= String(g.season));
 }
 
+/** Ægte tilstand (*estimeret*): kun klubber i de VALGTE lande byder på menneskets spillere – originalens baggrundslande handler ikke med dem
+ *  (ejerens fund 16/11: Club de Fútbol México bød på en Vejle-spiller). */
+function inPlayedNation(c: Club): boolean {
+  const g = gs();
+  return !cmActive(g) || g.activeNations.includes(c.nation);
+}
+
 function canBidOnHuman(p: Player, buyer: number): boolean {
   const g = gs();
-  if (refusedBy(p, buyer)) return false;
+  if (refusedBy(p, buyer) || (g.clubs[buyer] && !inPlayedNation(g.clubs[buyer]))) return false;
   // nyindkøbt og ikke til salg: ingen bud, før han har været der et stykke tid (samme regel som AI-klubberne imellem)
   if (!p.listed && recentlyJoined(p)) return false;
   const pending = g.offers.filter((o) => o.seller === p.club && o.status === 'pending' && !isHumanClub(o.buyer)).length;
@@ -788,7 +795,9 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
   };
   forEachHuman(() => {
     const involved = buyer.id === g.userClub || seller?.id === g.userClub;
-    if (involved) addNews(news);
+    // ægte tilstand: også egne handler får originalens overskrift og brødtekst (0x8dbef0: "X seal Y deal" + "X have signed Z's Y for a fee of …")
+    if (involved && authentic() && !o.loan) addNews({ cat: 'transfer', key: `transfer.o${o.seller ? '' : 'Free'}.${p.id % 4}`, params: { to: buyer.short, from: seller?.short ?? '', player: pname(p), last: p.last, fee: o.fee, ...(o.addOn ? { fee2: o.fee + o.addOn } : {}) }, link: news.link });
+    else if (involved) addNews(news);
     // andre klubbers handler samles i ugens transferoverblik
     else if (authentic()) originalTransferNews(p, buyer, seller, o.fee, o.loan, o.addOn, o);
     else if (otherTransferNews(buyer, seller, o.fee, o.loan)) (g.transferDigest ??= []).push({ player: p.id, from: o.seller, to: buyer.id, fee: o.fee, ...(o.loan ? { loan: true } : {}) });
@@ -1376,7 +1385,7 @@ export function aiPursuits() {
   for (const pu of g.pursuits) {
     const p = g.players[pu.player];
     const club = g.clubs[pu.club];
-    if (!p || !club || !p.club || !isHumanClub(p.club)) continue;
+    if (!p || !club || !p.club || !isHumanClub(p.club) || !inPlayedNation(club)) continue;
     if (cmActive(g) && !windowOpen(g.date, club.id)) { keep.push(pu); continue; }
     if (g.date < pu.next) { keep.push(pu); continue; }
     if (g.offers.some((o) => o.player === p.id && o.status === 'pending')) { keep.push(pu); continue; }
@@ -1405,7 +1414,7 @@ function rivalBid(o: TransferOffer, p: Player): TransferOffer['rival'] {
   if (o.rival !== undefined || p.value < 1_500_000 * econ() || !rng.chance(0.25)) return o.rival;
   const ask = askingPrice(p);
   const level = (c: Club) => clubLevel(c.id);
-  const cands = Object.values(g.clubs).filter((c) => c.id !== o.buyer && c.id !== p.club && !isHumanClub(c.id) && c.transferBudget >= ask && Math.abs(level(c) - p.ca) <= 20 && playerInterest(p, c) === 'yes');
+  const cands = Object.values(g.clubs).filter((c) => c.id !== o.buyer && c.id !== p.club && !isHumanClub(c.id) && inPlayedNation(c) && c.transferBudget >= ask && Math.abs(level(c) - p.ca) <= 20 && playerInterest(p, c) === 'yes');
   if (!cands.length) return undefined;
   const club = rng.pick(cands);
   return { club: club.id, fee: roundValue(Math.min(club.transferBudget, Math.max(o.fee, ask) * rng.range(1.02, 1.15))) };
@@ -1421,7 +1430,7 @@ export function aiLoanOptions() {
     if (p.loan || p.listed || p.contract?.futureClub || keyPlayerRank(p) <= 14) continue;
     if (ageOn(p.dob, g.date) > 23 || !rng.chance(0.015)) continue;
     if (g.offers.some((o) => o.player === p.id && o.status === 'pending')) continue;
-    const cands = Object.values(g.clubs).filter((c) => !isHumanClub(c.id) && c.id !== g.userClub && Math.abs(clubLevel(c.id) - p.ca) <= 12 && c.transferBudget >= p.value);
+    const cands = Object.values(g.clubs).filter((c) => !isHumanClub(c.id) && c.id !== g.userClub && inPlayedNation(c) && Math.abs(clubLevel(c.id) - p.ca) <= 12 && c.transferBudget >= p.value);
     if (!cands.length) continue;
     const club = rng.pick(cands);
     const option = roundValue(Math.max(p.value * rng.range(1.0, 1.3), 50_000 * econ()));
@@ -1660,7 +1669,7 @@ export function aiBidsForListed() {
     if (!rng.chance(Math.min(0.75, chance * attract * (p.listed || loanOnly ? 1 : 0.4)))) continue;
     const role = GROUP[naturalRole(p)];
     const cands = Object.values(g.clubs).filter((c) => {
-      if (c.id === g.userClub || isHumanClub(c.id)) return false;
+      if (c.id === g.userClub || isHumanClub(c.id) || !inPlayedNation(c)) return false;
       // skjulte klubber lejer ikke (de spiller ingen kampe)
       if (loanOnly && g.leagues[c.league]?.hidden) return false;
       const level = clubLevel(c.id);

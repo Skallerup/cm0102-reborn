@@ -127,7 +127,7 @@ function Frame({ step, version, title, sub, children, onBack, onNext, backLabel,
         {prog ? (
           <div className="cx-running" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-label={prog.label}>
             <span className="cx-run-l">{prog.label}</span>
-            <span className="cx-run-bar"><i style={{ width: `${pct}%` }}>{pct >= 10 && <b>{pct}%</b>}</i></span>
+            <span className="cx-run-bar"><i style={{ width: `${pct}%` }} /><b className="cx-run-pct">{pct}%</b></span>
           </div>
         ) : (
           <div className="cx-backnext">
