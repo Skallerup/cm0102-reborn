@@ -23,6 +23,8 @@ import { valueTarget } from './training';
 import { hash01 } from './rng';
 import { favoursClub, favoursPerson, managerStaff, personKey } from './cmRelations';
 import { DEMONYM } from '../ui/demonyms';
+import { admiredLines, careerLines, clubLines, contractLines, nextManagerLine, offerLine, type FutX } from './cmFutureMore';
+import { mateLines, mediaLines, patientLines, positionLines, statusLines } from './cmFutureMore2';
 
 const s8 = (v: number) => (v << 24) >> 24;
 const cl100 = (v: number) => (v > 100 ? 100 : v < -100 ? -100 : v);
@@ -360,6 +362,14 @@ export function cmFutureLines(g: GameState, p: Player, interested = 0): FutureLi
   const future = !!p.contract?.futureClub;
   const crep = clubRep(g, p.club), rc = curRep(p);
   const st = ((c.b4f ?? statusCode(p) << 4) >> 4) & 0xf;
+  const club0 = g.clubs[p.club];
+  const x: FutX = {
+    g, p, c, club: club0, fl, b4e, b44: s8(c.b44), age, st, loy, prof, temp, amb, pres, future, leave: false, crep, rc, wr: worldRep(p),
+    daysJoined: daysSince(g, p.joined ?? p.cmJoined), daysStart: daysSince(g, p.contract?.cmStart ?? p.joined ?? p.cmJoined),
+    daysLeft: p.contract?.expires ? dayNum(p.contract.expires) - dayNum(g.date) : 10000,
+    ev: 0, mood: g.cmClubMood?.[p.club] ?? 0, unhappy: g.cmClubUnhappy?.[p.club] ?? 0,
+  };
+  offerLine(x, out);                                                           // 0x87ef2a
   // 0x87f01d: karrieren slutter (0x7a7eb0 = 1 – hos os en karrierestoppende skade, Player.cmRetire) → kun den linje (0x87f0be → 0x8853a0)
   if (p.cmRetire) return [{ k: age < 0x1e ? 'noFuture' : 'retiring' }];       // (+0x69 ikke-spillerpost → "… from the playing staff" – findes ikke)
   // 0x87f16a: universitetet (påskeægget "Andrew Mainwaring", PA > 100, 18–21 år)
@@ -372,6 +382,9 @@ export function cmFutureLines(g: GameState, p: Player, interested = 0): FutureLi
     else if (a && crep < 0x109a && amb > 15 && pres > 15) out.push({ k: 'flattered' });
   }
   const leave = wantsToLeave(leaveIn(p), c);
+  x.leave = leave;
+  admiredLines(x, out);                                                        // 0x87f40b
+  clubLines(x, out);                                                           // 0x87fa94–0x8809e7
   // 0x880a9b: transferlistet af klubben, ingen klager, vil ikke væk
   if (b4e & 1 && !future && fl === 0 && !leave) {
     const ds = deservedStatus(p, c, age);
@@ -387,18 +400,24 @@ export function cmFutureLines(g: GameState, p: Player, interested = 0): FutureLi
   } else if (b4e & 8 && fl === 0 && !leave) {                                  // 0x880d0c
     out.push({ k: future ? (pres < 10 ? 'nervous' : loy > 10 ? 'greatClub' : 'shame') : 'nowStay' });
   }
+  careerLines(x, out);                                                         // 0x880dda–0x88128e
   // 0x881331: 0x10000 – vil væk nu / vil sættes på listen
   if (fl & 0x10000 && !future) out.push({ k: prof < 10 && temp < 5 ? 'leaveNow' : 'wantsList' });
   // 0x8813d6: 0x80000
   if (fl & 0x80000) out.push({ k: 'noSupport' });
   // 0x88144e: 0x4000 – vigtigere rolle
   if (fl & 0x4000) out.push({ k: temp < 6 && amb > 10 && Math.round(p.ca) + amb > prof + 0x5a && rc > crep ? 'expectsRole' : 'deservesRole' });
+  mateLines(x, out);                                                           // 0x88150a–0x881d2f
+  statusLines(x, out, deservedStatus(p, c, age));                              // 0x881f02–0x882926
+  contractLines(x, out);                                                       // 0x882926: 2 – kontrakten
+  positionLines(x, out);                                                       // 0x882afb–0x883004
   // 0x883004: 0x200 – behandlet uretfærdigt
   if (fl & 0x200) {
     const d = daysSince(g, p.joined ?? p.cmJoined);
     out.push({ k: d < 0xe ? 'falsePretences' : d < 0x3c ? 'wrongDecision' : pres < 6 && prof < 15 ? 'victimised'
       : loy > 5 && prof < 11 && temp < 11 && age > 0x18 && sh(p, 'influence') > 8 && rc > 0x1194 ? 'respect' : 'unfair' });
   }
+  patientLines(x, out);                                                        // 0x883107–0x8831ad
   // 0x88325e: 4 – burde være fast mand
   if (fl & 4) {
     let k = 'shouldBeRegular';
@@ -409,6 +428,8 @@ export function cmFutureLines(g: GameState, p: Player, interested = 0): FutureLi
     }
     out.push({ k });
   }
+  mediaLines(x, out);                                                          // 0x88336e–0x883612
+  nextManagerLine(x, out);                                                     // 0x8836e9
   // 0x8836a4: 0x10 – spilletid (0x8857c0 = +0x3f, kampe i træk med spilletid)
   if (fl & 0x10) out.push(...regularLines(p, c, fl, crep, rc, age, { loy, prof, pres, amb }));
   tailLines(g, p, c, out, { fl, b4e, age, loy, prof, temp, amb, pres, future, crep, rc, st });

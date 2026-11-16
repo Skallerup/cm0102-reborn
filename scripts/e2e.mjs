@@ -1387,7 +1387,7 @@ async function run(look) {
     await page.getByRole('button', { name: 'Transfer', exact: true }).first().click();
     await page.waitForTimeout(200);
     const kv = (await page.locator('.cx-kv.cx-ruled').first().innerText()).replace(/\s+/g, ' ');
-    if (!kv.includes('Future Feels he has been treated unfairly')) throw new Error(`Future er ikke "Feels he has been treated unfairly": ${kv}`);
+    if (!kv.includes('Feels he has been treated unfairly')) throw new Error(`Future er ikke "Feels he has been treated unfairly": ${kv}`);
     await go({ name: 'inbox' });
     await page.locator('.cx-nrow', { hasText: 'feels fine was unfair' }).first().click({ timeout: 5000 });
     const body = await page.locator('.cx-nbody').textContent({ timeout: 5000 });

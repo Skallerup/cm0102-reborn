@@ -291,7 +291,7 @@ function TransferTab({ p, mine }: { p: Player; mine: boolean }) {
   const offerText = <ClubList ids={offers.map((o) => o.buyer)} empty={t('common.none')} suffix={(_, i) => ` (${offers[i].loan ? t('tag.loan') : money(offers[i].fee)})`} />;
   const interestIds = interestedClubs(p).map((i) => i.club);
   // hele Future-blokken (0x87ee70–0x8853ba) inkl. den tilfredse blok og "Unknown" (0x8852f9), når intet er skrevet
-  const cmFut = cm ? cmFutureLines(g, p, interestIds.length).map((x) => t(`cm.fut.${x.k}`, x.p?.date ? { ...x.p, date: dateFmt(String(x.p.date)) } : x.p)) : [];
+  const cmFut = cm ? cmFutureLines(g, p, interestIds.length).map((x) => t(`cm.fut.${x.k}`, x.p?.date ? { ...x.p, date: dateFmt(String(x.p.date)) } : x.p?.pos ? { ...x.p, pos: t(`cm.fut.pos.${x.p.pos}`) } : x.p)) : [];
   const fut = cm ? (cmFut.length ? cmFut : ['-']) : cmActive(g) ? [t('cl.pl.unknown')] : futureLines(p, mine, k);
   // CM 01/02: Availability, Value, Fluent Languages, Offers, Interested, Future (én linje pr. række)
   const langs = playerLanguages(g, p).map((l: string) => { try { return new Intl.DisplayNames([t('cl.locale')], { type: 'language' }).of(l) ?? l; } catch { return l; } });
