@@ -11,6 +11,16 @@ export function swUpdateReady(update: (reload?: boolean) => Promise<void>) {
   window.dispatchEvent(new Event('cm-sw-update'));
 }
 
+/** Genindlæs med den nye version. updateSW(true) genindlæser først, når den ventende service worker tager over – er den allerede
+ *  aktiveret (fx i en anden fane) eller væk, sker der intet. Derfor: bed den ventende om at tage over, og genindlæs selv efter kort tid. */
+function reloadNow() {
+  try { void pending?.(true); } catch { /* falder tilbage nedenfor */ }
+  try {
+    void navigator.serviceWorker?.getRegistration().then((r) => r?.waiting?.postMessage({ type: 'SKIP_WAITING' }));
+  } catch { /* ingen service worker */ }
+  setTimeout(() => location.reload(), 1500);
+}
+
 export function UpdateToast() {
   const [ready, setReady] = useState(() => !!pending);
   const [hidden, setHidden] = useState(false);
@@ -23,7 +33,7 @@ export function UpdateToast() {
   return (
     <div className="acc-toast sw-toast" role="status">
       {t('update.ready')}{' '}
-      <button className="small primary" onClick={() => { void pending?.(true); }}>{t('update.reload')}</button>{' '}
+      <button className="small primary" onClick={reloadNow}>{t('update.reload')}</button>{' '}
       <button className="small" onClick={() => setHidden(true)} aria-label={t('common.close')}>×</button>
     </div>
   );
