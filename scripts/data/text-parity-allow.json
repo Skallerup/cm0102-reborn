@@ -360,6 +360,146 @@
     {
       "prefix": "help.",
       "reason": "Info-popups (<Info topic>) og Help-skærmen bruges kun af det moderne udseende/udvidet tilstand: PlayerScreen, Tactics, Board, Transfers, Scouting, Finance, Training, Press og modern-delen af Club.tsx (MODERN_ENABLED = false)"
+    },
+    {
+      "prefix": "reject.",
+      "reason": "Afvisning med begrundelse til spilleren: RejectModal i Transfers.tsx (moderne) og will.ts blockedMoveReaction, som kun nås fra respondToOffer efter `if (cmActive(g)) return cmRespond(...)` (transfers.ts) – ægte tilstand bruger originalens 0x8d84e0/0x8e4ae0 (cmWhy)"
+    },
+    {
+      "prefix": "budget.",
+      "reason": "Budgetforhandling med bestyrelsen/flytning mellem budgetter: BudgetModal og panelet i Finance.tsx, begge bag `!orig` (isRetro() || authentic()); budget.january-nyheden er slået fra i newsFilter.ts"
+    },
+    {
+      "prefix": "sponsor.",
+      "reason": "Sponsorvalget (SponsorPanel i Finance.tsx, bag `!orig`) og nyhederne i finance.ts/season.ts (`extended()` / newsFilter.ts); originalens sponsor er en post i økonomien"
+    },
+    {
+      "prefix": "counter.",
+      "reason": "Modbud til bud (Transfers.tsx, PlayerScreen.tsx og counterAccept.tsx – kun det moderne udseende; ægte tilstand bruger originalens Counter Offer-skærm cmTransferBid)"
+    },
+    {
+      "prefix": "stats.",
+      "reason": "Team stats/spillerlister i LeagueStats (Competitions.tsx, kun `!isRetro()`); klassisk bruger CupClassic/CompHistoryClassic"
+    },
+    {
+      "prefix": "riv.",
+      "reason": "Rivalitet/væddemål (Managers.tsx – skjult i ægte tilstand via AUTH_HIDDEN i classic.tsx)"
+    },
+    {
+      "prefix": "h2h.",
+      "reason": "Head to head i Managers.tsx/Ranking.tsx – skjult i ægte tilstand (AUTH_HIDDEN)"
+    },
+    {
+      "prefix": "wx.d.",
+      "reason": "Vejrbeskrivelsen i PreMatch (Match.tsx, ikke klassisk) – originalens vejr vises som én række \"Weather\" (NextMatchClassic)"
+    },
+    {
+      "prefix": "pitch.d.",
+      "reason": "Banebeskrivelsen i PreMatch (Match.tsx, ikke klassisk)"
+    },
+    {
+      "prefix": "proj.",
+      "reason": "Byggeprojekter (FacilitiesTab i Stadium.tsx – fanen findes ikke i ægte tilstand: `orig && tab0 === facilities` → overview, Finance.tsx)"
+    },
+    {
+      "prefix": "fac.",
+      "reason": "Faciliteter (FacilitiesTab i Stadium.tsx og Club.tsx moderne) – ikke i ægte tilstand"
+    },
+    {
+      "prefix": "att.",
+      "reason": "Fremmødefanen i Stadium.tsx (Finance.tsx-skærmen nås kun fra det moderne udseende; ægte tilstand viser Finances & Info via Club cview, ClassicFinanceBody)"
+    },
+    {
+      "prefix": "ticket.",
+      "reason": "Billetpris (TicketPanel i Finance.tsx/Stadium.tsx, kun `extended() && !orig`)"
+    },
+    {
+      "prefix": "mb.",
+      "reason": "Reserve-svar i meetBoard (board.ts), som kun bruges, når cmBoardRequest giver null – ægte tilstand svarer med originalens 0x6a9470-tekster"
+    },
+    {
+      "prefix": "strategy.",
+      "reason": "Klubstrategi i ModernClub (Club.tsx)"
+    },
+    {
+      "prefix": "trophy.captain.",
+      "reason": "Trofæhyldest (fans.ts, kun `!cm`); newsFilter.ts"
+    },
+    {
+      "prefix": "trophy.press.",
+      "reason": "Trofæhyldest (fans.ts, kun `!cm`); newsFilter.ts"
+    },
+    {
+      "prefix": "match.",
+      "reason": "Match.tsx: PreMatch og LiveMatchs `!classic`-grene (moderne udseende) – klassisk bruger Cx*-komponenterne; match.won/drew/lost-nyhederne kun `!cmActive` (sim.ts userMatchResult)"
+    },
+    {
+      "prefix": "short.",
+      "reason": "Squad.tsx: attributkolonner i det moderne udseende (klassisk: SquadClassic med cl.at.*)"
+    },
+    {
+      "prefix": "train.",
+      "reason": "Training.tsx (ModernTraining) og TrainingClassic.tsx/PlayerClassic.tsx uden cmActive – ægte tilstand viser TrainingCm.tsx (0x8b5930)"
+    },
+    {
+      "prefix": "loan.",
+      "reason": "Udlejningsdialogen i PlayerScreen.tsx (moderne), udlejningsfejl i transfers.ts (loanOut, kun vores udlejningsflow) og tilbagekaldelsen i rules2001.ts (kun uden cmActive)"
+    },
+    {
+      "prefix": "cxs.",
+      "reason": "ClassicStart.tsx: CM Reborns egne punkter i startmenuen (Extras, Popular players, konto, database-valg) – udenfor originalens skærme, som Game Options"
+    },
+    {
+      "prefix": "fin.",
+      "reason": "Finance.tsx-panelerne bag `!orig`, ModernClub (Club.tsx) og ClassicClub `!orig` – ægte tilstand viser ClassicFinanceBody (originalens View Finances)"
+    },
+    {
+      "prefix": "list.",
+      "reason": "Transferlisteforklaringer i PlayerScreen.tsx/Transfers.tsx (moderne) – ægte tilstand: Set Staff Transfer Status (cmTransferList)"
+    },
+    {
+      "prefix": "offer.",
+      "reason": "Budpanelerne i PlayerScreen.tsx/Transfers.tsx/counterAccept.tsx (moderne) – ægte tilstand: BidPanel/Confirm Transfer Offer"
+    },
+    {
+      "prefix": "deal.",
+      "reason": "Handelsoversigten i Transfers.tsx (moderne)"
+    },
+    {
+      "prefix": "pr.",
+      "reason": "Prisvisningen i PlayerScreen.tsx (moderne budpanel)"
+    },
+    {
+      "prefix": "myoffer.",
+      "reason": "PlayerScreen.tsx (moderne)"
+    },
+    {
+      "prefix": "enquiry.",
+      "reason": "Enquire (transfers.ts enquire) – menupunktet findes kun uden authentic() (PlayerClassic.tsx)"
+    },
+    {
+      "prefix": "clause.",
+      "reason": "Klausulpaneler i Negotiation.tsx/PlayerScreen.tsx/Transfers.tsx (moderne); klausulernes nyheder er slået fra i newsFilter.ts – ægte tilstand viser originalens klausuler (cmContractInit/cmCl)"
+    },
+    {
+      "prefix": "jobs.",
+      "reason": "Jobs.tsx (Job centre): skjult i ægte tilstand (AUTH_HIDDEN i classic.tsx) – ægte tilstand: Job Information, jobtilbud som nyhed + JobOfferPanel (TransferStatusClassic)"
+    },
+    {
+      "prefix": "score.",
+      "reason": "Ranking.tsx: CM Reborns egen rangliste (Rankings)"
+    },
+    {
+      "prefix": "report.",
+      "reason": "ReportScreen (Report.tsx, moderne kamprapport) – klassisk viser PlayedMatchClassic"
+    },
+    {
+      "prefix": "fa.",
+      "reason": "board.ts faRequest-fallback – ægte tilstand bruger faRequestOriginal (originalens 11 tekster)"
+    },
+    {
+      "prefix": "staff.short.",
+      "reason": "Staff.tsx: attributforkortelser i det moderne udseende"
     }
   ],
   "keys": [
@@ -634,6 +774,110 @@
     {
       "key": "cl.ct.title.out",
       "reason": "Skabelonen \"<title> - Season <season>\" + \" Players Out\" findes i exe'en som to strenge (Club.tsx sætter dem sammen som originalen)"
+    },
+    {
+      "key": "tac.customFormation",
+      "reason": "Tactics.tsx (moderne)"
+    },
+    {
+      "key": "tac.movePos",
+      "reason": "Tactics.tsx (moderne)"
+    },
+    {
+      "key": "tac.movePosHint",
+      "reason": "Tactics.tsx (moderne)"
+    },
+    {
+      "key": "tac.hint2",
+      "reason": "Tactics.tsx (moderne)"
+    },
+    {
+      "key": "tac.hint2Touch",
+      "reason": "Tactics.tsx (moderne)"
+    },
+    {
+      "key": "tac.undoHint",
+      "reason": "Tactics.tsx (moderne)"
+    },
+    {
+      "key": "tac.withBall",
+      "reason": "Tactics.tsx (moderne)"
+    },
+    {
+      "key": "tac.withoutBall",
+      "reason": "Tactics.tsx (moderne)"
+    },
+    {
+      "key": "tac.save",
+      "reason": "Tactics.tsx (moderne)"
+    },
+    {
+      "key": "tac.load",
+      "reason": "Tactics.tsx (moderne)"
+    },
+    {
+      "key": "tac.hint",
+      "reason": "Tactics.tsx (moderne)"
+    },
+    {
+      "key": "tac.individual",
+      "reason": "Tactics.tsx (moderne)"
+    },
+    {
+      "key": "tac.bestFor",
+      "reason": "Tactics.tsx (moderne)"
+    },
+    {
+      "key": "tac.roles",
+      "reason": "Tactics.tsx (moderne)"
+    },
+    {
+      "key": "tac.setPieces",
+      "reason": "Tactics.tsx (moderne)"
+    },
+    {
+      "key": "intl.pickTitle",
+      "reason": "SquadPicker i International.tsx (moderne)"
+    },
+    {
+      "key": "intl.pickHint",
+      "reason": "SquadPicker i International.tsx (moderne)"
+    },
+    {
+      "key": "intl.squadSaved",
+      "reason": "SquadPicker (moderne) – submitSquad i international.ts"
+    },
+    {
+      "key": "intl.squad",
+      "reason": "NationTeam i International.tsx (moderne)"
+    },
+    {
+      "key": "intl.yourTeam",
+      "reason": "NationTeam i International.tsx (moderne)"
+    },
+    {
+      "key": "intl.noSquad",
+      "reason": "Tom liste: i ægte tilstand (authentic()) vises intet (International.tsx klassisk); teksten vises kun i det moderne udseende"
+    },
+    {
+      "key": "intl.noResults",
+      "reason": "Tom liste: i ægte tilstand vises intet (International.tsx/IntlTourClassic.tsx); teksten vises kun i det moderne udseende"
+    },
+    {
+      "key": "intl.none",
+      "reason": "Tom liste: i ægte tilstand vises intet (International.tsx klassisk)"
+    },
+    {
+      "key": "intl.noHistory",
+      "reason": "Tom liste: i ægte tilstand vises intet (International.tsx klassisk)"
+    },
+    {
+      "key": "intl.noQual",
+      "reason": "Tom liste: i ægte tilstand vises intet (International.tsx klassisk)"
+    },
+    {
+      "key": "ban.appealHint",
+      "reason": "Inbox.tsx: appeal-panelet vises kun uden cmActive (rules2001.ts); ægte tilstand: cmban.appeal"
     },
     {
       "key": "cl.na.noJobs",

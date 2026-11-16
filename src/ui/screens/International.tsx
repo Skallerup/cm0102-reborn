@@ -15,6 +15,7 @@ import type { Player } from '../../game/types';
 import { gs } from '../../game/state';
 import type { JSX } from 'react';
 import { isRetro } from '../theme';
+import { authentic } from '../../game/rules';
 import { Head } from './common';
 import { ClassicSub, CxDrop, CxLink, clubRoute, type Item } from '../classic';
 import { ClassicClubSquad } from './SquadClassic';
@@ -200,18 +201,18 @@ function ClassicNationTeam({ n }: { n: number }) {
     <div>
       <Head title={natName(g.nations[n]?.name)} />
       <Tabs tabs={[['squad', t('cl.nt.squad')], ['u21', t('cl.nt.u21')], ['results', t('intl.tab.results')], ['fifa', t('intl.tab.fifa')], ['info', t('cl.nt.info')]]} value={tab} onChange={(v) => setTab(v as typeof tab)} />
-      {tab === 'u21' && (u21Squad(n).length ? <ClassicClubSquad cid={0} players={u21Squad(n)} /> : <div className="cx-empty">{t('intl.noSquad')}</div>)}
+      {tab === 'u21' && (u21Squad(n).length ? <ClassicClubSquad cid={0} players={u21Squad(n)} /> : <div className="cx-empty">{authentic() ? '' : t('intl.noSquad')}</div>)}
       {tab === 'squad' && (
         <>
           <div className="cx-subtitle">{t('cl.nt.squadTitle', { n: squad.length })}</div>
           {coach && <SquadPicker n={n} />}
-          {!squad.length ? <div className="cx-empty">{t('intl.noSquad')}</div> : <ClassicClubSquad cid={0} players={squad} />}
+          {!squad.length ? <div className="cx-empty">{authentic() ? '' : t('intl.noSquad')}</div> : <ClassicClubSquad cid={0} players={squad} />}
         </>
       )}
       {tab === 'results' && (
         <>
           <div className="cx-subtitle">{t('intl.tab.results')}</div>
-          {!results.length ? <div className="cx-empty">{t('intl.noResults')}</div> : (
+          {!results.length ? <div className="cx-empty">{authentic() ? '' : t('intl.noResults')}</div> : (
             <table className="grid"><tbody>{results.map((r, i) => (
               <tr key={i}><td className="muted">{dateFmt(r.date)}</td><td><Nn id={r.home} /></td><td className="num"><b>{r.hg} - {r.ag}</b></td><td><Nn id={r.away} /></td><td className="muted">{t(`intl.kind.${r.kind}`)}</td></tr>
             ))}</tbody></table>
@@ -289,7 +290,7 @@ function ClassicInternational({ tab, setTab }: { tab: string; setTab: (v: string
       {cur === 'tournament' && (() => {
         // VM/EM og de kontinentale slutrunder (Copa América, Afrikamesterskabet, Asian Cup) – den nyeste først
         const all = [tour, ...(st?.cont ?? [])].filter((x): x is IntlTournament => !!x).sort((a, b) => Number(a.stage === 'done') - Number(b.stage === 'done') || b.year - a.year);
-        return all.length ? all.map((x) => <CxTournament key={`${x.name}${x.year}`} tour={x} />) : <div className="cx-empty">{t('intl.none')}</div>;
+        return all.length ? all.map((x) => <CxTournament key={`${x.name}${x.year}`} tour={x} />) : <div className="cx-empty">{authentic() ? '' : t('intl.none')}</div>;
       })()}
       {cur === 'qual' && <CxQual />}
       {cur === 'results' && <CxResults results={st?.results ?? []} />}
@@ -325,7 +326,7 @@ function CxTournament({ tour }: { tour: IntlTournament }) {
 }
 
 function CxResults({ results }: { results: import('../../game/international').IntlResult[] }) {
-  if (!results.length) return <div className="cx-empty">{t('intl.noResults')}</div>;
+  if (!results.length) return <div className="cx-empty">{authentic() ? '' : t('intl.noResults')}</div>;
   return (
     <div className="cx-tbl-wrap cx-listpanel"><table className="cx-tbl">
       <thead><tr><th className="btn-col" /><th style={{ textAlign: 'right' }}>{t('cl.nt.home')}</th><th className="c-num">{t('cl.nt.score')}</th><th>{t('cl.nt.away')}</th><th>{t('cl.nt.comp')}</th></tr></thead>
@@ -359,7 +360,7 @@ function CxHistory() {
   ];
   const comps = [...new Set(rows.map((r) => r.c))];
   const [comp, setComp] = useRouteState('ihist', comps.includes('wc') ? 'wc' : comps[0] ?? 'wc');
-  if (!rows.length) return <div className="cx-empty">{t('intl.noHistory')}</div>;
+  if (!rows.length) return <div className="cx-empty">{authentic() ? '' : t('intl.noHistory')}</div>;
   const list = rows.filter((r) => r.c === comp).sort((a, b) => b.y - a.y);
   return (
     <>
@@ -382,7 +383,7 @@ function CxHistory() {
 function CxQual() {
   const g = useGame()!;
   const q = g.intl?.qual;
-  if (!q) return <div className="cx-empty">{t('intl.noQual')}</div>;
+  if (!q) return <div className="cx-empty">{authentic() ? '' : t('intl.noQual')}</div>;
   const rows = (grp: number[]) => grp.map((n) => q.table[n]).sort((a, b) => b.pts - a.pts || b.gf - b.ga - (a.gf - a.ga) || b.gf - a.gf);
   return (
     <>
