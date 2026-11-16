@@ -62,13 +62,23 @@ export const NAT7F = new Map(NATION_7F);
  *  beløbsgrænser 0x4d1600, 0x9cc270 = 1). Uden dem læste de oversatte funktioner 0 (fx værdien 0 % i 0x4d0c60 → udbudsprisen £90.500 for
  *  Beckham). Klubberne efter navnet (−1 = ikke i spillet); B-hold-parrene og Spaniens 23 klubber er en del af tabellen. [0xad9c6c]'s
  *  personflag (+0xc, 0x418f60) = ingen. */
+const KEY_CLUBS = new WeakMap<GameState, { n: number; ref: GameState['clubs']; v: number[] }>();
 export function writeKeyIds(m: SparseMem, g: GameState, byName: Map<string, number>): void {
   for (const [a, nm] of KEY_NATION_GLOBALS) m.w32(a, byName.get(nm) ?? -1);
   for (const [a, v] of KEY_COMP_GLOBALS) m.w32(a, v);
   for (let i = 0; i < 6; i++) m.w32(0x9cfa08 + 4 * i, i);
-  const clubByName = new Map<string, number>();
-  for (const c of Object.values(g.clubs)) if (!clubByName.has(c.name)) clubByName.set(c.name, c.id);
-  for (const [a, nm] of KEY_CLUB_GLOBALS) m.w32(a, clubByName.get(nm) ?? -1);
+  // (hastighed, runde 14) klubbernes id-globaler gemt pr. spil, så længe klubberne er de samme (antal og navne – nøglen er deres id/navn-række)
+  let K = KEY_CLUBS.get(g);
+  const clubs = g.clubs;
+  let n = 0;
+  for (const _ in clubs) n++;
+  if (!K || K.n !== n || K.ref !== clubs) {
+    const clubByName = new Map<string, number>();
+    for (const c of Object.values(clubs)) if (!clubByName.has(c.name)) clubByName.set(c.name, c.id);
+    K = { n, ref: clubs, v: KEY_CLUB_GLOBALS.map(([, nm]) => clubByName.get(nm) ?? -1) };
+    KEY_CLUBS.set(g, K);
+  }
+  for (let i = 0; i < KEY_CLUB_GLOBALS.length; i++) m.w32(KEY_CLUB_GLOBALS[i][0], K.v[i]);
   AGE_PCT_9A7F30.forEach((v, i) => m.w8(0x9a7f30 + i, v));
   FEE_STEPS_9A7F48.forEach((v, i) => m.wf64(0x9a7f48 + 8 * i, v));
   m.w8(0x9cc270, 1);

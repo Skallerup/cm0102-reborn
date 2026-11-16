@@ -38,7 +38,7 @@ import { getClubFinance_5a0590 } from './cmWage';
 import { leagueClash } from './cmBoardInterest';
 import { GEN } from './cmGen/index';
 import { humanClub_600a50 } from './cmWageGame';
-import { contractFlag_5445x0, value_840d80_impl, value_840d80_any } from './cmSlEval';
+import { contractFlag_5445x0, value_840d80_impl, value_840d80_any, PV_DIRECT } from './cmSlEval';
 import { ensureImpls } from './cmGen/impls';
 import { isHumanClub } from './humans';
 import { ageOn } from './dates';
@@ -578,10 +578,15 @@ const PI: PlanIn = { id: 0, real: false, age: 0, joined: D0, rec: [], pos: 0, fl
   listed: false, daysNoClub: 0, league69: null, mgr: MG_NONE, data: null as unknown as PlanD };
 /** den aktuelle vurderings dommer (0x6e86d0 – som aiTeam.ts' judgeFor) */
 const JUDGE = { p: null as Player | null, ctx: {} as PickCtx, age: 0 };
+/** (runde 14) judgeAbility er en ren funktion – inddata i genbrugte objekter (ingen allokering pr. vurdering) */
+const JIN: Parameters<typeof judgeAbility>[0] = { playerId: 0, ca: 0, pa: 0, age: 0, gk: 0, gameSeed: 0, judge: null, kind: 1, hint: 0, repSeen: 0 };
+const JJ = { id: 0, ja: 0, jp: 0 };
 const judgeCur = (kind: 1 | 2, hint: number) => {
-  const p = JUDGE.p!, ctx = JUDGE.ctx;
-  return judgeAbility({ playerId: p.id, ca: p.ca, pa: p.pa, age: JUDGE.age, gk: p.pos[0], gameSeed: ctx.gameSeed ?? 0,
-    judge: ctx.judge ? { id: ctx.judge.id, ja: ctx.judge.ja, jp: ctx.judge.jp } : null, kind, hint, repSeen: (p.cmRepMem ?? p.cmRep ?? [0, p.rep * 2, 0])[1] * 50 });
+  const p = JUDGE.p!, ctx = JUDGE.ctx, j = JIN;
+  j.playerId = p.id; j.ca = p.ca; j.pa = p.pa; j.age = JUDGE.age; j.gk = p.pos[0]; j.gameSeed = ctx.gameSeed ?? 0;
+  if (ctx.judge) { JJ.id = ctx.judge.id; JJ.ja = ctx.judge.ja; JJ.jp = ctx.judge.jp; j.judge = JJ; } else j.judge = null;
+  j.kind = kind; j.hint = hint; const rr = p.cmRepMem ?? p.cmRep; j.repSeen = (rr ? rr[1] : p.rep * 2) * 50;
+  return judgeAbility(j);
 };
 function playerBase(S: SlMem, p: Player, mid: number): PlBase {
   const bases = S.pbase!;
@@ -916,10 +921,13 @@ function listSorted(D: FrDay, m: CmMem, L: number, n: number): boolean {
   return v;
 }
 const NEXT = ENV.CM_SL_NEXT !== '0';
+/** CM_SL_JUMP=0: ingen spring over rækker af klasse 1 (runde 14) */
+const JUMP = ENV.CM_SL_JUMP !== '0';
 /** (runde 13) positionslistens klasser pr. (liste, land, pladsgruppe) for dagen – regnet første gang posten nås:
  *  1 = altid afvist uden sidevirkninger (frBits B_REJ, id over grænsen, ungdomspladsen og alder > 23), 2 = afvist af rj 18/21, medmindre
  *  passagen er en lejeplads/[esp+0x84] eller kandidaten rammes af id-prøven eller 0x8cca10's flag (de tjekkes hver gang), 3 = den normale vej */
-interface ListCls { cls: Uint8Array; ids: Int32Array }
+/** (runde 14) nx[j] > j: posterne j..nx[j]−1 har alle klasse 1 (sat, når en række af dem er gennemløbet fra j) */
+interface ListCls { cls: Uint8Array; ids: Int32Array; nx: Int32Array }
 function listCls(D: FrDay, m: CmMem, f: FrCtx, L: number, n: number): ListCls {
   const g2 = f.b24 & 0x1e, v = g2 === 0xa ? 2 : g2 === 0xc ? 1 : 0;
   const k1 = f.cn * 4 + v;
@@ -929,7 +937,7 @@ function listCls(D: FrDay, m: CmMem, f: FrCtx, L: number, n: number): ListCls {
   if (!C || C.cls.length !== n) {
     let ids = D.ids.get(L);
     if (!ids || ids.length !== n) { ids = new Int32Array(n); for (let i = 0; i < n; i++) ids[i] = m.s32(L + 12 * i); D.ids.set(L, ids); }
-    C = { cls: new Uint8Array(n), ids };
+    C = { cls: new Uint8Array(n), ids, nx: new Int32Array(n) };
     A.set(L, C);
   }
   return C;
@@ -959,18 +967,26 @@ function skipRun(R: X86, m: CmMem, f: FrCtx, L: number, n: number, j: number): n
     while (lo < hi) { const mid = (lo + hi) >> 1; if (f.slot7 < m.s32(L + 12 * mid + 8) * 1.3) hi = mid; else lo = mid + 1; }
     end = lo;
   }
-  const LC = listCls(D, m, f, L, n), C = LC.cls, ids = LC.ids;
+  const LC = listCls(D, m, f, L, n), C = LC.cls, ids = LC.ids, nx = LC.nx;
   const two = !(f.b24 & 1) && !f.e84, kk = f.kk, idc = f.idClub, tm = f.tm86e;
+  // (runde 14) rækker af klasse 1 springes over med nx (samme afvisninger – klasserne afhænger ikke af pladsen, kun af listen, landet og gruppen)
+  let run = -1;
   while (j < end) {
+    if (JUMP && !SKIPCHECK) {
+      const x = nx[j];
+      if (x > j) { if (run < 0) run = j; j = x; continue; }
+    }
     let k = C[j];
     if (!k) { k = clsOf(D, m, f, L, j); C[j] = k; }
-    if (k === 1) { if (SKIPCHECK) nextCheck(R, f, L, j); j++; continue; }
+    if (k === 1) { if (SKIPCHECK) nextCheck(R, f, L, j); if (run < 0) run = j; j++; continue; }
+    if (run >= 0) { nx[run] = j; run = -1; }
     if (k === 2 && two) {
       const id = ids[j];
       if (!(kk !== 0 && ((id + idc) | 0) % kk === 0) && !(m.u8((tm + 8 * id) >>> 0) & 0x10)) { if (SKIPCHECK) nextCheck(R, f, L, j); j++; continue; }
     }
     return j;                                                                 // den normale vej (frSkip ville også svare nej)
   }
+  if (run >= 0 && j > run) nx[run] = j;
   if (end < n && SKIPCHECK) tailCheck(m, f, L, end, n);
   return n;
 }
@@ -1226,14 +1242,13 @@ function fastReject1(R: X86, f: FrCtx): number {
   if (b24 & 1) return rz(103);
   if (m.u8((f.tm86e + 8 * id) >>> 0) & 0x10) return rz(104);
   const esp = f.esp;
-  const EVAL = () => { FR_STATS[200] = (FR_STATS[200] ?? 0) + 1; R.esi = st | 0; m.w32(esp + 0x24, entry); m.w32(esp + 0x34, k34); if (k) m.w32(0xae1080, k); return 0x8400da; };
-  if (f.e84) return EVAL();
+  if (f.e84) return evalGo(R, m, st, esp, entry, k34, k);
   const idsum = (id + f.idClub) | 0, kk = f.kk;
-  if (kk !== 0 && idsum % kk === 0) return EVAL();
+  if (kk !== 0 && idsum % kk === 0) return evalGo(R, m, st, esp, entry, k34, k);
   const cn = f.cn;
   if (cn === pn || pg[so + 0x22] || (sc && m.u32(sc + 0x53) === cn)) {
-    if (b24 & 1 || !rec || m.s16(rec + 9) >= 0xcb2 || (sc && m.s16(sc + 0x80) >= 0xcb2) || age >= 0x14) return EVAL();
-    return idsum % f.dNp !== 0 ? rj(99) : EVAL();
+    if (b24 & 1 || !rec || m.s16(rec + 9) >= 0xcb2 || (sc && m.s16(sc + 0x80) >= 0xcb2) || age >= 0x14) return evalGo(R, m, st, esp, entry, k34, k);
+    return idsum % f.dNp !== 0 ? rj(99) : evalGo(R, m, st, esp, entry, k34, k);
   }
   if (age < 0x17 && (FRPORT ? knowsNation_53d980(c, st, cn, 1) : slCall(c, 0x53d980, 0, st, cn, 1)) && rec && m.s16(rec + 0xd) < 0xcb2) return rj(18);
   if (cn && pn && f.cn75 !== m.u8(pn + 0x75)) {
@@ -1247,7 +1262,11 @@ function fastReject1(R: X86, f: FrCtx): number {
   if (m.s16(rec + 0xd) < (youth ? 0x6d6 : 0xabe)) return rj(21);
   const v = s16(FRPORT ? seenRep_5407e0(c, st, f.mgc, 0) : slCall(c, 0x5407e0, 0, st, f.mgc, 0));
   const r = c.rand(2000) + (youth ? 0xabe : 0xcb2);
-  return v >= r ? EVAL() : rj(98);
+  return v >= r ? evalGo(R, m, st, esp, entry, k34, k) : rj(98);
+}
+/** fastReject1's vej til vurderingen (0x8400da): esi = staff og de lokale variabler som i koden – (runde 14) uden en lukning pr. kandidat */
+function evalGo(R: X86, m: CmMem, st: number, esp: number, entry: number, k34: number, k: number): number {
+  FR_STATS[200] = (FR_STATS[200] ?? 0) + 1; R.esi = st | 0; m.w32(esp + 0x24, entry); m.w32(esp + 0x34, k34); if (k) m.w32(0xae1080, k); return 0x8400da;
 }
 /** fastReject1 for en personpost, der går over en sidegrænse (læst med m) */
 function fastReject1m(R: X86, f: FrCtx, S: SlMem, m: CmMem, c: CmCtx, entry: number, id: number, st: number): number {
@@ -1294,14 +1313,13 @@ function fastReject1m(R: X86, f: FrCtx, S: SlMem, m: CmMem, c: CmCtx, entry: num
   if (b24 & 1) return rz(103);
   if (m.u8((f.tm86e + 8 * id) >>> 0) & 0x10) return rz(104);
   const esp = f.esp;
-  const EVAL = () => { FR_STATS[200] = (FR_STATS[200] ?? 0) + 1; R.esi = st | 0; m.w32(esp + 0x24, entry); m.w32(esp + 0x34, k34); if (k) m.w32(0xae1080, k); return 0x8400da; };
-  if (f.e84) return EVAL();
+  if (f.e84) return evalGo(R, m, st, esp, entry, k34, k);
   const idsum = (id + f.idClub) | 0, kk = f.kk;
-  if (kk !== 0 && idsum % kk === 0) return EVAL();
+  if (kk !== 0 && idsum % kk === 0) return evalGo(R, m, st, esp, entry, k34, k);
   const cn = f.cn;
   if (cn === pn || m.u8(st + 0x22) || (sc && m.u32(sc + 0x53) === cn)) {
-    if (b24 & 1 || !rec || m.s16(rec + 9) >= 0xcb2 || (sc && m.s16(sc + 0x80) >= 0xcb2) || age >= 0x14) return EVAL();
-    return idsum % f.dNp !== 0 ? rj(99) : EVAL();
+    if (b24 & 1 || !rec || m.s16(rec + 9) >= 0xcb2 || (sc && m.s16(sc + 0x80) >= 0xcb2) || age >= 0x14) return evalGo(R, m, st, esp, entry, k34, k);
+    return idsum % f.dNp !== 0 ? rj(99) : evalGo(R, m, st, esp, entry, k34, k);
   }
   if (age < 0x17 && (FRPORT ? knowsNation_53d980(c, st, cn, 1) : slCall(c, 0x53d980, 0, st, cn, 1)) && rec && m.s16(rec + 0xd) < 0xcb2) return rj(18);
   if (cn && pn && f.cn75 !== m.u8(pn + 0x75)) {
@@ -1315,7 +1333,7 @@ function fastReject1m(R: X86, f: FrCtx, S: SlMem, m: CmMem, c: CmCtx, entry: num
   if (m.s16(rec + 0xd) < (youth ? 0x6d6 : 0xabe)) return rj(21);
   const v = s16(FRPORT ? seenRep_5407e0(c, st, f.mgc, 0) : slCall(c, 0x5407e0, 0, st, f.mgc, 0));
   const r = c.rand(2000) + (youth ? 0xabe : 0xcb2);
-  return v >= r ? EVAL() : rj(98);
+  return v >= r ? evalGo(R, m, st, esp, entry, k34, k) : rj(98);
 }
 /** flag 0 (stabens pladser, [esp+0x14] = 0) 0x83fa7c–0x840058: uden ikke-spillerpost afvist (0x83fbdf); 0x69fc60; kontraktens løn (+0x35 & 0x3f
  *  = 2: 0x85fa00 · ugeløn / 7) mod pladsens +7 og klubbens omdømme; 0x83fc56–0x83fcb5; 0x83fd57–0x83fec2 (leje og 0x8cca10: de oversatte fra
@@ -1553,6 +1571,8 @@ export function buildSlMem(g: GameState, opts: { noStale?: boolean } = {}): SlMe
     (O.c.m as SparseMem).release();
   }
   t = tick('want', t);
+  // (runde 14) 0x540a50 går her gennem kæden til cmClubLinks.ts linkedClub_540a50 (ingen adapter svarer på den) – contractForClub_4cf5f0's genvej
+  if (ENV.CM_SL_FAST540 !== '0') (M.c as { fast540?: boolean }).fast540 = true;
   const m = M.c.m;
   // (personposten +0 = id'et; cmSlMem.ts' pidStaff = spillets id → personposten, ellers en Map)
   const pidStaff = (M as { pidStaff?: (pid: number) => number | undefined }).pidStaff, base0 = m.u32(G.STAFF);
@@ -1561,6 +1581,7 @@ export function buildSlMem(g: GameState, opts: { noStale?: boolean } = {}): SlMe
   const memOf = pidStaff ? { get: (pid: number) => { const st = pidStaff(pid); return st === undefined ? undefined : (st - base0) / 0x6e; } } : memOfM;
   const byMem = { get: (id: number) => (id >= 0 ? byMemA[id] : undefined) };
   S = { M, m, c: M.c, g, slm: m.u32(m.u32(0xde1f54) + 0x856), memOf, byMem, clubAdr: (cid) => M.W.clubOf(cid), events: [], slotted: new Set() };
+  if (ENV.CM_SL_PVDIRECT !== '0') { const S0 = S; PV_DIRECT.c = M.c; PV_DIRECT.f = (st, a1, mask, club, a4) => planValue(S0, st >>> 0, a1, mask, club >>> 0, a4); }
   M.setRand(cmRand(g.seed ?? 0, dayNum(g.date), 0x842e10));
   // CONTRACT_MANAGER's faste datoer (0x4c7ac0 tidspunkt 0) – 0x867d30
   for (const [adr, n] of [[0xae1048, 7], [0xae1030, 0x1e], [0xae1058, 0x3c], [0xae1010, 0x5b], [0xae1060, 0x79], [0xae1040, 0x98],

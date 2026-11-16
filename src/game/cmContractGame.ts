@@ -268,7 +268,7 @@ export function buildWantMem(g: GameState, clubs: Iterable<number>, opts: { full
   const byStaff = new Map<number, Player>(W.players.map(([p, st]) => [st, p]));
   let env: BoardEnv | null = null;
   let rand: (n: number) => number = () => { throw new Error('cmContractGame: rand uden frø'); };
-  const envOf = () => (env ??= boardEnv(g));
+  const envOf = () => (env ??= boardEnv(g, g.date, undefined, true));
   // kald
   const base: CmCtx = {
     m,

@@ -151,7 +151,8 @@ export function contractForClub_4cf5f0(c: CmCtx, staff: number, club: number): n
     if (loan && m.s32(loan + 4) === cid) return loan;
   }
   let cl = club;
-  const p = c.call(0x540a50, club, SCR_540A50, 1);
+  // (hastighed, runde 14) ønskelisternes hukommelse (fast540): 0x540a50 med flag 1 er 0 uden skrivning, når club +0x244 = 0 – uden kaldkæden
+  const p = (c as { fast540?: boolean }).fast540 && m.u8(club + 0x244) === 0 ? 0 : c.call(0x540a50, club, SCR_540A50, 1);
   if (p && m.u32(SCR_540A50) === 0) cl = p;
   const cid2 = m.s32(cl);
   if (m.s32(own + 4) === cid2) return own;

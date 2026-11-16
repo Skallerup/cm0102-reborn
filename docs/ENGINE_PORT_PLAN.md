@@ -341,6 +341,38 @@ Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.m
   hukommelse pr. dag med en ændringstæller – runde 12: ikke bit for bit på dagens), (b) 0x4d1600 håndporteret med CHECK (stakken!), (c) 0x5408c0
   pr. (vurderingsmand, land) for dagen, (d) en øvre grænse i 0x840d80 efter planValue (ageBlock ≤ ×1,46, aldersloftet ≤ 1) – vurderinger, der ikke
   kan nå [esp+0x68], kan stoppe der (kun fra evalInLoop).
+- **Hastighed, runde 14 (16/11, stadig slået fra – ≤ 0,3 s er ikke nået; mellemrapport):** Maximum-world-filen, esbuild-bundt, maskinen delt
+  med tre andre agenter (load 3–8; vægurets tal for SAMME bundt svinger 2,3–2,9 s pr. dag). **Ny målemetode:** `/usr/bin/time -l` "instructions
+  retired" (svinger ~1 % mellem kørsler mod vægurets ±25 %): dagene = instruktioner(6 dage) − instruktioner(0 dage, kun spilstarten). **Resultat:**
+  6 dage 257,8 → 231,0 mia. instruktioner (**−10 %**), spilstarten 295,3 → 274,1 mia. (−7 %); vægur ~2,3–2,9 → ~1,6–2,9 s pr. dag (ikke
+  sammenligneligt under belastningen). **Bit for bit:** cm-sl-bench 30 dage sha1 hver dag ens med origin/main (5.900 bud), `CM_SL_ASSESS=check`
+  10 dage 0 afvigelser, tests/cmShortlist + cmAiBid + cmValue + cmBoard* + cmContract* + cmWageGame grønne. **Gjort:** (1) 0x840ded–0x84115a
+  (masken og den bedste vurderingsmand) som `assessFast` (cmSlEval.ts): klubbens vurderingsmænd (manageren + 7 trænere) gemt pr. hukommelse med
+  deres viste Judging-egenskaber, klub, land og 0x53d980 pr. land (`ClubAsr`), kandidatens personpost læst én gang i stedet for 8 × 0x5408c0
+  (`knowFast`); `CM_SL_KNOWFAST=0` = den gamle vej. Et memo pr. (klub, staff, gruppe) er der også (`CM_SL_ASSESS=1`), men kun 32 % genbrug, og
+  opslaget koster mere end assessFast – slået fra. (2) skipRun: rækker af klasse 1 springes over i ét hop (`ListCls.nx`, `CM_SL_JUMP=0`).
+  (3) 0x6e6340 direkte fra 0x840d80 til planValue (`PV_DIRECT`, uden kaldkæden c.call → genCtx → buildSlWantMem → buildSlMem's switch;
+  `CM_SL_PVDIRECT=0`). (4) contractForClub_4cf5f0: 0x540a50 med flag 1 er 0 uden skrivning, når klubbens +0x244 = 0 – på ønskelisternes
+  hukommelse uden kaldkæden (`fast540`, `CM_SL_FAST540=0`). (5) judgeCur og fastReject1's vej til vurderingen uden allokering pr. kald
+  (`JIN`, `evalGo`). (6) boardEnv med `lazy` (kun cmContractGame/cmSlMem): rangeringen og klublisten først, når de bruges; writeKeyIds'
+  klub-id'er gemt pr. spil (`KEY_CLUBS`). **Målt, ikke gjort:** (a) memo af hele 0x840d80-vurderingen pr. dag – kun 13,6 % af vurderingerne har
+  samme (klub, staff, plads +1/+7/+0xb/+0x24, tærskel, ROWS +0xb, klubpost +5) samme dag (1,95 mio. vurderinger på spilstarten + 2 dage);
+  (b) øvre grænse efter planValue (runde 13's forslag d): delen efter planValue (ageBlock, 0x83bd00, aldersloftet …) er < 2 % af dagen –
+  planValue selv er det dyre, og en grænse FØR planValue kræver planScore; (c) cmAskingPrice uden ny buildWantMem: spillets tilstand ændres
+  mellem buddene i cmAiAiDue (lejehandlerne gennemføres straks) – ikke bit for bit uden en ændringstæller for de to klubber.
+  **Profilen nu** (6 dage, andel af hele dagen): dropDeadBids → 0x843e10 → 0x83f3a0 55 %, heraf kandidatløkken 36 % (vurderingen 24 %:
+  planValue 14,5 – planScore 6,4, selv 3,5, playerBase 2,1 –, assessFast 2,4; frasorteringen fastReject1 5,8, skipRun 4,6), de oversatte
+  0x4d1600 11,7 % og 0x846920 6,4 % (de accepterede kandidater), makeBids → 0x84a020 15 %, cmAiAiDue 8,6 % (cmAskingPrice 6,6 – buildWantMem 4,7),
+  buildSlMem 8,3 %, GC 2,7 %. **Hvorfor ×10 ikke er inden for rækkevidde med målrettede ændringer:** ~280.000 planValue-kald (0x6e6340) pr. dag
+  (dag 3–9; spilstarten 1,4 mio.), ~200 bud pr. dag (5.900 på 30 dage) med genudfyldningerne efter afslagene (som originalens – runde 10), og
+  ingen enkelt post over 15 %. ≤ 0,3 s
+  kræver ~0,3 µs pr. vurdering inkl. frasortering og de accepterede kandidaters 0x4d1600/0x846920 – dvs. hele 0x83f3a0 + 0x4d1600 + 0x846920 +
+  0x84a020/0x8e5d60 som én TS-model på typed arrays (runde 12's plan, ~15.000 instruktioner, samme rand-rækkefølge og stakkens indhold – se
+  runde 13's fund om ikke-initialiserede lokale variabler). Det er sandsynligvis også mere, end originalen selv bruger med Maximum (~10⁹
+  instruktioner pr. dag i ønskelisterne, hvis en vurdering koster ~2.000 x86-instruktioner). **Produktvalg til ejeren:** (i) ønskelisterne i
+  en Web Worker (dagen venter stadig ~1,5–2,5 s), (ii) databasestørrelsen 2 i stedet for Maximum for ønskelisterne (runde 9: ~0,6–0,8 s), eller
+  (iii) kun de valgte landes klubber (ikke originalt). SL_ON står derfor stadig på false; K2-sammenligningen (lejeaftaler/klubløse/frigivne)
+  er ikke kørt.
 - **Formændene** (koblet ind): sub_535a80's personlige egenskaber 0x535ea4– for alle personer – uden for 1..20: −1 → rand(16)+5, ellers to terninger:
   Ambition snittet, Loyalty den mindste (`cmStaffInit.ts personalFill_535a80`, cmFinance.ts' og cmBoardGame.ts' formand). Ønskelønnen
   (`scripts/cm-want-game.ts`): ens 1.142 → 1.148, inden for 2 % 1.470 → 1.483, inden for 10 % 1.852 → 1.848, 10/50/90 % 0,59/1,00/1,42 → 0,60/1,00/1,42.

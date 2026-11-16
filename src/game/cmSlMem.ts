@@ -649,7 +649,7 @@ export function buildSlWantMem(g: GameState, clubs: Iterable<number>, opts: { ca
   const byStaffOf = () => { if (!byStaffM) { byStaffM = new Map(); for (const [p, st] of players) byStaffM.set(st, p); } return byStaffM; };
   let env: BoardEnv | null = null;
   let rand: (n: number) => number = () => { throw new Error('cmContractGame: rand uden frø'); };
-  const envOf = () => (env ??= boardEnv(g));
+  const envOf = () => (env ??= boardEnv(g, g.date, undefined, true));
   const base: CmCtx = { m, rand: (n) => rand(n), useLog: opts.useLog, call: (adr, ...a) => call(adr, a) };
   const caIdx = clubCaIdx(g);
   const call = (adr: number, a: number[]): number => {

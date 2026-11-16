@@ -170,7 +170,8 @@ function leagueInfo(g: GameState, lid: string): LeagueInfo | null {
 /** midlertidig manager (0x6a4f80: "som om han havde jobbet") */
 const tempManager = new Map<number, Person | null>();
 
-export function boardEnv(g: GameState, todayIso = g.date, startIso?: string): BoardEnv {
+/** `lazy` (ønskelisternes og kontraktportenes kortlivede hukommelser): rangeringen og klublisten regnes først, når de bruges */
+export function boardEnv(g: GameState, todayIso = g.date, startIso?: string, lazy = false): BoardEnv {
   const today = isoToCm(todayIso);
   const gameStart = isoToCm(startIso ?? g.cmBoardStart ?? g.date);
   let persons: Person[] | null = null;
@@ -185,11 +186,14 @@ export function boardEnv(g: GameState, todayIso = g.date, startIso?: string): Bo
   const personOfStaff = (id: number) => { allPersons(); return byId.get(id) ?? null; };
   const humanOfClub = (c: number) => allPersons().find((p) => p.human && p.club === c) ?? null;
   const nationName = (n: number) => g.nations[n]?.name ?? '';
-  const ranking = nationRanking();
+  // (hastighed, runde 14) med `lazy` rangeringen og klublisten først, når de bruges (ønskelisterne bygger et miljø pr. udbudspris)
+  let rk: number[] | null = null, cl: number[] | null = null;
+  if (!lazy) { rk = nationRanking(); cl = Object.keys(g.clubs).map(Number).sort((a, b) => a - b); }
+  const ranking = () => (rk ??= nationRanking());
   let ie: InterestEnv | null = null;
   const env: BoardEnv = {
     today, gameStart,
-    clubs: Object.keys(g.clubs).map(Number).sort((a, b) => a - b),
+    get clubs() { return (cl ??= Object.keys(g.clubs).map(Number).sort((a, b) => a - b)); },
     clubRep: (c) => clubRepMem(g, c),
     clubNation: (c) => g.clubs[c]?.nation ?? -1,
     division: (c) => leagueOf(g, c),
@@ -203,7 +207,7 @@ export function boardEnv(g: GameState, todayIso = g.date, startIso?: string): Bo
     nationPlaces: (c) => {
       const n = g.clubs[c]?.nation;
       if (n === undefined || !UEFA_NATIONS.has(nationName(n))) return [1, 1];
-      const r = ranking.indexOf(n);
+      const r = ranking().indexOf(n);
       return r < 0 ? [1, 1] : [CL_SPOTS[r] ?? 1, UEFA_SPOTS[r] ?? 1];
     },
     isAustralia: (c) => nationName(g.clubs[c]?.nation ?? -1) === 'Australia',

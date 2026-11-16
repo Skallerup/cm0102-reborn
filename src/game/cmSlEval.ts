@@ -64,20 +64,136 @@ const T842064 = [0, 1, 2, 3, 12, 12, 12, 12, 12, 12, 12, 12, 4, 5, 6, 2, 7, 8, 9
 const AGE_CAP = [4500000.0, 6000000.0, 8000000.0, 12000000.0, 15000000.0, 12000000.0, 10000000.0, 5000000.0, 2500000.0, 1000000.0, 750000.0, 500000.0];
 
 export const EVAL_STATS = { ts: 0, gen: 0, bad: 0 };
+/** (runde 14) 0x6e6340 for ønskelisternes hukommelse direkte (cmShortlistGame.ts planValue) – samme svar som kæden c.call → genCtx → adapterne
+ *  (0x6e6340 står i ADAPTED; buildSlMem's switch kalder planValue med de fem første argumenter). Sat af buildSlMem; CM_SL_PVDIRECT=0: kæden. */
+export const PV_DIRECT: { c: CmCtx | null; f: ((st: number, a1: number, mask: number, club: number, a4: number) => number) | null } = { c: null, f: null };
 
-/** 0x840d80 (this, klub, staff, plads, &ud, tærskel, flag) → værdien; ud = planværdien. null = kør de oversatte instruktioner */
-export function value_840d80(c: CmCtx, self: number, club: number, st: number, slot: number, out: number, thr: number, flag: number): number | null {
+/** (runde 14) 0x840ded–0x84115a's maske og vurderingsmand (v18) som mask · 2^32 + v18 – kun læsninger (0x5408c0, 0x544410), ingen
+ *  sidevirkninger – gemt pr. hukommelse og (klub, staff, gruppevariant), når CM_SL_ASSESS=1 (standard: regnet hver gang – assessFast er billigere end opslaget); =check: gemt, og begge veje
+ *  sammenlignet (også assessFast mod den gamle vej assess0). CM_SL_KNOWFAST=0: assess0 (0x5408c0/0x544410 for hver vurderingsmand). */
+const ASSESS = (typeof process !== 'undefined' ? process.env?.CM_SL_ASSESS : undefined) ?? '0';
+export const ASSESS_STATS = { n: 0, hit: 0, bad: 0 };
+const ASSESS_MEMO = new WeakMap<CmMem, Map<number, number>>();
+function assessOf(c: CmCtx, club: number, st: number, g: number, mgr: number): number {
+  if (ASSESS === '0') return assess_840ded(c, club, st, g, mgr);
+  const m = c.m;
+  let M = ASSESS_MEMO.get(m);
+  if (!M) { M = new Map(); ASSESS_MEMO.set(m, M); }
+  const key = (m.s32(club) * 2097152 + m.s32(st)) * 4 + (g === 4 || g === 6 ? 0 : g === 8 ? 1 : 2);
+  ASSESS_STATS.n++;
+  const v = M.get(key);
+  if (v !== undefined) {
+    ASSESS_STATS.hit++;
+    if (ASSESS === 'check') { const w = assess_840ded(c, club, st, g, mgr); if (w !== v && ASSESS_STATS.bad++ < 10) console.log(`assess_840ded afviger: ${v} mod ${w}`); }
+    return v;
+  }
+  const w = assess_840ded(c, club, st, g, mgr);
+  M.set(key, w);
+  return w;
+}
+/** (runde 14) klubbens vurderingsmænd (manageren +0xcf og trænerne +0x1b3) for hukommelsen: deres viste Judging-egenskaber (0x544410 med 5/6),
+ *  klub, land, id-grænsen og 0x53d980(vurderingsmand, land, 1) pr. land – det, 0x5408c0 slår op for dem (personposten læses én gang pr. kandidat) */
+interface Asr { p: number; a5: number; a6: number; mc: number; mcNat: number; nat: number; idOk: boolean; mcRep: number; kn: Map<number, number> }
+interface ClubAsr { mgr: Asr | null; tr: (Asr | null)[]; rep: number }
+const ASR_MEMO = new WeakMap<CmMem, Map<number, ClubAsr>>();
+function asrOf(c: CmCtx, p: number): Asr | null {
+  const m = c.m;
+  if (!p) return null;
+  const np = m.u32(p + 0x69);
+  const mc = m.u32(p + 0x39);
+  return { p, a5: np ? attr(c, np, 5) : 0, a6: np ? attr(c, np, 6) : 0, mc, mcNat: mc ? m.u32(mc + 0x53) : 0, nat: m.u32(p + 0x1a),
+    idOk: m.s32(p) < m.s32(G.STAFF_COUNT) - 16, mcRep: mc ? m.s16(mc + 0x80) : 0, kn: new Map() };
+}
+function clubAsr(c: CmCtx, club: number): ClubAsr {
+  const m = c.m;
+  let M = ASR_MEMO.get(m);
+  if (!M) { M = new Map(); ASR_MEMO.set(m, M); }
+  let A = M.get(club);
+  if (!A) {
+    const tr: (Asr | null)[] = [];
+    for (let i = 0; i < 7; i++) { const p = m.u32(club + 0x1b3 + 4 * i); tr.push(p && m.u32(p + 0x69) ? asrOf(c, p) : null); }
+    A = { mgr: asrOf(c, m.u32(club + 0xcf)), tr, rep: m.s16(club + 0x80) };
+    M.set(club, A);
+  }
+  return A;
+}
+/** 0x5408c0(staff, vurderingsmand) med vurderingsmandens dele fra Asr og kandidatens (klub, klubbens land, land, omdømme +9) */
+function knowFast(c: CmCtx, A: Asr | null, sc: number, scNat: number, sn: number, rec: number): number {
+  if (!A) return 4;
+  if (sc) { if (sc === A.mc) return 0; if (A.mc && scNat === A.mcNat) return 0; }
+  if (sn === A.nat) return 2;
+  if (!kn(c, A, sn)) return 2;
+  if (sc && !kn(c, A, scNat)) return 3;
+  if (!A.idOk || !rec || !A.mc) return 4;
+  return c.m.s16(rec + 9) + A.mcRep >= 0x36b0 ? 3 : 4;
+}
+function kn(c: CmCtx, A: Asr, nat: number): number {
+  let v = A.kn.get(nat);
+  if (v === undefined) { v = knowsNation_53d980(c, A.p, nat, 1) ? 1 : 0; A.kn.set(nat, v); }
+  return v;
+}
+const KNOWFAST = (typeof process !== 'undefined' ? process.env?.CM_SL_KNOWFAST : undefined) !== '0';
+function assess_840ded(c: CmCtx, club: number, st: number, g: number, mgr: number): number {
+  if (KNOWFAST) {
+    const v = assessFast(c, club, st, g);
+    if (ASSESS === 'check') { const w = assess0(c, club, st, g, mgr); if (w !== v && ASSESS_STATS.bad++ < 10) console.log(`assessFast afviger: ${v} mod ${w}`); }
+    return v;
+  }
+  return assess0(c, club, st, g, mgr);
+}
+const K46 = [0x40, 0x50, 0x10, 0x30, 0x20], K8 = [0x59c2, 0x59d2, 0x5992, 0x59b2, 0x59a2];
+function assessFast(c: CmCtx, club: number, st: number, g: number): number {
+  const m = c.m;
+  const C = clubAsr(c, club);
+  const sc = m.u32(st + 0x39), scNat = sc ? m.u32(sc + 0x53) : 0, sn = m.u32(st + 0x1a), rec = m.u32(st + 0x61);
+  const M = C.mgr;
+  let v18 = M ? M.p : 0;
+  let ebx: number;
+  if (g === 4 || g === 6) {
+    ebx = 0x5882;
+    ebx |= K46[knowFast(c, M, sc, scNat, sn, rec)];
+  } else if (g === 8) {
+    ebx = K8[knowFast(c, M, sc, scNat, sn, rec)];
+  } else ebx = 0x5902;
+  let e = 0;
+  if (ebx & 0x100) {
+    if (M) {
+      e = M.a6 & 0xff;
+      const k = knowFast(c, M, sc, scNat, sn, rec);
+      if (k === 3) e = (e + 0xfb) & 0xff; else if (k === 4) e = (e + 0xf6) & 0xff;
+    }
+    const rep = C.rep;
+    for (let i = 0; i < 7; i++) {
+      const A = C.tr[i];
+      if (!A) continue;
+      let bl = A.a6 & 0xff;
+      const k = knowFast(c, A, sc, scNat, sn, rec);
+      if (k === 3) { if (rep < 0xdac) continue; bl = (bl + 0xfb) & 0xff; } else if (k === 4) { if (rep < 0xdac) continue; bl = (bl + 0xf6) & 0xff; }
+      if (s8(bl) <= s8(e)) continue;
+      e = bl; v18 = A.p;
+    }
+  } else if (ebx & 0x80) {
+    if (M) {
+      let bl = (M.a5 + 5) & 0xff;
+      e = bl;
+      const k = knowFast(c, M, sc, scNat, sn, rec);
+      if (k === 3) { bl = (bl + 0xfb) & 0xff; e = bl; } else if (k === 4) { bl = (bl + 0xf6) & 0xff; e = bl; }
+    }
+    for (let i = 0; i < 7; i++) {
+      const A = C.tr[i];
+      if (!A) continue;
+      let bl = A.a5 & 0xff;
+      const k = knowFast(c, A, sc, scNat, sn, rec);
+      if (k === 3) bl = (bl + 0xfb) & 0xff; else if (k === 4) bl = (bl + 0xf6) & 0xff;
+      if (s8(bl) <= s8(e)) continue;
+      e = bl; v18 = A.p;
+    }
+  }
+  return ebx * 4294967296 + (v18 >>> 0);
+}
+function assess0(c: CmCtx, club: number, st: number, g: number, mgr: number): number {
   const m: CmMem = c.m;
-  const mgr = m.u32(club + 0xcf);
-  if (mgr && !m.u32(mgr + 0x69)) return null;                               // 0x840dcc: rand – oversat
-  if (humanClub_600a50(c, club)) return null;                               // 0x840e83/0x840efb: menneskets klub – oversat
-  let v3c = m.s32(slot + 7);
-  if (v3c <= 1) v3c = 1;
-  let v18 = mgr;                                                             // [esp+0x18]
-  let f = 4;                                                                 // [esp+0xf]
-  let v20 = 0;
-  // 0x840ded
-  const g = m.u8(slot + 0x24) & 0x1e;
+  let v18 = mgr;
   let ebx: number;
   if (g === 4 || g === 6) {
     ebx = 0x5882;
@@ -88,10 +204,6 @@ export function value_840d80(c: CmCtx, self: number, club: number, st: number, s
     const k = s8(knowledge_5408c0(c, st, m.u32(club + 0xcf)));
     if (k >= 0 && k <= 4) ebx = [0x59c2, 0x59d2, 0x5992, 0x59b2, 0x59a2][k];
   } else ebx = 0x5902;
-  const mask = ebx;                                                          // [esp+0x10]
-  // 0x840ed2
-  if (m.u8(slot + 0x24) & 1) f = contractFlag_5445x0(c, st, 0, 2) ? 16 : 6;
-  // 0x840fcb: den bedste vurderingsmand (ikke-spillerpost +0x69) – manageren og klubbens 7 trænere +0x1b3
   let e = 0;
   if (ebx & 0x100) {
     if (mgr) {
@@ -134,11 +246,33 @@ export function value_840d80(c: CmCtx, self: number, club: number, st: number, s
       e = bl; v18 = p;
     }
   }
+  return ebx * 4294967296 + (v18 >>> 0);
+}
+
+/** 0x840d80 (this, klub, staff, plads, &ud, tærskel, flag) → værdien; ud = planværdien. null = kør de oversatte instruktioner */
+export function value_840d80(c: CmCtx, self: number, club: number, st: number, slot: number, out: number, thr: number, flag: number): number | null {
+  const m: CmMem = c.m;
+  const mgr = m.u32(club + 0xcf);
+  if (mgr && !m.u32(mgr + 0x69)) return null;                               // 0x840dcc: rand – oversat
+  if (humanClub_600a50(c, club)) return null;                               // 0x840e83/0x840efb: menneskets klub – oversat
+  let v3c = m.s32(slot + 7);
+  if (v3c <= 1) v3c = 1;
+  let v18 = mgr;                                                             // [esp+0x18]
+  let f = 4;                                                                 // [esp+0xf]
+  let v20 = 0;
+  // 0x840ded / 0x840fcb: masken [esp+0x10] og den bedste vurderingsmand [esp+0x18] (runde 14: assessOf – gemt pr. (klub, staff, gruppe))
+  const g = m.u8(slot + 0x24) & 0x1e;
+  const av = assessOf(c, club, st, g, mgr);
+  const mask = Math.floor(av / 4294967296);
+  v18 = av % 4294967296;
+  // 0x840ed2
+  if (m.u8(slot + 0x24) & 1) f = contractFlag_5445x0(c, st, 0, 2) ? 16 : 6;
+  let e = 0;
   // 0x84115a
   let a4 = -1;
   if (thr > -1) a4 = ftolE((thr * 2.5e-05 * thr) / f);
   const a1 = ((v18 & 0xffff0000) | m.u16(slot + 1)) | 0;
-  let o = c.call(0x6e6340, st, a1, mask, club | 0, a4, v18 | 0) | 0;
+  let o = (PV_DIRECT.c === c ? PV_DIRECT.f!(st, a1, mask, club, a4) : c.call(0x6e6340, st, a1, mask, club | 0, a4, v18 | 0)) | 0;
   m.w32(out, o);
   if (m.u32(st + 0x39) !== club && contractFlag_5445x0(c, st, 0, 9)) { o = ftolE(o * 1.05); m.w32(out, o); }
   // 0x8411ce
