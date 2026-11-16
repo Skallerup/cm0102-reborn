@@ -40,7 +40,8 @@ export function setGame(g: GameState | null) {
   // ligaregler fra en importeret database (CM 01/02) skal kendes, før spillet simuleres
   if (g?.customRules) Object.assign(LEAGUE_RULES, g.customRules);
   G = g;
-  setSavedModern(g?.options.mode === 'extended');
+  // et gammelt udvidet spil åbnes, som det blev gemt – men aldrig fællesspil (de er altid klassiske/ægte, ejeren 16/11)
+  setSavedModern(g?.options.mode === 'extended' && !g?.humans?.length);
   // prisniveauet: nye spil med den originale 01/02-database spilles i 2001-priser (econ.ts)
   setEconomy(g?.econ);
   if (g) rng.state = g.rng;

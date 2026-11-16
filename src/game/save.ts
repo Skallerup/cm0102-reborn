@@ -1,5 +1,7 @@
 // Gem/indlæs i IndexedDB som gzip-komprimeret JSON (≈4-5 MB pr. save).
 import { addMissingConference } from './competitions';
+import { MODERN_ENABLED } from '../ui/modernFlag';
+const modernEnabledHere = () => { if (MODERN_ENABLED) return true; try { return localStorage.getItem('cm0102.modern') === '1'; } catch { return false; } };
 import { fixClubName } from './data/clubNames';
 import { cmDatabase } from './newgame';
 import { del, get, keys, set } from 'idb-keyval';
@@ -139,6 +141,8 @@ export function upgradeLoaded() {
   splitReservesOnce();
   const g = gs();
   // gamle gemte spil i udvidet tilstand åbnes, som de blev gemt (moderne udseende + udvidet) – tilstanden ændres ikke (setGame → setSavedModern)
+  // fællesspil er altid det originale (classic + ægte tilstand) – alle klienter stiller samme spil om ens
+  if (g.humans?.length && !modernEnabledHere() && g.options.mode !== 'authentic') { g.options.mode = 'authentic'; g.options.rules = 'classic'; }
   if (addMissingConference()) {
     const club = g.clubs[g.userClub];
     if (club && g.comps.UECL?.clubs.includes(club.id)) addNews({ cat: 'general', key: 'news.ueclQualified', params: { club: club.name } });
