@@ -504,6 +504,14 @@
   ],
   "keys": [
     {
+      "key": "cl.pl.tck",
+      "reason": "originalens kolonnenavn 0x6161c8 \"Tck\" (0x7c1b20 art 14) – tre tegn, under strengudtrækkets mindstelængde 4"
+    },
+    {
+      "key": "cl.pl.drb",
+      "reason": "originalens kolonnenavn 0xa78428 \"Drb\" (0x7c1b20 art 15) – tre tegn, under strengudtrækkets mindstelængde 4"
+    },
+    {
       "key": "cmret.b.old",
       "reason": "originalens streng 0xa6f57c (0x7aa4c0) med to linjeskift – strengudtrækket deler den i to linjer, der ikke står ved siden af hinanden"
     },

@@ -968,6 +968,9 @@ export interface PlayerMatchLine {
   /** gittermotoren: MATCH_PLAYER +0x24 gule kort (2 = udvist for andet gule) og +0x25/+0x26 kortenes årsagskoder – Discipline Player (cmFine.ts) */
   cy?: number;
   cw?: [number, number];
+  /** gittermotoren: MATCH_PLAYER-tællerne, som resultatposten 0x729ff0 kopierer til spillerstatistikken 0x7c0d70 (cmPlayerData.ts StatLine):
+   *  [mål imod +0xf, straffe taget +0xd, straffemål +0xe, assists +0x10, skud +0xa, på mål +0xb, driblinger +0x11, gule +0x24, røde +0x23] */
+  cmr?: number[];
 }
 
 export interface MatchEvent {

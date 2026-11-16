@@ -14,7 +14,7 @@ import { cmAppsAfterMatch } from './transfers';
 import { autoSelect, newTactic } from './tactics';
 import type { MiniReport, Player } from './types';
 import { packReport } from './miniReport';
-import { cmActive } from './cmPlayerData';
+import { cmActive, recordPlayerMatch } from './cmPlayerData';
 import { intlHooks } from './hooks';
 
 export interface IntlRow { n: number; p: number; w: number; d: number; l: number; gf: number; ga: number; pts: number }
@@ -141,6 +141,8 @@ export function playNation(home: number, away: number, kind: IntlResult['kind'],
     const p = g.players[line.id];
     if (!p || line.minutes <= 0 || u21) continue;
     p.caps = (p.caps ?? 0) + 1;
+    // originalens spillerstatistik 0x7c0d70: landskampe i kategori 5 (International – tæller ikke i Senior Club og ikke i spillets karaktersnit)
+    if (cmActive(g) && !g.draft) recordPlayerMatch(g, p, 5, line, line.team === 0 ? hs.goals : as.goals, line.team === 0 ? as.goals : hs.goals, rep.mom === p.id, false);
     // CM 01/02 0x8c39f0: "Fee after N International Apps." tæller landskampe
     if (p.cmApps) cmAppsAfterMatch(p, 'int');
     p.intGoals = (p.intGoals ?? 0) + line.goals;

@@ -1952,6 +1952,30 @@ button.cx-bid-swap.removing { cursor: pointer; color: #fff21f; }
 .cx-mt-list .c-name { position: relative; }
 .cx-mt-list .cx-ycard { position: absolute; left: -22px; top: 50%; width: 22px; height: 30px; margin-top: -15px; background: #fff21f; border: 1px solid #8a8400; }
 .cx-mt-list tr.cx-mt-blank td { color: transparent; }
+
+/* Spillerprofilens statistik som CM 01/02 (0x870650, ejerens billeder 145/149/154): grå kolonneknapper, to mørkeblå pileknapper,
+   rækkerne skiftevis gule (#ffff55) og orange (#ff9538), Av R i lilla felter med turkis tekst, "-"/"----" hvor der intet er */
+.cx-pl-cmstats { table-layout: fixed; border-spacing: 2px 2px; }
+.cx-pl-cmstats th { width: 8.6%; padding: 3px 2px; background: #838183; color: #e8e5e9; font-size: 13px; font-weight: 600; text-shadow: none;
+  border: 1px solid; border-color: #c4c2c4 #3c3b3c #3c3b3c #c4c2c4; white-space: nowrap; overflow: hidden; text-overflow: clip; }
+.cx-pl-cmstats th.cx-pl-stitle { width: auto; background: none; border: none; }
+.cx-pl-cmstats th.cx-pl-pager { width: 8.6%; padding: 0; text-align: right; background: none; border: none; }
+.cx-pl-arrow { width: 50%; height: 24px; padding: 0; margin: 0; background: #00007d; color: #fff; font-size: 11px; line-height: 1; cursor: pointer;
+  border: 1px solid; border-color: #0000bc #00003a #00003a #0000bc; vertical-align: middle; }
+.cx-pl-arrow:active { border-color: #00003a #0000bc #0000bc #00003a; }
+.cx-pl-cmstats td { padding: 1px 2px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.cx-pl-cmstats tr.even td { color: #ffff55; }
+.cx-pl-cmstats tr.odd td { color: #ff9538; }
+.cx-pl-cmstats tr td:first-child { color: #fff; font-weight: 600; }
+.cx-pl-cmstats td.avr { background: #3b063f; color: #a9ffff; border: 1px solid; border-color: #59135d #150018 #150018 #59135d; }
+@media (max-width: 760px) { .cx-pl-cmstats th { font-size: 10px; } .cx-pl-cmstats td { font-size: 11px; } }
+/* hele profilen på én skærm som originalen (fødselslinje, tolv linjer, statistik og position uden at rulle); fødselslinjen gul og positionen
+   turkis som i originalen */
+.cx-pl { gap: 4px; }
+.cx-pl .cx-kv.cx-ruled { margin: 0; }
+.cx-pl .cx-kv.cx-ruled > span { min-height: 29px; }
+.cx-pl-born { padding: 7px 8px; margin-bottom: 0; color: #ffff55; }
+.cx-pl-pos { padding: 7px 0; margin-top: 0; color: #a9ffff; }
 /* CM 01/02 budskærm (ejerens billeder 143/144, 16/11): tre flader – tekst og rækker, Exchange/Remove på et lyst bånd i fuld bredde,
    Total Value i en flade for sig, der går ned til Back/Offer */
 .cx-bid > .cx-bid-tools { margin: 4px 6px; }

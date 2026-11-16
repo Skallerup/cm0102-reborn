@@ -6,6 +6,7 @@ import { createGame, type WorldData } from '../src/game/newgame';
 import { gs } from '../src/game/state';
 import { continueGame, createLiveMatch, quickPlayUserMatch } from '../src/game/sim';
 import type { GP } from '../src/game/engine/grid/gridMatch';
+import { ST } from '../src/game/cmPlayerData';
 
 describe('gittermotorens kampstatistik (GridSim)', () => {
   it('spillernes og holdenes tællere, besiddelse, varmekort og momentum – og et hold uden keeper kan stadig få skud imod sig', () => {
@@ -53,5 +54,11 @@ describe('gittermotorens kampstatistik (GridSim)', () => {
       done++;
     }
     expect(done).toBe(2);
+    // spillerstatistikken (0x7c0d70) får resultatpostens tællere (afleveringer, tacklinger, skud) – spillerprofilens Pass/Tck/Sh Tar
+    const mine = Object.values(g.players).filter((p) => p.club === g.userClub && p.cmStats);
+    const sum = (i: number) => mine.reduce((a, p) => a + Object.entries(p.cmStats!).filter(([c]) => c !== '6').reduce((b, [, e]) => b + (e[i] ?? 0), 0), 0);
+    expect(sum(ST.w10)).toBeGreaterThan(100);
+    expect(sum(ST.w12)).toBeGreaterThan(50);
+    expect(sum(ST.w14)).toBeGreaterThan(0);
   }, 300_000);
 });

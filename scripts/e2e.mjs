@@ -575,6 +575,22 @@ async function run(look) {
     // original database i ægte tilstand: originalens seks rækker (Non Competitive … Senior Club), ingen Season total
     if (!seasonRow) { if (!seniorRow || !stat.some((r) => /^non competitive/i.test(r)) || !stat.some((r) => /^continental/i.test(r))) throw new Error(`statistikrækkerne mangler: ${stat.join(' | ')}`); }
     else if (!seasonRow || !seniorRow || seasonRow.replace(/^season total/i, '').replace(/\s*\(\d+\)/, '').split(/\s+/)[1] !== seniorRow.replace(/^senior club/i, '').split(/\s+/)[1]) throw new Error(`Senior Club skal følge sæsonen: ${seasonRow} / ${seniorRow}`);
+    if (ENGINE_GRID) {
+      // CM 01/02 0x870650: originalens kolonner og formater (Pass/Sh Tar i %, Tck/Drb pr. kamp, Av R med to decimaler), pilene skifter side
+      const heads = (await page.locator('.cx-pl-cmstats thead th').allInnerTexts()).map((h) => h.trim()).filter(Boolean).slice(-9);
+      if (!/^(Gls|Con)$/.test(heads[1]) || heads.join(' ').replace(/^Apps (Gls|Con) /, '') !== 'Asts MoM Pass Tck Drb Sh Tar Av R') throw new Error(`statistikkens kolonner: ${heads.join(' | ')}`);
+      await gs((id) => { const p = window.__cm.gs().players[id]; p.cmStats = { ...(p.cmStats ?? {}), 4: [2, 1, 1, 0, 0, 0, 1, 3, 2, 1, 0, 0, 0, 1, 15, 50, 39, 4, 1, 4, 3, 120] }; }, star);
+      await go({ name: 'inbox' }); await go({ name: 'player', id: star });
+      await page.waitForSelector('.cx-pl-cmstats tbody tr', { timeout: 10000 });
+      const cont = (await page.locator('.cx-pl-cmstats tbody tr').nth(3).innerText()).replace(/\s+/g, ' ').trim();
+      if (cont !== 'Continental 1 (1) 1 1 1 78% 2.0 0.5 75% 7.50') throw new Error(`Continental-rækken: ${cont}`);
+      if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-spiller-statistik.png` });
+      await page.locator('.cx-pl-arrow').last().click();
+      const h2 = (await page.locator('.cx-pl-cmstats thead th').allInnerTexts()).map((h) => h.trim()).filter(Boolean).slice(-9).join(' ');
+      if (!/Pens Yel Red Won Lost Tgls Tcon Av R$/.test(h2)) throw new Error(`statistikkens side 2: ${h2}`);
+      await page.locator('.cx-pl-arrow').first().click();
+      await gs((id) => { delete window.__cm.gs().players[id].cmStats[4]; }, star);
+    }
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-spiller-Profile.png` });
     for (const tab of ['Injuries & Bans', 'Contract', 'Transfer', 'History']) {
       await page.getByRole('button', { name: tab, exact: true }).first().click();

@@ -1,7 +1,7 @@
 // Originalens spillerdata til computerens holdudtagelse (game/cmPlayerData.ts): PlayerStats 0x7c0d70/0x7c2150, kontraktens tællere 0x4ca6d0,
 // spilstartens omdømme (sub_535a80). Kontrolleret mod den instrumenterede original med scripts/pd-trace-check.ts.
 import { describe, expect, it } from 'vitest';
-import { ST, cmActive, cmFormRatings, contractAfterMatch, contractNotPlayed, fillReputation, newCmContract, ratingByte, recordPlayerMatch, statValue } from '../src/game/cmPlayerData';
+import { ST, cmActive, cmFormRatings, contractAfterMatch, contractNotPlayed, fillReputation, newCmContract, ratingByte, recordPlayerMatch, statCell, statColumns, statValue } from '../src/game/cmPlayerData';
 import { ATTRS } from '../src/game/attributes';
 import type { GameState, Player } from '../src/game/types';
 
@@ -31,6 +31,35 @@ describe('PlayerStats (0x7c0d70 / 0x7c2150)', () => {
     expect(G.cmRatingAvg).toEqual([13, 2]);  // g() starter på [0, 0]
     expect(ratingByte(9.6)).toBe(10);
     expect(ratingByte(0.2)).toBe(1);
+  });
+  it('profilens celler som 0x7c2750: tællere, Pass/Sh Tar i %, Tck/Drb pr. kamp, Av R med to decimaler, "-"/"----"', () => {
+    const G = g(), p = pl();
+    // gittermotorens linje (cmr = [mål imod, straffe, straffemål, assists, skud, på mål, driblinger, gule, røde])
+    recordPlayerMatch(G, p, 2, { rating: 7.4, goals: 1, minutes: 90, sub: false, passes: 40, passesOk: 31, tackles: 3, cmr: [0, 1, 1, 2, 4, 3, 1, 1, 0] }, 2, 1, true);
+    recordPlayerMatch(G, p, 2, { rating: 7.6, goals: 0, minutes: 30, sub: true, passes: 10, passesOk: 8, tackles: 1, cmr: [0, 0, 0, 0, 0, 0, 0, 0, 0] }, 0, 0, false);
+    const e = p.cmStats![2];
+    expect(statCell(e, 1)).toBe('1 (1)');
+    expect(statCell(e, 2)).toBe('1');
+    expect(statCell(e, 4)).toBe('1 (1)');
+    expect(statCell(e, 5)).toBe('2');
+    expect(statCell(e, 10)).toBe('1');
+    expect(statCell(e, 13)).toBe('78%');                 // 39/50
+    expect(statCell(e, 14)).toBe('2.0');                 // 4 tacklinger / 2 kampe
+    expect(statCell(e, 15)).toBe('0.5');
+    expect(statCell(e, 16)).toBe('75%');
+    expect(statCell(e, 17)).toBe('7.50');                // karakterbytes 7 + 8
+    expect(statCell(undefined, 2)).toBe('-');
+    expect(statCell(undefined, 17)).toBe('----');
+    // en post uden kampe: tællerne 0, gennemsnittene "-" og Av R "----" (Finnans Non Competitive)
+    const z = new Array(22).fill(0);
+    expect([1, 2, 5, 12, 13, 14, 15, 16, 17].map((k) => statCell(z, k))).toEqual(['0', '0', '0', '0', '-', '-', '-', '-', '----']);
+    expect(statColumns(0, true)[1]).toBe(3);             // keeperen: Con i stedet for Gls
+    expect(statColumns(1, false)).toEqual([3, 4, 10, 11, 8, 9, 6, 7, 17]);
+    // zonemotorens linje: keeperen i startopstillingen får holdets mål imod
+    const k = pl({ id: 8, pos: [20, 0, 0, 0, 0, 0, 0, 0] });
+    recordPlayerMatch(G, k, 4, { rating: 6, goals: 0, minutes: 90, sub: false, assists: 0, shots: 0, passes: 12, passesOk: 9, tackles: 0 }, 0, 3, false);
+    expect(statCell(k.cmStats![4], 3)).toBe('3');
+    expect(statCell(k.cmStats![6], 3)).toBe('3');
   });
 });
 

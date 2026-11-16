@@ -16,7 +16,7 @@ import { authentic, extended } from '../../game/rules';
 import { avgRating } from '../../game/season';
 import { SCHEDULES } from '../../game/training';
 import { askingPrice, canPreContract, interestedClubs, myPendingBid, nextWindow, releaseCost, windowOpen } from '../../game/transfers';
-import { cmActive, ST, statValue } from '../../game/cmPlayerData';
+import { cmActive, statCell, statColumns } from '../../game/cmPlayerData';
 import { cmTalksOpen } from '../../game/cmTransferTalks';
 import { ClassicNegotiation } from './NegotiationClassic';
 import { DEMONYM } from '../demonyms';
@@ -98,22 +98,11 @@ function StatsBlock({ p, title }: { p: Player; title?: ReactNode }) {
   const avr = s.ratingCount ? avgRating(p) : 0;
   const dash = '-';
   const g = useGame()!;
-  // CM 01/02 (ejerens billede 154): Non Competitive · League · Cup · Continental · International · Senior Club – hver kategori af originalens
-  // statistikposter (cmPlayerData: kampe, mål, kampens spiller, karakter; assists kun for ligaen og i alt – de øvrige tal spillet fører står som "-")
-  const cmRow = (cat: number, label: string, asts: ReactNode): [string, ReactNode[]] => {
-    const e = p.cmStats?.[cat];
-    const n = e?.[ST.apps] ?? 0;
-    return [label, [n || dash, n ? e![ST.goals] : dash, asts, n ? e![ST.mom] : dash, n ? <Rating r={statValue(e, 0x11, 0)} digits={2} /> : dash]];
-  };
-  const catRows: [string, ReactNode[]][] | null = cmActive(g) && !g.draft ? [
-    cmRow(1, t('cl.pl.nonComp'), dash),
-    cmRow(2, t('cl.pl.league'), s.lgAssists ?? dash),
-    cmRow(3, t('cl.pl.cup'), dash),
-    cmRow(4, t('cl.pl.continental'), dash),
-    cmRow(5, t('cl.pl.intl'), dash),
-    cmRow(6, t('cl.pl.senior'), s.assists),
-  ] : null;
-  const statRows: [string, ReactNode[]][] = catRows ?? [
+  // CM 01/02 (ejerens billeder 145/149/154, 0x870650): Non Competitive · League · Cup · Continental · International · Senior Club af originalens
+  // statistikposter (cmPlayerData: 0x7c0d70), kolonnerne og formaterne fra 0x7c1b20/0x7c2750; de blå pile skifter mellem to sider
+  const [page, setPage] = useState(0);
+  if (cmActive(g) && !g.draft) return <CmStatsBlock p={p} title={title} page={page} setPage={setPage} />;
+  const statRows: [string, ReactNode[]][] = [
     // liga og øvrige turneringer (pokal/Europa) hver for sig med assists, kampens spiller og snit – som i originalen (ejerens ønske 2026-11-10)
     ...(() => {
       const lgRs = s.lgRatingSum ?? 0, lgRn = s.lgRatingCount ?? 0, lgA = s.lgAssists ?? 0, lgM = s.lgMom ?? 0;
@@ -127,10 +116,9 @@ function StatsBlock({ p, title }: { p: Player; title?: ReactNode }) {
     [t('cl.pl.intl'), [s.intApps ?? 0, s.intGoals ?? 0, dash, dash, dash]],
     [t('cl.pl.senior'), [s.apps + s.subs, s.goals, s.assists, s.mom, avr ? <Rating r={avr} digits={2} /> : dash]],
   ];
-  // CM 01/02: de blå pile skifter til side 2 (kort, minutter, indskiftninger – de tal spillet fører)
-  const [page, setPage] = useState(0);
+  // de blå pile skifter til side 2 (kort, minutter, indskiftninger – de tal spillet fører)
   const heads = page === 0 ? [t('col.apps'), t('col.goals'), t('cl.pl.asts'), t('cl.pl.mom'), t('col.avr')] : [t('cl.pl.yel'), t('cl.pl.red'), t('cl.pl.mins'), t('cl.pl.subsOn'), t('col.avr')];
-  const rows2: [string, ReactNode[]][] = statRows.map(([l, v], i) => [l, i === (catRows ? 5 : 2) ? [s.yellows, s.reds, s.minutes, s.subs, v[4]] : [dash, dash, dash, dash, v[4]]]);
+  const rows2: [string, ReactNode[]][] = statRows.map(([l, v], i) => [l, i === 2 ? [s.yellows, s.reds, s.minutes, s.subs, v[4]] : [dash, dash, dash, dash, v[4]]]);
   const posTip = `${posStr(p)} · ${POSITIONS_LABEL.map(([l, i]) => `${l} ${p.pos[i]}`).join(' · ')} · ${SIDES.map((x, i) => `${t(`side.${x}`)} ${p.side[i]}`).join(' · ')}`;
   return (
     <>
@@ -142,6 +130,34 @@ function StatsBlock({ p, title }: { p: Player; title?: ReactNode }) {
           <tbody>
             {(page === 0 ? statRows : rows2).map(([l, vals]) => (
               <tr key={l}><td colSpan={2}>{l}</td>{vals.map((v, i) => <td key={i} className={i === 4 ? 'avr' : ''}>{v}</td>)}</tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="cx-pl-pos" title={posTip}>{positionLong(p)}</div>
+    </>
+  );
+}
+
+const CM_ROWS: [number, string][] = [[1, 'cl.pl.nonComp'], [2, 'cl.pl.league'], [3, 'cl.pl.cup'], [4, 'cl.pl.continental'], [5, 'cl.pl.intl'], [6, 'cl.pl.senior']];
+const CM_HEAD: Record<number, string> = { 1: 'col.apps', 2: 'col.goals', 3: 'cl.pl.con', 4: 'cl.pl.pens', 5: 'cl.pl.asts', 6: 'cl.pl.tgls', 7: 'cl.pl.tcon', 8: 'cl.pl.won',
+  9: 'cl.pl.lost', 10: 'cl.pl.yel', 11: 'cl.pl.red', 12: 'cl.pl.mom', 13: 'cl.pl.pass', 14: 'cl.pl.tck', 15: 'cl.pl.drb', 16: 'cl.pl.shTar', 17: 'col.avr' };
+
+/** Originalens statistiktabel (ægte tilstand, original DB): rækkerne skiftevis gule og orange (0xaebdec/0xaebdd4), Av R i lilla felter,
+ *  keepere (Goalkeeper 20) med Con i stedet for Gls – cmPlayerData.ts statColumns/statCell */
+function CmStatsBlock({ p, title, page, setPage }: { p: Player; title?: ReactNode; page: number; setPage: (n: number) => void }) {
+  const cols = statColumns(page, Math.round(p.pos[0]) >= 20);
+  const posTip = `${posStr(p)} · ${POSITIONS_LABEL.map(([l, i]) => `${l} ${p.pos[i]}`).join(' · ')} · ${SIDES.map((x, i) => `${t(`side.${x}`)} ${p.side[i]}`).join(' · ')}`;
+  return (
+    <>
+      <div className="cx-pl-stats-wrap">
+        <table className="cx-pl-stats cx-pl-cmstats">
+          <thead>
+            <tr><th className="cx-pl-stitle">{title}</th><th className="cx-pl-pager"><button className="cx-pl-arrow" aria-label="◂" onClick={() => setPage(page ? 0 : 1)}>◂</button><button className="cx-pl-arrow" aria-label="▸" onClick={() => setPage(page ? 0 : 1)}>▸</button></th>{cols.map((k) => <th key={k}>{t(CM_HEAD[k])}</th>)}</tr>
+          </thead>
+          <tbody>
+            {CM_ROWS.map(([cat, label], r) => (
+              <tr key={cat} className={r % 2 ? 'odd' : 'even'}><td colSpan={2}>{t(label)}</td>{cols.map((k) => <td key={k} className={k === 17 ? 'avr' : ''}>{statCell(p.cmStats?.[cat], k)}</td>)}</tr>
             ))}
           </tbody>
         </table>
@@ -189,7 +205,15 @@ function ProfileTab({ p }: { p: Player }) {
     return <span className={`cx-v ${tone(Math.round((lo + hi) / 2))}`}>{lo === hi ? lo : `${lo}-${hi}`}</span>;
   };
   const sorted = (keys: AttrKey[]) => keys.slice().sort((a, b) => t(`attr.${a}`).localeCompare(t(`attr.${b}`), t('cl.locale'))).map((a): [string, ReactNode] => [t(`attr.${a}`), val(a)]);
-  const tech = sorted([...GROUPS.technical.filter((a) => a !== 'offTheBall'), ...(gk ? GROUPS.goalkeeping : [])]);
+  // ægte CM 01/02 (ejerens billeder 145/154): Technical har originalens ti viste egenskaber (0x5428a0's liste – Set Pieces = +0x29 Free Kicks;
+  // Corners, Penalties og Throw Ins vises ikke), en keeper har i stedet Goalkeeping: Handling, Reflexes, One On Ones, Consistency, Passing,
+  // Set Pieces, Technique i den rækkefølge
+  const label = (a: AttrKey) => (orig && a === 'freeKicks' ? t('cl.fl.setPieces') : t(`attr.${a}`));
+  const ORIG_TECH: AttrKey[] = ['crossing', 'dribbling', 'finishing', 'heading', 'longShots', 'marking', 'passing', 'freeKicks', 'tackling', 'technique'];
+  const ORIG_GK: AttrKey[] = ['handling', 'reflexes', 'oneOnOnes', 'consistency', 'passing', 'freeKicks', 'technique'];
+  const tech = !orig ? sorted([...GROUPS.technical.filter((a) => a !== 'offTheBall'), ...(gk ? GROUPS.goalkeeping : [])])
+    : gk ? ORIG_GK.map((a): [string, ReactNode] => [label(a), val(a)])
+    : ORIG_TECH.slice().sort((a, b) => label(a).localeCompare(label(b), t('cl.locale'))).map((a): [string, ReactNode] => [label(a), val(a)]);
   const ment = sorted([...GROUPS.mental, 'offTheBall']);
   const form = p.form.slice(-5);
   const phys: [ReactNode, ReactNode][] = [
@@ -201,7 +225,7 @@ function ProfileTab({ p }: { p: Player }) {
     // CM 01/02 (ejerens billede 154): "On loan from Fulham" i turkis under Condition
     ...(p.loan && g.clubs[p.loan.from] ? [[<span className="cx-v v-cyan cx-pl-loanfrom">{t('cl.pl.ctLoan')} <ClubLink id={p.loan.from} /></span>, ''] as [ReactNode, ReactNode]] : []),
   ];
-  const cols: [string, [ReactNode, ReactNode][]][] = [[t('cl.pl.grp.technical'), tech], [t('cl.pl.grp.mental'), ment], [t('cl.pl.grp.physical'), phys]];
+  const cols: [string, [ReactNode, ReactNode][]][] = [[t(orig && gk ? 'group.goalkeeping' : 'cl.pl.grp.technical'), tech], [t('cl.pl.grp.mental'), ment], [t('cl.pl.grp.physical'), phys]];
   const n = Math.max(tech.length, ment.length, phys.length);
   return (
     <div className="cx-pl">

@@ -65,28 +65,57 @@ export function statCategory(g: GameState, f: Fixture): number {
 /** originalens kampkarakter (resultatposten +0x35, 0x6ce4f7): trunc((karakter·1000 + 500)/1000) mellem 1 og 10 */
 export const ratingByte = (r: number) => Math.max(1, Math.min(10, Math.trunc((Math.round(r * 1000) + 500) / 1000)));
 
+/** kampens linje → resultatpostens felter (0x729ff0 kopierer MATCH_PLAYER ind i resultatet, 0x7c0d70 lægger dem i posten):
+ *  +0x22 mål imod (MP +0xf, keeperen), +0x23 straffespark taget (+0xd), +0x24 straffemål (+0xe), +0x25 skud (+0xa), +0x26 på mål (+0xb),
+ *  +0x27 assists (+0x10), +0x28 driblinger forbi en modstander (+0x11), +0x2c gule (+0x24), +0x2d røde (+0x23), +0x3e afleveringer (+1),
+ *  +0x3f afleveringer der nåede en medspiller (+2), +0x42 vundne tacklinger (+5). Gittermotoren giver dem som `cmr` (adapter.ts); andre
+ *  kampe (zonemotoren har ikke tællerne) bruger linjens egne tal: mål imod = holdets for en keeper i startopstillingen, ingen driblinger, ingen straffe. */
+export interface StatLine {
+  rating: number; goals: number; minutes: number; sub: boolean;
+  assists?: number; shots?: number; on?: number; passes?: number; passesOk?: number; tackles?: number; yellow?: number; red?: boolean; cmr?: number[];
+}
+function lineFields(line: StatLine, ga: number, keeper: boolean): number[] {
+  if (line.cmr) return line.cmr;
+  // [mål imod, straffe taget, straffemål, assists, skud, på mål, driblinger, gule, røde]
+  return [keeper && !line.sub ? ga : 0, 0, 0, line.assists ?? 0, line.shots ?? 0, line.on ?? 0, 0, line.yellow ?? 0, line.red ? 1 : 0];
+}
+
 /** 0x7c0d70 for én spiller i én kamp (kaldt for begge hold, alle 20 i kamptruppen der spillede). `res` = holdets mål / modstanderens. */
-export function recordPlayerMatch(g: GameState, p: Player, cat: number, line: { rating: number; goals: number; minutes: number; sub: boolean }, gf: number, ga: number, mom: boolean, avgOk = true): void {
+export function recordPlayerMatch(g: GameState, p: Player, cat: number, line: StatLine, gf: number, ga: number, mom: boolean, avgOk = true): void {
   if (p.regen) return;                                                       // 0x7c1032: genererede spillere (id ≥ [0xae2364]) får ingen statistik
   const r = ratingByte(line.rating);
   // spillets karaktersnit +0x10/+0x18 (double) – 0x6e2f20 læser det for spillere over 33 (0x6e41a8). Starter på 680/100 (6,8 vægtet med 100
   // kampe, målt i oraklet) og tæller kun kampe med resultat+0x4c = 0 (liga, pokal, Europa, landskampe – ikke de fleste venskabskampe og
   // −2-kampene; vores spil har kun de første)
   if (avgOk) { const avg = (g.cmRatingAvg ??= [680, 100]); avg[0] += r; avg[1] += 1; }
+  const [con, pens, penGoals, asts, shots, on, drb, yel, red] = lineFields(line, ga, (p.pos?.[0] ?? 0) >= 20);
   const stats = (p.cmStats ??= {});
   for (const k of [1, 2]) {                                                  // 0x7c10b4: kategorien, derefter 6 (ikke for 1 og 5)
     const c = k === 1 ? cat : 6;
     if (k === 2 && (cat === 5 || cat === 1)) continue;
     const e = (stats[c] ??= new Array(NFIELD).fill(0));                     // 0x7c5d80: posten oprettes
+    while (e.length < NFIELD) e.push(0);
     e[ST.apps] = u8(e[ST.apps] + 1);
     if (line.sub) e[ST.subApps] = u8(e[ST.subApps] + 1);
     e[ST.goals] = u8(e[ST.goals] + line.goals);
+    e[ST.b3] = u8(e[ST.b3] + con);                                           // 0x7c111e–0x7c1147: +3..+6 (mål imod, straffe, straffemål, assists)
+    e[ST.b4] = u8(e[ST.b4] + pens);
+    e[ST.b5] = u8(e[ST.b5] + penGoals);
+    e[ST.b6] = u8(e[ST.b6] + asts);
     e[ST.gf] = u8(e[ST.gf] + gf);
     e[ST.ga] = u8(e[ST.ga] + ga);
     if (gf > ga) e[ST.won] = u8(e[ST.won] + 1);
     if (gf < ga) e[ST.lost] = u8(e[ST.lost] + 1);
+    e[ST.b11] = u8(e[ST.b11] + yel);                                         // 0x7c118a: +0xb gule, +0xc røde
+    e[ST.b12] = u8(e[ST.b12] + red);
     if (mom) e[ST.mom] = u8(e[ST.mom] + 1);
     e[ST.rating] = u16(e[ST.rating] + r);
+    e[ST.w10] = u16(e[ST.w10] + ((line.passes ?? 0) & 0xff));              // 0x7c11b4–0x7c11ea: words +0x10..+0x1a
+    e[ST.w12] = u16(e[ST.w12] + ((line.passesOk ?? 0) & 0xff));
+    e[ST.w14] = u16(e[ST.w14] + ((line.tackles ?? 0) & 0xff));
+    e[ST.w16] = u16(e[ST.w16] + (drb & 0xff));
+    e[ST.w18] = u16(e[ST.w18] + (shots & 0xff));
+    e[ST.w1a] = u16(e[ST.w1a] + (on & 0xff));
     e[ST.minutes] = (e[ST.minutes] + line.minutes) | 0;
   }
   // 0x7c12e1: formen – fem nibbles (+0x24..+0x26, nyeste i bit 16..19), skubbes for hver kamp i alle kategorier
@@ -108,9 +137,44 @@ export function statValue(e: readonly number[] | undefined, kind: number, def: n
       return n < 20 ? f32((pts + (20 - n) * 1.5) * f32(0.05)) : f32(pts / n);
     }
     case 0x11: return n ? f32(s16(e[ST.rating]) / n) : 0;
-    case 1: return n;
-    case 2: return e[ST.goals];
-    default: return 0;
+    case 13: return s16(e[ST.w10]) > 0 ? f32(f32(s16(e[ST.w12]) / s16(e[ST.w10])) * 100) : 0;   // 0x7c22ee: afleveringer i %
+    case 14: return n ? f32(s16(e[ST.w14]) / n) : 0;                         // 0x7c2322: tacklinger pr. kamp
+    case 15: return n ? f32(s16(e[ST.w16]) / n) : 0;                         // 0x7c2350: driblinger pr. kamp
+    case 16: return s16(e[ST.w18]) > 0 ? f32(f32(s16(e[ST.w1a]) / s16(e[ST.w18])) * 100) : 0;   // 0x7c237e: skud på mål i %
+    case 0x15: return n ? f32(s16(e[ST.w18]) / n) : 0;                       // 0x7c24a5: skud pr. kamp
+    case 0x16: return e[ST.minutes];
+    default: return kind >= 1 && kind <= 12 ? e[COUNT_FIELD[kind]] : 0;      // 0x7c21ad–0x7c22a9: tællerne
+  }
+}
+
+/** 0x7c2150's tællere: art → postens byte (1 kampe, 2 mål, 3 mål imod, 4 straffe, 5 assists (+6), 6/7 holdets mål for/imod, 8 sejre,
+ *  9 nederlag, 10 gule, 11 røde, 12 kampens spiller) */
+const COUNT_FIELD = [0, ST.apps, ST.goals, ST.b3, ST.b4, ST.b6, ST.gf, ST.ga, ST.won, ST.lost, ST.b11, ST.b12, ST.mom];
+
+/** Spillerprofilens kolonner (0x870650 → lister 0xa84a78/0xa84a84/0xa84a90/0xa84a9c, valgt af de blå pile og om spilleren er keeper –
+ *  spillerposten +0xf (Goalkeeper) = 20): side 1 Apps/Gls (Con)/Asts/MoM/Pass/Tck/Drb/Sh Tar/Av R, side 2 Con (Gls)/Pens/Yel/Red/Won/Lost/
+ *  Tgls/Tcon/Av R. Arterne er 0x7c1b20's: 1 Apps … 17 Av R. */
+export function statColumns(page: number, keeper: boolean): number[] {
+  if (page === 0) return keeper ? [1, 3, 5, 12, 13, 14, 15, 16, 17] : [1, 2, 5, 12, 13, 14, 15, 16, 17];
+  return keeper ? [2, 4, 10, 11, 8, 9, 6, 7, 17] : [3, 4, 10, 11, 8, 9, 6, 7, 17];
+}
+
+/** 0x7c25b0 → 0x7c2750(post, art, buf, 0x7d0, 1, 0, 1) – tallet i profilens celle: uden post "-" (Av R "----"); kampe "%d (%d)" (start, indskiftet)
+ *  når han er skiftet ind, ellers "%d"; straffe "%d (%d)" (taget, scoret); tællerne "%d" (også 0); Av R "%4.2f" (0 kampe "----"); Pass og
+ *  Sh Tar "%d%%" af ftol(100·a/b) (ingen forsøg "-"); Tck og Drb "%3.1f" pr. kamp (0 kampe "-"). */
+export function statCell(e: readonly number[] | undefined, kind: number): string {
+  if (!e) return kind === 17 ? '----' : '-';
+  const n = e[ST.apps] & 0xff;
+  const fmt1 = (v: number) => v.toFixed(1);
+  switch (kind) {
+    case 1: return e[ST.subApps] ? `${n - e[ST.subApps]} (${e[ST.subApps]})` : String(n);
+    case 4: return e[ST.b4] ? `${e[ST.b4]} (${e[ST.b5]})` : String(e[ST.b4]);
+    case 17: return n ? (s16(e[ST.rating]) / n).toFixed(2) : '----';
+    case 13: { const a = s16(e[ST.w10] ?? 0); return a > 0 ? `${Math.trunc((s16(e[ST.w12]) * 100) / a)}%` : '-'; }
+    case 16: { const a = s16(e[ST.w18] ?? 0); return a > 0 ? `${Math.trunc((s16(e[ST.w1a]) * 100) / a)}%` : '-'; }
+    case 14: return n ? fmt1(s16(e[ST.w14] ?? 0) / n) : '-';
+    case 15: return n ? fmt1(s16(e[ST.w16] ?? 0) / n) : '-';
+    default: return kind >= 1 && kind <= 12 ? String(e[COUNT_FIELD[kind]] ?? 0) : '-';
   }
 }
 
