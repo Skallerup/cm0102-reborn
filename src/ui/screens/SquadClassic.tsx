@@ -521,7 +521,7 @@ export function ClassicFirstSquad({ reserves = false, cid, pick }: { reserves?: 
 
   return (
     <div className={`cx-sq ${orig ? 'cx-sq-orig' : ''}`}>
-      {(ro ? (props: { children: ReactNode }) => <div className="cx-tools cx-tools-inline">{props.children}</div> : (props: { children: ReactNode }) => <Head title={t('nav.squad')}>{props.children}</Head>)({ children: <>
+      {(ro ? (props: { children: ReactNode }) => <div className="cx-tools cx-tools-inline">{props.children}</div> : (props: { children: ReactNode }) => <Head title={sqnMissing && view === 'tbl:numbers' ? t('sqn.titleClub', { club: g.clubs[g.userClub]?.short ?? '' }) : t('nav.squad')}>{props.children}</Head>)({ children: <>
         <CxDrop label={t('cl.sq.view')} items={viewItems} />
         {!table && <CxDrop label={t('cl.sq.sortBy')} items={SORTS.map((x) => 'sep' in x ? x : { key: x.key, label: x.label, checked: x.key === sort.key, onClick: () => { setSort(x.key); const v = viewForSort(x.key, INFO); if (v) { setInfoKey(v); setView('trad'); } } })} />}
         <span className="grow" />

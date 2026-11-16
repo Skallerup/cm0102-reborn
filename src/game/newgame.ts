@@ -176,6 +176,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     if (cm.cmRaw.compRep) g.cmCompRep = { ...cm.cmRaw.compRep };
     // (runde 9) tilskuertallet sub_85cba0 (engine/grid/crowd.ts)
     if (cm.cmRaw.crowd) g.cmCrowd = Object.fromEntries(Object.entries(cm.cmRaw.crowd).map(([k, v]) => [k, v.slice()])) as GameState['cmCrowd'];
+    if (cm.cmRaw.seats) g.cmStadium = Object.fromEntries(Object.entries(cm.cmRaw.seats).map(([k, v]) => [k, v.slice()])) as GameState['cmStadium'];
     if (cm.cmRaw.cities) g.cmCities = cm.cmRaw.cities.slice();
     if (cm.cmRaw.nation7e) g.cmNation7e = cm.cmRaw.nation7e.slice();
     if (cm.cmRaw.nation85) g.cmNation85 = cm.cmRaw.nation85.slice();

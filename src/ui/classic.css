@@ -981,6 +981,8 @@
 .cx-pl-grid td:nth-child(odd) { border-right: 1px solid rgba(255, 255, 255, 0.14); }
 .cx-pl-grid td.v { text-align: center; width: 9%; border-right: 1px solid rgba(255, 255, 255, 0.22); }
 .cx-pl-grid .v-gold { color: #ffc93c; }
+.cx-pl-grid .v-cyan, .cx-pl-grid .v-cyan .link { color: #6fe3ff; }
+.cx-pl-grid td.cx-pl-span { text-align: center; }
 .cx-pl-stats-wrap { background: rgba(0, 0, 0, 0.32); padding: 2px 0; }
 .cx-pl-pos { background: rgba(0, 0, 0, 0.35); padding: 10px 0; margin-top: 4px; }
 .cx-pl .cx-tbl-wrap { background: rgba(0, 0, 0, 0.32); }
@@ -1010,7 +1012,7 @@
 .cx-subrow button { position: relative; }
 .cx-sub-arrow { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 11px; }
 /* taktikbanen (CM 01/02): spillerne i holdets trøjefarve, efternavnet i gult under */
-.cx-tac-pitch .cx-tac-nm { color: #fff21f; }
+.cx-tac-pitch .cx-tac-nm { color: #fff; }
 
 /* ===== CM 01/02 1:1 – mål og farver målt i originalen (1280×804-vindue, logiske px) =====
    sidebjælke 144 px (knapper 127×57, 3 px imellem), titel 81 px, faner 48 px (12 px under titlen), Back/Next 48 px,
@@ -1449,8 +1451,11 @@ button.cx-sl-cell:disabled { opacity: 1; cursor: default; }
 .cx-sqn-bar { display: flex; gap: 4px; margin: 0 0 6px; }
 .cx-sqn-bar .cx-grey { min-width: 140px; height: 26px; }
 .cx-sqn-strip { display: grid; grid-template-columns: repeat(25, minmax(0, 1fr)); gap: 2px; padding: 3px; background: #1a3a0e; border: 1px solid #0b1d05; }
-.cx-sqn-n { height: 24px; padding: 0; background: linear-gradient(180deg, #2c5a18, #1d4310); color: #f6ee3a; border: 1px solid; border-color: #4f8a30 #0d2306 #0d2306 #4f8a30; font: 700 12px/1 Tahoma, Verdana, sans-serif; cursor: grab; }
-.cx-sqn-n.free { background: #142f0a; color: #fff; border-color: #0d2306 #4f8a30 #4f8a30 #0d2306; }
+.cx-sqn-n { height: 24px; padding: 0; background: #1d4310; color: #3f7a2a; border: 1px solid #14310a; font: 700 12px/1 Tahoma, Verdana, sans-serif; cursor: grab; }
+.cx-sqn-n.free { background: linear-gradient(180deg, #2c5a18, #1d4310); color: #fff; border-color: #4f8a30 #0d2306 #0d2306 #4f8a30; }
+.cx-sqn-list.tall { min-height: 46vh; max-height: none; align-content: start; grid-template-columns: 1fr; }
+.cx-sqn-posl { text-align: center; color: #fff21f; font-weight: 700; font-size: 16px; margin: 6px 0; }
+.cx-sqn-list.tall ~ .cx-sqn-strip { margin-top: auto; }
 .cx-sqn-n.on { outline: 2px solid #fff21f; outline-offset: -2px; }
 .cx-sqn-list { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 14px; max-height: 52vh; overflow-y: auto; margin: 6px 0; padding: 2px; }
 .cx-sqn-row { display: grid; grid-template-columns: 52px 40px minmax(0, 1fr) auto; align-items: center; gap: 4px; min-height: 26px; }
@@ -1924,3 +1929,10 @@ button.cx-bid-swap.removing { cursor: pointer; color: #fff21f; }
 /* budskærmen: beløbene i de to linjer øverst kan klikkes (0x26/0x25) */
 .cx-bid .cx-ts-intro .cx-bid-setval, .cx-bid .cx-ts-intro .cx-bid-setmax { cursor: pointer; color: inherit; text-decoration: none; }
 .cx-bid .cx-ts-intro .cx-bid-setval:hover, .cx-bid .cx-ts-intro .cx-bid-setmax:hover { color: #ffff60; }
+
+/* skadet spiller i kamptaktikken (CM 01/02): gennemsigtig cirkel og gråt navn */
+.cx-tac-slot.inj .cx-tac-dot { opacity: 0.3; }
+.cx-tac-slot.inj .cx-tac-nm, .cx-tac-pitch .cx-tac-slot.inj .cx-tac-nm { color: #7c8a6c; opacity: 0.8; }
+.cx-mt-list .c-name { position: relative; }
+.cx-mt-list .cx-ycard { position: absolute; left: -22px; top: 50%; width: 22px; height: 30px; margin-top: -15px; background: #fff21f; border: 1px solid #8a8400; }
+.cx-mt-list tr.cx-mt-blank td { color: transparent; }

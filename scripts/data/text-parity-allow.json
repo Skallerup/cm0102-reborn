@@ -890,6 +890,38 @@
     {
       "key": "cl.na.noJobs",
       "reason": "Originalens Job Information: \"There are no vacancies.\" (ejerens billede owner-1116/generelt-image35.jpg)"
+    },
+    {
+      "key": "cmfe.b.fundsNow",
+      "reason": "originalens streng 0x9c8ca4 (0x59f3e0) med £ i pladsholderen og to linjeskift – strengudtrækket (strings -n 4) deler den"
+    },
+    {
+      "key": "cmfe.b.fundsSmall",
+      "reason": "originalens streng 0x9c8c10 (0x59f3e0) med £ og to linjeskift – strengudtrækket deler den"
+    },
+    {
+      "key": "cmfe.b.fundsNone",
+      "reason": "originalens streng 0x9c8b78 (0x59f3e0) med £ og to linjeskift – strengudtrækket deler den"
+    },
+    {
+      "key": "cmfe.b.fundsSmallClub",
+      "reason": "originalens streng 0x9c8ac8 (0x59f3e0) med £ og to linjeskift – strengudtrækket deler den"
+    },
+    {
+      "key": "cmfe.b.boardPackage",
+      "reason": "originalens streng 0x9c8878 (0x59f3e0) med to linjeskift – strengudtrækket deler den"
+    },
+    {
+      "key": "cmfe.b.running",
+      "reason": "originalens streng 0x9c8d2c (0x59f3e0) med £ i pladsholderen – strengudtrækket deler den"
+    },
+    {
+      "key": "cmfe.b.receivers",
+      "reason": "originalens streng 0x9c95c4 (0x59fcf0) med to linjeskift – strengudtrækket deler den"
+    },
+    {
+      "key": "cmfe.b.crisis",
+      "reason": "originalens streng 0x9c94ec (0x59fcf0) med to linjeskift – strengudtrækket deler den"
     }
   ],
   "patterns": [

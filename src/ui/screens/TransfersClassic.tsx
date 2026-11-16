@@ -13,7 +13,7 @@ import { attrRange, knowledgeOf, scoutStars } from '../../game/scouting';
 import type { Trait } from '../../game/personality';
 import type { GameState, Player, ScoutAssignment, Staff, StaffRole } from '../../game/types';
 import { compName, dateFmt, money, natName, t } from '../../i18n';
-import { ClassicSub, CxDrop, nationRoute, type DropItem } from '../classic';
+import { ClassicSub, CxDrop, CxPm, nationRoute, type DropItem } from '../classic';
 import { REGIONS, Seg, regionOfNation, showRealism } from '../classicOptions';
 import { authentic } from '../../game/rules';
 import { JOB_CODE, cmJobCode, cmScoutRec, cmRecScout, cmActive, cmStaffClub, cmStaffInSearch, cmStaffInf, cmJobKey, cmStaffRep, cmStaffRepRank, cmStaffRepWord } from '../../game/cmStaff';
@@ -189,9 +189,9 @@ function AttrMinGrid({ labels, mins, onChange }: { labels: string[]; mins: Recor
       {labels.map((l, i) => (
         <div key={i} className="cx-fl-attr">
           <span>{l}</span>
-          <button aria-label={`${l} -`} onClick={() => step(i, -1)}>-</button>
+          <CxPm className="" aria-label={`${l} -`} onClick={() => step(i, -1)}>-</CxPm>
           <b className={val(i) > 1 ? 'set' : ''}>{val(i)}</b>
-          <button aria-label={`${l} +`} onClick={() => step(i, 1)}>+</button>
+          <CxPm className="" aria-label={`${l} +`} onClick={() => step(i, 1)}>+</CxPm>
         </div>
       ))}
     </div>

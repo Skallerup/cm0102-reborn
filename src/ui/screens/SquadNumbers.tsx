@@ -64,7 +64,18 @@ export function ClassicSquadNumbers({ onClose, missing = false }: { onClose?: ()
   const players = all.filter((p) => !only || only.has(p.id)).sort((a, b) => POS_ORDER(a) - POS_ORDER(b) || b.ca - a.ca);
   const others = only ? all.filter((p) => !only.has(p.id) && p.number) : [];
   const initial = () => Object.fromEntries(players.map((p) => [p.id, p.number ?? 0])) as Record<number, number>;
-  const [nums, setNums] = useState<Record<number, number>>(initial);
+  // CM 01/02 foreslår selv et nummer til hver, der mangler (målmænd 1/13, øvrige over 20 – Auto)
+  const suggest = (cur: Record<number, number>) => {
+    const next = { ...cur };
+    const used = new Set([...Object.values(next).filter(Boolean), ...others.map((p) => p.number!)]);
+    for (const p of players) {
+      if (next[p.id]) continue;
+      const n = Array.from({ length: 99 }, (_, i) => i + 1).find((k) => !used.has(k) && (p.pos[0] >= 15 ? k === 1 || k === 13 || k > 20 : k > 1));
+      if (n) { next[p.id] = n; used.add(n); }
+    }
+    return next;
+  };
+  const [nums, setNums] = useState<Record<number, number>>(() => (only ? suggest(initial()) : initial()));
   const [picked, setPicked] = useState<number | null>(null);
   const holder = (n: number) => players.find((p) => nums[p.id] === n);
   const lockedN = (n: number) => others.some((p) => p.number === n);
@@ -83,16 +94,7 @@ export function ClassicSquadNumbers({ onClose, missing = false }: { onClose?: ()
     if (picked !== null) { assign(pid, picked); setPicked(null); return; }
     setNums((cur) => ({ ...cur, [pid]: 0 }));
   };
-  const auto = () => setNums((cur) => {
-    const next = { ...cur };
-    const used = new Set(Object.values(next).filter(Boolean));
-    for (const p of players) {
-      if (next[p.id]) continue;
-      const n = Array.from({ length: 99 }, (_, i) => i + 1).find((k) => !used.has(k) && (p.pos[0] >= 15 ? k === 1 || k === 13 || k > 20 : k > 1));
-      if (n) { next[p.id] = n; used.add(n); }
-    }
-    return next;
-  });
+  const auto = () => setNums((cur) => suggest(cur));
   const submit = async () => {
     if (!(await askConfirm(t(only ? 'sqn.confirmChanges' : 'sqn.confirm'), { head: t('sqn.confirmHead') }))) return;
     act({ t: 'squadNumbers', nums });
@@ -111,14 +113,15 @@ export function ClassicSquadNumbers({ onClose, missing = false }: { onClose?: ()
   );
   return (
     <div className="cx-sqn">
-      {onClose && <div className="cx-subtitle">{t('sqn.please')}</div>}
+      {(onClose || only) && <div className="cx-subtitle">{t('sqn.please')}</div>}
       <div className="cx-sqn-bar">
         <span className="cx-grow" />
         <button className="cx-grey" onClick={auto}>{t('sqn.auto')}</button>
         <button className="cx-grey" onClick={() => setNums(Object.fromEntries(players.map((p) => [p.id, 0])))}>{t('sqn.clear')}</button>
       </div>
+      {only && <div className="cx-sqn-posl">{t('sqn.positions')}</div>}
       {strip(1)}
-      <div className="cx-sqn-list">
+      <div className={`cx-sqn-list ${only ? 'tall' : ''}`}>
         {players.map((p) => (
           <div key={p.id} className="cx-sqn-row">
             <span className={`cx-sqn-box ${picked !== null ? 'target' : ''}`} data-pid={p.id} role="button" tabIndex={0} title={t('sqn.dragHint')}

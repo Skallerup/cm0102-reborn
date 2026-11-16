@@ -8,7 +8,7 @@ import type { ContractClauses, StaffRole, TransferOffer } from '../../game/types
 import { cmStaffDemand, cmStaffInterestedIn } from '../../game/cmStaff';
 import { poachFee } from '../../game/staff';
 import { money, t } from '../../i18n';
-import { CxDrop, titleColors, useClassicDialog } from '../classic';
+import { CxDrop, CxPm, titleColors, useClassicDialog } from '../classic';
 import { SQUAD_STATUSES, expectedStatus, statusAllowed, type SquadStatus } from '../../game/squadStatus';
 import { ageOn, year } from '../../game/dates';
 import { authentic } from '../../game/rules';
@@ -31,10 +31,10 @@ function Row({ label, value, show, options, onSet, reset, on = true, onToggle, s
   return (
     <div className={`cx-neg-row ${on ? '' : 'off'}`}>
       <button className={`cx-neg-label ${onToggle ? 'toggle' : ''}`} onClick={onToggle} disabled={!onToggle}>{star && <span className="cx-neg-star">* </span>}{label}</button>
-      <button className="cx-pm" disabled={!on} onClick={() => step(-1)}>−</button>
+      <CxPm disabled={!on} onClick={() => step(-1)}>−</CxPm>
       <CxDrop className="cx-green cx-neg-val" caret label={show(value)} btn={{ disabled: !on }}
         items={options.map((o) => ({ key: String(o), label: show(o), checked: o === value, onClick: () => onSet(o) }))} />
-      <button className="cx-pm" disabled={!on} onClick={() => step(1)}>+</button>
+      <CxPm disabled={!on} onClick={() => step(1)}>+</CxPm>
       <button className="cx-pm" disabled={!on || reset === undefined} onClick={() => reset !== undefined && onSet(reset)}>=</button>
     </div>
   );

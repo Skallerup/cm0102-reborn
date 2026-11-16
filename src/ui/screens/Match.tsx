@@ -1007,7 +1007,7 @@ function LiveMatch({ id }: { id: number }) {
           <ClassicSub items={[['hstats', t('cl.mt.teamStats', { club: g.clubs[f.home].short })], ['ratings', t('match.ratings')], ['scores', t('cl.mt.scores')], ...(g.comps[f.comp]?.type === 'league' ? [['table', t('cl.mt.leagueTable')]] : []), ['astats', t('cl.mt.teamStats', { club: g.clubs[f.away].short })]].map(([k, l]) => ({ key: k, label: l, on: tab === k, onClick: () => setTab(k) }))} />
         </>
       )}
-      {tab === 'oppTactics' && <OppTactics sim={sim} side={(1 - me) as 0 | 1} club={g.clubs[me === 0 ? f.away : f.home]?.name ?? ''} />}
+      {tab === 'oppTactics' && <OppTactics sim={sim} side={(1 - me) as 0 | 1} club={g.clubs[me === 0 ? f.away : f.home]?.name ?? ''} cid={me === 0 ? f.away : f.home} />}
       {/* 2D-banen findes også i det klassiske udseende (ejerens ønske 2026-11-10) – uden kommentarkolonnen, linjen står i sidebjælken */}
       {tab === '2d' && (
         <div className={classic ? 'match2d cx-2d' : 'cols match2d'}>
@@ -1064,7 +1064,7 @@ function LiveMatch({ id }: { id: number }) {
       {!report && !classic && <div className="muted leave-note">⚠️ {t(h2h ? 'match.leaveH2h' : g.humans ? 'match.leaveMp' : 'match.leaveSp', { name: awayName })}</div>}
       {!classic && <div className="cm-venue">{g.clubs[f.home]?.stadium}{g.clubs[f.home]?.name ? `, ${g.clubs[f.home]?.name}` : ''} · {WEATHER_ICON[weatherFor(f)]} {t(`wx.${weatherFor(f)}`)}{pitchFor(f) !== 'normal' ? ` · ${t(`pitch.${pitchFor(f)}`)}` : ''} · {t('ref.label')}: {refereeFor(f).name}</div>}
       {classic && tab === 'tactics' && !report && (
-        <OppTactics sim={sim} side={me as 0 | 1} club={g.clubs[g.userClub]?.name ?? ''} editable draft={draft} setDraft={setDraft} base={L.baseTactic} lastView={lastView} onLastMatch={() => setLastView(true)}
+        <OppTactics sim={sim} side={me as 0 | 1} club={g.clubs[g.userClub]?.name ?? ''} cid={g.userClub} editable draft={draft} setDraft={setDraft} base={L.baseTactic} lastView={lastView} onLastMatch={() => setLastView(true)}
           onSub={(out, inn) => {
             const ok = sim.substitute(me, out, inn); setMsg(ok ? '' : t('match.subFailed')); pull(); force((x) => x + 1);
             // CM 01/02: "19 Yorke has been brought on to replace 10 van Nistelrooy. Return to the match ?"
@@ -1421,8 +1421,8 @@ export function LastMatchView({ tac, club }: { tac: Tactic; club: string }) {
  * (draft) og gælder først ved Ok i sidebjælken; træk en udskifter ind på en spiller for at skifte (sker med det samme).
  * Højreklik på en spiller på banen: løb frem (ofte/blandet/sjældent).
  */
-function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, lastView, onLastMatch }: {
-  sim: LiveSim; side: 0 | 1; club: string; editable?: boolean; onSub?: (out: number, inn: number) => void;
+function OppTactics({ sim, side, club, cid, editable, onSub, draft, setDraft, lastView, onLastMatch }: {
+  sim: LiveSim; side: 0 | 1; club: string; cid?: number; editable?: boolean; onSub?: (out: number, inn: number) => void;
   draft?: Tactic | null; setDraft?: (t: Tactic) => void; base?: Tactic; lastView?: boolean; onLastMatch?: () => void;
 }) {
   const g = useGame()!;
@@ -1445,6 +1445,9 @@ function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, lastVie
   const rd = useRunDrag(pitchRef, (slot, run) => edit((t2) => { t2.individual[slot] = { ...t2.individual[slot], run: run ?? undefined }; return t2; }), (slot, x, y) => setCtx({ slot, x, y }));
   const on = lv.on.filter((s) => !s.off);
   const pl = (id: number) => g.players[id];
+  // spillerne i holdets trøjefarve (CM 01/02)
+  const kit = (cid && g.clubs[cid]?.colors?.[0]) || '';
+  const lum = (c: string) => { const m = /^#?([0-9a-f]{6})$/i.exec(c); if (!m) return 0; const n = parseInt(m[1], 16); return 0.3 * (n >> 16) + 0.59 * ((n >> 8) & 255) + 0.11 * (n & 255); };
   // valgt spiller (tryk → tryk: mobilens udgave af træk – udskift, byt eller flyt)
   const [pick, setPick] = useState<number | null>(null);
   const drop = (target: number, from = drag) => {
@@ -1475,13 +1478,13 @@ function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, lastVie
     edit((t2) => { const i = t2.lineup.indexOf(drag); if (i >= 0 && t2.slots[i].pos !== 'GK' && !slotTaken(t2.slots, i, s)) { t2.slots[i] = s; t2.formation = shapeName(t2.slots); return slotMoved(t2, i); } return t2; });
     setDrag(null);
   };
-  type Row = { id: number; num?: number | string; note?: string; noteOn?: boolean; cond?: number; rating?: number; goals?: number; dim: boolean; live: boolean; slot?: number };
+  type Row = { id: number; num?: number | string; note?: string; noteOn?: boolean; cond?: number; rating?: number; goals?: number; dim: boolean; live: boolean; slot?: number; yel?: boolean; inj?: boolean };
   // CM 01/02: rækkerne bliver stående – de 11 fra start i rækkefølge (udskiftede grå med "sub 56"), så bænken
   // (indskiftede hvide med orange "on 56" på deres bænkplads)
   const rows: Row[] = cxRows(sim, side).map((r) => {
     const s2 = on.find((x) => x.id === r.id);
     const gone = lv.on.find((x) => x.id === r.id && x.off);
-    return { id: r.id, num: r.num, note: gone?.red ? 'off' : r.note, noteOn: r.noteOn, cond: s2 ? s2.cond : r.line ? r.cond : undefined, rating: r.line ? r.rating : undefined, goals: r.line?.goals, dim: !s2 || !!s2.injured, live: !!s2, slot: s2?.slot };
+    return { id: r.id, num: r.num, note: gone?.red ? 'off' : r.note ?? (s2?.injured ? `inj ${Math.round(s2.cond)}` : undefined), noteOn: r.noteOn, cond: s2 ? s2.cond : r.line ? r.cond : undefined, rating: r.line ? r.rating : undefined, goals: r.line?.goals, dim: !s2, live: !!s2, slot: s2?.slot, yel: !!s2?.yellow, inj: !!s2?.injured };
   });
   const dnd = (id: number, canDrag: boolean) => ({
     draggable: editable && canDrag && !coarse(),
@@ -1551,12 +1554,12 @@ function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, lastVie
                 <td className={`c-pos ${r.noteOn ? 'cx-on-note' : ''}`}>{r.note ?? (tac.captain === r.id && r.live ? <span className="cx-capt" draggable={editable} onDragStart={(e) => { e.stopPropagation(); e.dataTransfer.setData('text/plain', 'capt'); setTimeout(() => setDragCapt(true), 0); }} onDragEnd={() => setTimeout(() => setDragCapt(false), 0)}>capt</span> : '')}</td>
                 <td className="c-yel">{p ? posStr(p) : ''}</td>
                 {vc ? <td className="c-cyan">{iv !== undefined ? (editable ? <button className="cx-opt on cx-ti-btn" onClick={(e) => { e.stopPropagation(); if (r.slot !== undefined) cycle(r.slot); }}>{instrLabel(vc.k, iv, vc.n)}</button> : instrLabel(vc.k, iv, vc.n)) : ''}</td> : <>
-                  <td className={`c-num ${(r.cond ?? 100) >= 85 ? 'c-good' : 'c-yel'}`}>{r.cond !== undefined ? `${r.cond}%` : ''}</td>
+                  <td className={`c-num ${(r.cond ?? 100) >= 85 ? 'c-good' : 'c-yel'}`}>{r.cond !== undefined && !r.inj ? `${r.cond}%` : ''}</td>
                   <td className="c-num c-cyan">{r.rating !== undefined ? Math.round(r.rating) : ''}</td>
                   <td className="c-num">{r.goals ? r.goals : ''}</td></>}
               </tr>
             );
-          })}</tbody></table>
+          })}{Array.from({ length: Math.max(0, 21 - rows.length) }, (_, i) => <tr key={`e${i}`} className="cx-mt-blank"><td className="btn-col"><span className="cx-rowbtn narrow" /></td><td className="c-name" /><td /><td /><td /><td /><td /></tr>)}</tbody></table>
         </div>
         <div className="cx-mt-pcol">
         <div className="cx-mt-ptabs">{(['ov', 'with', 'without'] as const).map((k) => <button key={k} className={pv === k ? 'on' : ''} onClick={() => setPv(k)}>{t(`cl.mt.pv.${k}`)}</button>)}</div>
@@ -1581,11 +1584,11 @@ function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, lastVie
             if (!sl) return null;
             const gk = sl.pos === 'GK';
             return (
-              <div key={s.id} className={`cx-tac-slot ${drag !== null ? 'drop' : ''} ${pick === s.id ? 'on' : ''}`} style={{ left: `${sl.y}%`, top: `${97 - sl.x * 0.92}%` }} {...dnd(s.id, true)}
+              <div key={s.id} className={`cx-tac-slot ${drag !== null ? 'drop' : ''} ${pick === s.id ? 'on' : ''} ${s.injured ? 'inj' : ''}`} style={{ left: `${sl.y}%`, top: `${97 - sl.x * 0.92}%` }} {...dnd(s.id, true)}
                 onContextMenu={(e) => { if (!editable || gk) return; e.preventDefault(); e.stopPropagation(); }}
                 onPointerDown={(e) => { if (editable && !gk) rd.start(e, slot, sl); }}
                 onTouchStart={(e) => { if (editable && !gk) rd.touch(e, slot, sl); }}>
-                <span className={`cx-tac-dot cx-mt-dot ${gk ? 'gk' : ''}`}>{s.num ?? ''}</span>
+                <span className={`cx-tac-dot cx-mt-dot ${gk ? 'gk' : ''}`} style={gk || !kit ? undefined : { background: kit, color: lum(kit) > 150 ? '#111' : '#fff' }}>{s.num ?? ''}</span>
                 <span className="cx-tac-nm">{p?.last ?? ''}</span>
               </div>
             );

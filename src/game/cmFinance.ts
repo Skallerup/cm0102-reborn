@@ -13,7 +13,8 @@
 //   League::pay_prize_money 0x682e10 + calc_prize_fund 0x682f70 (ligapræmien), League::pay_tv_rights 0x683010 (tv-pengene i create_table),
 //   end_season_for_nation 0x59cdd0 + season_end_club_update 0x59cfa0's udbytte (0x59db58–0x59dd25), init_club_board_records 0x68f130's
 //   tilhængertillid (MANAGER_MANAGER-posten +8 – sæsonkortene).
-// Ikke porteret: se ENGINE_PORT_PLAN.md (transferbudgettet 0x598800, process_club_finance_events 0x59ed70, stadionudvidelserne i 0x59cfa0,
+//   process_club_finance_events 0x59ed70 (begivenhederne: cmFinEvents.ts).
+// Ikke porteret: se ENGINE_PORT_PLAN.md (transferbudgettet 0x598800, stadionudvidelserne i 0x59cfa0,
 //   pokal-/Europapræmierne, bonusserne 0x4ca6d0, 2004-stadionflytningerne øverst i 0x59b9c0).
 //
 // Pengene: originalen regner i hele pund; spillet gemmer euro (Club.balance, newgame.ts GBP = 0,86). Posterne regnes i pund som i
@@ -28,6 +29,7 @@ import { gs, squad } from './state';
 import { compHooks } from './hooks';
 import { npFromWorld, npTemplate, personalFill_535a80, staffInitRecord, type NpTemplate } from './cmStaffInit';
 import type { CMWorld } from './data/cm0102';
+import { cmFinEvents } from './cmFinEvents';
 
 export const GBP = 0.86;
 const trunc = Math.trunc;
@@ -423,8 +425,8 @@ export function cmFinanceDay(g: GameState): void {
     } else clampInactive(g, c, r, rand);
     if (monthEnd && active(g, c)) monthEndClub(g, c, r, rand);
     else if (!monthEnd && active(g, c) && (r.s165 === 1 || r.s165 === 2)) {
-      // 0x59ccc0: begivenhederne (process_club_finance_events 0x59ed70) – ikke porteret; tallet trækkes
-      rand(Math.max(10, idiv(11000 - repOf(g, c), 250)));
+      // 0x59ccc0: klubber i krise – process_club_finance_events 0x59ed70 dagligt med flaget rand(max(10, (11000 − omdømme)/250)) = 0
+      cmFinEvents(g, c, r, rand(Math.max(10, idiv(11000 - repOf(g, c), 250))) === 0, rand);
     }
     if (monthEnd) { r.lm = r.tm; r.tm = blank(); }
   }
@@ -518,7 +520,8 @@ function monthEndClub(g: GameState, c: Club, r: CmFinRec, rand: (n: number) => n
     fac = (rand(25) + 1) * 0.01 + 0.6;
   }
   book(g, c, K.maintenance, ftol(fac * base));
-  // 0x59cbfd: process_club_finance_events(club, 1) – ikke porteret
+  // 0x59cbfd: process_club_finance_events(club, 1) – cmFinEvents.ts
+  cmFinEvents(g, c, r, true, rand);
 }
 
 // ------------------------------------------------------------------------------------------------ kampene

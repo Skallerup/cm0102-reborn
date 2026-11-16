@@ -31,9 +31,7 @@ import {
   setSeasonExpectations, s16, weeklyUpdate, managerRepAfterMatch, newRec,
 } from './cmBoard';
 import type { CMWorld } from './data/cm0102';
-import { boardCmText, confidenceText, type BoardCmDesc, type ConfidenceIn } from './cmBoardText';
-import { APPOINT_DA } from './cmBoardTextDa';
-import { getLang } from '../i18n';
+import { appointText, boardCmText, confidenceText, type BoardCmDesc, type ConfidenceIn } from './cmBoardText';
 import { boardRequestAvailable, issueUltimatum, ultimatumOffered, type UltimatumIn } from './cmBoardUltimatum';
 import { projectPositions, staffInterest, type InterestEnv } from './cmBoardInterest';
 import { msvcQsort } from './engine/grid/subs';
@@ -413,8 +411,7 @@ const nationNameOf = (g: GameState, n: number | undefined) => (n === undefined ?
 
 /** 0x6a3060 brødteksten: uden forrige klub 0xa09e18, fra en anden klub (art 3) 0xa0a2f8 */
 export function appointBody(club: string, manager: string, prevClub: string): string {
-  if (getLang() === 'da') return prevClub ? APPOINT_DA.prev(club, manager, prevClub) : APPOINT_DA.plain(club, manager);
-  return prevClub ? `${club} have appointed ${manager} as their new manager.\n\n${prevClub} are now looking for a new manager.` : `${club} have appointed ${manager} as manager.`;
+  return appointText(club, manager, prevClub);
 }
 
 /** 0x690d80 for klubben (dage i jobbet som 0x6b2080/0x6a4c40) */

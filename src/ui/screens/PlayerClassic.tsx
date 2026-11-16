@@ -15,7 +15,9 @@ import { authentic, extended } from '../../game/rules';
 import { avgRating } from '../../game/season';
 import { SCHEDULES } from '../../game/training';
 import { askingPrice, canPreContract, interestedClubs, myPendingBid, nextWindow, releaseCost, windowOpen } from '../../game/transfers';
-import { cmActive } from '../../game/cmPlayerData';
+import { cmActive, ST, statValue } from '../../game/cmPlayerData';
+import { cmTalksOpen } from '../../game/cmTransferTalks';
+import { ClassicNegotiation } from './NegotiationClassic';
 import { DEMONYM } from '../demonyms';
 import { cmAvailability, cmFutureLines } from '../../game/cmTransferList';
 import { trialOf } from '../../game/trials';
@@ -94,7 +96,23 @@ function StatsBlock({ p, title }: { p: Player; title?: ReactNode }) {
   const s = p.stats;
   const avr = s.ratingCount ? avgRating(p) : 0;
   const dash = '-';
-  const statRows: [string, ReactNode[]][] = [
+  const g = useGame()!;
+  // CM 01/02 (ejerens billede 154): Non Competitive · League · Cup · Continental · International · Senior Club – hver kategori af originalens
+  // statistikposter (cmPlayerData: kampe, mål, kampens spiller, karakter; assists kun for ligaen og i alt – de øvrige tal spillet fører står som "-")
+  const cmRow = (cat: number, label: string, asts: ReactNode): [string, ReactNode[]] => {
+    const e = p.cmStats?.[cat];
+    const n = e?.[ST.apps] ?? 0;
+    return [label, [n || dash, n ? e![ST.goals] : dash, asts, n ? e![ST.mom] : dash, n ? <Rating r={statValue(e, 0x11, 0)} digits={2} /> : dash]];
+  };
+  const catRows: [string, ReactNode[]][] | null = cmActive(g) && !g.draft ? [
+    cmRow(1, t('cl.pl.nonComp'), dash),
+    cmRow(2, t('cl.pl.league'), s.lgAssists ?? dash),
+    cmRow(3, t('cl.pl.cup'), dash),
+    cmRow(4, t('cl.pl.continental'), dash),
+    cmRow(5, t('cl.pl.intl'), dash),
+    cmRow(6, t('cl.pl.senior'), s.assists),
+  ] : null;
+  const statRows: [string, ReactNode[]][] = catRows ?? [
     // liga og øvrige turneringer (pokal/Europa) hver for sig med assists, kampens spiller og snit – som i originalen (ejerens ønske 2026-11-10)
     ...(() => {
       const lgRs = s.lgRatingSum ?? 0, lgRn = s.lgRatingCount ?? 0, lgA = s.lgAssists ?? 0, lgM = s.lgMom ?? 0;
@@ -111,7 +129,7 @@ function StatsBlock({ p, title }: { p: Player; title?: ReactNode }) {
   // CM 01/02: de blå pile skifter til side 2 (kort, minutter, indskiftninger – de tal spillet fører)
   const [page, setPage] = useState(0);
   const heads = page === 0 ? [t('col.apps'), t('col.goals'), t('cl.pl.asts'), t('cl.pl.mom'), t('col.avr')] : [t('cl.pl.yel'), t('cl.pl.red'), t('cl.pl.mins'), t('cl.pl.subsOn'), t('col.avr')];
-  const rows2: [string, ReactNode[]][] = statRows.map(([l, v], i) => [l, i === 2 ? [s.yellows, s.reds, s.minutes, s.subs, v[4]] : [dash, dash, dash, dash, v[4]]]);
+  const rows2: [string, ReactNode[]][] = statRows.map(([l, v], i) => [l, i === (catRows ? 5 : 2) ? [s.yellows, s.reds, s.minutes, s.subs, v[4]] : [dash, dash, dash, dash, v[4]]]);
   const posTip = `${posStr(p)} · ${POSITIONS_LABEL.map(([l, i]) => `${l} ${p.pos[i]}`).join(' · ')} · ${SIDES.map((x, i) => `${t(`side.${x}`)} ${p.side[i]}`).join(' · ')}`;
   return (
     <>
@@ -172,14 +190,16 @@ function ProfileTab({ p }: { p: Player }) {
   const tech = sorted([...GROUPS.technical.filter((a) => a !== 'offTheBall'), ...(gk ? GROUPS.goalkeeping : [])]);
   const ment = sorted([...GROUPS.mental, 'offTheBall']);
   const form = p.form.slice(-5);
-  const phys: [string, ReactNode][] = [
+  const phys: [ReactNode, ReactNode][] = [
     ...sorted(GROUPS.physical.filter((a) => a !== 'naturalFitness')),
     [t('cl.pl.foot'), <span className="cx-v v-gold">{t(`foot.${footKey(p)}`)}</span>],
     [t('col.form'), <span className="cx-v v-gold">{form.length ? form.map((x) => Math.round(x)).join('-') : '-'}</span>],
     [t('col.morale'), <span className="cx-v v-gold">{g.draft ? '-' : t(moraleKey(p.morale))}</span>],
     [t('cl.pl.condition'), <span className="cx-v v-gold">{Math.round(p.condition)}%</span>],
+    // CM 01/02 (ejerens billede 154): "On loan from Fulham" i turkis under Condition
+    ...(p.loan && g.clubs[p.loan.from] ? [[<span className="cx-v v-cyan cx-pl-loanfrom">{t('cl.pl.ctLoan')} <ClubLink id={p.loan.from} /></span>, ''] as [ReactNode, ReactNode]] : []),
   ];
-  const cols: [string, [string, ReactNode][]][] = [[t('cl.pl.grp.technical'), tech], [t('cl.pl.grp.mental'), ment], [t('cl.pl.grp.physical'), phys]];
+  const cols: [string, [ReactNode, ReactNode][]][] = [[t('cl.pl.grp.technical'), tech], [t('cl.pl.grp.mental'), ment], [t('cl.pl.grp.physical'), phys]];
   const n = Math.max(tech.length, ment.length, phys.length);
   return (
     <div className="cx-pl">
@@ -187,7 +207,7 @@ function ProfileTab({ p }: { p: Player }) {
       {g.options.masking && k < 100 && !orig && <div className="cx-pl-hint">{t('player.rangeHint')}</div>}
       <table className="cx-pl-grid">
         <thead><tr>{cols.map(([h]) => <th key={h} colSpan={2}>{h}</th>)}</tr></thead>
-        <tbody>{Array.from({ length: n }, (_, r) => <tr key={r}>{cols.map(([h, list]) => [<td key={`${h}l`}>{list[r]?.[0] ?? ''}</td>, <td key={`${h}v`} className="v">{list[r]?.[1] ?? ''}</td>])}</tr>)}</tbody>
+        <tbody>{Array.from({ length: n }, (_, r) => <tr key={r}>{cols.map(([h, list]) => list[r]?.[1] === '' ? <td key={`${h}l`} colSpan={2} className="cx-pl-span">{list[r][0]}</td> : [<td key={`${h}l`}>{list[r]?.[0] ?? ''}</td>, <td key={`${h}v`} className="v">{list[r]?.[1] ?? ''}</td>])}</tr>)}</tbody>
       </table>
       <StatsBlock p={p} />
     </div>
@@ -424,6 +444,7 @@ export function ClassicPlayer({ id }: { id: number }) {
   const [bid, setBid] = useState<boolean | number>(false);
   const [bidPanel, setBidPanel] = useState<'buy' | 'loan' | 'change' | null>(null);
   const [bidAsk, setBidAsk] = useState(false);
+  const [cmNeg, setCmNeg] = useState<number | null>(null);
   const [neg, setNeg] = useState<{ offer?: TransferOffer; renew?: number } | null>(null);
   const [msg, setMsg] = useState('');
   const [loanOutOpen, setLoanOut] = useState(false);
@@ -477,7 +498,16 @@ export function ClassicPlayer({ id }: { id: number }) {
     // CM 01/02: Add To Shortlist · Approach To Buy · Approach To Loan · Scout Player · Set Nickname · — · Create Manager Note · Compare Players
     items.push({ key: 'short', label: shortlisted ? t('cl.pl.unshortlist') : t('cl.pl.shortlist'), onClick: () => dispatch({ t: 'shortlist', pid: p.id, on: !shortlisted }) });
     const pendingBid = cmActive(g) && p.club > 0 ? myPendingBid(p.id) : undefined;
-    if (pendingBid) {
+    // CM 01/02 (ejerens billede 154): har klubben accepteret buddet, står der Offer Contract (Set Role At Club → kontraktforhandlingen) og
+    // Withdraw Transfer Bid – hverken Approach To Buy/Loan eller Change Transfer Bid
+    const agreedBid = cmActive(g) && p.club > 0 && !pendingBid ? g.offers.find((o) => o.player === p.id && cmTalksOpen(g, o)) : undefined;
+    if (agreedBid) {
+      const nm = `${p.first} ${p.last}`.trim();
+      items.push(
+        { key: 'offerContract', label: t('cl.offerContract'), onClick: () => setCmNeg(agreedBid.id) },
+        { key: 'withdraw', label: t('cl.pl.withdrawBid'), onClick: async () => { if (await askConfirm(t('cl.pl.withdrawBody', { player: nm }), { head: t('cl.pl.withdrawQ', { player: nm }) })) dispatch({ t: 'withdraw', pid: p.id }); } },
+      );
+    } else if (pendingBid) {
       // CM 01/02 (ejerens billede 145): mens buddet venter – Withdraw Transfer Bid (0x8f4c70: "Withdraw X transfer bid?" No/Yes) og
       // Change Transfer Bid (budskærmen med buddet, 0x8e9350) i stedet for Approach To Buy/Loan
       const nm = `${p.first} ${p.last}`.trim();
@@ -523,6 +553,8 @@ export function ClassicPlayer({ id }: { id: number }) {
   if (!g.draft) tabs.push(['contract', t('cl.pl.contract')], ['transfer', t('cl.pl.transfer')]);
   tabs.push(['history', t('cl.pl.history')]);
 
+  const cmNegOffer = cmNeg !== null ? g.offers.find((o) => o.id === cmNeg) : undefined;
+  if (cmNegOffer && cmTalksOpen(g, cmNegOffer)) return <div><ClassicNegotiation offer={cmNegOffer} onClose={() => setCmNeg(null)} /></div>;
   if (noteOpen) return <div><Head menu={false} title={`${p.first} ${p.last}`.trim()} /><NotePanel p={p} onClose={() => setNoteOpen(false)} /></div>;
   if (nickOpen) return <div><Head menu={false} title={`${p.first} ${p.last}`.trim()} /><NicknamePanel p={p} onClose={() => setNickOpen(false)} /></div>;
   if (repRole && mine) return <div><Head menu={false} title={`${p.first} ${p.last}`.trim()} /><StaffReportPanel p={p} role={repRole} onClose={() => setRepRole(null)} onDone={() => { setRepRole(null); nav({ name: 'inbox' }); }} /></div>;

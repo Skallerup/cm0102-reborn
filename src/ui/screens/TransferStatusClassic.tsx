@@ -6,7 +6,7 @@ import { SQUAD_STATUSES, statusAllowed, type SquadStatus } from '../../game/squa
 import { askingPrice, knownEnquiry, swapCandidates, swapWorth } from '../../game/transfers';
 import { ADDON_APPS } from '../../game/clauses';
 import type { CoachArea, NewsItem, Player, TransferOffer } from '../../game/types';
-import { statusNum } from '../../game/cmTransferList';
+import { cmStatusRows, statusNum } from '../../game/cmTransferList';
 import { valueTarget } from '../../game/training';
 import type { RejectReason } from '../../game/will';
 import { ageOn } from '../../game/dates';
@@ -14,7 +14,7 @@ import { compName, currencySymbol, fromCurExact, getCurrency, money, moneyFull, 
 import { posStr } from '../components';
 import { jobTerms } from '../../game/board';
 import { useGame } from '../core';
-import { CxDrop, useClassicDialog, ClassicFoot } from '../classic';
+import { CxDrop, CxPm, useClassicDialog, ClassicFoot } from '../classic';
 import { cmActive, statusCode } from '../../game/cmPlayerData';
 import { isHumanClub } from '../../game/humans';
 import { exchangeList, myPendingBid } from '../../game/transfers';
@@ -50,6 +50,7 @@ function CmTransferStatusPanel({ p, onClose }: { p: Player; onClose: () => void 
   const [listed, setListed] = useState(!!(b4e & 1));
   const [loan, setLoan] = useState(!!(b4e & 2));
   const [request, setRequest] = useState(!!(b4e & 8));
+  const rows = cmStatusRows(p);
   const [price, setPrice] = useState<number>(p.value);
   // Cash::step_up 0x43f4e0 / step_down 0x43f580 (0x8f7c78 / 0x8f7aca)
   const step = (dir: 1 | -1) => setPrice(dir > 0 ? stepUp(price) : stepDown(price));
@@ -65,9 +66,9 @@ function CmTransferStatusPanel({ p, onClose }: { p: Player; onClose: () => void 
         <p className="cx-ts-intro">{t('cl.ts.valued', { player: name, value: money(p.value) })}</p>
         <div className="cx-ts-price">
           <span className="cx-ts-label">{t('cl.ts.asking')}</span>
-          <button className="cx-pm" disabled={price <= 0} onClick={() => step(-1)} aria-label="-">−</button>
+          <CxPm disabled={price <= 0} onClick={() => step(-1)} aria-label="-">−</CxPm>
           <CxDrop className="cx-bid-amt cx-ts-val" label={money(price)} fixed items={PRICE_LIST.map((a) => ({ key: String(a), label: amountLabel(a), checked: false, onClick: () => setPrice(Math.round(fromCurExact(a))) }))} />
-          <button className="cx-pm" onClick={() => step(1)} aria-label="+">+</button>
+          <CxPm onClick={() => step(1)} aria-label="+">+</CxPm>
           {/* originalens knap hedder Auto (ejerens billede 13/11): formelværdien 0x4d0c60 */}
           <button className="cx-pm auto" onClick={() => setPrice(roundGbp(valueTarget(p)))}>{t('cl.ts.auto')}</button>
         </div>
@@ -77,9 +78,10 @@ function CmTransferStatusPanel({ p, onClose }: { p: Player; onClose: () => void 
           return <button key={s} className={`cx-ts-opt ${status === s ? 'on' : ''}`} disabled={!ok} onClick={() => setStatus(status === s ? undefined : s)}>{t(`cl.ts.s.${s}`)}</button>;
         })}
         <div className="cx-ts-head">{t('cl.ts.transfer')}</div>
-        <button className={`cx-ts-opt ${listed ? 'on' : ''}`} onClick={() => setListed(!listed)}>{t('cl.ts.listed')}</button>
-        <button className={`cx-ts-opt ${loan ? 'on' : ''}`} onClick={() => setLoan(!loan)}>{t('cl.ts.loan')}</button>
-        <button className={`cx-ts-opt ${request ? 'on' : ''}`} onClick={() => setRequest(!request)}>{t('cl.ts.request')}</button>
+        {/* 0x8f7640: de tre rækker er et valg ad gangen; "efter eget ønske" kun hvis spilleren allerede har bedt om det (cmStatusRows) */}
+        <button className={`cx-ts-opt ${listed ? 'on' : ''}`} disabled={rows.listOff} onClick={() => { setListed(!listed); setLoan(false); setRequest(false); }}>{t('cl.ts.listed')}</button>
+        <button className={`cx-ts-opt ${loan ? 'on' : ''}`} disabled={rows.listOff} onClick={() => { setLoan(!loan); setListed(false); setRequest(false); }}>{t('cl.ts.loan')}</button>
+        <button className={`cx-ts-opt ${request ? 'on' : ''}`} disabled={rows.reqOff(request)} onClick={() => { setRequest(!request); setListed(false); setLoan(false); }}>{t('cl.ts.request')}</button>
       </div>
       <ClassicFoot cols="3fr 1fr">
         <button onClick={onClose}>{t('common.back')}</button>
@@ -165,10 +167,10 @@ function OwnTransferStatusPanel({ p, onClose }: { p: Player; onClose: () => void
         <p className="cx-ts-intro">{t('cl.ts.valued', { player: name, value: money(p.value) })}</p>
         <div className="cx-ts-price">
           <span className="cx-ts-label">{t('cl.ts.asking')}</span>
-          <button className="cx-pm" onClick={() => setPrice(round(shown - step))} aria-label="-">−</button>
+          <CxPm onClick={() => setPrice(round(shown - step))} aria-label="-">−</CxPm>
           {/* CM 01/02: pilen ved prisen åbner originalens beløbsliste (£0 … £20M) */}
           <CxDrop className="cx-bid-amt cx-ts-val" label={money(shown)} fixed items={PRICE_LIST.map((a) => ({ key: String(a), label: amountLabel(a), checked: false, onClick: () => setPrice(Math.round(fromCurExact(a))) }))} />
-          <button className="cx-pm" onClick={() => setPrice(round(shown + step))} aria-label="+">+</button>
+          <CxPm onClick={() => setPrice(round(shown + step))} aria-label="+">+</CxPm>
           <button className={`cx-pm auto ${price === undefined ? 'on' : ''}`} onClick={() => setPrice(undefined)}>{t('cl.ts.auto')}</button>
         </div>
         <div className="cx-ts-head">{t('cl.ts.squad')}</div>
@@ -259,9 +261,9 @@ function OldBidPanel({ p, loan, onClose, onSent }: { p: Player; loan: boolean; o
   const row = (label: string, value: string, minus?: () => void, plus?: () => void, extra?: ReactNode) => (
     <div className={`cx-bid-row ${minus || plus ? '' : 'off'}`}>
       <span className="cx-bid-label">{label}</span>
-      <button className="cx-pm" disabled={!minus} onClick={minus} aria-label="-">−</button>
+      <CxPm disabled={!minus} onClick={minus} aria-label="-">−</CxPm>
       <span className="cx-bid-val">{value}</span>
-      <button className="cx-pm" disabled={!plus} onClick={plus} aria-label="+">+</button>
+      <CxPm disabled={!plus} onClick={plus} aria-label="+">+</CxPm>
       {extra}
     </div>
   );
@@ -301,9 +303,9 @@ function OldBidPanel({ p, loan, onClose, onSent }: { p: Player; loan: boolean; o
         {!loan && <>
           <div className="cx-bid-row">
             <span className="cx-bid-label">{t('cl.bid.fee')}</span>
-            <button className="cx-pm" onClick={() => setFee(round(Math.max(0, fee - step)))} aria-label="-">−</button>
+            <CxPm onClick={() => setFee(round(Math.max(0, fee - step)))} aria-label="-">−</CxPm>
             <CxDrop className="cx-bid-amt" label={money(fee)} fixed items={AMOUNTS.map((a) => { const v = Math.round(fromCurExact(a)); return { key: String(a), label: amountLabel(a), checked: false, onClick: () => setFee(v) }; })} />
-            <button className="cx-pm" onClick={() => setFee(round(fee + step))} aria-label="+">+</button>
+            <CxPm onClick={() => setFee(round(fee + step))} aria-label="+">+</CxPm>
             <button className="cx-pm" onClick={() => setFee(round(known?.fee ?? p.value))} title={authentic() ? undefined : t('cl.bid.feeEq')}>=</button>
           </div>
           {row(t('cl.bid.install'), '-')}
@@ -372,9 +374,9 @@ function OldIncomingBidPanel({ offer, onClose }: { offer: TransferOffer; onClose
   const row = (label: string, value: string, minus?: () => void, plus?: () => void, extra?: ReactNode) => (
     <div className={`cx-bid-row ${minus || plus ? '' : 'off'}`}>
       <span className="cx-bid-label">{label}</span>
-      <button className="cx-pm" disabled={!minus} onClick={minus} aria-label="-">−</button>
+      <CxPm disabled={!minus} onClick={minus} aria-label="-">−</CxPm>
       <span className="cx-bid-val">{value}</span>
-      <button className="cx-pm" disabled={!plus} onClick={plus} aria-label="+">+</button>
+      <CxPm disabled={!plus} onClick={plus} aria-label="+">+</CxPm>
       {extra}
     </div>
   );
@@ -497,9 +499,9 @@ function CmBidRows({ terms, set, value, budget, swapValue, onExchange, reset }: 
   const row = (on: boolean, label: ReactNode, minus: BidAct, mid: ReactNode, plus: BidAct, minusOff: boolean, plusOff: boolean, extra?: ReactNode) => (
     <div className={`cx-bid-row ${on ? '' : 'off'}`}>
       {label}
-      <button className="cx-pm" disabled={minusOff} onClick={() => act2(minus)} aria-label="-">−</button>
+      <CxPm disabled={minusOff} onClick={() => act2(minus)} aria-label="-">−</CxPm>
       {mid}
-      <button className="cx-pm" disabled={plusOff} onClick={() => act2(plus)} aria-label="+">+</button>
+      <CxPm disabled={plusOff} onClick={() => act2(plus)} aria-label="+">+</CxPm>
       {extra ?? <span />}
     </div>
   );

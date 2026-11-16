@@ -73,6 +73,12 @@ export function newsParams(n: NewsItem): Record<string, string | number> {
   }
   // CM 01/02's karantæner (cmDiscipline.ts): længden i overskriften (0x7e5780), "Keane's" og forbundets nationalitetsord
   if (n.key.startsWith('cmban.')) cmBanParams(n, p);
+  // klubøkonomiens begivenheder: beløbene (€) i den viste valuta, antallet af pladser
+  if (n.key.startsWith('cmfe.')) {
+    if (typeof p.amt === 'number') p.amt = money(p.amt);
+    if (typeof p.funds === 'number') p.funds = money(p.funds);
+    if (typeof p.n === 'number') p.n = p.n.toLocaleString(t('cl.locale'));
+  }
   // Discipline Player: grunden med små bogstaver som originalens 0x5a73a0(…, 1)
   if (n.key.startsWith('cmfine.') && typeof p.why === 'number') p.reason = t(`cmfine.why.${p.why}`);
   if (n.key === 'eur.request' && typeof p.phase === 'string') p.phase = t(`eur.phase.${p.phase}`);
@@ -147,6 +153,8 @@ function bodyKey(n: NewsItem): string {
   if (n.key.startsWith('cmfine.') && typeof n.params?.body === 'string') return `cmfine.b.${n.params.body}`;
   // PLAYER_REGEN (cmRetire.ts): originalens brødtekst er valgt i spillet (0x7a9650/0x7aa4c0)
   if (n.key.startsWith('cmret.') && typeof n.params?.body === 'string') return `cmret.b.${n.params.body}`;
+  // klubøkonomiens begivenheder (cmFinEvents.ts): originalens brødtekst er valgt i spillet (0x59f3e0 m.fl.)
+  if (n.key.startsWith('cmfe.') && typeof n.params?.body === 'string') return `cmfe.b.${n.params.body}`;
   // venskabskampens tilbud til mennesket (0x77ce44): arrangøren hjemme "have offered …", ellers "have challenged …"
   if (n.key === 'cmfr.proposal') return `cmfr.proposal.${n.params?.body === 'challenged' ? 'challenged' : 'offered'}`;
   return `${n.key}.body`;

@@ -60,7 +60,7 @@ ad gangen (eller ret sn_trace.c til kun at skrive `pre` og ingen log).
 | trupstatus | 14/7 | +0x4f: klubber uden for de fire ligaer får ingen status hos os (0x83a1b0 springer skjulte klubber over, *estimeret*) – originalen sætter den for alle | 267/267; ligaklubberne 976/3286 |
 | værdi | 14/7 | (rettet 16/11, punkt 17) staff +0x52 med kendte inddata 56 % inden for ±10 % (før 28 %), 20/7 53 %; snit £599K mod £607K (før £789K), tilfældige inddata 38 % – resten er 0x6e86d0's id-hash, trupplanens +0x3d og forkørslens kontrakter | 552/1251 · 591/1255 |
 | skader | 14/7 | startskader 6 % mod 4 % af spillerne | andel 0,06/0,04 |
-| økonomi | 14/7 | (timing) Intertoto 14/7 er spillet i billedet; saldo inden for 0,92–1,08 som den skal. Senere: sæsonposterne Prize 0 (originalen £231K snit 1/2: pokal-/Europapræmier), TV 88K/193K, Investments 34K/4,8M (PLC-begivenheder 0x59ed70), Interest ud 222K/119K, saldo 1/2 1,37M/3,02M og 30/6 0,76M/7,64M, nye sæsons tv-penge betales i originalen før 30/6 (create_table efter 20/6) | se scriptet |
+| økonomi | 14/7 | (timing) Intertoto 14/7 er spillet i billedet; saldo inden for 0,92–1,08 som den skal. Senere: sæsonposterne Prize 0 (originalen £231K snit 1/2: pokal-/Europapræmier), TV 88K/193K, Investments 34K/4,8M (begivenhederne 0x59ed70 – porteret 16/11, punkt 11), Interest ud 222K/119K, saldo 1/2 1,37M/3,02M og 30/6 0,76M/7,64M, nye sæsons tv-penge betales i originalen før 30/6 (create_table efter 20/6) | se scriptet |
 | moral | 20/7 | +0x45 skilles allerede efter 6 dage (2.295/3.559; snit 10,7/11,2, originalen spreder mere – fx 5–16 i forsæsonen) | 60 · 2295 · 3160 · 3122 |
 | klubomdømme | 20/7 | +0x80 ændrer sig i originalen i forsæsonen (fx +1/+2 efter venskabskampe), vores står stille | 2 · 71 · 91 · 92 |
 | kondition | 20/7 | kampkondition snit 9.316/9.444 (20/7), 9.873/9.408 (1/2); Fitness med kendte inddata 85/134 | |
@@ -149,7 +149,20 @@ View Finances (der læser Bonuses fra blokken) viste 0 bonusser, selv om pengene
 8. Priser: Team of the Week (hvornår), Fans Player of the Year, internationale priser, andre landes priser.
 9. Økonomi for ikke-valgte lande: klubber i minus 150 → ~450 over 3 år.
 10. Spejdere/kendskab: `scoutDaily`/knowledge-modellen er vores; Rec-stjernernes tilfældige tal er faste hash-værdier.
-11. Bestyrelsens/økonomiens begivenheder: process_club_finance_events 0x59ed70, AWOL 0x41a360, appel.
+11. Bestyrelsens/økonomiens begivenheder – **0x59ed70 porteret 16/11** (`src/game/cmFinEvents.ts`, tests/cmFinEvents.test.ts): FinanceTable::
+   process_club_finance_events ved månedens udgang (0x59cbfd, alle aktive klubber) og dagligt for klubber i krise (0x59cd4d, +0x165 ∈ {1,2}, flag
+   rand(max(10,(11000 − omdømme)/250)) = 0). Krisetilstanden +0x165 efter formuebåndet 0x5986b0: −2 → betalingsstandsning (0x177b "Receivers called
+   in"/"Club in financial crisis", PLC ophører, menneskets spillere sat ned til 0x4d0c60(…, 0, −1, 1) og egen udbudspris væk), −1 → gæld, 0–2 →
+   normal ("Receivers appeased" 0x1783 ved udgang af 1). Begivenhederne i originalens rækkefølge pr. bånd: kapitalindskud 0x59dd40 (type 4, 150/300/
+   450·omdømme), investering 0x59e050 (typerne 1/5/6/7 – transferpenge, aktier, sponsor, PLC; formandens Business/Resources/Ambition, ikke Wales/Irland/
+   Nordirland/Norge/Danmark/Sverige/Belgien, ikke semi/amatør), gældsbetaling 0x59e5a0 (type 3, omdømme ≥ 4750, ikke PLC, loft 4M) og overtagelsen
+   0x59e940 (type 2, (omdømme+1000)·1000 + gælden, ny formand: Patience/Business/Interference/Resources rand(20)+1, landet). Forsømmelsen +0x166 > 50 i
+   en kørende liga: undervarmen væk (0x177d) eller en tiendedel af stadionet lukket (0x177a), træningsanlægget falder. Beløbene bogføres som
+   Investments; transferbudgettet 0x598800 bagefter (med fortegn) står i nyheden og bliver Club.transferBudget. Nyhederne: type 2 og 7 til landets
+   managere (0x7863f0), resten til klubbens egen (0x7861e0), amatørklubber ingen. **Ikke porteret:** formandens nye navn, B-holdene 0x540a50, reglen
+   om at menneskets klub i betalingsstandsning ikke kan afvise rimelige bud (kontrakt +0x4e & 4 i budvurderingen), den dybe gælds månedlige
+   mediehistorie/salgsønsker 0x59c212 (0x74ae60 "Financial trouble at …", 0x867700), AWOL 0x41a360, appel. Sæderne +0x40/+0x44 kommer fra stadium.dat
+   +64/+68 (`cmRaw.seats`, parseren); world-filerne er ikke genbygget, så sæderne står indtil da som kapaciteten.
 12. Kalendere – **delvis gjort 16/11**: Norge 1. division (NorFirst::create_schedule 0x790040 tæller ligaens klubber: 16 → 30 runder, ellers 26) og USA (UsaMls 0x9072d0 stage −1: 32 runder for 12 klubber; spillet spiller en tredobbelt turnering, der stopper efter 32 runder – `CM_LEAGUE_CUT`, *estimeret*: originalens egen kampfordeling 0x908xxx er ikke porteret) har originalens skema (36 klasser, fixture-test 352 nøgler mod emulatoren; `tools/sched/gen_all.py` har en `PRE`-krog, der lægger 16 klubber i hukommelsen). Tilbage: **Australien** (AusNsl 0x4111a0: 24 rækker til 14 klubbers 26 spillerunder – rundefølgen 0x68a030 genbruger rækker med rand(4) – og 10 rækker slutspil i stage 0, som spillet ikke har) og **Polen** (PolFirst 0x7c8df0: stage −1/0 = to grupper à 8 med 14 runder, stage 1/2 = mesterskabs-/nedrykningsgrupper à 14 – kræver grupper før splittet i spillets liga). **Tjekkiet/Østrig/Mexico/Schweiz** findes ikke i originalen (exe'ens `comp\leagues\*.cpp` har ingen aut/cze/swi/mex, og landene har ingen række i nøglelandstabellen 0xb63d60) – spillets egen kalender.
 13. ~~Næste sæsons europæiske turneringer synlige i slutningen af juni (ejerens fund B12)~~ – **gjort 16/11** (`cmEuroNextSeason` i cmEurope.ts): på dagen for næste sæsons første lodtrækning (CL-kvalifikationen 26/6-2002, Intertoto 28/6) oprettes CL/UEFA/Intertoto/Super Cup for den nye sæson med seedingen af de afsluttede ligaer og pokalvindere; den gamle sæsons turneringer ligger i `g.cmEuroPrev` og lægges tilbage ved sæsonskiftet (`cmEuroRolloverStart`), så priser, omdømme, historik og trofæer regnes af dem, mens de nye og deres kampe (Intertoto 29/6, CL Q1 10/7) holdes til side og lægges ind igen i setupSeasonComps (`cmEuroRestoreNext`). Skærmene filtrerer turneringens kampe på `meta.cmFrom`. *Estimeret*: hvornår originalen opretter dem (tidligst landenes sæsonopdatering 20/6, senest lodtrækningen). Test i tests/cmEurope.test.ts (27/6 og 2/7-2002).
 14. Menneskeligt styret hold: managertillægget (ferie bruger en *estimeret* managerpost).
@@ -185,5 +198,7 @@ View Finances (der læser Bonuses fra blokken) viste 0 bonusser, selv om pengene
 
 
 ### Småting (ejerens fund, lav prioritet)
+- Kendskabssystemet (ejerens fund 16/11): originalens kendskab afgør bestyrelsens loft ved bud – startniveau ud fra nation/klub/division/omdømme, daglig opdatering og spejdernes løft. Vi gætter i dag.
+- Spillerprofilens statistiktabel som originalen: rækkerne Non Competitive/League/Cup/Continental/International/Senior Club og kolonnerne Apps/Con | Gls/Asts/MoM/Pass/Tck/Drb/Sh Tar/Av R – kræver kampstatistik pr. spiller (afleveringer, tacklinger, driblinger, skud på mål).
 - Player & Staff Search (og øvrige spillerlister): shortlistede spillere står med GULT navn (og bud-mærket "Bid" i Inf-kolonnen, grå), som i originalen (ejerens billede 16/11, images/148.png).
 - Økonomien: kontraktbonusser (mål-/assist-/clean sheet-bonus efter kamp, 0x4ca6d0) og signing on fees skal bogføres i originalens poster (View Finances: Bonuses/Signing On Fees) og trækkes fra saldoen som originalen – tjek mod oraklet (K2: cm-day-lockstep.ts sammenligner de 18 sæsonposter). Ejerens billede 16/11 (images/150.png: Fortune, 1.700DKr Assist Bonus). Delvist gjort 16/11 (K2-agenten: køb/salg/signing-on/bonusser bogføres via bookBlock), mangler kontrol.

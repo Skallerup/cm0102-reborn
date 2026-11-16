@@ -297,7 +297,7 @@ const HUBS: Partial<Record<ScreenName, Hub>> = {
   managers: { tabs: MGR_TABS, sub: MGR_SUB },
   player: {
     // spillerens klub i titlen kan klikkes (som i originalen)
-    title: (g, r, st) => { const p = g.players[Number(r.id)]; return p ? <>{p.first} {p.last}{p.club && g.clubs[p.club] ? <> (<CxLink to={clubRoute(p.club)}>{g.clubs[p.club].name}</CxLink>)</> : null}</> : st; },
+    title: (g, r, st) => { const p = g.players[Number(r.id)]; return p ? <>{p.club && p.number && !g.draft ? `${p.number}. ` : ''}{p.first} {p.last}{p.club && g.clubs[p.club] ? <> (<CxLink to={clubRoute(p.club)}>{g.clubs[p.club].name}</CxLink>)</> : null}</> : st; },
     club: (g, r) => g.players[Number(r.id)]?.club || undefined,
   },
   // konkurrencer, kampe, indstillinger, hjælp: skærmens egen titel og egne faner
@@ -593,6 +593,31 @@ export type DropItem =
   | { key: string; sep: true }
   /** undermenu (▸) – åbnes ved siden af, når man peger på den (som Competitions-menuen i CM 01/02) */
   | { key: string; label: ReactNode; sub: DropItem[] };
+
+/** +/-knap som originalens: holdes musen (eller fingeren) nede, gentages handlingen efter ~400 ms og derefter hurtigere (hold-to-repeat) */
+export function CxPm({ onClick, disabled, className = 'cx-pm', children, ...rest }: Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'onClick'> & { onClick?: () => void }) {
+  const fn = useRef(onClick);
+  fn.current = onClick;
+  const stop = useRef<(() => void) | null>(null);
+  useEffect(() => () => stop.current?.(), []);
+  useEffect(() => { if (disabled) stop.current?.(); }, [disabled]);
+  const down = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (disabled || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    stop.current?.();
+    fn.current?.();
+    let ticks = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const tick = () => { fn.current?.(); ticks++; timer = setTimeout(tick, ticks > 12 ? 40 : ticks > 5 ? 80 : 150); };
+    timer = setTimeout(tick, 400);
+    const end = () => { if (timer) clearTimeout(timer); timer = undefined; window.removeEventListener('pointerup', end); window.removeEventListener('pointercancel', end); stop.current = null; };
+    window.addEventListener('pointerup', end); window.addEventListener('pointercancel', end);
+    stop.current = end;
+  };
+  // tastaturet (Enter/mellemrum) giver et klik uden pegepind – musen/fingeren er allerede håndteret af pointerdown
+  const key = (e: React.MouseEvent<HTMLButtonElement>) => { if (e.detail === 0 && !disabled) fn.current?.(); };
+  return <button {...rest} className={className} disabled={disabled} onPointerDown={down} onClick={key} onContextMenu={(e) => e.preventDefault()}>{children}</button>;
+}
+
 
 /** Knap med ▾ og en pop op-liste; lukker ved klik udenfor eller Escape */
 export function CxDrop({ label, items, align = 'left', className = '', btn, caret = true, fixed = false }: {

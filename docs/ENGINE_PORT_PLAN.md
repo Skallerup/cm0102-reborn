@@ -49,8 +49,8 @@ Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.m
   sæson spillet/original – Ground Maintenance 3,03M/3,01M, Merchandising 19,4M/18,4M, Other 243k/242k og 269k/278k, Investments 140k/129k,
   Gate 23,4M/25,5M, TV 1,40M/1,77M, startsaldo 30,50M/30,59M, Bury 735k/694k, sæsonkort 1/8 38.192/37.896. Afvigelser: Prize 5,0M/17,7M
   (pokal/Europa ikke porteret), Wages +8–35 % (spillets kontrakter/stab), saldoen (spillets transfers, ingen bonusser/signing on her).
-- **Ikke porteret:** transferbudgettet 0x598800 (spillets `transferBudget` er stadig estimeret), process_club_finance_events 0x59ed70
-  (gæld/boost/overtagelse), stadionarbejderne i 0x59cfa0, pokal-/Europapræmierne (0x522240 m.fl.), bonusserne 0x4ca6d0, fixture +0x40,
+- **Ikke porteret:** transferbudgettet 0x598800 (spillets `transferBudget` er stadig estimeret), (process_club_finance_events 0x59ed70 porteret 16/11: cmFinEvents.ts, ORIGINAL_PARITY.md punkt 11),
+  stadionarbejderne i 0x59cfa0, pokal-/Europapræmierne (0x522240 m.fl.), bonusserne 0x4ca6d0, fixture +0x40,
   B-hold, venskabskampenes billetindtægt (spillets venskabskampe går ikke gennem applyMatchResult), lejekontrakternes løn (spillets andel).
 
 ## Ønskelisterne – Shortlist_Manager på spillets data (2026-11-14; SLÅET TIL 16/11 – `src/game/cmShortlistGame.ts`, `SL_ON`; databasestørrelsen Maximum fra runde 9)

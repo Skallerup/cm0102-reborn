@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import {
-  cmAnswerRequest, cmAvailability, cmFutureHappy, cmFutureLines, cmInterested, cmRequestNews, deservedStatus, requestBodyKind, requestReasons, statusHappiness,
+  cmAnswerRequest, cmAvailability, cmStatusRows, cmFutureHappy, cmFutureLines, cmInterested, cmRequestNews, deservedStatus, requestBodyKind, requestReasons, statusHappiness,
 } from '../src/game/cmTransferList';
 import { cmContractOf, cmRand, newCmContract } from '../src/game/cmPlayerData';
 import { createGame, type WorldData } from '../src/game/newgame';
@@ -247,5 +247,38 @@ describe('i spillet (3.9.60, ægte tilstand)', { timeout: 120_000 }, () => {
     const d = ((((5 * loy) << 24) >> 24) + 0x38) << 24 >> 24;
     expect(c2.b44).toBe(Math.max(-100, Math.min(100, -20 + d)));
     expect(cmAvailability(p2)).toBe('unknown');
+  });
+});
+
+describe('Set Staff Transfer Status: "listed by request" (0x8f6a10 / 0x8f7640)', { timeout: 120_000 }, () => {
+  const pl = (b4e: number, b45: number) => ({ cmContract: { b4e, b45 } } as never);
+  it('rækken er kun valgbar, når spilleren allerede er listet efter eget ønske', () => {
+    expect(cmStatusRows(pl(0, 0)).reqOff(false)).toBe(true);        // aldrig bedt om det: grå
+    expect(cmStatusRows(pl(1, 0)).reqOff(false)).toBe(true);
+    expect(cmStatusRows(pl(8, 0)).reqOff(true)).toBe(false);        // ønsket + ingen klager: kan slås fra
+    expect(cmStatusRows(pl(8, 0)).reqOff(false)).toBe(false);       // ... og til igen
+  });
+  it('listet efter ønske med klager (+0x45 ≠ 0): rækken står fast og de to andre er grå', () => {
+    const r = cmStatusRows(pl(8, 0x10));
+    expect(r.reqOff(true)).toBe(true);
+    expect(r.listOff).toBe(true);
+    expect(cmStatusRows(pl(8, 0)).listOff).toBe(false);
+  });
+  it('OK: valget "efter eget ønske" uden at han har bedt om det gør intet', () => {
+    const w = JSON.parse(readFileSync('public/data/world-original.json', 'utf8')) as WorldData;
+    const eng = w.nations.findIndex((n) => n.name === 'England');
+    const mu = w.clubs.find((c) => c[1] === 'Manchester United')![0];
+    createGame(w, { managerName: 'M S', managerNation: eng, clubId: mu, activeNations: [eng], lang: 'en', masking: true, seed: 3, mode: 'authentic' });
+    const g = gs();
+    const p = squad(g.userClub)[3];
+    const c = cmContractOf(p);
+    c.b4e = 0;
+    act({ t: 'cmTransferStatus', pid: p.id, status: 0, price: null, listed: false, loan: false, request: true });
+    expect(((c.b4e ?? 0) & 8)).toBe(0);
+    c.b4e = 8;
+    act({ t: 'cmTransferStatus', pid: p.id, status: 0, price: null, listed: false, loan: false, request: true });
+    expect(((c.b4e ?? 0) & 8)).toBe(8);
+    act({ t: 'cmTransferStatus', pid: p.id, status: 0, price: null, listed: false, loan: false, request: false });
+    expect(((c.b4e ?? 0) & 8)).toBe(0);
   });
 });

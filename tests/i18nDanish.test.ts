@@ -11,7 +11,7 @@ import { setCompEra } from '../src/i18n/comps';
 import { newsBody, newsTitle } from '../src/ui/screens/common';
 import { cmBoardRequest, cmBoardUltimatum } from '../src/game/cmBoardGame';
 import { confidenceText, expectBody, expectTitle, requestReply, requestTitle, ultimatumBody, ultimatumConfirm, ultimatumTitle } from '../src/game/cmBoardText';
-import * as DA from '../src/game/cmBoardTextDa';
+import DA_PACK from '../src/game/data/cmBoard.da.json';
 import BT from '../src/game/data/cmBoardTexts.json';
 
 /** typiske engelske ord – en dansk tekst må ikke indeholde dem som egne ord */
@@ -23,9 +23,9 @@ const nat = (n: string) => world.nations.findIndex((x) => x.name === n);
 describe('bestyrelsens tekster på dansk', () => {
   it('alle 290 blade er oversat og har de samme pladsholdere', () => {
     const S = (BT as { S: string[] }).S;
-    expect(DA.SDA).toHaveLength(S.length);
+    expect(DA_PACK.S).toHaveLength(S.length);
     S.forEach((en, i) => {
-      const d = DA.SDA[i];
+      const d = DA_PACK.S[i];
       expect(d === '' ? en === '' : d.length > 0, `blad ${i}`).toBe(true);
       expect((d.match(/\{club\}/g) ?? []).length, `blad ${i} club`).toBe((en.match(/\{club\}/g) ?? []).length);
       expect((d.match(/\{n\}/g) ?? []).length, `blad ${i} n`).toBe((en.match(/\{n\}/g) ?? []).length);

@@ -2,6 +2,7 @@ import { en } from './en';
 import type { Lang } from '../game/types';
 import { nationLabel } from './nations';
 import { compLabel } from './comps';
+import { loadBoardPack } from './boardPack';
 
 // kun engelsk ligger i hovedfilen (forsidens bundle – søgemaskinerne ser engelsk); de øvrige sprog, også dansk,
 // hentes først, når de vælges (≈280 KB hver) – ensureLang kaldes før første tegning (main.tsx)
@@ -14,8 +15,11 @@ const LAZY: Partial<Record<Lang, () => Promise<Record<string, string>>>> = {
 };
 /** Sørg for, at sprogets tekster er hentet (kaldes ved opstart og ved sprogskift) */
 export async function ensureLang(l: Lang): Promise<void> {
-  if (dicts[l] || !LAZY[l]) return;
-  try { dicts[l] = await LAZY[l]!(); } catch { /* offline uden cache: engelsk bruges i stedet */ }
+  if (!LAZY[l]) return;
+  // bestyrelsens tekster (en lille pakke pr. sprog) hentes sammen med sprogets tekster
+  const board = loadBoardPack(l);
+  if (!dicts[l]) { try { dicts[l] = await LAZY[l]!(); } catch { /* offline uden cache: engelsk bruges i stedet */ } }
+  await board;
 }
 /** Sprogene i spillet og på hjemmesiden (kort kode og navn på sproget selv) */
 export const LANGS: [Lang, string, string][] = [['da', 'DA', 'Dansk'], ['de', 'DE', 'Deutsch'], ['en', 'EN', 'English'], ['es', 'ES', 'Español'], ['fr', 'FR', 'Français'], ['it', 'IT', 'Italiano'], ['nb', 'NO', 'Norsk'], ['pt', 'PT', 'Português'], ['sv', 'SV', 'Svenska'], ['tr', 'TR', 'Türkçe']];

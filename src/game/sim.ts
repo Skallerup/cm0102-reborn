@@ -56,9 +56,10 @@ import { cmCalendarDay } from './cmCalendar';
 import { cmFinanceDay, cmFinOn, cmMatchIncome, GBP as CM_GBP } from './cmFinance';
 import { fixtureCodesOf, gameCrowd } from './engine/grid/gameInputs';
 import { cmEuroCatchUp, cmEuroDay, cmEuroNextSeason, cmEuroPlayDay } from './cmEurope';
-import { compHooks } from './hooks';
+import { compHooks, finHooks } from './hooks';
 import { cmCmOn, cmContractManagerDay } from './cmContractManager';
-import { cmValuesDaily } from './cmValueGame';
+import { cmReceivershipValues, cmValuesDaily } from './cmValueGame';
+import { cmTransferBudgetRaw } from './cmBudget';
 import { cmExpireOutsideDaily, endDueLoansDaily, freeAgentDrift, monthlyClubReps, seasonRollover, spawnDueRegens, youthIntake, youthPreview } from './season';
 import { cmRetireDaily } from './cmRetire';
 import { cmShortlistOn } from './cmShortlistGame';
@@ -1096,3 +1097,6 @@ function holidayDaily() {
 // (runde 10C) forkørslen af Europas kampe før spillets start (newgame.ts kalder krogen; continueGame tager dem, hvis krogen manglede)
 compHooks.euroCatchUp = (g) => cmEuroCatchUp(g, (f) => simulateFixture(f, true, false));
 compHooks.euroPrerunDay = (g, iso) => cmEuroPlayDay(g, iso, (f) => simulateFixture(f, true, false));
+// klubøkonomiens begivenheder (cmFinEvents.ts): transferbudgettet 0x598800 og betalingsstandsningens værdier
+finHooks.budget = cmTransferBudgetRaw;
+finHooks.receivership = cmReceivershipValues;

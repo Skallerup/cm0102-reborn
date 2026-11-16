@@ -190,6 +190,16 @@ function grievance(g: GameState, p: Player, c: CmContract, old: number, next: nu
 
 export interface TransferStatusIn { status: number; price: number | null; listed: boolean; loan: boolean; request: boolean }
 
+/** Set Staff Transfer Status-skærmens rækker (0x8f6a10 byg / 0x8f7640 klik): de tre transferrækker er et valg ad gangen (klik på én nulstiller de to
+ *  andre). "Transfer listed by request" (parameter 6 = +0x4e & 8 ved åbning, parameter 0xe = +0x45 ≠ 0) kan KUN vælges, når spilleren allerede er
+ *  listet efter eget ønske (0x4dcd70 Yes) – ellers er rækken grå og gør intet. Er han det og har klager (+0x45 ≠ 0), står rækken fast (markeret, grå),
+ *  og de to andre rækker er grå – kun en spiller uden klager kan tages af ønskelisten igen (rækken kan slås fra, så de andre kan vælges). */
+export function cmStatusRows(p: Player): { reqInit: boolean; complaint: boolean; listOff: boolean; reqOff: (reqNow: boolean) => boolean } {
+  const c = p.cmContract;
+  const reqInit = !!((c?.b4e ?? 0) & 8), complaint = (c?.b45 ?? 0) !== 0;
+  return { reqInit, complaint, listOff: reqInit && complaint, reqOff: (reqNow) => !reqInit || (reqNow && complaint) };
+}
+
 /** 0x8f7f08–0x8f80dd: Set Staff Transfer Status → OK for menneskets spiller */
 export function cmSetTransferStatus(g: GameState, p: Player, o: TransferStatusIn): void {
   const c = cmContractOf(p);
@@ -200,7 +210,7 @@ export function cmSetTransferStatus(g: GameState, p: Player, o: TransferStatusIn
   if (o.listed) listPlayer(g, p, true, rand);                                  // 0x8f801d: 0x842320(staff, 1)
   else if (c.b4e & 1) c.b4e &= ~1;                                             // 0x8f8056: 0x844280
   if (o.loan) c.b4e |= 2; else c.b4e &= ~2;                                    // 0x8f806c / 0x8f808f
-  c.b4e = o.request ? (c.b4e & ~2) | 8 : c.b4e & ~8;                           // 0x8f8094–0x8f80ad
+  c.b4e = o.request && (flags & 8) ? (c.b4e & ~2) | 8 : c.b4e & ~8;            // 0x8f8094–0x8f80ad (rækken kan kun vælges, når han allerede er listet efter ønske)
   syncFlags(p, c);
   if (o.listed && o.price) p.listPrice = p.value;
 }

@@ -11,6 +11,11 @@ const GBP = 0.86;
 
 /** transferbudgettet i £ for en klub (null uden for ægte tilstand/uden finansposten) – 64 bit i originalen, her de nederste 32 + fortegn */
 export function cmTransferBudget(g: GameState, cid: number): number | null {
+  const v = cmTransferBudgetRaw(g, cid);
+  return v === null ? null : Math.max(0, v);
+}
+/** som cmTransferBudget, men med originalens fortegn (negativ i gæld) – begivenhederne 0x59ed70 vælger nyhedens tekst efter det */
+export function cmTransferBudgetRaw(g: GameState, cid: number): number | null {
   if (!cmActive(g) || !g.clubs[cid]) return null;
   const M = buildWantMem(g, [cid]);
   const fin = M.W.finOf(cid);
@@ -22,8 +27,7 @@ export function cmTransferBudget(g: GameState, cid: number): number | null {
   const sa = m.u32(club + 0x69);
   if (sa && cr && cr[3] >= 0) m.w32(sa + 0x3c, cr[5]);
   ensureImpls();
-  const v = GEN[0x598800](M.c, fin, [0, 0, 0, 1, 0]) | 0;
-  return Math.max(0, v);
+  return GEN[0x598800](M.c, fin, [0, 0, 0, 1, 0]) | 0;
 }
 
 /** i spillets valuta (€) */

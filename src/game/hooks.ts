@@ -14,3 +14,7 @@ export const compHooks: {
 
 /** (landsholdene, cmIntl.ts) originalens landskampkalender i ægte tilstand – international.ts kalder dem */
 export const intlHooks: { cmDay?: () => void; dutyNations?: () => number[] } = {};
+
+/** (klubøkonomiens begivenheder, cmFinEvents.ts) transferbudgettet 0x598800 med fortegn og betalingsstandsningens værdier 0x59ef0a –
+ *  modulerne bag (cmBudget/cmValueGame → cmContractGame) må ikke importeres af cmFinance.ts; sim.ts sætter krogene */
+export const finHooks: { budget?: (g: GameState, cid: number) => number | null; receivership?: (g: GameState, cid: number) => void } = {};

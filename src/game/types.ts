@@ -1189,6 +1189,8 @@ export interface GameState {
   /** CM 01/02: transfersummens resterende månedlige rater (TRANSFER_MANAGER +0x872, 0x8caee0) */
   cmInstalments?: { amount: number; buyer: number; seller: number; left: number; player: number }[];
   cmFinRaw?: Record<number, number[]>;
+  /** (0x59ed70) stadionernes sæder +0x40 og udvidelse +0x44 pr. stadion-id – oprettes, når en tribune lukkes (cmFinEvents.ts) */
+  cmStadium?: Record<number, [number, number]>;
   cmLowerDiv?: number;
   /** viljen 0x844780 (cmBoardInterest.ts): nation +0x71 (verdensdelens id) pr. nationsindeks, "Europe"s id, byernes +0x33 og klubbernes
    *  mål-omdømme Shortlist_Manager +0xdc[9·klub]+5 (0x83bf40, skrevet når computerens trupplan 0x83cb40 kører) */

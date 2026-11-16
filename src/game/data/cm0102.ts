@@ -68,6 +68,8 @@ export interface CMWorld extends WorldData {
     prefs?: Record<number, number[]>;
     /** klubbens personer club.dat +155..+175 (= hukommelsens +0x9b/+0x9f/+0xa3 – 0x547790 – og +0xa7/+0xab/+0xaf – 0x5477d0); 0 = ingen */
     clubPrefs?: Record<number, number[]>;
+    /** (0x59ed70) pr. stadion-id (cmRaw.crowd[3]): stadium.dat +64 siddepladserne og +68 udvidelsen (hukommelsens +0x40/+0x44) */
+    seats?: Record<number, [number, number]>;
     /** (økonomien) pr. klub: [division club.dat +87 (turnerings-id), PLC +130 (s8), stadionets +76/+77 (stadium.dat, s8)] */
     fin?: Record<number, [number, number, number, number]>;
     /** (økonomien) klubbens formand (club.dat +191): [CA (np +4), PA (+6), de 21 egenskaber +0x0e..+0x22 (rå), jobkoden (personpost +61),
@@ -316,6 +318,7 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
   const stadiumName = new Map<number, string>();
   const stadiumRaw = new Map<number, [number, number]>();   // (runde 9) stadium.dat +56 byen, +60 kapaciteten (rå)
   const stadiumFlags = new Map<number, [number, number]>(); // (økonomien) stadium.dat +76/+77 (s8) – månedens stadionudgift 0x59c3d4
+  const stadiumSeats = new Map<number, [number, number]>(); // (0x59ed70) stadium.dat +64 siddepladserne, +68 udvidelsen – tribunelukningen
   if (files['stadium.dat']) {
     const St = new Reader(files['stadium.dat']);
     // post: id (4) · navn (51) · by (4) · 1 byte · kapacitet (4, byte 60) · siddepladser (4, byte 64) · …
@@ -325,6 +328,7 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
       if (cap > 0 && cap <= 150_000) seatsOf.set(St.i32(o), cap);
       stadiumRaw.set(St.i32(o), [St.i32(o + 56), cap]);
       stadiumFlags.set(St.i32(o), [St.i8(o + 76), St.i8(o + 77)]);
+      stadiumSeats.set(St.i32(o), [St.i32(o + 64), St.i32(o + 68)]);
       const nm = St.str(o + 4, 51).trim();
       if (nm) stadiumName.set(St.i32(o), nm);
     }
@@ -898,6 +902,8 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
         return [c.id, [c.avgAtt, c.minAtt, c.maxAtt, st ? c.stadium : -1, st ? st[0] : -1, st ? st[1] : -1, ...c.rivals.map((r) => (r >= 0 ? r : -1))] as [number, number, number, number, number, number, number, number, number]];
       })),
       ...(cities ? { cities } : {}),
+      seats: Object.fromEntries([...new Set(rawClubs.filter((c) => clubRep[c.id] !== undefined && inGame.has(c.id) && stadiumRaw.has(c.stadium)).map((c) => c.stadium))]
+        .filter((id) => stadiumSeats.has(id)).map((id) => [id, stadiumSeats.get(id)!])),
       nation7e: [...nationIdx.keys()].map((id) => nationVal.get(id)![0]),
       nation85: [...nationIdx.keys()].map((id) => nationVal.get(id)![2]),
       nation76,

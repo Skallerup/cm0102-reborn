@@ -129,3 +129,18 @@ export function cmValuesDaily(g: GameState): number {
 }
 /** målinger: dage, spillere regnet, tid (ms) */
 export const VALUE_STATS = { days: 0, n: 0, ms: 0 };
+
+/** 0x59ef0a (process_club_finance_events 0x59ed70, cmFinEvents.ts): menneskets klub går i betalingsstandsning – spillernes +0x52 sættes ned til
+ *  0x4d0c60(spiller, klub, 0, −1, 1) (de 50 i truppen med kontrakt i klubben), og kontraktens +0x4e får 4 (egen udbudspris væk – Player.cmAsk) */
+export function cmReceivershipValues(g: GameState, cid: number): void {
+  const ps = Object.values(g.players).filter((p) => p.club === cid && !p.loan && p.contract && !p.virtual);
+  if (!ps.length) return;
+  const M = cmValueMem(g, [cid]);
+  const club = M.W.clubOf(cid);
+  for (const p of ps.slice(0, 50)) {
+    const st = M.W.staffOf(p);
+    if (!st) continue;
+    const v = playerValue_4d0c60(M.c, st, club, 0, -1, 1) | 0;
+    if (v < Math.round(p.value * GBP)) { p.value = v / GBP; delete p.cmAsk; }
+  }
+}
