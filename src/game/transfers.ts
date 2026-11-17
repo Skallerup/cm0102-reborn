@@ -1,5 +1,5 @@
 // Transfers, kontrakter og AI-transfermarked (forbedring #7: behovsstyrede AI-klubber).
-import { cmActive, cmRand, setRequestHooks, setStatusCode } from './cmPlayerData';
+import { cmActive, cmLogic, cmRand, setRequestHooks, setStatusCode } from './cmPlayerData';
 import { cmBidChance, cmInterested, cmRequestNews } from './cmTransferList';
 import { transferNewsToMe } from './cmNewsScope';
 import { cmSignContractMorale } from './cmMedia';
@@ -304,9 +304,10 @@ export function preferredYears(p: Player): number {
 /** Klubbens omdømme i databasens skala (1..10000): byggescriptet gemmer round((rå/maks)^0,7 · 98) (data/cm0102.ts clubRep), her vendt om */
 const clubRepRaw = (rep: number) => 10000 * Math.pow(Math.max(0, rep) / 98, 1 / 0.7);
 
-/** 2026/27-databasen: er klubben for lille i forhold til spillerens omdømme (databasens, ×50) og hans nuværende klub? Skøn (estimeret) med
- *  originalens struktur – 0x807450's forfilter (spillerens omdømme > klubbens + 5000 → nej) og 0x846920's sammenligning af spilleren mod
- *  køberen og den nuværende klub, ambition og alder – indtil 0x846920 (løn/kontrakt) er porteret. Den originale database bruger originalens filter. */
+/** 2026/27-databasen i udvidet tilstand (CM Reborns egen regel – i ægte tilstand gælder originalens vilje 0x846920, cmSearchInterest.ts/
+ *  cmContractGame.ts cmMoveInterest): er klubben for lille i forhold til spillerens omdømme (databasens, ×50) og hans nuværende klub? Bygget over
+ *  0x807450's forfilter (spillerens omdømme > klubbens + 5000 → nej) og 0x846920's sammenligning af spilleren mod køberen og den nuværende klub,
+ *  ambition og alder. */
 function dbRepGap(p: Player, club: Club, cur: Club | undefined, age: number): boolean {
   const own = Math.max(p.cmRep![1], p.cmRep![2]) * 50;
   // den nuværende klub trækker halvt med (en ung spiller i en storklub skifter ikke til en lille klub); transferlistede spillere vil væk
@@ -323,7 +324,8 @@ export function playerInterest(p: Player, club: Club): 'yes' | 'reputation' | 'h
   if (!permitOk(p, club)) return 'permit';
   const cur = p.club ? g.clubs[p.club] : undefined;
   const age = ageOn(p.dob, g.date);
-  if (p.cmRep && !isOriginal2001() && Math.max(p.cmRep[1], p.cmRep[2]) > 0) {
+  // (ægte tilstand – cmLogic: som den originale database – Player Search, forhandlingen og budforløbet bruger 0x846920)
+  if (p.cmRep && !isOriginal2001() && !cmLogic(g) && Math.max(p.cmRep[1], p.cmRep[2]) > 0) {
     if (dbRepGap(p, club, cur, age)) return 'reputation';
   } else {
     const gap = p.rep - club.rep;
@@ -644,14 +646,14 @@ export function negotiate(offerId: number, wage: number, years: number, clauses?
   const p = g.players[o.player];
   const club = g.clubs[o.buyer];
   // CM 01/02: Offer Contract efter et accepteret bud – svaret kommer som nyhed om 1–5 dage (cmTransferTalks.ts)
-  if (o.cmTalks && cmActive(g)) {
+  if (o.cmTalks && cmLogic(g)) {
     if (club.id === g.userClub && overBoardWage(p, club.id, wage, currentBill(club.id) + wage > club.wageBudget, o.cmRole)) return 'budget';
     return cmOfferContract(o, wage, years, clauses);
   }
   // CM 01/02 (original database, ægte tilstand – her klubløse og forkontrakter uden cmTalks): spillerens vilje 0x846920 som 0x8c0080 (under
   // 0,75 vil han ikke) i stedet for spillets skøn – samme funktion som Player Search' "Interested" (cmSearchInterest.ts) og budforløbet
   // (*estimeret*: originalen afgør en klubløs i 0x4ce4e0 resolve_contract_offers)
-  const cmX = cmActive(g) && !o.loan ? cmMoveInterest(g, p, club.id) : null;
+  const cmX = cmLogic(g) && !o.loan ? cmMoveInterest(g, p, club.id) : null;
   const interest = cmX !== null ? (cmX < 0.75 ? 'reputation' : 'yes') : playerInterest(p, club);
   if (interest !== 'yes') {
     o.status = 'collapsed';
@@ -1002,7 +1004,7 @@ export function startPreContract(pid: number): TransferOffer | string {
   if (!p || !canPreContract(p)) return 'error';
   const o: TransferOffer = { id: g.nextId.offer++, player: pid, buyer: g.userClub, seller: p.club, fee: 0, loan: false, status: 'negotiating', created: g.date, respondBy: addDays(g.date, 7), preContract: true };
   // CM 01/02 (ægte tilstand): Set Role At Club → Offer Contract → svaret som nyhed efter 1–5 dage (cmTransferTalks.ts), ingen frist
-  if (cmActive(g)) { o.cmTalks = { rounds: 0, state: 0 }; o.respondBy = addDays(g.date, 3650); }
+  if (cmLogic(g)) { o.cmTalks = { rounds: 0, state: 0 }; o.respondBy = addDays(g.date, 3650); }
   g.offers.push(o);
   return o;
 }
@@ -1088,6 +1090,8 @@ function aiAnswerBid(o: TransferOffer) {
     addNews({ cat: 'transfer', key: 'transfer.biddingWar', params: { player: pname(p), club: sellerName(o.rival.club), fee: o.rival.fee }, link: { kind: 'offer', id: o.id } });
   }
   if (d.answer === 'accept') {
+    // 2026/27 i ægte tilstand (cmLogic): sælgerens svar er spillets eget, forløbet bagefter originalens (accept_transfer_bid 0x8c0080 → Offer Contract)
+    if (cmTalksOn(g, o)) { cmAcceptBid(o, p); return; }
     o.status = 'negotiating';
     o.respondBy = addDays(g.date, 10);
     addNews({ cat: 'transfer', key: 'transfer.bidAccepted', params: { player: pname(p), club: sellerName(o.seller), fee: o.fee }, link: { kind: 'offer', id: o.id } });

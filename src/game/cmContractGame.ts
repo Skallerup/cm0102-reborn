@@ -1,4 +1,4 @@
-// Computerklubbernes nye kontrakter som originalen (kun den originale database i ægte tilstand – cmActive): CONTRACT_MANAGER::offer_contract
+// Computerklubbernes nye kontrakter som originalen (en CM-database i ægte tilstand – cmLogic: den originale og 2026/27, beløbene via cmMoney.ts): CONTRACT_MANAGER::offer_contract
 // 0x4cda70 (cmContract.ts, faktor 1,0, ud-kontrakt) → STAFF_CONTRACT::set_to_desired_contract 0x85fc50 (cmContractWant.ts) på originalens
 // poster bygget af spiltilstanden (cmWageGame.ts buildWageMem + felterne nedenfor). De kaldte funktioner kører uændret: Shortlist_Manager
 // 0x846920/0x849f00, 0x8cca10, 0x4d45f0, 0x669360, 0x7c6830 … er mekanisk oversat (cmGen/, kontrolleret på oraklets dage og i unicorn), 0x864550/
@@ -31,7 +31,7 @@ import { getClubFinance_5a0590, defaultStaffContract_864550 } from './cmWage';
 import { maxStaffWage_597db0 } from './cmMaxWage';
 import { genCtx } from './cmGen/impls';
 import { slCall, slmOf } from './cmShortlist';
-import { cmActive, cmRand } from './cmPlayerData';
+import { cmActive, cmLogic, cmRand } from './cmPlayerData';
 import type { SquadStatus } from './squadStatus';
 import { leagueOf } from './cmContractInit';
 import { formulaValueGbp } from './originalValue';
@@ -47,8 +47,8 @@ import { leagueClash } from './cmBoardInterest';
 import type { BoardEnv } from './cmBoard';
 import { registerStaffOfferCheck } from './cmStaff';
 
-/** £ → € som newgame.ts */
-const GBP = 0.86;
+/** € → £: 0,86 for den originale database, 2026/27's faktor pr. liga (cmMoney.ts) – beløbene tilhører den købende/tilbydende klub */
+import { cmGbp } from './cmMoney';
 const VALUE_FORMULA = typeof process !== 'undefined' && process.env?.CM_VALUE === 'formula';
 const MMOBJ = 0x2bff0000, MMREC = 0x2b000000, EURO0 = 0x2c000000, STAD0 = 0x2d000000, CITY0 = 0x2c800000, COMP0 = 0x3e000000, VT = 0x3dff0000, CONT0 = 0x3dfe0000, PREF0 = 0x2f000000, STATS0 = 0x3e800000, ROW4A = 0x3dfd0000, NOBODY = 0x2e000000;
 /** de skrabeområder, kontrakterne skrives i (under cmContractWant.ts' SCR 0x300000 og cmContract.ts' stak 0x2ff000) */
@@ -131,6 +131,8 @@ export interface CmTerms {
   offered: boolean;
   /** de rå tal (£) – til kontrollen */
   raw: { wage: number; value: number };
+  /** € → £-faktoren, beløbene er omregnet med (cmMoney.ts – køberens) */
+  gbp: number;
 }
 
 /** fejlsøgning (scripts/cm-want-diff.ts): kaldene ud af portene (adresse, svar) */
@@ -257,7 +259,7 @@ export function buildWantMem(g: GameState, clubs: Iterable<number>, opts: { full
       const b = p.contract.cmBonusGbp ?? [-1, -1, -1];
       for (let i = 0; i < 3; i++) m.w32(k + 0x10 + 4 * i, b[i]);
       (p.contract.cmClauses ?? [0, 0, 0, 0, 0]).forEach((v, i) => m.w8(k + 0x1c + i, v));
-      m.w32(k + 0x21, Math.round((p.contract.cmClauseFee ?? 0) * GBP));
+      m.w32(k + 0x21, Math.round((p.contract.cmClauseFee ?? 0) * cmGbp(g, p.loan?.from ?? p.club)));
       const j = p.joined ?? p.cmJoined;
       if (j) { const [d, y] = isoDay(j); m.w16(k + 0x25, d); m.w16(k + 0x27, y); m.w32(k + 0x29, leap(y)); }
       const [d, y] = isoDay(p.contract.expires); m.w16(k + 0x2d, d); m.w16(k + 0x2f, y); m.w32(k + 0x31, leap(y));
@@ -320,7 +322,7 @@ export function buildWantMem(g: GameState, clubs: Iterable<number>, opts: { full
 function valueOf(g: GameState, p: Player | undefined, clubId: number): number {
   const club = g.clubs[clubId];
   if (!p) return 0;
-  if (!club?.vc || !p.cmRep) return Math.round((p.value ?? 0) * GBP);
+  if (!club?.vc || !p.cmRep) return Math.round((p.value ?? 0) * cmGbp(g, clubId));
   return Math.trunc(formulaValueGbp({ pa: p.pa, age: ageOn(p.dob, g.date), pos: p.pos, attrs: p.attrs, rep: p.cmRep, caps: p.caps ?? 0, staffId: p.id, clubId, vc: club.vc }));
 }
 
@@ -357,29 +359,29 @@ function newClubStatus(g: GameState, p: Player, cid: number, idx?: ClubCaIdx): n
 }
 
 /** Kontrakten (80 bytes på adressen) i spillets enheder */
-function termsOf(c: CmCtx, k: number, offered: boolean, value: number): CmTerms {
+function termsOf(c: CmCtx, k: number, offered: boolean, value: number, gbp: number): CmTerms {
   const m = c.m;
-  const eur = (v: number) => Math.max(0, Math.round(v / GBP));
+  const eur = (v: number) => Math.max(0, Math.round(v / gbp));
   const cl = [0, 1, 2, 3, 4].map((i) => m.u8(k + 0x1c + i));
   const b: [number, number, number] = [m.s32(k + 0x10), m.s32(k + 0x14), m.s32(k + 0x18)];
   return {
     wage: eur(m.s32(k + 0xc)), expires: dayIso(m.s16(k + 0x2d), m.u16(k + 0x2f)), signOn: eur(m.s32(k + 8)), bonusGbp: b, clauses: cl,
     clauseFee: cl.some((x) => x) ? eur(m.s32(k + 0x21)) : 0, partTime: (m.u8(k + 0x35) & 0x80) !== 0, offered,
-    raw: { wage: m.s32(k + 0xc), value },
+    raw: { wage: m.s32(k + 0xc), value }, gbp,
   };
 }
 
 /** Originalens kontrakt, når klubben `clubId` (computerens) giver spilleren en ny kontrakt: 0x4cda70 (faktor 1,0); giver den intet tilbud,
- *  spillerens krav 0x85fc50(staff, klub, −1, 0xff, 0xb). `desired` = kun 0x85fc50. Null uden for cmActive, for menneskeklubber og for
+ *  spillerens krav 0x85fc50(staff, klub, −1, 0xff, 0xb). `desired` = kun 0x85fc50. Null uden for cmLogic, for menneskeklubber og for
  *  spillere, posten ikke kan bygges for. */
 /** målinger (scripts/ct-season-game.ts): antal, tid, og [gammel, ny] ugeløn (£) ved klubskifte */
 export const WANT_STATS = { n: 0, ms: 0, offered: 0, moves: [] as [number, number][] };
 export function cmAiTerms(g: GameState, p: Player, clubId: number, opts: { mem?: WantMem; desired?: boolean } = {}): CmTerms | null {
-  if (!cmActive(g) || g.draft || !g.clubs[clubId]) return null;
+  if (!cmLogic(g) || g.draft || !g.clubs[clubId]) return null;
   const t0 = typeof performance !== 'undefined' ? performance.now() : 0;
   const r = aiTerms(g, p, clubId, opts);
   WANT_STATS.n++; if (r?.offered) WANT_STATS.offered++;
-  if (r?.offered && p.club && p.club !== clubId && p.contract && WANT_STATS.moves.length < 5000) WANT_STATS.moves.push([Math.round(p.contract.wage * GBP), r.raw.wage]);
+  if (r?.offered && p.club && p.club !== clubId && p.contract && WANT_STATS.moves.length < 5000) WANT_STATS.moves.push([Math.round(p.contract.wage * cmGbp(g, p.club)), r.raw.wage]);
   if (t0) WANT_STATS.ms += performance.now() - t0;
   return r;
 }
@@ -404,13 +406,13 @@ function aiTerms(g: GameState, p: Player, clubId: number, opts: { mem?: WantMem;
       setToDesiredContract_85fc50(c, LOCAL, st, club, -1, 0xff, 0xb, 0, 0);
       for (let i = 0; i < 0x50; i++) m.w8(OUT + i, m.u8(LOCAL + i));
     }
-    return termsOf(c, OUT, offered, valueOf(g, p, clubId));
+    return termsOf(c, OUT, offered, valueOf(g, p, clubId), cmGbp(g, clubId));
   }
 }
 
 /** Vilkårene ind i spillets kontrakt (bevarer futureClub o.l.) */
 export function applyCmTerms(c: Contract, t: CmTerms): void {
-  const eur = (v: number) => Math.max(0, Math.round(v / GBP));
+  const eur = (v: number) => Math.max(0, Math.round(v / t.gbp));
   c.wage = t.wage;
   c.expires = t.expires;
   const [goal, assist, cs] = t.bonusGbp;
@@ -425,7 +427,7 @@ export function applyCmTerms(c: Contract, t: CmTerms): void {
   c.release = undefined; c.wageRise = undefined; c.relegationCut = undefined; c.promotionRise = undefined;
 }
 
-/** En ny kontrakt for en computerklub: originalens tilbud 0x4cda70 (cmActive) eller `fallback` (spillets egen). `signOn` betales af kalderen. */
+/** En ny kontrakt for en computerklub: originalens tilbud 0x4cda70 (cmLogic) eller `fallback` (spillets egen). `signOn` betales af kalderen. */
 export function aiContract(g: GameState, p: Player, club: Club, fallback: () => Contract, mem?: WantMem): { contract: Contract; signOn: number } {
   const t = cmAiTerms(g, p, club.id, { mem });
   // ingen tilbud fra 0x4cda70 (originalen ville ikke have budt – fx et krav over 1,4 × lønloftet eller originalens 250.000-spærre): spillets
@@ -440,7 +442,7 @@ export function aiContract(g: GameState, p: Player, club: Club, fallback: () => 
 
 /** Hukommelsen for spilleren og den købende klub (som aiTerms) med en egen talrække for kaldet `site` */
 function talkMem(g: GameState, p: Player, clubId: number, site: number, role?: SquadStatus) {
-  if (!cmActive(g) || g.draft || !g.clubs[clubId]) return null;
+  if (!cmLogic(g) || g.draft || !g.clubs[clubId]) return null;
   const home = p.loan?.from ?? p.club;
   const M = buildWantMem(g, home ? [home, clubId] : [clubId]);
   let st = M.W.staffOf(p);
@@ -454,7 +456,7 @@ function talkMem(g: GameState, p: Player, clubId: number, site: number, role?: S
 }
 
 /** 0x8c0080 (timing 0xb): vil spilleren overhovedet tale med køberen? Shortlist_Manager 0x846920(staff, klub, 0, 0, status, &ud) med status 1,
- *  når køberen er menneskets (0x600a50); under 0,75 ([0x969040]) afviser han skiftet (0x8d8310). Null uden for cmActive. */
+ *  når køberen er menneskets (0x600a50); under 0,75 ([0x969040]) afviser han skiftet (0x8d8310). Null uden for cmLogic. */
 export function cmMoveInterest(g: GameState, p: Player, clubId: number): number | null {
   return cmMoveCheck(g, p, clubId)?.x ?? null;
 }
@@ -482,7 +484,7 @@ export function cmTalkDemand(g: GameState, p: Player, clubId: number, role?: Squ
   const m = T.M.c.m;
   constructContract_85e410(m, LOCAL);
   setToDesiredContract_85fc50(T.M.c, LOCAL, T.st, T.club, -1, T.status, 0xb, 0, 0);
-  return termsOf(T.M.c, LOCAL, false, valueOf(g, p, clubId));
+  return termsOf(T.M.c, LOCAL, false, valueOf(g, p, clubId), cmGbp(g, clubId));
 }
 
 /** Menneskets tilbud i spillets enheder */
@@ -499,7 +501,7 @@ export function cmContractAnswer(g: GameState, p: Player, clubId: number, o: CmO
   setToDesiredContract_85fc50(c, LOCAL, st, T.club, -1, T.status, 0xb, 0, 0);
   // tilbuddet = kravet med menneskets felter (klubben, startdatoen og typen som kravets)
   for (let i = 0; i < 0x50; i++) m.w8(OUT + i, m.u8(LOCAL + i));
-  const gbp = (eur: number | undefined) => Math.round((eur ?? 0) * GBP);
+  const gbp = (eur: number | undefined) => Math.round((eur ?? 0) * cmGbp(g, clubId));
   m.w32(OUT + 0xc, gbp(o.wage));
   m.w32(OUT + 8, gbp(o.signOn));
   const b = o.bonusGbp ?? [-1, -1, -1];
@@ -626,7 +628,7 @@ export function cmStaffTerms(g: GameState, s: import('./types').Staff, clubId: n
     for (let i = 0; i < 0x50; i++) m.w8(OUT + i, m.u8(LOCAL + i));
   }
   const raw = m.s32(OUT + 0xc);
-  const wage = Math.round(raw / GBP);
+  const wage = Math.round(raw / cmGbp(g, clubId));
   const exp = dayIso(m.s16(OUT + 0x2d), m.u16(OUT + 0x2f));
   if (!(wage > 0) || !(exp > g.date)) return null;
   // 0x8602f8: kravet 250.000 (£ om ugen) er originalens "umuligt" – lønnen over jobbets loft for klubbens omdømme; han skriver ikke under
@@ -675,6 +677,6 @@ export function cmStaffOfferCheck(g: GameState, s: import('./types').Staff, club
     if (!((job === 8 || job === 10 || job === 9) && wage < 0xc80)) ok = !(age >= 0x18 || wage >= bx + 0xcb2);
   }
   const key = ok ? null : own ? 'cm.neg.noRenewNow' : 'cm.neg.noInterest';
-  return { interested: ok, key, wage: Math.round(wage / GBP), will: f, allow: Math.round(allow / GBP) };
+  return { interested: ok, key, wage: Math.round(wage / cmGbp(g, clubId)), will: f, allow: Math.round(allow / cmGbp(g, clubId)) };
 }
 registerStaffOfferCheck(cmStaffOfferCheck);

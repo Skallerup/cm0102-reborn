@@ -4,11 +4,11 @@
 //   – spiller (staff +0x61): spillerpostens omdømme +0xd > klubbens +0x80 + 5000 → ikke med
 //     ellers Shortlist_Manager 0x846920(staff, klub, 1, 0, 1, NULL) – under 3,15 ([0x968e58]) → ikke med
 //   (ikke-spillere: 0x844780 med +0xc mod +0x80 + 5000 – Staff Search bruger stadig staff.ts' willJoin)
-// Kun den originale database i ægte tilstand (cmActive); ellers spillets eget skøn (transfers.ts playerInterest).
+// En CM-database i ægte tilstand (cmLogic – den originale og 2026/27, pengene via cmMoney.ts); ellers spillets eget skøn (transfers.ts playerInterest).
 // Hukommelsen er ønskelisternes (buildSlMem: alle klubber og de klubløse) – bygget én gang pr. dag og klub, svarene gemt pr. spiller.
 // 0x846920 trækker ingen tilfældige tal og skriver kun til sin ud-parameter (her NULL), så spillets forløb er uberørt.
 import type { GameState, Player } from './types';
-import { cmActive, cmRand } from './cmPlayerData';
+import { cmLogic, cmRand } from './cmPlayerData';
 import { buildSlMem, type SlMem } from './cmShortlistGame';
 import { slCall, slmOf } from './cmShortlist';
 
@@ -24,7 +24,7 @@ function day(g: GameState, club: number) {
 
 /** 0x846920(staff, klub, 1, 0, 1, NULL) for menneskets klub – −1, når spilleren ikke er i hukommelsen; null uden for cmActive */
 export function cmSearchInterestValue(g: GameState, p: Player, clubId = g.userClub): number | null {
-  if (!cmActive(g) || !g.clubs[clubId]) return null;
+  if (!cmLogic(g) || !g.clubs[clubId]) return null;
   if (p.club === clubId) return SEARCH_INTEREST_MIN;
   const C = day(g, clubId);
   const hit = C.ans.get(p.id);

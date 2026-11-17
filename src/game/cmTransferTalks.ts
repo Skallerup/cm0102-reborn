@@ -1,4 +1,4 @@
-// CM 01/02: forløbet efter et accepteret transferbud (kun den originale database i ægte tilstand – cmActive). Kilder: cm0102.exe 3.9.68.
+// CM 01/02: forløbet efter et accepteret transferbud (en CM-database i ægte tilstand – cmLogic: den originale og 2026/27). Kilder: cm0102.exe 3.9.68.
 //
 // TRANSFER_MANAGER::accept_transfer_bid 0x8c0080: tilstand +0x2c = 5, runder +0x2e = 0, nyheden 0xfa3 (0x8d76d0/0x8d7870: "<Player> transfer offer
 //   accepted" – "{Seller} have accepted the offer from {Buyer} for <Player>."). Standardtiming (+0x11 = 0xb): Shortlist_Manager 0x846920(spiller,
@@ -24,7 +24,8 @@ import type { ContractClauses, GameState, Player, TransferOffer } from './types'
 import { addNews, gs } from './state';
 import { asOwner } from './humans';
 import { addDays, year } from './dates';
-import { cmActive, cmRand } from './cmPlayerData';
+import { cmLogic, cmRand } from './cmPlayerData';
+import { cmGbp } from './cmMoney';
 import { cmContractAnswer, cmMoveCheck, cmTalkDemand, cmTalkStatus, type CmOfferTerms, type CmTerms } from './cmContractGame';
 import { isHumanClub } from './humans';
 import { regionOf } from './leagues';
@@ -52,13 +53,12 @@ export interface CmTalks {
   terms?: { wage: number; years: number; clauses?: ContractClauses };
 }
 
-const GBP = 0.86;
 const pname = (p: Player) => `${p.first} ${p.last}`.trim();
 const short = (g: GameState, id: number) => g.clubs[id]?.short || g.clubs[id]?.name || '';
 
 /** Gælder forløbet for dette bud? (originalens database i ægte tilstand, transfer – ikke leje, ikke fri spiller) */
 export function cmTalksOn(g: GameState, o: TransferOffer): boolean {
-  return cmActive(g) && !o.loan && !!o.seller && !o.preContract;
+  return cmLogic(g) && !o.loan && !!o.seller && !o.preContract;
 }
 
 /** 0x8c0080: sælgeren har accepteret menneskets bud */
@@ -148,8 +148,8 @@ export function cmNoInterest(g: GameState, p: Player, buyer: number, role?: Squa
 const expiryOf = (g: GameState, years: number) => `${year(g.date) + Math.max(1, years)}-06-30`;
 
 /** Menneskets kontrakt i originalens felter: bonusserne i £ (mål, assist – spillets Appearance Bonus, *estimeret* –, clean sheet), Minimum Fee-klausulen */
-export function offerTerms(g: GameState, wage: number, years: number, cl: ContractClauses = {}): CmOfferTerms {
-  const b = (v?: number) => (v && v > 0 ? Math.round(v * GBP) : -1);
+export function offerTerms(g: GameState, wage: number, years: number, cl: ContractClauses = {}, buyer?: number): CmOfferTerms {
+  const b = (v?: number) => (v && v > 0 ? Math.round(v * cmGbp(g, buyer)) : -1);
   return {
     wage, expires: expiryOf(g, years), signOn: cl.signOn ?? 0, partTime: !!cl.partTime,
     bonusGbp: [b(cl.goalBonus), b(cl.appBonus), b(cl.cleanSheetBonus)],
@@ -177,7 +177,7 @@ export function cmTalksDaily(o: TransferOffer, complete: (o: TransferOffer, wage
   const params = { player: pname(p), last: p.last || pname(p), seller: short(g, o.seller), buyer: short(g, o.buyer) };
   if (t.state === 1 && t.due && g.date >= t.due && t.terms) {
     const { wage, years, clauses } = t.terms;
-    const ans = cmContractAnswer(g, p, o.buyer, offerTerms(g, wage, years, clauses), o.cmRole);
+    const ans = cmContractAnswer(g, p, o.buyer, offerTerms(g, wage, years, clauses, o.buyer), o.cmRole);
     if (ans?.accept) { cmAgreed(o, p, { wage, years, clauses }, complete); return; }
     // 0x8c28c0
     const rounds = Math.min(3, t.rounds + 1);

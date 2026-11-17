@@ -15,7 +15,8 @@ import type { GameState, Player } from './types';
 import { buildWantMem, cmTalkStatus, roleCode, type WantMem } from './cmContractGame';
 import { GEN } from './cmGen/index';
 import { ensureImpls } from './cmGen/impls';
-import { cmActive } from './cmPlayerData';
+import { cmActive, cmLogic } from './cmPlayerData';
+import { cmGbp } from './cmMoney';
 import { cmKnowLevel } from './cmKnow';
 import { cmClubEuro } from './cmFitnessGame';
 import { getMaxWage_5968d0, maxStaffWage_597db0 } from './cmMaxWage';
@@ -115,7 +116,7 @@ export function humanClubIds(g: GameState): number[] {
  *  0x5968d0(klubbens finanspost, spilleren, −1) – for menneskets egen spiller læser 0x5968d0 trupstatussen i kontrakten (+0x4f, sat af Set Role
  *  At Club); for en spiller fra en anden klub den rolle, han er tilbudt (`role`; uden rolle hans forventede plads – som ønskekontrakten, cmTalkStatus). Ugeløn i € (null uden for ægte tilstand). */
 export function cmBoardWageAllow(g: GameState, p: Player, clubId: number, role?: import('./squadStatus').SquadStatus): number | null {
-  if (!cmActive(g) || !g.clubs[clubId]) return null;
+  if (!cmLogic(g) || !g.clubs[clubId]) return null;
   const M = buildWantMem(g, p.club && p.club !== clubId ? [clubId, p.club] : [clubId]);
   const fin = M.W.finOf(clubId);
   if (!fin) return null;
@@ -125,7 +126,7 @@ export function cmBoardWageAllow(g: GameState, p: Player, clubId: number, role?:
   // et tilbud efter Set Role At Club: originalens forhandling har den valgte rolle i kontraktposten (+0x4f), som 0x5968d0 læser for menneskets klub
   const status = p.club === clubId ? (role ? roleCode(role) : -1) : cmTalkStatus(g, p, clubId, role);
   const w = getMaxWage_5968d0(M.c, fin, st, status);
-  return Math.max(0, w) / GBP;
+  return Math.max(0, w) / cmGbp(g, clubId);
 }
 
 /** stabens Offer Contract (0x4de1f0/0x4de5d0 med et stabsjob): Finance::max_staff_wage 0x597db0(finansposten, jobbet) – og for en, der allerede
@@ -138,8 +139,8 @@ export function cmBoardStaffWageAllow(g: GameState, s: { club: number; wage?: nu
   if (!fin) return null;
   ensureImpls();
   let w = maxStaffWage_597db0(M.c, fin, JOB[role] ?? 8);
-  if (s.club === clubId && s.wage) w = Math.max(w, Math.round(s.wage * GBP));
-  return Math.max(0, w) / GBP;
+  if (s.club === clubId && s.wage) w = Math.max(w, Math.round(s.wage * cmGbp(g, clubId)));
+  return Math.max(0, w) / cmGbp(g, clubId);
 }
 
 /** Budskærmens bestyrelseslinje (transfer_screens 0x8e9760, 0x8ea28e–0x8ea3d5): 0x598800(spiller, 0, &begrænset, 1, 0) – med attribute masking

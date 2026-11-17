@@ -1,6 +1,6 @@
 // Spilstartens kontrakter som i CM 01/02 – STAFF_CONTRACT::generate_initial_contract 0x85e960 (cm0102.exe 3.9.68, læst instruktion for
 // instruktion 14/11-2026), kaldt for hver person med klub og job 0/8/0xb af CONTRACT_MANAGER::initialise_all_staff_contracts 0x4c7560
-// (0x4c78a2) med personens værdi +0x52. Kun den originale database i ægte tilstand (cmActive) – spillets egne data i stedet for hukommelsen.
+// (0x4c78a2) med personens værdi +0x52. En CM-database i ægte tilstand (cmLogic – den originale og 2026/27; beløbene via cmMoney.ts) – spillets egne data i stedet for hukommelsen.
 //
 // Kontrakten (80 bytes): +0xc ugeløn (£), +0x10 målbonus, +0x14 assistbonus, +0x18 clean sheet-bonus (−1 = ingen), +0x1c..+0x20 klausulerne
 // (0x85f940's tekster: 0 Non Promotion, 1 Minimum Fee, 2 Non Playing, 3 Relegation, 4 Manager Job Release Clause), +0x21 klausulens beløb (£,
@@ -33,7 +33,8 @@ import type { Contract, GameState, Player } from './types';
 import { ageOn } from './dates';
 import { ATTRS } from './attributes';
 import { rulesFor } from './leagues';
-import { cmActive, cmContractOf, cmRand, clubRepMem } from './cmPlayerData';
+import { cmContractOf, cmLogic, cmRand, clubRepMem } from './cmPlayerData';
+import { cmGbp } from './cmMoney';
 import { contractLanguageNibble } from './cmLanguage';
 import { cmStandardWages } from './cmWageGame';
 
@@ -155,8 +156,8 @@ export function initContractInput(g: GameState, p: Player, dbWageGbp: number): I
   if (!club || !g.clubs[club] || !p.contract) return null;
   const repMem = (p.cmRepMem ?? p.cmRep ?? [p.rep * 2, p.rep * 2, p.rep * 2])[1] * 50;
   return {
-    id: p.id, age: ageOn(p.dob, g.date), rep: repMem, value: ftol((p.value ?? 0) * GBP), dbWage: dbWageGbp,
-    fallbackWage: (p.contract.wage ?? 0) * GBP, caps: p.caps ?? 0,
+    id: p.id, age: ageOn(p.dob, g.date), rep: repMem, value: ftol((p.value ?? 0) * cmGbp(g, club)), dbWage: dbWageGbp,
+    fallbackWage: (p.contract.wage ?? 0) * cmGbp(g, club), caps: p.caps ?? 0,
     nation85: p.nation !== undefined && p.nation >= 0 && g.nations[p.nation] ? g.cmNation85?.[p.nation] ?? 0 : null,
     amb: attr(p, 'ambition'), loy: attr(p, 'loyalty'), det: attr(p, 'determination'), prof: attr(p, 'professionalism'),
     pos: p.pos.slice(0, 7), clubRep: clubRepMem(g, club), status: statusOf(g, club), league: leagueOf(g, club),
@@ -164,8 +165,8 @@ export function initContractInput(g: GameState, p: Player, dbWageGbp: number): I
 }
 
 /** resultatet ind i spillets kontrakt (beløbene i €) */
-export function applyInitialContract(c: Contract, o: InitContractOut): void {
-  const eur = (v: number) => Math.max(0, Math.round(v / GBP));
+export function applyInitialContract(c: Contract, o: InitContractOut, gbp = GBP): void {
+  const eur = (v: number) => Math.max(0, Math.round(v / gbp));
   c.goalBonus = o.goal > 0 ? eur(o.goal) : undefined;
   c.cmAssistBonus = o.assist > 0 ? eur(o.assist) : undefined;
   c.cleanSheetBonus = o.cleanSheet > 0 ? eur(o.cleanSheet) : undefined;
@@ -187,12 +188,12 @@ function initContractBytes(g: GameState, p: Player): void {
   c.b4e = 4; c.b44 = 0; c.b45 = 0; c.b3e = 0; c.b3f = 0;
 }
 
-/** nyt spil: alle databasens spillere med klub og kontrakt (kun cmActive). `dbWage`: spiller-id → databasens ugeløn (£).
+/** nyt spil: alle databasens spillere med klub og kontrakt (kun cmLogic). `dbWage`: spiller-id → databasens ugeløn (£).
  *  `unset` = spillerne med +0xc = −1 (databasens løn mangler eller er over 15 · omdømmet) – 0x83a1b0 fylder dem ud efter trupplanen
  *  (cmWageGame.ts cmWageFillNewGame). Deres bonusser regnes af standardlønnen 0x864550(staff, klub, 0, −1, 0xb, 0) som i 0x85eca3. */
 export function cmContractsNewGame(g: GameState, dbWage: Map<number, number>, seed: number): { n: number; dbRejected: number; unset: Set<number> } {
   const unset = new Set<number>();
-  if (!cmActive(g) || g.draft) return { n: 0, dbRejected: 0, unset };
+  if (!cmLogic(g) || g.draft) return { n: 0, dbRejected: 0, unset };
   let n = 0, dbRejected = 0;
   const todo: [Player, InitContractIn][] = [];
   for (const p of Object.values(g.players)) {
@@ -207,7 +208,7 @@ export function cmContractsNewGame(g: GameState, dbWage: Map<number, number>, se
     if (unset.has(p.id) && std.has(p.id)) x.fallbackWage = std.get(p.id)!;
     const o = initialContract_85e960(x, cmRand(seed, p.id, 0x85e960));
     if (x.dbWage && o.wage < 0) dbRejected++;
-    applyInitialContract(p.contract!, o);
+    applyInitialContract(p.contract!, o, cmGbp(g, p.loan?.from ?? p.club));
     initContractBytes(g, p);
     n++;
   }

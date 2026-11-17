@@ -16,7 +16,7 @@ import { authentic, extended } from '../../game/rules';
 import { avgRating } from '../../game/season';
 import { SCHEDULES } from '../../game/training';
 import { askingPrice, canPreContract, interestedClubs, myPendingBid, nextWindow, releaseCost, windowOpen } from '../../game/transfers';
-import { cmActive, statCell, statColumns } from '../../game/cmPlayerData';
+import { cmActive, cmLogic, statCell, statColumns } from '../../game/cmPlayerData';
 import { squadMoveOption } from '../../game/cmBTeam';
 import { cmTalksOpen } from '../../game/cmTransferTalks';
 import { cmPermitHistory } from '../../game/cmPermit';
@@ -556,7 +556,7 @@ export function ClassicPlayer({ id }: { id: number }) {
     const pendingBid = cmActive(g) && p.club > 0 ? myPendingBid(p.id) : undefined;
     // CM 01/02 (ejerens billede 154): har klubben accepteret buddet, står der Offer Contract (Set Role At Club → kontraktforhandlingen) og
     // Withdraw Transfer Bid – hverken Approach To Buy/Loan eller Change Transfer Bid
-    const agreedBid = cmActive(g) && p.club > 0 && !pendingBid ? g.offers.find((o) => o.player === p.id && cmTalksOpen(g, o)) : undefined;
+    const agreedBid = cmLogic(g) && p.club > 0 && !pendingBid ? g.offers.find((o) => o.player === p.id && cmTalksOpen(g, o)) : undefined;
     if (agreedBid) {
       const nm = `${p.first} ${p.last}`.trim();
       items.push(

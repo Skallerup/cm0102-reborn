@@ -1278,6 +1278,8 @@ export interface GameState {
   econ?: import("./econ").Economy;
   /** den kalibrerede moderne økonomi (econ26.ts, kun nye spil uden originalens økonomi): ugelønskurvens faktor pr. liga (`*` = standard) */
   m26?: Modern26;
+  /** 2026/27 i ægte tilstand (cmLogic, cmMoney.ts): € → originalens £ pr. liga, målt ved spilstart (databasens løn / spillets løn); mangler = 0,86 */
+  cmGbp?: { k: number; leagues: Record<string, number> };
   id: string; // save-id
   seed: number;
   rng: number;

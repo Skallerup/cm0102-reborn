@@ -8,7 +8,7 @@ import type { GameState, Player, Staff } from './types';
 import { type CmCtx, G, SparseMem } from './cmMem';
 import { cmMemCall, scanOf, writeKeyIds, KEY_NATIONS, OTHER_GLOBALS, NAT7F, STAFF0, PREC0, CLUB0, NAT0, DIV0, FIN0, K0, ROWS0, TM0, PTRS, type WageMem } from './cmWageGame';
 import type { WantMem } from './cmContractGame';
-import { getMaxWage_5968d0 } from './cmMaxWage';
+import { getMaxWage_5968d0, recalcWages_598370 } from './cmMaxWage';
 import { getClubFinance_5a0590 } from './cmWage';
 import { genCtx } from './cmGen/impls';
 import { slCall, slmOf } from './cmShortlist';
@@ -25,8 +25,10 @@ import { isHumanClub } from './humans';
 import { boardEnv } from './cmBoardGame';
 import { leagueClash } from './cmBoardInterest';
 import type { BoardEnv } from './cmBoard';
+import { cmGbp, GBP_2001 } from './cmMoney';
 
-const GBP = 0.86;
+/** € → £ (cmMoney.ts: 0,86 for den originale database, 2026/27's faktor pr. liga) – sat af buildSlWantMem for spillet */
+let gbpOf: (cid: number | undefined) => number = () => GBP_2001;
 // (cmContractGame.ts' adresser)
 const MMOBJ = 0x2bff0000, MMREC = 0x2b000000, EURO0 = 0x2c000000, STAD0 = 0x2d000000, CITY0 = 0x2c800000, COMP0 = 0x3e000000, VT = 0x3dff0000, CONT0 = 0x3dfe0000, PREF0 = 0x2f000000, STATS0 = 0x3e800000, ROW4A = 0x3dfd0000, NOBODY = 0x2e000000;
 // (cmContractGame.ts SEASON_ROWS – sæsontabellen 0xb63d60)
@@ -162,7 +164,7 @@ function newClubStatus(g: GameState, p: Player, cid: number, idx: ReturnType<typ
 function valueOf(g: GameState, p: Player | undefined, clubId: number): number {
   const club = g.clubs[clubId];
   if (!p) return 0;
-  if (!club?.vc || !p.cmRep) return Math.round((p.value ?? 0) * GBP);
+  if (!club?.vc || !p.cmRep) return Math.round((p.value ?? 0) * cmGbp(g, clubId));
   return Math.trunc(formulaValueGbp({ pa: p.pa, age: ageOn(p.dob, g.date), pos: p.pos, attrs: p.attrs, rep: p.cmRep, caps: p.caps ?? 0, staffId: p.id, clubId, vc: club.vc }));
 }
 
@@ -230,7 +232,7 @@ function fpInto(o: Float64Array, at: number, ss: (string | undefined)[], si: num
   o[at++] = p.ca; o[at++] = p.pa;
   if (rp) { o[at++] = 1; o[at++] = rp[0]; o[at++] = rp[1]; o[at++] = rp[2]; } else { o[at++] = 0; o[at++] = p.rep; }
   for (let i = 0; i < 7; i++) o[at++] = num(p.pos[i]);
-  o[at++] = Math.round((p.value ?? 0) * GBP); o[at++] = num(p.cmNation2);
+  o[at++] = Math.round((p.value ?? 0) * gbpOf(e.cid || undefined)); o[at++] = num(p.cmNation2);
   o[at++] = recOf(p).ver;
   if (ct) {
     o[at++] = 1; o[at++] = ct.wage; o[at++] = ct.partTime ? 1 : 0; o[at++] = num(ct.cmClauseFee);
@@ -267,12 +269,12 @@ function writeRec(m: SparseMem, e: Ent, date: string, nNat: number): void {
   if (rep) { m.w16(pr + 9, Math.round(rep[0] * 50)); m.w16(pr + 0xb, Math.round(rep[1] * 50)); m.w16(pr + 0xd, Math.round(rep[2] * 50)); }
   else { const v = Math.round(p.rep * 2 * 50); m.w16(pr + 9, v); m.w16(pr + 0xb, v); m.w16(pr + 0xd, v); }
   for (let i = 0; i < 7; i++) m.w8(pr + 0xf + i, p.pos[i] ?? 1);
-  m.w32(st + 0x52, Math.round((p.value ?? 0) * GBP));
+  m.w32(st + 0x52, Math.round((p.value ?? 0) * gbpOf(e.cid || undefined)));
   // (en udskudt spiller – refreshClub – kan have mistet kontrakten i løbet af dagen: fritstillet eller solgt før klubbens tur; sæsonen 16/11 gik ned her)
   if (e.hasK && p.contract) {
     const k = K0 + 80 * id;
     m.w32(ROWS0 + 79 * id, id); m.w32(ROWS0 + 79 * id + 4, -1);
-    m.w32(k + 4, cid); m.w32(k + 0xc, Math.round(p.contract.wage * GBP));
+    m.w32(k + 4, cid); m.w32(k + 0xc, Math.round(p.contract.wage * gbpOf(cid)));
     m.w8(k + 0x35, p.contract?.partTime ? 0x80 : 0); m.w8(k + 0x45, p.cmContract?.b45 ?? 0); m.w8(k + 0x4f, p.cmContract?.b4f ?? 0);
   }
 }
@@ -294,7 +296,7 @@ function writeWant(m: SparseMem, e: Ent, staffOfId: StaffOfId, nNat: number): vo
     for (let i = 0; i < 3; i++) m.w32(k + 0x10 + 4 * i, b[i]);
     const cl = ct.cmClauses ?? [0, 0, 0, 0, 0];
     for (let i = 0; i < cl.length; i++) m.w8(k + 0x1c + i, cl[i]);
-    m.w32(k + 0x21, Math.round((ct.cmClauseFee ?? 0) * GBP));
+    m.w32(k + 0x21, Math.round((ct.cmClauseFee ?? 0) * gbpOf(e.cid || undefined)));
     const j = p.joined ?? p.cmJoined;
     if (j) { const y = isoY(j); m.w16(k + 0x25, isoD(j)); m.w16(k + 0x27, y); m.w32(k + 0x29, leap(y)); }
     const y = isoY(ct.expires); m.w16(k + 0x2d, isoD(ct.expires)); m.w16(k + 0x2f, y); m.w32(k + 0x31, leap(y));
@@ -333,6 +335,7 @@ export function buildSlWantMem(g: GameState, clubs: Iterable<number>, opts: { ca
    *  poster (når id, klub og kontrakt er de samme), indtil `refreshClub(klub)` skriver dem (WantMem.refreshClub) */
   stale?: (p: Player, cid: number) => boolean }): WantMem & { refreshClub?: (cid: number, pids?: Set<number>) => number[]; deferredPids?: { has(pid: number): boolean }; pidStaff?: (pid: number) => number | undefined } {
   let tq = tnow();
+  gbpOf = (cid) => cmGbp(g, cid);
   const incr = ENV.CM_SL_INCR !== '0';
   let B = incr ? BASES.get(g) : undefined;
   if (!B) { B = { P: new SparseMem(), fp: new IdMap(), fs: new IdMap(), fpPref: new IdMap(), prefs: new IdMap(), prefMax: 0 }; if (incr) BASES.set(g, B); SLMEM_STATS.builds++; }
@@ -540,11 +543,11 @@ export function buildSlWantMem(g: GameState, clubs: Iterable<number>, opts: { ca
       m.w8(st + 0x57, s.cmHid?.[1] ?? 10);
       m.w8(st + 0x3d, s.role === 'manager' ? 5 : s.role === 'assistant' ? 6 : s.role === 'coach' ? 8 : s.role === 'scout' ? 9 : 10);
       m.w32(st + 0x69, npRec(id, (np) => { m.w16(np + 0xa, s.cmRep?.[1] ?? (s.rep ?? 0) * 2); m.w16(np + 4, s.ca ?? (s.rep ?? 0) * 2); m.w16(np + 6, s.cmPa ?? s.ca ?? 0); s.cmNp?.slice(0, 21).forEach((v, k) => m.w8(np + 0x0e + k, v)); }));
-      if (s.wage) staffContract(id, cid, Math.round(s.wage * GBP));
+      if (s.wage) staffContract(id, cid, Math.round(s.wage * gbpOf(cid)));
       if (s.role === 'manager' && !isHumanClub(cid)) m.w32(a + 0xcf, st);
       const r = byRole[s.role]; if (r && (used[s.role] ?? 0) < r[1]) m.w32(a + r[0] + 4 * (used[s.role] = (used[s.role] ?? 0) + 1) - 4, st);
     }
-    const f = finAdr(cid), bal = Math.round(club.balance * GBP);
+    const f = finAdr(cid), bal = Math.round(club.balance * gbpOf(cid));
     m.w32(f, bal >>> 0); m.w32(f + 4, Math.floor(bal / 4294967296)); m.w32(f + 8, cid);
     const r = g.cmFin?.[cid];
     m.w32(f + 0xc, r?.wb ?? 0); m.w32(f + 0x10, r?.top ?? 0);
@@ -554,7 +557,8 @@ export function buildSlWantMem(g: GameState, clubs: Iterable<number>, opts: { ca
   m.w32(G.STAFF_COUNT, count);
   for (const cid of humanMgr) { const st = staffAdr(count - 1); m.w32(st, count - 1); noContract(count - 1); m.w32(clubAdr(cid) + 0xcf, st); }
   for (const cid of clubIds) { const pr = g.clubs[cid].cmPrefs; if (pr) for (let k = 0; k < 3; k++) m.w32(clubAdr(cid) + 0x9b + 4 * k, byPid.get(pr[k]) ?? 0); }
-  for (const cid of clubIds) { const f = finAdr(cid); m.w32(f + 0x14, getMaxWage_5968d0(wc, f, 0, -1)); }
+  // (2026/27 uden originalens økonomi – g.cmFin) lønsummen +0xc/+0x10 af kontrakterne som buildWageMem: 0x598370 to gange (den første med +0x14 = 0)
+  for (const cid of clubIds) { const f = finAdr(cid); if (!g.cmFin) { m.w32(f + 0x14, 0); recalcWages_598370(wc, f); recalcWages_598370(wc, f); } else m.w32(f + 0x14, getMaxWage_5968d0(wc, f, 0, -1)); }
   let gen = count;
   const W: WageMem = {
     c: wc,

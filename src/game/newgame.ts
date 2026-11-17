@@ -36,6 +36,7 @@ import { cmRand, fillReputation } from './cmPlayerData';
 import { npFromWorld, npTemplate, staffConvert, staffInitRecord, type NpTemplate } from './cmStaffInit';
 import { initialLanguages } from './cmLanguage';
 import { cmActive, cmLogic } from './cmPlayerData';
+import { cmGbpMeasure } from './cmMoney';
 import { cmStartDate } from './cmCalendar';
 import { cmMainNation, cmSeasonOn } from './cmSeason';
 import { cmEuroOn, cmEuroRestoreNext, cmSetupEurope } from './cmEurope';
@@ -186,6 +187,13 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     if (raw.crowd) g.cmCrowd = Object.fromEntries(Object.entries(raw.crowd).map(([k, v]) => [k, v.slice()])) as GameState['cmCrowd'];
     if (raw.cities) g.cmCities = raw.cities.slice();
     if (raw.nation7e) g.cmNation7e = raw.nation7e.slice();
+    // (MODERN_PARITY 1+4) kontrakt-/lønlaget og spillerens vilje 0x846920 (cmWageGame/cmSlMem/cmContractGame): klubstatus +0x64, divisionen og
+    // PLC (club.dat), nation +0x85/+0x76
+    if (raw.clubStat) g.cmClubStat = { ...raw.clubStat };
+    if (raw.fin) g.cmFinRaw = Object.fromEntries(Object.entries(raw.fin).map(([k, v]) => [k, v.slice()]));
+    if (raw.nation85) g.cmNation85 = raw.nation85.slice();
+    if (raw.nation76) g.cmNation76 = raw.nation76.slice();
+    g.cmLowerDiv = raw.lowerDiv ?? -1;
   }
   if (cm?.cmRaw && season < 2020) {
     g.cmClubRep = { ...cm.cmRaw.clubRep }; g.cmNationRep = cm.cmRaw.nationRep.slice();
@@ -227,7 +235,8 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   const F = Object.fromEntries(world.playerFields.map((f, i) => [f, i]));
   // originalens ugentlige lønninger (£, staff.dat 78) – kun den originale database bruger dem (2001-økonomien)
   const dbWage = new Map<number, number>(), dbWageGbp = new Map<number, number>();
-  if (g.econ && F.wage !== undefined) for (const r of world.players) if ((r[F.wage] as number) > 0) { dbWage.set(r[F.id] as number, Math.round((r[F.wage] as number) / GBP)); dbWageGbp.set(r[F.id] as number, r[F.wage] as number); }
+  // (2026/27 i ægte tilstand: kun som originalens staff +0x4e og til pengefaktoren cmGbp – spillets lønninger forbliver de moderne)
+  if ((g.econ || cmRawLogic) && F.wage !== undefined) for (const r of world.players) if ((r[F.wage] as number) > 0) { if (g.econ) dbWage.set(r[F.id] as number, Math.round((r[F.wage] as number) / GBP)); dbWageGbp.set(r[F.id] as number, r[F.wage] as number); }
   const cmStartGame = !!cm && season < 2020 && o.mode === 'authentic';
   const initRng = new Rng(1);
   let initPool: ReturnType<typeof makePool> | undefined;
@@ -484,6 +493,8 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     if (!c.seats || c.seats < 1000) c.seats = Math.round(2000 + c.rep * c.rep * 6);
   }
 
+  // (MODERN_PARITY pengeprincip B) 2026/27 i ægte tilstand: € → originalens £ pr. liga = databasens løn / spillets løn (cmMoney.ts)
+  if (cmRawLogic) g.cmGbp = cmGbpMeasure(g, dbWageGbp);
   progress('staff', 0.45);
   // Staff – med den originale/CM-database: de rigtige trænere, spejdere og fysioterapeuter fra databasen (CMWorld.staff)
   const dbStaff = new Map<number, NonNullable<CMWorld['staff']>>();

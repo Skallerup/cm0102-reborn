@@ -40,7 +40,8 @@ import { HEAP0, HEAP_PTR } from './cmGen/x86';
 import { addFavClub, addFavPerson, managerStaff, personKey } from './cmRelations';
 import { cmSignContractMorale } from './cmMedia';
 
-const GBP = 0.86;
+/** € → £ (cmMoney.ts) */
+import { cmGbp } from './cmMoney';
 const ENV: Record<string, string | undefined> = typeof process !== 'undefined' ? process.env ?? {} : {};
 /** CM_DAILY=0 slår porten fra (målingerne i scripts/cm-contract-days-game.ts) */
 const OFF = ENV.CM_DAILY === '0';
@@ -297,12 +298,13 @@ export function cmContractManagerDay(g: GameState): void {
 function applySigned(g: GameState, p: Player, m: CmMem, k: number): void {
   const club = g.clubs[p.club];
   if (!club || !p.contract) return;
+  const GBP = cmGbp(g, p.club);
   const eur = (v: number) => Math.max(0, Math.round(v / GBP));
   const cl = [0, 1, 2, 3, 4].map((i) => m.u8(k + 0x1c + i));
   const t: CmTerms = {
     wage: eur(m.s32(k + 0xc)), expires: dayIso(m.s16(k + 0x2d), m.u16(k + 0x2f)), signOn: eur(m.s32(k + 8)),
     bonusGbp: [m.s32(k + 0x10), m.s32(k + 0x14), m.s32(k + 0x18)], clauses: cl, clauseFee: cl.some((x) => x) ? eur(m.s32(k + 0x21)) : 0,
-    partTime: (m.u8(k + 0x35) & 0x80) !== 0, offered: true, raw: { wage: m.s32(k + 0xc), value: 0 },
+    partTime: (m.u8(k + 0x35) & 0x80) !== 0, offered: true, raw: { wage: m.s32(k + 0xc), value: 0 }, gbp: GBP,
   };
   const c: Contract = { wage: t.wage, expires: t.expires };
   applyCmTerms(c, t);
