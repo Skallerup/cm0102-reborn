@@ -51,7 +51,7 @@ import { cmContractsNewGame } from './cmContractInit';
 import { cmContractEnd } from './cmContractEnd';
 import { cmPermitNewGame } from './cmPermit';
 import { cmSquadPlanStart } from './cmSquadPlanGame';
-import { cmWageFillNewGame } from './cmWageGame';
+import { cmStaffWageNewGame, cmStaffWagePrepare, cmWageFillNewGame } from './cmWageGame';
 import { cmShortlistStart } from './cmShortlistGame';
 import { cmValuesApply } from './cmValueGame';
 import { cmRefreshTransferBudgets } from './cmBudget';
@@ -480,6 +480,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     ? { pool: cm.staff.filter((r) => r[11]).map((r) => npTemplate(npFromWorld(r[7], r[11]!, r[10]?.[7] ?? 0))), nations: world.nations.map((n) => n.name), seed,
       sel: cm.staffX ? new Set(o.activeNations) : null }
     : null;
+  staffDbWage.clear();
   for (const c of Object.values(g.clubs)) createClubStaff(c, world, seed, date, dbStaff.get(c.id) ?? []);
   // ledige stabsfolk fra databasen (CA 100+): rollen efter deres bedste egenskab
   for (const row of dbStaff.get(0) ?? []) {
@@ -558,6 +559,9 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   // originalens økonomi (cmFinance.ts): Finance::init_for_club 0x5961d0 og ugens lønsum – kun den originale database i ægte tilstand
   if (cm) { g.cmFinStartYear = season; cmFinanceNewGame(g, cm, seed); }
   // originalens startkontrakter 0x85e960 (cmContractInit.ts): bonusser, klausuler og deltid – kun den originale database i ægte tilstand
+  // staben: 0x4c7560's startkontrakter – managerne ingen, de andre databasens løn eller −1 (cmWageGame.ts)
+  cmStaffWagePrepare(g, staffDbWage);
+  staffDbWage.clear();
   const unsetWages = cm ? cmContractsNewGame(g, dbWageGbp, seed).unset : new Set<number>();
   // originalens arbejdstilladelses-historik (0x8c6e60 – cmPermit.ts)
   cmPermitNewGame(g);
@@ -566,6 +570,8 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   cmSquadPlanStart(g);
   // 0x83a1b0 efter trupplanen: lønnen for kontrakterne uden løn (0x862720 – cmWageGame.ts)
   cmWageFillNewGame(g, unsetWages);
+  // staben: 0x83a1b0's udfyldning af lønnen −1 med 0x862720 (cmWageGame.ts)
+  cmStaffWageNewGame(g);
   // player_setup.cfg's lejeaftaler (0x7a30c0 efter 0x83a1b0 → 0x8bf400 – cmFitnessGame.ts)
   cmSetupLoans(g);
   // 0x83a1b0's slutning: positionslisterne 0x83a780 og budgettets fordeling/målene 0x83b6e0 for alle klubber (cmShortlistGame.ts)
@@ -749,6 +755,8 @@ const memOf = (row: NonNullable<CMWorld['staff']>[number]): boolean => !!npInit?
 /** Stab fra databasen: navn, nation, alder og de egenskaber, databasen har (resten som en genereret på samme niveau) */
 /** stab med databasens egen løn (K8): røres ikke af lønloftet i createClubStaff */
 const dbWaged = new WeakSet<Staff>();
+/** databasens ugeløn (£) pr. Staff-id – startkontrakterne 0x85e960 (cmStaffWageNewGame) */
+const staffDbWage = new Map<number, number>();
 
 function addDbStaff(row: NonNullable<CMWorld['staff']>[number], club: number, role: StaffRole, date: string, seed: number): Staff {
   const g = gs();
@@ -764,7 +772,7 @@ function addDbStaff(row: NonNullable<CMWorld['staff']>[number], club: number, ro
   // den originale database: databasens ugeløn (staff.dat +78, £) for stab med en – oraklet (K8) har den i startkontrakten (42 af 55); de øvrige får
   // originalens standardløn 0x864550 (cmWage.ts – endnu ikke koblet til stab), her spillets egen
   const dbWage = row[12]?.[11] ?? 0;
-  if (npInit && club && dbWage > 0) { s.wage = Math.round(dbWage / GBP); dbWaged.add(s); }
+  if (npInit && club && dbWage > 0) { s.wage = Math.round(dbWage / GBP); dbWaged.add(s); staffDbWage.set(s.id, dbWage); }
   // (forholdene) databasens person-id og de skjulte egenskaber +0x56..+0x5d (kun den originale database – cmRelations.ts)
   if (npInit) { s.cmId = row[9]; if (row[12]) s.cmHid = row[12].slice(2, 11); if (row[14]) s.cmNat = [row[14][0], row[14][1]]; }   // [12] = [+8, +0xc, +0x56..+0x5d, +0x22] (cmBoard)
   // den originale database: ikke-spillerposten som i originalens hukommelse efter spilstarten (sub_535a80 – cmStaffInit.ts):
@@ -813,7 +821,7 @@ function createClubStaff(c: Club, world: WorldData, seed: number, date: string, 
   };
   const lvl = c.rep;
   // databasens folk først (højst som klubbens grænser); managerens navn kommer fra Wikipedia (2026/27) eller clubs[7]
-  const ROLE: Record<number, StaffRole> = { 5: 'manager', 6: 'assistant', 8: 'coach', 9: 'scout', 10: 'physio' };
+  const ROLE: Record<number, StaffRole> = { 5: 'manager', 6: 'assistant', 8: 'coach', 9: 'scout', 10: 'physio', 12: 'manager' };   // 12 = spillende manager (kun den originale database)
   const MAX: Record<StaffRole, number> = { manager: 1, assistant: 1, coach: 7, physio: 3, scout: 7 };
   const have: Record<StaffRole, number> = { manager: 0, assistant: 0, coach: 0, physio: 0, scout: 0 };
   for (const row of db.slice().sort((x, y) => y[7] - x[7])) {

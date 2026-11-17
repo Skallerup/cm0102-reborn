@@ -288,10 +288,14 @@ export function buildWageMem(g: GameState, clubs: Iterable<number>, unset: Set<n
       const id = next++, st = staffAdr(id);
       npStaff.set(s.id, st);
       m.w32(st, id); noContract(id); m.w32(st + 0x39, a);
+      // alderen +0x18 og landet +0x1a (0x862720/0x864550 og udlændingeloftet 0x83a2d0 læser dem)
+      m.w8(st + 0x18, s.dob ? ageOn(s.dob, g.date) : 45); m.w32(st + 0x1a, natAdr(s.nation));
       m.w8(st + 0x57, s.cmHid?.[1] ?? 10);
       m.w8(st + 0x3d, s.role === 'manager' ? 5 : s.role === 'assistant' ? 6 : s.role === 'coach' ? 8 : s.role === 'scout' ? 9 : 10);
       m.w32(st + 0x69, npRec(id, (np) => { m.w16(np + 0xa, s.cmRep?.[1] ?? (s.rep ?? 0) * 2); if (full) { m.w16(np + 4, s.ca ?? (s.rep ?? 0) * 2); m.w16(np + 6, s.cmPa ?? s.ca ?? 0); s.cmNp?.slice(0, 21).forEach((v, k) => m.w8(np + 0x0e + k, v)); } }));
-      if (s.wage) contract(id, cid, Math.round(s.wage * GBP));
+      // lønnen −1 (spilstarten, cmStaffWagePrepare): 0x85e960's start har trupstatus 2 i den høje nibble af +0x4f (initContractBytes)
+      if (Math.round(s.wage * GBP) === -1) m.w8(contract(id, cid, -1) + 0x4f, 0x20);
+      else if (s.wage) contract(id, cid, Math.round(s.wage * GBP));
       if (s.role === 'manager' && !isHumanClub(cid)) m.w32(a + 0xcf, st);
       if (full) { const r = byRole[s.role]; if (r && (used[s.role] ?? 0) < r[1]) m.w32(a + r[0] + 4 * (used[s.role] = (used[s.role] ?? 0) + 1) - 4, st); }
       else if (s.wage && si < slots.length) m.w32(a + slots[si++], st);
@@ -345,6 +349,7 @@ export function buildWageMem(g: GameState, clubs: Iterable<number>, unset: Set<n
         const id = gen++;
         st = staffAdr(id);
         m.w32(st, id); noContract(id);
+        m.w8(st + 0x18, s.dob ? ageOn(s.dob, g.date) : 45); m.w32(st + 0x1a, natAdr(s.nation));
         m.w8(st + 0x57, s.cmHid?.[1] ?? 10);
         m.w8(st + 0x3d, s.club ? (s.role === 'manager' ? 5 : s.role === 'assistant' ? 6 : s.role === 'coach' ? 8 : s.role === 'scout' ? 9 : 10) : 0);
         m.w32(st + 0x69, npRec(id, (np) => { m.w16(np + 0xa, s.cmRep?.[1] ?? (s.rep ?? 0) * 2); }));
@@ -374,6 +379,41 @@ export function cmWageFillNewGame(g: GameState, unset: Set<number>): { n: number
     n++;
   }
   const idx = wageIdx(g);   // udlejede/staben slået op én gang (samme rækkefølge som updateWageBill's eget gennemløb)
+  for (const cid of clubs) { const c = g.clubs[cid], r = g.cmFin?.[cid]; if (c && r) updateWageBill(g, c, r, idx); }
+  return { n };
+}
+
+/** Spilstarten for staben, del 1 (newgame.ts, før trupplanen): CONTRACT_MANAGER::initialise_all_staff_contracts 0x4c7560 laver kun
+ *  startkontrakter (0x85e960, 0x4c783d–0x4c78a2) for personer med klub og job +0x3d ∈ {0, 6, 7, 8, 9, 0xa, 0xb, 0xc, 0xd, 0xf} – managerne (5)
+ *  og formænd/direktører får ingen kontrakt (oraklet 14/7-01: Trevor Francis/Birmingham uden kontrakt). Lønnen er databasens +0x4e, når den er sat
+ *  og ≤ 15 · ikke-spillerpostens omdømme +0xa (0x85eb59–0x85eb91), ellers −1 (£) – også under trupplanen 0x83cb40 (stabens mål 0x83f3a0 ser
+ *  lønnen −1, som originalen). `dbWage`: Staff-id → databasens ugeløn (£). */
+export function cmStaffWagePrepare(g: GameState, dbWage: Map<number, number>): void {
+  if (!cmActive(g) || g.draft) return;
+  for (const s of Object.values(g.staff)) {
+    if (!s.club || s.cmExtra || !g.clubs[s.club]) continue;
+    if (s.role === 'manager') { s.wage = 0; continue; }
+    const w = dbWage.get(s.id) ?? 0;
+    s.wage = (w > 0 && w <= 15 * (s.cmRep?.[1] ?? 0) ? w : -1) / GBP;
+  }
+}
+
+/** Del 2 (efter cmWageFillNewGame): 0x83a1b0 fylder lønnen −1 ud med 0x862720(staff, klub, 1, 2, 0xb, 0) og udlændingeloftet
+ *  (fillUnsetWage_83a1b0); klubbernes lønsum regnes igen */
+export function cmStaffWageNewGame(g: GameState): { n: number } {
+  if (!cmActive(g) || g.draft) return { n: 0 };
+  const unset = Object.values(g.staff).filter((s) => s.club && !s.cmExtra && g.clubs[s.club] && Math.round(s.wage * GBP) === -1).sort((a, b) => a.id - b.id);
+  if (!unset.length) return { n: 0 };
+  const clubs = new Set(unset.map((s) => s.club));
+  const W = buildWageMem(g, clubs);
+  let n = 0;
+  for (const s of unset) {
+    const st = W.npStaffOf?.(s) ?? 0;
+    const w = st ? fillUnsetWage_83a1b0(W.c, st) : null;
+    s.wage = w === null ? 0 : w / GBP;
+    if (w !== null) n++;
+  }
+  const idx = wageIdx(g);
   for (const cid of clubs) { const c = g.clubs[cid], r = g.cmFin?.[cid]; if (c && r) updateWageBill(g, c, r, idx); }
   return { n };
 }

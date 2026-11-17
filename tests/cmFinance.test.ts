@@ -52,7 +52,8 @@ describe('originalens økonomi (cmFinance)', () => {
     // juli: tre søndage (15/7, 22/7, 29/7) og månedens poster
     expect(r.lm[K.wages]).toBeGreaterThan(2 * r.wb);
     expect(r.lm[K.merch]).toBeGreaterThan(1_000_000);          // originalen 1,76M
-    expect(r.lm[K.interestIn]).toBeGreaterThan(0);
+    // renterne (0x59c516): ind ved positiv saldo, ud ved negativ (computerens køb i juli kan bringe klubben i minus)
+    expect(r.lm[K.interestIn] + r.lm[K.interestOut]).toBeGreaterThan(0);
     expect(r.lm[K.maintenance]).toBeGreaterThan(100_000);       // originalen 173K
     expect(r.lm[K.seasonTickets]).toBe(0);                      // første sæson: ingen sæsonkortindtægt
     expect(r.st).toBeGreaterThan(30_000);                        // originalen 37.896 kortholdere
