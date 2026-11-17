@@ -32,6 +32,7 @@ import { clubRepMem } from './cmPlayerData';
 import { STAFF_LIMITS } from './staff';
 import { bookBlock, K as CMK, GBP as GBP_CM } from './cmFinance';
 import type { GameState, Staff, StaffRole } from './types';
+import { recordStaffMove } from './staffMoves';
 
 export { cmActive };
 
@@ -322,6 +323,7 @@ export function cmStaffOffersDaily(g: GameState): void {
       from.balance += fee; from.finance.transfersIn += fee; bookBlock(g, from, CMK.sold, Math.round(fee * GBP_CM));
     }
     const role = o.role;
+    recordStaffMove(s, o.club, fee);
     s.club = o.club;
     s.role = role;
     // en cmExtra-person bliver almindelig stab i klubben

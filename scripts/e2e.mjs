@@ -303,6 +303,21 @@ async function run(look) {
     for (const bad of ['Profile', 'Jobs', 'Managers', 'Community']) if (labels.some((l) => l.trim().startsWith(bad))) throw new Error(`Manager-hubben viser ${bad}, som ikke findes i CM 01/02`);
     if (!labels.some((l) => /Hall of Fame|Rankings?/i.test(l)) && !labels.some((l) => /History/i.test(l))) throw new Error('Manager-hubben mangler History/Hall of Fame: ' + labels.join('|'));
   });
+  if (look === 'klassisk') await step('Club → Transfers: alle View-punkter (klassisk, #28)', async () => {
+    await go({ name: 'club', state: { cview: 'transfers' } });
+    const want = ['Players In', 'Players Out', 'Future Transfers', 'Loans In', 'Loans Out', 'Staff In', 'Staff Out'];
+    for (const w of want) {
+      await page.locator('.cx-tools .cx-drop-btn', { hasText: 'View' }).first().click();
+      const items = (await page.locator('.cx-drop-pop [role=menuitemcheckbox]').allTextContents()).map((x) => x.replace('✓', '').trim());
+      if (items.join('|') !== want.join('|')) throw new Error(`View-menuen på Club → Transfers: ${items.join('|')}`);
+      await page.locator('.cx-drop-pop [role=menuitemcheckbox]', { hasText: new RegExp(`^\\s*✓?\\s*${w}$`) }).click();
+      const sub = await page.locator('.cx-subtitle[data-ct-view]').textContent();
+      if (!sub.startsWith(w)) throw new Error(`Titlen for ${w} er "${sub}"`);
+    }
+    await page.locator('.cx-tools .cx-drop-btn', { hasText: 'View' }).first().click();
+    await page.locator('.cx-drop-pop [role=menuitemcheckbox]', { hasText: 'Future Transfers' }).click();
+    if (/Season/.test(await page.locator('.cx-subtitle[data-ct-view]').textContent())) throw new Error('Future Transfers viser en sæson i titlen');
+  });
   if (look === 'klassisk') await step('Last Match uden kampe (klassisk)', async () => {
     await go({ name: 'club' });
     await page.waitForTimeout(300);

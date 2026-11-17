@@ -389,6 +389,8 @@ export interface Staff {
   career?: { club: number; from: string; to?: string; why?: 'sacked' | 'poached' | 'left' }[];
   trophies?: number;
   form?: number;
+  /** de seneste klubskifter (Staff In/Out på klubbens Transfers-skærm) – staffMoves.ts */
+  moves?: PlayerMove[];
   /** tidligere spiller (evt. legende i en klub) */
   exPlayer?: { pid: number; legendOf?: number };
   /** ikke-spillerpostens omdømmer [+8 hjemme, +0xa aktuel, +0xc verden] i hukommelsens skala (1..10000) – cmBoard.ts (kun den originale database) */

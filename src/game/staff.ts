@@ -4,6 +4,7 @@ import { addDays } from './dates';
 import { isMultiplayer, ownerOf, withHuman } from './humans';
 import { hash01 } from './rng';
 import type { Staff, StaffRole } from './types';
+import { recordStaffMove } from './staffMoves';
 
 export const STAFF_LIMITS: Record<StaffRole, number> = { manager: 0, assistant: 1, coach: 7, physio: 3, scout: 7 }; // CM 01/02: op til 7 scouts (club.dat)
 
@@ -93,6 +94,7 @@ function doHire(id: number, wage?: number): HireResult {
   } else {
     addNews({ cat: 'general', key: 'staff.hired', params: { name: `${s.first} ${s.last}`, role: s.role } });
   }
+  recordStaffMove(s, club.id, poached ? poachFee(s) : 0);
   s.club = club.id;
   s.assignment = null;
   s.wage = wage ?? Math.round(s.wage * (poached ? 1.1 : 1));
@@ -109,6 +111,7 @@ export function fireStaff(id: number): number {
   const pay = s.wage * 12;
   club.balance -= pay;
   club.finance.other += pay;
+  recordStaffMove(s, 0);
   s.club = 0;
   s.assignment = null;
   return pay;

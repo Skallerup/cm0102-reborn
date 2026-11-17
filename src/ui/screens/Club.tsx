@@ -5,6 +5,7 @@ import { Info } from '../help';
 import { squadStrength } from '../../game/board';
 import { recentFanEvents } from '../../game/fans';
 import { gs, squad } from '../../game/state';
+import { futureTransfers } from '../../game/futureTransfers';
 import { clubStrategy } from '../../game/strategy';
 import type { Club, Staff } from '../../game/types';
 import { compName, dateFmt, money, t, natName } from '../../i18n';
@@ -120,51 +121,77 @@ function ClassicClub({ id }: { id?: number }) {
   );
 }
 
-/** Klubbens transfers som i CM 01/02: << Season · Season >> · View (Players In / Players Out / Transfer Listed), "Players In -
- *  Season 2001/02" og summen i en lilla kasse øverst til højre */
+/** Klubbens transfers som i CM 01/02 (club_screens.cpp 0x4542f0): << Season · Season >> · View (Players In / Players Out / Future Transfers /
+ *  Loans In / Loans Out / Staff In / Staff Out), "Players In - Season 2001/02" og summen i en lilla kasse øverst til højre */
+type CtView = 'in' | 'out' | 'future' | 'loansIn' | 'loansOut' | 'staffIn' | 'staffOut';
+const CT_VIEWS: CtView[] = ['in', 'out', 'future', 'loansIn', 'loansOut', 'staffIn', 'staffOut'];
 function ClubTransfers({ cid }: { cid: number }) {
   const g = useGame()!;
   const { nav } = useNav();
   const [season, setSeason] = useState(g.season);
-  const [dir, setDir] = useState<'in' | 'out' | 'listed'>('in');
-  type Row = { pid: number; date: string; from: number; to: number; fee: number; loan?: boolean };
+  const [dir, setDir] = useState<CtView>('in');
+  type Mv = { season: number; date: string; from: number; to: number; fee: number; loan?: boolean; swap?: boolean };
+  type Row = { who: number; staff: boolean; date: string; from: number; to: number; fee: number; loan?: boolean; swap?: boolean };
   const all: Row[] = [];
   let first = g.season;
-  for (const p of Object.values(g.players)) for (const m of p.moves ?? []) {
-    if (m.from !== cid && m.to !== cid) continue;
-    first = Math.min(first, m.season);
-    if (m.season === season) all.push({ pid: p.id, date: m.date, from: m.from, to: m.to, fee: m.fee, loan: m.loan });
-  }
-  const rows = all.filter((r) => (dir === 'in' ? r.to === cid : r.from === cid)).sort((a, b) => b.date.localeCompare(a.date));
-  const listed = squad(cid).filter((p) => p.listed);
-  const total = rows.reduce((a, r) => a + (r.loan ? 0 : r.fee), 0);
-  const club = (id: number) => (id ? <span className="link" onClick={() => nav({ name: 'club', id })}>{g.clubs[id]?.short ?? '?'}</span> : t('common.free'));
+  const take = (who: number, staff: boolean, moves?: Mv[]) => {
+    for (const m of moves ?? []) {
+      if (m.from !== cid && m.to !== cid) continue;
+      first = Math.min(first, m.season);
+      if (m.season === season) all.push({ who, staff, date: m.date, from: m.from, to: m.to, fee: m.fee, loan: m.loan, swap: m.swap });
+    }
+  };
+  for (const p of Object.values(g.players)) take(p.id, false, p.moves);
+  for (const s of Object.values(g.staff)) take(s.id, true, s.moves);
+  const incoming = dir === 'in' || dir === 'loansIn' || dir === 'staffIn';
+  const future = dir === 'future';
+  const rows = future ? [] : all.filter((r) => (dir.startsWith('staff') ? r.staff : !r.staff) && !!r.loan === dir.startsWith('loans') && (incoming ? r.to === cid : r.from === cid)).sort((a, b) => b.date.localeCompare(a.date));
+  const frows = future ? futureTransfers(g, cid) : [];
+  // summen: i historikken summen af beløbene; Future Transfers: ind = minus, ud = plus (en spiller tælles kun én gang)
+  let total = rows.reduce((a, r) => a + r.fee, 0);
+  if (future) { const seen = new Set<number>(); total = 0; for (const r of frows) { if (seen.has(r.pid)) continue; seen.add(r.pid); total += r.out ? r.fee : -r.fee; } }
+  const club = (id: number) => (id > 0 ? <span className="link" onClick={() => nav({ name: 'club', id })}>{g.clubs[id]?.short ?? '?'}</span> : t('cl.ct.freeTransfer'));
+  const dirClub = (id: number, key: 'cl.ct.to' | 'cl.ct.from') => {
+    if (id <= 0) return t('cl.ct.fromFree');
+    const [a, b] = t(key, { club: '\u0001' }).split('\u0001');
+    return <>{a}{club(id)}{b}</>;
+  };
   const yr = `${season}/${String((season + 1) % 100).padStart(2, '0')}`;
+  const person = (id: number, staff: boolean) => {
+    if (staff) { const s = g.staff[id]; return s ? <CxLink to={staffRoute(s)}>{s.last}{s.first ? `, ${s.first}` : ''}</CxLink> : '?'; }
+    const p = g.players[id];
+    return <span className="link" onClick={() => nav({ name: 'player', id })}>{p ? `${p.last}${p.first ? `, ${p.first}` : ''}` : '?'}</span>;
+  };
+  const feeCell = (fee: number, kind: 'free' | 'exch' | 'bos' | 'loan') => (fee > 0 ? (kind === 'exch' ? t('cl.ct.px', { fee: money(fee) }) : money(fee)) : t(`cl.ct.k.${kind}`));
+  const sign = (n: number) => (n < 0 ? `-${money(-n)}` : money(n));
   return (
     <div>
       <div className="cx-tools">
-        <button className="cx-greybtn" disabled={season <= first || dir === 'listed'} onClick={() => setSeason(season - 1)}>{t('cl.ct.prev')}</button>
-        <button className="cx-greybtn" disabled={season >= g.season || dir === 'listed'} onClick={() => setSeason(season + 1)}>{t('cl.ct.next')}</button>
+        <button className="cx-greybtn" disabled={season <= first || future} onClick={() => setSeason(season - 1)}>{t('cl.ct.prev')}</button>
+        <button className="cx-greybtn" disabled={season >= g.season || future} onClick={() => setSeason(season + 1)}>{t('cl.ct.next')}</button>
         <span className="grow" />
-        <CxDrop label={t('cl.sq.view')} align="right" items={(['in', 'out', 'listed'] as const).map((k) => ({ key: k, label: t(`cl.ct.v.${k}`), checked: dir === k, onClick: () => setDir(k) }))} />
+        <CxDrop label={t('cl.sq.view')} align="right" items={CT_VIEWS.map((k) => ({ key: k, label: t(`cl.ct.v.${k}`), checked: dir === k, onClick: () => setDir(k) }))} />
       </div>
-      <div className="cx-subtitle">{dir === 'listed' ? t('cl.ct.v.listed') : t(`cl.ct.title.${dir}`, { season: yr })}</div>
-      {dir === 'listed' ? (listed.length === 0 ? <div className="cx-empty">{authentic() ? '' : t('cl.ct.noListed')}</div> : <SquadTable players={listed} view="general" userClub={g.userClub} />) : (
-        <div className="cx-ct">
-          <div className="cx-ct-total"><span className="c-val">{money(total)}</span></div>
-          {rows.length > 0 && <div className="cx-tbl-wrap cx-listpanel"><table className="cx-tbl"><tbody>{rows.map((r, i) => {
-            const p = g.players[r.pid];
-            return (
-              <tr key={i}>
-                <td className="btn-col"><span className="cx-rowbtn">{classicDate(r.date)[1]}</span></td>
-                <td className="c-name"><span className="link" onClick={() => nav({ name: 'player', id: r.pid })}>{p ? `${p.last}${p.first ? `, ${p.first}` : ''}` : '?'}</span></td>
-                <td className="c-club">{club(dir === 'in' ? r.from : r.to)}</td>
-                <td className="c-val">{r.loan ? t('cl.ct.loan') : r.fee > 0 ? money(r.fee) : t('common.free')}</td>
-              </tr>
-            );
-          })}</tbody></table></div>}
-        </div>
-      )}
+      <div className="cx-subtitle" data-ct-view={dir}>{future ? t('cl.ct.v.future') : t('cl.ct.title', { title: t(`cl.ct.v.${dir}`), season: yr })}</div>
+      <div className="cx-ct">
+        <div className="cx-ct-total"><span className="c-val">{sign(total)}</span></div>
+        {future && frows.length > 0 && <div className="cx-tbl-wrap cx-listpanel"><table className="cx-tbl"><tbody>{frows.map((r, i) => (
+          <tr key={i} data-ct-status={r.status}>
+            <td className="c-club" style={{ whiteSpace: 'nowrap' }}>{r.status === 6 ? classicDate(r.date ?? g.date)[1] : t(`cl.ct.st.${r.status}`)}</td>
+            <td className="c-name">{person(r.pid, false)}</td>
+            <td className="c-club">{dirClub(r.other, r.out ? 'cl.ct.to' : 'cl.ct.from')}</td>
+            <td className="c-val">{feeCell(r.fee, r.kind === 1 ? 'exch' : r.kind === 4 ? 'bos' : 'free')}</td>
+          </tr>
+        ))}</tbody></table></div>}
+        {!future && rows.length > 0 && <div className="cx-tbl-wrap cx-listpanel"><table className="cx-tbl"><tbody>{rows.map((r, i) => (
+          <tr key={i}>
+            <td className="btn-col"><span className="cx-rowbtn">{classicDate(r.date)[1]}</span></td>
+            <td className="c-name">{person(r.who, r.staff)}</td>
+            <td className="c-club">{club(incoming ? r.from : r.to)}</td>
+            <td className="c-val">{feeCell(r.fee, r.swap ? 'exch' : r.loan ? 'loan' : 'free')}</td>
+          </tr>
+        ))}</tbody></table></div>}
+      </div>
     </div>
   );
 }

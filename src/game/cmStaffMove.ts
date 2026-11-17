@@ -59,6 +59,7 @@ import { cmStaffTerms } from './cmContractGame';
 import { transferNewsToMe } from './cmNewsScope';
 import { afterPlanHooks } from './cmSquadPlanGame';
 import { addDays } from './dates';
+import { recordStaffMove } from './staffMoves';
 
 const s16 = (v: number) => (v << 16) >> 16;
 const ftol = (x: number) => (Number.isFinite(x) ? Math.trunc(x) : 0) | 0;
@@ -176,6 +177,7 @@ function fireWeakStaff(g: GameState, cid: number, T: number): void {
       const cur = s.career?.[s.career.length - 1];
       if (cur && !cur.to && cur.club === cid) careerEnd(s, 'sacked');
       else (s.career ??= []).push({ club: cid, from: s.cmJoined || g.date, to: g.date, why: 'sacked' });
+      recordStaffMove(s, 0);
       s.club = 0;
       s.assignment = null;
       s.coachAreas = undefined;
@@ -219,6 +221,7 @@ export function cmStaffMovesDaily(g: GameState): void {
     if (last && !last.to && s.club) { last.to = g.date; last.why = 'poached'; }
     (s.career ??= []).push({ club: m.c, from: g.date });
     s.wage = terms?.wage ?? cmStaffDemand(s, role);
+    recordStaffMove(s, m.c, m.fee);
     s.club = m.c;
     s.role = role;
     s.assignment = null;
