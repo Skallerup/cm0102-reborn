@@ -68,8 +68,8 @@ describe('udskiftningerne i gittermotoren', () => {
     for (const e of subs) {
       const inn = rep.players.find((p) => p.id === e.p)!, out = rep.players.find((p) => p.id === e.p2)!;
       expect(inn.sub).toBe(true);
-      // båret ud skadet/udvist efter indskiftningen (sub_6d0b60/sub_6cda20 – alle udskiftninger brugt): minutterne slutter dér
-      if (inn.injured || inn.red) { expect(inn.minutes + out.minutes).toBeLessThanOrEqual(90); continue; }
+      // båret ud skadet/udvist efter indskiftningen (sub_6d0b60/sub_6cda20 – alle udskiftninger brugt), eller den udskiftede lå skadet før skiftet: minutterne slutter dér
+      if (inn.injured || inn.red || out.injured) { expect(inn.minutes + out.minutes).toBeLessThanOrEqual(90); continue; }
       expect(inn.minutes + out.minutes).toBeGreaterThanOrEqual(88);
       expect(inn.minutes + out.minutes).toBeLessThanOrEqual(92);
     }

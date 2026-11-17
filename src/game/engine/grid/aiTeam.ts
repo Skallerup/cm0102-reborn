@@ -10,9 +10,10 @@
 // spilsystemer holdes i spiltilstanden (game/cmPlayerData.ts): kampstatistikken pr. kategori 0x7c1e30 og formens nibbles (0x7c0d70), spillets
 // karaktersnit [0xb74350]+0x10/+0x18, kontraktens +0x3e/+0x3f/+0x44 (0x4ca6d0) og taktiklistens statistik (0x896290, GameState.aiTacticStats).
 // Konditionen 0x62c590, trætheden 0x62c3d0 og skaden 0x62ed70 fra originalens konditionsmodul (game/cmFitness.ts, Player.cmFit).
-// *estimeret* (findes ikke i vores spil): kontraktens flag +0x45 = 0 (sættes af systemer, der ikke er porteret), trupstatus +0x4f fra
-// Player.squadStatus (0 uden); 0x8c7260/0x8c7560 (arbejdstilladelsens kampe spillet/ikke spillet) fra cmPermit.ts; ikke-spillerpostens adresse mod 20
-// (anføreren) = id mod 20. Uden for den originale database: kondition = Player.condition, ingen træthed/skade.
+// Kontraktposten (+0x3e/+0x3f/+0x44/+0x45 og +0x4f: trupstatus i høj nibble – computerens trupplan eller Player.squadStatus – og sprognibblen,
+// cmLanguage.ts) af Player.cmContract (cmPlayerData.ts); 0x8c7260/0x8c7560 (arbejdstilladelsens kampe spillet/ikke spillet) fra cmPermit.ts.
+// *estimeret* (findes ikke uden for originalen): ikke-spillerpostens adresse mod 20 (anføreren) = id mod 20. Uden for den originale database:
+// kondition = Player.condition, ingen træthed/skade.
 
 import type { Player, Staff } from '../../types';
 import { ATTRS } from '../../attributes';
@@ -205,7 +206,7 @@ export function roleDataOf(p: Player, ctx: AiPickCtx, age: number): RoleData {
   // konditionsmodulet (cmFitness.ts): 0x62c590 (konditionen efter dagens opdatering 0x62c680), 0x62c3d0 (trætheden), 0x62ed70 (skaden)
   const fit = ctx.cm && hasGame() ? cmFitRead(gs()) : null;
   return {
-    contract: p.contract ? { b3e: c?.b3e ?? 0, b3f: c?.b3f ?? 0, b44: c?.b44 ?? 0, b45: c?.b45 ?? 0, b4f: (statusCode(p) << 4) | 10 } : null,
+    contract: p.contract ? { b3e: c?.b3e ?? 0, b3f: c?.b3f ?? 0, b44: c?.b44 ?? 0, b45: c?.b45 ?? 0, b4f: (statusCode(p) << 4) | (c?.b4f !== undefined ? c.b4f & 0xf : 10) } : null,
     condition: fit ? fit.condition(p) : Math.round((p.condition ?? 100) * 100),
     load: fit ? () => fit.fatigue(p) : () => 0,
     injury: fit ? () => fit.injury(p) : () => null,
@@ -294,31 +295,42 @@ export function aiTeamSetup(o: AiTeamInput): AiTeamResult {
 
 /** AiPickCtx for en klub af spillets tilstand (adapteren): dato, frø, managerens viste Judging Ability/Potential (0x544410 af databasens
  *  værdi og stabens CA – uden CA: værdien som den er) og ankomst (seneste karrierelinje). */
-/** Menneskets ikke-spillerpost (managerposten) i originalen: hver menneskelig manager har én (de 16 sidste stab-id'er, 0x600a50). Målt i
- *  oraklets kampspor ls20 (MG-linjen for Arsenal – oraklets menneske, der er på ferie – 18/8-2001, bit for bit brugt af låsetrinet): CA +4 = 180,
- *  PA +6 = 180, de 21 bytes +0x0e..+0x22 (de 8 interne +0x10 +0x11 +0x17 +0x18 +0x19 +0x1b +0x1e +0x21 som interne værdier) og +0x43 = 3 – samme
- *  layout som Staff.cmNp. Vist: Judging Ability 19, Judging Potential 15, Tactics 18, Attacking 17, Pressing 20. *estimeret*: at alle menneskelige
- *  managere får denne post (originalens generering af den er ikke fundet); vores menneske har ingen staffpost. */
-export const HUMAN_NP: readonly number[] = [17, 8, 6, 6, 20, 7, 15, 9, 15, 6, -24, 1, 12, 6, 10, 20, -39, 20, 20, -4, 20, 3];
-export const HUMAN_NP_CA = 180;
+/** sub_600e90(klub) (sikker, 0x600e90–0x600edf): holdets manager, når assistenten styrer en menneskeklub – kaldt af setupTeam 0x6db500
+ *  (0x6db8dd/0x6db952: klub uden landshold og 0x5fd480 = 0, eller landshold og 0x5fd6b0 = 0), som så sætter hold+0x1b = staffen og
+ *  hold+0x1f = hans ikke-spillerpost (+0x69, også NULL) før pick_team 0x6dbc50(fixture, 1). Assistenten club +0xd3, ellers blandt de 5 trænere
+ *  club +0x19f den første med ikke-spillerpost og så den med det højeste aktuelle omdømme np+0xa (word, kun når større); ingen → ingen manager.
+ *  (Oraklets ls20: Arsenals MG-linje på ferie er Pat Rice – staffpostens fødselsdag 17/4-1949 – Arsenals assistent, ikke menneskets egen post.)
+ *  Trænernes pladser følger spillets stabsrækkefølge som hukommelsen (cmWageGame.ts byRole). */
+export function holidayManager(clubId: number): Staff | undefined {
+  const g = gs();
+  const own = Object.values(g.staff).filter((s) => s.club === clubId);
+  const assistant = own.find((s) => s.role === 'assistant');
+  if (assistant) return assistant;
+  let best: Staff | undefined;
+  for (const s of own.filter((x) => x.role === 'coach').slice(0, 5)) {
+    if (!s.cmNp) continue;                                                                 // 0x600ebe: træneren uden ikke-spillerpost springes over
+    const v = (x: Staff) => (((x.cmRep?.[1] ?? (x.rep ?? 0) * 2) << 16) >> 16);
+    if (!best || v(s) > v(best)) best = s;
+  }
+  return best;
+}
 /** Klubbens manager, som gittermotoren ser ham: computerens fra g.staff; en menneskeklub, som motoren styrer (ferien – quickPlayUserMatch med
  *  aiSubs [true, true]: originalens "computeren vælger" for et menneske med assistent, 0x600a50(klub, 0, …) = 0 med ferietjekket 0x5fe040 –
- *  oraklets HU-linjer: 0 for Arsenal på ferie), får menneskets egen post (HUMAN_NP). Et menneske, der selv styrer holdet: ingen (som før). */
+ *  oraklets HU-linjer: 0 for Arsenal på ferie), får assistenten som manager (0x600e90, holidayManager); hans ikke-spillerpost (Staff.cmNp) giver
+ *  de taktiske egenskaber (gridTacOf) – uden post: ingen manager som hold+0x1f = NULL. Et menneske, der selv styrer holdet: ingen (som før). */
 export function engineManager(clubId: number, aiControlled: boolean): Staff | undefined {
   if (!hasGame()) return undefined;
   const nat = natOfClub(clubId);
-  // landsholdet (staff +0x24 = holdet, +0x28 = 5); menneskets landshold: menneskets post som på ferien (landskampene spilles uden kampskærm)
+  // landsholdet (staff +0x24 = holdet, +0x28 = 5); menneskets landshold: som ferien uden assistent – ingen manager
   if (nat !== null && gs().manager?.national?.nation !== nat) return nationalManager(gs(), nat);
-  if (nat !== null) return { id: HUMAN0_STAFF, ca: HUMAN_NP_CA, cmPa: HUMAN_NP_CA, cmNp: HUMAN_NP.slice(), tac: [], rep: 90, attrs: {}, career: [] } as unknown as Staff;
+  if (nat !== null) return undefined;                                                      // menneskets landshold uden assistent: ingen manager (hold+0x1f = NULL)
   const g = gs(), c = g.clubs[clubId];
   const st = g.staff[c?.manager ?? -1];
   if (st || !aiControlled || !c || !isHumanClub(clubId)) return st;
-  const joined = clubId === g.userClub ? g.manager.cmJoined : g.humans?.find((h) => h.userClub === clubId)?.manager.cmJoined;
-  return { id: HUMAN0_STAFF, ca: HUMAN_NP_CA, cmPa: HUMAN_NP_CA, cmNp: HUMAN_NP.slice(), tac: [],   // de taktiske egenskaber læses af cmNp (gridTacOf)
-    rep: 90, attrs: {}, career: joined ? [{ from: joined }] : [] } as unknown as Staff;
+  const a = holidayManager(clubId);
+  if (!a?.cmNp) return undefined;
+  return a.tac ? a : { ...a, tac: [] };                                                    // de taktiske egenskaber læses af cmNp (gridTacOf)
 }
-/** menneskets managerpost i motoren: et id uden for spillets stab (som cmBoard.ts' HUMAN0) – indgår i 0x6e86d0's/0x6ddab0's frø (*estimeret*) */
-const HUMAN0_STAFF = 1_000_000_000;
 
 export function aiPickCtx(clubId: number, aiControlled = false): AiPickCtx | null {
   if (!hasGame()) return null;

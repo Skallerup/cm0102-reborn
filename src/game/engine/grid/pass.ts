@@ -208,7 +208,7 @@ export interface PassCtx {
   gkCatch(d: GP, diff: number): boolean;
   /** sub_6cd490 – kun når bolden er uden for banen i åbent spil */
   ballOut(last: Side): void;
-  /** sub_70a910 (mod modstandernes mål) / sub_70c040 (mod eget mål) – ikke porteret, *estimeret* (limen) */
+  /** sub_70a910 (mod modstandernes mål) / sub_70c040 (mod eget mål) – intoGoal.ts */
   intoGoal(p: GP, D: number, own: boolean): void;
   /** sub_7103e0 */
   playerTurn(p: GP): void;
@@ -226,7 +226,7 @@ export interface PassCtx {
   /** match+0x4756 (1..4, *estimeret*) og match+1 (?) */
   weather: number;
   byte1: number;
-  /** sub_600a50(nation, 0, 1, 0, 0) for indlæg fra baglinjen ("?" – *estimeret*) */
+  /** sub_600a50(spillerens klub +0xf9, 0, 1, 0, 0) for indlæg fra baglinjen (0x6fb306): klubben styres af et menneske (limen: ctx.humanClub/ctx.ai) */
   nationOk(p: GP): boolean;
   /** fordelsreglen (notes/advantage-knock.md): sub_6bab90 (en fordel venter → dommeren dømmer intet) og sub_6bb9a0 (læg en hændelse) */
   advantagePending?(): boolean;

@@ -285,8 +285,18 @@ View Finances (der læser Bonuses fra blokken) viste 0 bonusser, selv om pengene
 21. Spillerprofilen: originalens kampstatistik pr. turnering (Non Competitive/League/Cup/Continental/International/Senior Club) og positionslinjen ("Defender (Right)").
 
 ### 4. Kampmotor
-22. De 33 *estimerede* steder i gridMatch.ts + matchSubs/adapter/aiTeam/pass: erstat med porte.
-23. Live-kampen (set kamp) vs hurtigkamp: samme motor og samme inddata – mål forskellen.
+22. De *estimerede* steder i gittermotoren – **delvis gjort 17/11** (grid/: 68 → 59 markeringer, src/game 257 → 248): MATCH_PLAYER::init's motivation
+    0x6eb54b–0x6ebcb0 helt efter koden med spillets data (`MotivationEnv`, gameInputs.ts: kontraktens C af +0x4f/+0x44, imp af modstanderens +0x80,
+    derby af klubbens rivaler, venskabskampens −10, uvennen 0x547840, managerens Motivating, stimerne 0x4a4850, den loyale spiller), feriens manager
+    = 0x600e90 (assistenten, ellers træneren med højest np+0xa – oraklets ls20-post var Pat Rice, ikke menneskets; HUMAN_NP fjernet), omdømmet i
+    duellen sub_5407e0/0x5408c0/0x53d980 af spillets data (`repView`), straffe straks efter 90 ved fixture+0x38 & 1 uden & 2 (0x6bdaf7), aiTeam's
+    sprognibble. Målt: lockstep-sporene uændret identiske; grid-season frø 1: 2,64 mål · 54/20/26 (oraklet 2,75–2,98 · 51–53 %).
+    Tilbage (bl.a.): vejret engine+0x4756/+1 (Weather 0x923010/0x923970 kræver klimatabeller og den daglige vejrmodel), Work Rate-leddet [esp+0x24]
+    i laboratoriet, menneskets udskiftnings-/taktiktidspunkt (kampskærmens match_screens.cpp ikke læst), bænkens målmandsmaske, gittercellernes
+    startrækkefølge, assisten, anførerens adresse mod 20, laboratoriets reserveværdier (tilskuere/kapacitet/dommer), zonevalgets ry uden cmRep,
+    kontraktposten for holdets samspil, stabens pensionsmelding (0x7a7eb0 for manageren = nej).
+23. Live-kampen (set kamp) vs hurtigkamp – **gjort 17/11**: engine+0x8ebb (0x6b53ba) kun for kampen på kampskærmen; ferien/quickPlayUserMatch
+    (begge hold computerstyrede) og computerens kampe med kommentar er nu "ikke set" (adapter.ts).
 24. Kampe i ikke-valgte lande/Europa/venskabskampe/landskampe kører stadig zonemotoren.
 
 

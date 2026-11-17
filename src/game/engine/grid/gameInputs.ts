@@ -26,7 +26,8 @@ import { ageOn } from '../../dates';
 import { ATTRS } from '../../attributes';
 import { gs, hasGame } from '../../state';
 import { isHumanClub } from '../../humans';
-import { clubRepMem } from '../../cmPlayerData';
+import { clubRepMem, statusCode } from '../../cmPlayerData';
+import { NATION_7F } from '../../cmKeyIds';
 import { playerRecord, captainInputOf, engineManager, joinedOf, type AiPickCtx } from './aiTeam';
 import type { Staff } from '../../types';
 import { captainBase, staffIntrinsic, staffShown } from './roleScore';
@@ -37,7 +38,8 @@ import type { AiModeInput } from './aiMode';
 import type { Fixture, GameState } from '../../types';
 import { daysBetween } from '../../dates';
 import { npShown } from '../../cmStaffInit';
-import { captainRel, matchRelOf } from '../../cmRelations';
+import { captainRel, dislikesPerson, matchRelOf, personKey } from '../../cmRelations';
+import type { MotivationEnv } from './gridMatch';
 import { natOfClub } from '../../cmVirtual';
 
 /** landskampens fixture-koder (international.ts intlCodes): +0x3a, +0x30, +0x3c (neutral bane) og turneringens id (−1 = ingen) */
@@ -131,6 +133,85 @@ export function matchValuesEnvOf(p: Player, side: GameMatchSide, fx: GameFixture
   };
 }
 
+/** MATCH_PLAYER::init 0x6eb54b–0x6ebcb0's data for spilleren p (gridMatch.ts MotivationEnv): kontraktposten sub_4cf5f0 (Player.cmContract, kun
+ *  med kontrakt med klubben), klubbernes +0x80, comp +0x69, rivalerne club +0xb3/+0xb7/+0xbb (GameState.cmCrowd [6..8]), uvennerne 0x547840
+ *  (cmRelations.ts), holdets manager (engineManager – hold+0x1b, som 0x6db500 sætter), tabelrækken 0x4a4850 (gameTable.ts) og klagetælleren
+ *  [0xae2d14]+5 (GameState.cmClubUnhappy). fixture+0x40 = 1 som i alle oraklets klubkampe (6ec010's fx40, matchValuesEnvOf); 0x7a7eb0 for
+ *  manageren = nej (stabens pensionsmelding findes ikke i spillet). */
+const ROWS = new Map<string, ReturnType<typeof gameLeagueRow>>();
+function motivationEnvOf(g: GameState, p: Player, own: GameMatchSide, opp: GameMatchSide, fx: GameFixtureInfo, compId: string | undefined): MotivationEnv {
+  const k = p.contract && p.club === own.club && !p.loan ? p.cmContract : undefined;
+  // 0x4cf5f0: +0x4f >> 4 (trupstatus) → 0,3/0,5/0,75/3,0, × (1 + 0,005·+0x44); uden post 1,0
+  const st = k ? statusCode(p) : -1;
+  const C = k ? (st === 1 ? 0.3 : st === 2 ? 0.5 : st === 3 ? 0.75 : 3.0) * (s8(k.b44) * 0.005 + 1.0) : 1.0;
+  const rv = g.cmCrowd?.[own.club];
+  const derby = !!rv && [rv[6], rv[7], rv[8]].includes(opp.club);
+  const oppMgr = g.staff[g.clubs[opp.club]?.manager ?? -1];
+  const mgr = engineManager(own.club, !own.human);
+  const div = g.clubs[own.club]?.league;
+  const hasDivision = !!div && g.comps[div]?.type === 'league';
+  const ownLeague = hasDivision && compId === div;
+  let lr: ReturnType<typeof gameLeagueRow> = null;
+  if (ownLeague && k && s8(k.b3d) > 0x19) {                                                // tabellen ændres ikke i kampen – én gang pr. klub og dag
+    const played = g.comps[div!].table.reduce((n, r) => n + r.p, 0);
+    const key = `${g.date}|${div}|${own.club}|${played}`;
+    if (!ROWS.has(key)) { if (ROWS.size > 200) ROWS.clear(); ROWS.set(key, gameLeagueRow(g, div!, own.club)); }
+    lr = ROWS.get(key) ?? null;
+  }
+  return {
+    skip: !!p.virtual, C, fx40: true, oppRep: opp.clubRep, compRep: fx.comp?.rep ?? 0, derby, inComp: fx.fx3a !== 1 && fx.fx3a !== 9,
+    dislikesOppMgr: !!oppMgr && dislikesPerson(p, personKey(oppMgr)), human: own.human,
+    motivating: mgr?.cmNp ? npShown(mgr, 0x1b) : null,
+    contract: k ? { b3d: k.b3d, b44: k.b44, b45: k.b45 >>> 0, b4e: k.b4e ?? 0 } : null,
+    hasDivision, ownLeague, row: lr ? { win: lr.runs[0], unbeaten: lr.runs[2] } : null,
+    loyalty: s8(Math.round(sh(p, 'loyalty'))), pressure: s8(Math.round(sh(p, 'pressure'))), prof: s8(Math.round(sh(p, 'professionalism'))),
+    mgrRetiring: false, clubUnhappy: g.cmClubUnhappy?.[own.club] ?? 0,
+  };
+}
+
+const NAT7F_MAP = new Map(NATION_7F);
+const BRITISH = new Set(['England', 'Scotland', 'Wales', 'Northern Ireland', 'Republic of Ireland']);   // 0x9cf2e4/45c/510/3e4/2dc
+const OCEANIA = new Set(['Australia', 'New Zealand']);                                                  // 0x9cf224/0x9cf3f4
+/** 0x53d740(person, 0) (sikker – cmValue.ts euCitizen_53d740 uden landet): en af hans nationer har +0x7f = 2, eller han er schweizer [0x9cf4ac] */
+function euCitizen(g: GameState, p: Player): boolean {
+  const n = (i: number | undefined) => (i === undefined || i < 0 ? undefined : g.nations[i]?.name);
+  const a = n(p.nation), b = n(p.cmNation2);
+  return (!!a && NAT7F_MAP.get(a) === 2) || a === 'Switzerland' || (!!b && NAT7F_MAP.get(b) === 2);
+}
+/** 0x53d980(person, land, 1) (sikker – cmValue.ts knowsNation_53d980): 0 = landet er hans (nationen, den anden nationalitet, de britiske/irske,
+ *  Australien/New Zealand, en ukrainer i Italien, en ikke-EU-borger i Portugal med kontrakt fra før 1998), 1 = ikke */
+function knowsNation(g: GameState, p: Player, nat: number | undefined): number {
+  if (nat === undefined || nat < 0) return 1;
+  if (p.nation === nat || p.cmNation2 === nat) return 0;
+  const nm = g.nations[nat]?.name ?? '', a = g.nations[p.nation]?.name ?? '', b = p.cmNation2 !== undefined && p.cmNation2 >= 0 ? g.nations[p.cmNation2]?.name : undefined;
+  if (BRITISH.has(nm) && (BRITISH.has(a) || (!!b && BRITISH.has(b)))) return 0;
+  if (OCEANIA.has(nm) && OCEANIA.has(a)) return 0;
+  if (nm === 'Italy' && a === 'Ukraine') return 0;
+  if (nm === 'Portugal' && !euCitizen(g, p) && p.contract && p.club) {
+    const start = p.contract.cmStart ?? joinedOf(p);                                            // kontraktens +0x25/+0x27 mod 1/1-1998 (0x549f70)
+    if (start && +start.slice(0, 4) < 1998) return 0;
+  }
+  return 1;
+}
+/** sub_5408c0(A, B) (sikker, 0x5408c0–0x540977) af spillets data: 0 samme klub eller klubber i samme land, 2 samme nation eller B kender A's
+ *  nation (0x53d980), 3 B kender A's klubs land – eller B er ikke et menneske og A's hjemmeomdømme +9 + B's klubs +0x80 ≥ 14000 – ellers 4 */
+export function repView5408c0(g: GameState, a: Player, b: Player): number {
+  const ca = a.club ? g.clubs[a.club] : undefined, cb = b.club ? g.clubs[b.club] : undefined;
+  if (ca) {
+    if (a.club === b.club) return 0;
+    if (cb && ca.nation === cb.nation) return 0;
+  }
+  if (a.nation === b.nation) return 2;
+  if (!knowsNation(g, b, a.nation)) return 2;
+  if (ca && !knowsNation(g, b, ca.nation)) return 3;
+  if (cb) {
+    const rec = playerRecord(a);
+    const r9 = ((rec[9] | (rec[10] << 8)) << 16) >> 16;
+    if (r9 + ((clubRepMem(g, b.club!) << 16) >> 16) >= 0x36b0) return 3;
+  }
+  return 4;
+}
+
 /** sub_6ec010's anførerdata for kampspilleren q (0x6ebd70 af spillets data, +5/+0x39/+0x44, alder, Loyalty, Professionalism, dage i klubben) */
 export function captainEnvOfPlayer(p: Player, pos: number, ctx: AiPickCtx, clubRep: number, date: string): MatchValuesCaptain {
   const ci = captainInputOf(p, ctx, clubRep);
@@ -186,6 +267,10 @@ export function gameInputsCtx(home: number, away: number, o: { compId?: string; 
       if (!e) { e = matchValuesEnvOf(q.src, sides[q.side], fx, keys, sides[1 - q.side].club); envs.set(k, e); }
       return e;
     },
+    // MATCH_PLAYER::init's motivation 0x6eb54b–0x6ebcb0 (gridMatch.ts initMotivation) af spillets data
+    // sub_5408c0 (carrierRep, challenge.ts): kategorien for A's omdømme set fra B
+    repView: g ? (a: Player, b: Player) => repView5408c0(g, a, b) : undefined,
+    motivationEnv: g ? (p: Player, s: 0 | 1) => motivationEnvOf(g, p, sides[s], sides[1 - s], fx, compId) : undefined,
     captainRel,
     // anførerdataene ændres ikke i kampen (undtagen positionsordet) – gemt pr. spiller
     captainEnvOf: (q: { side: number; src: Player; pos: number } | null | undefined) => {

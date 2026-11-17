@@ -139,8 +139,9 @@ export class GridSim implements LiveSim {
       subs: [subs, subs],
       needsWinner: opts.needsWinner,
       // engine+0x8ebb: originalen sætter den kun for kampen på kampskærmen (init_match's 4. argument fra match_screens.cpp, 0x6b53ba) –
-      // her menneskets kamp med kommentar (den, der vises live); computerens kampe og laboratoriet kører som oraklet (0)
-      watched: !!opts.commentary,
+      // de øvrige kaldere (dagens kampe 0x6b4af2, 0x6b5ca7, 0x6b6b71, 0x84c3e8) giver 0. Her: kampen med kommentar, hvor et menneske styrer
+      // mindst ét hold (createLiveMatch); ferien (quickPlayUserMatch, begge hold computerstyrede), computerens kampe og laboratoriet: 0
+      watched: !!opts.commentary && !(this.ai[0] && this.ai[1]),
       // spillets egne inddata (gameInputs.ts): spiller-/staffposterne, sub_6ec010's omgivelser, klubbernes omdømme club +0x80, fixture-posten
       ...(() => { const f = opts.fixtureId !== undefined ? gs().fixtures[opts.fixtureId] : undefined;
         return gameInputsCtx(home.club, away.club, { compId: f?.comp, stage: f?.stage, date: gs().date, fixtureId: opts.fixtureId, ai: [this.ai[0], this.ai[1]], intl: opts.intl }); })(),

@@ -200,12 +200,18 @@ export const CH_DEBUG: { on: boolean; c: Record<string, number> } = { on: false,
 const cdbg = (k: string) => { if (CH_DEBUG.on) CH_DEBUG.c[k] = (CH_DEBUG.c[k] ?? 0) + 1; };
 
 /**
- * sub_5407e0(A, B, 0) (0x54085f–0x5408bf) med sub_5408c0(A, B): A's omdømme (spillerpost +9/+0xb/+0xd) set fra B. Samme klub eller klubber i
- * samme land (+0x39 → +0x53) → +0xb; samme nationalitet (+0x1a) → +9; resten (0x53d980's sproggrupper/anden nationalitet, kategori 1/3/4) er
- * ikke porteret – *estimeret* +0xd (verden). I hukommelsen er værdierne spilstartens ×50 (aiTeam.ts' konvention); låsetrinstesten har dem rå.
+ * sub_5407e0(A, B, 0) (0x54085f–0x5408bf, sikker) med sub_5408c0(A, B): A's omdømme (spillerpost +9/+0xb/+0xd) set fra B – kategori 0 → +0xb,
+ * 2 → +9, 4 → +0xd, 3 → trunc(+0xd/2) + trunc(+9/2). Kategorien af spillets data (m.repView – gameInputs.ts repView5408c0: klubberne,
+ * nationerne og 0x53d980's landegrupper); uden (laboratoriet): samme klubland → +0xb, samme nation → +9, ellers +0xd. I hukommelsen er
+ * værdierne spilstartens ×50 (aiTeam.ts' konvention); låsetrinstesten har dem rå.
  */
 export function carrierRep(m: GridMatchState, a: GP, b: GP): number {
   const r = a.src.cmRepMem ? a.src.cmRepMem.map((v) => v * 50) : a.src.cmRep ?? [0, 0, 0];
+  const w = (v: number) => (v << 16) >> 16;
+  if (m.repView) {
+    const k = m.repView(a.src, b.src);
+    return k === 0 ? w(r[1]) : k === 2 ? w(r[0]) : k === 3 ? w(Math.trunc(w(r[2]) / 2) + Math.trunc(w(r[0]) / 2)) : w(r[2]);
+  }
   if (m.nations[a.side] === m.nations[b.side]) return (r[1] << 16) >> 16;
   if (a.src.nation === b.src.nation) return (r[0] << 16) >> 16;
   return (r[2] << 16) >> 16;

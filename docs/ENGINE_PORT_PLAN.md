@@ -3,6 +3,11 @@
 *2026-11-10. Ejeren har (som Bosman Editions forfatter) tilladelse til at bruge så meget af originalens motor som muligt.
 Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.md`, byggestenene: `GRID_ENGINE.md`.*
 
+## Gittermotorens gæt, runde 17/11 (se ORIGINAL_PARITY.md punkt 22–23)
+- **Porteret:** motivationen 0x6eb54b–0x6ebcb0 (gridMatch.ts `initMotivation` + `MotivationEnv`, gameInputs.ts `motivationEnvOf`), feriens manager
+  0x600e90 (aiTeam.ts `holidayManager`), sub_5408c0/0x53d980 (gameInputs.ts `repView5408c0`, challenge.ts `carrierRep`), 0x6bdaf7 (straffe uden
+  forlænget), engine+0x8ebb kun på kampskærmen (adapter.ts). Laboratoriet (uden spillets data) beholder de gamle forenklinger; lockstep uændret.
+
 ## Priserne (2026-11-15, kun original DB i ægte tilstand – `src/game/cmAwards.ts`, `ui/screens/AwardsClassic.tsx`, noter `~/cm0102-engine/notes/awards.md`)
 
 - **Porteret:** EnglandAwards 0x5788c0/0x579610/0x579900 (26 priser uden Conference), MONTH_RATINGS 0x767ee0/0x767fa0/0x768130 (snit, min 3→0
