@@ -46,7 +46,7 @@ import './cmNatTeams';                                          // landstrænern
 import './cmPrerunMatches';                                      // forkørslens konkurrencekampe (registerPrerun 'matches')
 import './cmFriendly';                                              // forkørslens venskabskampe (registerPrerun 'comps1')
 import { cmRelNewGame } from './cmRelations';
-import { cmFinanceNewGame } from './cmFinance';
+import { cmClubDataFill_829960, cmFinanceNewGame } from './cmFinance';
 import { cmContractsNewGame } from './cmContractInit';
 import { cmContractEnd } from './cmContractEnd';
 import { cmPermitNewGame } from './cmPermit';
@@ -536,6 +536,8 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   setupSeasonComps(season, {});
   // (16/11) sæsonskiftet pr. land (cmSeason.ts): de spilbare lande med egen sæsondag (Norge, Sverige, Japan …) starter i spillets første år
   if (cmSeasonOn(g)) for (const n of g.activeNations) if (!cmMainNation(g, n)) (g.cmNatSeason ??= {})[n] = season;
+  // create_game 0x82992b: klubbernes manglende omdømme, tilskuertal og træningsanlæg (cmFinance.ts – kun den originale database i ægte tilstand)
+  if (cm) cmClubDataFill_829960(g, cm, seed);
   // originalens bestyrelse: init_club_board_records 0x68f130 på databasens dato (cmBoardGame.ts – kun den originale database i ægte tilstand)
   cmBoardInit(g, cm?.cmRaw?.chairBoard, cm?.cmRaw?.nationBoard);
 

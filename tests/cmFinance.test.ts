@@ -94,6 +94,23 @@ describe('originalens økonomi (cmFinance)', () => {
     expect(rb.ty[K.bonuses] - bon2).toBe(2 * Math.round(1000 * 0.86));
   });
 
+  it('create_game 0x82992b: manglende tilskuertal/træningsanlæg udfyldes af omdømmet (Brasilien, Peru …)', () => {
+    const w = load('world-original.json');
+    const raw = JSON.stringify(w.cmRaw?.crowd);
+    const g = start(w, 'Arsenal', 'authentic');
+    const club = (n: string) => Object.values(g.clubs).find((c) => c.name === n)!;
+    // oraklet (d323): Alianza Lima (omdømme 5500, club.dat +115 = 0) har billetindtægt 5 × 415.937 = 5.500 · 15.125 · 0,005 → tilskuertal 15.125
+    expect(g.cmCrowd![club('Club Alianza Lima').id][0]).toBe(15125);
+    // Flamengo: 0 i databasen → rep²/2000
+    const fl = club('Clube de Regatas do Flamengo').id, rep = g.cmClubRep![fl];
+    expect(g.cmCrowd![fl][0]).toBe(Math.max(Math.trunc((rep * rep) / 2000), 250));
+    expect(g.cmCrowd![fl][2]).toBeGreaterThanOrEqual(Math.max(Math.trunc((rep * rep) / 1000), 12500));
+    for (const v of Object.values(g.cmCrowd!)) expect(v[0]).toBeGreaterThan(0);
+    for (const c of Object.values(g.clubs)) if (g.cmFin?.[c.id]) { expect(c.facilities).toBeGreaterThanOrEqual(1); expect(c.facilities).toBeLessThanOrEqual(20); }
+    // world-filens rækker er urørte (de deles mellem spil)
+    expect(JSON.stringify(w.cmRaw?.crowd)).toBe(raw);
+  });
+
   it('den moderne database og det udvidede spil har ingen cmFin', () => {
     expect(start(load('world-original.json'), 'Arsenal').cmFin).toBeUndefined();
     expect(start(load('world.json'), 'Arsenal', 'authentic').cmFin).toBeUndefined();

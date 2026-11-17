@@ -198,6 +198,30 @@ export function initForClub(g: GameState, c: Club, dbBal: number, rand: (n: numb
   return { bal: ftol(x), status };
 }
 
+/** create_game 0x828110 (0x82992b–0x829afe, løkken over hukommelsens klubber lige efter indlæsningen): manglende klubdata udfyldes –
+ *  omdømmet +0x80 ≤ 0 → rand(4000) + 1; tilskuertallet +0x73 ≤ 0 → max(rep²/2000, 250); minimum +0x77 ≤ 0 → max(rep²/10000, 75);
+ *  maksimum +0x7b ≤ 0 → max(rep²/1000, 12500) + rand(7500); træningsanlægget +0x7f uden for 1–20 → rep/500 klemt til 1–20
+ *  (landsholdene 0x53b900 har deres egne tal – de er ikke klubber her). Uden udfyldningen havde 501 klubber (bl.a. alle brasilianske) tilskuertal 0
+ *  og dermed ingen billet-/merchandiseindtægt (0x59c4ba, 0x59b7e0), men fuld løn; i oraklet har fx Flamengo £7,7 mio. i billetindtægt 2001/02.
+ *  Kun den originale database i ægte tilstand (newgame.ts, før bestyrelsen 0x68f130 og økonomien 0x5961d0, som læser tallene). */
+export function cmClubDataFill_829960(g: GameState, world: CMWorld, seed: number): void {
+  if (!cmActive(g) || !g.cmCrowd || !g.cmClubRep) return;
+  for (const [k, cr] of Object.entries(g.cmCrowd)) {
+    const cid = +k;
+    const rand = cmRand(seed, cid, 0x829960);
+    let rep = (g.cmClubRep[cid] << 16) >> 16;
+    if (rep <= 0) { rep = rand(4000) + 1; g.cmClubRep[cid] = rep; }
+    const r2 = rep * rep;
+    if (cr[0] <= 0) cr[0] = Math.max(Math.trunc(r2 / 2000), 250);
+    if (cr[1] <= 0) cr[1] = Math.max(Math.trunc(r2 / 10000), 75);
+    const stat = g.cmClubStat?.[cid];
+    if (stat) { const n = stat.slice() as typeof stat; n[1] = cr[1]; g.cmClubStat![cid] = n; }   // samme felt (+0x77, club.dat 119); kopi – world-filens række deles
+    if (cr[2] <= 0) cr[2] = Math.max(Math.trunc(r2 / 1000), 12500) + rand(7500);
+    const c = g.clubs[cid], fac = world.clubFinance?.[cid]?.[2];
+    if (c && fac !== undefined && !(fac >= 1 && fac <= 20)) c.facilities = Math.min(20, Math.max(1, Math.trunc(rep / 500)));
+  }
+}
+
 /** spillets nye spil: posterne og startsaldoen for alle klubber (newgame.ts, efter staben – kun cmActive) */
 export function cmFinanceNewGame(g: GameState, world: CMWorld, seed: number): void {
   if (!cmActive(g) || g.draft || !world.cmRaw?.fin) return;
