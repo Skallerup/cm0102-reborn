@@ -240,7 +240,7 @@ const keptPlayers = new Set(w.players.map((p) => p[F.id] as number));
 for (const k of Object.keys(w.ratings)) if (!keptPlayers.has(Number(k))) delete w.ratings[Number(k)];
 for (const k of Object.keys(w.clubRep)) if (!keptClubs.has(Number(k))) delete w.clubRep[Number(k)];
 for (const k of Object.keys(w.clubColors)) if (!keptClubs.has(Number(k))) delete w.clubColors[Number(k)];
-if (w.cmRaw) { if (!ORIGINAL) delete w.cmRaw; else for (const t of [w.cmRaw.clubRep, w.cmRaw.clubStat ?? {}, w.cmRaw.crowd ?? {}, w.cmRaw.fin ?? {}, w.cmRaw.chair ?? {}, w.cmRaw.chairBoard ?? {}] as Record<number, unknown>[]) for (const k of Object.keys(t)) if (!keptClubs.has(Number(k))) delete t[Number(k)]; }
+if (w.cmRaw) { for (const t of [w.cmRaw.clubRep, w.cmRaw.clubStat ?? {}, w.cmRaw.crowd ?? {}, w.cmRaw.fin ?? {}, w.cmRaw.chair ?? {}, w.cmRaw.chairBoard ?? {}] as Record<number, unknown>[]) for (const k of Object.keys(t)) if (!keptClubs.has(Number(k))) delete t[Number(k)]; }
 // stab: kun i de klubber, der er med (andre klubbers folk bliver ledige, hvis de er gode nok – CA 100+); datoerne skubbes som spillernes
 if (w.staff) {
   const shown = new Set(w.clubs.filter((c) => { const l = w.leagues.find((x) => x.id === c[4]); return l && !l.hidden; }).map((c) => c[0] as number));
@@ -325,8 +325,18 @@ if (existsSync(out)) {
   if (!existsSync(backup)) { copyFileSync(out, backup); console.error('gemte tidligere database som', backup); }
 }
 
+// 2026/27 (17/11, MODERN_PARITY): originalens rå værdier (cmRaw – klub-/landsomdømme, turneringernes omdømme, tilskuerposterne, byerne,
+// præferencerne …) til originalens logik i ægte tilstand (cmLogic, fx gittermotoren) i en separat fil world-cm.json, så world.json kan blive i
+// appens offline-cache (højst 10 MB); ui/world.ts henter den med world.json og lægger den på som CMWorld.cmRaw
+const cmOut = out.replace(/world([^/]*)\.json$/, 'world$1-cm.json');
+const cmSide = !ORIGINAL && w.cmRaw && cmOut !== out ? w.cmRaw : null;
+if (cmSide) delete w.cmRaw;
 writeFileSync(out, JSON.stringify(w));
 const kb = Math.round(statSync(out).size / 1024);
+if (cmSide) {
+  writeFileSync(cmOut, JSON.stringify({ source: w.source, cmRaw: cmSide }));
+  console.error(`cmRaw (originalens logik i ægte tilstand) -> ${cmOut} (${Math.round(statSync(cmOut).size / 1024)} KB)`);
+}
 
 // ---- Spillerkarrierer (staff_history.dat) → en separat fil, der først hentes, når en profil åbnes.
 // Post (17 bytes): id (4) · person-id (4) · sæsonens startår (2) · klub (4) · leje (1) · kampe (1) · mål (1).
@@ -382,7 +392,8 @@ if (resolve(dirname(out)) === resolve('public/data')) {
   const sha = (f: string) => createHash('sha256').update(readFileSync(f)).digest('hex');
   const src = dir.includes('.orig-db/') ? dir.slice(dir.indexOf('.orig-db/')) : dir;
   log[basename(out)] = { source: src.replace(/\/+$/, ''), season: SEASON, ...(process.env.NO_LEGACY ? { noLegacy: true } : {}), sha256: sha(out),
-    ...(existsSync(careersOut) && careersOut !== out ? { careers: basename(careersOut), careersSha256: sha(careersOut) } : {}), reproducible: true };
+    ...(existsSync(careersOut) && careersOut !== out ? { careers: basename(careersOut), careersSha256: sha(careersOut) } : {}),
+    ...(cmSide ? { cm: basename(cmOut), cmSha256: sha(cmOut) } : {}), reproducible: true };
   writeFileSync(logFile, JSON.stringify(Object.fromEntries(Object.entries(log).sort(([a], [b]) => a.localeCompare(b))), null, 2) + '\n');
   console.error(`byggeloggen: ${logFile} (${basename(out)})`);
 }

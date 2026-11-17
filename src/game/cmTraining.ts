@@ -15,11 +15,12 @@ import type { CmSchedule, CoachArea, GameState, Player, Staff } from './types';
 import { staffShown } from './engine/grid/roleScore';
 import { ATTRS } from './attributes';
 import { shownFromInternal, CM_INT_OFFSETS, normaliseInternals } from './playerInit';
-import { cmActive } from './cmPlayerData';
+import { cmActive, cmLogic } from './cmPlayerData';
 
-/** De 18 viste af Player.cmInt og CA (originalens invariant); intet uden cmInt eller uden for den originale database i ægte tilstand. */
+/** De 18 viste af Player.cmInt og CA (originalens invariant); intet uden cmInt eller uden for en CM-database i ægte tilstand (cmLogic – på 2026/27
+ *  følger de viste CA'en fra vores udvikling, som på den originale database før 0x5ce2d0 blev porteret). */
 export function cmIntSync(g: GameState, p: Player): void {
-  if (!p.cmInt || !cmActive(g)) return;
+  if (!p.cmInt || !cmLogic(g)) return;
   shownFromInternal(p.attrs, p.cmInt, Math.trunc(p.ca), p.pos[0]);
 }
 

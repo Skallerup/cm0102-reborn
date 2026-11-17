@@ -23,7 +23,7 @@
 // Kun den originale database i ægte tilstand (cmActive). Tilfældighederne trækkes af egne talrækker (cmRand) – spillets rng røres ikke.
 import type { Club, GameState, Player, Staff } from './types';
 import { ATTRS } from './attributes';
-import { cmActive, cmRand, setRelFlagHook } from './cmPlayerData';
+import { cmActive, cmLogic, cmRand, setRelFlagHook } from './cmPlayerData';
 import { ageOn } from './dates';
 import { isHumanClub } from './humans';
 
@@ -148,7 +148,8 @@ function personIndex(g: GameState): Map<number, Person> {
 /** Spilstarten: præferenceposterne og klubbernes personer fra databasen; et id, der ikke er indlæst (personen eller klubben findes ikke i
  *  spillet), bliver 0 på sin plads (originalens indlæsning slår id'et op i hukommelsens tabel) */
 export function cmRelNewGame(g: GameState, prefs: Record<number, number[]> | undefined, clubPrefs: Record<number, number[]> | undefined): void {
-  if (!cmActive(g) || !prefs) return;
+  // databasens præferencer gælder også 2026/27 i ægte tilstand (cmLogic – gittermotorens kampforhold); den daglige 0x5d6d10 er 2001-verdenens
+  if (!cmLogic(g) || !prefs) return;
   const persons = personIndex(g);
   const club = (id: number) => (id && g.clubs[id] ? id : 0);
   const person = (id: number) => (id && persons.has(id) ? id : 0);

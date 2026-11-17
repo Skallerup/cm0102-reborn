@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-type Entry = { source: string; season: number; noLegacy?: boolean; sha256: string; careers?: string; careersSha256?: string; reproducible: boolean; note?: string };
+type Entry = { source: string; season: number; noLegacy?: boolean; sha256: string; careers?: string; careersSha256?: string; cm?: string; cmSha256?: string; reproducible: boolean; note?: string };
 const LOG = JSON.parse(readFileSync('scripts/data/world-builds.json', 'utf8')) as Record<string, Entry>;
 const sha = (f: string) => createHash('sha256').update(readFileSync(f)).digest('hex');
 const HINT = 'Filen er ændret uden scripts/build-cm-data.mts. Genbyg den fra kilden (se CLAUDE.md – byggescriptet opdaterer scripts/data/world-builds.json), og tjek med npx tsx scripts/world-repro.ts';
@@ -23,6 +23,7 @@ describe('world-filerne er bygget af byggescriptet', () => {
       if (!existsSync(path)) return; // fx world.json, når den moderne database ikke ligger lokalt
       expect(sha(path), `${file}: ${HINT}`).toBe(e.sha256);
       if (e.careers && e.careersSha256 && existsSync(`public/data/${e.careers}`)) expect(sha(`public/data/${e.careers}`), `${e.careers}: ${HINT}`).toBe(e.careersSha256);
+      if (e.cm && e.cmSha256 && existsSync(`public/data/${e.cm}`)) expect(sha(`public/data/${e.cm}`), `${e.cm}: ${HINT}`).toBe(e.cmSha256);
     });
   }
   it('kilderne er de aftalte (memory original-databases): 3.9.60 Swedish_fixed, 3.9.65 officiel, 3.9.68 uden legender', () => {

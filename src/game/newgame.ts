@@ -176,6 +176,17 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   // den originale 01/02-database spilles i 2001-priser (econ.ts); ligaernes niveau måles, når trupperne er klar
   if (cm && season < 2020) g.econ = { k: 0.5, leagues: {} };
   // originalens rå omdømme (club +0x80, nation +0x8e) – computerens holdudtagelse i gittermotoren (cmPlayerData.ts)
+  // (17/11, MODERN_PARITY) 2026/27 i ægte tilstand (cmLogic): kampmotorens inddata fra databasen (world-cm.json) – omdømmerne, turneringernes
+  // omdømme, tilskuerposterne og byerne; resten (økonomi, trupplan, sprog …) hører til 2001-verdenens moduler (cmActive)
+  const cmRawLogic = !!cm?.cmRaw && season >= 2020 && o.mode === 'authentic';
+  if (cmRawLogic) {
+    const raw = cm!.cmRaw!;
+    g.cmClubRep = { ...raw.clubRep }; g.cmNationRep = raw.nationRep.slice();
+    if (raw.compRep) g.cmCompRep = { ...raw.compRep };
+    if (raw.crowd) g.cmCrowd = Object.fromEntries(Object.entries(raw.crowd).map(([k, v]) => [k, v.slice()])) as GameState['cmCrowd'];
+    if (raw.cities) g.cmCities = raw.cities.slice();
+    if (raw.nation7e) g.cmNation7e = raw.nation7e.slice();
+  }
   if (cm?.cmRaw && season < 2020) {
     g.cmClubRep = { ...cm.cmRaw.clubRep }; g.cmNationRep = cm.cmRaw.nationRep.slice();
     // club.dat +100/+119 og club_comp.dat +105 – computerens trupplan 0x83cb40/0x7bca90 (cmSquadPlanGame.ts)
@@ -275,7 +286,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
       fillMissing(rec, age, initPool ??= makePool(Object.values(cm!.ratings).filter((x) => x.tf === undefined || x.tf === 0 || x.ca >= 120).map((x) => ({ ...x, stored }))), rand);
       if (rt.rep) p.cmRep = rt.rep;
       // sub_535a80 0x536270–0x536ec6: manglende omdømme udfyldes (egen talrække – spillets rng røres ikke) og Free Role (+0x1a)
-      if (cm!.cmRaw && season < 2020) {
+      if (cm!.cmRaw && (season < 2020 || cmRawLogic)) {
         const cr = club ? cm!.cmRaw.clubRep[club] : undefined;
         p.cmRepMem = fillReputation({ rep: rt.rep ?? [0, 0, 0], ca: rt.ca, pa: rt.paRaw ?? rt.pa, club: club ? { rep: cr ?? 0, sameNation: g.clubs[club]?.nation === p.nation } : null,
           nationRep: cm!.cmRaw.nationRep[p.nation] ?? 0, caps: p.caps }, cmRand(seed, p.id, 535));
@@ -285,7 +296,9 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
         if (cmStartGame && (rt.tm === 1 || rt.tf === 1)) p.cmMem = 1;
         // oraklet (K8): ankomstdatoen står som databasens, dog højst 5 uger før spilstarten (9/6-2001 for 14/7: databasens senere datoer, fx 27/7,
         // klippes); klubløse får databasens indlæsningsdato (1/1) – før stod de fremtidige datoer og 1996-01-02 uændret
-        if (rt.j) p.cmJoined = cmStartGame ? (club ? (rt.j > addDays(date, -35) ? addDays(date, -35) : rt.j) : `${date.slice(0, 4)}-01-01`) : rt.j;
+        // (2026/27) databasens ankomstdato står med 2001-uret – skubbes som fødsels- og kontraktdatoerne (build-cm-data.mts SHIFT)
+        if (rt.j) p.cmJoined = cmStartGame ? (club ? (rt.j > addDays(date, -35) ? addDays(date, -35) : rt.j) : `${date.slice(0, 4)}-01-01`)
+          : season >= 2020 ? `${Number(rt.j.slice(0, 4)) + season - 2001}${rt.j.slice(4)}` : rt.j;
       }
       let attrs = rec.attrs;
       if (stored) {
@@ -295,7 +308,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
         const internals: number[] = [];
         attrs = shownFromStored(attrs, ca, pos11[0], feet, internals);
         // originalens interne værdier i spillerposten (Player.cmInt) – samme betingelse som cmRepMem
-        if (cm!.cmRaw && season < 2020) p.cmInt = internals;
+        if (cm!.cmRaw && (season < 2020 || cmRawLogic)) p.cmInt = internals;
         p.foot = feet[0] >= 15 && feet[1] >= 15 ? 'B' : feet[0] > feet[1] ? 'L' : 'R';
         p.feet = feet;
       }
@@ -551,7 +564,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   // 0x5ce2d0's daglige moral – først fra spillets start: cmPlayerData.ts moraleDay/cmSquadMoraleDaily)
   if (cmActive(g)) for (const p of Object.values(g.players)) if (!p.regen) p.morale = 10;
   // forholdene staff+0x65 og club +0x9b..+0xaf fra databasen (cmRelations.ts – ikke-indlæste id'er bliver 0)
-  if (cm?.cmRaw && season < 2020) cmRelNewGame(g, cm.cmRaw.prefs, cm.cmRaw.clubPrefs);
+  if (cm?.cmRaw && (season < 2020 || cmRawLogic)) cmRelNewGame(g, cm.cmRaw.prefs, cm.cmRaw.clubPrefs);
   progress('fitness', 0.7);
   // PLAYER_REGEN's første pensioneringsliste 0x7a58f0 ved indlæsningen – før forkørslen (cmRetire.ts)
   cmRetireInit(g);

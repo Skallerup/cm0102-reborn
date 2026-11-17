@@ -39,9 +39,15 @@ export async function withCommunityEdits(base: WorldData, db: 'cm' | 'original')
 
 export function loadWorld(): Promise<WorldData> {
   if (!cache) {
-    cache = fetch(`${import.meta.env.BASE_URL}data/world.json`).then((r) => {
+    // world-cm.json (byggescriptet): originalens rå værdier (CMWorld.cmRaw) til originalens logik i ægte tilstand (cmLogic – fx gittermotoren);
+    // mangler den (fx uden net og uden cache), bygges spillet uden dem som før
+    const side = fetch(`${import.meta.env.BASE_URL}data/world-cm.json`).then((r) => (r.ok ? r.json() as Promise<{ cmRaw?: CMWorld['cmRaw'] }> : null)).catch(() => null);
+    cache = fetch(`${import.meta.env.BASE_URL}data/world.json`).then(async (r) => {
       if (!r.ok) throw new Error(`world.json: ${r.status}`);
-      return r.json() as Promise<WorldData>;
+      const w = await r.json() as WorldData & Partial<CMWorld>;
+      const x = await side;
+      if (x?.cmRaw && w.kind === 'cm0102' && !w.cmRaw) w.cmRaw = x.cmRaw;
+      return w as WorldData;
     });
     cache.catch(() => { cache = null; });
   }

@@ -21,7 +21,7 @@
 // originalen og bogføres i rec.tm/ty (pund) og Club.balance/Club.finance (euro = pund / 0,86). Saldoen i pund = round(balance · 0,86).
 // Talrækken er spillets egen (cmRand pr. klub og dag) – originalens kald af 0x90cfc0 i samme rækkefølge pr. klub.
 import type { Club, Fixture, GameState, Player, Staff } from './types';
-import { cmActive, cmRand, clubRepMem } from './cmPlayerData';
+import { cmActive, cmLogic, cmRand, clubRepMem } from './cmPlayerData';
 import { cmWeekday } from './cmCalendar';
 import { cmUpdateDay } from './cmSeason';
 import { seasonStartDay } from './cmFitness';
@@ -205,7 +205,8 @@ export function initForClub(g: GameState, c: Club, dbBal: number, rand: (n: numb
  *  og dermed ingen billet-/merchandiseindtægt (0x59c4ba, 0x59b7e0), men fuld løn; i oraklet har fx Flamengo £7,7 mio. i billetindtægt 2001/02.
  *  Kun den originale database i ægte tilstand (newgame.ts, før bestyrelsen 0x68f130 og økonomien 0x5961d0, som læser tallene). */
 export function cmClubDataFill_829960(g: GameState, world: CMWorld, seed: number): void {
-  if (!cmActive(g) || !g.cmCrowd || !g.cmClubRep) return;
+  // create_game 0x82992b: også 2026/27 i ægte tilstand (cmLogic – gittermotorens tilskuertal og omdømme); klubStat/træningsanlægget kun med 2001-dataene
+  if (!cmLogic(g) || !g.cmCrowd || !g.cmClubRep) return;
   for (const [k, cr] of Object.entries(g.cmCrowd)) {
     const cid = +k;
     const rand = cmRand(seed, cid, 0x829960);

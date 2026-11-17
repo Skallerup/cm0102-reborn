@@ -18,10 +18,16 @@ import { ageOn } from './dates';
 import { gs, hasGame } from './state';
 import { contractLanguageNibble, languageDay, languageFluency } from './cmLanguage';
 
-/** gælder kun den originale database i ægte tilstand (som cmDatabase i newgame.ts – ikke importeret: cirkulær import) */
+/** "2001-verdenen": kun den originale database i ægte tilstand (som cmDatabase i newgame.ts – ikke importeret: cirkulær import) */
 export function cmActive(g: GameState): boolean {
-  if (g.dbKind !== 'cm0102' || g.options.mode !== 'authentic') return false;
+  if (!cmLogic(g)) return false;
   return (g.dbYear ?? g.seasonHistory?.[0]?.season ?? g.season) < 2020;
+}
+/** originalens LOGIK (docs/MODERN_PARITY.md): en database i CM 01/02-format i ægte tilstand uanset år – også 2026/27-opdateringen (ejerens
+ *  beslutning 17/11). Udvidet tilstand beholder CM Reborns regler. 2001-specifikke tal, regler og kalender hører under cmActive. For den originale
+ *  database er cmLogic = cmActive. */
+export function cmLogic(g: GameState): boolean {
+  return g.dbKind === 'cm0102' && g.options.mode === 'authentic';
 }
 
 // ---------------------------------------------------------------- en egen talrække (0x90cfc0's rolle)
