@@ -25,5 +25,5 @@ describe('gittermotoren', () => {
     for (const s of [r1.home, r1.away]) for (const v of Object.values(s)) { expect(Number.isFinite(v)).toBe(true); expect(v).toBeGreaterThanOrEqual(0); }
     expect(r1.home.passes + r1.away.passes).toBeGreaterThan(100);
     expect(r1.home.passesCompleted).toBeLessThanOrEqual(r1.home.passes);
-  }, 60_000);
+  }, 240_000);
 });

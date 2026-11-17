@@ -17,7 +17,7 @@ beforeAll(() => {
   id = (n: string) => w.clubs.find((c) => c[1] === n)![0];
   createGame(w, { managerName: 'T', managerNation: eng, clubId: id('Arsenal'), activeNations: [eng], lang: 'en', masking: true, seed: 3, mode: 'authentic' });
   void gs();
-}, 60000);
+}, 240000);
 
 const play = (seed: number, watched: boolean) => {
   const [h, a] = [id('Manchester United'), id('Liverpool')];

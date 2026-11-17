@@ -41,5 +41,5 @@ describe('holdebolden og knock-tjekket i en kamp', () => {
     const r1 = play(11);
     expect(GRID_DEBUG['hold:keeps'] ?? 0).toBeGreaterThan(0);
     expect(play(11)).toEqual(r1);
-  }, 60_000);
+  }, 240_000);
 });

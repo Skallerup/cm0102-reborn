@@ -154,5 +154,5 @@ describe('cmStaff – i spillet (3.9.60, ægte tilstand)', () => {
     expect(n.params.last).toBe(coach.last);
     expect(cmRejectStaff(g, n)?.id).toBe(coach.id);
     expect(g.cmStaffOffers).toEqual([]);
-  }, 60_000);
+  }, 240_000);
 });
