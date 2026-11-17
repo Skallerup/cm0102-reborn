@@ -234,6 +234,21 @@ export function setupCup(nation: number, name: string, clubs: number[], season: 
   createCupRound(comp, firstPairs, 1, cal);
 }
 
+/** (16/11) Datoen for pokalens første kamp i sæsonen `season` (som setupCup/createCupRound) – sæsonskiftet pr. land vælger pokalens år efter den */
+export function cupFirstDate(nation: number, n: number, season: number): string {
+  const g = gs();
+  let size = 1;
+  while (size < n) size *= 2;
+  const round = n - (size - n) >= 2 ? 1 : 2, total = Math.log2(size);
+  const key = cmCupKey(g, nation);
+  const info = key ? cmCupRound(key, season, round, total, false) : null;
+  const cmDay = info?.date ?? (cmCalendarOn(g) ? cmFaCupDate(nation, round, total, season) : null);
+  if (cmDay) return cmDay;
+  const cal = calendar(season);
+  const idx = Math.max(0, cal.cupRounds.length - (total - 1) + (round - 1));
+  return cupStageName(round, total) === 'F' ? cal.cupFinal : cal.cupRounds[Math.min(cal.cupRounds.length - 1, idx)];
+}
+
 /** (runde 10D) Liga Cup'en (Worthington Cup, EngCcCup 0x56c570): de 92 ligaklubber; de europæiske klubber fra 3. runde, 36 − 3·k (k = antal i
  *  Europa) fra 2. runde og resten i 1. runde (tabellens byes-nøgle). Rækkefølgen division → omdømme (*estimeret*: collect_entrants ikke læst). */
 export function setupCmLeagueCup(season: number, inEurope: Set<number>) {

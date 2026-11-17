@@ -1,7 +1,7 @@
 // Continue Game/ferien: runUntil i en Web Worker (ui/dayWorker.ts), når CM 01/02's ønskelister kører (cmShortlistOn – den originale database i
 // ægte tilstand). Spillet sendes som en struktureret kopi med indeksernes rækkefølge og kommer tilbage, når kørslen stopper; hovedtråden tegner
 // imens fremdriftsbjælken. Samme kode og samme tilstand som i hovedtråden – scripts/day-worker-check.ts viser, at en kopi før hver dag giver
-// præcis samme spil (sha1 pr. dag). Uden Worker (Node/test), i fællesspil og nyt spil-forløbet, eller hvis arbejderen fejler: i hovedtråden
+// præcis samme spil (sha1 pr. dag). Uden Worker (Node/test), i fællesspil online og nyt spil-forløbet, eller hvis arbejderen fejler: i hovedtråden
 // (spillet er urørt, til arbejderen er færdig – en fejl midt i kørslen starter forfra her).
 import { runUntil, type DayResult } from '../game/sim';
 import { gs, hasGame, inSetup, setGame, indexSnapshot, restoreIndexes } from '../game/state';
@@ -19,11 +19,13 @@ let worker: Worker | null = null;
 /** arbejderen fejlede én gang – resten af sessionen i hovedtråden */
 let broken = false;
 
-/** kør i arbejderen? (kun ønskelisternes tunge dage; ikke fællesspil, draft eller nyt spil-forløbet) */
+/** kør i arbejderen? (kun ønskelisternes tunge dage; ikke fællesspil online, draft eller nyt spil-forløbet). Lokalt spil mod AI-managere
+ *  (g.localMp – samme browser, Shell's Continue Game) kører også i arbejderen: hele runUntil med alle managerpladserne følger med i kopien
+ *  (scripts/day-worker-check.ts BOTS=n CLONE=1: samme sha1 pr. dag) */
 export function useDayWorker(): boolean {
   if (broken || typeof Worker === 'undefined' || !hasGame() || inSetup()) return false;
   const g = gs();
-  return cmShortlistOn(g) && !g.humans?.length;
+  return cmShortlistOn(g) && (!g.humans?.length || !!g.localMp);
 }
 
 /** målinger (fejlsøgning i konsollen: window.__cmDayRun): sidste kørsels kopi frem/tilbage og tid */

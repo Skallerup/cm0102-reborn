@@ -5,7 +5,7 @@
 //    +0xc, turnering +0x10 = kvalifikationen, der bruger datoen, −1 = kun venskabskampe) og 0x5cc510 (årene: basisåret med (år − 2) % 4 = 0, + år,
 //    −4 når mere end 3 år frem; Date 0x54a130/0x54a2d0 = cmDate), læst i unicorn (tools/sched/emu.py).
 //  - Friendly::update_international_friendlies 0x5cbb00: 1/1 nulstilles modstanderlisterne og landene sorteres igen efter omdømmet (+0x8e,
-//    qsort 0x5cc5f0); hver dag fra spilstarten [0xdd6ec8] ≤ i dag + 12: datoen i dag + 12 slås op i tabellen, og alle poster med datoen arrangeres.
+//    qsort 0x5cc5f0); hver dag fra spilstarten [0xdd6ec8] ≤ i dag + 12 uger (Date::add_weeks 0x54c770(12) – 0x5cbb2d): datoen i dag + 84 dage slås op i tabellen, og alle poster med datoen arrangeres.
 //  - Friendly::arrange_international_friendlies 0x5cbdf0: lande med en landskamp ±4 dage er optaget; i omdømmets rækkefølge parres hvert ledigt
 //    land N med det første ledige M efter sig, hvor rand(500) (+ rand(1000) i samme verdensdel) > 400, verdensdelen står i en af postens linjer
 //    (Afrika ikke i februar), mindst ét af landene har +0x88 ≥ 5, parret ikke er forbudt (0x5cc2d0/0x5cc3e0: Iran–USA, Irak–alle, Vietnam–USA,
@@ -17,22 +17,21 @@
 // Kontrol mod oraklet (crowd1, frø 1, 3.9.60): venskabskampe pr. dato og U21-kampe dagen før – tests/cmIntl.test.ts.
 // *Estimeret* (markeret "gæt" nedenfor): kampenes rækkefølge i grupperne (League's skema-par ikke læst – runde-robin), lodtrækningsdagen,
 // playoff-datoerne, -lodtrækningen og udebanemål/lodtrækning ved lige stilling, "bedste toer",
-// 'B' International (0x7e6720's B-gren: lige år før 20/6 – ikke bygget, U21-kampen spilles i stedet), U21-holdenes fyldspillere (0x90dc66 ikke læst).
-import type { GameState, Player } from './types';
+// 'B' International (0x7e6720's B-gren: lige år før 20/6 – ikke bygget, U21-kampen spilles i stedet). U21-holdenes fyldspillere: originalens 0x90dc66 (cmVirtual.ts) i playNation.
+import type { GameState } from './types';
 import { cmActive } from './cmPlayerData';
 import { cmDate } from './cmCalendar';
-import { addDays, ageOn } from './dates';
-import { rng, Rng, hash } from './rng';
+import { addDays } from './dates';
+import { rng } from './rng';
 import { msvcQsort } from './engine/grid/subs';
-import { randomName, emptyStats } from './data/generate';
 import { forEachHuman } from './humans';
 import { addNews, gs } from './state';
-import { withNationFillers } from './cmPrerunMatches';
 import { registerPrerun } from './cmPrerun';
 import { intlHooks } from './hooks';
-import { intlState, playNation, setNationFillers, u21Squad, type IntlRow, type IntlTie } from './international';
-import { cmIntlSquadDaily, initSquads, selectForFixture, type SelFixture } from './cmIntlSquad';
+import { intlState, playNation, type IntlRow, type IntlTie } from './international';
+import { cmIntlSquadDaily, cmWithdrawInjured, initSquads, selectForFixture, type SelFixture } from './cmIntlSquad';
 import { cmFifaDaily, cmFifaInit } from './cmFifa';
+import { cmFinalsBusy, cmFinalsDay, cmFinalsDuty } from './cmIntlFinals';
 
 export const cmIntlOn = (g: GameState): boolean => cmActive(g) && !g.draft;
 
@@ -116,8 +115,9 @@ function nationsBusy(g: GameState, from: string, to: string): Set<number> {
   const q = st.qual;
   if (q?.dates && q.sched) q.dates.forEach((d, r) => { if (d >= from && d <= to) for (const [h, a] of q.sched![r] ?? []) { out.add(h); out.add(a); } });
   if (q?.po) for (const t of q.po) for (const d of q.poDates ?? []) if (d >= from && d <= to) { out.add(t.a); out.add(t.b); }
+  for (const n of cmFinalsBusy(g, from, to)) out.add(n);
   for (const t of [st.tournament, ...(st.cont ?? [])]) {
-    if (!t || t.stage === 'done') continue;
+    if (!t || t.stage === 'done' || t.cm) continue;
     const inWin = (md: string) => { const d = `${t.year}-${md}`; return d >= from && d <= to; };
     const gdays = t.days?.g ?? ['06-10', '06-14', '06-18'], kdays = t.days?.ko ?? { R16: '06-23', QF: '06-27', SF: '07-01', F: '07-05' };
     const group = /^G/.test(t.stage);
@@ -176,7 +176,7 @@ function arrange(g: GameState, d: string, entries: { cont: number }[]): void {
 function addFixture(g: GameState, f: CmIntlFix): void {
   const s = cmState(g);
   s.fix.push(f);
-  // add_fixture 0x5aa680 → 0x76bab0: truppen kaldes ind, når kampen ligger højst 14 dage frem (venskabskampene lægges 12 dage før; U21-kampen først)
+  // add_fixture 0x5aa680 → 0x76bab0: truppen kaldes ind, når kampen ligger højst 14 dage frem (venskabskampene lægges 12 uger før – så sker det 14 dage før i callUps)
   const sel = () => { if (!inPrerun) selectForFixture(g, selFix(f), (n) => oppsOf(g, n, f.d)); };
   if (teamRep(g, f.h) < 2500 || teamRep(g, f.a) < 2500) { sel(); return; }
   const y = +f.d.slice(0, 4);
@@ -203,6 +203,12 @@ function oppsOf(g: GameState, n: number, from: string, u21?: boolean): number[] 
   return out;
 }
 
+/** NationalTeams::daily_update 0x76b100: landskampene på i dag + 2 uger (0x54c770(2)) → 0x76bab0 (venskabskampene og U21-kampene) */
+function callUps(g: GameState): void {
+  const d = addDays(g.date, 14);
+  for (const f of cmState(g).fix) if (f.d === d) selectForFixture(g, selFix(f), (n) => oppsOf(g, n, f.d, !!f.u21));
+}
+
 let inPrerun = false;
 /** 0x5cbb00 – dagen `iso` (i forkørslen dens dato, ellers spillets) */
 export function cmIntlFriendlyDay(g: GameState, iso: string): void {
@@ -210,49 +216,12 @@ export function cmIntlFriendlyDay(g: GameState, iso: string): void {
   const s = cmState(g);
   if (iso.slice(5) === '01-01') { s.opp = {}; s.order = sortOrder(g, s.order); }
   const start = g.cmStart ?? g.cmFitStart;
-  const target = addDays(iso, 12);
+  const target = addDays(iso, 7 * 12);                                     // 0x5cbb2d: add_weeks(12)
   if (start && start > target) return;
   if (s.last === iso) return;
   s.last = iso;
   const entries = cmIntlDates(+iso.slice(0, 4)).filter((e) => e.d === target);
   if (entries.length) arrange(g, target, entries);
-}
-
-// ---------------------------------------------------------------- U21-holdenes fyldspillere (gæt: virtual_staff 0x90dc66 ikke læst)
-
-const U21_FILL0 = 31_000_000;
-const u21Fill = new WeakMap<GameState, Map<number, Player[]>>();
-function u21Fillers(g: GameState, n: number): Player[] {
-  const cache = (u21Fill.get(g) ?? u21Fill.set(g, new Map()).get(g)!);
-  const hit = cache.get(n);
-  if (hit) return hit;
-  const have = u21Squad(n);
-  const out: Player[] = [];
-  const gk = have.filter((p) => p.pos[0] === Math.max(...p.pos)).length;
-  if (have.length < 16 || gk < 1) {
-    const r = new Rng(hash(g.seed ?? 0, 0x7e6720, n));
-    const tpl = Object.values(g.players).filter((p) => !p.regen && !p.virtual && ageOn(p.dob, g.date) <= 21).slice(0, 2000);
-    const want = Math.max(0, 18 - have.length);
-    const y = +g.date.slice(0, 4);
-    for (let k = 0; k < want && tpl.length; k++) {
-      const isGk = k < 2 - Math.min(gk, 2);
-      let t: Player | undefined;
-      for (let i = 0; i < 400; i++) { const c = tpl[Math.floor(r.next() * tpl.length)]; if ((c.pos[0] === Math.max(...c.pos)) === isGk) { t = c; break; } }
-      if (!t) continue;
-      const [first, last] = randomName(g.names, n, r);
-      const ca = 50 + Math.floor(r.next() * 11);
-      const { cmFit: _f, cmInt: _i, ...rest } = t;
-      void _f; void _i;
-      out.push({
-        ...rest, id: U21_FILL0 + n * 64 + k, first, last, nation: n, club: 0, ca, pa: ca, rep: 0, cmRep: [0, 0, 0], cmRepMem: [0, 0, 0], value: 0,
-        dob: `${y - 18 - Math.floor(r.next() * 3)}-0${1 + Math.floor(r.next() * 9)}-1${Math.floor(r.next() * 9)}`,
-        attrs: t.attrs.map((a) => Math.max(1, Math.min(20, Math.round(a * (ca / Math.max(50, t!.ca)))))), condition: 1, morale: 10, form: [], injury: null,
-        banned: 0, yellowCount: 0, listed: false, loan: null, stats: emptyStats(), history: [], caps: 0, intGoals: 0, number: 0, virtual: 'other',
-      } as Player);
-    }
-  }
-  cache.set(n, out);
-  return out;
 }
 
 /** dagens planlagte landskampe (U21 og venskabskampe) og EM-kvalifikationen */
@@ -262,12 +231,8 @@ export function cmIntlPlayDay(g: GameState): void {
   const today = s.fix.filter((f) => f.d === g.date);
   if (today.length) {
     s.fix = s.fix.filter((f) => f.d !== g.date);
-    for (const f of today) {
-      if (f.u21) {
-        setNationFillers(new Map([[f.h, u21Fillers(g, f.h)], [f.a, u21Fillers(g, f.a)]].filter(([, l]) => (l as Player[]).length) as [number, Player[]][]));
-        try { if (u21Squad(f.h).length >= 11 && u21Squad(f.a).length >= 11) playNation(f.h, f.a, 'u21'); } finally { setNationFillers(null); }
-      } else withNationFillers(g, [f.h, f.a], () => playNation(f.h, f.a, 'friendly'));
-    }
+    // kampens fyldspillere (0x90dc66) laver playNation for begge hold
+    for (const f of today) playNation(f.h, f.a, f.u21 ? 'u21' : 'friendly');
   }
   s.fix = s.fix.filter((f) => f.d >= g.date);
   cmEuroQualDay(g);
@@ -343,7 +308,7 @@ function cmEuroQualDay(g: GameState): void {
   const ri = q.dates.indexOf(g.date);
   if (ri >= 0) {
     for (const [h, a] of q.sched[ri]) {
-      const res = withNationFillers(g, [h, a], () => playNation(h, a, 'euroq'));
+      const res = playNation(h, a, 'euroq');
       book(q.table, h, a, res.hg, res.ag);
     }
     q.round = ri + 1;
@@ -354,7 +319,7 @@ function cmEuroQualDay(g: GameState): void {
   if (pi >= 0 && q.po) {
     for (const t of q.po) {
       const [h, a] = pi === 0 ? [t.a, t.b] : [t.b, t.a];
-      const res = withNationFillers(g, [h, a], () => playNation(h, a, 'euroq', 'PO'));
+      const res = playNation(h, a, 'euroq', 'PO');
       if (pi === 0) { t.hg = res.hg; t.ag = res.ag; continue; }
       // samlet stilling (t.a's mål: første kamp hjemme + anden kamp ude); udebanemål, ellers lodtrækning (gæt)
       const aGoals = (t.hg ?? 0) + res.ag, bGoals = (t.ag ?? 0) + res.hg;
@@ -397,6 +362,7 @@ function dutyNations(): number[] {
   for (const f of g.intl?.cm?.fix ?? []) if (!f.u21 && f.d > g.date && f.d <= to) { out.add(f.h); out.add(f.a); }
   const q = g.intl?.qual;
   if (q?.cm && q.dates && q.sched) q.dates.forEach((d, r) => { if (d > g.date && d <= to) for (const [h, a] of q.sched![r]) { out.add(h); out.add(a); } });
+  for (const n of cmFinalsDuty(g)) out.add(n);
   return [...out];
 }
 
@@ -408,7 +374,10 @@ intlHooks.cmDay = () => {
   if (!g.intl?.cmSq) { cmFifaInit(g); initSquads(g); }
   cmIntlSquadDaily(g);
   cmFifaDaily(g);
+  callUps(g);
   cmIntlFriendlyDay(g, g.date);
   cmIntlPlayDay(g);
+  cmFinalsDay(g);
 };
 intlHooks.dutyNations = dutyNations;
+intlHooks.withdraw = (p, days, type) => { const g = gs(); if (cmIntlOn(g)) cmWithdrawInjured(g, p, days, type); };

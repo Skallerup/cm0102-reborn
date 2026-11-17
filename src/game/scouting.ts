@@ -5,7 +5,7 @@ import { needsWorkPermit, workPermitGranted } from './rules2001';
 import { regionOf } from './leagues';
 import { natName } from '../i18n';
 import { hash01 } from './rng';
-import { addNews, gs, squad } from './state';
+import { addNews, gs, hasGame, squad } from './state';
 import type { Club, Player, ScoutAssignment } from './types';
 import { cmActive } from './cmPlayerData';
 import { rng } from './rng';
@@ -49,6 +49,7 @@ export function knowFull(pid: number) {
 
 /** CM 01/02 (Attribute Masking 0x543280): egenskaben vises som "-" */
 export function attrMasked(p: Player, idx: number): boolean {
+  if (!hasGame()) return false;
   const g = gs();
   return cmKnowOn(g) && !cmAttrVisible(g, p, ATTRS[idx]);
 }
@@ -62,7 +63,7 @@ export function addKnowledge(pid: number, amount: number) {
 export function attrRange(p: Player, idx: number, k = knowledgeOf(p)): [number, number] {
   const v = Math.round(p.attrs[idx]);
   // CM 01/02: den præcise værdi eller "-" (hele skalaen) – aldrig intervaller
-  if (cmKnowOn(gs())) return attrMasked(p, idx) ? [1, 20] : [v, v];
+  if (hasGame() && cmKnowOn(gs())) return attrMasked(p, idx) ? [1, 20] : [v, v];
   if (k >= 100) return [v, v];
   const width = Math.ceil(((100 - k) / 100) * 6);
   const off = Math.floor(hash01(p.id, idx, 17) * (width + 1));

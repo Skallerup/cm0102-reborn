@@ -140,7 +140,8 @@ export const u16 = (v: number) => v & 0xffff;
 /** _ftol 0x945640: trunkering mod 0 (resultatet som 32-bit heltal – store tal ombrydes som i originalens fistp-sti) */
 export const ftol = (x: number) => {
   const t = Math.trunc(x);
-  return Number.isFinite(t) ? Number(BigInt.asIntN(32, BigInt(t))) : -0x80000000;
+  // (hastighed) `t | 0` = ToInt32 = BigInt.asIntN(32, BigInt(t)) for alle endelige heltal (modulo 2^32 af den eksakte værdi) – uden BigInt pr. kald
+  return Number.isFinite(t) ? t | 0 : -0x80000000;
 };
 /** idiv med trunkering (C) */
 export const tdiv = (a: number, b: number) => Math.trunc(a / b) | 0;

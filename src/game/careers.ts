@@ -45,11 +45,11 @@ export function pickManager(clubId: number): Staff | undefined {
 }
 
 /** Sæsonslut: trænernes form (placering mod forventning), trofæer og omdømme */
-export function seasonCareers(expectedRank: (clubId: number) => number) {
+export function seasonCareers(expectedRank: (clubId: number) => number, inScope: (compId: string) => boolean = () => true) {
   const g = gs();
-  const trophyClubs = new Set(Object.values(g.comps).filter((c) => c.winner && c.type !== 'playoff').map((c) => c.winner!));
+  const trophyClubs = new Set(Object.values(g.comps).filter((c) => c.winner && c.type !== 'playoff' && inScope(c.id)).map((c) => c.winner!));
   for (const comp of Object.values(g.comps)) {
-    if (comp.type !== 'league' || !comp.finished) continue;
+    if (comp.type !== 'league' || !comp.finished || !inScope(comp.id)) continue;
     finalOrder(comp).forEach((cid, i) => {
       const club = g.clubs[cid];
       const m = club && club.manager > 0 ? g.staff[club.manager] : undefined;

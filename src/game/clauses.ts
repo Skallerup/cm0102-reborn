@@ -152,11 +152,11 @@ export function afterAppearance(p: Player, goals: number, cleanSheet = false, cm
 }
 
 /** Ved sæsonskifte: årlige lønstigninger og lønnedgang for nedrykkede klubber */
-export function seasonWageClauses(tierBefore: Map<number, number>) {
+export function seasonWageClauses(tierBefore: Map<number, number>, inScope: (cid: number) => boolean = () => true) {
   const g = gs();
   for (const p of Object.values(g.players)) {
     const c = p.contract;
-    if (!c || !p.club) continue;
+    if (!c || !p.club || !inScope(p.club)) continue;
     if (c.wageRise) c.wage = round(c.wage * (1 + c.wageRise / 100), 50);
     const club = g.clubs[p.club];
     const before = tierBefore.get(p.club);

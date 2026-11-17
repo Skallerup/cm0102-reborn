@@ -25,7 +25,7 @@ import { packReport } from './miniReport';
 import { draftDay, draftInjuryDays, draftSeasonCheck } from './draft';
 import { boardAfterMatch, boardMonthly, aiSackings, completeProjects, fillVacancies, processJobTalks, summerManagerChanges, applyForJob } from './board';
 import { A } from './attributes';
-import { cmDatabase } from './newgame';
+import { cmDatabase, cmPlayStartOverdue } from './newgame';
 import { aggregateFor, needsWinnerFn, recordResult, setupLeague, leagueRows } from './competitions';
 import { t } from '../i18n';
 import { addDays, ageOn, day, month, weekday, daysBetween } from './dates';
@@ -57,11 +57,12 @@ import { cmCalendarDay } from './cmCalendar';
 import { cmFinanceDay, cmFinOn, cmMatchIncome, GBP as CM_GBP } from './cmFinance';
 import { fixtureCodesOf, gameCrowd } from './engine/grid/gameInputs';
 import { cmEuroCatchUp, cmEuroDay, cmEuroNextSeason, cmEuroPlayDay } from './cmEurope';
-import { compHooks, finHooks } from './hooks';
+import { compHooks, finHooks, intlHooks } from './hooks';
 import { cmCmOn, cmContractManagerDay } from './cmContractManager';
 import { cmReceivershipValues, cmValuesDaily } from './cmValueGame';
+import { cmContractsDaily, cmExpireOutsideDaily, cmSeasonDaily, endDueLoansDaily, freeAgentDrift, monthlyClubReps, seasonRollover, spawnDueRegens, youthIntake, youthPreview } from './season';
+import { cmMainNation, cmSeasonForNewNation, cmSeasonOn } from './cmSeason';
 import { cmRefreshTransferBudgets, cmTransferBudgetRaw, humanClubIds as cmHumanClubIds } from './cmBudget';
-import { cmExpireOutsideDaily, endDueLoansDaily, freeAgentDrift, monthlyClubReps, seasonRollover, spawnDueRegens, youthIntake, youthPreview } from './season';
 import { cmRetireDaily } from './cmRetire';
 import { cmShortlistOn } from './cmShortlistGame';
 import { squadStrength } from './board';
@@ -74,7 +75,7 @@ import { monthlyColumn, weeklyRumours } from './media';
 import { monthlyAwards, snapshotMonth } from './awards';
 import { asOwner, forEachHuman, isHumanClub, isMultiplayer, ownerOf, withHuman } from './humans';
 import { cmVirtualClear, cmVirtualDrop, cmVirtualHumans, cmVirtualMatch } from './cmVirtual';
-import { cmResDaily, cmResOn, setResMatchPlayer } from './cmReserves';
+import { cmResDaily, cmResOn, RES_SKIP, setResMatchPlayer } from './cmReserves';
 import { botsDaily, isBotClub } from './bots';
 import { botsAfterMatch } from './chat';
 import { recordH2H } from './h2h';
@@ -245,6 +246,8 @@ function tacticFor(club: number, opp: number, home: boolean, userAuto: boolean, 
  * localStorage `cm0102.engine` = 'original' er sat ('zone' slår den fra). */
 // gittermotoren (originalens kampmotor) – bruges kun, når gridEngineOn(g) er sand
 setGridFactory(gridFactory);
+// landskampene (international.ts playNation) spiller også i gittermotoren, når den er slået til – som originalen (alle kampe i den fulde motor)
+intlHooks.gridOn = () => gridEngineOn(gs());
 
 /** udviklerkontakten `cm0102.engine`, sat af dagens Web Worker (undefined = læs localStorage) */
 export const ENGINE_DEV: { v?: string | null } = {};
@@ -594,11 +597,13 @@ function newDay() {
   const d = g.date;
   // draft-liga: kun kondition, moral og skader – ingen økonomi, transfers, bestyrelse eller ny sæson
   if (g.draft) { draftDay(); return; }
-  if (month(d) === 7 && day(d) === 1) seasonRollover();
+  // (16/11) den originale database i ægte tilstand: sæsonskiftet pr. land på nøglelandstabellens dag (cmSeason.ts – Europa 20/6, Norge 27/11 …),
+  // kontrakterne og lejeaftalerne udløber dagligt; ellers alle lande 1/7
+  if (cmSeasonOn(g)) { cmSeasonDaily(); cmContractsDaily(); } else if (month(d) === 7 && day(d) === 1) seasonRollover();
   intlDaily();
   // ægte tilstand med den originale database: originalens baggrundskampe (fixture −2, 0x84be20 – cmReserves.ts); originalen har ingen
   // reservekampe for klubberne i de spilbare ligaer, så spillets egne (reserves.ts – nyhederne findes ikke i exe'en) kun i udvidet spil
-  if (cmResOn(g)) cmResDaily(g); else reservesDaily();
+  if (cmResOn(g)) { if (!RES_SKIP.on) cmResDaily(g); } else reservesDaily();
   // vinduerne lukket: frie agenter, ingen ville have, forsvinder til lavere rækker/udlandet
   if (day(d) === 2 && (month(d) === 9 || month(d) === 2)) freeAgentDrift();
   // daglige ting – i ægte tilstand med den originale database styrer originalens konditionsmodul kondition og skader (cmFitness.ts; AWOL er spillets egen)
@@ -785,31 +790,55 @@ export function activateNation(nation: number) {
   const byLeague = new Map<string, number[]>();
   for (const c of Object.values(g.clubs)) if (c.nation === nation) (byLeague.get(c.league) ?? byLeague.set(c.league, []).get(c.league)!).push(c.id);
   const ids: string[] = [];
+  // (16/11) den originale database i ægte tilstand: landets nuværende sæson (cmSeason.ts – Norge i januar: næste års sæson)
+  const year = cmSeasonOn(g) ? cmSeasonForNewNation(g, nation) : g.season;
+  if (cmSeasonOn(g) && !cmMainNation(g, nation)) (g.cmNatSeason ??= {})[nation] = year;
   for (const [id, clubs] of byLeague) {
     const m = g.leagues[id];
     if (!m || m.hidden || g.comps[id] || clubs.length < 4) continue;
-    setupLeague(id, m.name, m.nation, m.tier, clubs, g.season);
+    setupLeague(id, m.name, m.nation, m.tier, clubs, year);
     ids.push(id);
   }
   // indhent de kampe, der allerede skulle være spillet – uden at de tæller for menneskelige managere
-  const humans = Object.values(g.clubs).filter((c) => c.nation === nation && c.manager === -1);
+  playOverdue(ids, g.dayDone ? addDays(g.date, 1) : g.date);
+}
+
+/** Turneringernes uspillede kampe før `before` (null = alle) spilles nu – et land, der gøres spilbart, kampene før spilstarten (forkørslen
+ *  0x5cc850 spiller dem dag for dag fra 1/1) og ligaer/pokaler, der skal afsluttes ved landets sæsonskifte (cmSeason.ts). Kampene tæller ikke for
+ *  menneskelige managere, og skader/karantæner/træthed fra dem rulles tilbage. En pokal trækker sin næste runde, når en runde er spillet –
+ *  derfor gentages det, til der ikke er flere. */
+export function playOverdue(compIds: string[], before: string | null) {
+  const g = gs();
+  if (!compIds.length) return;
+  const ids = new Set(compIds);
+  const due = () => Object.values(g.fixtures)
+    .filter((f) => ids.has(f.comp) && !f.result && (before === null || f.date < before))
+    .sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id);
+  let past = due();
+  if (!past.length) return;
+  const clubs = new Set<number>();
+  for (const id of ids) for (const c of g.comps[id]?.clubs ?? []) clubs.add(c);
+  const humans = [...clubs].map((c) => g.clubs[c]).filter((c) => c?.manager === -1);
   for (const c of humans) c.manager = 0;
-  const userClub = g.userClub;
+  const userClub = g.userClub, pending = g.pendingFixture;
   g.userClub = 0;
   try {
-    const past = Object.values(g.fixtures)
-      .filter((f) => ids.includes(f.comp) && !f.result && (f.date < g.date || (f.date === g.date && g.dayDone)))
-      .sort((a, b) => a.date.localeCompare(b.date));
     // kampene spilles alle på samme dag – skader, karantæner og træthed fra dem ville aldrig hele, og til sidst
     // stillede holdene uden spillere (MatchSim uden målmand gik ned). De hører fortiden til, så de rulles tilbage.
-    const before = new Map<number, Pick<Player, 'injury' | 'banned' | 'yellowCount' | 'condition'>>();
-    for (const p of Object.values(g.players)) if (p.club && g.clubs[p.club]?.nation === nation) before.set(p.id, { injury: p.injury, banned: p.banned, yellowCount: p.yellowCount, condition: p.condition });
-    for (const f of past) {
-      simulateFixture(f, true, false);
-      for (const cid of [f.home, f.away]) for (const p of squad(cid)) { const b = before.get(p.id); if (b) Object.assign(p, b); }
+    // (den originale database i ægte tilstand: konditionsmodulets post cmFit holder skaden og konditionen – den rulles med tilbage)
+    const keep = new Map<number, Pick<Player, 'injury' | 'banned' | 'yellowCount' | 'condition' | 'cmFit'>>();
+    for (const p of Object.values(g.players)) if (p.club && clubs.has(p.club)) keep.set(p.id, { injury: p.injury, banned: p.banned, yellowCount: p.yellowCount, condition: p.condition, cmFit: p.cmFit && structuredClone(p.cmFit) });
+    for (let pass = 0; pass < 40 && past.length; pass++) {
+      for (const f of past) {
+        if (f.result) continue;
+        simulateFixture(f, true, false);
+        for (const cid of [f.home, f.away]) for (const p of squad(cid)) { const b = keep.get(p.id); if (b) Object.assign(p, b, { cmFit: b.cmFit && structuredClone(b.cmFit) }); }
+      }
+      past = due();
     }
   } finally {
     g.userClub = userClub;
+    g.pendingFixture = pending;
     for (const c of humans) c.manager = -1;
   }
 }
@@ -852,6 +881,7 @@ export function playPendingAsAi() {
 export function continueGame(pauseBefore?: (date: string) => boolean): DayResult {
   const g = gs();
   cmEuroCatchUp(g, (f) => simulateFixture(f, true, false));
+  if (g.cmOverdue) cmPlayStartOverdue(g);
   ensureHumanLeagues();
   // gamle saves: en ventende kamp, der ikke er ens egen klubs (efter et jobskifte)
   if (g.pendingFixture) {
@@ -1100,6 +1130,7 @@ function holidayDaily() {
 // (runde 10C) forkørslen af Europas kampe før spillets start (newgame.ts kalder krogen; continueGame tager dem, hvis krogen manglede)
 compHooks.euroCatchUp = (g) => cmEuroCatchUp(g, (f) => simulateFixture(f, true, false));
 compHooks.euroPrerunDay = (g, iso) => cmEuroPlayDay(g, iso, (f) => simulateFixture(f, true, false));
+compHooks.playOverdue = playOverdue;
 // klubøkonomiens begivenheder (cmFinEvents.ts): transferbudgettet 0x598800 og betalingsstandsningens værdier
 finHooks.budget = cmTransferBudgetRaw;
 finHooks.receivership = cmReceivershipValues;

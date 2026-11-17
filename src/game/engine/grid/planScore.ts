@@ -75,6 +75,21 @@ export interface PlanInput {
   data: PlanData;
 }
 
+// (hastighed) hjælperne som modulfunktioner – ikke lukninger pr. kald (0x6e6340 kaldes ~280.000 gange pr. dag af ønskelisterne)
+/** kom til klubben efter manageren og inden for det sidste år */
+const recentJoin = (i: PlanInput) => i.atClub && !!i.mgrJoined && before(i.mgrJoined, i.joined) && before(i.yearAgo, i.joined);
+/** dage i klubben */
+const daysAt = (i: PlanInput) => 365 * (i.today.year - i.joined.year) - i.joined.day + i.today.day;
+/** trupstatus-blokkens kamptillæg (0x6e81xx): 50 − pct/2, når han har spillet under 70 % (eller ingen kampe) – 0 uden historik */
+function appearances(d: PlanData): number {
+  const h = d.history();
+  if (!h || !h.ok) return 0;
+  const tot = h.w4 + h.w6;
+  const pct = tot ? s8(tdiv(100 * h.w4, tot)) : 0;
+  if (tot && pct >= 70) return 0;
+  return 50 - tdiv(pct, 2);
+}
+
 /** 0x6e6340 – værdien af spilleren på pladsen (P·Q som 0x6e2f20 – eller (500 − Q)·P, Q + P, P). −10000 = ingen post / under tærsklen. */
 export function planScore(i: PlanInput): number {
   const { rec, flags, data: d } = i;
@@ -114,26 +129,23 @@ export function planScore(i: PlanInput): number {
   else if (pos & 0x800) P += 10 * (r.l - 10);
   else P += 100;
   // ---------------------------------------------------------------- gennemsnitsleddene
-  const recentJoin = () => i.atClub && !!i.mgrJoined && before(i.mgrJoined, i.joined) && before(i.yearAgo, i.joined);
-  const daysAt = () => 365 * (i.today.year - i.joined.year) - i.joined.day + i.today.day;
-  const below = (sum: number, cnt: number) => thrOn && tdiv(200 * sum, cnt) < thr;
   let sum = 0, cnt = 0, hint = d.repSeen;                                 // [esp+0x24] = 0x5407e0 indtil et hint sættes
   if (flags & 0x40) {                                                   // 0x6e6753: nuværende omdømme / 50
     cnt = 1;
     let v = tdiv(W(rec, 0xb), 50);
-    if (recentJoin()) v = ftol((1.375 - 0.001 * daysAt()) * v);
+    if (recentJoin(i)) v = ftol((1.375 - 0.001 * daysAt(i)) * v);
     sum = v;
     if (thrOn && 200 * v < thr) return -10000;
   }
   if (flags & 0x10) {                                                   // 0x6e6885: hjemmeomdømmet
     cnt++;
     sum += ftol(W(rec, 9) / ((1.8 - 0.0001 * i.nationRep) * 50));
-    if (below(sum, cnt)) return -10000;
+    if (thrOn && tdiv(200 * sum, cnt) < thr) return -10000;
   }
   if (flags & 0x20) {                                                   // 0x6e68f0: verdensomdømmet
     cnt++;
     sum += tdiv(W(rec, 0xd), 50);
-    if (below(sum, cnt)) return -10000;
+    if (thrOn && tdiv(200 * sum, cnt) < thr) return -10000;
   }
   if (flags & 4 && i.real) {                                            // 0x6e693d: landskampenes karakter (kategori 5)
     const v = ftol(d.avg(5, 0x12, 6.5) * 20);
@@ -144,7 +156,7 @@ export function planScore(i: PlanInput): number {
     if (cnt) hint = tdiv(50 * sum, cnt);
     judged = d.judge(2, hint);
     cnt++; sum += s16(judged);
-    if (below(sum, cnt)) return -10000;
+    if (thrOn && tdiv(200 * sum, cnt) < thr) return -10000;
   }
   if (flags & 0x100) {                                                  // 0x6e6a0e: potentialet (kind 1) – uden fart/acceleration
     if (cnt) {
@@ -154,11 +166,11 @@ export function planScore(i: PlanInput): number {
     let v = d.judge(1, hint);
     if (s16(judged) > -1 && s16(v) < s16(judged)) v = judged;
     cnt++; sum += s16(v);
-    if (below(sum, cnt)) return -10000;
+    if (thrOn && tdiv(200 * sum, cnt) < thr) return -10000;
   }
   if (flags & 0x40000 && i.real) {                                      // 0x6e6aec: formen
     let f = f32(s8(d.form()) * 0.2);
-    if (recentJoin()) { const dd = daysAt(); f = f32(((365 - dd) * 7.5 + dd * f) * (1 / 365)); }
+    if (recentJoin(i)) { const dd = daysAt(i); f = f32(((365 - dd) * 7.5 + dd * f) * (1 / 365)); }
     if (f > 6.8) sum += s8(ftol((f * 3.125 - 21) * cnt));
     else if (f > 0) sum += s8(ftol((f * 6.25 - 42) * cnt));
   }
@@ -168,8 +180,8 @@ export function planScore(i: PlanInput): number {
     const base = cnt && b > 150 ? b : s16(hint);                        // 0x6e6cbe: ≤ 150 falder igennem til [esp+0x24] (sic)
     if (base > 150) def = f32(Math.min((base - 150) * f32(0.05) + f32(6.8), 7.3));
     let avg = f32(d.avg(6, 0x12, def));
-    if (recentJoin()) {
-      const dd = daysAt();
+    if (recentJoin(i)) {
+      const dd = daysAt(i);
       avg = f32(((365 - dd) * 7.5 + dd * avg) * (1 / 365));
       if (i.age > tdiv(R(rec, 0xf), 10) + 34) { const L = d.leagueAvg; if (avg > L) avg = f32((L + avg) * 0.5); }
     }
@@ -212,19 +224,11 @@ export function planScore(i: PlanInput): number {
       if (C.b45 & 0x2808) b = ftol(Math.min(s8(C.b44) * (2 / 3), -25));
       else if (C.b45) b = ftol(Math.min(s8(C.b44) * 0.4, -5));
       const status = (C.b4f >> 4) & 0xf;
-      const appearances = () => {
-        const h = d.history();
-        if (!h || !h.ok) return;
-        const tot = h.w4 + h.w6;
-        const pct = tot ? s8(tdiv(100 * h.w4, tot)) : 0;
-        if (tot && pct >= 70) return;
-        b += 50 - tdiv(pct, 2);
-      };
-      if (status === 1) { b += 25; if (!(flags & 0x800000)) appearances(); }
-      else if (status === 2) { b += 15; if (!(flags & 0x800000)) appearances(); }
+      if (status === 1) { b += 25; if (!(flags & 0x800000)) b += appearances(d); }
+      else if (status === 2) { b += 15; if (!(flags & 0x800000)) b += appearances(d); }
       else if (status === 3) {
         if (flags & 0x800000) b += 10;
-        else { b += ftol(5 * (s8(C.b3e) - s8(C.b3f)) + (cond100 * 2.5 - 225)); appearances(); }
+        else { b += ftol(5 * (s8(C.b3e) - s8(C.b3f)) + (cond100 * 2.5 - 225)); b += appearances(d); }
       } else if (status === 7) b -= 20;
       Q += b;
       Q = tail84aa(i, Q, flags);
@@ -270,6 +274,9 @@ function tail84aa(i: PlanInput, Q: number, flags: number): number {
   return Q;
 }
 
+/** sprogtabellen 0x6e866c */
+const LANG_TAB = [0.54, 0.63, 0.71, 0.78, 0.84, 0.89, 0.93, 0.96, 0.98, 0.99];
+
 /** flag 0x4000 (0x6e70e5–0x6e74b0): alderen mod klubbens omdømme, skadens dage, potentialets alder, positionsbredden, Influence og sproget */
 function ageBlock(i: PlanInput, Q0: number, cnt: number, nat: number): number {
   const rec = i.rec;
@@ -299,8 +306,7 @@ function ageBlock(i: PlanInput, Q0: number, cnt: number, nat: number): number {
     if (caps && caps * caps + i.nationRep > 5000 && cl <= 5) cl = 5;
     if (cl >= 0 && cl <= 9) {
       // 0x6e866c: britiske spillere (nation +0x76 = 0xe) et trin hårdere
-      const tab = [0.54, 0.63, 0.71, 0.78, 0.84, 0.89, 0.93, 0.96, 0.98, 0.99];
-      const f = i.british ? (cl === 0 ? 0.45 : tab[cl - 1]) : tab[cl];
+      const f = i.british ? (cl === 0 ? 0.45 : LANG_TAB[cl - 1]) : LANG_TAB[cl];
       Q = ftol(Q * f);
     }
   }
@@ -344,45 +350,46 @@ function nationalBlock(i: PlanInput, Q0: number, b3d: number): number {
   return Q;
 }
 
+/** driblebonussen i managerblokken (0x6e7xxx) */
+const dribble = (rec: Rec) => (R(rec, 0x26) > 30 && R(rec, 0x36) > 15 ? tdiv(R(rec, 0x1b) * tdiv(R(rec, 0x26), 3) * R(rec, 0x36), 1500) : 0);
+
 /** Managerblokken (flag 0x1000): 0x6e796b–0x6e8150 i 0x6e6340 og 0x6e52ca–0x6e5ae8 i 0x6e2f20 – dommerens holdning til spilleren (ungdom,
  *  klubbens/managerens lister i staff+0x65), arbejdsrate/Professionalism/Loyalty mod managerens +0x14/+0x59 og pladsens egenskaber vægtet med
  *  managerens ikke-spillerpost (+0xe, +0x13, +0x1a, +0x1f, +0x22). Det samlede led ganges med (1 − 0,00375·Q) og holdes i ±80.
  *  `plan` = 0x6e6340's variant: driblebonussen gælder også offensive midtbanespillere (0x20) – 0x6e2f20 har den kun for angribere. */
 export function managerBlock(rec: Rec, pos: number, nat: number, Q0: number, age: number, m: ManagerBlockIn, plan: boolean): number {
   const np = m.np!;
-  const a = (o: number) => R(rec, o), n = (o: number) => s8(np[o]);
   let Q = Q0;
-  if (s8(age) <= 23) Q += ftol((n(0x22) - 10) * (2 / 3));             // ungdomsarbejde
+  if (s8(age) <= 23) Q += ftol((s8(np[0x22]) - 10) * (2 / 3));             // ungdomsarbejde
   if (m.rel.d30) Q = ftol(Math.min(Q - 10, Q * 0.75));
   else if (m.rel.d60) Q = ftol(Math.max(Q + 10, Q * 1.1));
   if (m.rel.m840) Q -= 50;
   else if (m.rel.m810) Q = ftol(Math.max(Q * 1.25, Q + 20));
-  const wr = a(0x44), wr10 = wr - 10, n14 = n(0x14);
+  const wr = R(rec, 0x44), wr10 = wr - 10, n14 = s8(np[0x14]);
   let t = Math.min(tdiv(n14 * wr10, 3), 10) + Math.min(tdiv(n14 * (s8(m.b5b) - 10), 3), 10) + Math.min(tdiv((s8(m.b59) - 10) * s8(m.j59), 3), 10);
   const lo = pos & 0xff;
   if (!(lo & 1)) {
     const central = !(lo & 0x80) && !(pos & 0x800);
-    const E = n(0xe), mk = n(0x1a) * a(0x32), fl = (a(0x28) - 10) * E, dr = a(0x26) * E, cr = a(0x43) * E, fi = a(0x27), wf = n(0x1f) * wr10;
-    const dribble = () => (a(0x26) > 30 && a(0x36) > 15 ? tdiv(a(0x1b) * tdiv(a(0x26), 3) * a(0x36), 1500) : 0);
+    const E = s8(np[0xe]), mk = s8(np[0x1a]) * R(rec, 0x32), fl = (R(rec, 0x28) - 10) * E, dr = R(rec, 0x26) * E, cr = R(rec, 0x43) * E, fi = R(rec, 0x27), wf = s8(np[0x1f]) * wr10;
     if (lo & 6) {
       t += tdiv(mk, 40) + tdiv(fl, 10) + tdiv(dr, 500) + tdiv(fi * E, 350) + tdiv(cr, 250) + tdiv(wf, 8) - 10;
-      if (central) t += a(0x2e) - 15;
+      if (central) t += R(rec, 0x2e) - 15;
     } else if (lo & 8) {
       t += tdiv(fi, 15) + tdiv(mk, 40) + tdiv(fl, 8) + tdiv(dr, 325) + tdiv(cr, 150) + tdiv(wf, 6) - 10;
-      if (central) t += tdiv(a(0x3e), 15) + wr - 15;
+      if (central) t += tdiv(R(rec, 0x3e), 15) + wr - 15;
     } else if (lo & 0x10) {
       t += tdiv(mk, 60) + tdiv(fl, 5) + tdiv(dr, 150) + tdiv(cr, 100) + tdiv(wf, 6) + tdiv(fi, 10) - 10;
-      t += central ? tdiv(a(0x3e), 15) + tdiv(a(0x37), 15) + wr - 15 : tdiv(a(0x23), 15);
+      t += central ? tdiv(R(rec, 0x3e), 15) + tdiv(R(rec, 0x37), 15) + wr - 15 : tdiv(R(rec, 0x23), 15);
     } else if (lo & 0x20) {
       t += tdiv(mk, 150) + tdiv(fl, 4) + tdiv(wf, 8) + tdiv(cr, 75) + tdiv(dr, 150) + tdiv(fi, 8) - 10;
-      t += central ? tdiv(a(0x43), 15) + a(0x1a) - 15 : tdiv(a(0x23), 15);
-      if (plan) t += dribble();
+      t += central ? tdiv(R(rec, 0x43), 15) + R(rec, 0x1a) - 15 : tdiv(R(rec, 0x23), 15);
+      if (plan) t += dribble(rec);
     } else if (lo & 0x40) {
       t += tdiv(mk, 400) + tdiv(fl, 3) + tdiv(cr, 200) + tdiv(wf, 10) + tdiv(dr, 175) + tdiv(fi, 5) - 10;
-      if (central) t += tdiv(a(0x33), 15) + tdiv(fi, 15) + a(0x40) + a(0x36) - 20 + dribble();
+      if (central) t += tdiv(R(rec, 0x33), 15) + tdiv(fi, 15) + R(rec, 0x40) + R(rec, 0x36) - 20 + dribble(rec);
     }
   }
-  if (nat & 0x40 && lo & 0x40) t += tdiv((a(0x36) * a(0x2e) - 200) * n(0x13), 500);   // 0x6e80d8
+  if (nat & 0x40 && lo & 0x40) t += tdiv((R(rec, 0x36) * R(rec, 0x2e) - 200) * s8(np[0x13]), 500);   // 0x6e80d8
   if (t !== 0) {
     let v = ftol((1 - Q * 0.00375) * t);
     if (v < -80) v = -80; else if (v > 80) v = 80;

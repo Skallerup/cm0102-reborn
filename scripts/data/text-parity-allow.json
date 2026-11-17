@@ -934,6 +934,10 @@
     {
       "key": "cmfe.b.crisis",
       "reason": "originalens streng 0x9c94ec (0x59fcf0) med to linjeskift – strengudtrækket deler den"
+    },
+    {
+      "key": "cmint.fix.3P",
+      "reason": "Kampens trinbetegnelse for bronzekampen; exe'en har 'Third Place Playoff' som turneringsrunde, ikke som kampetiket"
     }
   ],
   "patterns": [
@@ -1008,6 +1012,10 @@
     {
       "regex": "^tr\\.(bidsOnPlayer|noRealistic|noRealisticMaybe|showMaybe|showAll|prevFilters|usePrev|anyPos|anyValue|anyNation|anyLeague|free|listedOnly|expiring|knownOnly|incoming|outgoing|loanOption|rival|sctTip|f\\.(more|less|active|attrHint|money|interested|notLoaned|noTrouble|noInjured|tier|tier1|shortlist))$",
       "reason": "Transfers.tsx moderne søgeskærm (efter if (classic) return), Offers/Deals (ikke på Player & Staff Search i ægte tilstand) og IncomingOffersFor (!authentic()); det klassiske filter viser de udvidede rækker kun med ext = !authentic() (TransfersClassic.tsx:221)"
+    },
+    {
+      "regex": "^cmint\\.b\\.(win|wil|cin|xin|xil)[a-z]*[bu]$",
+      "reason": "Afbudsnyheder for 'B'-/U21-holdet: originalens tekst for A-holdet (verificeret i exe'en) med holdtypen indsat ('B' squad / Under 21 squad, begge strenge findes i exe'en) – ordlyden af samlingen er ikke fundet som én streng"
     }
   ]
 }

@@ -14,6 +14,7 @@ import { cmTrainPlayer, humanLevels, setTrainCtx } from './cmTraining';
 import { setDevCtx } from './cmDevelop';
 import { registerPrerun, runPrerun } from './cmPrerun';
 import { cmRetireInjury } from './cmRetire';
+import { intlHooks } from './hooks';
 import { CM_SETUP_INJURIES } from './data/cmPreseason';
 import { addInjury } from './cmFitness';
 
@@ -24,18 +25,30 @@ export const cmFitOn = (g: GameState) => cmActive(g) && !g.draft;
 /** formålene for talrækken (en pr. kaldested, så rækkefølgen inden for et formål er originalens) */
 const SALT = { daily: 1, recover: 2, match: 3, read: 4, init: 5, prerun: 6, setup: 7 } as const;
 
-export function fitCtx(g: GameState, salt: number, today = dayNum(g.date)): FitCtx {
-  return {
-    g, today, rand: fitRand(g, today, salt),
+type FitFns = Pick<FitCtx, 'squadOf' | 'human' | 'news' | 'retire' | 'onDuty' | 'intl' | 'inEurope' | 'train'>;
+/** (hastighed) kontekstens funktioner afhænger kun af (spil, dag) – bygget én gang pr. dag i stedet for pr. aflæsning (linkPlayerCtx
+ *  laver en kontekst for hver spiller, kontrakten spørger om); talrækken er stadig ny for hver kontekst som før */
+let FIT_FNS: { g: GameState; today: number; f: FitFns } | null = null;
+function fitFns(g: GameState, today: number): FitFns {
+  if (FIT_FNS && FIT_FNS.g === g && FIT_FNS.today === today) return FIT_FNS.f;
+  const f: FitFns = {
     squadOf: (club) => squad(club),
     human: (club) => isHumanClub(club),
     news: (kind, p, inj) => injuryNews(g, kind, p, inj),
     // 0x62da70/0x62dbc6 → PLAYER_REGEN::schedule_injury_retirement 0x7a7f20 med skadens dage (+0x2a – cmRetire.ts)
     retire: (p, days) => cmRetireInjury(g, p, days, today),
     onDuty: (p) => intlDuty?.(p) ?? false,
+    intl: (p, days, type) => intlHooks.withdraw?.(p, days, type),
     inEurope: (club) => cmClubEuro(g, club) > -1,
     train: (p) => cmTrainPlayer(g, p, 0x62d312),
   };
+  FIT_FNS = { g, today, f };
+  return f;
+}
+
+export function fitCtx(g: GameState, salt: number, today = dayNum(g.date)): FitCtx {
+  const f = fitFns(g, today);
+  return { g, today, rand: fitRand(g, today, salt), squadOf: f.squadOf, human: f.human, news: f.news, retire: f.retire, onDuty: f.onDuty, intl: f.intl, inEurope: f.inEurope, train: f.train };
 }
 
 /** landsholdsopholdet (staff +0x24 og datoen 0x76e040) – international.ts sætter den (undgår en cirkulær import) */

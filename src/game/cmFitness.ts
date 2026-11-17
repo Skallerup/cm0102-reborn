@@ -172,6 +172,8 @@ export interface FitCtx {
   inEurope?: (club: number) => boolean;
   /** TRAINING_MANAGER::update_player_training 0x8b1750(staff, 0) – add_injury kalder den efter dagens opdatering (0x62d312; cmTraining.ts) */
   train?: (p: Player) => void;
+  /** NationalTeams::withdraw_injured_player 0x775cd0(staff, dage +0x28) for en spiller på et landshold (0x62d994) */
+  intl?: (p: Player, days: number, type: number) => void;
 }
 
 // ---------------------------------------------------------------- 0x62c680 dagens opdatering
@@ -478,6 +480,7 @@ export function addInjury(c: FitCtx, t: number, backdate: boolean, p: Player, fi
     if (perm < 0) { if (c.rand(Math.trunc(perm / 10)) === 0) { r.rt = t; if (c.rand(perm) === 0) r.rl = 1; } }
     else { r.rt = t; r.rl = perm; }
   }
+  c.intl?.(p, e.w28, t);                                                         // 0x62d979–0x62d994: landsholdet (staff +0x24)
   r.b1c = 0;
   rollRecurring(c, r, e);
   if (r.rt === t && perm >= 0) {                                                  // 0x62d9d1: tilbagevendende → måske karrierens slut

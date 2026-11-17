@@ -26,11 +26,14 @@
 //             og gruppe 3 (central) en højre, sic), og CA = PA = omdømme > 5000 ? 0,016·omdømme + 20 : omdømme/25 − 100 (0x90e5fb),
 //             −30 − rand(41) i en aktiv liga og igen for reserver; de 18 interne egenskaber vises derfor efter den nye CA
 //   trøjenummer 51, 52 … (0x90e705, når 0x85add0 er sand)
-// *estimeret*: 0x85add0 (trøjenumre altid), 0x7757d0 (landsholdsophold – ingen), Japans særregel (0x90dc04), landsholdenes gren (0x90dc66 –
-// spillets landshold vælger selv blandt alle spillere), 0x539c60's navnelister (spillets egne pr. land, randomName), CA under 1 gemmes som 1
+//   0x90dc66  landsholdenes gren (cmNationalFillers): menneskets landshold får ingen; målet er truppens størrelse 0x7754c0 (A + 'B', når en
+//             'B'-trup er udtaget – 0x775520), mål pr. gruppe række 1 [6,4,4,12,4,8,4,8] (U21: række 0), førsteholdet = de udtagne (+0x5e & 4);
+//             under målet laves en spiller til førsteholdet, ellers en "fantom"; U21: ingen, når landet har over 500 spillere (+0x88) og ingen
+//             trup er udtaget; spilleren 0x90e0a0 med landsholdets omdømme (> 5000 ? omd/100 + 40 : 0,052·omd − 150), U21 17 år og −30 − rand(41)
+// *estimeret*: 0x85add0 (trøjenumre altid), 0x7757d0 (landsholdsophold – ingen), Japans særregel (0x90dc04), 0x539c60's navnelister (spillets egne pr. land, randomName), CA under 1 gemmes som 1
 // (de viste egenskaber bruger originalens negative CA), lønnen betales aldrig (fyldspillerne er væk ved dagens start, som i originalen
 // hvor de kun findes omkring kampene). Reservespillerne laves ikke (spillets reserver kan ikke spille, og frøene er pr. spiller).
-import type { GameState, Player } from './types';
+import type { GameState, Player, Staff } from './types';
 import { ATTRS } from './attributes';
 import { addPlayer, dropPlayer, playersEpoch, squad } from './state';
 import { cmActive, clubRepMem, NO_RESERVES } from './cmPlayerData';
@@ -47,6 +50,8 @@ export const isVirtual = (p: Player | undefined) => !!p?.virtual;
 /** 0x90d255: målet pr. gruppe for klubber (række 0; række 1 [6,4,4,12,4,8,4,8] er landsholdenes) og mindstetallet (+0x10) */
 export const GROUP_TARGET = [4, 4, 4, 8, 4, 8, 4, 8];
 export const GROUP_MIN = [2, 2, 2, 4, 2, 4, 2, 4];
+/** 0x90d255 række 1: landsholdenes mål pr. gruppe */
+export const GROUP_TARGET_NAT = [6, 4, 4, 12, 4, 8, 4, 8];
 
 /** MSVC's rand/srand (0x9469fa/0x946a04) – fyldspillerne bruger CRT'en direkte, ikke spillets talrække 0x90cfc0 */
 export class Crt {
@@ -258,4 +263,132 @@ export function cmVirtualClear(g: GameState): void {
 export function cmVirtualHumans(g: GameState, clubs: number[]): void {
   if (!cmActive(g) || g.draft) return;
   for (const c of clubs) if (c) cmVirtualSync(g, c, false);
+}
+
+// ---------------------------------------------------------------- landsholdene (0x90dc66)
+
+/** 0x90dae0's landsholdsløkke: truppen `real` (de udtagne – staff +0x5e & 4), målet A (0x7754c0, truppens største størrelse); 'B'-trupper findes
+ *  ikke i spillet. U21 (0x5409b0) bruger række 0, senior række 1. */
+export function nationalPlan(real: Player[], A: number, u21: boolean, match: boolean): VirtualSlot[] {
+  const row = u21 ? GROUP_TARGET : GROUP_TARGET_NAT;
+  const counts = new Array(8).fill(0);
+  let first = real.length, gen = 0;
+  for (const p of real) {
+    if (p.injury) continue;                                               // 0x62c400 = 2
+    if (match && p.banned > 0) continue;                                  // 0x55d270
+    const grp = virtualGroup(p);
+    if (grp >= 0) counts[grp]++;
+  }
+  const out: VirtualSlot[] = [];
+  const genCount = new Array(8).fill(0);
+  let num = 0x33;
+  if (real.length >= A) return out;                                       // 0x90ddac: i alt ≥ målet
+  for (;;) {
+    if (gen >= 25) break;                                                 // 0x90ddbc
+    let any = false;
+    for (let grp = 0; grp < 8; grp++) {
+      if (gen >= 25) break;
+      if (counts[grp] >= row[grp]) continue;                              // 0x90de05
+      // 0x90de6e: under truppens størrelse → førsteholdet; ellers (ingen 'B'-trup) en fantom (0x90df8c)
+      const kind: VirtualSlot['kind'] = A > first ? 'first' : 'phantom';
+      out.push({ grp, n: genCount[grp], kind, num: kind === 'phantom' ? 0 : num });
+      if (kind !== 'phantom') { num++; first++; }
+      counts[grp]++; gen++; genCount[grp]++; any = true;                  // 0x90df8c (i alt +0x15 tælles ikke op i løkken)
+    }
+    if (!any) break;                                                      // 0x90dfd8
+  }
+  return out;
+}
+
+/** landsholdets "klub"-id i databasen (club +0 – srand-frøet 0x90de48): A-holdene ligger efter klubberne (nat_club.dat), U21-holdene et antal
+ *  lande efter (0x53b900/0x5409b0: id ≥ klubber − 2·lande / ≥ klubber − lande). Forskydningen måles på landstrænernes job (staff +0x24, world-
+ *  filens [14]) mod nat_club.dat's trænernavne; uden data 10580 (3.9.60: alle trænere med navn passer). */
+/** landsholdet som hold i kampmotoren (EngineTeam.club) – adskilt fra −1 ("ingen klub") */
+export const natClub = (n: number) => -1000 - n;
+export const natOfClub = (c: number): number | null => (c <= -1000 ? -1000 - c : null);
+/** landstræneren: personen med landsholdsjobbet manager (personpost +0x24 = holdet, +0x28 = 5 – Staff.cmNat) */
+const mgrCache = new WeakMap<GameState, Map<number, Staff>>();
+export function nationalManager(g: GameState, n: number): Staff | undefined {
+  let m = mgrCache.get(g);
+  if (!m) {
+    m = new Map();
+    for (const s of Object.values(g.staff)) if (s.cmNat?.[1] === 5 && !m.has(s.cmNat[0])) m.set(s.cmNat[0], s);
+    mgrCache.set(g, m);
+  }
+  return m.get(natClubId(g, n, false));
+}
+
+export function natClubId(g: GameState, n: number, u21: boolean): number {
+  return natOffset(g) + n + (u21 ? g.nations.length : 0);
+}
+const offCache = new WeakMap<GameState, number>();
+function natOffset(g: GameState): number {
+  const hit = offCache.get(g);
+  if (hit !== undefined) return hit;
+  const byName = new Map<string, number>();
+  for (const [k, v] of Object.entries(g.intl?.info ?? {})) if (v.coach) byName.set(v.coach, +k);
+  const votes = new Map<number, number>();
+  for (const s of Object.values(g.staff)) {
+    if (!s.cmNat || s.cmNat[1] !== 5 || s.cmNat[0] < 0) continue;
+    const n = byName.get(`${s.first} ${s.last}`.trim());
+    if (n !== undefined) votes.set(s.cmNat[0] - n, (votes.get(s.cmNat[0] - n) ?? 0) + 1);
+  }
+  let off = 10580, best = 0;
+  for (const [o, c] of votes) if (c > best) { best = c; off = o; }
+  offCache.set(g, off);
+  return off;
+}
+
+/** 0x90e0a0 for et landshold (0x90dc66-grenen): spilleren uden klub (+0x24 = holdet), landsholdets omdømme og U21-alderen (arg5) */
+function makeNationalVirtual(g: GameState, n: number, u21: boolean, cid: number, rep: number, slot: VirtualSlot, crt: Crt): Player {
+  const Y = Math.trunc(+g.date.slice(0, 4) / 3) * 3;
+  const [first, last] = randomName(g.names, n, new CrtRng(crt));
+  let by: number;
+  if (u21) by = Y - 17;
+  else { const k = crt.r(14); by = Y - k - 17; }
+  const dob = isoDay(crt.r(365), by);
+  const joined = isoDay(crt.r(365), Y - 1);
+  crt.r(365);                                                             // 0x90e395: kontraktens udløb (ingen klub)
+  const adapt = crt.r(10) + 1;
+  const tpl = templates(g);
+  let t: Player | undefined;
+  for (let k = 0; k < 1000 && tpl.length; k++) {
+    t = tpl[crt.r(tpl.length)];
+    if (templateFits(t, slot.grp)) break;
+  }
+  // 0x90e5fb: landshold > 5000 ? omd/100 + 40 : ftol(0,052·omd − 150); U21 (arg5) −30 − rand(41)
+  let v = rep > 5000 ? Math.trunc(rep / 100) + 40 : Math.trunc(rep * 0.052 - 150);
+  if (u21) v += -30 - crt.r(41);
+  const attrs = t ? t.attrs.slice() : new Array(ATTRS.length).fill(10);
+  attrs[A_ADAPT] = adapt;
+  for (const i of TEN) attrs[i] = 10;
+  const cmInt = t?.cmInt ? t.cmInt.slice() : undefined;
+  const pos = t ? t.pos.slice() : [1, 1, 1, 1, 1, 1, 1, 1];
+  if (cmInt) shownFromInternal(attrs, cmInt, v, pos[0]);
+  const ca = Math.max(1, Math.min(200, v));
+  return {
+    id: virtualId(cid, slot.grp, slot.n), first, last, dob, nation: n, club: 0,
+    foot: t?.foot ?? 'R', ...(t?.feet ? { feet: [t.feet[0], t.feet[1]] as [number, number] } : {}), height: t?.height ?? 180,
+    attrs, pos, side: t ? t.side.slice() : [1, 20, 1], ...(cmInt ? { cmInt } : {}), ...(t?.cmFree !== undefined ? { cmFree: t.cmFree } : {}),
+    ca, pa: ca, rep: 0, cmRep: [0, 0, 0], cmRepMem: [0, 0, 0], value: 0,
+    contract: null, condition: 100, morale: t?.morale ?? 10, form: [], injury: null, banned: 0, yellowCount: 0,
+    training: t?.training ?? 'general', listed: false, loan: null, stats: emptyStats(), history: [], caps: 0, intGoals: 0,
+    number: slot.num, joined, virtual: nationActive(g, n) ? 'active' : 'other',
+  };
+}
+
+/** 0x90dae0 for landsholdet `n` før kampen (0x90d2f0): fyldspillerne til truppen `squad` (de udtagne) med største størrelse `max` og landsholdets
+ *  omdømme `rep` (club +0x80). Menneskets landshold (0x600a50) får ingen. De lægges ikke i g.players (international.ts setNationFillers). */
+export function cmNationalFillers(g: GameState, n: number, u21: boolean, squad: Player[], max: number, human: boolean, rep: number): Player[] {
+  if (!cmActive(g) || g.draft || human) return [];
+  // 0x90dd36: U21 uden udtaget trup (0x775520 = 0) og over 500 spillere af nationaliteten (+0x88) → ingen
+  if (u21 && !squad.length && Object.values(g.players).reduce((k, p) => k + (!p.virtual && p.nation === n ? 1 : 0), 0) > 500) return [];
+  const plan = nationalPlan(squad, max, u21, true).filter((s) => s.kind === 'first');
+  if (!plan.length) return [];
+  const cid = natClubId(g, n, u21);
+  const crt = new Crt();
+  return plan.map((s) => {
+    crt.srand(Math.imul(Math.imul(s.n + 10000, cid + 1), s.grp + 1000));  // 0x90de48
+    return makeNationalVirtual(g, n, u21, cid, rep, s, crt);
+  });
 }

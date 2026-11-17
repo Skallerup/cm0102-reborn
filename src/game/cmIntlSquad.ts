@@ -34,11 +34,17 @@ import { roleScore } from './engine/grid/roleScore';
 import { assignSquad } from './engine/grid/pickTeam';
 import { naturalMask } from './engine/grid/aiTacticChoice';
 import { msvcQsort } from './engine/grid/subs';
+import { INJ_TYPES } from './cmFitness';
+
+/** skadetypernes kategori (0x9e7ad9 +0 – 0x62ec00) */
+const INJ_CAT = INJ_TYPES.map((t) => t[0]);
 
 /** 0 = A-holdet, 1 = 'B', 2 = U21 */
 export type SquadSlot = 0 | 1 | 2;
 /** squad slot-posten (0x14 bytes ved nation +0x32 + slot·0x14): +0x32 udtaget, +0x3a slutdato, +0x42/+0x43 størrelserne (0x76d430) */
-export interface CmSquad { ids: number[]; from: string; until: string; max: number; second: number }
+export interface CmSquad { ids: number[]; from: string; until: string; max: number; second: number;
+  /** slutrundens trup (0x76c304: landsholdsopholdet – 0x775cd0 trækker ingen ud undervejs) */
+  finals?: 1 }
 export interface CmIntlSquads {
   /** puljerne (0x76abf0) pr. land: [A-grupper, U21-grupper], hver gruppe spiller-id'er efter hjemmeomdømmet */
   pool?: Record<number, [number[][], number[][]]>;
@@ -257,7 +263,7 @@ export function selectSquad(g: GameState, n: number, slot: SquadSlot, f: SelFixt
   out.forEach((i, j) => { if (i !== null && (playerMask(cands[i]) & masks[j])) ids.push(cands[i].id); });
   // 0x778ef0: truppen sorteres efter klub (klubløse sidst)
   ids.sort((a, b) => (g.players[a].club || 1e9) - (g.players[b].club || 1e9) || a - b);
-  const q: CmSquad = { ids, from: date, until, max, second };
+  const q: CmSquad = { ids, from: date, until, max, second, ...(f?.finals ? { finals: 1 as const } : {}) };
   (s.sq[n] ??= [null, null, null])[slot] = q;
   return q;
 }
@@ -385,7 +391,7 @@ export function reportKeys(res: 'W' | 'D' | 'L', cap: boolean, count: number, f0
 }
 
 /** kampens rundenavn (0x4bff70; "Friendly" med lille f) */
-export type FixName = 'friendly' | 'qual' | 'group' | 'R16' | 'QF' | 'SF' | 'F';
+export type FixName = 'friendly' | 'qual' | 'group' | 'R16' | 'QF' | 'SF' | '3P' | 'F';
 
 /** 0x7706c0: efter en A-landskamp – én nyhed pr. menneskeklub med spillere, der spillede */
 export function cmIntlMatchReport(g: GameState, rep: MatchReport, home: number, away: number, hg: number, ag: number, fix: FixName, captains: [number | undefined, number | undefined]): void {
@@ -427,6 +433,97 @@ export function selectFinals(g: GameState, field: number[], tour: string, first:
     if (humanNational(g, n)) { squadRequestNews(g, n, { d: first, h: n, a: n, kind: tour, slot: 0, finals: true }, [], tour); continue; }
     const q = selectSquad(g, n, 0, { d: first, h: n, a: n, kind: tour, slot: 0, finals: true });
     q.until = until;
+    q.finals = 1;
     callUpNews(g, n, 0, q, [], tour);
   }
+}
+
+// ---------------------------------------------------------------- afbud og erstatninger (0x775cd0/0x775f90)
+
+/** 0x456740: datoen a ligger efter b */
+const after = (a: string, b: string) => a > b;
+
+/** NationalTeams::withdraw_injured_player 0x775cd0 (kaldt af Injury::add_injury 0x62d994 for en spiller på et landshold, staff +0x24): skadet i mindst
+ *  14 dage → ud af truppen, hvis den stadig gælder (slutdatoen +0x3a efter i dag) og holdet ikke er på slutrundeophold (listen this+0: 0x76c304 –
+ *  under en slutrunde bliver han); skadetype 81 (0x51 – karrierens slut) tages ud uden nyhed. Ellers nyheden 0x20 til hans klub (0x76f7d0), ud af
+ *  truppen (0x7762f0) og en erstatning (0x775f90) – menneskets landshold får i stedet nyheden 0x22 (0x7701f0) og vælger selv. */
+export function cmWithdrawInjured(g: GameState, p: Player, days: number, type: number): void {
+  if (days < 14) return;                                                             // 0x775cd6
+  for (const [nk, list] of Object.entries(st(g).sq)) {
+    for (let slot = 0 as SquadSlot; slot < 3; slot = (slot + 1) as SquadSlot) {
+      const q = list[slot];
+      if (!q || !q.ids.includes(p.id)) continue;
+      const n = +nk;
+      const drop = () => { q.ids = q.ids.filter((id) => id !== p.id); };
+      if (type === 0x51) { drop(); continue; }                                       // 0x775db4
+      if (!after(q.until, g.date)) continue;                                         // 0x775e1a
+      if (q.finals) continue;                                                        // 0x775e45: slutrundeophold (til holdet er ude)
+      const ill = (INJ_CAT[type] ?? 1) === 0;                                        // 0x62ec00: kategori 0 = sygdom
+      withdrawnNews(g, p, n, slot, ill);
+      drop();
+      const human = humanNational(g, n) && slot === 0;
+      if (human) { replacementNeededNews(g, p, n, slot, ill); continue; }           // 0x775f68 (menneskets A-hold)
+      callUpReplacement(g, n, slot, p, q);
+    }
+  }
+  const nj = g.manager?.national;
+  if (nj?.picks?.includes(p.id) && days >= 14 && type !== 0x51) nj.picks = nj.picks.filter((id) => id !== p.id);
+}
+
+/** NationalTeams::call_up_replacement 0x775f90: den første i landets pulje (samme gruppe 0x76d810 som den skadede, i puljens rækkefølge) med en
+ *  plads, der passer (0x5b7d20-maskerne & 0x7f), skadesfri (0x62c400), ikke på vej på pension ('B'/U21, 0x7a7eb0), ikke på et andet lands hold, ikke i
+ *  en anden af landets trupper, der stadig gælder (0x456770); andet statsborgerskab kun uden landskampe. Ind i truppen (0x776250) og nyheden 0x21
+ *  til hans klub (0x76fd10). Ingen fundet: ingen erstatning. */
+function callUpReplacement(g: GameState, n: number, slot: SquadSlot, out: Player, q: CmSquad): void {
+  const s = st(g);
+  if (!s.pool) buildPools(g);
+  const u21 = slot === 2;
+  const cnt = [...nationCounts(g)].find(([k]) => k === n)?.[1] ?? 0;
+  const gr = group(playerRecord(out), cnt, u21);
+  const pool = s.pool![n]?.[u21 ? 1 : 0]?.[gr] ?? [];
+  const mask = playerMask(out);
+  for (const id of pool) {
+    const c = g.players[id];
+    if (!c || c.id === out.id || c.virtual) continue;
+    if (c.injury) continue;                                                          // 0x62c400
+    if (c.cmRetire && slot !== 0) continue;                                          // 0x7a7eb0
+    if (q.ids.includes(c.id)) continue;
+    // på et landshold: et andet land → nej; en af landets andre trupper, der stadig gælder → nej (0x456770)
+    let elsewhere: { n: number; s: number; q: CmSquad } | null = null;
+    for (const [nk, list] of Object.entries(s.sq)) list.forEach((x, k) => { if (x && x !== q && x.ids.includes(c.id) && !elsewhere) elsewhere = { n: +nk, s: k, q: x }; });
+    const e = elsewhere as { n: number; s: number; q: CmSquad } | null;
+    if (e && e.n !== n) continue;
+    if (c.nation !== n && (e || (c.caps ?? 0) > 0 || c.cmNation2 !== n)) continue;   // 0x7760b4–0x7760e9
+    if (!(playerMask(c) & mask & 0x7f)) continue;                                   // 0x776125
+    if (e) {
+      if (e.s === slot) continue;
+      if (!after(g.date, e.q.until)) continue;                                       // 0x77618d: hans anden trup gælder stadig
+      if (e.s === 0 && humanNational(g, n)) continue;
+      e.q.ids = e.q.ids.filter((x) => x !== c.id);                                   // 0x7762f0
+    }
+    q.ids.push(c.id);                                                                // 0x776250
+    calledUpNews(g, c, n, slot);
+    return;
+  }
+}
+
+/** 0x775610: truppens navn ("Scotland", "Scotland 'B'", "Scotland Under 21") – nøglens endelse */
+const sqSfx = (slot: SquadSlot) => (slot === 2 ? 'u' : slot === 1 ? 'b' : '');
+
+/** 0x76f7d0/0x76fa40 (nyhed 0x20) til spillerens klub (kun et menneskes): "X removed from Nation squad" */
+function withdrawnNews(g: GameState, p: Player, n: number, slot: SquadSlot, ill: boolean): void {
+  if (!p.club || !isHumanClub(p.club)) return;
+  asOwner(p.club, () => addNews({ cat: 'injury', key: 'cmint.wd', params: { body: `${ill ? 'will' : 'winj'}${sqSfx(slot)}`, player: fullName(p), nation: g.nations[n]?.name ?? '' }, link: { kind: 'player', id: p.id } }));
+}
+/** 0x76fd10/0x76ff40 (nyhed 0x21) til spillerens klub: "X brought in to Nation squad" */
+function calledUpNews(g: GameState, p: Player, n: number, slot: SquadSlot): void {
+  if (!p.club || !isHumanClub(p.club)) return;
+  asOwner(p.club, () => addNews({ cat: 'general', key: 'cmint.ci', params: { body: `cin${sqSfx(slot)}`, player: fullName(p), nation: g.nations[n]?.name ?? '' }, link: { kind: 'player', id: p.id } }));
+}
+/** 0x7701f0/0x7703f0 (nyhed 0x22) til landstræneren (mennesket): "X removed from Nation squad" – "A replacement player must be called up instead." */
+function replacementNeededNews(g: GameState, p: Player, n: number, slot: SquadSlot, ill: boolean): void {
+  forEachHuman(() => {
+    if (g.manager.national?.nation !== n) return;
+    addNews({ cat: 'general', key: 'cmint.rq', params: { body: `${ill ? 'xill' : 'xinj'}${sqSfx(slot)}`, player: fullName(p), nation: g.nations[n]?.name ?? '' }, link: { kind: 'player', id: p.id } });
+  });
 }

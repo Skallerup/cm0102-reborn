@@ -156,7 +156,7 @@ export function monthlyIncome() {
   }
 }
 
-export function seasonPrizeMoney() {
+export function seasonPrizeMoney(inScope?: (compId: string) => boolean) {
   const g = gs();
   // ligaer der ikke simuleres: præmie efter omdømme-rangering
   const unsim = new Map<string, Club[]>();
@@ -169,7 +169,7 @@ export function seasonPrizeMoney() {
   // cmFinance.ts, når ligaen er færdigspillet (League::pay_prize_money 0x682e10)
   const cm = cmFinOn(g);
   for (const [lg, clubs] of unsim) {
-    if (cm) break;
+    if (cm || inScope) break;
     const wealth = rulesFor(lg, clubs.length).wealth;
     const tier = g.leagues[lg]?.tier ?? 1;
     clubs.sort((a, b) => b.rep - a.rep).forEach((c, i) => {
@@ -179,7 +179,7 @@ export function seasonPrizeMoney() {
     });
   }
   for (const comp of Object.values(g.comps)) {
-    if (comp.type !== 'league') continue;
+    if (comp.type !== 'league' || (inScope && !inScope(comp.id))) continue;
     if (cm && (hasLeagueMoney(comp.id) || (comp.nation >= 0 && !nationLoaded(g, comp.nation)))) continue;
     const order = finalOrder(comp);
     const wealth = rulesFor(comp.id, order.length).wealth;
@@ -202,10 +202,11 @@ export function addPrize(c: Club, amount: number) {
 }
 
 /** Nyt budget ved sæsonstart */
-export function newSeasonBudgets() {
+export function newSeasonBudgets(inScope: (cid: number) => boolean = () => true) {
   const g = gs();
   const loanedOut = loanedOutWages();
   for (const c of Object.values(g.clubs)) {
+    if (!inScope(c.id)) continue;
     const wealth = rulesFor(c.league, 20).wealth;
     const sv = squad(c.id).reduce((s, p) => s + p.value, 0);
     // udbytte (CM 01/02: "Dividends"): ejerne tager halvdelen af det, der står i kassen ud over en buffer på 60 % af

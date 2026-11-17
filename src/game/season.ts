@@ -34,12 +34,14 @@ import { monthlyAwards, seasonGala, surpriseOfSeason, teamOfYear } from './award
 import { cmAwardsRollover, cmAwOn } from './cmAwards';
 import { initKnowledge, knowFull } from './scouting';
 import { cmKnowOn } from './cmKnow';
-import type { Club, Player, RegenSeed, SeasonFinance, SeasonSummary } from './types';
+import type { Club, Competition, Player, RegenSeed, SeasonFinance, SeasonSummary } from './types';
 import { subPos } from './data/cm0102';
 import { asOwner, forEachHuman, isHumanClub } from './humans';
 import { econ } from './econ';
 import { extended } from './rules';
-import { cmEuroRolloverStart } from './cmEurope';
+import { cmEuroPrepareNext, cmEuroRolloverStart } from './cmEurope';
+import { cmMainNation, cmNatSeason, cmSeasonDue, cmSeasonOn, seasonYearAfter } from './cmSeason';
+import { compHooks } from './hooks';
 
 const pname = (p: Player) => `${p.first} ${p.last}`.trim();
 
@@ -62,12 +64,12 @@ export function homeAttendance(): Map<number, { sum: number; n: number }> {
 }
 
 /** Sæsonens priser og historik pr. turnering */
-function seasonAwards(): SeasonSummary {
+function seasonAwards(sc: Scope | null = null): SeasonSummary {
   const g = gs();
   const sum: SeasonSummary = { season: g.season, comps: [] };
   const att = homeAttendance();
   for (const comp of Object.values(g.comps)) {
-    if (!comp.winner) continue;
+    if (!comp.winner || (sc && !sc.comps.has(comp.id))) continue;
     const entry: SeasonSummary['comps'][number] = { id: comp.id, name: comp.name, winner: comp.winner };
     if (comp.type === 'league') {
       const order = finalOrder(comp);
@@ -116,11 +118,11 @@ function seasonAwards(): SeasonSummary {
 }
 
 /** Op- og nedrykning. Returnerer nye ligatilhørsforhold */
-function promotionRelegation() {
+function promotionRelegation(sc: Scope | null = null) {
   const g = gs();
   const moves = new Map<number, string>();
   for (const [upper, rules] of Object.entries(LEAGUE_RULES)) {
-    if (!rules.below) continue;
+    if (!rules.below || (sc && !sc.comps.has(upper))) continue;
     const U = g.comps[upper];
     const L = g.comps[rules.below];
     if (!U?.finished || !L?.finished) continue;
@@ -197,7 +199,7 @@ export function endDueLoansDaily() {
 
 function contractsAndLoans() {
   const g = gs();
-  const today = g.date; // 1. juli
+  const today = g.date; // 1. juli (den originale database i ægte tilstand: hver dag)
   const cmOn = cmCmOn(g);
   for (const p of Object.values(g.players)) {
     endLoanIfDue(p, today);
@@ -221,6 +223,12 @@ function contractsAndLoans() {
       } else leaveOnFree(p);
     }
   }
+}
+
+/** (16/11) Den originale database i ægte tilstand: sæsonskiftet sker pr. land (cmSeason.ts), så kontrakter og lejeaftaler udløber dagen efter
+ *  datoen i stedet for ved sæsonskiftet 1/7 (originalens CONTRACT_MANAGER kører dagligt – computerklubberne i hukommelsen: cmContractManager.ts) */
+export function cmContractsDaily() {
+  if (cmSeasonOn(gs())) contractsAndLoans();
 }
 
 /** kontrakten er udløbet: spilleren forlader klubben uden kontrakt */
@@ -512,9 +520,10 @@ export function pushCareerLine(p: Player, club: number, loan: boolean) {
   p.split = { apps: p.stats.apps + p.stats.subs, goals: p.stats.goals, assists: p.stats.assists, minutes: p.stats.minutes, ratingSum: p.stats.ratingSum, ratingCount: p.stats.ratingCount };
 }
 
-function archiveStats() {
+function archiveStats(sc: Scope | null = null) {
   const g = gs();
   for (const p of Object.values(g.players)) {
+    if (sc && !sc.player(p)) continue;
     // sæsonens tal for den nuværende klub (minus det der er bogført på en tidligere klub)
     if (p.stats.apps + p.stats.subs > 0) pushCareerLine(p, p.club, !!p.loan);
     p.split = undefined;
@@ -525,8 +534,8 @@ function archiveStats() {
     p.banned = 0;
     p.form = [];
   }
-  // CM 01/02 0x7e7ed0: organernes tællere nulstilles, men karantænerne fortsætter ind i den nye sæson (cmDiscipline.ts)
-  cmDiscSeason(gs());
+  // CM 01/02 0x7e7ed0: organernes tællere nulstilles, men karantænerne fortsætter ind i den nye sæson (cmDiscipline.ts) – ved hovedskiftet
+  if (!sc || sc.main) cmDiscSeason(gs());
 }
 
 /**
@@ -635,47 +644,112 @@ export function freeAgentDrift() {
   if (originalRegens()) spawnRegenQueue();
 }
 
-function prune() {
+function prune(sc: Scope | null = null) {
   const g = gs();
   // fri agenter med lav værdi forsvinder – ikke i den originale database i ægte tilstand: originalens klubløse stopper via PLAYER_REGEN
   // (cmRetire.ts: check_retirement 0x7a7310/check_unemployed_retirement 0x7a8050 på dag 0/80/173/250)
-  const free = cmRetireOn(g) ? [] : Object.values(g.players).filter((p) => !p.club);
+  const free = cmRetireOn(g) || sc ? [] : Object.values(g.players).filter((p) => !p.club);
   for (const p of free) {
     const age = ageOn(p.dob, g.date);
     // klubløse der ikke er gode nok, eller er for gamle til at få kontrakt, forsvinder ud af fodbolden
     if ((p.ca < 85 && age >= 25) || (age >= 33 && p.ca < 100) || age >= 38 || (p.ca < 45 && age >= 21)) leaveFootball(p);
   }
   // gamle kampe og rapporter (klubhistorikken gemmes først)
-  storeSeasonRecords(isHumanClub);
-  g.fixtures = {};
-  g.miniReports = {};
+  storeSeasonRecords(sc ? (cid) => isHumanClub(cid) && sc.club(cid) : isHumanClub);
+  if (sc) {
+    // sæsonskiftet pr. land: kun de afsluttede turneringers kampe (hovedskiftet også de spillede venskabskampe) – de andre landes sæson kører videre
+    for (const f of Object.values(g.fixtures)) {
+      if (!(sc.comps.has(f.comp) || (sc.main && f.result && !g.comps[f.comp]))) continue;
+      delete g.fixtures[f.id];
+      if (g.miniReports) delete g.miniReports[f.id];
+    }
+  } else {
+    g.fixtures = {};
+    g.miniReports = {};
+  }
   const reportIds = Object.keys(g.reports).map(Number).sort((a, b) => b - a);
   for (const id of reportIds.slice(40)) delete g.reports[id];
 }
 
-/** Kaldes 1. juli */
-export function seasonRollover() {
+/** (16/11) Sæsonskiftet pr. land (cmSeason.ts – kun den originale database i ægte tilstand): hvad skiftet omfatter */
+export interface Scope {
+  /** hovedskiftet (Europa og alle lande uden egen dag): g.season tælles op, Europas turneringer, de globale årsposter */
+  main: boolean;
+  /** landene, hvis sæson skifter (hovedskiftet: alle undtagen de spilbare lande med egen dag) */
+  nations: Set<number>;
+  club: (cid: number) => boolean;
+  player: (p: Player) => boolean;
+  /** de afsluttede turneringer (en pokal, der stadig har kampe forude, hører til den nye sæson og bliver) */
+  comps: Set<string>;
+  /** den afsluttede og den nye sæsons år */
+  label: number;
+  next: number;
+}
+
+/** Skiftets omfang: hovedskiftet (main) eller ét land med egen dag. Kampe, der skulle have været spillet, spilles først (cmPlayOverdue). */
+function makeScope(main: boolean, nation?: number): Scope {
   const g = gs();
-  // den afsluttede sæsons europæiske turneringer tilbage (de nye blev oprettet i juni – cmEurope.ts)
-  cmEuroRolloverStart(g);
-  cmBeforeRollover(g);
-  seasonPrizeMoney();
+  const own = new Set(g.activeNations.filter((n) => !cmMainNation(g, n) && g.cmNatSeason?.[n] !== undefined));
+  const nations = new Set<number>();
+  if (main) { for (let i = 0; i < g.nations.length; i++) if (!own.has(i)) nations.add(i); } else nations.add(nation!);
+  const club = (cid: number) => { const c = g.clubs[cid]; return !!c && nations.has(c.nation); };
+  const mine = (c: Competition) => (c.nation >= 0 ? nations.has(c.nation) : main);
+  // ligaerne spilles færdig; pokalernes kampe, der skulle være spillet (forkørslen, en runde trukket med en dato i fortiden)
+  const open = Object.values(g.comps).filter((c) => mine(c) && !c.finished && c.type !== 'continental');
+  compHooks.playOverdue?.(open.filter((c) => c.type === 'league' || c.type === 'playoff').map((c) => c.id), null);
+  compHooks.playOverdue?.(open.filter((c) => c.type === 'cup').map((c) => c.id), g.date);
+  // en playoff oprettes først, når ligaerne er færdige
+  compHooks.playOverdue?.(Object.values(g.comps).filter((c) => mine(c) && !c.finished && c.type === 'playoff').map((c) => c.id), null);
+  const future = new Set<string>();
+  for (const f of Object.values(g.fixtures)) if (!f.result && f.date >= g.date) future.add(f.comp);
+  const comps = new Set(Object.values(g.comps).filter((c) => mine(c) && (c.finished || c.type !== 'cup' || !future.has(c.id))).map((c) => c.id));
+  const label = main ? g.season : cmNatSeason(g, nation!);
+  return { main, nations, club, player: (p) => (p.club ? club(p.club) : main), comps, label, next: main ? g.season + 1 : seasonYearAfter(g.date) };
+}
+
+/** Den originale database i ægte tilstand: dagens sæsonskifter (newDay, før dagens øvrige systemer) – Europa 20/6, de andre lande på deres dag */
+export function cmSeasonDaily() {
+  const g = gs();
+  const due = cmSeasonDue(g);
+  if (due.main) seasonRollover(makeScope(true));
+  for (const n of due.nations) seasonRollover(makeScope(false, n));
+}
+
+/** Kaldes 1. juli (udvidet spil, 2026/27) – med `sc` sæsonskiftet pr. land (cmSeasonDaily) */
+export function seasonRollover(sc: Scope | null = null) {
+  const g = gs();
+  const inClub = (cid: number) => !sc || sc.club(cid);
+  const inComp = (id: string) => !sc || sc.comps.has(id);
+  const humanIn = () => !sc || (g.userClub ? sc.club(g.userClub) : sc.main);
+  // et land med egen dag: årstallet i historik, rekorder og statistik er landets afsluttede sæson (Argentina/Australien 31/7: året før g.season)
+  const keepSeason = g.season;
+  if (sc && !sc.main) g.season = sc.label;
+  // den afsluttede sæsons europæiske turneringer tilbage (de nye blev oprettet i juni – cmEurope.ts; ved hovedskiftet 20/6 oprettes de her)
+  if (!sc || sc.main) {
+    if (sc) cmEuroPrepareNext(g, g.cmLastTables ?? {}, g.cmLastCupWin ?? {});
+    cmEuroRolloverStart(g);
+  }
+  cmBeforeRollover(g, inClub);
+  seasonPrizeMoney(sc ? (id) => sc.comps.has(id) : undefined);
   const cmAw = cmAwOn(g);
   if (!cmAw) monthlyAwards(); // juni-kåringer inden arkivering
-  const summary = seasonAwards();
+  const summary = seasonAwards(sc);
   // den originale database i ægte tilstand: originalens priser (cmAwards.ts) – ingen gallaaften/Ballon d'Or-nyheder fra spillet
   if (!cmAw) seasonGala(summary);
-  cmAwardsRollover(g);
-  g.seasonHistory.push(summary);
+  if (!sc || sc.main) cmAwardsRollover(g);
+  // historikken: ét afsnit pr. sæson – landene med egen dag lægger deres turneringer i afsnittet for deres sæson
+  const prevSum = sc ? g.seasonHistory.find((s) => s.season === summary.season) : undefined;
+  if (prevSum) prevSum.comps.push(...summary.comps); else { g.seasonHistory.push(summary); g.seasonHistory.sort((a, b) => a.season - b.season); }
   // Udfordringer og bestyrelsens dom – pr. menneskelig manager
   const challengeResults = new Map<string | undefined, 'won' | 'lost'>();
   if (extended()) ffpReview(); // FFP kom først i 2011
   forEachHuman(() => {
+    if (!humanIn()) return;
     const club = g.clubs[g.userClub];
     if (club) {
       const comp = g.comps[club.league];
       const pos = comp ? finalOrder(comp).indexOf(club.id) + 1 : 99;
-      const trophy = Object.values(g.comps).some((c) => c.winner === club.id && c.type !== 'playoff');
+      const trophy = Object.values(g.comps).some((c) => c.winner === club.id && c.type !== 'playoff' && inComp(c.id));
       sponsorSeasonBonus(pos, g.board.expectedPos, trophy);
     }
     // Manager Score beregnes før bestyrelsens dom (en fyring ved sæsonslut trækker fra)
@@ -683,10 +757,10 @@ export function seasonRollover() {
     const verdict = boardSeasonEnd();
     recordSeasonScore(score, verdict === 'sacked');
   });
-  seasonCareers((cid) => strengthRank(g.clubs[cid]).rank);
+  seasonCareers((cid) => strengthRank(g.clubs[cid]).rank, sc ? (id) => sc.comps.has(id) : undefined);
   updateClubReps();
   const prevTables: Record<string, number[]> = {};
-  for (const comp of Object.values(g.comps)) if (comp.type === 'league' && comp.finished) prevTables[comp.id] = finalOrder(comp);
+  for (const comp of Object.values(g.comps)) if (comp.type === 'league' && comp.finished && inComp(comp.id)) prevTables[comp.id] = finalOrder(comp);
   // den originale database i ægte tilstand: klubbens sidste division og placering (club +0x5b/+0x5f – Comp_Stats' udgangsrækkefølge næste sæson)
   if (cmActive(g) && g.cmClubStat) for (const [lid, order] of Object.entries(prevTables)) {
     const cid = +(lid.match(/(\d+)$/)?.[1] ?? NaN);
@@ -694,14 +768,19 @@ export function seasonRollover() {
   }
   // pokalvindere (pr. nation) får en europæisk plads
   const cupWinners: Record<number, number> = {};
-  for (const comp of Object.values(g.comps)) if (comp.type === 'cup' && comp.winner && comp.nation >= 0 && !comp.id.startsWith('SC-')) cupWinners[comp.nation] = comp.winner;
+  for (const comp of Object.values(g.comps)) if (comp.type === 'cup' && comp.winner && comp.nation >= 0 && !comp.id.startsWith('SC-') && inComp(comp.id)) cupWinners[comp.nation] = comp.winner;
+  // landene med egen dag: tabellerne og pokalvinderen gemmes til Europas seeding ved hovedskiftet (cmEuroPrepareNext)
+  if (sc && !sc.main) {
+    Object.assign((g.cmLastTables ??= {}), prevTables);
+    Object.assign((g.cmLastCupWin ??= {}), cupWinners);
+  }
   // rekordbogen: før op/nedrykning (placeringen i den liga, klubben spillede i) og før statistikken nulstilles
-  recordsSeasonEnd((c) => (prevTables[c.league] ?? []).indexOf(c.id) + 1);
+  recordsSeasonEnd((c) => (prevTables[c.league] ?? []).indexOf(c.id) + 1, inClub);
   const tierBefore = new Map(Object.values(g.clubs).map((c) => [c.id, g.leagues[c.league]?.tier ?? 9]));
-  promotionRelegation();
+  promotionRelegation(sc);
   // udfordringer tjekkes efter op/nedrykning (så "ryk op" tæller i oprykningssæsonen)
   forEachHuman(() => {
-    if (!g.challenge || g.challenge.done) return;
+    if (!g.challenge || g.challenge.done || !humanIn()) return;
     const ch = CHALLENGES.find((c) => c.id === g.challenge!.id);
     if (!ch) return;
     // ældre gemte udfordringer har ingen klub – brug managerens
@@ -709,25 +788,28 @@ export function seasonRollover() {
     if (ch.check(g, club)) challengeResults.set(g.active, 'won');
     else if (g.season >= g.challenge.deadlineSeason) challengeResults.set(g.active, 'lost');
   });
-  seasonWageClauses(tierBefore);
+  seasonWageClauses(tierBefore, inClub);
   // ægte tilstand: spillets egne præstationer og sæsonfortælling har intet modstykke i originalen
   if (!cmActive(g)) { achievementsSeasonEnd(tierBefore); storySeasonEnd(tierBefore); }
   // ligaer kan have skiftet klubber → opdater prevTables så europæiske pladser kun gives til tier-1
   for (const [lg, order] of Object.entries(prevTables)) prevTables[lg] = order.filter((cid) => g.clubs[cid].league === lg);
-  storeCompRecords(); // før statistikken nulstilles og kampprogrammet ryddes
-  archiveStats();
-  contractsAndLoans();
+  storeCompRecords(sc ? (id) => sc.comps.has(id) : undefined); // før statistikken nulstilles og kampprogrammet ryddes
+  archiveStats(sc);
+  // den originale database i ægte tilstand: kontrakterne og lejeaftalerne udløber dagligt (cmSeasonOn – sim.ts newDay)
+  if (!sc) contractsAndLoans();
   // den originale database i ægte tilstand: pensioneringerne sker dagligt efter originalens liste (cmRetire.ts – PLAYER_REGEN 0x7a59e0)
   if (!cmRetireOn(g)) retirements();
-  prune();
+  prune(sc);
   // originalen: regens dukker op lige efter pensioneringen (alder < 30 samme dag, ellers inden for 65 dage) – ikke i marts
-  if (originalRegens()) spawnRegenQueue();
-  g.comps = {};
-  g.season += 1;
+  if (originalRegens() && (!sc || sc.main)) spawnRegenQueue();
+  if (sc) { for (const id of sc.comps) delete g.comps[id]; } else g.comps = {};
+  g.season = keepSeason;
+  if (!sc || sc.main) g.season += 1;
   rebuildIndexes();
   // ingen klub må starte sæsonen med for få spillere
-  aiFillSquads(20);
+  if (!sc || sc.main) aiFillSquads(20);
   for (const c of Object.values(g.clubs)) {
+    if (!inClub(c.id)) continue;
     const sq = squad(c.id);
     if (c.manager === -1) {
       // menneskestyret klub: reserveholdet sørger for at der er nok spillere til at stille hold
@@ -741,15 +823,27 @@ export function seasonRollover() {
     }
     if (sq.length < 18 && !g.leagues[c.league]?.hidden) fillSquad(c, sq, clubLevel(c.id) - 6, g.date, hash(g.seed, g.season, c.id), 20);
   }
-  newSeasonBudgets();
-  boardEventsSeason();
-  setupSeasonComps(g.season, prevTables, cupWinners);
+  newSeasonBudgets(sc ? inClub : undefined);
+  if (!sc || sc.main) boardEventsSeason();
+  const before = new Set(Object.keys(g.comps));
+  if (sc) {
+    // de spilbare lande i skiftet får deres nye sæson; en pokal, der stadig har kampe forude, er allerede den nye sæsons
+    const nations = new Set(g.activeNations.filter((n) => sc.nations.has(n)));
+    const keepCups = new Set([...nations].filter((n) => Object.values(g.comps).some((c) => c.type === 'cup' && c.nation === n && c.id.startsWith('CUP-'))));
+    setupSeasonComps(sc.next, prevTables, cupWinners, { nations, euro: sc.main, keepCups });
+    // landene med egen dag (og i ældre gemte spil dem, der skiftede med Europa) skifter fremover på deres dag
+    for (const n of nations) if (!cmMainNation(g, n)) (g.cmNatSeason ??= {})[n] = sc.next;
+  } else setupSeasonComps(g.season, prevTables, cupWinners);
+  const fresh = Object.values(g.comps).filter((c) => !before.has(c.id));
+  // den nye sæsons kampe, der skulle have været spillet (et ældre gemt spil, en sæson der starter før landets dag)
+  if (sc) compHooks.playOverdue?.(fresh.filter((c) => c.nation >= 0).map((c) => c.id), g.date);
   // original DB i ægte tilstand: League::pay_tv_rights 0x683010 i ligaernes create_table (cmFinance.ts)
-  if (cmFinOn(g)) for (const comp of Object.values(g.comps)) if (comp.type === 'league') cmLeagueTv(g, comp.id, comp.clubs);
-  for (const c of Object.values(g.clubs)) if (c.manager !== -1) c.tactic = null;
+  if (cmFinOn(g)) for (const comp of fresh) if (comp.type === 'league') cmLeagueTv(g, comp.id, comp.clubs);
+  for (const c of Object.values(g.clubs)) if (c.manager !== -1 && inClub(c.id)) c.tactic = null;
   // den originale database i ægte tilstand: League::set_club_season_expectations 0x68aa80 for alle ligaklubber (cmBoardGame.ts)
-  cmBoardSeasonSetup(g);
+  cmBoardSeasonSetup(g, sc ? new Set(fresh.map((c) => c.id)) : undefined);
   forEachHuman(() => {
+    if (!humanIn()) return;
     if (g.userClub) { if (!cmBoardOn(g)) setBoardExpectation(); if (extended()) addNews({ cat: 'finance', key: 'sponsor.offers', params: {} }); }
     startScoreSeason();
     initKnowledgeKeep();
@@ -760,8 +854,10 @@ export function seasonRollover() {
     }
   });
   // AI-klubberne deler truppen igen (førstehold/reserver) efter sommerens handler og ungdomsspillere
-  for (const c of Object.values(g.clubs)) if (!isHumanClub(c.id) && !g.leagues[c.league]?.hidden) splitReserves(c.id);
-  addNews({ cat: 'general', key: 'news.newSeason', params: { season: `${g.season}/${String(g.season + 1).slice(2)}` } }, { all: true });
+  for (const c of Object.values(g.clubs)) if (inClub(c.id) && !isHumanClub(c.id) && !g.leagues[c.league]?.hidden) splitReserves(c.id);
+  if (!sc || sc.main) addNews({ cat: 'general', key: 'news.newSeason', params: { season: `${g.season}/${String(g.season + 1).slice(2)}` } }, { all: true });
+  // et land med egen dag: kun til managerne i landet, sæsonen efter året (Norge 2002) – spillets egen nyhed (ægte tilstand filtrerer den fra)
+  else forEachHuman(() => { if (humanIn()) addNews({ cat: 'general', key: 'news.newSeason', params: { season: String(sc.next) } }); });
 }
 
 function initKnowledgeKeep() {

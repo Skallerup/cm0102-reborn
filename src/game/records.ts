@@ -110,10 +110,10 @@ export function recordsAfterMove(p: Player, to: number, fee: number, loan: boole
 }
 
 /** Ved sæsonslut (før statistikken nulstilles): flest mål i en sæson og bedste placering */
-export function recordsSeasonEnd(leaguePos: (c: Club) => number) {
+export function recordsSeasonEnd(leaguePos: (c: Club) => number, inScope: (cid: number) => boolean = () => true) {
   const g = gs();
   for (const c of Object.values(g.clubs)) {
-    if (!isHumanClub(c.id)) continue;
+    if (!isHumanClub(c.id) || !inScope(c.id)) continue;
     const r = recs(c);
     const top = Object.values(g.players).filter((p) => p.club === c.id).sort((a, b) => b.stats.goals - a.stats.goals)[0];
     if (top && top.stats.goals > 0 && (!r.seasonGoals || top.stats.goals > r.seasonGoals.goals)) {

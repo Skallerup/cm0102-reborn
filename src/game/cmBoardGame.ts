@@ -716,12 +716,14 @@ registerPrerun('managers', (g, day, iso) => {
 });
 
 /** season.ts: League::set_club_season_expectations 0x68aa80 for hver liga (når sæsonen sættes op) */
-export function cmBoardSeasonSetup(g: GameState): void {
+export function cmBoardSeasonSetup(g: GameState, only?: Set<string>): void {
   if (!cmBoardOn(g)) return;
   const st = stateOf(g), env = boardEnv(g);
-  st.tab = {};
+  // (16/11) sæsonskiftet pr. land (cmSeason.ts): kun de nye ligaer – de andre landes Comp_Stats-rækker fortsætter
+  if (!only) st.tab = {};
   for (const comp of Object.values(g.comps)) {
-    if (comp.type !== 'league' || g.leagues[comp.id]?.hidden) continue;
+    if (comp.type !== 'league' || g.leagues[comp.id]?.hidden || (only && !only.has(comp.id))) continue;
+    if (only && st.tab) for (const c of comp.clubs) delete st.tab[c];
     for (const c of comp.clubs) { setSeasonExpectations(env, st, c, true, rnd(g, dayNum(g.date), 0x68aa80, c)); cmFineSeasonHalve(g, c); }   // 0x6a4472: 0x5a5930
   }
   syncHuman(g);

@@ -18,10 +18,28 @@ const user = world.clubs.find((c) => c[1] === (process.env.CLUB ?? 'Arsenal'))![
 let t = performance.now();
 createGame(world, { managerName: 'Ct', managerNation: eng, clubId: user, activeNations: [eng], lang: 'en', masking: true, seed: 1, mode: 'authentic' });
 console.log(`createGame ${Math.round(performance.now() - t)} ms (ønskelisternes start ${Math.round(SL_STATS.startMs)} ms)`);
+// BOTS=n: lokalt spil mod n AI-managere (g.localMp – Ranking.tsx' "tilføj AI-manager"), som dagens Worker også kører (ui/dayRunner.ts)
+if (+(process.env.BOTS ?? 0) > 0) {
+  const { enableMultiplayer } = await import('../src/game/humans');
+  const { setupBots } = await import('../src/game/bots');
+  enableMultiplayer('host', 'Ct');
+  gs().localMp = true;
+  setupBots(+process.env.BOTS!, 'league');
+  console.log('AI-managere', (gs().humans ?? []).filter((h) => h.bot).map((h) => `${h.name} ${gs().clubs[h.userClub]?.name}`).join(', '));
+}
 const days = +(process.env.DAYS ?? 8);
+// PROF=fil.cpuprofile: CPU-profil af dagene (efter spilstarten)
+const insp = process.env.PROF ? new (await import('node:inspector')).Session() : null;
+const post = (m: string, p?: object) => new Promise<unknown>((ok, no) => insp!.post(m, p ?? {}, (e, r) => (e ? no(e) : ok(r))));
+// PROF_FROM=n: profilen først fra dag n (fx en kampuge i august)
+const profFrom = +(process.env.PROF_FROM ?? 0);
+const startProf = async () => { insp!.connect(); await post('Profiler.enable'); await post('Profiler.setSamplingInterval', { interval: 500 }); await post('Profiler.start'); };
+if (insp && !profFrom) await startProf();
+const tAll = performance.now();
 const clone = process.env.CLONE === '1';
 const sha = () => { gs().rng = rng.state; return createHash('sha1').update(JSON.stringify({ ...gs(), id: 0 })).digest('hex').slice(0, 12); };
 for (let i = 0; i < days; i++) {
+  if (insp && profFrom && i === profFrom) await startProf();
   if (clone) {
     notify();
     let t1 = performance.now();
@@ -40,4 +58,6 @@ for (let i = 0; i < days; i++) {
   await runUntil({ maxDays: 1, autoPlay: true });
   console.log(`${gs().date} ${Math.round(performance.now() - t)} ms sha1 ${sha()}`);
 }
+console.log(`${days} dage: ${Math.round((performance.now() - tAll) / days)} ms pr. dag`);
+if (insp) { const r = (await post('Profiler.stop')) as { profile: unknown }; (await import('node:fs')).writeFileSync(process.env.PROF!, JSON.stringify(r.profile)); }
 if (process.env.DUMP) (await import('node:fs')).writeFileSync(process.env.DUMP, JSON.stringify(gs()));

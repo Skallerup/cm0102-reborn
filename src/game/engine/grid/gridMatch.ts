@@ -137,6 +137,8 @@ export interface GridMatchCtx {
   rep?: [number, number];
   /** turneringens type (fixture+0x37 → +0x3a; 1 og 9 = venskabskamp) – sub_6ddab0 */
   compType?: number;
+  /** holdene er landshold (0x53b900 – pick_team 0x6dcd90's flag og omrokeringen 0x6e1090) */
+  national?: [boolean, boolean];
   /** kampen er en ligakamp mellem to hold i samme række (aiMode: sameDivision/compLink) – standard true; derby = rivaler */
   league?: boolean;
   /** klubbens række i turneringens tabel (0x4a4850 på fixture-turneringens +8, samme række som 0x6df460's) – stimerne
@@ -1160,7 +1162,7 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
       }
     } else if (GRID_UNKNOWN.aiTeam) {
       // menneskets hold: pick_team(…, 1) trækker også flagenes rand (0x6dcd90) – kun tallene, taktikken er menneskets
-      pickFlags(rand, { national: false, compType: ctx.compType ?? 0, ownRep: ctx.rep?.[side] ?? 5000, oppRep: ctx.rep?.[1 - side] ?? 5000, leagueMember: ctx.league !== false });
+      pickFlags(rand, { national: !!ctx.national?.[side], compType: ctx.compType ?? 0, ownRep: ctx.rep?.[side] ?? 5000, oppRep: ctx.rep?.[1 - side] ?? 5000, leagueMember: ctx.league !== false });
     }
     tactic.lineup.forEach((id, slot) => {
       const p = ps.get(id); if (!p) return;
@@ -1299,7 +1301,7 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
     return m.aiMode[s] === 3 || m.aiMode[s] === 4;
   };
   const capValue = new Map<GP, number>();
-  const subs = makeMatchSubs({ m, gp, rand, ai: isAi, subs: ctx.subs ?? [3, 3], periodEnd: () => m.periodEnd, rep: [ctx.rep?.[0] ?? 5000, ctx.rep?.[1] ?? 5000], aiPick: aiPicks,
+  const subs = makeMatchSubs({ m, gp, rand, ai: isAi, subs: ctx.subs ?? [3, 3], periodEnd: () => m.periodEnd, rep: [ctx.rep?.[0] ?? 5000, ctx.rep?.[1] ?? 5000], national: ctx.national, aiPick: aiPicks,
     compType: ctx.compType ?? 0, onSub: (a, b, auto) => { if (auto) subComment(a, b); on?.sub?.(a, b, auto); }, onCarriedOff: (p) => on?.carriedOff?.(p), comment: (id, p1, s1, p2, s2, x) => comment(id, p1, s1, p2, s2, x),
     aiModeNow: (s: Side) => { const r = aiModeOf(modeInput(s, true)); aiR[s] = r.r; return r.mode; }, refresh: (q) => recompute(q),
     cohesionOf: ctx.cohesionOf,

@@ -7,7 +7,7 @@ import { splitReserves } from './reserves';
 import { initialTransferList } from './transfers';
 import { startScoreSeason } from './rating';
 import { naturalRole } from './attributes';
-import { europeanQualifiers, setupChampionsLeague, setupCmCharity, setupCmLeagueCup, setupCup, setupLeague, setupSuperCup, setupUefaCup } from './competitions';
+import { cupFirstDate, europeanQualifiers, setupChampionsLeague, setupCmCharity, setupCmLeagueCup, setupCup, setupLeague, setupSuperCup, setupUefaCup } from './competitions';
 import { addDays, ageOn } from './dates';
 import {
   caFromValue, defaultTraining, makePlayer, makeStaff, randomDob, randomName, SUB_ROLE, valueFromCA, wageFor, type SubPos,
@@ -36,6 +36,7 @@ import { npFromWorld, npTemplate, staffConvert, staffInitRecord, type NpTemplate
 import { initialLanguages } from './cmLanguage';
 import { cmActive } from './cmPlayerData';
 import { cmStartDate } from './cmCalendar';
+import { cmMainNation, cmSeasonOn } from './cmSeason';
 import { cmEuroOn, cmEuroRestoreNext, cmSetupEurope } from './cmEurope';
 import { compHooks } from './hooks';
 import { cmFitNewGame } from './cmFitnessGame';
@@ -525,6 +526,8 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   progress('comps', 0.55);
   // Turneringer for aktive nationer
   setupSeasonComps(season, {});
+  // (16/11) sæsonskiftet pr. land (cmSeason.ts): de spilbare lande med egen sæsondag (Norge, Sverige, Japan …) starter i spillets første år
+  if (cmSeasonOn(g)) for (const n of g.activeNations) if (!cmMainNation(g, n)) (g.cmNatSeason ??= {})[n] = season;
   // originalens bestyrelse: init_club_board_records 0x68f130 på databasens dato (cmBoardGame.ts – kun den originale database i ægte tilstand)
   cmBoardInit(g, cm?.cmRaw?.chairBoard, cm?.cmRaw?.nationBoard);
 
@@ -603,12 +606,25 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   if (GRID_ENGINE_DEFAULT && g.options.mode === 'authentic' && cmDatabase(g) === 'original') g.options.engine = 'original';
   // (runde 10C) forkørslen: de europæiske kampe før startdatoen (sim.ts registrerer krogen)
   compHooks.euroCatchUp?.(g);
+  // (16/11) forkørslen 0x5cc850 spiller alle turneringers kampe fra databasens dato til starten – ligaer og pokaler, der begyndte før startdatoen
+  // (Norge/Sverige/Japan/USA/Rusland fra marts–april, Brasiliens pokal): deres kampe spilles her på én gang (sim.ts playOverdue – se cmSeason.ts)
+  // (arbejderen ui/newGameWorker.ts har ikke sim.ts' kroge – så tager continueGame dem: g.cmOverdue)
+  if (cmSeasonOn(g)) { if (compHooks.playOverdue) cmPlayStartOverdue(g); else g.cmOverdue = true; }
   return g;
 }
 
-export function setupSeasonComps(season: number, prevTables: Record<string, number[]>, cupWinners: Record<number, number> = {}) {
+/** `only` (16/11, sæsonskiftet pr. land – cmSeason.ts): kun disse lande; `euro` = Europas turneringer (hovedskiftet); `keepCups` = lande, hvis pokal
+ *  stadig har kampe forude (den hører til den nye sæson); pokalens år = det første, hvis første kamp ikke ligger i fortiden */
+/** (16/11) kampene før startdatoen (createGame/continueGame) */
+export function cmPlayStartOverdue(g: GameState): void {
+  delete g.cmOverdue;
+  compHooks.playOverdue?.(Object.values(g.comps).filter((c) => c.nation >= 0).map((c) => c.id), g.date);
+}
+
+export function setupSeasonComps(season: number, prevTables: Record<string, number[]>, cupWinners: Record<number, number> = {},
+  only?: { nations: Set<number>; euro: boolean; keepCups: Set<number> }) {
   const g = gs();
-  const active = new Set(g.activeNations);
+  const active = only ? only.nations : new Set(g.activeNations);
   // sidste sæsons pokalfinalister (til supercuppen – setupCup nedenfor overskriver pokalen)
   const prevRunner: Record<number, number> = {};
   for (const c of Object.values(g.comps)) if (c.id.startsWith('CUP-') && c.meta?.runnerUp) prevRunner[c.nation] = c.meta.runnerUp as number;
@@ -626,10 +642,13 @@ export function setupSeasonComps(season: number, prevTables: Record<string, numb
     const leagues = [...leaguesMeta.entries()].filter(([, m]) => m.nation === nation && !m.hidden).map(([id]) => id);
     const cupName = leagues.map((l) => LEAGUE_RULES[l]?.cup).find(Boolean);
     const clubs = leagues.flatMap((l) => byLeague.get(l) ?? []);
-    if (clubs.length >= 8) setupCup(nation, cupName ?? `${g.nations[nation].name} Cup`, clubs, season);
+    if (only?.keepCups.has(nation)) continue;
+    const year = only ? [season - 1, season, season + 1].find((y) => cupFirstDate(nation, clubs.length, y) >= g.date) ?? season : season;
+    if (clubs.length >= 8) setupCup(nation, cupName ?? `${g.nations[nation].name} Cup`, clubs, year);
   }
   // (runde 10C) den originale database i ægte tilstand: Champions League, UEFA Cup og Super Cup i originalens 2001/02-format (cmEurope.ts)
   if (cmEuroOn(g)) {
+    if (only && !only.euro) return;
     // (16/11) næste sæsons turneringer blev oprettet i juni (cmEuroNextSeason) – de bruges; ellers som før
     if (!cmEuroRestoreNext(g, season)) cmSetupEurope(season, prevTables, cupWinners);
     // (runde 10D) England: Liga Cup og Charity Shield efter originalens rundetabeller (competitions.ts / cmCups.ts)

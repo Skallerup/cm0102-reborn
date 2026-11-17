@@ -30,6 +30,7 @@ import type { GameState, Fixture, MatchReport } from './types';
 import { cmActive, cmRand, clubRepMem } from './cmPlayerData';
 import { fixturesOn, gs, squadIds } from './state';
 import { addDays } from './dates';
+import { cmUpdateDay } from './cmSeason';
 
 export const RES_COMP = 'RES';
 export const isResFixture = (f: { comp: string } | undefined) => f?.comp === RES_COMP;
@@ -49,6 +50,8 @@ type Player_ = (f: Fixture, salt: number) => MatchReport | null;
 let playMatch: Player_ | null = null;
 export function setResMatchPlayer(fn: Player_): void { playMatch = fn; }
 
+/** kun til tests, der ikke bruger reservekampene (kalender-/tilmeldingstests): springer de daglige reservekampe over */
+export const RES_SKIP = { on: false };
 export const cmResOn = (g: GameState) => cmActive(g) && !g.draft;
 
 const dn = (iso: string) => Math.round(Date.parse(iso + 'T00:00:00Z') / 86400000);
@@ -100,10 +103,9 @@ export function cmResBuild(g: GameState): CmResState {
 }
 
 /** 0x5d5d58: sæsonopdateringens dag for et spilbart land (nøglelandstabellens +0x15 – som cmFinance.ts) */
-const UPDATE_DAY: Record<string, string> = { Finland: '12-27', Russia: '12-27', Sweden: '12-27', Norway: '11-27', Japan: '01-25', 'South Korea': '01-20' };
 function seasonUpdate(g: GameState): boolean {
   const md = g.date.slice(5);
-  return g.activeNations.some((n) => (UPDATE_DAY[g.nations[n]?.name ?? ''] ?? '06-20') === md);
+  return g.activeNations.some((n) => cmUpdateDay(g, n) === md);
 }
 
 /** 0x84be20's tælling for én klub: −1 = kamp fra 2 dage før til 3 dage efter (eller intet land), ellers antal klar */

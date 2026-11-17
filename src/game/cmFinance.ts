@@ -23,6 +23,7 @@
 import type { Club, Fixture, GameState, Player, Staff } from './types';
 import { cmActive, cmRand, clubRepMem } from './cmPlayerData';
 import { cmWeekday } from './cmCalendar';
+import { cmUpdateDay } from './cmSeason';
 import { seasonStartDay } from './cmFitness';
 import { addDays } from './dates';
 import { gs, squad } from './state';
@@ -684,8 +685,9 @@ export function cmLeagueTv(g: GameState, compId: string, clubs: number[]): void 
 }
 /** club +0x5b (sidste sæsons division): klubbens liga lige før sæsonskiftet (cmBeforeRollover) */
 let lastDiv = new Map<number, number>();
-export function cmBeforeRollover(g: GameState): void {
-  lastDiv = new Map(Object.values(g.clubs).map((c) => [c.id, /^CM(\d+)$/.test(c.league) ? +c.league.slice(2) : -1]));
+export function cmBeforeRollover(g: GameState, inScope: (cid: number) => boolean = () => true): void {
+  // (16/11) sæsonskiftet pr. land (cmSeason.ts): kun skiftets klubber – de andre landes klubber har stadig sidste sæsons division
+  for (const c of Object.values(g.clubs)) if (inScope(c.id)) lastDiv.set(c.id, /^CM(\d+)$/.test(c.league) ? +c.league.slice(2) : -1);
 }
 function lastDivOf(_g: GameState, c: Club): number { return lastDiv.get(c.id) ?? -1; }
 /** ligaen har originalens præmie (spillets egen præmie springes over) */
@@ -696,10 +698,9 @@ compHooks.leagueDone = (comp, order) => { const g = gs(); if (cmFinOn(g)) cmLeag
 // ------------------------------------------------------------------------------------------------ sæsonens slutning
 
 /** nøglelandstabellens +0x15 (key_nation_build_table 0x667150): sæsonopdateringens dag – 20/6 i de europæiske lande;
- *  Finland, Rusland, Sverige 27/12, Norge 27/11, Japan 25/1, Sydkorea 20/1 (de øvrige ikke-europæiske: *ikke afkodet*, 20/6) */
-const UPDATE_DAY: Record<string, string> = { Finland: '12-27', Russia: '12-27', Sweden: '12-27', Norway: '11-27', Japan: '01-25', 'South Korea': '01-20' };
+ *  Finland, Rusland, Sverige 27/12, Norge 27/11, Japan 25/1, Sydkorea 20/1, USA 20/2, Argentina/Australien 31/7 (cmSeason.ts) */
 function seasonUpdateDay(g: GameState, c: Club): string {
-  return UPDATE_DAY[nationName(g, c.nation)] ?? '06-20';
+  return cmUpdateDay(g, c.nation);
 }
 
 /** end_season_for_nation 0x59cdd0 for én klub: season_end_club_update (udbyttet) og sæsonens blok → sidste sæson */

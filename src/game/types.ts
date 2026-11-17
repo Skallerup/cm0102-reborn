@@ -1219,6 +1219,14 @@ export interface GameState {
   cmEuroPrev?: Record<string, Competition>;
   /** (16/11) kun under seasonRollover: de nye turneringer og deres kampe, mens den gamle sæson afsluttes (cmEuroRolloverStart → cmEuroRestoreNext) */
   cmEuroNext?: { comps: Record<string, Competition>; fixtures: Fixture[]; mini: Record<number, MiniReport> };
+  /** (16/11) sæsonskiftet pr. land (cmSeason.ts): de spilbare lande med egen sæsondag (Norge 27/11, Sverige 27/12, Japan 25/1 …) → året for
+   *  landets nuværende sæson (ligaernes create_schedule-år); Europa og lande uden egen dag følger g.season */
+  cmNatSeason?: Record<number, number>;
+  /** (16/11) kampene før startdatoen er ikke spillet endnu (nyt spil i arbejderen uden sim.ts – continueGame spiller dem, newgame.ts cmPlayStartOverdue) */
+  cmOverdue?: boolean;
+  /** (16/11) de lande med egen sæsondag: de senest afsluttede ligatabeller og pokalvindere – til Europas seeding ved hovedskiftet 20/6 */
+  cmLastTables?: Record<string, number[]>;
+  cmLastCupWin?: Record<number, number>;
   cmCrowd?: Record<number, [number, number, number, number, number, number, number, number, number]>;
   cmCities?: number[];
   cmNation7e?: number[];

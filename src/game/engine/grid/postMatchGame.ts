@@ -19,13 +19,21 @@ import { fixtureInfoOf } from './gameInputs';
 import type { GP, GridMatch, Rand } from './gridMatch';
 import { matchReport6d1cc0, refereeReport6d4a20, type PmManager, type PmClub, type PmEnv, type PmFixture, type PmPlayer, type PmStaff } from './postMatch';
 import { pmPlayerOf, pmSides, refereeInputs } from './postMatchInputs';
+import { natClubId, natOfClub, nationalManager } from '../../cmVirtual';
 
 const s8 = (v: number) => (v << 24) >> 24;
 const u16 = (a: Int8Array, o: number) => ((a[o] & 0xff) | ((a[o + 1] & 0xff) << 8));
 const s16a = (a: Int8Array, o: number) => (u16(a, o) << 16) >> 16;
 
+/** turneringen "Friendly" (club_comp.dat 72 – crowd1.txt: A-venskabskampene) */
+const FRIENDLY_COMP = 72;
+
 function clubOfGame(id: number): PmClub {
-  const g = gs(), c = g.clubs[id];
+  const g = gs();
+  // landsholdet (0x53b900): nat_club.dat's id, omdømme +0x80 (g.intl.info) og landet
+  const n = natOfClub(id);
+  if (n !== null) { const cid = natClubId(g, n, false); return { key: cid + 1, id: cid, rep: g.intl?.info?.[n]?.rep ?? 0, nation: n + 1, ground: cid + 1, disStaff: [], favStaff: [], rivals: [], cf: 0, national: true, manager: null }; }
+  const c = g.clubs[id];
   // club +0x9b..+0xa3 / +0xa7..+0xaf (Club.cmPrefs – personnøglen er person-id + 1 som staffOfGame)
   const cp = c?.cmPrefs, keys = (a: number) => (cp ? cp.slice(a, a + 3).filter((x) => x > 0).map((x) => x + 1) : []);
   return { key: id + 1, id, rep: clubRepMem(g, id), nation: c ? c.nation + 1 : 0, ground: id + 1, disStaff: keys(0), favStaff: keys(3), rivals: [], cf: 0, national: false, manager: null };
@@ -42,16 +50,17 @@ function staffOfGame(q: GP): PmStaff | null {
 }
 
 /** kamprapporten for gittermotorens kamp (efter slutfløjtet) med kampens egne tal (rand) – null uden spil */
-export function gamePostReport(gm: GridMatch, o: { home: number; away: number; fixtureId?: number; neutral?: boolean }, rand: Rand): CmPostResult | null {
+export function gamePostReport(gm: GridMatch, o: { home: number; away: number; fixtureId?: number; neutral?: boolean; intl?: { b3a: number; w30: number; compId: number; major: boolean } }, rand: Rand): CmPostResult | null {
   if (!hasGame()) return null;
   const g = gs();
   const f = o.fixtureId !== undefined ? g.fixtures[o.fixtureId] : undefined;
-  const info = fixtureInfoOf(f?.comp, o.home, f?.stage);
-  const comp = f ? g.comps[f.comp] : g.comps[g.clubs[o.home]?.league ?? ''];
+  const info = o.intl ? { fx3a: o.intl.b3a, comp: o.intl.compId >= 0 ? { rep: g.cmCompRep?.[o.intl.compId] ?? 0 } : null } : fixtureInfoOf(f?.comp, o.home, f?.stage);
+  const comp = o.intl ? undefined : f ? g.comps[f.comp] : g.comps[g.clubs[o.home]?.league ?? ''];
   const home = clubOfGame(o.home), away = clubOfGame(o.away);
   const fx: PmFixture = {
-    id: o.fixtureId ?? 0, home, away, ground: o.neutral ? 0 : home.ground, w30: 0, w32: 0, b3a: info.fx3a, b40: 1,
-    comp: info.comp ? { rep: info.comp.rep, nation: comp && comp.nation >= 0 ? comp.nation + 1 : 0, major: false, special: false } : null,
+    id: o.fixtureId ?? 0, home, away, ground: o.neutral ? 0 : home.ground, w30: o.intl?.w30 ?? 0, w32: 0, b3a: info.fx3a, b40: 1,
+    // landsholdsturneringerne: +0x5d = ingen nation; 0x76d940 (de store slutrunder) = major; venskabskampe (0x5c6710) = special
+    comp: info.comp ? { rep: info.comp.rep, nation: comp && comp.nation >= 0 ? comp.nation + 1 : 0, major: !!o.intl?.major, special: !!o.intl && o.intl.b3a === 9 && o.intl.compId === FRIENDLY_COMP } : null,
     goals: [gm.m.goals[0] & 0xff, gm.m.goals[1] & 0xff],
   };
   const sides = pmSides(gm);
@@ -70,6 +79,13 @@ export function gamePostReport(gm: GridMatch, o: { home: number; away: number; f
   };
   // managerens omdømme 0x6d3610: ikke-spillerpostens +8/+0xa/+0xc (Staff.cmRep / ManagerProfile.cmRep – cmBoard.ts); uden post: springes over
   const mgrOf = (club: number): PmManager | null => {
+    const n = natOfClub(club);
+    if (n !== null) {
+      // landstræneren (menneskets landshold: menneskets post)
+      const human = g.manager.national?.nation === n;
+      const st = human ? null : nationalManager(g, n), rp = human ? g.manager.cmRep : st?.cmRep, nat = human ? g.manager.nation : st?.nation;
+      return rp && nat !== undefined ? { nation: nat + 1, w8: rp[0], wa: rp[1], wc: rp[2] } : null;
+    }
     const c = g.clubs[club];
     if (!c) return null;
     const rp = c.manager === -1 ? (club === g.userClub ? g.manager.cmRep : g.humans?.find((h) => h.userClub === club)?.manager.cmRep) : g.staff[c.manager]?.cmRep;

@@ -28,6 +28,7 @@ import { newTacticStats, recordTacticResult } from './aiTacticChoice';
 import { chooseCaptain, judgeAbility, recentForm, roleScore, staffIntrinsic, staffShown, type CaptainInput, type Day, type RoleData, type RoleInput } from './roleScore';
 import { gridTacOf, npShown } from '../../cmStaffInit';
 import { isHumanClub } from '../../humans';
+import { nationalManager, natOfClub } from '../../cmVirtual';
 
 /** spillerens 12 positionsevner som spillerposten +0x0f..+0x1a: GK SW D DM M AM F WB, højre (+0x17, maske 0x800), venstre (+0x18, 0x80),
  *  midt (+0x19, 0x200), fri rolle (+0x1a). Vores Player.side er [L, C, R]. */
@@ -305,6 +306,10 @@ export const HUMAN_NP_CA = 180;
  *  oraklets HU-linjer: 0 for Arsenal på ferie), får menneskets egen post (HUMAN_NP). Et menneske, der selv styrer holdet: ingen (som før). */
 export function engineManager(clubId: number, aiControlled: boolean): Staff | undefined {
   if (!hasGame()) return undefined;
+  const nat = natOfClub(clubId);
+  // landsholdet (staff +0x24 = holdet, +0x28 = 5); menneskets landshold: menneskets post som på ferien (landskampene spilles uden kampskærm)
+  if (nat !== null && gs().manager?.national?.nation !== nat) return nationalManager(gs(), nat);
+  if (nat !== null) return { id: HUMAN0_STAFF, ca: HUMAN_NP_CA, cmPa: HUMAN_NP_CA, cmNp: HUMAN_NP.slice(), tac: [], rep: 90, attrs: {}, career: [] } as unknown as Staff;
   const g = gs(), c = g.clubs[clubId];
   const st = g.staff[c?.manager ?? -1];
   if (st || !aiControlled || !c || !isHumanClub(clubId)) return st;
@@ -324,7 +329,7 @@ export function aiPickCtx(clubId: number, aiControlled = false): AiPickCtx | nul
   const cm = cmActive(g);
   const tac = gridTacOf(st);
   return {
-    date: g.date, gameSeed: g.seed, clubId, manager: st && tac ? { id: st.id, ca: st.ca ?? st.rep * 2, tac } : null,   // ikke-spillerpostens +4 (CA) – 0x6ddab0's 0x544410/0x543f30
+    date: g.date, gameSeed: g.seed, clubId, ...(natOfClub(clubId) !== null ? { national: true } : {}), manager: st && tac ? { id: st.id, ca: st.ca ?? st.rep * 2, tac } : null,   // ikke-spillerpostens +4 (CA) – 0x6ddab0's 0x544410/0x543f30
     judge: st ? { id: st.id, ja: shownOf(st.attrs.judgingAbility, 0x17), jp: shownOf(st.attrs.judgingPotential, 0x18), joined: st.career?.[st.career.length - 1]?.from } : null,
     ...(cm ? { cm, leagueAvg: leagueAverage(g), tacticStats: (g.aiTacticStats ??= newTacticStats()) } : {}),
   };

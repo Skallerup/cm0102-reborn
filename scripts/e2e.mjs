@@ -1238,7 +1238,7 @@ async function run(look) {
     const r = await gs(() => {
       const g = window.__cm.gs();
       window.__e2eTalkMode = g.options.mode; g.options.mode = 'authentic'; g.clubs[g.userClub].wageBudget += 10_000_000;
-      const cands = Object.values(g.players).filter((p) => p.club && p.club !== g.userClub && g.clubs[p.club]?.league === g.clubs[g.userClub].league && !p.loan).sort((a, b) => a.ca - b.ca).slice(0, 40);
+      const cands = Object.values(g.players).filter((p) => p.club && p.club !== g.userClub && g.clubs[p.club]?.league === g.clubs[g.userClub].league && !p.loan && +p.dob.slice(0, 4) <= 1975).sort((a, b) => a.ca - b.ca).slice(0, 40);
       for (const p of cands) {
         const o = { id: g.nextId.offer++, player: p.id, buyer: g.userClub, seller: p.club, fee: p.value, loan: false, status: 'pending', created: g.date, respondBy: g.date };
         g.offers.push(o);

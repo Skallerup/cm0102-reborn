@@ -38,6 +38,10 @@ import type { Fixture, GameState } from '../../types';
 import { daysBetween } from '../../dates';
 import { npShown } from '../../cmStaffInit';
 import { captainRel, matchRelOf } from '../../cmRelations';
+import { natOfClub } from '../../cmVirtual';
+
+/** landskampens fixture-koder (international.ts intlCodes): +0x3a, +0x30, +0x3c (neutral bane) og turneringens id (−1 = ingen) */
+export interface IntlFixtureCodes { b3a: number; w30: number; b3c: number; compId: number }
 
 const s8 = (x: number) => (x << 24) >> 24;
 const sh = (p: Player, k: string) => p.attrs[ATTRS.indexOf(k as never)] || 10;
@@ -104,7 +108,7 @@ export function managerOf(club: number, staff?: Staff): { n0e: number; rating: n
 
 const nationIndex = (name: string) => (hasGame() ? gs().nations.findIndex((n) => n.name === name) : -1);
 
-export interface GameMatchSide { club: number; human: boolean; manager: { n0e: number; rating: number } | null; clubRep: number }
+export interface GameMatchSide { club: number; human: boolean; manager: { n0e: number; rating: number } | null; clubRep: number; national?: boolean }
 
 /** sub_6ec010's omgivelser for en spiller af spillets tilstand. De dynamiske felter (publikum, samspil, taktikkens ord, anføreren) sætter limen. */
 export function matchValuesEnvOf(p: Player, side: GameMatchSide, fx: GameFixtureInfo, keys: MatchValuesEnv['keys'], opp = 0): MatchValuesEnv {
@@ -113,13 +117,13 @@ export function matchValuesEnvOf(p: Player, side: GameMatchSide, fx: GameFixture
   const c = p.cmContract;
   return {
     engByte0: 0, engByte1: 0, crowd: 0, cohesion: 0, fx40: 1, fx3a: fx.fx3a, comp: fx.comp, homeLeagueIsComp: fx.homeLeagueIsComp,
-    ownClubRep: side.clubRep, captain: null, natOwn: false, natF9: false,
+    ownClubRep: side.clubRep, captain: null, natOwn: !!side.national, natF9: !!side.national,
     contract: ownContract ? { b44: s8(c?.b44 ?? 0), flags: (c?.b45 ?? 0) >>> 0, d0c: Math.round((p.contract!.wage ?? 0) * 0.86), d10: p.contract!.cmBonusGbp?.[0] ?? -1, d14: p.contract!.cmBonusGbp?.[1] ?? -1 } : null,
     // 0x53ce90: (+0x4f & 0xf) − 10 for en spiller i databasen med kontrakt med klubben
     contractMod: ownContract && !p.regen && c?.b4f !== undefined ? (c.b4f & 0xf) - 10 : 0,
     inDb: !p.regen, staffState: (p.cmStaffState ?? 0) & 0xff, human: side.human, manager: side.manager,
     // staff+0x65 (cmRelations.ts – databasens præferencer og spillets skrivere; anføreren sættes af limen: GridMatchCtx.captainRel)
-    rel: hasGame() && p.cmRel ? matchRelOf(gs(), p, side.club, opp) : { dislikesOpp: false, favoursOpp: false, oppMgrDislikes: false, oppMgrFavours: false, favoursOwn: false, dislikesOwn: false,
+    rel: hasGame() && p.cmRel && !side.national ? matchRelOf(gs(), p, side.club, opp) : { dislikesOpp: false, favoursOpp: false, oppMgrDislikes: false, oppMgrFavours: false, favoursOwn: false, dislikesOwn: false,
       ownMgrDislikes: false, ownMgrFavours: false, capDislikes: false, capFavours: false },
     player61: { b44: s8(rec[0x44]), w0b: ((rec[0xb] | (rec[0xc] << 8)) << 16) >> 16, w0d: ((rec[0xd] | (rec[0xe] << 8)) << 16) >> 16 },
     nation: p.nation ?? null, keys,
@@ -138,16 +142,22 @@ export function captainEnvOfPlayer(p: Player, pos: number, ctx: AiPickCtx, clubR
 /** GridMatchCtx-delen med spillets inddata for kampen mellem to klubber (adapteren og grid-stats.ts) */
 /** `ai`: holdene, motoren styrer (ctx.ai). En menneskeklub, motoren styrer (ferien), er ikke "menneskets" for 0x6ec010 (0x600a50(klub, 0, 1, 0, 0)
  *  med ferietjekket 0x5fe040 – oraklets HU-linje: 0 for Arsenal på ferie) og har menneskets managerpost (aiTeam.ts engineManager) */
-export function gameInputsCtx(home: number, away: number, o: { compId?: string; stage?: string; date?: string; human?: [boolean, boolean]; fixtureId?: number; ai?: [boolean, boolean] } = {}) {
+export function gameInputsCtx(home: number, away: number, o: { compId?: string; stage?: string; date?: string; human?: [boolean, boolean]; fixtureId?: number; ai?: [boolean, boolean]; intl?: IntlFixtureCodes } = {}) {
   const g = hasGame() ? gs() : null;
   const date = o.date ?? g?.date ?? '2001-08-18';
   const fixture = g && o.fixtureId !== undefined ? g.fixtures[o.fixtureId] : undefined;
-  const fx = fixtureInfoOf(o.compId ?? fixture?.comp, home, o.stage ?? fixture?.stage);
-  const codes = g ? fixtureCodesOf(g, fixture, o.compId ?? fixture?.comp, home) : null;
-  const compId = o.compId ?? fixture?.comp ?? g?.clubs[home]?.league;
+  // landskampene (international.ts playNation): fixture-posten fra landskampens koder (crowd1.txt: +0x3a = 9 venskabskamp/U21, 10 turnering)
+  const intl = o.intl;
+  const fx: GameFixtureInfo = intl ? { fx3a: intl.b3a, comp: intl.compId >= 0 ? { rep: g?.cmCompRep?.[intl.compId] ?? 0, mls: false } : null, homeLeagueIsComp: false }
+    : fixtureInfoOf(o.compId ?? fixture?.comp, home, o.stage ?? fixture?.stage);
+  const codes = !g ? null : intl ? { w30: intl.w30, w32: 0, b34: 0, b3a: intl.b3a, b3b: 0xff, b3c: intl.b3c, firstLeg: null, flags38: 0, compId: intl.compId, compRep: fx.comp?.rep ?? 0, table: null }
+    : fixtureCodesOf(g, fixture, o.compId ?? fixture?.comp, home);
+  const compId = intl ? undefined : o.compId ?? fixture?.comp ?? g?.clubs[home]?.league;
   const ai = o.ai ?? [false, false];
   const human = o.human ?? [isHumanClub(home) && !ai[0], isHumanClub(away) && !ai[1]];
-  const sides: [GameMatchSide, GameMatchSide] = [home, away].map((c, i) => ({ club: c, human: human[i], manager: managerOf(c, engineManager(c, ai[i])), clubRep: g ? clubRepMem(g, c) : 5000 })) as never;
+  // landsholdets omdømme: nat_club.dat +0x80 (g.intl.info)
+  const repOf = (c: number) => { const n = natOfClub(c); return n !== null ? g?.intl?.info?.[n]?.rep ?? g?.cmNationRep?.[n] ?? 5000 : g ? clubRepMem(g, c) : 5000; };
+  const sides: [GameMatchSide, GameMatchSide] = [home, away].map((c, i) => ({ club: c, human: human[i], manager: managerOf(c, engineManager(c, ai[i])), clubRep: repOf(c), national: natOfClub(c) !== null })) as never;
   const keys = { us: nationIndex('United States'), can: nationIndex('Canada'), mex: nationIndex('Mexico') };
   const envs = new Map<string, MatchValuesEnv>();
   const caps = new Map<string, MatchValuesCaptain>();
@@ -169,6 +179,7 @@ export function gameInputsCtx(home: number, away: number, o: { compId?: string; 
     } : {}),
     ...(fx.comp ? { compRep: fx.comp.rep } : {}),
     rep: [sides[0].clubRep, sides[1].clubRep] as [number, number],
+    ...(sides[0].national || sides[1].national ? { national: [!!sides[0].national, !!sides[1].national] as [boolean, boolean] } : {}),
     matchValuesEnv: (q: { side: number; src: Player }) => {
       const k = `${q.side},${q.src.id}`;
       let e = envs.get(k);

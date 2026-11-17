@@ -71,6 +71,9 @@ Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.m
   fejl efter indlæsning af et gemt spil), og international.ts' byNation-cache gjaldt kun datoen. Tilbage uden for spillet: cmFitness `staleSev`
   (sjælden gren) og aiTeam's `chosenTactic` (inden for én kamp). **Prisen:** kopien 64–68 MB; serialize 0,20–0,26 s (hovedtråden, ved start),
   deserialize 0,52–0,64 s (hovedtråden, ved stop) – i Node; pr. Continue Game, ikke pr. dag.
+  **(17/11) Også lokalt spil mod AI-managere** (`g.localMp`, Ranking.tsx' "tilføj AI-manager"): `useDayWorker` kræver nu kun, at spillet ikke er et
+  fællesspil online (`!g.humans?.length || g.localMp`) – managerpladserne følger med i kopien. `scripts/day-worker-check.ts BOTS=2` (Man Utd + 2
+  AI-managere i Arsenal/Chelsea) med og uden CLONE=1: samme sha1 alle 5 dage.
 - **Sæsonen (16/11, `scripts/sl-season.ts`, Maximum-world-filen, Arsenal, frø 1, England, 14/7-2001 → 30/6-2002, 352 dage, intet nedbrud):** England
   (køber eller sælger) 441 køb med sum (£155,3M), 162 lejeaftaler, 200 klubløse skriver under; originalen (K2, størrelse 2) 621 / 226 / 95 / 65 frigivne
   (vores frigivne står ikke i Player.moves – ikke talt). Uden ønskelisterne (CM_SL=0, samme kode): 363 køb (£545,9M), 0 leje, 12 klubløse. Bud på
@@ -397,6 +400,25 @@ Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.m
   en Web Worker (dagen venter stadig ~1,5–2,5 s), (ii) databasestørrelsen 2 i stedet for Maximum for ønskelisterne (runde 9: ~0,6–0,8 s), eller
   (iii) kun de valgte landes klubber (ikke originalt). SL_ON står derfor stadig på false; K2-sammenligningen (lejeaftaler/klubløse/frigivne)
   er ikke kørt.
+- **Hastighed, runde 15 (17/11, SL_ON slået til – < 1 s pr. dag er IKKE nået):** måling med hele spillet, ikke kun ønskelisterne: `scripts/day-worker-check.ts`
+  (runUntil én dag ad gangen som Shell, autoPlay, sha1 af hele GameState hver dag; nyt: `CLUB=`, `PROF=fil PROF_FROM=n` – CPU-profil fra dag n, `BOTS=n`),
+  Man Utd, frø 1, 30 dage 15/7–13/8 (maskinen delt, load 10–16). **Bit for bit:** sha1 af spiltilstanden ens alle 30 dage før/efter (og 37 dage med
+  profil). **Instruktioner** (`/usr/bin/time -l`, minus spilstarten): **48,4 → ~39,3 mia. pr. dag (−19 %)**; vægur 13,7 → 6,6 s pr. dag (ikke
+  sammenligneligt – load 16 mod 10). **Profilen** (tsx): juli – ønskelisterne 72 % (dropDeadBids → 0x843e10 → 0x83f3a0 45 %, makeBids 13 %, buildSlMem
+  10 %), cmAiAiDue 6 %, landskampene 4 %, rygterne 3,6 % (en hel buildSlMem til cmDayWill), kontrakterne ~5 %; en kampuge i august (13–20/8) –
+  ønskelisterne 38 %, baggrundskampene (cmResDaily → MatchSim) 14 %, dagens egne kampe (gittermotoren) 13 %, landskampene 7 % (byNation 4,5 %),
+  hukommelsen 8 %. **Gjort:** (1) planScore/managerBlock (0x6e6340) uden lukninger og tabeller pr. kald (`recentJoin`, `daysAt`, `appearances`,
+  `dribble`, `LANG_TAB` som modulfunktioner); (2) cmMem.ts `ftol` = `t | 0` i stedet for BigInt (ToInt32 = asIntN(32) for alle endelige heltal –
+  kontrolleret på 1 mio. tilfældige tal og kanterne ±2³¹, 2⁵³, 2⁶³, ±∞, NaN); (3) cmFitnessGame `fitCtx`: kontekstens funktioner bygges én gang pr.
+  (spil, dag) – talrækken er stadig ny pr. kontekst; (4) international.ts byNation: listerne uden fyldspillere genbruges i withFillers (udtagelserne
+  lige før – ingen spillere ændret), fyldspillerne flettes stabilt ind (samme rækkefølge); aldersfiltret som tekstsammenligning af ISO-datoerne.
+  (5) Dagens Worker også i lokalt spil mod AI-managere (se Web Worker ovenfor). **Hvad tsx alene koster:** tsx/esbuild's `keepNames` (`__name` +
+  `set filename`/`set TextDecoder` i profilen – Object.defineProperty for hver indre funktion, hver gang den skabes) var ~8 % af dagen i juli – Vite
+  bruger ikke keepNames, så browseren betaler det ikke; lukninger i varme stier koster stadig allokering. **Tilbage – og hvorfor < 1 s ikke er nået:**
+  ønskelisterne er stadig 40–70 % (runde 14's konklusion står: ×10 kræver 0x83f3a0 + 0x4d1600 + 0x846920 + 0x84a020 som én TS-model på typed
+  arrays); baggrundskampene er zonemotoren selv (step/buildZones/tickFatigue – ingen enkelt post over 2 %); landskampenes byNation bygges stadig én
+  gang pr. landskamp (kampen kan skade spillere – listerne skal bygges igen); rygternes ekstra buildSlMem (noStale) og cmAskingPrice' buildWantMem
+  pr. bud er ikke bit for bit med dagens hukommelse (runde 12/14).
 - **Formændene** (koblet ind): sub_535a80's personlige egenskaber 0x535ea4– for alle personer – uden for 1..20: −1 → rand(16)+5, ellers to terninger:
   Ambition snittet, Loyalty den mindste (`cmStaffInit.ts personalFill_535a80`, cmFinance.ts' og cmBoardGame.ts' formand). Ønskelønnen
   (`scripts/cm-want-game.ts`): ens 1.142 → 1.148, inden for 2 % 1.470 → 1.483, inden for 10 % 1.852 → 1.848, 10/50/90 % 0,59/1,00/1,42 → 0,60/1,00/1,42.

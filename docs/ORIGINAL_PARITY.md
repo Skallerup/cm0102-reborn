@@ -143,6 +143,20 @@ View Finances (der læser Bonuses fra blokken) viste 0 bonusser, selv om pengene
    med HostCountry-datoerne (0x5f9970: rækkens dato = dag i året for finalen, flyttes rand(−35..34) 0x5fa664; VM 2002 = 10/7-1997-dagen; 0x92c290 +
    tabellen 0x92ccd0 ikke læst), 'B'-landskampe (0x7e6720's B-gren kræver 0x542740 → 0x540a50 – landets B-hold, som ikke findes i world-filerne),
    landstrænerjob og fyring (0x775000/0x775220 – forbundets tillid), Confederations Cup/OFC/OL, VM-zonerne fra 2004.
+   **Etape 3 delvis 17/11** (`src/game/cmIntlFinals.ts`, `cmVirtual.ts` cmNationalFillers, `international.ts` intlCodes/prepareFillers, `cmIntlSquad.ts`
+   cmWithdrawInjured, tests/cmIntlFinals.test.ts): **porteret** landskampe i gittermotoren (når den er slået til) med landsholdene som hold (0x53b900:
+   pick_team-flaget 0x208a09c, omrokeringen, 0x6ec010 uden kontrakt og med +5 for markspillere, landstræneren fra databasen – personpost +0x24/+0x28 = 5,
+   nat_club-id 10580 + nationsindeks – landsholdets omdømme +0x80, fixture-koderne målt i crowd1: +0x3a 9/10, +0x3c, +0x30) og kamprapporten 0x6d1cc0's
+   landsholdsgrene (spillernes moral/omdømme og landsholdets omdømme tilbage); landsholdenes fyldspillere 0x90dc66 (i stedet for de midlertidige i
+   cmPrerunMatches.ts/cmIntl.ts); VM 2002 (fast lodtrækning 27/12-2001, runder og tv-pladser 0x92c290/0x92ccd0, slutspil 2/7–14/7 med bronzekamp,
+   parringer 0x92d770), Afrikamesterskabet 2002 (6/10-2001, Egypten + potter 0x4022c0, 9/2–2/3, 0x402090), Copa América 2001 (de faste 12 og grupperne
+   0x5e1d65/0x5e11e0, oraklets 18 gruppedage præcist, de to bedste treere og blandingen 0x5e18a0/0x4afb40, 15/7–22/7); afbud og erstatninger
+   0x775cd0/0x775f90 med nyhederne 0x20/0x21/0x22 (originalens tekster på 10 sprog). **Rettet:** 0x5cbb00 lægger venskabskampene 12 UGER før
+   (0x54c770 = add_weeks), ikke 12 dage; udtagelsen 14 dage før sker dagligt. HostCountry-datoen (+0x1f) bruges kun til værtsvalget 5 år før
+   (0x5fa850) – ikke af slutrundernes skemaer. ***Estimeret*:** kampenes rækkefølge i en grupperunde (0x6835c0), og dermed hvilken kamp der får rundens
+   første tv-plads. **Mangler stadig:** landstrænerjob og fyring (0x775000/0x775220 → 0x6a3770: landstrænerne hører under bestyrelsessystemet med
+   FA-tilliden, som cmBoard.ts ikke har for landshold – spillets egne regler bruges stadig), landstrænerens omdømme efter kampen (0x6d3610), 'B'-hold,
+   rundenavnet i nyhederne for kvalifikation/slutrunder, slutrunder efter 2002 (spillets egne), VM-zonerne fra 2004, golden goal (0x383).
 5. Sæsonskiftet og pensioneringer (0x7a7f20, INT_RETIREMENT), end_season pr. nation.
 6. ~~Reservekampe (fixtures −2, 0x84be20)~~ – **porteret 16/11** (cmReserves.ts, noter ~/cm0102-engine/notes/reserve-matches.md): originalen har
    INGEN reservekampe for klubber i de spilbare ligaer ("Reserve"-turneringen [0x9cf684] har ingen klubber/kampe; reserveskærmene viser altid
@@ -171,7 +185,15 @@ View Finances (der læser Bonuses fra blokken) viste 0 bonusser, selv om pengene
    Sverige/Finland/Rusland 27/12, Japan 25/1, Sydkorea 20/1, USA 20/2, Argentina/Australien 31/7): dagen før arkiveres Club_Records 0x447880,
    PlayerStats 0x7c1350, Finance 0x59cdd0 og Staff_Records 0x86d6e0 (end_season_for_nation); på dagen rulles rækkens start/slut (+0x2a/+0x39, +0x1d år),
    ligaerne får ny sæson (tilskuere 0x5d6280, Discipline 0x556210, reserveligaerne 0x84b940). Kontrakterne udløber dagligt efter datoen (CONTRACT_MANAGER,
-   allerede porteret). Spillets seasonRollover kører stadig 1/7 for alle lande – næste skridt: flyt arkivering/tabeller/op-nedrykning til landets +0x15-dag.
+   allerede porteret). **Porteret 16/11** (`src/game/cmSeason.ts`, season.ts `seasonRollover(scope)`, tests/cmSeason.test.ts): i ægte tilstand med den
+   originale database kører sæsonskiftet på landets dag – hovedskiftet 20/6 (Europa og alle lande uden egen dag; tæller g.season op, opretter Europas
+   turneringer via cmEuroPrepareNext med de nordiske landes gemte tabeller/pokalvindere `g.cmLastTables`/`g.cmLastCupWin`), landene med egen dag
+   (+ USA 20/2, Argentina/Australien 31/7) skifter kun egne ligaer/pokal, op-/nedrykning, priser, historik (afsnittet for landets sæson), økonomiens
+   sæsonposter, rekorder og spillernes sæsonstatistik og har deres år i `g.cmNatSeason`. Kontrakter/lejeaftaler udløber dagligt (`cmContractsDaily`).
+   Ligaer spilles færdig og pokalernes forfaldne kampe spilles før skiftet (sim.ts `playOverdue`); en pokal med kampe forude bliver (den nye sæsons);
+   pokalens år = det første, hvis første kamp ikke ligger i fortiden. Kampene før spilstarten (Norge/Sverige/Japan/USA/Rusland fra foråret) spilles ved
+   nyt spil (*estimeret*: på én gang, ikke dag for dag som forkørslen 0x5cc850). *Estimeret*: arkiveringen sker i begyndelsen af dagen (ikke dagen
+   før), Brasilien følger Europa, Discipline 0x556210/tilskuerne 0x5d6280 pr. land ikke porteret (organernes tællere nulstilles ved hovedskiftet).
 6. Reservekampe (fixtures −2, 0x84be20) og B-hold 0x540a50.
 7. Venskabskampe for mennesket: **porteret 16/11** (cmFriendlyOffers.ts, FriendlyClassic.tsx – Home/Away Friendly, Tour, Choose Friendly Teams, Invite Club, svaret 0x5c5f40 efter omdømmet, også for computerens egne; noter ~/cm0102-engine/notes/friendly-human.md). Mangler: Friendly Cup/League (Tournament).
 8. Priser: Team of the Week (hvornår), Fans Player of the Year, internationale priser, andre landes priser.

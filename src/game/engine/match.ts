@@ -48,6 +48,8 @@ export interface ShotSnap {
 
 export interface EngineOptions {
   commentary: boolean;
+  /** (gittermotoren) landskampens fixture-koder: +0x3a, +0x30, +0x3c og turneringens id – international.ts */
+  intl?: { b3a: number; w30: number; b3c: number; compId: number };
   /** Løbende spil-for-spil som i CM 01/02 (afleveringer, opsnapninger, målspark – linjer med 'pl-'). Kun kampen, man ser;
    *  bruger ingen tilfældige tal og gemmes ikke i rapporten */
   playByPlay?: boolean;

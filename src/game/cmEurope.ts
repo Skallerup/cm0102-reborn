@@ -258,10 +258,21 @@ export function cmEuroNextSeason(g: GameState): void {
   if (!cl?.meta?.cmEuro || metaOf(cl).year !== g.season) return;
   const year = g.season + 1;
   if (g.date < cmEuroFirstDraw(year) || g.date >= `${year}-07-01`) return;
+  cmEuroPrepareNext(g, g.cmLastTables ?? {}, g.cmLastCupWin ?? {});
+}
+
+/** (16/11) Næste sæsons turneringer oprettes – ved hovedskiftet 20/6 (season.ts, sæsonskiftet pr. land i cmSeason.ts) eller ved den første
+ *  lodtrækning. `tables`/`cups`: de lande med egen sæsondag (Norge, Sverige, Rusland, Finland …) har allerede skiftet sæson – deres afsluttede
+ *  tabeller og pokalvindere gemmes ved deres skifte (g.cmLastTables/g.cmLastCupWin). */
+export function cmEuroPrepareNext(g: GameState, tables: Record<string, number[]>, cups: Record<number, number>): void {
+  if (!cmEuroOn(g) || g.cmEuroPrev || g.cmEuroNext) return;
+  const cl = g.comps.CL;
+  if (!cl?.meta?.cmEuro || metaOf(cl).year !== g.season) return;
+  const year = g.season + 1;
   // de afsluttede ligaer og pokalvinderne (som seasonRollover – op-/nedrykningen er ikke sket endnu, men kun de bedste i de øverste rækker får pladser)
-  const prevTables: Record<string, number[]> = {};
+  const prevTables: Record<string, number[]> = { ...tables };
   for (const c of Object.values(g.comps)) if (c.type === 'league' && c.finished) prevTables[c.id] = finalOrder(c);
-  const cupWinners: Record<number, number> = {};
+  const cupWinners: Record<number, number> = { ...cups };
   for (const c of Object.values(g.comps)) if (c.type === 'cup' && c.winner && c.nation >= 0 && !c.id.startsWith('SC-')) cupWinners[c.nation] = c.winner;
   const prev: Record<string, Competition> = {};
   for (const id of EURO_IDS) if (g.comps[id]) prev[id] = g.comps[id];

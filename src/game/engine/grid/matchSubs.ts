@@ -47,6 +47,8 @@ interface SlotFields { pos: number; posAttack: number; instr: bigint; tacticByte
 interface SubState { idx: number; prevSlot: number; substituted: boolean; minuteOn: number; minuteOff: number; minuteRed: number; minuteInjured: number }
 
 export interface MatchSubsEnv {
+  /** landshold (0x53b900) – omrokeringens flag */
+  national?: [boolean, boolean];
   m: GridMatchState;
   gp: GP[];
   rand: Rand;
@@ -242,7 +244,7 @@ export function makeMatchSubs(env: MatchSubsEnv) {
     const res = reselect(rand, {
       players: list.map(toSub), subsLeft: subsLeft[s], benchSize: benchSize[s], keeperOut, clock: m.clock, periodEnd: env.periodEnd(),
       posOf, attOf, slotSpec: specOf(s), score: scoreOf(s),
-      flags: { national: false, assisted: false, compType: env.compType, ownRep: env.rep[s], oppRep: env.rep[1 - s], leagueBranch: typeof env.leagueBranch === 'function' ? env.leagueBranch(s) : env.leagueBranch ?? false, b16: env.b16?.(s) ?? false, humanClubOption: false },
+      flags: { national: !!env.national?.[s], assisted: false, compType: env.compType, ownRep: env.rep[s], oppRep: env.rep[1 - s], leagueBranch: typeof env.leagueBranch === 'function' ? env.leagueBranch(s) : env.leagueBranch ?? false, b16: env.b16?.(s) ?? false, humanClubOption: false },
     });
     subsLeft[s] = res.subsLeft;
     const before = new Map(list.map((q) => [q, q.slot]));

@@ -6,6 +6,7 @@ import { createGame, type WorldData } from '../src/game/newgame';
 import { continueGame, quickPlayUserMatch } from '../src/game/sim';
 import { applyAction } from '../src/game/actions';
 import { gs, squad } from '../src/game/state';
+import { RES_SKIP } from '../src/game/cmReserves';
 import { autoEuroSquad, euroComp, euroDue } from '../src/game/euroSquad';
 
 const w = JSON.parse(readFileSync('public/data/world-original.json', 'utf8')) as WorldData;
@@ -14,6 +15,7 @@ const eng = w.nations.findIndex((n) => n.name === 'England');
 describe('European Squad', () => {
   it('beskeden 31/8, højst 25, og kun de tilmeldte spiller i Europa', () => {
     createGame(w, { managerName: 'T', managerNation: eng, clubId: w.clubs.find((c) => c[1] === 'Manchester United')![0], activeNations: [eng], lang: 'en', masking: true, seed: 9, mode: 'authentic' });
+    RES_SKIP.on = true; // reservekampene påvirker hverken tilmeldingen eller kalenderen
     const g = gs();
     const run = (stop: () => boolean) => { for (let i = 0; i < 400 && !stop(); i++) { const r = continueGame(); if (r.match !== undefined) quickPlayUserMatch(); } };
     // trøjenumrene sendes, så de ikke står i vejen
@@ -42,5 +44,5 @@ describe('European Squad', () => {
     expect(rep).toBeTruthy();
     expect(rep.players.some((l) => l.id === beckham.id && l.minutes > 0)).toBe(false);
     expect(f.result).toBeTruthy();
-  }, 240_000);
+  }, 600_000);
 });

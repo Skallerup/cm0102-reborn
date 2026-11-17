@@ -28,6 +28,7 @@ import { EVENT_NAMES } from './eventTable';
 import { gameInputsCtx } from './gameInputs';
 import { gridTacOf } from '../../cmStaffInit';
 import { gamePostReport } from './postMatchGame';
+import { natOfClub } from '../../cmVirtual';
 import type { CmPostResult } from '../../types';
 
 /** originalens begivenheder → UI'ets linjetype (fremhævning/lyd/mål-blink); resten er spil-for-spil ('pl-o', kun klassisk + playByPlay) */
@@ -51,6 +52,9 @@ const SEM: Record<string, { k: string; hi?: boolean }> = {
   WIN_THE_SHOOTOUT: { k: 'shootout-end', hi: true },
   WALL_BLOCKS_SHOT: { k: 'shot-blocked' }, WALL_DEFLECTS_SHOT: { k: 'shot-blocked' }, CLEARED_OFF_LINE: { k: 'shot-blocked' }, BLOCKED_ON_LINE: { k: 'shot-blocked' },
 };
+
+/** 0x76d940: de ni store landsholdsturneringer (VM 404, OL 405, EM 406, Copa 407, ACN 408, Asian Cup 399, Asian Games 398, OFC 402, Confed 403) */
+const MAJOR_COMPS = new Set([404, 405, 406, 407, 408, 399, 398, 402, 403]);
 
 const TICKS_PER_MIN = 11;
 const TOTAL_TICKS = 990;
@@ -124,7 +128,7 @@ export class GridSim implements LiveSim {
     this.g = createGridMatch({ players: home.players, tactic: home.tactic }, { players: away.players, tactic: away.tactic }, rand, {
       ownGround: !opts.neutral,
       // klubbernes lands sprog (nation.dat +0x77, 8 = engelsk) – protesten sub_716e10's kommentar 0x20f5
-      clubLang: [home.club, away.club].map((c) => nationLanguage(gs().nations[gs().clubs[c]?.nation ?? -1]?.name)) as [number, number],
+      clubLang: [home.club, away.club].map((c) => nationLanguage(gs().nations[natOfClub(c) ?? gs().clubs[c]?.nation ?? -1]?.name)) as [number, number],
       // klubbernes omdømme club +0x80 kommer fra gameInputsCtx (databasens rå værdi); managerne fra den originale database (Staff.tac)
       // (Staff.cmNp: ikke-spillerposten efter originalens spilstart, +0x21 som intern værdi – gridTacOf, cmStaffInit.ts)
       managers: [home.club, away.club].map((c, i) => { const st = engineManager(c, this.ai[i]); const tac = gridTacOf(st); return st && tac ? { id: st.id, ca: st.ca ?? st.rep * 2, tac } : null; }) as [GridManager | null, GridManager | null],
@@ -139,7 +143,7 @@ export class GridSim implements LiveSim {
       watched: !!opts.commentary,
       // spillets egne inddata (gameInputs.ts): spiller-/staffposterne, sub_6ec010's omgivelser, klubbernes omdømme club +0x80, fixture-posten
       ...(() => { const f = opts.fixtureId !== undefined ? gs().fixtures[opts.fixtureId] : undefined;
-        return gameInputsCtx(home.club, away.club, { compId: f?.comp, stage: f?.stage, date: gs().date, fixtureId: opts.fixtureId, ai: [this.ai[0], this.ai[1]] }); })(),
+        return gameInputsCtx(home.club, away.club, { compId: f?.comp, stage: f?.stage, date: gs().date, fixtureId: opts.fixtureId, ai: [this.ai[0], this.ai[1]], intl: opts.intl }); })(),
       on: {
         goal: (p, assister, pen) => {
           const s = this.byId.get(p.src.id), a = assister ? this.byId.get(assister.src.id) : undefined;
@@ -359,7 +363,7 @@ export class GridSim implements LiveSim {
       // WIN_THE_SHOOTOUT (0x2004, sub_6be710 0x6bee52) står i køen – ingen *estimeret* slutlinje
     }
     // 0x6b98c0 ved slutfløjtet (efter 0x6d0f80): kamprapporten 0x6d1cc0 (moral, omdømme) og dommerens karakter 0x6d4a20 med kampens tal
-    this.post = gamePostReport(this.g, { home: this.teams[0].club, away: this.teams[1].club, fixtureId: this.opts.fixtureId, neutral: this.opts.neutral }, this.rand);
+    this.post = gamePostReport(this.g, { home: this.teams[0].club, away: this.teams[1].club, fixtureId: this.opts.fixtureId, neutral: this.opts.neutral, ...(this.opts.intl ? { intl: { ...this.opts.intl, major: this.opts.intl.b3a === 10 && MAJOR_COMPS.has(this.opts.intl.compId) } } : {}) }, this.rand);
     this.finished = true;
   }
 

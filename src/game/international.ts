@@ -12,11 +12,13 @@ import { Rng, hash, rng } from './rng';
 import { addNews, gs } from './state';
 import { cmAppsAfterMatch } from './transfers';
 import { autoSelect, newTactic } from './tactics';
-import type { MiniReport, Player } from './types';
+import type { GameState, MatchReport, MiniReport, Player } from './types';
+import { getGridFactory } from './engine/liveSim';
+import { cmNationalFillers, natClub } from './cmVirtual';
 import { packReport } from './miniReport';
-import { cmActive, recordPlayerMatch } from './cmPlayerData';
+import { cmActive, recordPlayerMatch, repMemOf } from './cmPlayerData';
 import { intlHooks } from './hooks';
-import { cmSquadOf, cmIntlMatchReport, selectFinals, type FixName } from './cmIntlSquad';
+import { cmSquadOf, cmIntlMatchReport, selectFinals, selectSquad, type FixName } from './cmIntlSquad';
 import { cmFifaRanking, cmFifaRecord, type FifaComp } from './cmFifa';
 
 export interface IntlRow { n: number; p: number; w: number; d: number; l: number; gf: number; ga: number; pts: number }
@@ -28,6 +30,8 @@ export interface IntlTournament {
   days?: { g: string[]; ko: Record<string, string> };
   /** gruppekampe, der allerede er spillet uden for rundedagen (forkørslen 0x5cc850 – cmPrerunMatches.ts): "a-b" */
   played?: string[];
+  /** (ægte tilstand, cmIntlFinals.ts) originalens kampprogram for slutrunden – VM 2002, Afrikamesterskabet 2002, Copa América 2001 */
+  cm?: import('./cmIntlFinals').CmFinals;
 }
 /** VM-kvalifikationen i Oceanien (OFC) i forkørslen: to grupper à fem og en dobbeltkamp mellem gruppevinderne (cmPrerunMatches.ts) */
 export interface OfcQual { year: number; groups: number[][]; table: Record<number, IntlRow>; final: IntlTie[]; winner?: number }
@@ -71,26 +75,42 @@ const state = (): IntlState => (gs().intl ??= { results: [], history: [] });
 export const intlState = state;
 const play = (...a: Parameters<typeof playNation>) => playNation(...a);
 
-/** Fyldspillere til landshold uden nok rigtige spillere (forkørslens VM-kvalifikation i Oceanien: Fiji, Tahiti, Vanuatu …). Originalen fylder
- *  alle hold op med genererede spillere (virtual_staff.cpp); landsholdenes gren 0x90dc66 er ikke læst – cmPrerunMatches.ts laver dem (*estimeret*).
- *  De ligger kun her, aldrig i g.players. */
+/** Landsholdenes fyldspillere under kampen (virtual_staff.cpp 0x90dae0, landsholdsgrenen 0x90dc66 – cmVirtual.ts cmNationalFillers, sat af
+ *  playNation før hver landskamp som 0x90d2f0). De ligger kun her, aldrig i g.players. */
 let fillers: Map<number, Player[]> | null = null;
-export function setNationFillers(m: Map<number, Player[]> | null): void { fillers = m; cache = null; }
+/** `keepBase`: spillerne er ikke ændret, siden listerne uden fyldspillere sidst blev bygget (cmPrerunMatches.ts withFillers – lige efter
+ *  udtagelserne) – de genbruges, og kun fyldspillerne flettes ind */
+export function setNationFillers(m: Map<number, Player[]> | null, keepBase = false): void { fillers = m; cache = null; if (!keepBase) base = null; }
 
 /** Landets spillere pr. nation (bygges én gang pr. dag) */
 let cache: { date: string; g: unknown; by: Map<number, Player[]> } | null = null;
+/** listerne uden fyldspillere (samme nøgle som `cache`) */
+let base: { date: string; g: unknown; by: Map<number, Player[]> } | null = null;
 function byNation(): Map<number, Player[]> {
   const g = gs();
   // også spillet selv: et nyt GameState-objekt samme dag (indlæst spil, dagens Web Worker – ui/dayRunner.ts) har nye spillerobjekter
   if (cache?.date === g.date && cache.g === g) return cache.by;
-  const by = new Map<number, Player[]>();
-  for (const p of Object.values(g.players)) {
-    const age = ageOn(p.dob, g.date);
-    if (age < 17 || age > 36 || p.injury || p.ca < 60) continue;
-    (by.get(p.nation) ?? by.set(p.nation, []).get(p.nation)!).push(p);
+  if (!(base?.date === g.date && base.g === g)) {
+    const by = new Map<number, Player[]>();
+    // (hastighed) alderen 17–36 som tekstsammenligning af ISO-datoerne: alder ≥ 17 ⇔ dob ≤ (år − 17)-MM-DD, alder > 36 ⇔ dob ≤ (år − 37)-MM-DD
+    // (samme som ageOn for datoer på formen ÅÅÅÅ-MM-DD; andre former går gennem ageOn)
+    const Y = Number(g.date.slice(0, 4)), md = g.date.slice(4, 10), lo = `${Y - 17}${md}`, hi = `${Y - 37}${md}`, isoD = g.date.length >= 10 && Y >= 1037;
+    for (const p of Object.values(g.players)) {
+      if (p.injury || p.ca < 60) continue;
+      const dob = p.dob;
+      if (isoD && dob.length === 10 && dob[4] === '-' && dob[7] === '-') { if (dob > lo || dob <= hi) continue; }
+      else { const age = ageOn(dob, g.date); if (age < 17 || age > 36) continue; }
+      (by.get(p.nation) ?? by.set(p.nation, []).get(p.nation)!).push(p);
+    }
+    for (const list of by.values()) list.sort((a, b) => b.ca - a.ca);
+    base = { date: g.date, g, by };
   }
-  if (fillers) for (const [n, list] of fillers) by.set(n, [...(by.get(n) ?? []), ...list]);
-  for (const list of by.values()) list.sort((a, b) => b.ca - a.ca);
+  let by = base.by;
+  // fyldspillerne bagerst før sorteringen (stabil: de sorterede rigtige spillere står i samme indbyrdes rækkefølge som før sorteringen)
+  if (fillers) {
+    by = new Map(by);
+    for (const [n, list] of fillers) by.set(n, [...(by.get(n) ?? []), ...list].sort((a, b) => b.ca - a.ca));
+  }
   cache = { date: g.date, g, by };
   return by;
 }
@@ -105,24 +125,28 @@ export function nationSquad(n: number): Player[] {
     const extra = (byNation().get(n) ?? []).filter((p) => !picked.includes(p)).slice(0, Math.max(0, 20 - picked.length));
     return [...picked, ...extra];
   }
-  // ægte tilstand (original DB): originalens udtagelse 0x76c120 (cmIntlSquad.ts) – skadede melder afbud
+  // ægte tilstand (original DB): originalens udtagelse 0x76c120 (cmIntlSquad.ts) – skadede er trukket (0x775cd0) eller spiller ikke; under kampen
+  // landsholdets fyldspillere (0x90dc66, cmVirtual.ts – sat af playNation)
   const cq = cmActive(g) && !g.draft ? cmSquadOf(g, n, 0) : null;
-  if (cq) return topUp(cq.ids.map((id) => g.players[id]).filter((p): p is Player => !!p && !p.injury), byNation().get(n) ?? []);
+  if (cq) return withFill(cq.ids.map((id) => g.players[id]).filter((p): p is Player => !!p && !p.injury), n, byNation().get(n) ?? []);
   const all = byNation().get(n) ?? [];
   const gk = all.filter((p) => naturalRole(p) === 'GK').slice(0, 3);
   const out = all.filter((p) => naturalRole(p) !== 'GK').slice(0, 23 - gk.length);
   return [...gk, ...out];
 }
 
-/** (ægte tilstand) en udtaget trup med for få spillere eller uden målmand (afbud – originalens erstatninger 0x775f90 er ikke porteret, små lande) fyldes op
- *  af landets øvrige spillere og fyldspillerne (kampmotoren kræver en målmand) – se cmIntlSquad.ts' filhoved */
-function topUp(sq: Player[], pool: Player[]): Player[] {
-  if (sq.length >= 16 && sq.some((p) => naturalRole(p) === 'GK')) return sq;
-  const out = sq.slice();
-  if (!out.some((p) => naturalRole(p) === 'GK')) { const gk = pool.find((p) => naturalRole(p) === 'GK' && !out.includes(p)); if (gk) out.push(gk); }
-  for (const p of pool) { if (out.length >= 16) break; if (!out.includes(p)) out.push(p); }
+/** (ægte tilstand) truppen med kampens fyldspillere (0x90dc66). Zonemotoren (gittermotoren slået fra) kræver en målmand: har hverken truppen eller
+ *  fyldspillerne en, tages landets bedste målmand med (kun zonemotoren – gittermotoren spiller som originalen uden) */
+function withFill(sq: Player[], n: number, pool: Player[]): Player[] {
+  const fill = fillers?.get(n) ?? [];
+  const out = fill.length ? [...sq, ...fill.filter((p) => !sq.includes(p))] : sq.slice();
+  if (!zoneNeedsGk || out.some((p) => naturalRole(p) === 'GK')) return out;
+  const gk = pool.find((p) => naturalRole(p) === 'GK' && !out.includes(p) && !p.virtual);
+  if (gk) out.push(gk);
   return out;
 }
+/** playNation: kampen spilles i zonemotoren (MatchSim kræver en målmand) */
+let zoneNeedsGk = true;
 
 /** Landets styrke: snit af de 16 bedste (bruges til udvælgelse af deltagere og seedning) */
 export function nationStrength(n: number): number {
@@ -137,6 +161,51 @@ export function ranked(filter?: (n: number) => boolean): number[] {
   return g.nations.map((_, i) => i).filter((i) => (!filter || filter(i)) && nationStrength(i) > 0).sort((a, b) => nationStrength(b) - nationStrength(a));
 }
 
+/** club_comp.dat-id'erne for landskampene (comp +0 – KEY_COMP_GLOBALS): Friendly 72, U21 401, VM-kval. Oceanien 390, EM-kval. 396, slutrunderne */
+const INTL_COMP: Record<IntlResult['kind'], number> = { friendly: 72, u21: 401, wcq: 390, euroq: 396, wc: 404, euro: 406, copa: 407, afcon: 408, asian: 399 };
+/** fixture-posten for en landskamp (målt i oraklet crowd1.txt: +0x3a = 9 for venskabskampe og U21, 10 i turneringerne; +0x3c = 1 i slutrundernes
+ *  og Oceaniens samlede gruppespil; +0x30 = 120/130/140/150 i kvart-/semifinaler, bronzekamp og finale, 153/154 i Oceaniens dobbeltkamp; VM's
+ *  ottendedelsfinale 20 – 0x92c95d) */
+export function intlCodes(kind: IntlResult['kind'], stage?: string): { b3a: number; w30: number; b3c: number; compId: number } {
+  const compId = INTL_COMP[kind];
+  if (kind === 'friendly' || kind === 'u21') return { b3a: 9, w30: 0, b3c: 0, compId };
+  const finals = kind === 'wc' || kind === 'euro' || kind === 'copa' || kind === 'afcon' || kind === 'asian';
+  const w30 = stage === 'F' ? 150 : stage === '3P' ? 140 : stage === 'SF' ? 130 : stage === 'QF' ? 120 : stage === 'R16' ? 20
+    : stage === 'F1' || stage === 'PO' ? 153 : stage === 'F2' ? 154 : 0;
+  return { b3a: 10, w30, b3c: finals || (kind === 'wcq' && stage === 'G') ? 1 : 0, compId };
+}
+
+/** 0x90d2f0 for en landskamp: begge holds trupper (0x76bab0 – er ingen udtaget til kampen, vælges den nu uden nyhed, fx forkørslens kampe) og
+ *  fyldspillerne 0x90dc66 (cmVirtual.ts) med truppens største størrelse 0x7754c0 og landsholdets omdømme club +0x80 */
+function prepareFillers(g: GameState, nations: number[], u21: boolean, kind: IntlResult['kind'], stage?: string): void {
+  const slot = u21 ? 2 : 0;
+  const finals = kind === 'wc' || kind === 'euro' || kind === 'copa' || kind === 'afcon' || kind === 'asian';
+  const m = new Map<number, Player[]>();
+  for (const n of nations) {
+    let q = cmSquadOf(g, n, slot);
+    const human = g.manager?.national?.nation === n;
+    if (!human && (!q || q.until < g.date)) q = selectSquad(g, n, slot, { d: g.date, h: nations[0], a: nations[1], kind: finals ? kind : kind === 'euroq' ? 'euroq' : 'friendly', slot, finals });
+    const real = human ? nationSquad(n) : (q?.ids ?? []).map((id) => g.players[id]).filter((p): p is Player => !!p);
+    const list = cmNationalFillers(g, n, u21, real, q?.max ?? (finals ? 23 : u21 ? 22 : 26), human, g.intl?.info?.[n]?.rep ?? g.cmNationRep?.[n] ?? 0);
+    if (list.length) m.set(n, list);
+  }
+  void stage;
+  setNationFillers(m.size ? m : null);
+}
+
+/** 0x6b6cc0 efter landskampen i gittermotoren: kamprapportens moral og omdømme til spillerne (fyldspillerne findes ikke bagefter) og landsholdenes
+ *  omdømme (nat_club +0x80 – g.intl.info). Landstrænerens omdømme (0x6d3610 → ikke-spillerposten) skrives ikke tilbage (cmBoard.ts har ingen
+ *  landstrænere). */
+function applyNationalPost(g: GameState, home: number, away: number, rep: MatchReport): void {
+  const post = rep.cmPost!;
+  for (const [id, v] of Object.entries(post.players)) {
+    const p = g.players[+id]; if (!p) continue;
+    p.morale = v.morale;
+    p.cmRepMem = [repMemOf(v.rep[0]), repMemOf(v.rep[1]), repMemOf(v.rep[2])];
+  }
+  [home, away].forEach((n, i) => { const v = post.clubRep[i]; const inf = g.intl?.info?.[n]; if (v !== null && inf) inf.rep = v; });
+}
+
 /** Spil en landskamp i kampmotoren og bogfør landskampe, mål og skader */
 export function playNation(home: number, away: number, kind: IntlResult['kind'], stage?: string, needsWinner = false): IntlResult & { pens?: [number, number] } {
   const g = gs();
@@ -144,18 +213,30 @@ export function playNation(home: number, away: number, kind: IntlResult['kind'],
   const cm = cmFitOn(g);
   const r = new Rng(hash(g.seed, home, away, Number(g.date.replace(/-/g, '')), u21 ? 21 : 0));
   const caps: [number | undefined, number | undefined] = [undefined, undefined];
+  // ægte tilstand: originalens kampstart for landshold – gittermotoren (når den er slået til) med landsholdene som hold (0x53b900), fixture-koderne
+  // (intlCodes) og kampens fyldspillere 0x90dc66 (0x90d2f0 før kampen, cmVirtual.ts)
+  const cmOn = cmActive(g) && !g.draft;
+  const grid = cmOn && intlHooks.gridOn?.() ? getGridFactory() : null;
+  zoneNeedsGk = !grid;
+  if (cmOn) prepareFillers(g, [home, away], u21, kind, stage);
   const team = (n: number) => {
     // klubbens reservehold og karantæner gælder ikke på landsholdet (før kunne et U21-hold af reservespillere stille med
     // så få, at der efter skader ingen var tilbage på banen – MatchSim fandt ingen målmand)
     const real = u21 ? u21Squad(n) : nationSquad(n);
-    cmFitSync(g, real);                                                       // konditionsmodulet (ægte tilstand, original DB): 0x62c590 før kampen
+    cmFitSync(g, real.filter((p) => !p.virtual));                           // konditionsmodulet (ægte tilstand, original DB): 0x62c590 før kampen
     const sq = real.map((p) => ({ ...p, reserves: false, banned: 0, attrs: p.attrs.slice(), condition: cm ? p.condition : Math.max(80, p.condition) }) as Player);
     const tactic = autoSelect(newTactic('4-4-2'), sq);
     caps[n === home ? 0 : 1] = tactic.captain;
-    return { club: -1 - n, tactic, players: new Map(sq.map((p) => [p.id, p])) };
+    return { club: grid ? natClub(n) : -1 - n, tactic, players: new Map(sq.map((p) => [p.id, p])) };
   };
-  const sim = new MatchSim(team(home), team(away), { commentary: false, aiSubs: [true, true], importance: kind === 'friendly' ? 0.3 : 1, neutral: kind !== 'friendly', ...(needsWinner ? { needsWinner: () => true } : {}), date: g.date }, r);
-  const rep = sim.runToEnd();
+  const opts = { commentary: false, aiSubs: [true, true] as [boolean, boolean], importance: kind === 'friendly' ? 0.3 : 1, neutral: kind !== 'friendly', ...(needsWinner ? { needsWinner: () => true } : {}), date: g.date };
+  let rep: MatchReport;
+  try {
+    const H = team(home), A = team(away);
+    rep = grid ? grid(H, A, { ...opts, intl: intlCodes(kind, stage) }, r).runToEnd() : new MatchSim(H, A, opts, r).runToEnd();
+  } finally { setNationFillers(null); zoneNeedsGk = true; }
+  // 0x6b6cc0 for landskampen: spillernes moral og omdømme og landsholdenes omdømme (nat_club +0x80) efter kamprapporten 0x6d1cc0
+  if (grid && rep.cmPost) applyNationalPost(g, home, away, rep);
   const [hs, as] = rep.stats;
   // ægte tilstand (original DB): klubbernes nyhed efter kampen 0x7706c0 og FIFA-ranglisten 0x58cf70 (cmIntlSquad.ts, cmFifa.ts) i stedet for spillets egne
   const cmRep = cmActive(g) && !g.draft && !u21;
@@ -381,7 +462,7 @@ const rowsOf2 = (table: Record<number, IntlRow>, grp: number[]) => grp.map((n) =
 export function u21Squad(n: number): Player[] {
   const g = gs();
   const cq = cmActive(g) && !g.draft ? cmSquadOf(g, n, 2) : null;
-  if (cq) return topUp(cq.ids.map((id) => g.players[id]).filter((p): p is Player => !!p && !p.injury), (byNation().get(n) ?? []).filter((p) => ageOn(p.dob, g.date) <= 21));
+  if (cq) return withFill(cq.ids.map((id) => g.players[id]).filter((p): p is Player => !!p && !p.injury), n, (byNation().get(n) ?? []).filter((p) => ageOn(p.dob, g.date) <= 21));
   const all = (byNation().get(n) ?? []).filter((p) => ageOn(p.dob, g.date) <= 21);
   // to målmænd og 18 markspillere (uden målmand kan kampen ikke spilles)
   const gk = all.filter((p) => naturalRole(p) === 'GK').slice(0, 2);
@@ -398,6 +479,7 @@ function u21Friendlies() {
 export const rowsOf = (t: IntlTournament, grp: number[]) => grp.map((n) => t.table[n]).sort((a, b) => b.pts - a.pts || b.gf - b.ga - (a.gf - a.ga) || b.gf - a.gf);
 
 function tournamentDay(t: IntlTournament | undefined) {
+  if (t?.cm) return;                                                       // originalens kampprogram (cmIntlFinals.ts)
   const g = gs();
   if (!t || t.stage === 'done') return;
   const md = g.date.slice(5);
@@ -465,7 +547,7 @@ function dutyIds(): Set<number> {
     if (st.qual && st.qual.round < 4) for (const n of st.qual.groups.flat()) nations.add(n);
   }
   for (const t of [st.tournament, ...(st.cont ?? [])]) {
-    if (!t || t.stage === 'done') continue;
+    if (!t || t.stage === 'done' || t.cm) continue;                     // originalens slutrunder: intlHooks.dutyNations (cmIntlFinals.ts)
     const gdays = t.days?.g ?? GROUP_DAYS, kdays = t.days?.ko ?? KO_DAYS;
     const gi = /^G(\d)$/.exec(t.stage);
     const md = gi ? gdays[+gi[1] - 1] : kdays[t.stage];
@@ -497,8 +579,9 @@ export function intlDaily() {
   // Europa-/Sydamerika-/Asien-zoner begynder med 2004-kampagnen); de senere er stadig spillets egne (som i udvidet spil)
   if (md === '08-20' && year % 2 === 1 && (!cm || year >= 2005)) startQualification((year + 1) % 4 === 2 ? 'wc' : 'euro', year + 1);
   // slutrunder: VM i år ≡ 2 (mod 4), EM i år ≡ 0 (mod 4) – lodtrækning 1. juni
-  if (md === '06-01' && (year % 4 === 2 || year % 4 === 0)) startTournament(year % 4 === 2 ? 'wc' : 'euro', year);
-  if (md === '01-10' && year % 2 === 0) startContinental('afcon', year);
+  // (ægte tilstand) VM 2002 og Afrikamesterskabet 2002 er originalens (cmIntlFinals.ts – lodtrækning 27/12-2001 og 6/10-2001)
+  if (md === '06-01' && (year % 4 === 2 || year % 4 === 0) && !(cm && year === 2002)) startTournament(year % 4 === 2 ? 'wc' : 'euro', year);
+  if (md === '01-10' && year % 2 === 0 && !(cm && year === 2002)) startContinental('afcon', year);
   // originalens cyklusser (sweep-international §4): Copa América (år − 1996) % 2 = 1 (2001 i forkørslen, 2003, 2005 …), Asian Cup (år − 1996) % 4 = 0
   if (md === '07-06' && (cm ? year > 2001 && year % 2 === 1 : year % 3 === 0 && year >= 2004)) startContinental('copa', year);
   if (md === '07-06' && (cm ? year % 4 === 0 : year % 3 === 0 && year >= 2004)) startContinental('asian', year);

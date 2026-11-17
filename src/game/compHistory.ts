@@ -128,12 +128,12 @@ export function compSeasonRec(comp: Competition, g: GameState = gs()): CompSeaso
 }
 
 /** Ved sæsonskiftet, FØR spillernes statistik nulstilles og kampprogrammet ryddes */
-export function storeCompRecords() {
+export function storeCompRecords(inScope: (compId: string) => boolean = () => true) {
   const g = gs();
   const nations = new Set<number>();
   for (const c of Object.values(g.clubs)) if (c.manager === -1) nations.add(c.nation);
   for (const comp of Object.values(g.comps)) {
-    if (comp.type === 'playoff') continue;
+    if (comp.type === 'playoff' || !inScope(comp.id)) continue;
     const mine = (comp.nation >= 0 && nations.has(comp.nation)) || comp.clubs.some((c) => g.clubs[c]?.manager === -1);
     if (!mine) continue;
     const rec = compSeasonRec(comp, g);
