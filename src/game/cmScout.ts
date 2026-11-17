@@ -85,6 +85,10 @@ function canClubScoutNation(g: GameState, nation: number, club: number): boolean
 export function coversNation(g: GameState, s: Staff, nation: number): boolean {
   const club = g.clubs[s.club];
   if (!club || nation < 0) return false;
+  // 0x7b7576: med en opgave (0x7aefd0) – klubbens land, opgavens land (resten af opgavetyperne følger listen uden opgave)
+  const a = s.assignment;
+  if (a && a.kind === 'club') return g.clubs[a.target as number]?.nation === nation;
+  if (a && a.kind === 'nation') return a.target === nation;
   if (eu(g, club.nation) && eu(g, nation)) return true;
   if (region(g, club.nation) === region(g, nation)) return true;
   if (!cmForeign(g, s.nation, nation)) return true;
@@ -261,6 +265,8 @@ export function cmScoutMatch(g: GameState, f: Fixture, rep: MatchReport): void {
 /** 0x7b5be0 PLAYER_SEARCH::scout_match for en spejderliste uden opgave */
 function scoutMatchList(g: GameState, s: Staff, f: Fixture, rep: MatchReport, rnd: (n: number) => number, out: CmScoutRec[]): void {
   const club = s.club;
+  // 0x7b5df4: en igangværende opgave (i dag før slutdatoen +0x1ad, uden turnering +0x195) – listen ser ingen kampe for anmodningerne
+  if (s.assignment && s.assignment.kind !== 'player') return;
   const watch = (g.cmScoutWatch ??= {});
   if (watch[s.id] && g.date < watch[s.id]) return;
   const nation = g.clubs[f.home]?.nation ?? -1;
