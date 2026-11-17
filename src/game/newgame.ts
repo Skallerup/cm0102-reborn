@@ -4,6 +4,7 @@ import { cashRound } from './cmTransferBid';
 import { CLUB_INFO_2026 } from './data/clubInfo2026';
 import { capCA, cmFeet, fillMissing, freeAgentCA, initialisePA, makePool, makeRand, missingCA, repairPositions, shownFromStored } from './playerInit';
 import { splitReserves } from './reserves';
+import { hasReserveTeam, trimLinkedSquads } from './cmBTeam';
 import { initialTransferList } from './transfers';
 import { startScoreSeason } from './rating';
 import { naturalRole } from './attributes';
@@ -342,10 +343,13 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     const lvl = sq.length >= 12 ? median(sq.map((p) => p.ca)) : (leagueLevel.get(c.league) ?? 90) - 4;
     fillSquad(c, sq, lvl, date, seed);
   }
+  // ægte CM 01/02 (create_game 0x541e60): moderklub + B-hold højst 48 spillere tilsammen (cmBTeam.ts)
+  if (cmStartGame) trimLinkedSquads(g);
   // trøjenumre: alle i hver trup får et unikt nummer
   for (const c of Object.values(g.clubs)) ensureNumbers(c.id);
-  // førstehold og reservehold (CM 01/02): de 25 bedste på førsteholdet, resten i reserverne
-  for (const c of Object.values(g.clubs)) if (!g.leagues[c.league]?.hidden) splitReserves(c.id);
+  // førstehold og reservehold (CM 01/02): de 25 bedste på førsteholdet, resten i reserverne – ægte CM 01/02: kun klubber med reservehold
+  // (0x542740: ikke klubber med B-hold eller i Spanien/Tyskland/Portugal)
+  for (const c of Object.values(g.clubs)) if (!g.leagues[c.league]?.hidden && hasReserveTeam(g, c.id)) splitReserves(c.id);
   setAutoNumbers(true);
 
   // 2001-priser: pengeniveauet pr. liga = forholdet mellem klubbernes trupværdier (top 20) i 2001-priser og i

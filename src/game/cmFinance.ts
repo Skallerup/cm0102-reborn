@@ -31,6 +31,7 @@ import { compHooks } from './hooks';
 import { npFromWorld, npTemplate, personalFill_535a80, staffInitRecord, type NpTemplate } from './cmStaffInit';
 import type { CMWorld } from './data/cm0102';
 import { cmFinEvents } from './cmFinEvents';
+import { linkedClub } from './cmBTeam';
 
 export const GBP = 0.86;
 const trunc = Math.trunc;
@@ -276,7 +277,11 @@ export function updateWageBill(g: GameState, c: Club, r: CmFinRec, idx?: WageIdx
   let wb = 0, top = 0, n = 0;
   // kontrakterne i CONTRACT_MANAGER (+0): kun personerne i hukommelsen – i et ikke-indlæst land er resten af truppen ikke med i originalen
   const all = nationLoaded(g, c.nation);
-  for (const p of squad(c.id)) {
+  // kontrakterne er klubbens: en spiller flyttet mellem moderklub og B-hold (0x4cbd20) har stadig kontrakten hos den gamle klub (cmBTeam.ts)
+  const link = linkedClub(g, c.id);
+  const mine = squad(c.id).filter((p) => p.cmCon === undefined || p.cmCon === c.id);
+  if (link) for (const p of squad(link.other)) if (p.cmCon === c.id) mine.push(p);
+  for (const p of mine) {
     if (!p.contract || (!all && !inMemory(g, c, p))) continue;
     n++;
     // 0x5983fa: lejekontrakten trækkes fra (spillets model: lejeklubben betaler andelen `share`)

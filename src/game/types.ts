@@ -229,6 +229,9 @@ export interface Player {
   notes?: string;
   /** CM 01/02 "Relegate To Reserves": står uden for førsteholdet (kan ikke udtages, før han kaldes op) */
   reserves?: boolean;
+  /** ægte CM 01/02 (cmBTeam.ts): kontraktens klub, når spilleren er flyttet mellem moderklub og B-hold ("Relegate To 'B' Team"/"Promote To
+   *  'A' Team", 0x4cbd20) – kontrakten bliver hos den klub, der betaler lønnen (FinanceTable 0x598370 tæller kontrakterne pr. klub) */
+  cmCon?: number;
   joined?: string; // dato for ankomst til klub
   /** ikke-tilfredshed pga. spilletid (0-100) */
   unhappy?: number;
@@ -867,6 +870,8 @@ export interface ManagerProfile {
   national?: { nation: number; since: string; played: number; won: number; picks?: number[]; form?: number[] };
   /** på ferie (CM 01/02) – assistenten svarer på bud efter indstillingerne */
   holiday?: HolidaySettings;
+  /** CM 01/02 "Control Reserve Team" (managermenuen 0x75ebd5, HUMAN_MANAGER +0x9a05 – 0x5fd480/0x5fd590): mennesket styrer også reserveholdet */
+  ctrlRes?: boolean;
   nationalOffer?: number;
   /** Svar på forespørgsler om spillere: spiller-id → klubbens pris (nfs = ikke til salg under prisen) */
   enquiries?: Record<number, { date: string; club: number; fee: number; nfs: boolean }>;

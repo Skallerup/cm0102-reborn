@@ -264,7 +264,7 @@ const HUBS: Partial<Record<ScreenName, Hub>> = {
   transfers: { title: () => t('cl.tr.title'), club: own },
   // ægte CM 01/02: kun klubbens navn (ejerens skærmbillede 268)
   assistant: { title: (g) => (authentic() ? clubName(g) : `${clubName(g)} – ${t('cl.nextMatch')}`), club: own, tabs: CLUB_TABS, sub: CLUB_SUB },
-  fixtures: { title: clubName, club: own, tabs: CLUB_TABS, sub: CLUB_SUB },
+  fixtures: { title: (g, r) => (r.state?.res ? t('cl.res.full', { club: g.clubs[g.userClub]?.name ?? '' }) : clubName(g)), club: own, tabs: CLUB_TABS, sub: CLUB_SUB },
   club: {
     title: (g, r) => g.clubs[Number(r.id ?? g.userClub)]?.name ?? '',
     club: (g, r) => Number(r.id ?? g.userClub) || undefined,
@@ -347,8 +347,16 @@ function itemsFor(keys: Hub['sub'] | ScreenName[] | undefined, g: GameState, rou
   // (sidste kamp, division, økonomi) viser den klub – ikke ens egen. Taktik og træning findes kun for ens egen klub.
   const viewed = route.name === 'club' && route.id && Number(route.id) !== g.userClub ? Number(route.id) : 0;
   const out: Item[] = [];
+  // ægte CM 01/02: reserveholdets skærme (managermenuens "{klub} Reserves") – Squad/Fixtures/Last Match bliver i reservevisningen, og
+  // originalen har ingen reservekampe for klubberne i de spilbare ligaer (0x45cdff / 0x4671e0 – cmReserves.ts)
+  const resCtx = !viewed && cmActive(g) && ((route.name === 'squad' && route.tab === 'reserves') || !!route.state?.res);
   for (const k of keys) {
     if (authentic() && AUTH_HIDDEN.has(k as ScreenName)) continue;
+    if (resCtx && (k === 'squad' || k === 'fixtures' || k === 'lastMatch')) {
+      const r: Route = k === 'squad' ? { name: 'squad', tab: 'reserves' } : k === 'fixtures' ? { name: 'fixtures', state: { res: 1 } } : { name: 'report', state: { none: 1, res: 1 } };
+      const on = k === 'squad' ? route.name === 'squad' : k === 'fixtures' ? route.name === 'fixtures' : route.name === 'report';
+      out.push({ key: k, label: label(k), route: r, on, arrow: k === 'lastMatch' }); continue;
+    }
     // en anden klub (CM 01/02): Tactics ▸ viser deres opstilling (skrivebeskyttet), Training er grå
     // før klubben er overtaget (nyt spil) og for en klub uden spillede kampe: "No Recent Matches" (CM 01/02 – Tactics viser sidste kamps opstilling)
     if ((viewed || inSetup()) && k === 'tactics') {

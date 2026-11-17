@@ -200,6 +200,19 @@ export function addPlayer(p: Player) {
   }
 }
 
+/** originalens flytning mellem moderklub og B-hold (0x4cbd20 → 0x53c190/0x53bd10, cmBTeam.ts): truppen skifter, men kontrakten, moralen og
+ *  tilladelsen er de samme – kun statistikken arkiveres (0x7c5fe0) og et ledigt trøjenummer gives */
+export function moveSquadOnly(p: Player, club: number) {
+  const arr = squadIndex.get(p.club);
+  if (arr) squadIndex.set(p.club, arr.filter((id) => id !== p.id));
+  p.cmStats = undefined;
+  p.club = club;
+  let to = squadIndex.get(club);
+  if (!to) squadIndex.set(club, (to = []));
+  to.push(p.id);
+  p.number = pickNumber(p, club, p.number);
+}
+
 /** fjern en spiller helt uden klubskiftets følger (cmVirtual.ts' genererede spillere) */
 export function dropPlayer(p: Player) {
   if (!p.virtual) realPlayersEpoch++;

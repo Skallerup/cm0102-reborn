@@ -7,6 +7,7 @@ import { cmRetireOn } from './cmRetire';
 import { cmCmOn, cmCmScope } from './cmContractManager';
 import { cmRegenWage } from './cmWageGame';
 import { splitReserves } from './reserves';
+import { hasReserveTeam } from './cmBTeam';
 import { storeSeasonRecords } from './clubHistory';
 import { storeCompRecords } from './compHistory';
 import { boardEventsSeason, isOriginal2001, noteLoanEnd } from './rules2001';
@@ -854,7 +855,7 @@ export function seasonRollover(sc: Scope | null = null) {
     }
   });
   // AI-klubberne deler truppen igen (førstehold/reserver) efter sommerens handler og ungdomsspillere
-  for (const c of Object.values(g.clubs)) if (inClub(c.id) && !isHumanClub(c.id) && !g.leagues[c.league]?.hidden) splitReserves(c.id);
+  for (const c of Object.values(g.clubs)) if (inClub(c.id) && !isHumanClub(c.id) && !g.leagues[c.league]?.hidden && hasReserveTeam(g, c.id)) splitReserves(c.id);
   if (!sc || sc.main) addNews({ cat: 'general', key: 'news.newSeason', params: { season: `${g.season}/${String(g.season + 1).slice(2)}` } }, { all: true });
   // et land med egen dag: kun til managerne i landet, sæsonen efter året (Norge 2002) – spillets egen nyhed (ægte tilstand filtrerer den fra)
   else forEachHuman(() => { if (humanIn()) addNews({ cat: 'general', key: 'news.newSeason', params: { season: String(sc.next) } }); });

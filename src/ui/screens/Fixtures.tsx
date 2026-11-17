@@ -32,7 +32,20 @@ export function resultStr(f: Fixture) {
 }
 
 export function Fixtures() {
+  const { route } = useNav();
+  if (isRetro() && route.state?.res) return <ReserveFixturesClassic />;
   return isRetro() ? <ClassicFixtures /> : <ModernFixtures />;
+}
+
+/** CM 01/02: reserveholdets kampprogram (0x45ccf0) – originalen har ingen reservekampe for klubberne i de spilbare ligaer, så skærmen viser
+ *  altid "There are no forthcoming reserve matches to be played." (0x45cdff → 0x98f7b8) */
+function ReserveFixturesClassic() {
+  return (
+    <div className="cx-norecent">
+      <Head title={t('nav.fixtures')} />
+      <div className="cx-norecent-body">{t('cl.res.noFixtures')}</div>
+    </div>
+  );
 }
 
 /** Klassisk tema: "Season 2001/02" og en linje pr. kamp – dato, modstander, land, H/U, turnering og resultat.

@@ -17,6 +17,7 @@ import { avgRating } from '../../game/season';
 import { SCHEDULES } from '../../game/training';
 import { askingPrice, canPreContract, interestedClubs, myPendingBid, nextWindow, releaseCost, windowOpen } from '../../game/transfers';
 import { cmActive, statCell, statColumns } from '../../game/cmPlayerData';
+import { squadMoveOption } from '../../game/cmBTeam';
 import { cmTalksOpen } from '../../game/cmTransferTalks';
 import { cmPermitHistory } from '../../game/cmPermit';
 import { ClassicNegotiation } from './NegotiationClassic';
@@ -523,10 +524,17 @@ export function ClassicPlayer({ id }: { id: number }) {
 
   // Action-menuen: alle handlinger, grupperet
   const items: ActionItem[] = [];
+  // CM 01/02 (0x4cbb60 → 0x871424): Promote To Seniors / Relegate To Reserves i en klub med reservehold, Relegate To 'B' Team / Promote To
+  // 'A' Team mellem moderklub og B-hold (cmBTeam.ts)
+  const move = g.draft || !g.userClub ? 0 : squadMoveOption(g, p, g.userClub);
+  const moveItem: ActionItem | null = move === 1 || move === 2
+    ? { key: 'res', label: t(move === 2 ? 'cl.pl.relegate' : authentic() ? 'cl.pl.promoteSeniors' : 'cl.pl.callUp'), onClick: () => dispatch({ t: 'reserves', pid: p.id, on: move === 2 }) }
+    : move === 3 || move === 4 ? { key: 'bteam', label: t(move === 4 ? 'cl.pl.relegateB' : 'cl.pl.promoteA'), onClick: () => dispatch({ t: 'bTeam', pid: p.id }) } : null;
+  if (!g.draft && !mine && moveItem) items.push(moveItem);
   if (!g.draft && mine) {
     // CM 01/02: Set Transfer Status · Offer New Contract · Discipline Player · Release On A Free (listen og leje ligger i Set Transfer Status)
+    if (moveItem) items.push(moveItem);
     items.push(
-      { key: 'res', label: t(p.reserves ? 'cl.pl.callUp' : 'cl.pl.relegate'), onClick: () => dispatch({ t: 'reserves', pid: p.id, on: !p.reserves }) },
       { key: 'status', label: t('cl.ts.menu'), onClick: () => setStatusOpen(true) },
       { key: 'renew', label: t('cl.pl.offerNew'), onClick: () => setNeg({ renew: p.id }) },
       { key: 'disc', label: t('cl.dp.menu'), disabled: !!p.lastTalk && daysBetween(p.lastTalk, g.date) < 10, title: t('talk.r.tooSoon'), onClick: () => setDiscOpen(true) },

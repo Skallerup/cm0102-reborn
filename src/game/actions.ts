@@ -48,6 +48,7 @@ import { authentic } from './rules';
 import { A } from './attributes';
 import { rng } from './rng';
 import { ageOn } from './dates';
+import { moveLinked, squadMoveOption } from './cmBTeam';
 
 export type Action =
   | { t: 'tactic'; tactic: Tactic }
@@ -91,6 +92,8 @@ export type Action =
   | { t: 'renew'; pid: number; wage: number; years: number; clauses?: ContractClauses }
   | { t: 'nickname'; pid: number; nick: string | null }
   | { t: 'reserves'; pid: number; on: boolean }
+  | { t: 'bTeam'; pid: number }
+  | { t: 'ctrlRes'; on: boolean }
   | { t: 'staffReport'; pid: number; staffId: number }
   | { t: 'renewLater'; pid: number; wage: number; years: number; clauses?: ContractClauses }
   | { t: 'respond'; pid: number; buyer: number; action: 'accept' | 'reject' | 'counter'; counter?: number; sellOn?: number; reason?: RejectReason;
@@ -181,7 +184,7 @@ const AUTHENTIC_TALKS = new Set(['warning', 'fine', 'fineHeavy', 'drop']);
 
 /** originalens genererede fyldspillere (cmVirtual.ts) kan hverken købes, lejes, sælges, fritstilles eller få kontrakt */
 const VIRTUAL_BLOCK = new Set<Action['t']>(['listed', 'cmTransferStatus', 'squadStatus', 'release', 'loanOut', 'recallLoan', 'enquire', 'bid', 'preContract',
-  'shortlist', 'negotiate', 'renew', 'renewLater', 'nickname', 'reserves', 'trial', 'talk', 'interact', 'appealBan', 'staffReport']);
+  'shortlist', 'negotiate', 'renew', 'renewLater', 'nickname', 'reserves', 'bTeam', 'trial', 'talk', 'interact', 'appealBan', 'staffReport']);
 
 export function applyAction(a: Action): unknown {
   if (authentic() && (EXTENDED_ONLY.has(a.t) || (a.t === 'interact' && !AUTHENTIC_TALKS.has(a.kind)))) return 'authentic';
@@ -273,11 +276,17 @@ export function applyAction(a: Action): unknown {
     case 'reserves': {
       const p = g.players[a.pid];
       if (!p || p.club !== g.userClub) return 'error';
+      // ægte CM 01/02 (0x4cbb60): kun i en klub med reservehold – Promote To Seniors (1) / Relegate To Reserves (2)
+      if (squadMoveOption(g, p, g.userClub) !== (a.on ? 2 : 1)) return 'error';
       p.reserves = a.on || undefined;
       // ud af startopstillingen og bænken, når han rykkes ned
       if (a.on && g.tactic) { g.tactic.lineup = g.tactic.lineup.map((id) => (id === p.id ? 0 : id)); g.tactic.bench = g.tactic.bench.filter((id) => id !== p.id); }
       return 'ok';
     }
+    // ægte CM 01/02 (0x4cbd20): Relegate To 'B' Team / Promote To 'A' Team
+    case 'bTeam': { const p = g.players[a.pid]; return p && moveLinked(g, p, g.userClub) ? 'ok' : 'error'; }
+    // managermenuens "Control Reserve Team" / "Control Senior Team Only" (0x5fd590 → HUMAN_MANAGER +0x9a05)
+    case 'ctrlRes': g.manager.ctrlRes = a.on || undefined; return 'ok';
     case 'staffReport': return staffReport(a.pid, a.staffId);
     case 'renewLater': return offerRenewalLater(a.pid, a.wage, a.years, a.clauses);
     case 'respond': {

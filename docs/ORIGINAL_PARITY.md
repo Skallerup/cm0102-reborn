@@ -181,8 +181,15 @@ View Finances (der læser Bonuses fra blokken) viste 0 bonusser, selv om pengene
    fyldspillere + motoren og kun PlayerStats (rand(9) ? liga : pokal), kontrakt/bonusser 0x4ca6d0, kondition/skader 0x62c080 og tilladelsen
    0x8c39f0 – ingen tabel/økonomi/karantæner/nyheder. England: 1.622 klubber, 102 grupper, ~110 kampe pr. kampdag (+0,7–0,9 s pr. dag i tsx).
    Spillets egne reservekampe (reserves.ts, nyhederne "X Reserves win" findes ikke i exe'en) kun i udvidet spil. *Estimeret*: talrækken
-   (cmRand), zonemotoren i stedet for gittermotoren (CM_RES_GRID=1), landsholdsophold 0x7757d0. Mangler: reserveholdets Fixtures/Last Match-
-   skærme med originalens tomme tekster, "Control Reserve Team" (0x75ebd5/0x7615d0), B-hold 0x540a50.
+   (cmRand), zonemotoren i stedet for gittermotoren (CM_RES_GRID=1), landsholdsophold 0x7757d0. **Resten porteret 17/11** (cmBTeam.ts):
+   managermenuen 0x75db00 ("{klub} Reserves" og "Control Reserve Team"/"Control Senior Team Only" kun når 0x542740 – Please Confirm 0x7615d0
+   → HUMAN_MANAGER +0x9a05, `Manager.ctrlRes`; "{B-hold} Squad" når 0x540a50), reserveholdets Fixtures/Last Match med 0x45cdff/0x4671e0's
+   tekster, B-holdene: parrene fra indlæsningens navneliste 0x6146b0 (29 par i world-original), 0x542740 (ingen reserver i Spanien/Tyskland/
+   Portugal – splitReserves springes over), 0x541e60 (moderklub + B-hold ≤ 48 ved nyt spil), 0x4cbb60/0x4cbd20 (Promote To Seniors/Relegate
+   To Reserves/Relegate To 'B' Team/Promote To 'A' Team – kontrakten bliver, `Player.cmCon`, lønnen i kontraktklubbens 0x598370),
+   0x5a0590 (`financeClub`). +0x9a05 styrer kun reserveholdets kampe (0x600a50/0x6dbb10/0x7e6f70), som 2001/02-databasen ikke har. Ikke
+   porteret: lejegrenen i 0x4cbb60 (kontrakt +0x35 bit 0x40), B-holdene i computerens trupplan 0x83cb40 (0x4cc0b0/0x4cc0f0), kontrakttællingen
+   0x53c590 med B-holdet, getClubManager 0x53ca90's B-holdsmanager, managerjob for B-hold (0x544820).
 4. Landsholdsfodbold: NationalTeams 0x76b100, udtagelse 0x7757d0, kvalifikation/VM/EM/OL-format, landstrænere – hele `international.ts` er vores eget.
 5. Sæsonskiftet og pensioneringer. **Pensioneringerne porteret 16/11** (`src/game/cmRetire.ts`, PLAYER_REGEN): listen ved indlæsningen 0x7a58f0/0x7a79c0
    (databasens dato 1/1), nye kandidater på dag 0/80/173/250 (0x5d6250 → 0x7a5790: check_retirement 0x7a7310 – grænse 34 målmand/30 angriber/31 andre,
@@ -209,7 +216,7 @@ View Finances (der læser Bonuses fra blokken) viste 0 bonusser, selv om pengene
    pokalens år = det første, hvis første kamp ikke ligger i fortiden. Kampene før spilstarten (Norge/Sverige/Japan/USA/Rusland fra foråret) spilles ved
    nyt spil (*estimeret*: på én gang, ikke dag for dag som forkørslen 0x5cc850). *Estimeret*: arkiveringen sker i begyndelsen af dagen (ikke dagen
    før), Brasilien følger Europa, Discipline 0x556210/tilskuerne 0x5d6280 pr. land ikke porteret (organernes tællere nulstilles ved hovedskiftet).
-6. Reservekampe (fixtures −2, 0x84be20) og B-hold 0x540a50.
+6. ~~Reservekampe (fixtures −2, 0x84be20) og B-hold 0x540a50~~ – porteret 16–17/11 (cmReserves.ts, cmBTeam.ts).
 7. Venskabskampe for mennesket: **porteret 16/11** (cmFriendlyOffers.ts, FriendlyClassic.tsx – Home/Away Friendly, Tour, Choose Friendly Teams, Invite Club, svaret 0x5c5f40 efter omdømmet, også for computerens egne; noter ~/cm0102-engine/notes/friendly-human.md). Mangler: Friendly Cup/League (Tournament).
 8. Priser: Team of the Week (hvornår), Fans Player of the Year, internationale priser, andre landes priser.
 9. Økonomi for ikke-valgte lande: klubber i minus 150 → ~450 over 3 år.

@@ -27,6 +27,7 @@ import { useGame, useNav } from './core';
 import { canInstall, installApp, notifyEnabled, notifySupported, onInstallChange, setNotify } from './notify';
 import { getTheme, modernOn, setTheme, type Theme } from './theme';
 import { authentic } from '../game/rules';
+import { bTeamOf, hasReserveTeam } from '../game/cmBTeam';
 import { matchSound, setMatchSound } from './matchSound';
 
 // ---------- små visningsindstillinger (kun i denne browser) ----------
@@ -230,7 +231,19 @@ export function ManagerMenu({ onRetire, allowed, onHoliday }: { onRetire: () => 
   const add = (k: string, label: string, tab?: string) => { if (allowed(k)) items.push({ key: `${k}${tab ?? ''}`, label, onClick: () => nav({ name: k as never, tab }) }); };
   if (club) {
     add('squad', t('cl.mm.squad', { club: club.short }));
-    add('squad', t('cl.res.title', { club: club.short }), 'reserves');
+    // CM 01/02 (managermenuen 0x75eade–0x75ecb8): "{klub} Reserves" og "Control Reserve Team"/"Control Senior Team Only" kun for en klub med
+    // reservehold (0x542740), og B-holdets trup, når klubben har et (0x540a50) – cmBTeam.ts
+    if (hasReserveTeam(g, club.id)) {
+      add('squad', t('cl.res.title', { club: club.short }), 'reserves');
+      if (authentic()) {
+        const on = !!g.manager.ctrlRes;
+        items.push({ key: 'ctrlRes', label: t(on ? 'cl.mm.ctrlSenior' : 'cl.mm.ctrlRes'), onClick: async () => {
+          if (await askConfirm(t(on ? 'cl.mm.ctrlSeniorQ' : 'cl.mm.ctrlResQ', { club: club.short }))) act({ t: 'ctrlRes', on: !on });
+        } });
+      }
+    }
+    const b = bTeamOf(g, club.id);
+    if (b !== null && g.clubs[b]) items.push({ key: 'bteam', label: t('cl.mm.squad', { club: g.clubs[b].short }), onClick: () => nav({ name: 'club', id: b, state: { cview: 'squad' } }) });
     add('board', t('cl.mm.board'));
     items.push({ key: 'resign', label: t('cl.mm.resign'), onClick: async () => {
       if (await askConfirm(t('jobs.resignConfirm', { club: club.name }))) act({ t: 'resign' });
