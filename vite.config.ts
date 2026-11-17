@@ -91,5 +91,6 @@ export default defineConfig({
   // de 16 GB og fik Mac mini'en til at gå ned 17/11 (WindowServer-watchdog). CI bruger standarden. Er Chrome lukket (og ≥ 6 GB ledig), 5
   // (scripts/ram-budget.mjs; CM_TEST_WORKERS=n overstyrer).
   // createGame gennem cachen på disken, når CM_GAME_CACHE=1 (tests/helpers/gameCache.ts – foreløbig fra som standard)
-  test: { maxWorkers: process.env.CI ? undefined : ramBudget().testWorkers, setupFiles: process.env.CM_GAME_CACHE === '1' ? ['tests/helpers/setupGameCache.ts'] : [] },
+  // Lokalt 120 s pr. test: under belastning (flere agenter) ramte 5 s-standarden falske fejl. CI giver selv --testTimeout.
+  test: { testTimeout: process.env.CI ? undefined : 120_000, maxWorkers: process.env.CI ? undefined : ramBudget().testWorkers, setupFiles: process.env.CM_GAME_CACHE === '1' ? ['tests/helpers/setupGameCache.ts'] : [] },
 })
