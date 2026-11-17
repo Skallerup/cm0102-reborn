@@ -29,7 +29,8 @@ Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.m
   H/U/B 48/25/27 og 56/16/28, gule 2,35/2,46, røde 0,23/0,18, skadet 0,46/0,53, indskiftede 8,07/8,20, ≈200 ms/dag; zonemotoren frø 1/2
   (f9eaaffccf1c/f5a99130fb03) 2,71/2,55 mål, gule 3,13/3,26, røde 0,13/0,16, skadet 0,32/0,27, indskiftede 4,25/4,19, ≈60 ms/dag. 2001 frø 2
   (26c966fadfc3, Wrexham, 209 kampe): 3,00 mål, H/U/B 50/22/27, gule 2,04, røde 0,19, skadet 0,67, indskiftede 4,22, 2,4 s/dag.
-  2001 er bit for bit uændret (perf-fingerprint 2001-08-20 b5ecf86d561c0ba3 før/efter).
+  2001 er bit for bit uændret (perf-fingerprint 2001-08-20 b5ecf86d561c0ba3 før/efter; efter rebase på 25533ecc 02ec66f5a29512d1 = main, measure
+  b404b1d1755e/83cf66e2c067).
 - **Spaniens klubber i minus (cm-econ-2026, Vejle, 1 → 6 af 20):** årsagen er Signing On Fee, ikke omregningen. 0x85fc50 +8 = 20 % af værdien
   0x4d0c60 (×0,25–0,9 efter omdømme/status, ×≤1,4 ved lønloftet), og i kontraktlaget (genCtx) er 0x4d0c60 den håndporterede formel
   (cmValue.ts `playerValue_4d0c60`) på databasens felter – originalens £, ikke spillets markedsværdi. €-beløbet = £ / køberens faktor
