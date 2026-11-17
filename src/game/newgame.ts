@@ -51,6 +51,7 @@ import { cmSquadPlanStart } from './cmSquadPlanGame';
 import { cmWageFillNewGame } from './cmWageGame';
 import { cmShortlistStart } from './cmShortlistGame';
 import { cmValuesApply } from './cmValueGame';
+import { cmRefreshTransferBudgets } from './cmBudget';
 import { cmRetireInit } from './cmRetire';
 import { cmContractManagerDay } from './cmContractManager';
 import { GRID_ENGINE_DEFAULT } from './engine/liveSim';
@@ -457,6 +458,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
       const noise = 0.92 + (hash(seed, c.id, 31) % 1601) / 10_000;
       if (world.clubBalance?.[c.id] === undefined) c.balance = Math.round((cash * noise) / GBP);
       if (fin[2] > 0) c.facilities = clampInt(fin[2], 1, 20);
+      // (foreløbigt – cmRefreshTransferBudgets sætter originalens 0x598800, når økonomien er bygget)
       c.transferBudget = originalTransferFunds(c.balance);
     }
     c.ticketPrice = fairTicketPrice(c.rep, c.league);
@@ -558,6 +560,8 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   cmContractManagerDay(g);
   // spillernes værdi = originalens +0x52 (0x4d0c60 – cmValueGame.ts)
   cmValuesApply(g);
+  // Transfer Funds = Finance::get_transfer_budget 0x598800 for alle klubber (cmBudget.ts) – erstatter skønnet originalTransferFunds
+  cmRefreshTransferBudgets(g);
   progress('scouting', 0.9);
   initKnowledge();
   monthlyDevelopment();
@@ -700,6 +704,8 @@ export function takeOverClub(club: Club, viaJob = false) {
   // den originale database i ægte tilstand: 0x826f20 → 0x69ebc0 → 0x694c80 (cmBoardGame.ts); ellers spillets egne forventninger
   if (cmBoardOn(g)) { if (!viaJob) cmBoardHumanAppoint(g, club, !!old); }
   else setBoardExpectation();
+  // Funds med den nye managers omdømme (0x598800 – under createGame findes økonomien endnu ikke, og cmRefreshTransferBudgets springer over)
+  cmRefreshTransferBudgets(g, [club.id]);
 }
 
 /** originalens spilstart for ikke-spillerposten (sat i createGame, mens databasens stab oprettes) */

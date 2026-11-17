@@ -130,6 +130,8 @@ export interface LeagueInfo {
 
 /** alt hvad funktionerne læser af resten af spillet (cmBoardData.ts bygger den af GameState) */
 export interface BoardEnv {
+  /** 0x694c80's slutning (0x695147 → 0x84abe0): trupplanen for klubben med den nye manager (cmSquadPlanGame.ts – hooks i cmBoardGame.ts) */
+  newManagerPlan?(c: number): void;
   today: CmDate;
   /** [0xdd6ec8] spillets start (hovedlandets sæsonstart) */
   gameStart: CmDate;
@@ -508,6 +510,7 @@ export function resetForNewManager(env: BoardEnv, st: CmBoardState, c: number, r
   R.b2 &= 0xf7; R.b2 &= 0xfb; R.b2 &= 0xfd;
   R.d38 = 0; R.b4 = 0; R.b3 &= 0xe1; R.b2 &= 0xdf; R.d28 = 0; R.b5 = 0; R.b3 &= 0xfe; R.b40 &= 7;
   R.b1 = env.wealthBand(c);
+  env.newManagerPlan?.(c);
 }
 
 // ---------------------------------------------------------------- 0x6a3770 set_season_expectations

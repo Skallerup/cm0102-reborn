@@ -56,7 +56,13 @@ export function cmClubEuro(g: GameState, club: number): number {
     let alive: boolean;
     if (!c.ties.length) alive = true;
     else if (mine.length) { const last = mine[mine.length - 1]; alive = last.winner === undefined || last.winner === club; }
-    else alive = c.table.slice(0, 8).some((r) => r.club === club);
+    // uden egne dobbeltkampe og før tabellen findes: klubben går først ind i en senere runde (Man Utd i CL's gruppespil – oraklets spilstart:
+    // +0x1db = 326 allerede 14/7, så 0x598800 giver transferbudgettets europæiske tillæg)
+    else {
+      const entry = (c.meta as { entry?: Record<string, number[]> } | undefined)?.entry;
+      const later = !!entry && !c.table.length && Object.values(entry).some((ids) => ids.includes(club));
+      alive = later || c.table.slice(0, 8).some((r) => r.club === club);
+    }
     if (alive) return c.id === 'CL' ? 326 : c.id === 'UEFA' ? 328 : 330;
   }
   return -1;

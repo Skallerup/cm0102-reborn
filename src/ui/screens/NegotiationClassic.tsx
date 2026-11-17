@@ -1,12 +1,13 @@
 // "Offer Contract" som i CM 01/02: fanerne Basic · Bonuses · Clauses, rækker med − / værdi ▾ / + / =, et klik på en
 // bonus eller klausul slår den til (hvid tekst), og "Offer contract to …?" med No/Yes før tilbuddet sendes.
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { act } from '../../game/actions';
 import { gs } from '../../game/state';
 import { preferredYears, renewalDemand, signOnDemand, wageDemand } from '../../game/transfers';
 import type { ContractClauses, StaffRole, TransferOffer } from '../../game/types';
 import { cmStaffCompensation, cmStaffDemand, cmStaffInterestedIn } from '../../game/cmStaff';
 import { cmActive } from '../../game/cmPlayerData';
+import { cmBoardStaffWageAllow, cmBoardWageAllow } from '../../game/cmBudget';
 import { poachFee } from '../../game/staff';
 import { money, t } from '../../i18n';
 import { CxDrop, CxPm, titleColors, useClassicDialog } from '../classic';
@@ -59,8 +60,9 @@ export function ClassicStaffNegotiation({ staffId, role, onClose }: { staffId: n
   const name = `${s.first} ${s.last}`.trim();
   const interested = cmStaffInterestedIn(g, s, role);
   const bill = Object.values(g.players).filter((x) => x.club === club.id).reduce((a, x) => a + (x.contract?.wage ?? 0), 0);
-  // *estimeret* (spillernes regel): lønbudgettet minus truppens lønsum
-  const allow = Math.max(0, club.wageBudget - bill);
+  // CM 01/02 (ægte tilstand, original DB): bestyrelsens loft for jobbet 0x597db0 (cmBudget.ts); ellers lønbudgettet minus truppens lønsum
+  const [cmAllow] = useState(() => cmBoardStaffWageAllow(g, s, role, club.id));
+  const allow = cmAllow ?? Math.max(0, club.wageBudget - bill);
   const end = (y: number) => `${t('cl.neg.jun')} ${g.season + y}`;
   const from = s.club ? g.clubs[s.club] : undefined;
   // 0x4e4b55: kompensationen 0x8d0780 – vises kun, når den er over 0
@@ -154,7 +156,12 @@ function NegotiationBody({ offer, renewPid, onClose }: { offer?: TransferOffer; 
   const [msg, setMsg] = useState<string | null>(null);
   const name = `${p.first} ${p.last}`.trim();
   const bill = Object.values(g.players).filter((x) => x.club === club.id).reduce((s, x) => s + (x.contract?.wage ?? 0), 0);
-  const allow = Math.max(0, club.wageBudget - bill + (offer ? 0 : p.contract?.wage ?? 0));
+  // CM 01/02 (ægte tilstand, original DB): "Your board will allow wages up to …" = Finance::get_max_wage 0x5968d0 for spilleren (cmBudget.ts) –
+  // efter Set Role At Club, så egen spillers nye trupstatus tæller med
+  const cmAllow = useMemo(() => (roleStep ? null : cmBoardWageAllow(g, p, club.id, offer?.cmRole)), [roleStep]); // eslint-disable-line react-hooks/exhaustive-deps
+  const allow = cmAllow ?? Math.max(0, club.wageBudget - bill + (offer ? 0 : p.contract?.wage ?? 0));
+  // 0x4e1329: originalen klemmer kontraktens løn til loftet – tilbuddet starter på min(kravet, loftet), og listen går ikke over loftet
+  useEffect(() => { if (cmAllow !== null && wage > cmAllow) setWage(Math.floor(cmAllow / 50) * 50); }, [cmAllow]); // eslint-disable-line react-hooks/exhaustive-deps
   // CM 01/02 Offer Contract-skærmen 0x4e06e0 (0x4e0ad5): et krav på mindst 1,5 × det, bestyrelsen tillader (skærmparameter 0x18), giver
   // "X has no interest in negotiating terms …" efter trupstatussen (0x4e0ff9: 1–2 uden tilføjelse, 3 rotation, 4 backup, 5 hot prospect,
   // 6 youngster) med grundene 0x8e4ae0, når interessen (0x846920) er over 1,25 – og intet tilbud kan gives. Det fanger også 0x85fc50's
@@ -169,7 +176,7 @@ function NegotiationBody({ offer, renewPid, onClose }: { offer?: TransferOffer; 
   const col = titleColors(p.club || undefined);
   const set = (k: keyof ContractClauses, v: number | undefined) => setCl((c) => ({ ...c, [k]: v || undefined }));
   const toggle = (k: keyof ContractClauses, def: number) => set(k, cl[k] ? undefined : def);
-  const wageOpts = [...new Set([0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 1, 1.05, 1.1, 1.2, 1.3, 1.5, 1.75, 2].map((f) => r50(demand * f)))];
+  const wageOpts = [...new Set([0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 1, 1.05, 1.1, 1.2, 1.3, 1.5, 1.75, 2].map((f) => r50(demand * f)).map((v) => (cmAllow !== null && v > cmAllow ? Math.floor(cmAllow / 50) * 50 : v)))];
   const bonusOpts = (base: number) => [...new Set([0.25, 0.5, 1, 1.5, 2, 3].map((f) => Math.max(10, Math.round(base * f / 10) * 10)))];
   const relBase = Math.max(100_000, p.value);
   const relOpts = [...new Set([0.5, 1, 1.5, 2, 2.5, 3, 4, 5, 7.5, 10].map((f) => Math.round(relBase * f / 100_000) * 100_000))];

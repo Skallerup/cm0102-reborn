@@ -1,14 +1,62 @@
 // CM 01/02: Finance::get_transfer_budget 0x598800 (mekanisk oversat, cmGen/f_598800.ts) på spillets hukommelse – klubbens Transfer Funds i ægte
-// tilstand med den originale database. Bruges ved spilstart (newgame.ts) og ved sæsonens nye budget (finance.ts newSeasonBudgets).
-// Argumenterne er de samme som originalens kaldere (0x83b6e0/0x6a4f80: (0, 0, 0, 1, 0) – uden spiller, uden klausul, med kontrollen "1").
-import type { GameState } from './types';
-import { buildWantMem } from './cmContractGame';
+// tilstand med den originale database. Originalen gemmer intet budget: Funds-knappen (0x808ee4) og View Finances (0x463af8) kalder 0x598800(0, 0,
+// 0, 1, 0) hver gang (negativ → 0). Hos os: Club.transferBudget = det samme kald ved spilstarten, når mennesket overtager en klub, hver dag for
+// menneskets klub(ber) og den 1. i måneden for alle klubber (cmRefreshTransferBudgets) – og efter økonomiens begivenheder (cmFinEvents.ts).
+//
+// Inddata ud over lønportenes hukommelse (buildWantMem): træningsanlægget +0x7f, +0x6d (0 for "Bright…"/"Wimble…"), stadionets kapacitet +0x3c,
+// den europæiske turnering +0x1db (cmClubEuro), sæsonblokkens Bought/Sold +0x110/+0x118 (nettokøb over £8M trækkes fra og sænker loftet) og
+// menneskets manager (+0xcf): ikke-spillerposten med hans omdømme +0x8/+0xa/+0xc. Det sidste var det manglende input (16/11): 0x599039 skalerer
+// loftet T = budget/2 med (managerens omdømme/klubbens)² (forholdet klemt til 0,5..1), og alt over T tæller kun 10 % – uden manager-post regnede vi
+// alle menneskeklubber som Ferguson (Man Utd 33,6M mod originalens 24,0M). Oraklets spilstart (pre-194-2001, 0x598800 på originalens egen
+// hukommelse): Arsenal med mennesket (5282/9000) 0,69 af saldoen, de computerstyrede 0,75–1,6 (Newcastle over saldoen, Fulham/Middlesbrough under).
+// Mangler: +0x1c (lejeaftalernes lønandel ·2/3 – spillet har ingen post for den lejende klubs lønbidrag; 0) og argument 4 (menneskets igangværende
+// handler – bruges ikke af Funds/View Finances).
+import type { GameState, Player } from './types';
+import { buildWantMem, cmTalkStatus, roleCode, type WantMem } from './cmContractGame';
 import { GEN } from './cmGen/index';
 import { ensureImpls } from './cmGen/impls';
 import { cmActive } from './cmPlayerData';
 import { cmKnowLevel } from './cmKnow';
+import { cmClubEuro } from './cmFitnessGame';
+import { getMaxWage_5968d0, maxStaffWage_597db0 } from './cmMaxWage';
+import { K } from './cmFinance';
 
 const GBP = 0.86;
+/** skrabeområde til menneskenes ikke-spillerposter (én pr. klub i kaldet) */
+const MNP0 = 0x6a100000;
+
+/** menneskets omdømme [hjemme, aktuel, verden] for en menneskeklub (null = computerens klub eller ukendt) */
+function humanRep(g: GameState, cid: number): [number, number, number] | null {
+  if (g.clubs[cid]?.manager !== -1) return null;
+  if (cid === g.userClub) return g.manager.cmRep ?? null;
+  return g.humans?.find((h) => h.userClub === cid)?.manager.cmRep ?? null;
+}
+
+/** felterne, 0x598800 læser ud over lønportenes */
+function prepClub(g: GameState, M: WantMem, cid: number, k: number): void {
+  const club = M.W.clubOf(cid), fin = M.W.finOf(cid), m = M.c.m, cl = g.clubs[cid], cr = g.cmCrowd?.[cid];
+  if (!club || !fin) return;
+  m.w8(club + 0x7f, cl.facilities);
+  m.w8(club + 0x6d, /^(Bright|Wimble)/.test(cl.name) ? 0 : 1);
+  const sa = m.u32(club + 0x69);
+  if (sa && cr && cr[3] >= 0) m.w32(sa + 0x3c, cr[5]);
+  m.w32(club + 0x1db, cmClubEuro(g, cid));
+  // sæsonblokken +0x110: Bought (i64) og +0x118 Sold (i64) – Finance::add_bought/add_sold (cmFinance.ts bookBlock)
+  const ty = g.cmFin?.[cid]?.ty;
+  const w64 = (a: number, v: number) => { const x = Math.round(v); m.w32(a, x >>> 0); m.w32(a + 4, Math.floor(x / 4294967296)); };
+  w64(fin + 0x110, ty?.[K.bought] ?? 0);
+  w64(fin + 0x118, ty?.[K.sold] ?? 0);
+  // MANAGER_MANAGER-posten +0x28 (0x599239): bestyrelsens ekstra transferpenge efter en anmodning (cmBoardGame.ts, R.d28)
+  const mm = m.u32(0xb67a44), d28 = (g.cmBoard?.rec[cid] as { d28?: number } | undefined)?.d28;
+  if (mm && m.u32(mm)) m.w32(m.u32(mm) + 73 * m.u32(club) + 0x28, d28 ?? 0);
+  // menneskets manager (+0xcf er en tom person i buildWageMem): ikke-spillerposten med omdømmet
+  const rep = humanRep(g, cid), ms = m.u32(club + 0xcf);
+  if (rep && ms && !m.u32(ms + 0x69)) {
+    const np = MNP0 + 0x100 * k;
+    m.w32(ms + 0x69, np);
+    m.w16(np + 0x8, rep[0]); m.w16(np + 0xa, rep[1]); m.w16(np + 0xc, rep[2]);
+  }
+}
 
 /** transferbudgettet i £ for en klub (null uden for ægte tilstand/uden finansposten) – 64 bit i originalen, her de nederste 32 + fortegn */
 export function cmTransferBudget(g: GameState, cid: number): number | null {
@@ -18,23 +66,80 @@ export function cmTransferBudget(g: GameState, cid: number): number | null {
 /** som cmTransferBudget, men med originalens fortegn (negativ i gæld) – begivenhederne 0x59ed70 vælger nyhedens tekst efter det */
 export function cmTransferBudgetRaw(g: GameState, cid: number): number | null {
   if (!cmActive(g) || !g.clubs[cid]) return null;
-  const M = buildWantMem(g, [cid]);
-  const fin = M.W.finOf(cid);
-  if (!fin) return null;
-  // felterne, 0x598800 læser ud over lønportenes: træningsanlægget +0x7f, +0x6d (0 for "Bright…"/"Wimble…"), stadionets kapacitet +0x3c
-  const club = M.W.clubOf(cid), m = M.c.m, cl = g.clubs[cid], cr = g.cmCrowd?.[cid];
-  m.w8(club + 0x7f, cl.facilities);
-  m.w8(club + 0x6d, /^(Bright|Wimble)/.test(cl.name) ? 0 : 1);
-  const sa = m.u32(club + 0x69);
-  if (sa && cr && cr[3] >= 0) m.w32(sa + 0x3c, cr[5]);
+  return budgetsOf(g, [cid]).get(cid) ?? null;
+}
+
+/** 0x598800(0, 0, 0, 1, 0) for flere klubber på én hukommelse */
+function budgetsOf(g: GameState, cids: number[]): Map<number, number> {
+  const out = new Map<number, number>();
+  if (!cids.length) return out;
+  const M = buildWantMem(g, cids);
   ensureImpls();
-  return GEN[0x598800](M.c, fin, [0, 0, 0, 1, 0]) | 0;
+  cids.forEach((cid, k) => {
+    const fin = M.W.finOf(cid);
+    if (!fin) return;
+    prepClub(g, M, cid, k);
+    out.set(cid, GEN[0x598800](M.c, fin, [0, 0, 0, 1, 0]) | 0);
+  });
+  return out;
 }
 
 /** i spillets valuta (€) */
 export function cmTransferFunds(g: GameState, cid: number): number | null {
   const v = cmTransferBudget(g, cid);
   return v === null ? null : v / GBP;
+}
+
+/** Club.transferBudget = originalens Funds (0x598800, negativ → 0) for klubberne (standard: alle) – ægte tilstand med den originale database */
+export function cmRefreshTransferBudgets(g: GameState, cids?: number[]): void {
+  if (!cmActive(g) || !g.cmFin || g.draft) return;
+  // standard: klubberne i de valgte lande (og menneskenes) – de andres Funds vises ikke (originalens skærme skjuler andre klubbers økonomi) og
+  // bruges ikke af computerens handler (ønskelisterne kalder 0x598800 selv); ~1,5 ms pr. klub
+  const act = new Set(g.activeNations ?? []), hum = new Set(humanClubIds(g));
+  const ids = (cids ?? Object.keys(g.cmFin).map(Number).filter((cid) => hum.has(cid) || act.has(g.clubs[cid]?.nation))).filter((cid) => g.clubs[cid]);
+  // i bidder, så hukommelsen ikke vokser over alle klubber på én gang
+  for (let i = 0; i < ids.length; i += 400) {
+    for (const [cid, v] of budgetsOf(g, ids.slice(i, i + 400))) g.clubs[cid].transferBudget = Math.max(0, v) / GBP;
+  }
+}
+
+/** menneskenes klubber (den aktive + de andre i et fællesspil) */
+export function humanClubIds(g: GameState): number[] {
+  const s = new Set<number>();
+  if (g.userClub && g.clubs[g.userClub]?.manager === -1) s.add(g.userClub);
+  for (const h of g.humans ?? []) if (h.userClub && g.clubs[h.userClub]?.manager === -1) s.add(h.userClub);
+  return [...s];
+}
+
+/** Offer Contract-skærmens loft "Your board will allow wages up to …" (skærmparameter 0x18): 0x4de1f0/0x4de5d0 → Finance::get_max_wage
+ *  0x5968d0(klubbens finanspost, spilleren, −1) – for menneskets egen spiller læser 0x5968d0 trupstatussen i kontrakten (+0x4f, sat af Set Role
+ *  At Club); for en spiller fra en anden klub den rolle, han er tilbudt (`role`; uden rolle hans forventede plads – som ønskekontrakten, cmTalkStatus). Ugeløn i € (null uden for ægte tilstand). */
+export function cmBoardWageAllow(g: GameState, p: Player, clubId: number, role?: import('./squadStatus').SquadStatus): number | null {
+  if (!cmActive(g) || !g.clubs[clubId]) return null;
+  const M = buildWantMem(g, p.club && p.club !== clubId ? [clubId, p.club] : [clubId]);
+  const fin = M.W.finOf(clubId);
+  if (!fin) return null;
+  let st = M.W.staffOf(p);
+  if (!st) st = M.W.addGenerated(p, 0);
+  ensureImpls();
+  // et tilbud efter Set Role At Club: originalens forhandling har den valgte rolle i kontraktposten (+0x4f), som 0x5968d0 læser for menneskets klub
+  const status = p.club === clubId ? (role ? roleCode(role) : -1) : cmTalkStatus(g, p, clubId, role);
+  const w = getMaxWage_5968d0(M.c, fin, st, status);
+  return Math.max(0, w) / GBP;
+}
+
+/** stabens Offer Contract (0x4de1f0/0x4de5d0 med et stabsjob): Finance::max_staff_wage 0x597db0(finansposten, jobbet) – og for en, der allerede
+ *  er ansat i klubben, mindst hans nuværende løn (0x4d0c20). Ugeløn i € (null uden for ægte tilstand). */
+const JOB: Record<string, number> = { manager: 5, assistant: 6, coach: 8, scout: 9, physio: 10 };
+export function cmBoardStaffWageAllow(g: GameState, s: { club: number; wage?: number }, role: string, clubId: number): number | null {
+  if (!cmActive(g) || !g.clubs[clubId]) return null;
+  const M = buildWantMem(g, [clubId]);
+  const fin = M.W.finOf(clubId);
+  if (!fin) return null;
+  ensureImpls();
+  let w = maxStaffWage_597db0(M.c, fin, JOB[role] ?? 8);
+  if (s.club === clubId && s.wage) w = Math.max(w, Math.round(s.wage * GBP));
+  return Math.max(0, w) / GBP;
 }
 
 /** Budskærmens bestyrelseslinje (transfer_screens 0x8e9760, 0x8ea28e–0x8ea3d5): 0x598800(spiller, 0, &begrænset, 1, 0) – med attribute masking
@@ -45,13 +150,13 @@ export function cmTransferFunds(g: GameState, cid: number): number | null {
  *  niveauet alene (0x8ea327): 1 "know very little", 2 "only allow", 3 "will allow", 0 "don't know anything"; beløbet 0 → free-transfer-teksterne
  *  (0xa9e5e4/0xa9e6d0/0xa9e7b8). Beløbet i linjen er 0x598800's svar. */
 export interface CmBidBudget { budget: number; level: number; limited: boolean }
-export function cmKnowledgeLevel(g: GameState, p: import('./types').Player): number {
+export function cmKnowledgeLevel(g: GameState, p: Player): number {
   return cmKnowLevel(g, p);
 }
-export function cmBidBudget(g: GameState, p: import('./types').Player, buyer: number): CmBidBudget | null {
+export function cmBidBudget(g: GameState, p: Player, buyer: number): CmBidBudget | null {
   if (!cmActive(g) || !g.clubs[buyer] || !p.club) return null;
   const level = cmKnowledgeLevel(g, p);
-  const KOBJ = 0x6a000000, OUTF = 0x6a000100, MNP = 0x6a000200;
+  const KOBJ = 0x6a000000, OUTF = 0x6a000100;
   const M = buildWantMem(g, [buyer, p.club], {
     useLog: (adr) => adr === 0x600a50 || adr === 0x849f00 || adr === 0x5afde0 || adr === 0x5b02f0,
     call: (adr) => (adr === 0x5afde0 ? KOBJ : adr === 0x5b02f0 ? level : undefined),
@@ -60,14 +165,8 @@ export function cmBidBudget(g: GameState, p: import('./types').Player, buyer: nu
   let st = M.W.staffOf(p);
   if (!st) st = M.W.addGenerated(p, 0);
   if (!fin || !st) return null;
-  const club = M.W.clubOf(buyer), m = M.c.m, cl = g.clubs[buyer], cr = g.cmCrowd?.[buyer];
-  m.w8(club + 0x7f, cl.facilities);
-  m.w8(club + 0x6d, /^(Bright|Wimble)/.test(cl.name) ? 0 : 1);
-  const sa = m.u32(club + 0x69);
-  if (sa && cr && cr[3] >= 0) m.w32(sa + 0x3c, cr[5]);
-  // menneskets manager (+0xcf): ikke-spillerposten med hans aktuelle omdømme +0xa (0x599618–0x599683: omdømme / klubbens, klemt 0,1..1)
-  const ms = m.u32(club + 0xcf), rep = g.manager.cmRep?.[1];
-  if (ms && rep !== undefined && !m.u32(ms + 0x69)) { m.w32(ms + 0x69, MNP); m.w16(MNP + 0xa, rep); }
+  const m = M.c.m;
+  prepClub(g, M, buyer, 0);
   const old = m.u32(0xae2a60);
   m.w32(0xae2a60, KOBJ); m.w32(OUTF, 0);
   ensureImpls();

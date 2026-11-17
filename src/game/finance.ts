@@ -225,7 +225,8 @@ export function newSeasonBudgets() {
         asOwnerFinance(c.id, () => addNews({ cat: 'finance', key: 'board.dividend', params: { club: c.name, amount: div, balance: c.balance }, link: { kind: 'club', id: c.id } }));
       }
     }
-    c.transferBudget = transferBudgetFor(sv, wealth, c.balance);
+    // original DB i ægte tilstand: Funds er originalens 0x598800 (cmBudget.ts – sim.ts genberegner den samme dag)
+    if (!cmFinOn(g)) c.transferBudget = transferBudgetFor(sv, wealth, c.balance);
     if (c.ffp?.sanction) c.transferBudget = Math.round(c.transferBudget * 0.4 / 50_000) * 50_000;
     const bill = currentWageBill(c.id, loanedOut);
     // menneskestyrede klubber får lidt luft, så der er plads til en ny spiller uden først at sælge

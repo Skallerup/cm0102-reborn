@@ -2220,6 +2220,8 @@ export const en: Record<string, string> = {
   "cm.stm.j.8": "coach",
   "cm.stm.j.9": "scout",
   "cm.stm.j.10": "physio",
+  "cm.stBid": "{club} transfer bid for {name}",
+  "cm.stBid.body": "{club} have made an offer for {name}.\n\n{from} will be due {fee} in compensation if the deal goes ahead.",
   "cm.staffAccepts": "{last} joins {club}",
   "cm.staffAccepts.body": "{name} has accepted the contract offer from {club}.",
   "cl.negotiate": "Negotiate",

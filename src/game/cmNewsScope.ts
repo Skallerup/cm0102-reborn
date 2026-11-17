@@ -66,8 +66,8 @@ const continent = (g: GameState, n: number) => (n >= 0 ? g.cmNationCont?.[n] ?? 
 const human = (g: GameState, c: number) => !!c && g.clubs[c]?.manager === -1;
 
 /** 0x5407e0(spiller, seer, 0) med 0x5408c0: omdømmet set fra den falske post i 0x8d1130 (nationalitet = købers land, klub = køberen) */
-function repSeenByBuyer(g: GameState, p: Player, seller: Club | undefined, buyer: Club): number {
-  const [H, C, W] = reps(p);
+function repSeenByBuyer(g: GameState, p: Player, seller: Club | undefined, buyer: Club, seen?: [number, number, number]): number {
+  const [H, C, W] = seen ?? reps(p);
   let code: number;
   if (seller && (seller.id === buyer.id || seller.nation === buyer.nation)) code = 0;
   else if (p.nation === buyer.nation || !cmForeign(g, buyer.nation, p.nation)) code = 2;
@@ -88,6 +88,9 @@ export interface TransferNewsIn {
   offerId?: number;
   /** en ikke-spiller (stab): ingen leje, shortlist, planlægger-plads eller kampstatistik (0x8d1684 – omdømmet fra ikke-spillerposten) */
   staff?: boolean;
+  /** stab: ikke-spillerpostens omdømme [+8, +0xa, +0xc] UDEN ×0,25 – 0x5407e0 (omdømmet set fra køberen, 0x8d1978) læser personen selv;
+   *  kun 0x8d16ad's tal (C/H/W i reglerne) er skaleret for træner, spejder og fysioterapeut */
+  seen?: [number, number, number];
 }
 
 /** 0x8e7b50(offer, 0, 0, 0, 0, 1) uden formuebåndet (1,0): gebyret + (1 − 25·0,005)·klausulen + byttespillernes værdi (+0x52), i £ */
@@ -150,7 +153,7 @@ export function transferNewsToMe(g: GameState, p: Player, buyer: Club, x: Transf
       if ((C > lim && C > 2500) || (!x.staff && 9.0 - C * 0.00025 < statAvg(p, 2, 0x12, 6.5))) sellerDivFlag = true;
     }
     if (buyerDiv) {
-      if (repSeenByBuyer(g, p, seller, buyer) > 350 * divRep(g, buyerDiv) && C > 1500) buyerDivFlag = true;
+      if (repSeenByBuyer(g, p, seller, buyer, x.seen) > 350 * divRep(g, buyerDiv) && C > 1500) buyerDivFlag = true;
     }
   }
   // 0x8d1a8a: de menneskelige managere – her den aktive

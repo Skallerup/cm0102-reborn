@@ -7,6 +7,7 @@ import { gs, squad } from '../src/game/state';
 import { act } from '../src/game/actions';
 import { processOffers, canPreContract } from '../src/game/transfers';
 import { cmTalksDemand } from '../src/game/cmTransferTalks';
+import { cmBoardWageAllow } from '../src/game/cmBudget';
 import type { TransferOffer } from '../src/game/types';
 
 describe('forkontrakt som originalen (3.9.60, ægte tilstand)', { timeout: 600_000 }, () => {
@@ -28,15 +29,12 @@ describe('forkontrakt som originalen (3.9.60, ægte tilstand)', { timeout: 600_0
     expect(o.cmRole).toBe('rotation');
     const want = cmTalksDemand(o)!;
     expect(want.wage).toBeGreaterThan(0);
-    // loftet: over bestyrelsens loft sendes intet
-    const club = g.clubs[vejle];
-    const budget = club.wageBudget;
-    club.wageBudget = 1;
-    expect(act({ t: 'negotiate', pid: p.id, wage: want.wage, years: 2 })).toBe('budget');
+    // loftet: over bestyrelsens loft (get_max_wage 0x5968d0 – cmBudget.ts) sendes intet
+    const allow = cmBoardWageAllow(g, p, vejle, 'rotation')!;
+    expect(act({ t: 'negotiate', pid: p.id, wage: Math.round(allow + 1000), years: 2 })).toBe('budget');
     expect(o.cmTalks!.state).toBe(0);
-    club.wageBudget = budget + want.wage * 10;
-    // et tilbud over kravet sendes (ikke afvist med det samme) og besvares først efter 1–5 dage
-    expect(act({ t: 'negotiate', pid: p.id, wage: Math.round(want.wage * 2), years: 2, clauses: { signOn: want.signOn } })).toBe('cmSent');
+    // et tilbud på loftet sendes (originalen klemmer lønnen til loftet 0x4e1329) (ikke afvist med det samme) og besvares først efter 1–5 dage
+    expect(act({ t: 'negotiate', pid: p.id, wage: Math.floor(allow), years: 2, clauses: { signOn: want.signOn } })).toBe('cmSent');
     const due = o.cmTalks!.due!;
     expect(due > g.date).toBe(true);
     processOffers();

@@ -4439,4 +4439,6 @@ Object.assign(tr, {
   "cm.stm.j.8": "antrenör",
   "cm.stm.j.9": "gözlemci",
   "cm.stm.j.10": "fizyoterapist",
+  "cm.stBid": "{club}, {name} için teklif yaptı",
+  "cm.stBid.body": "{club}, {name} için bir teklif yaptı.\n\nAnlaşma gerçekleşirse {from} {fee} tazminat alacak.",
 });

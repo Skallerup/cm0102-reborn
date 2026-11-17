@@ -16,6 +16,7 @@ import { Empty, Modal, Panel } from '../components';
 import { notify } from '../../game/state';
 import { cmUltimatumReq } from '../../game/cmBoardGame';
 import { cmStaffDelayOpen } from '../../game/cmStaff';
+import { cmStaffBidOpen } from '../../game/cmStaffMove';
 import { ultimatumConfirm } from '../../game/cmBoardText';
 import { askConfirm } from '../confirm';
 import { useGame, useNav, useRouteState } from '../core';
@@ -68,6 +69,7 @@ export function Inbox() {
   const [respond, setRespond] = useState<number | null>(null);
   const [jobOpen, setJobOpen] = useState<number | null>(null);
   const [delayFor, setDelayFor] = useState<number | null>(null);
+  const [stBidOpen, setStBidOpen] = useState(false);
   const [sqnOpen, setSqnOpen] = useState(false);
   const [eurOpen, setEurOpen] = useState(false);
   const [reqOpen, setReqOpen] = useState(false);
@@ -124,6 +126,8 @@ export function Inbox() {
   // afviste kontrakttilbud (CM 01/02: Negotiate)
   const rejStaff = item && cmActive(g) ? cmRejectStaff(g, item) : null;
   const delayOpen = item && cmActive(g) && cmStaffDelayOpen(g, item);
+  // CM 01/02 (0x8be884): en computerklubs bud på menneskets stab – Respond → Accept/Reject
+  const stBid = item && cmActive(g) ? cmStaffBidOpen(g, item) : null;
   // CM 01/02 "Offer contract to X" (0x8f1950: Offer Contract) og "X rejects Y" efter et afvist tilbud (Negotiate) – tilbuddet er stadig åbent
   const talk = item && (item.key === 'transfer.cmTalks' || item.key === 'transfer.cmRejects') && item.link?.kind === 'offer'
     ? g.offers.find((o) => o.id === Number(item.link!.id)) : undefined;
@@ -144,6 +148,11 @@ export function Inbox() {
       const n = g.news.find((x) => x.id === delayFor);
       return <div><Head title={g.clubs[g.userClub]?.name ?? ''} /><DelayPanel text={n ? newsBody(n) : ''} onBack={() => setDelayFor(null)}
         onAnswer={(d) => { act({ t: 'staffDelay', news: delayFor, delay: d }); setDelayFor(null); }} /></div>;
+    }
+    if (stBidOpen && stBid && item) {
+      const close = () => setStBidOpen(false);
+      return <div><Head title={g.clubs[g.userClub]?.short ?? ''} /><StaffBidPanel title={t('cl.bid.title', { club: g.clubs[stBid.c]?.name ?? '', player: String(item.params.name ?? '') })}
+        text={newsBody(item)} onBack={close} onAnswer={(yes) => { close(); act({ t: 'staffBid', id: stBid.id!, accept: yes }); }} /></div>;
     }
     if (jobOpen !== null && g.jobOffers.includes(jobOpen)) return <div><Head title={g.manager.name} /><JobOfferPanel cid={jobOpen} onClose={() => setJobOpen(null)} /></div>;
     // Squad Numbers (CM 01/02): Respond på "… squad numbers to be decided" åbner listen
@@ -192,6 +201,7 @@ export function Inbox() {
           {requestOpen(g, item) && <button className="cx-grey cx-respond cx-req-respond" onClick={() => setReqOpen(true)}>{t('cl.bid.respond')}</button>}
           {jobOffer !== undefined && <button className="cx-grey cx-respond" onClick={() => setJobOpen(jobOffer)}>{t('cl.bid.respond')}</button>}
           {/* CM 01/02 (0xa6943c): "X rejects Y" har knappen Negotiate – kontrakttilbuddet igen (stab: cmStaff.ts, egne spillere: forlængelsen) */}
+          {stBid && <button className="cx-grey cx-respond cx-stbid-respond" onClick={() => setStBidOpen(true)}>{t('cl.bid.respond')}</button>}
           {delayOpen && item && <button className="cx-grey cx-respond" onClick={() => setDelayFor(item.id)}>{t('cl.bid.respond')}</button>}
           {rejStaff && item && <button className="cx-grey cx-respond cx-negotiate" onClick={() => nav({ name: 'staff', id: rejStaff.id, state: { stoffer: String(item.params.role ?? rejStaff.role) } })}>{t('cl.negotiate')}</button>}
           {talkOffer && <button className={`cx-grey cx-respond ${item?.key === 'transfer.cmTalks' ? 'cx-offer-contract' : 'cx-negotiate'}`} onClick={() => setTalkOpen(talkOffer.id)}>{t(item?.key === 'transfer.cmTalks' ? 'cl.offerContract' : 'cl.negotiate')}</button>}
@@ -377,6 +387,22 @@ function DelayPanel({ text, onBack, onAnswer }: { text: string; onBack: () => vo
 }
 
 /** CM 01/02 0x8f2ec0: "Confirm Transfer Offer" (Back · No · Delay · Yes) og "Delay Transfer Offer" (Back · Cancel · Delay) */
+/** Respond på en computerklubs bud på menneskets stab (0x8be884): Back · Reject · Accept */
+function StaffBidPanel({ title, text, onBack, onAnswer }: { title: string; text: string; onBack: () => void; onAnswer: (yes: boolean) => void }) {
+  useClassicDialog();
+  return (
+    <div className="cx-tstatus cx-confirm-offer cx-staff-bid">
+      <div className="cx-subtitle">{title}</div>
+      <div className="cx-ts-body"><p className="cx-ts-intro" style={{ whiteSpace: 'pre-line' }}>{text}</p></div>
+      <ClassicFoot cols="2fr 1fr 1fr">
+        <button onClick={onBack}>{t('common.back')}</button>
+        <button className="cx-cancel" onClick={() => onAnswer(false)}>{t('cl.bid.reject')}</button>
+        <button className="primary cx-yes" onClick={() => onAnswer(true)}>{t('cl.bid.accept')}</button>
+      </ClassicFoot>
+    </div>
+  );
+}
+
 function TransferConfirmPanel({ title, text, cancelLabel, yes, backOnly, onBack, onAnswer }: { title: string; text: string; cancelLabel: string; yes?: boolean; backOnly?: boolean; onBack: () => void; onAnswer: (a: 'yes' | 'no' | 'delay') => void }) {
   useClassicDialog();
   return (

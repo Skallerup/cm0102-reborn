@@ -20,6 +20,7 @@ import { pushCareerLine, recordMove } from './season';
 import { blockedMoveReaction, playerPraises, targetReaction, type RejectReason } from './will';
 import type { Club, Contract, ContractClauses, Player, Role, TransferOffer } from './types';
 import { aiContract, cmAiTerms, cmMoveInterest } from './cmContractGame';
+import { cmBoardWageAllow } from './cmBudget';
 import { cmCmOn, cmCmScope } from './cmContractManager';
 import { cmAcceptBid, cmOfferContract, cmTalksDaily, cmTalksOn } from './cmTransferTalks';
 import { cmBuildBid } from './cmAiBid';
@@ -611,6 +612,13 @@ export function clausesWorthFor(p: Player, clubId: number, wage: number, years: 
   return clauseWorth(p, wage, years, c, rankIn(p, clubId));
 }
 
+/** bestyrelsens nej til lønnen: i ægte tilstand med den originale database Offer Contract-skærmens loft get_max_wage 0x5968d0 pr. spiller
+ *  (cmBudget.ts – originalen har intet samlet lønbudget), ellers spillets lønbudget (`fallback`) */
+function overBoardWage(p: Player, clubId: number, wage: number, fallback: boolean, role?: TransferOffer['cmRole']): boolean {
+  const a = cmBoardWageAllow(gs(), p, clubId, role);
+  return a !== null ? wage > a + 1 : fallback;
+}
+
 export function negotiate(offerId: number, wage: number, years: number, clauses?: ContractClauses): 'accepted' | 'counter' | 'refused' | 'budget' | 'pending' | 'cmSent' {
   const g = gs();
   const o = g.offers.find((x) => x.id === offerId);
@@ -619,7 +627,7 @@ export function negotiate(offerId: number, wage: number, years: number, clauses?
   const club = g.clubs[o.buyer];
   // CM 01/02: Offer Contract efter et accepteret bud – svaret kommer som nyhed om 1–5 dage (cmTransferTalks.ts)
   if (o.cmTalks && cmActive(g)) {
-    if (club.id === g.userClub && currentBill(club.id) + wage > club.wageBudget) return 'budget';
+    if (club.id === g.userClub && overBoardWage(p, club.id, wage, currentBill(club.id) + wage > club.wageBudget, o.cmRole)) return 'budget';
     return cmOfferContract(o, wage, years, clauses);
   }
   // CM 01/02 (original database, ægte tilstand – her klubløse og forkontrakter uden cmTalks): spillerens vilje 0x846920 som 0x8c0080 (under
@@ -636,7 +644,7 @@ export function negotiate(offerId: number, wage: number, years: number, clauses?
   const want = preferredYears(p);
   o.rounds = (o.rounds ?? 0) + 1;
   const yearsOk = Math.abs(years - want) <= (want >= 3 ? 2 : 1);
-  if (club.id === g.userClub && currentBill(club.id) + wage > club.wageBudget) return 'budget';
+  if (club.id === g.userClub && overBoardWage(p, club.id, wage, currentBill(club.id) + wage > club.wageBudget, o.cmRole)) return 'budget';
   const cl = cleanClauses(clauses);
   if (wage + clausesWorthFor(p, club.id, wage, years, cl) >= demand * AGENT_RULES[agentOf(p).style].accept && yearsOk) {
     // multiplayer: frie spillere og Bosman-aftaler kan andre også byde på – spilleren svarer i morgen
@@ -928,7 +936,7 @@ export function renewContract(pid: number, wage: number, years: number, clauses?
   const base = renewalDemand(p, club);
   // ældre spillere vil også have en underskriftsbonus – uden den skal lønnen være højere
   const demand = base + signOnDemand(p, base, false) / (52 * Math.max(1, years));
-  if (currentBill(club.id) - (p.contract?.wage ?? 0) + wage > club.wageBudget) return 'budget';
+  if (overBoardWage(p, club.id, wage, currentBill(club.id) - (p.contract?.wage ?? 0) + wage > club.wageBudget)) return 'budget';
   const cl = cleanClauses(clauses);
   if (wage + clausesWorthFor(p, club.id, wage, years, cl) >= demand * AGENT_RULES[agentOf(p).style].accept) {
     p.contract = { wage, expires: renewalExpiry(p.contract?.expires, years, g.date), ...cl };

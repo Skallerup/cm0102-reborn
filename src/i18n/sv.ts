@@ -7863,4 +7863,6 @@ Object.assign(sv, {
   "cm.stm.j.8": "tränare",
   "cm.stm.j.9": "scout",
   "cm.stm.j.10": "sjukgymnast",
+  "cm.stBid": "{club} bjuder på {name}",
+  "cm.stBid.body": "{club} har lagt ett bud på {name}.\n\n{from} får {fee} i kompensation om affären blir av.",
 });

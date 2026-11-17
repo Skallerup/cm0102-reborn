@@ -1,6 +1,7 @@
 // Fællesspil (ægte tilstand, original database): et accepteret bud giver originalens forløb til den RIGTIGE menneskemanager –
 // "X transfer offer accepted" + "Offer contract to X", Offer Contract → svar → Confirm Transfer Offer → handlen. Et rum oprettet i udvidet tilstand
 // sættes til ægte tilstand ved indlæsning (forceMultiplayerAuthentic).
+import { cmBoardWageAllow } from '../src/game/cmBudget';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { applyActionAs } from '../src/game/actions';
@@ -55,9 +56,10 @@ describe('fællesspil: accepteret bud som originalen', { timeout: 600_000 }, () 
 
     // Offer Contract → svar → Confirm Transfer Offer → handlen
     const want = withHuman('p2', () => cmTalksDemand(o))!;
-    g.clubs[ars].wageBudget += want.wage * 10;
+    // bestyrelsens loft pr. spiller (get_max_wage 0x5968d0 – cmBudget.ts): tilbuddet på loftet
+    const allow = withHuman('p2', () => cmBoardWageAllow(gs(), g.players[pid], ars, o.cmRole))!;
     const years = Math.max(1, Number(want.expires.slice(0, 4)) - Number(g.date.slice(0, 4)));
-    expect(applyActionAs('p2', { t: 'negotiate', pid, wage: Math.round(want.wage * 1.5), years, clauses: { signOn: want.signOn } })).toBe('cmSent');
+    expect(applyActionAs('p2', { t: 'negotiate', pid, wage: Math.floor(allow), years, clauses: { signOn: want.signOn } })).toBe('cmSent');
     g.date = o.cmTalks!.due!;
     processOffers();
     expect(o.cmTalks!.state).toBe(5);

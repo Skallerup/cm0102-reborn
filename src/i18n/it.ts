@@ -4439,4 +4439,6 @@ Object.assign(it, {
   "cm.stm.j.8": "allenatore",
   "cm.stm.j.9": "osservatore",
   "cm.stm.j.10": "fisioterapista",
+  "cm.stBid": "{club} offerta per {name}",
+  "cm.stBid.body": "{club} hanno fatto un'offerta per {name}.\n\n{from} riceveranno {fee} di indennizzo se l'accordo andrà in porto.",
 });

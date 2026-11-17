@@ -28,6 +28,7 @@ import { buildWageMem, cmMemCall, type WageMem } from './cmWageGame';
 import { setToDesiredContract_85fc50, constructContract_85e410, calcContractValue_866830 } from './cmContractWant';
 import { offerContract_4cda70 } from './cmContract';
 import { getClubFinance_5a0590 } from './cmWage';
+import { maxStaffWage_597db0 } from './cmMaxWage';
 import { genCtx } from './cmGen/impls';
 import { slCall, slmOf } from './cmShortlist';
 import { cmActive, cmRand } from './cmPlayerData';
@@ -41,7 +42,7 @@ import { regionOf } from './leagues';
 import { ATTRS } from './attributes';
 import { ageOn } from './dates';
 import { squadIds } from './state';
-import { boardEnv } from './cmBoardGame';
+import { boardEnv, staffJobInterest } from './cmBoardGame';
 import { leagueClash } from './cmBoardInterest';
 import type { BoardEnv } from './cmBoard';
 
@@ -525,3 +526,70 @@ export function cmContractAnswer(g: GameState, p: Player, clubId: number, o: CmO
 }
 
 export type { ContractClauses };
+
+// ---------------------------------------------------------------- stab (cmStaffMove.ts)
+
+/** Originalens kontrakttilbud, når computerklubben `clubId` henter en ikke-spiller til jobbet `job` (6 assistent, 8 træner, 9 spejder,
+ *  10 fysioterapeut): 0x4cda70(staff, klub, NULL, −1, 1,0, 2) → 0x85fc50 med Shortlist_Manager 0x849f00's job og status (pladsen i køberens
+ *  trupplan med jobbet – gruppen +0x24 >> 1) og lønloftet 0x597db0(job). Uden tilbud: personens krav 0x85fc50(staff, klub, −1, status, job).
+ *  Posterne: stabens ikke-spillerpost (omdømme +8/+0xa/+0xc, CA +4, PA +6, egenskaberne +0x0e..), personpostens alder/nationalitet/fødselsdato/
+ *  skjulte egenskaber +0x56..+0x5d og den nuværende kontrakt (løn, udløb); viljen 0x844780 af spillets data. `refuse`: kravet er originalens
+ *  250.000-loft (han skriver ikke under – *estimeret*: beslutningen 0x4ce4e0 er ikke porteret). Null uden for cmActive. */
+export function cmStaffTerms(g: GameState, s: import('./types').Staff, clubId: number, job: number): { wage: number; expires: string; offered: boolean; refuse: boolean } | null {
+  if (!cmActive(g) || g.draft || !g.clubs[clubId]) return null;
+  const row = g.cmPlan?.[clubId]?.s.find((r) => r[0] === job);
+  const status = row ? (row[2] >> 1) & 0xf : 5;
+  let stAdr = 0;
+  const M = buildWantMem(g, s.club ? [s.club, clubId] : [clubId], {
+    full: false,
+    call: (adr, a) => {
+      if (adr === 0x849f00) {
+        const withThis = a.length === 4, st = a[withThis ? 1 : 0] >>> 0, out = withThis ? a[3] >>> 0 : 0;
+        if (st === stAdr) { if (out) M.c.m.w32(out, job); return status; }
+        return undefined;
+      }
+      if (adr === 0x597db0) return maxStaffWage_597db0(M.c, a[0] >>> 0, a[a.length - 1] & 0xff);
+      // 0x844780(staff, klub, 0, job, a5): viljen af spillets data (cmBoardInterest.ts) – posterne i hukommelsen har ikke viljens inddata
+      if (adr === 0x844780 && (a[0] >>> 0) === stAdr && M.c.m.s32(a[1] >>> 0) === clubId) {
+        const env = M.env(), p = env.person(s.id);
+        return p ? staffJobInterest(g, env, p, clubId, a[3] & 0xff) : 0;
+      }
+      return undefined;
+    },
+  });
+  const m = M.c.m;
+  const st = M.W.npStaffOf?.(s) ?? 0;
+  stAdr = st;
+  const club = M.W.clubOf(clubId);
+  if (!st || !club) return null;
+  // personposten
+  if (s.dob) { const [d, y] = isoDay(s.dob); m.w16(st + 0x10, d); m.w16(st + 0x12, y); m.w32(st + 0x14, leap(y)); m.w8(st + 0x18, ageOn(s.dob, g.date)); }
+  m.w32(st + 0x1a, M.W.natOf(s.nation));
+  (s.cmHid ?? []).slice(0, 8).forEach((v, k) => m.w8(st + 0x56 + k, v));
+  const np = m.u32(st + 0x69);
+  if (np) {
+    const r = s.cmRep ?? [(s.rep ?? 0) * 100, (s.rep ?? 0) * 100, (s.rep ?? 0) * 100];
+    m.w16(np + 8, r[0]); m.w16(np + 0xa, r[1]); m.w16(np + 0xc, r[2]);
+    m.w16(np + 4, s.ca ?? (s.rep ?? 0) * 2); m.w16(np + 6, s.cmPa ?? s.ca ?? 0);
+    s.cmNp?.slice(0, 21).forEach((v, k) => m.w8(np + 0x0e + k, v));
+  }
+  // den nuværende kontrakt (buildWageMem skriver løn og klub): udløbet og typen
+  const ix = m.s32(m.u32(G.ROWS) + 79 * m.s32(st));
+  const k = ix >= 0 ? (m.u32(m.u32(G.CM)) + 80 * ix) >>> 0 : 0;
+  if (k && s.expires) { const [d, y] = isoDay(s.expires); m.w16(k + 0x2d, d); m.w16(k + 0x2f, y); m.w32(k + 0x31, leap(y)); m.w8(k + 0x35, 2); m.w32(k + 0x4a, -1); }
+  const [d] = isoDay(g.date);
+  M.setRand(cmRand(g.seed ?? 0, s.id, clubId, d, 0x85fc50));
+  for (let i = 0; i < 0x50; i++) m.w8(OUT + i, 0);
+  const offered = offerContract_4cda70(M.c, 0, st, club, OUT, -1, 1.0, 2) === 1;
+  if (!offered) {
+    constructContract_85e410(m, LOCAL);
+    setToDesiredContract_85fc50(M.c, LOCAL, st, club, -1, status, job, 0, 0);
+    for (let i = 0; i < 0x50; i++) m.w8(OUT + i, m.u8(LOCAL + i));
+  }
+  const raw = m.s32(OUT + 0xc);
+  const wage = Math.round(raw / GBP);
+  const exp = dayIso(m.s16(OUT + 0x2d), m.u16(OUT + 0x2f));
+  if (!(wage > 0) || !(exp > g.date)) return null;
+  // 0x8602f8: kravet 250.000 (£ om ugen) er originalens "umuligt" – lønnen over jobbets loft for klubbens omdømme; han skriver ikke under
+  return { wage, expires: exp, offered, refuse: !offered && raw >= 250000 };
+}

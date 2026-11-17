@@ -19,6 +19,7 @@ import { squad, addNews } from './state';
 import { cmActive, cmRand, clubRepMem, postHooks } from './cmPlayerData';
 import { personalFill_535a80 } from './cmStaffInit';
 import { financeStatus } from './cmSquadPlan';
+import { cmSquadPlanNewManager } from './cmSquadPlanGame';
 import { clubSeason } from './cmFitness';
 import { CL_SPOTS, UEFA_SPOTS, UEFA_NATIONS, rulesFor } from './leagues';
 import { leagueRows, nationRanking } from './competitions';
@@ -255,6 +256,8 @@ export function boardEnv(g: GameState, todayIso = g.date, startIso?: string, laz
     pro: (c) => (g.cmClubStat?.[c]?.[0] ?? 1) === 1,
     lowNation: (c) => ['Wales', 'Republic Of Ireland', 'Ireland', 'Northern Ireland'].includes(nationName(g.clubs[c]?.nation ?? -1)),
     setManager: (c, p, old) => setManagerGame(g, env, c, p, old),
+    // 0x84abe0 → 0x83cb40 med +4 = 2 (computerklubber, når trupplanen er startet – ikke i forkørslen før 0x83a1b0)
+    newManagerPlan: (c) => { if (g.clubs[c] && g.clubs[c].manager !== -1 && g.cmPlan?.[c]) cmSquadPlanNewManager(g, c); },
     news: (n) => boardNews(g, env, n),
   };
   return env;

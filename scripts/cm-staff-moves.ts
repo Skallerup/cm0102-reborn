@@ -18,14 +18,16 @@ const t0 = Date.now();
 const moves: string[] = [];
 let last = new Map(Object.values(g.staff).map((s) => [s.id, s.club]));
 let fees = 0;
+const fired: string[] = [];
 while (g.date < until) {
   const r = continueGame();
   if (r?.match) quickPlayUserMatch();
   for (const s of Object.values(g.staff)) {
     const was = last.get(s.id);
     if (was !== undefined && was !== s.club && s.club && s.cmJoined === g.date) {
-      moves.push(`${g.date} ${s.role.padEnd(9)} ${`${s.first} ${s.last}`.padEnd(24)} ${(g.clubs[was]?.name ?? '(ledig)').padEnd(22)} → ${g.clubs[s.club]?.name}`);
+      moves.push(`${g.date} ${s.role.padEnd(9)} ${`${s.first} ${s.last}`.padEnd(24)} ${(g.clubs[was]?.name ?? '(ledig)').padEnd(22)} → ${g.clubs[s.club]?.name} £${Math.round(s.wage * 0.86)}/uge til ${s.expires}`);
     }
+    if (was && !s.club && s.career?.at(-1)?.why === 'sacked' && s.role !== 'manager') fired.push(`${g.date} ${s.role} ${s.first} ${s.last} (${g.clubs[was]?.name})`);
   }
   last = new Map(Object.values(g.staff).map((s) => [s.id, s.club]));
 }
@@ -33,6 +35,9 @@ const byRole: Record<string, number> = {};
 for (const m of moves) { const k = m.split(/\s+/)[1]; byRole[k] = (byRole[k] ?? 0) + 1; }
 console.log(`${((Date.now() - t0) / 1000).toFixed(0)} s; bud ved spilstart ${pend0}; skifter ${moves.length} ${JSON.stringify(byRole)}; fra en klub ${moves.filter((m) => !m.includes('(ledig)')).length}; ventende ${g.cmStaffMoves?.length ?? 0}`);
 for (const m of moves.slice(0, 40)) console.log(m);
+console.log(`fyret ved managerskifte: ${fired.length}`); for (const f of fired.slice(0, 15)) console.log('  ' + f);
+const bids = g.news.filter((n) => n.key === 'cm.stBid');
+console.log(`bud på menneskets stab: ${bids.length}`); for (const n of bids.slice(0, 10)) console.log(`  ${n.date} ${JSON.stringify(n.params)}`);
 const news = g.news.filter((n) => n.key.startsWith('cm.stm.'));
 console.log(`nyheder til mennesket: ${news.length}`, fees);
 for (const n of news.slice(0, 10)) console.log(`  ${n.date} ${JSON.stringify(n.params)}`);

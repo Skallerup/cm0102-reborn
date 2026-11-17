@@ -130,6 +130,8 @@ export interface WageMem {
   divOf(id: number | undefined): number;
   divIds(): [number, number][];
   contractOf(p: Player): number;
+  /** (stabsskifterne, cmStaffMove.ts) en ikke-spillers post: stab i de byggede klubber, ellers bygges en post uden klub (0x69 = ikke-spillerposten) */
+  npStaffOf?(s: import('./types').Staff): number;
 }
 
 /** spiltilstandens gennemløb, som alle opbygninger samme dag deler (største database-id, udlejede pr. moderklub, staben pr. klub) – genbruges,
@@ -240,6 +242,7 @@ export function buildWageMem(g: GameState, clubs: Iterable<number>, unset: Set<n
   const loanedOut = sc.loanedOut;
   // klubberne
   const humanMgr: number[] = [];
+  const npStaff = new Map<number, number>();
   const built = new Set<number>();
   const players: [Player, number][] = [];
   for (const cid of clubIds) {
@@ -283,6 +286,7 @@ export function buildWageMem(g: GameState, clubs: Iterable<number>, unset: Set<n
     const used: Record<string, number> = {};
     for (const s of sc.staffOf.get(cid) ?? []) {
       const id = next++, st = staffAdr(id);
+      npStaff.set(s.id, st);
       m.w32(st, id); noContract(id); m.w32(st + 0x39, a);
       m.w8(st + 0x57, s.cmHid?.[1] ?? 10);
       m.w8(st + 0x3d, s.role === 'manager' ? 5 : s.role === 'assistant' ? 6 : s.role === 'coach' ? 8 : s.role === 'scout' ? 9 : 10);
@@ -335,6 +339,19 @@ export function buildWageMem(g: GameState, clubs: Iterable<number>, unset: Set<n
     divOf: divAdr,
     divIds: () => [...divs],
     contractOf: (p) => contracts.get(p.id) ?? 0,
+    npStaffOf: (s) => {
+      let st = npStaff.get(s.id);
+      if (st === undefined) {
+        const id = gen++;
+        st = staffAdr(id);
+        m.w32(st, id); noContract(id);
+        m.w8(st + 0x57, s.cmHid?.[1] ?? 10);
+        m.w8(st + 0x3d, s.club ? (s.role === 'manager' ? 5 : s.role === 'assistant' ? 6 : s.role === 'coach' ? 8 : s.role === 'scout' ? 9 : 10) : 0);
+        m.w32(st + 0x69, npRec(id, (np) => { m.w16(np + 0xa, s.cmRep?.[1] ?? (s.rep ?? 0) * 2); }));
+        npStaff.set(s.id, st);
+      }
+      return st;
+    },
   };
 }
 

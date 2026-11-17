@@ -4439,4 +4439,6 @@ Object.assign(de, {
   "cm.stm.j.8": "Trainer",
   "cm.stm.j.9": "Scout",
   "cm.stm.j.10": "Physiotherapeut",
+  "cm.stBid": "{club} bietet für {name}",
+  "cm.stBid.body": "{club} haben ein Angebot für {name} abgegeben.\n\n{from} erhalten {fee} Entschädigung, wenn der Wechsel zustande kommt.",
 });

@@ -138,6 +138,8 @@ export function cmSquadPlanClub(g: GameState, cid: number, daily: boolean, first
   const dataOf = (p: Player) => { let d = cache.get(p.id); if (!d) { d = roleDataOf(p, ctxPick, ageOn(p.dob, g.date)); cache.set(p.id, d); } return d; };
   const rand = cmRand(g.seed ?? 0, cid, dayNum(g.date), 0x83cb40);
   const releaseQ: number[] = [];
+  // 0x83cc44: +4 = 2 (managerskiftet 0x694c80) og en computerklub → [esp+0x60] = 1: halen fyrer de svage indehavere af stabens pladser (0x690890)
+  const fire = e.state === 2 && !hum;
   const planRes = planSquad(e, ind, {
     rand,
     value: (pp, mask, flags) => {
@@ -208,11 +210,20 @@ export function cmSquadPlanClub(g: GameState, cid: number, daily: boolean, first
   }
   storeEntry(g, cid, e);
   // halen 0x83ebfb–0x83f32b (stabens pladser) – cmStaffMove.ts registrerer sig her
-  if (planRes.ran) for (const h of afterPlanHooks) h(g, cid, T, e.slots.filter((s) => s.role === 0xb && s.f === -1).length);
+  if (planRes.ran) for (const h of afterPlanHooks) h(g, cid, T, e.slots.filter((s) => s.role === 0xb && s.f === -1).length, fire);
   return planRes;
 }
-/** efter en kørsel af trupplanen: (spil, klub, 0x7bca90's T, åbne spillerpladser) */
-export const afterPlanHooks: ((g: GameState, cid: number, T: number, openPlayerSlots: number) => void)[] = [];
+/** efter en kørsel af trupplanen: (spil, klub, 0x7bca90's T, åbne spillerpladser, første kørsel efter et managerskifte i en computerklub) */
+export const afterPlanHooks: ((g: GameState, cid: number, T: number, openPlayerSlots: number, fire: boolean) => void)[] = [];
+
+/** 0x694c80 reset_board_for_new_manager for en computerklub: trupplanens +4 = 2 (0x694cd2) og 0x84abe0 → 0x83cb40(entry, klub, 0, 1) */
+export function cmSquadPlanNewManager(g: GameState, cid: number): void {
+  if (!cmActive(g) || !g.clubs[cid]) return;
+  const e = entryOf(g, cid);
+  e.state = 2;
+  storeEntry(g, cid, e);
+  cmSquadPlanClub(g, cid, false, true);
+}
 function syncBack(p: Player, pp: PlanPlayer): void {
   const c = cmContractOf(p), k = pp.contract!;
   c.b3d = k.b3d; c.b3e = k.b3e; c.b3f = k.b3f; c.b45 = k.b45; c.b4e = k.b4e; c.b4f = k.b4f;

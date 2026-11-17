@@ -96,7 +96,23 @@ View Finances (der læser Bonuses fra blokken) viste 0 bonusser, selv om pengene
 
 ### 1. Spilsystemer der stadig er vores egne eller estimerede
 1. Ønskelisterne (Shortlist_Manager) – SLÅET TIL 16/11 (dagene i en Web Worker, ~2–4 s pr. dag; spillets egne computer-transfers slået fra). Historik: porteret, men slået fra (`SL_ON`): hastighed ~2,5–4,5 s/dag med Maximum-hukommelsen (`tm`, runde 12 – runde 11's 0,6 s var uden `tm`) → 0,3 s/dag kræver genudfyldningen 0x843e10 → 0x83f3a0 og 0x84a020 i TS uden x86-emulering (ENGINE_PORT_PLAN.md, runde 12); derefter computerens interesse/bud/handler fra originalen og vores `cmInterested`, `aiPursuits`, `weeklyRumours`, `aiBosman`, `aiReleaseClauses`, `aiFillSquads`, `freeAgentDrift` slået fra.
-2. Transferbudget/lønbudget: 0x598800 bygget (`cmBudget.ts`) men giver 33,6M mod originalens 24M for Man Utd – mangler et input (fin+0xc m.fl.).
+2. ~~Transferbudget/lønbudget~~ – **gjort 16/11** (`cmBudget.ts`, `scripts/cm-budget-check.ts`, tests/cmBudget.test.ts): originalen gemmer intet budget –
+   Funds-knappen 0x808ee4 og View Finances 0x463af8 kalder 0x598800(0, 0, 0, 1, 0) hver gang. `Club.transferBudget` = det kald ved spilstarten, når
+   mennesket overtager en klub, dagligt for menneskets klub(ber) og den 1. for de valgte landes klubber (~140 ms); `originalTransferFunds`/
+   `newSeasonBudgets` bruges ikke længere i ægte tilstand. **Det manglende input var menneskets manager** (club +0xcf → ikke-spillerpost +0xa):
+   0x599039 skalerer loftet T (= x87-stakkens rest, klubomdømmet²/2) med (manager/klub)² (klemt 0,5..1), gulv saldo − £10M, og alt over T tæller
+   10 % – buildWageMem gav menneskets klub en tom manager, så alle menneskeklubber blev regnet som Ferguson. fin+0xc er update_wage_bill 0x598370
+   (allerede porteret) – ikke årsagen. Også nye inddata: +0x1db Europa (`cmClubEuro` – nu også klubber, der går ind i en senere runde),
+   sæsonblokkens Bought/Sold +0x110/+0x118 (nettokøb over £8M), MANAGER_MANAGER +0x28 (bestyrelsens ekstra transferpenge, R.d28).
+   **Kontrol:** 0x598800 på oraklets hukommelse = de 11 klubbers værdi (fixturen); menneskets omdømme ved spilstarten er oraklets (Arsenal 4410/5282/
+   4582). **Mod ejerens målte Funds** (Maximum, frø 1, menneske i klubben): Man Utd £21,5M af saldo £30,5M (originalen £24,0M af £33,2M – samme
+   regel giver £24,2M ved hans saldo), Liverpool £13,79M af £19,88M (originalen £13,75M af £19,50M), Arsenal 0,653 af saldoen (0,658).
+   Computerklubberne mod oraklet (størrelse 2): Bolton/Fulham/Liverpool/Leeds/Middlesbrough inden for 3 %; afvigelserne er inddata: ugens lønsum +0xc
+   2–20 % for høj (forkørslens marked mangler, K2 punkt 2), formændenes Business trukket med rand (Bury 8 mod 19 → 14 mod 25 ugers løn), Newcastle
+   ikke i Intertoto ved spilstarten. Mangler: +0x1c (lejeaftalernes lønandel ·2/3; spillet har ingen post – 0), Bury-managerens cmRep.
+   **Lønloftet** "Your board will allow wages up to …" = skærmparameter 0x18 fra 0x4de1f0/0x4de5d0 = get_max_wage 0x5968d0(fin, spiller, −1) pr. spiller
+   (stab: 0x597db0(fin, job), mindst nuværende løn) – `cmBoardWageAllow`/`cmBoardStaffWageAllow`; Offer Contract og negotiate/renewContract bruger det
+   i stedet for lønbudget − truppens løn. Originalen har intet samlet lønbudget (Club.wageBudget bruges kun uden for ægte tilstand).
 3. Arbejdstilladelse: tildelingen 0x8c7950 ikke porteret (kun "skal have").
 4. Landsholdsfodbold – **etape 1 delvis 16/11** (`src/game/cmIntl.ts`, noter ~/cm0102-engine/notes/international.md, `scripts/cm-intl-check.ts`,
    tests/cmIntl.test.ts). Oraklet (crowd1) viser for 2001/02: ingen VM-kvalifikation uden for Oceanien (forkørslen), 142 A-venskabskampe på 19 datoer,
@@ -206,12 +222,21 @@ View Finances (der læser Bonuses fra blokken) viste 0 bonusser, selv om pengene
    ×0,25 for træner/spejder/fysioterapeut). Menneskets eget tilbud til en ansat i en anden klub bruger nu 0x8d0780 (Offer Contract: "X will be due £Y
    in compensation." kun når beløbet er over 0). *Estimeret*: målets mindstekrav (grænsen T), n i budgettet, budtidspunktet (straks i stedet for
    0x84a020's uge), personens svar (viljen 0x844780 for jobbet ≥ 0,75, svar efter 1–5 dage – kontrakttilbuddet 0x4cda70/0x864550 ikke porteret),
-   kontrakten (lønkrav, 2 år), overskriftens variant (id mod 4; originalen (arg0 + arg4·arg15) mod 4), kun klubber i de valgte lande. **Ikke porteret:**
-   bud på menneskets stab (originalen sender buddet til mennesket med 28 tidsenheders frist 0x8be884 – mennesket mister ikke stab hos os), fyringen
-   ved et managerskifte (0x690890, første kørsel med +4 = 2), reserveholdets manager (rolle 7), arbejdstilladelser for stab. **Målt**
-   (`scripts/cm-staff-moves.ts`, frø 1, Arsenal, 14/7–12/8-2001): 446 bud ved spilstarten i England, 13 skifter (11 spejdere, 2 trænere; 3 fra en anden
-   klub), resten sagde nej; ingen nåede Arsenals nyheder (originalen viste Man Utd "Fulham sign Collier" – modtagerreglen for stab bør kontrolleres
-   mod oraklet).
+   overskriftens variant (id mod 4; originalen (arg0 + arg4·arg15) mod 4), kun klubber i de valgte lande.
+   **Runde 2 (17/11):** (1) bud på menneskets stab: 0x8be300 add_offer giver et menneske som sælger svartiden 0x1c = 28 dage (0x8be884) – nyheden
+   `cm.stBid` "{Club} transfer bid for {Name}" (0xa8f578) med "{Club} have made an offer for {Name}." + "{Club 1} will be due £X in compensation if the
+   deal goes ahead" (0xa8f6ee), Respond → Back/Reject/Accept (`StaffBidPanel` i Inbox.tsx, action `staffBid`); ja → personen svarer efter 1–5 dage og
+   kompensationen går til mennesket; intet svar inden fristen → buddet bortfalder (*estimeret*). (2) Fyringen ved managerskiftet: 0x694c80 sætter
+   trupplanens +4 = 2 (0x694cd2) og kalder 0x84abe0 → 0x83cb40(0, 1); +4 = 2 i en computerklub giver [esp+0x60] = 1 (0x83cc44), og halen fyrer
+   indehavere, den nye manager vurderer under T (0x83ee36 → 0x690890) – `BoardEnv.newManagerPlan` → `cmSquadPlanNewManager`; spillets genererede stab
+   (uden ikke-spillerpost) vurderes ikke, og menneskets egen ansættelse kører ikke planen (fyrer ikke i originalen). (3) Modtagerne: 0x8d1130's regler
+   bruger omdømmet ×0,25 (0x8d16ad), men 0x5407e0 (omdømmet set fra køberen, 0x8d1978) læser personens egne tal – porten brugte de skalerede
+   (`TransferNewsIn.seen`). Arsenal 14/7–12/8: 0 → 4 af 9 stabsnyheder. Fund: David Collier er klubløs hos os (Sunderland i originalen) og har
+   omdømmet [1, 1, 1] – inddata, ikke reglen. (4) Kontrakten: 0x4cda70 → 0x85fc50 med 0x849f00's job/status (køberens planplads) og 0x597db0
+   (`cmContractGame.ts cmStaffTerms`; viljen 0x844780 af spillets data): spejdere/trænere £340–900 om ugen i 4–5 år; kravet 250.000 (0x8602f8's loft
+   over jobbets løn for klubbens omdømme) = han skriver ikke under (*estimeret* – 0x4ce4e0 ikke porteret). Det stopper i målingen de 3 skifter fra
+   andre klubber (originalen har dem – Collier); viljen fra en ansat ligger under 1,75 og giver +2500 og loftet. **Ikke porteret:** reserveholdets
+   manager (rolle 7), arbejdstilladelser for stab (0x84b180), personens beslutning 0x4ce4e0/0x4cd230.
 15. Konvertering af gamle originale gemte spil (afventer ejerens 4 svar).
 
 ### 2. Data

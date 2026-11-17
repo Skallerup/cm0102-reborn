@@ -2251,6 +2251,8 @@ export const da: Record<string, string> = {
   "cm.stm.j.8": "træner",
   "cm.stm.j.9": "spejder",
   "cm.stm.j.10": "fysioterapeut",
+  "cm.stBid": "{club} byder på {name}",
+  "cm.stBid.body": "{club} har afgivet et bud på {name}.\n\n{from} vil få {fee} i kompensation, hvis handlen bliver til noget.",
   "cm.staffAccepts": "{last} kommer til {club}",
   "cm.staffAccepts.body": "{name} har takket ja til kontrakttilbuddet fra {club}.",
   "cl.negotiate": "Forhandl",
