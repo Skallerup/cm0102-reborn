@@ -22,7 +22,7 @@ regler, arkitektur og faldgruber.
 - Alt er gratis: betaling/Stripe/supportere er fjernet (2026-11-05). `season.ts` kalder stadig `rng.chance(0.04)` for
   supporter-regens, så tilfældighederne i gamle spil er uændrede – lad det stå.
 - Node (Mac mini fra 17/11): `export PATH="$HOME/.local/share/node/bin:$PATH"` (Node 24). Før push: `npx tsc --noEmit -p tsconfig.app.json` og de berørte testfiler; CI tager resten.
-- **Kun de berørte tests:** `npx vitest run --dir tests related <ændrede filer>` (finder testene, der importerer filerne) – aldrig hele pakken lokalt.
+- **Kun de berørte tests:** `npx vitest related --run --dir tests <ændrede filer>` (finder testene, der importerer filerne) – aldrig hele pakken lokalt.
   Agenter kører ikke e2e; den kører én gang ved udgivelsen.
 - **Agenttyper** (`.claude/agents/`): `port` (Opus – exe-kode/motor), `ui` (Sonnet – skærme/tekster/tests), `maaling` (Sonnet – bisect/målinger). De faste regler (RAM, measure.mjs, NOTES.md i worktree'en, ingen polling, rapportformat) står i filerne – gentag dem ikke i opgaven.
 - **Udgivelse af en agents arbejde:** `scripts/ship.sh <worktree-gren|commit> "<da-linje>" "<en-linje>" [--new-game]` – cherry-picker, lægger
