@@ -8,19 +8,26 @@
 //             moral, indkøringsbyten, omdømme, værdi, kondition/kampkondition, skadet
 //   klubber   saldo, ugens lønsum, sæsonens poster (18), omdømme, truppens størrelse, manager, bestyrelsens fire tillidsværdier
 //   job       antal ledige managerjob (MANAGER_MANAGER +8)
-//   tabel     Premier League: kampprogram (dato/hjemme/ude) og resultater/point til dagen (oraklets season-s1a.json – samme kørsel, frø 1)
+//   tabel     Premier League: kampprogram (dato/hjemme/ude) og resultater/point til D−1 (DAYSNAP/season.json = SAMME orakelkørsel; season-s1a.json
+//             er en anden kørsel med frø 1 og har andre resultater – bruges kun uden dagsbilleder)
+//   stab      managerne pr. klub    nyheder  menneskemanagerens indbakke (scripts/oracle-news.ts): antal pr. dag og de kendte typer begge veje
 //   transfers originalens afsluttede handler (TRANSFER_MANAGER +0x862) pr. art mod spillets Player.moves, og handel for handel
-// Nyheder kan ikke sammenlignes: nyhedslisten i hukommelsen er ikke afkodet (se K2 i ORIGINAL_PARITY.md).
+// Dagsbilleder: `python3 -I scripts/oracle-day-snaps.py` (via measure.mjs --oracle) gemmer et billede pr. dag 14/7-01 → 30/6-02 i
+// ~/cm0102-engine/oracle/daysnap/s1-3.9.60-e1 (1,1 GB; DAYSNAP=<mappe>, STEP=7 = pr. uge). Rapporten: første afvigelse pr. område og pr. felt
+// i datoorden med eksempler og ejeren (where.ts); REPORT=<fil.md> gemmer den.
 // Felter, der trækkes med tilfældige tal, divergerer fra den første trækning (spillets talrække er ikke originalens) – derfor tælles både
 // eksakte afvigelser og fordelinger (gns. vores/oraklet). Den første afvigelse pr. system og afvigelser pr. dag/felt skrives til sidst.
 //
 //   CM_DBSIZE=2 npx tsx scripts/build-cm-data.mts <.orig-db/Original-3.9.60-Database-Swedish_fixed> <scratch>/world-dbs2.json 2001
-//   WORLD=<scratch>/world-dbs2.json npx tsx scripts/cm-day-lockstep.ts [til-dato=2002-06-30]
+//   WORLD=<scratch>/world-dbs2.json node scripts/measure.mjs -- npx tsx scripts/cm-day-lockstep.ts [til-dato=2002-06-30]   (hel sæson pr. dag ≈ 19 min)
 // Miljø: SNAPS=<fil:iso,…> (ellers de kendte billeder nedenfor, de manglende springes over), EX=antal eksempler, ONLY=feltfilter,
 //        JSON=<fil> (alle tal), CLUB=Arsenal.
+import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { loadSnap } from './ct-snap';
+import { ORIG_NEWS_KIND, readOracleNews } from './oracle-news';
+import { DEFAULT_DAYSNAP, loadDaySnap, readDaySnapIndex } from './oracle-days';
 import type { SparseMem } from '../src/game/cmMem';
 import { createGame, type WorldData } from '../src/game/newgame';
 import { continueGame, quickPlayUserMatch } from '../src/game/sim';
@@ -38,9 +45,15 @@ const KNOWN: [string, string][] = [
   [`${E}/oracle/runs/xfer3-snap/pre-180-2002.bin`, '2002-06-30'],
 ];
 const until = process.argv[2] ?? '2002-06-30';
-const snaps = (process.env.SNAPS ? process.env.SNAPS.split(',').map((x) => x.split(':') as [string, string]) : KNOWN)
-  .filter(([f, d]) => d <= until && existsSync(f)).sort((a, b) => a[1].localeCompare(b[1]));
-const missing = KNOWN.filter(([f]) => !existsSync(f)).map(([f]) => f);
+// dagsbillederne (scripts/oracle-day-snaps.py → DAYSNAP-mappen, index.json): hver STEP. dag (1 = hver dag, 7 = pr. uge); ellers de 4 kendte
+const dayIx = process.env.SNAPS ? null : readDaySnapIndex(process.env.DAYSNAP ?? DEFAULT_DAYSNAP);
+const STEP = Math.max(1, Number(process.env.STEP ?? 1));
+type Snap = [string, string, () => SparseMem];
+const snaps: Snap[] = dayIx
+  ? dayIx.snaps.filter((e, i, xs) => e.iso <= until && (i % STEP === 0 || i === xs.length - 1 || e.iso === until)).map((e) => [`${dayIx.dir}/${e.file}`, e.iso, () => loadDaySnap(dayIx, e)])
+  : (process.env.SNAPS ? process.env.SNAPS.split(',').map((x) => x.split(':') as [string, string]) : KNOWN)
+    .filter(([f, d]) => d <= until && existsSync(f)).sort((a, b) => a[1].localeCompare(b[1])).map(([f, d]) => [f, d, () => loadSnap(f)]);
+const missing = dayIx ? [] : KNOWN.filter(([f]) => !existsSync(f)).map(([f]) => f);
 const EXN = Number(process.env.EX ?? 3);
 const ONLY = process.env.ONLY ?? '';
 const CLUB = process.env.CLUB ?? 'Arsenal';
@@ -136,7 +149,8 @@ function buildPairs(v: View) {
 
 // ------------------------------------------------------------------ sammenligningen af én dag
 const PL_COMP = g.clubs[user].league;
-const oracleSeason = (() => { try { return JSON.parse(readFileSync(`${E}/oracle/out/season-s1a.json`, 'utf8')) as { matches: { year: number; day: number; home_name: string; away_name: string; h: { goals: number }; a: { goals: number } }[] }; } catch { return null; } })();
+const ourPL = new Map<number, GameState['fixtures'][number]>();
+const oracleSeason = (() => { try { return JSON.parse(readFileSync(dayIx && existsSync(`${dayIx.dir}/season.json`) ? `${dayIx.dir}/season.json` : `${E}/oracle/out/season-s1a.json`, 'utf8')) as { matches: { year: number; day: number; home_name: string; away_name: string; h: { goals: number }; a: { goals: number } }[] }; } catch { return null; } })();
 const FINK = ['bought', 'sold', 'otherOut', 'interestOut', 'fines', 'maintenance', 'wages', 'dividends', 'bonuses', 'signOn', 'gate', 'otherIn', 'prize', 'seasonTickets', 'interestIn', 'investments', 'tv', 'merch'];
 const near = (a: number, b: number, rel: number, abs = 0) => Math.abs(a - b) <= Math.max(abs, rel * Math.max(Math.abs(a), Math.abs(b)));
 
@@ -273,7 +287,7 @@ function compareDay(v: View) {
     const mn = mgrP ? (str(m, m.u32(mgrP + 0xc)) || `${str(m, m.u32(mgrP + 4))} ${str(m, m.u32(mgrP + 8))}`) : '';
     const on = c.id === g.userClub ? 'Test Smoke' : mgr ? `${mgr.first} ${mgr.last}`.trim() : '';
     if (c.id !== g.userClub) {
-      chk('bestyrelse: manager (club +0xcf)', on === mn.trim(), lab(`${on || '-'} mod ${mn || '-'}`));
+      chk('stab: manager (club +0xcf)', on === mn.trim(), lab(`${on || '-'} mod ${mn || '-'}`));
       if (!mgr0.has(c.id)) mgr0.set(c.id, [on, mn.trim()]);
       const [o0, m0] = mgr0.get(c.id)!;
       dist('bestyrelse: andel klubber med en anden manager end ved spilstart', on !== o0 ? 1 : 0, mn.trim() !== m0 ? 1 : 0);
@@ -290,8 +304,11 @@ function compareDay(v: View) {
   // ---------------- tabel og kampprogram (Premier League, oraklets season-s1a.json)
   if (oracleSeason) {
     const iso = (y: number, d: number) => dayIso(d, y);
-    const om = oracleSeason.matches.filter((x) => iso(x.year, x.day) < today || (iso(x.year, x.day) === today));
-    const ourF = Object.values(g.fixtures).filter((f) => f.comp === PL_COMP);
+    // til og med D−1 på begge sider (billedet D har også dagens tidlige kampe, vores spil står ved D−1)
+    const om = oracleSeason.matches.filter((x) => iso(x.year, x.day) < today);
+    // vores PL-kampe gemmes løbende (sæsonskiftet fjerner sæsonens kampe fra g.fixtures)
+    for (const f of Object.values(g.fixtures)) if (f.comp === PL_COMP && f.date >= start && f.date <= '2002-06-30') ourPL.set(f.id, { ...f });
+    const ourF = [...ourPL.values()];
     const key = (d: string, h: string, a: string) => `${d}|${h}|${a}`;
     const ourKeys = new Map(ourF.map((f) => [key(f.date, g.clubs[f.home]?.name, g.clubs[f.away]?.name), f]));
     for (const x of om) {
@@ -320,7 +337,7 @@ function compareDay(v: View) {
       for (let k = 0; k < 7; k++) dist(`tabel: PL-kampe om ${['søndagen', 'mandagen', 'tirsdagen', 'onsdagen', 'torsdagen', 'fredagen', 'lørdagen'][k]} (hele sæsonen)`, ourF.filter((f) => wd(f.date) === k).length, oracleSeason.matches.filter((x) => wd(iso(x.year, x.day)) === k).length);
     }
     const ot = tab(om.map((x) => ({ h: x.home_name, a: x.away_name, hg: x.h.goals, ag: x.a.goals })));
-    const ut = tab(ourF.filter((f) => f.result && f.date <= today).map((f) => ({ h: g.clubs[f.home].name, a: g.clubs[f.away].name, hg: f.result!.hg, ag: f.result!.ag })));
+    const ut = tab(ourF.filter((f) => f.result && f.date < today).map((f) => ({ h: g.clubs[f.home].name, a: g.clubs[f.away].name, hg: f.result!.hg, ag: f.result!.ag })));
     if (ot.length) {
       const opos = new Map(ot.map(([n], i) => [n, i + 1]));
       for (const [n, p] of ut) { const op = ot.find((x) => x[0] === n)?.[1] ?? 0; chk('tabel: PL-point ens', p === op, () => `${n} ${p} mod ${op}`); }
@@ -348,8 +365,27 @@ function compareDay(v: View) {
       memPairedDeals++;
       const toName = to >= 0 ? str(m, v.C + 0x245 * to + 4, 51) : '';
       const ok = (ourMoves.get(pid) ?? []).some((mv) => (g.clubs[mv.to]?.name ?? '') === toName && (art === 2) === !!mv.loan);
+      chk('transfers: originalens handel findes hos os (spiller → klub, leje/køb)', ok, () => { const p = g.players[pid]; return `${d} ${p.first} ${p.last} → ${toName || '-'}${art === 2 ? ' (leje)' : ''}: ${ourMoves.get(pid)?.map((mv) => `${mv.date} → ${g.clubs[mv.to]?.name ?? '-'}`).join(', ') || 'ingen'} mod ${d} → ${toName || '-'}`; });
       if (ok) sameDeal++;
       else if (process.env.DEBUG_DEALS && memPairedDeals <= 5) { const p = g.players[pid]; console.log(`    [deal] ${d} ${p.first} ${p.last}: art ${art} ${from >= 0 ? str(m, v.C + 0x245 * from + 4, 51) : '-'} → ${toName || '-'} £${m.s32(r + 0x18)}; vores: ${JSON.stringify(p.moves ?? [])} nu ${g.clubs[p.club]?.name}`); }
+    }
+  }
+  {
+    // vores handler (parret spiller, England) skal findes i originalens liste med samme modtagerklub
+    const memTo = new Map<number, string[]>();
+    for (let i = 0; i < nT; i++) {
+      const r = arr + 37 * i, d = dayIso(m.s16(r + 0x1d), m.s16(r + 0x1f)); if (!d || d < start || d > today) continue;
+      const art = m.u8(r + 0x1c); if (art === 4) continue;
+      const to = m.s32(r + 0x14); (memTo.get(m.s32(r)) ?? memTo.set(m.s32(r), []).get(m.s32(r))!).push(to >= 0 ? str(m, v.C + 0x245 * to + 4, 51) : '');
+    }
+    const back = new Map([...pair].map(([a, b]) => [b, a]));
+    for (const [pid, mvs] of ourMoves) {
+      const mid = back.get(pid); if (mid === undefined) continue;
+      for (const mv of mvs) {
+        if (!engClub(mv.from) && !engClub(mv.to)) continue;
+        const toName = g.clubs[mv.to]?.name ?? '';
+        chk('transfers: vores handel findes i originalen (spiller → klub)', (memTo.get(mid) ?? []).includes(toName), () => { const p = g.players[pid]; return `${mv.date} ${p.first} ${p.last} → ${toName || '-'}${mv.loan ? ' (leje)' : ''} mod ${(memTo.get(mid) ?? []).map((x) => x || '-').join(', ') || 'ingen handel'}`; });
+      }
     }
   }
   const ourKinds: Record<string, number> = {};
@@ -362,46 +398,133 @@ function compareDay(v: View) {
   dist('transfers: originalens handler (parret spiller) også hos os', sameDeal, memPairedDeals);
 }
 
+// ------------------------------------------------------------------ nyhederne (scripts/oracle-news.ts: menneskemanagerens ring på 100 poster)
+// Dagen D−1 er færdig på begge sider (billedet tages i dag D's tidspunkt 2). Sammenlignes: antal nyheder den dag, og for de typer, hvor vores
+// nøgle er kendt (ORIG_NEWS_KIND), at hver nyhed findes på den anden side samme dag.
+const kindRe = (pat: string) => pat.split('|').map((alt) => {
+  const k = alt.match(/^([\w.]+)\(k=(\w+)\)$/);
+  if (k) return (n: { key: string; params: Record<string, string | number> }) => n.key === k[1] && String(n.params?.k) === k[2];
+  if (/\(rq,rc\)$/.test(alt)) return (n: { key: string; params: Record<string, string | number> }) => n.key === 'board.cm' && (n.params?.k === 'rq' || n.params?.k === 'rc');
+  const re = new RegExp('^' + alt.replace(/\{[^}]*\}/g, '@').replace(/\.N$|\.\*$|\*$/, '@').replace(/[.]/g, '\\.').replace(/@/g, '.*') + '$');
+  return (n: { key: string }) => re.test(n.key);
+});
+const KIND = Object.entries(ORIG_NEWS_KIND).map(([t, pat]) => ({ t: +t, pat, ms: kindRe(pat) }));
+const hx = (t: number) => '0x' + t.toString(16);
+function compareNews(v: View, day: string) {
+  const mine = readOracleNews(v.m).filter((x) => x.club === CLUB);
+  const om = mine.filter((x) => x.date === day);
+  const ours = (g.news ?? []).filter((n) => n.date.slice(0, 10) === day);
+  const tv = (xs: number[]) => [...xs.reduce((mp, t) => mp.set(t, (mp.get(t) ?? 0) + 1), new Map<number, number>())].map(([t, n]) => `${hx(t)}×${n}`).join(' ');
+  chk('nyheder: antal på dagen (menneskemanageren)', om.length === ours.length, () => `${day}: ${ours.length} (${[...new Set(ours.map((n) => n.key + (n.params?.k ? `(k=${n.params.k})` : '')))].join(' ')}) mod ${om.length} (${tv(om.map((x) => x.type))})`);
+  dist('nyheder: pr. dag', ours.length, om.length);
+  for (const x of om) {
+    const k = KIND.find((y) => y.t === x.type);
+    if (!k) continue;
+    chk('nyheder: originalens nyhed (kendt type) findes hos os samme dag', ours.some((n) => k.ms.some((f) => f(n))), () => `${day} ${hx(x.type)} ${k.pat} [${(x.slots ?? []).slice(0, 4).join(',')}]: mangler hos os mod findes`);
+  }
+  for (const n of ours) {
+    const ks = KIND.filter((y) => y.ms.some((f) => f(n)));
+    if (!ks.length) continue;
+    chk('nyheder: vores nyhed (kendt type) findes i originalen samme dag', om.some((x) => ks.some((y) => y.t === x.type)), () => `${day} ${n.key}${n.params?.k ? `(k=${n.params.k})` : ''} ${JSON.stringify(n.params).slice(0, 60)}: findes mod mangler (${ks.map((y) => hx(y.t)).join('/')})`);
+  }
+}
+
 // ------------------------------------------------------------------ kørslen
 const t0 = Date.now();
 console.log(`K2 dag-lockstep: ${worldFile} (cmTrim.pct ${w.cmTrim?.pct ?? '?'} – 0,02 = CM_DBSIZE=2), ${CLUB}, frø 1; start ${start}`);
 if (w.cmTrim && w.cmTrim.pct !== 0.02) console.log('ADVARSEL: world-filen er ikke bygget med CM_DBSIZE=2 – klubløse/trupper er ikke sammenlignelige med oraklet');
 console.log(`billeder: ${snaps.map(([, d]) => d).join(', ') || '(ingen)'}${missing.length ? `; mangler: ${missing.join(', ')}` : ''}`);
-for (const [file, iso] of snaps) {
+for (const [, iso, load] of snaps) {
   // spillet stilles på dagen FØR billedets dag, færdigspillet: oraklets billede er taget før CONTRACT_MANAGER::daily_update på dagen (fx kører
   // 30/6's udløb først efter billedet). Dagens kampe/økonomi (tidspunkt 0–2) er dog kørt i billedet – det giver en lille skævhed på kampdage.
   // Spilstarten sammenlignes lige efter createGame (14/7, før dagen).
   const prev = new Date(Date.parse(iso) - 86400000).toISOString().slice(0, 10);
   if (iso !== start) while (g.date < prev || !g.dayDone || g.pendingFixture) { const r = continueGame(); if (r?.match) quickPlayUserMatch(); }
-  const v = scan(loadSnap(file));
+  const v = scan(load());
   today = iso; days.push(iso);
   if (!pair.size) buildPairs(v);
   console.log(`  ${iso}: billedets dato ${v.date}, spillets ${g.date} (færdig); ${v.people.filter((p) => p.pr).length} spillere i hukommelsen, ${pair.size} parret (${((Date.now() - t0) / 1000).toFixed(0)} s)`);
   compareDay(v);
+  compareNews(v, prev);
 }
 
 // ------------------------------------------------------------------ rapport
-const firstBad = new Map<string, { day: string; field: string; ex: string; bad: number; n: number }>();
-for (const d of days) for (const [f, byDay] of stats) {
-  const s = byDay.get(d); if (!s?.bad) continue;
-  const sys = sysOf(f), cur = firstBad.get(sys);
-  if (!cur || (cur.day === d && s.bad / s.n > cur.bad / cur.n)) { if (!cur || cur.day === d) firstBad.set(sys, { day: d, field: f, ex: s.ex[0] ?? '', bad: s.bad, n: s.n }); }
+// Ejeren af et felt: where.ts-søgningen (adresse/emne) for den port, der skriver feltet i originalen. Første src/-hit vises i rapporten.
+const OWNER: [RegExp, string][] = [
+  [/^spiller: (klub|udlejet|lejeklub)|^klub: truppens|^transfers:/, '0x8c5880'],
+  [/^kontrakt: ugeløn/, '0x864550'],
+  [/^kontrakt: .*bonus/, '0x4ca6d0'],
+  [/^kontrakt: trupstatus|^transferstatus:/, 'cmTransferList'],
+  [/^kontrakt:/, '0x4c7ac0'],
+  [/^spiller: (CA|PA|18 interne|direkte)/, '0x5d38f9'],
+  [/^spiller: moral/, '0x5d6d10'],
+  [/^spiller: indkøringsbyte/, 'staffStateDaily'],
+  [/^spiller: omdømme/, 'cmRepMem'],
+  [/^spiller: værdi/, '0x4d0c60'],
+  [/^(kondition|skade):/, '0x62c080'],
+  [/^økonomi:/, '0x59b9c0'],
+  [/^klub: omdømme/, 'cmClubRep'],
+  [/^(stab|bestyrelse):/, '0x68f9c0'],
+  [/^tabel: (PL-kamp på|antal PL-kampe|samme 380)/, '0x685640'],
+  [/^tabel:/, '0x6b98c0'],
+  [/^nyheder:/, '0x785d40'],
+];
+const ownerCache = new Map<string, string>();
+function ownerOf(field: string): string {
+  const q = OWNER.find(([re]) => re.test(field))?.[1];
+  if (!q) return '?';
+  if (!ownerCache.has(q)) {
+    let top = '';
+    try {
+      const o = execFileSync('npx', ['tsx', 'scripts/where.ts', q], { encoding: 'utf8', env: { ...process.env, WHERE_MAX: '3' }, stdio: ['ignore', 'pipe', 'ignore'] });
+      top = o.split('== src/')[1]?.split('\n')[1]?.match(/^(src\/[^:]+)/)?.[1] ?? '';
+    } catch { /* where.ts fejlede */ }
+    ownerCache.set(q, `${q}${top ? ` → ${top}` : ''}`);
+  }
+  return ownerCache.get(q)!;
 }
-console.log('\nFørste afvigelse pr. system (tidligste dag, største andel den dag):');
-for (const [sys, x] of [...firstBad.entries()].sort((a, b) => a[1].day.localeCompare(b[1].day) || b[1].bad / b[1].n - a[1].bad / a[1].n)) console.log(`  ${sys.padEnd(15)} ${x.day}  ${x.field}: ${x.bad}/${x.n} – fx ${x.ex}`);
-console.log('\nAfvigelser pr. felt og dag (afvigelser/tjekket):');
-console.log('felt'.padEnd(54) + days.map((d) => d.padStart(16)).join(''));
-for (const [f, byDay] of [...stats.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
-  if (ONLY && !f.includes(ONLY)) continue;
-  console.log(f.padEnd(54) + days.map((d) => { const s = byDay.get(d); return (s ? `${s.bad}/${s.n}` : '-').padStart(16); }).join(''));
-  const last = [...byDay.values()].reverse().find((s) => s.bad);
-  if (last && EXN) for (const e of last.ex) console.log('      ' + e);
-}
-console.log('\nFordelinger pr. dag (gns. vores / oraklet):');
+// første afvigelse pr. felt (tidligste dag) og pr. område (feltets præfiks før ':'). Felter med [tilfældige inddata] afviger fra spilstarten,
+// fordi originalen trækker inddataene med rand ved indlæsningen – de står for sig og tæller ikke som områdets første afvigelse.
+interface First { day: string; field: string; ex: string[]; bad: number; n: number }
+const firstField = new Map<string, First>();
+for (const [f, byDay] of stats) for (const d of days) { const s = byDay.get(d); if (s?.bad) { firstField.set(f, { day: d, field: f, ex: s.ex, bad: s.bad, n: s.n }); break; } }
+const isRandIn = (f: string) => f.includes('[tilfældige inddata]') || f.includes('[klub uden for ligaerne]');
+const byDate = (a: First, b: First) => a.day.localeCompare(b.day) || b.bad / b.n - a.bad / a.n;
+const firstArea = new Map<string, First>();
+for (const x of [...firstField.values()].filter((x) => !isRandIn(x.field)).sort(byDate)) if (!firstArea.has(sysOf(x.field))) firstArea.set(sysOf(x.field), x);
+const lines: string[] = [];
+const out = (s = '') => { console.log(s); lines.push(s); };
+const cell = (s: string) => s.replace(/\|/g, '/');
+out(`\n# Dag for dag mod originalen – ${days[0]} → ${days[days.length - 1]} (${days.length} billeder, ${CLUB}, frø 1, ${worldFile})`);
+out('Eksempler: «vores mod originalen». Berørte = afvigelser/tjekket den dag. Billedet for dag D er taget før 0x4c7ac0(D, 2, 1); vores spil står ved dag D−1, færdigspillet.');
+out('\n## Første afvigelse pr. område (uden felter med tilfældige inddata)');
+out('| dato | område | felt | berørte | eksempel (vores mod orig.) | ejer (where.ts) |');
+out('|---|---|---|---|---|---|');
+for (const [a, x] of [...firstArea.entries()].sort((p, q) => byDate(p[1], q[1]))) out(`| ${x.day} | ${a} | ${cell(x.field.slice(a.length + 2))} | ${x.bad}/${x.n} | ${cell(x.ex[0] ?? '')} | ${ownerOf(x.field)} |`);
+out('\n## Første afvigelse pr. felt (datoorden)');
+out('| dato | felt | berørte | eksempler (vores mod orig.) | ejer |');
+out('|---|---|---|---|---|');
+for (const x of [...firstField.values()].sort(byDate)) out(`| ${x.day} | ${cell(x.field)} | ${x.bad}/${x.n} | ${x.ex.map(cell).join('; ')} | ${ownerOf(x.field)} |`);
+const clean = [...stats.keys()].filter((f) => !firstField.has(f)).sort();
+out(`\n## Ens hele vejen (${clean.length} felter)`);
+for (const f of clean) { let n = 0; for (const s of stats.get(f)!.values()) n += s.n; out(`- ${f} (${n} tjek)`); }
+// fordelingerne ved op til 8 jævnt fordelte dage
+const sample = days.length <= 8 ? days : [...new Set(Array.from({ length: 8 }, (_, i) => days[Math.round((i * (days.length - 1)) / 7)]))];
+const fmt = (x: number) => (Math.abs(x) >= 1000 ? Math.round(x).toLocaleString('da-DK') : x.toFixed(2));
+out('\n## Fordelinger (gns. vores / oraklet)');
+out('felt'.padEnd(54) + sample.map((d) => d.padStart(22)).join(''));
 for (const [f, byDay] of [...dists.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
   if (ONLY && !f.includes(ONLY)) continue;
-  const fmt = (x: number) => (Math.abs(x) >= 1000 ? Math.round(x).toLocaleString('da-DK') : x.toFixed(2));
-  console.log(f.padEnd(54) + days.map((d) => { const s = byDay.get(d); return (s ? `${fmt(s.ours / s.n)}/${fmt(s.theirs / s.n)}` : '-').padStart(22); }).join(''));
+  out(f.padEnd(54) + sample.map((d) => { const s = byDay.get(d); return (s ? `${fmt(s.ours / s.n)}/${fmt(s.theirs / s.n)}` : '-').padStart(22); }).join(''));
 }
-if (process.env.JSON) writeFileSync(process.env.JSON, JSON.stringify({ days, stats: Object.fromEntries([...stats].map(([f, m]) => [f, Object.fromEntries(m)])), dists: Object.fromEntries([...dists].map(([f, m]) => [f, Object.fromEntries(m)])) }, null, 1));
+if (days.length <= 8) {
+  out('\n## Afvigelser pr. felt og dag (afvigelser/tjekket)');
+  out('felt'.padEnd(54) + days.map((d) => d.padStart(16)).join(''));
+  for (const [f, byDay] of [...stats.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
+    if (ONLY && !f.includes(ONLY)) continue;
+    out(f.padEnd(54) + days.map((d) => { const s = byDay.get(d); return (s ? `${s.bad}/${s.n}` : '-').padStart(16); }).join(''));
+  }
+}
+if (process.env.REPORT) writeFileSync(process.env.REPORT, lines.join('\n') + '\n');
+if (process.env.JSON) writeFileSync(process.env.JSON, JSON.stringify({ days, first: [...firstField.values()].sort(byDate), stats: Object.fromEntries([...stats].map(([f, m]) => [f, Object.fromEntries(m)])), dists: Object.fromEntries([...dists].map(([f, m]) => [f, Object.fromEntries(m)])) }));
 console.log(`\n${((Date.now() - t0) / 1000).toFixed(0)} s`);
