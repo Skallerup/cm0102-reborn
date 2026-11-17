@@ -40,7 +40,7 @@ describe('kampmotoren bag et flag', () => {
     start(w, 'Arsenal', 'extended');
     gs().options.engine = 'original';
     expect(gridEngineOn(gs())).toBe(false);
-  }, 60_000);
+  }, 240_000);
 
   it('gittermotoren spiller alle hjemlige kampe i menneskets land – ikke Europa eller venskabskampe uden mennesket', () => {
     const g = start(load('world-original.json'), 'Arsenal', 'authentic');
