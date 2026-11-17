@@ -28,6 +28,7 @@ regler, arkitektur og faldgruber.
 - **Udgivelse af en agents arbejde:** `scripts/ship.sh <worktree-gren|commit> "<da-linje>" "<en-linje>" [--new-game]` – cherry-picker, lægger
   ændringslogslinjen i dagens version (ny version pr. dag), typetjekker, kører de berørte tests + K3/K5/ændringslog, én e2e, committer, pusher og
   rydder worktree'en. `--no-e2e` kun ved ren motor/data uden UI. Stopper ved første fejl uden at pushe.
+- **Dag for dag mod originalen (vigtigste værktøj):** `scripts/cm-day-lockstep.ts` (WORLD = world bygget med CM_DBSIZE=2, REPORT=fil.md, STEP=7 = ugentligt) sammenligner hver dag 14/7-01 → 30/6-02 med oraklets dagsbilleder (`~/cm0102-engine/oracle/daysnap/s1-3.9.60-e1`, `scripts/oracle-day-snaps.py`, nyheder `scripts/oracle-news.ts`); første afvigelse pr. felt + ejer = én opgave.
 - **Find det hurtigt:** `npx tsx scripts/where.ts <0xadresse|emne>` viser porten i src/, noterne/C-filen i ~/cm0102-engine, tests, scripts og
   udgivelsesloggen på én gang – brug den før grep-rundture. Flere ord = alle skal matche.
 - **Orakelkørsler:** `npx tsx scripts/oracle-catalog.ts [ord|--json]` – katalog `~/cm0102-engine/oracle/CATALOG.md` (frø, datoer, målinger, størrelse
