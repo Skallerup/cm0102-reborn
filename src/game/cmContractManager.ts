@@ -91,8 +91,10 @@ function date2330(iso: string): number {
 function candidate(g: GameState, p: Player, T: number, A: number): boolean {
   const k = p.contract!;
   const E = dayNum(k.expires), type = k.cmType ?? 2;
-  if (type === 1) return T > E + 31;
+  // blokken 0x4c81a3 (blockA) kører FØR typetjekket 0x4c8603 og også for udløbne kontrakter (type 1): en kontrakt, der udløb 30/6, får
+  // forlængelsestilbuddet 2/7 og 20/7 ([0xae2330] − i dag = 60/42), selv om de 31 dage ikke er gået (før sprang porten dem over)
   if (A > T && BLOCK_A.has(A - T) && E < T + 1095) return true;
+  if (type === 1) return T > E + 31;
   const due = E - T;
   if (due > 182) return false;
   if (due <= 0 || BANDS.has(due) || k.cmB49) return true;
