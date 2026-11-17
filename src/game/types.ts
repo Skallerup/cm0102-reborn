@@ -219,6 +219,8 @@ export interface Player {
   caps: number;
   intGoals: number;
   regen?: boolean;
+  /** (den originale database i ægte tilstand) regen'en har den pensionerede spillers post (RegenSeed.fromId) – CA-fordelingen cmDevelop.ts */
+  regenOf?: number;
   /** originalens genererede fyldspiller (virtual_staff.cpp 0x90dae0/0x90e0a0 – cmVirtual.ts; staff-id ≥ [0xae2364]): findes kun omkring
    *  klubbens kampe og når truppen vises, fjernes ved dagens start. 'active' = klubbens land har spilbare ligaer (nation +0x11c) */
   virtual?: 'active' | 'other';
@@ -1488,7 +1490,9 @@ export interface H2HRecord {
 /** Det en regen arver fra den pensionerede spiller: land, positioner, ben, potentiale og egenskabsprofil */
 export interface RegenSeed { from: string; nation: number; pos: number[]; side: number[]; foot: 'L' | 'R' | 'B'; pa: number; attrs: number[];
   /** (cmRetire.ts) queue_staff_for_regen 0x7a87d0's dato – regen'en laves den dag (uden: ved næste kø-gennemløb) */
-  due?: string }
+  due?: string;
+  /** (cmRetire.ts) den pensionerede spillers id – regen'en får hans spillerpost (0x7abac0: staff +0x61 = posten fra køens indgang) */
+  fromId?: number }
 
 /** Den moderne økonomis kalibrering (econ26.ts) */
 export interface Modern26 { kw: Record<string, number> }

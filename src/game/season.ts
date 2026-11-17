@@ -364,6 +364,7 @@ function spawnRegen(old: RegenSeed, n: number) {
   for (let i = 0; i < 33; i++) p.attrs[i] = Math.max(1, Math.min(20, mNew + 0.4 * (p.attrs[i] - mNew) + 0.6 * (old.attrs[i] - mOld)));
   for (let i = 36; i < p.attrs.length && i < old.attrs.length; i++) p.attrs[i] = Math.max(1, Math.min(20, Math.round(old.attrs[i] + r.normal(0, 2))));
   p.pos = old.pos.slice(); p.side = old.side.slice();
+  if (old.fromId !== undefined) p.regenOf = old.fromId;
   p.value = Math.max(10_000, p.value);
   // ægte CM 01/02 med den originale database: player_regen_sign_for_club 0x7a6f10 → set_default_wage 0x8626e0 (0x862720 – cmWageGame.ts)
   const cmW = p.contract && club ? cmRegenWage(g, p, club) : null;

@@ -3,6 +3,28 @@
 *2026-11-10. Ejeren har (som Bosman Editions forfatter) tilladelse til at bruge så meget af originalens motor som muligt.
 Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.md`, byggestenene: `GRID_ENGINE.md`.*
 
+## Målefælder for mål/kamp (2026-11-17 – læs før sæsontallene nedenfor sammenlignes)
+- **`grid-season.ts`' tal fra runde 9 til 13/11 måler IKKE gittermotoren i Premier League.** Indtil a898c948 (14/11) spillede `gridFixture()` (sim.ts)
+  kun menneskets egen liga og hans kampe på gittermotoren; grid-season spiller Wrexham (Second Division), så alle PL-kampe gik på zonemotoren
+  (kalibreret til ~3,0). Kontrol: a898c948^ PL 28 kampe/gitter 0, a898c948 PL 28/gitter 28 (measure 2207465d8d86/78f8ae4a54a4). Runde 9's 2,93–3,04
+  og 13/11's 2,94–2,97 er derfor zonemotorens; gittermotorens eget PL-tal i en spillet sæson findes først fra a898c948.
+- **`grid-stats.ts 380 1` kan ikke sammenlignes med oraklets sæson.** Den spiller alle 380 kampe fra spilstartens tilstand (datoen står på 14/7); efter
+  33da7e8b (K8: Fitness ~8.500 ved spilstart for England, `cmFit.d` = i dag) er konditionen ved kampstart ~85 %, så tallet faldt 2,59 → 2,28 uden nogen
+  ændring i motoren eller sæsonen. Brug den kun som fingeraftryk (før/efter samme commit), ikke som niveau mod 2,75/2,98.
+- Det sammenlignelige tal er en spillet sæson (fx scratchpad-`gsm.mts`: Wrexham, `options.engine = 'original'`, PL pr. måned) mod `season-s1a/s2`.
+  17/11 på main (2f8e7f99), halv sæson til 1/1: frø 1 2,77, frø 2 2,86 (measure 2e393d5e8853/76b60279ee7d) mod oraklets aug–dec 2,89/3,01.
+- Kampstartens inddata midt i sæsonen: nye orakelspor `oracle/runs/lsOct/lsDec/lsMar.txt` (20/14/15 PL-kampe fra 20/10, 15/12, 2/3; match_trace.c
+  `RECOMP_MATCH_TRACE_FROM=<år·1000+dag>`, `tools/ortrace.sh`). Spillets egne PL-kampe mod sporene: moral, motivation, form og kampfloats ens inden for
+  ~0,5; konditionen +0x4d 98,2–98,5 % mod 99,2–99,7 % (flere trætte startere: 2–7 % under 90 % mod 0–1 %); rå CA for starterne voksede hos os
+  (143,6 → 151,1 aug → mar) mod originalens 141,0 → 139,7.
+- **Årsagen til CA-glidningen (porteret 17/11, `cmDevelop.ts` caRankFor/caRedistribute):** 0x5ce2d0 slutter med en CA-omfordeling
+  (0x5d587a–0x5d58de). Ved den første udvikling efter programstart (byten 0x9cd236) gemmes alle spillerposters CA sorteret ([0xae2d20],
+  0x5d393e–0x5d3a0c); efter hver dag med en udvikling med T ≠ 0 sorteres posterne efter (CA, PA) (0x5d6220) og får den gemte fordeling tilbage
+  i rang, højst PA. Udviklingen flytter altså kun spillerne i rækken – fordelingen er spilstartens. En pensioneret spillers post bliver stående,
+  til regen'en lægges i den (0x7abac0; `RegenSeed.fromId` → `Player.regenOf`). Dagsbillederne (dag-lockstep, dbs2): spillere med start-CA 120+
+  136,6 → 134,4 hos os mod 136,7 → 134,4 i originalen over hele sæsonen (før: → 140,8 i marts); PL-starternes rå CA 141–142 hele sæsonen.
+  Mål halv sæson (Wrexham, til 1/1): frø 1 2,77 → 3,03, frø 2 2,86 → 2,86 (measure d81b25ed1544/7e46338979c0) mod oraklets 2,89/3,01.
+
 ## Gittermotorens gæt, runde 17/11 (se ORIGINAL_PARITY.md punkt 22–23)
 - **Porteret:** motivationen 0x6eb54b–0x6ebcb0 (gridMatch.ts `initMotivation` + `MotivationEnv`, gameInputs.ts `motivationEnvOf`), feriens manager
   0x600e90 (aiTeam.ts `holidayManager`), sub_5408c0/0x53d980 (gameInputs.ts `repView5408c0`, challenge.ts `carrierRep`), 0x6bdaf7 (straffe uden

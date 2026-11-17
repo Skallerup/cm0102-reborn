@@ -23,8 +23,9 @@ import { ageOn } from './dates';
 import { cmActive, cmRand, clubRepMem, statAvg } from './cmPlayerData';
 import { isHumanClub } from './humans';
 import { displayFromX, intrinsicOf } from './playerInit';
-import { type CmRec, type CmTrainEntry, nibble, normaliseRec, recInto, recOf, cmTrainWeekTick } from './cmTraining';
+import { type CmRec, type CmTrainEntry, nibble, normaliseRec, recInto, recOf, cmIntSync, cmTrainWeekTick } from './cmTraining';
 import { addFavClub, fadeRelations, removeFavClub } from './cmRelations';
+import { msvcQsort } from './engine/grid/loop';
 
 const s8 = (v: number) => (v << 24) >> 24;
 const s16 = (v: number) => (v << 16) >> 16;
@@ -388,23 +389,78 @@ export function cmDevDaily(g: GameState): void {
   const clubs = new Map<number, DevClub | null>();
   const avg = g.cmRatingAvg ?? [680, 100];
   const mean = avg[1] ? avg[0] / avg[1] : 6.8;
+  let changed = false;                                                          // [esp+0x67]
   for (const p of Object.values(g.players)) {
     const a = p.id % 365, b2 = (a + 120) % 365, e3 = (b2 + 120) % 365;
     if (doy !== a && doy !== b2 && doy !== e3) continue;
     ensureCmInt(p);
+    caRankFor(g);                                                              // 0x5d393e: før den første udvikling
     if (!clubs.has(p.club)) clubs.set(p.club, p.club ? clubOf(g, p.club, byClub) : null);
-    cmDevelopPlayer(g, p, clubs.get(p.club) ?? null, mean, cmRand(g.seed ?? 0, p.id, day, 0x5ce2d0, 0x5d38f9));
+    if (cmDevelopPlayer(g, p, clubs.get(p.club) ?? null, mean, cmRand(g.seed ?? 0, p.id, day, 0x5ce2d0, 0x5d38f9)) !== 0) changed = true;
   }
+  if (changed) caRedistribute(g);
   cmTrainWeekTick(g, doy);
 }
 
+/** CA-fordelingen (0x5d393e–0x5d3a0c og 0x5d587a–0x5d58de i 0x5ce2d0). Ved den første udvikling, programmet kører (byten 0x9cd236 er 1 fra
+ *  start og sættes kun til 0), gemmes CA (+5) for alle [0xae236c] spillerposter i postrækkefølge og sorteres stigende (qsort 0x945333 med
+ *  0x5d6200) → [0xae2d20]; [0xae2d24] = pegere til posterne i postrækkefølge. Efter hver dag, hvor en udvikling endte med T ≠ 0 (0x5d5780,
+ *  [esp+0x28] = T), sorteres pegerne efter (CA, PA) stigende (0x5d6220) – i rækkefølgen fra forrige gang – og spiller nr. i får den i'te
+ *  gemte CA, dog højst PA (0x5d58cc). Fordelingen af CA er altså den fra spilstarten; udviklingen flytter kun spillerne i rækken.
+ *  Hos os: tilstanden pr. spil (originalen tager den ved første udvikling efter programstart – også efter indlæsning af et gemt spil, som
+ *  vores spil efter hver indlæsning), postrækkefølgen = id-rækkefølgen, fyldspillerne (cmVirtual.ts, poster efter [0xae236c]) er ikke med.
+ *  Flere poster end ved øjebliksbilledet: originalen sorterer [0xae236c] pegere og læser [0xae2d20] ud over sin længde (ikke defineret) – her
+ *  beholder posterne over den gemte længde deres egen CA (sker kun, hvis der kommer flere poster end ved øjebliksbilledet). */
+/** en spillerpost i [0xae2d24]: spilleren (id) og postens CA/PA (bliver stående, når spilleren går på pension – se caRedistribute) */
+interface CaSlot { id: number; ca: number; pa: number }
+interface CaRank { ref: number[]; slots: CaSlot[] }
+const caRanks = new WeakMap<GameState, CaRank>();
+const realPlayer = (p: Player | undefined): p is Player => !!p && !p.virtual;
+const caOf = (p: Player) => s16(Math.trunc(p.ca)), paOf = (p: Player) => s16(Math.trunc(p.pa));
+function caRankFor(g: GameState): CaRank {
+  let r = caRanks.get(g);
+  if (r) return r;
+  const ps = Object.values(g.players).filter(realPlayer).sort((a, b) => a.id - b.id);
+  const ref = ps.map(caOf);
+  msvcQsort(ref, (a, b) => a - b);                                             // 0x5d39b3: qsort(…, 2, 0x5d6200)
+  r = { ref, slots: ps.map((p) => ({ id: p.id, ca: caOf(p), pa: paOf(p) })) };
+  caRanks.set(g, r);
+  return r;
+}
+/** 0x5d587a–0x5d58de. Originalens poster forsvinder ikke: en pensioneret spillers post (PLAYER_REGEN, cmRetire.ts) står med sin CA/PA og
+ *  sorteres med, til regen'en lægges i den (0x7abac0: staff +0x61 = posten fra regen-køens indgang). Hos os slettes spilleren – posten bliver
+ *  her stående med de sidste tal, og regen'en (Player.regenOf) overtager den; andre nye spillere får en ny post. */
+function caRedistribute(g: GameState): void {
+  const r = caRankFor(g);
+  const used = new Set<number>(), byId = new Map<number, CaSlot>();
+  for (const sl of r.slots) { byId.set(sl.id, sl); const p = g.players[sl.id]; if (realPlayer(p)) { sl.ca = caOf(p); sl.pa = paOf(p); used.add(sl.id); } }
+  for (const p of Object.values(g.players).sort((a, b) => a.id - b.id)) {
+    if (!realPlayer(p) || used.has(p.id)) continue;
+    const sl = p.regenOf !== undefined && !used.has(p.regenOf) ? byId.get(p.regenOf) : undefined;
+    if (sl) { byId.delete(sl.id); sl.id = p.id; sl.ca = caOf(p); sl.pa = paOf(p); byId.set(p.id, sl); }
+    else { const n = { id: p.id, ca: caOf(p), pa: paOf(p) }; r.slots.push(n); byId.set(p.id, n); }
+    used.add(p.id);
+  }
+  const list = r.slots;
+  msvcQsort(list, (a, b) => (a.ca === b.ca ? a.pa - b.pa : a.ca - b.ca));     // 0x5d5897: qsort(…, 4, 0x5d6220)
+  for (let i = 0; i < list.length && i < r.ref.length; i++) {
+    const sl = list[i];
+    let v = r.ref[i];
+    if (v > sl.pa) v = sl.pa;                                                  // 0x5d58cc
+    if (v === sl.ca) continue;
+    sl.ca = v;
+    const p = g.players[sl.id];
+    if (realPlayer(p)) { p.ca = Math.max(1, v); cmIntSync(g, p); }
+  }
+}
+
 /** udviklingen for én spiller (0x5d38f9–0x5d5777) med 0x538bc0 bagefter */
-export function cmDevelopPlayer(g: GameState, p: Player, club: DevClub | null, mean: number, rand: (n: number) => number): void {
+export function cmDevelopPlayer(g: GameState, p: Player, club: DevClub | null, mean: number, rand: (n: number) => number): number {
   const r = recOf(p);
   const P = Object.fromEntries(PERS.map(([k, a]) => [k, Math.round(p.attrs[AX(a)] ?? 10)])) as unknown as DevPers;
   // træningsposten oprettes først ved den første træning (cmTraining.ts) – uden post er alle effekter 0
   const e: CmTrainEntry | null = p.cmTrain ?? null;
-  developCore({
+  const T = developCore({
     id: p.id, age: ageOn(p.dob, g.date), club,
     stats: [statAvg(p, 6, 1, 6.5), statAvg(p, 6, 0x11, 6.5), statAvg(p, 1, 0x11, 6.5), statAvg(p, 1, 1, 6.5)], mean,
     fatigue: dctx?.fatigue(p) ?? 0, injury: dctx?.injuryW2c(p) ?? null, train0: e ? nibble(e, 0) : 0,
@@ -414,4 +470,5 @@ export function cmDevelopPlayer(g: GameState, p: Player, club: DevClub | null, m
   fadeRelations(p, rand);                                                      // 0x5d5778: 0x547f90 (forholdene falmer)
   for (const [k, a] of PERS) p.attrs[AX(a)] = P[k];
   recInto(g, p, r);
+  return T;
 }

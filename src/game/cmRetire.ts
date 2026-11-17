@@ -341,7 +341,7 @@ function retire(g: GameState, p: Player, e: CmRetEntry, today: string, rand: Ran
     if (d > 365) { d = rand(35); y++; }
     due = new Date((D0(y) + d) * 86400000).toISOString().slice(0, 10);
   }
-  if (p.pa > 0) (g.regenQueue ??= []).push({ from: pname(p), nation: p.nation, pos: p.pos.slice(), side: p.side.slice(), foot: p.foot === 'L' ? 'L' : p.foot === 'B' ? 'B' : 'R', pa: p.pa, attrs: p.attrs.map((a) => Math.round(a)), due });
+  if (p.pa > 0) (g.regenQueue ??= []).push({ from: pname(p), nation: p.nation, pos: p.pos.slice(), side: p.side.slice(), foot: p.foot === 'L' ? 'L' : p.foot === 'B' ? 'B' : 'R', pa: p.pa, attrs: p.attrs.map((a) => Math.round(a)), due, fromId: p.id });
   removePlayer(p);
   const st = stateOf(g);
   st.n = (st.n ?? 0) + 1;
