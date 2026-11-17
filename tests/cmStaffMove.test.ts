@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { createGame, type WorldData } from '../src/game/newgame';
 import { gs } from '../src/game/state';
 import { cmStaffCompensation, cmStaffRestGbp } from '../src/game/cmStaff';
-import { cmStaffBidAnswer, cmStaffBidOpen, cmStaffMovesDaily, cmStaffPlan } from '../src/game/cmStaffMove';
+import { cmStaffMovesDaily, cmStaffPlan } from '../src/game/cmStaffMove';
 import { cmStaffTerms } from '../src/game/cmContractGame';
 import { boardEnv } from '../src/game/cmBoardGame';
 import { scoreStaffForJob } from '../src/game/cmBoard';
@@ -67,25 +67,26 @@ describe('stabsskifter (cmStaffMove)', () => {
     expect(t('cm.stm.bodyFrom', p)).toBe("Fulham have appointed Sunderland's David Collier as a scout.");
   });
 
-  it('0x8be884: et bud på menneskets stab venter i 28 dage på Respond – Accept giver personens svar efter 1–5 dage, Reject og fristen fjerner det', () => {
-    const s = Object.values(g.staff).find((x) => x.club === g.userClub && x.cmNp && x.role !== 'manager')!;
+  it('0x8e638b/0x8be857: et bud på menneskets stab spørger ikke mennesket – personen svarer efter 1–5 dage, og kompensationen går til mennesket', () => {
+    const s = Object.values(g.staff).find((x) => x.club === g.userClub && x.cmNp && x.role === 'scout')
+      ?? Object.values(g.staff).find((x) => x.club === g.userClub && x.cmNp && x.role !== 'manager')!;
     const c = Object.values(g.clubs).find((x) => x.name === 'Fulham')!.id;
     const saved = g.cmStaffMoves;
-    const mk = (id: number) => ({ s: s.id, c, job: 9, from: g.userClub, fee: 5000, due: '2099-01-01', h: 1 as const, id });
-    g.cmStaffMoves = [mk(901), mk(902), { ...mk(903), due: g.date }];
-    const n = (id: number) => ({ key: 'cm.stBid', params: { sb: id } });
-    expect(cmStaffBidOpen(g, n(901))?.id).toBe(901);
-    expect(cmStaffBidOpen(g, { key: 'cm.stm.0', params: { sb: 901 } })).toBeNull();
-    expect(cmStaffBidAnswer(g, 901, true)).toBe('ok');
-    const acc = g.cmStaffMoves.find((m) => m.id === 901)!;
-    expect(acc.h).toBeUndefined();
-    const d = (Date.parse(acc.due) - Date.parse(g.date)) / 86400000;
+    // ældre gemte spil: et bud, der ventede på Respond (h), får personens svar som alle andre
+    g.cmStaffMoves = [{ s: s.id, c, job: 9, from: g.userClub, fee: 5000, due: '2099-01-01', h: 1, id: 901 }];
+    cmStaffMovesDaily(g);
+    const m = g.cmStaffMoves[0];
+    expect(m.h).toBeUndefined();
+    const d = (Date.parse(m.due) - Date.parse(g.date)) / 86400000;
     expect(d).toBeGreaterThanOrEqual(1); expect(d).toBeLessThanOrEqual(5);
-    expect(cmStaffBidAnswer(g, 902, false)).toBe('ok');
-    expect(g.cmStaffMoves.some((m) => m.id === 902)).toBe(false);
-    cmStaffMovesDaily(g);                                                     // 903's frist er nået uden svar
-    expect(g.cmStaffMoves.some((m) => m.id === 903)).toBe(false);
-    expect(g.cmStaffMoves.some((m) => m.id === 901)).toBe(true);
+    // handlen på dagen: mennesket bliver ikke spurgt; siger personen ja, får menneskets klub kompensationen
+    const me = g.clubs[g.userClub], buyer = g.clubs[c];
+    const m0 = me.balance, b0 = buyer.balance;
+    g.cmStaffMoves = [{ ...m, due: g.date }];
+    cmStaffMovesDaily(g);
+    expect(g.cmStaffMoves.length).toBe(0);
+    if (s.club === c) { expect(me.balance).toBe(m0 + 5000); expect(buyer.balance).toBe(b0 - 5000); }
+    else expect(s.club).toBe(g.userClub);                                     // han sagde nej (viljen/kontrakten) eller pladsen var fyldt
     g.cmStaffMoves = saved;
   });
 
@@ -118,9 +119,10 @@ describe('stabsskifter (cmStaffMove)', () => {
     for (const t0 of ok) { expect(t0.wage).toBeGreaterThan(100); expect(t0.wage).toBeLessThan(5000); }
   });
 
-  it('nyheden til mennesket: "{club} transfer bid for {name}" med kompensationen', () => {
-    const p = { club: 'Fulham', name: 'David Collier', from: 'Sunderland', fee: '£25K' };
+  it('nyheden til mennesket (0x8d3520): "{club} transfer bid for {name}", 0xa91afc og kompensationen 0xa8f6ec', () => {
+    const p = { club: 'Fulham', name: 'David Collier', from: 'Sunderland', fee: '£25K', job: 'scout' };
     expect(t('cm.stBid', p)).toBe('Fulham transfer bid for David Collier');
-    expect(t('cm.stBid.body', p)).toBe('Fulham have made an offer for David Collier.\n\nSunderland will be due £25K in compensation if the deal goes ahead.');
+    expect(t('cm.stBid.body', p)).toBe("Fulham have offered Sunderland's David Collier a job as scout.\n\nSunderland will be due £25K in compensation if the deal goes ahead");
+    expect(t('cm.stBid.body0', p)).toBe("Fulham have offered Sunderland's David Collier a job as scout.");
   });
 });

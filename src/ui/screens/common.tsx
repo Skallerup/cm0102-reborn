@@ -52,6 +52,8 @@ export function newsParams(n: NewsItem): Record<string, string | number> {
       p[`d${i}`] = cxLongDate(String(p[`fd${i}`]));
     }
   }
+  // budet på menneskets stab (0x8d3520, 0xa91afc): "… a job as {job}" – jobnavnet uden artikel
+  if (n.key === 'cm.stBid' && typeof p.job === 'number') p.job = t(`cm.stm.j.${p.job}`);
   if (n.key.startsWith('cm.stm.') && typeof p.job === 'number') { const jn = t(`cm.stm.j.${p.job}`); p.job = getLang() === 'en' ? `${/^[aeiou]/i.test(jn) ? 'an' : 'a'} ${jn}` : jn; }
   if (typeof p.injury === 'string') { p.injury = t(`injury.${p.injury}`); p.injuryLc = String(p.injury).toLowerCase(); }
   // originalens skadenyhed: periodens ord ("about three weeks") og skaden med lille forbogstav i brødteksten
@@ -180,6 +182,8 @@ function bodyKey(n: NewsItem): string {
   if (n.key === 'cmfr.proposal') return `cmfr.proposal.${n.params?.body === 'challenged' ? 'challenged' : 'offered'}`;
   // stabsskifter (cmStaffMove.ts, 0x8dc370): én brødtekst til de fire overskrifter
   if (n.key.startsWith('cm.stm.')) return n.params?.from ? 'cm.stm.bodyFrom' : 'cm.stm.body';
+  // budet på menneskets stab: kompensationslinjen 0xa8f6ec kun med et beløb (+0x1b ≠ 0)
+  if (n.key === 'cm.stBid') return n.params?.fee ? 'cm.stBid.body' : 'cm.stBid.body0';
   return `${n.key}.body`;
 }
 

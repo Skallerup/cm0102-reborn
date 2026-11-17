@@ -144,7 +144,8 @@ function motivationEnvOf(g: GameState, p: Player, own: GameMatchSide, opp: GameM
   const k = p.contract && p.club === own.club && !p.loan ? p.cmContract : undefined;
   // 0x4cf5f0: +0x4f >> 4 (trupstatus) → 0,3/0,5/0,75/3,0, × (1 + 0,005·+0x44); uden post 1,0
   const st = k ? statusCode(p) : -1;
-  const C = k ? (st === 1 ? 0.3 : st === 2 ? 0.5 : st === 3 ? 0.75 : 3.0) * (s8(k.b44) * 0.005 + 1.0) : 1.0;
+  // 0x6eb58e: sub_53b900(egen klub) – klub-id ≥ antal klubber − 2·antal nationer (landsholdene sidst i club.dat) → C = 5,0 før kontrakten
+  const C = own.national ? 5.0 : k ? (st === 1 ? 0.3 : st === 2 ? 0.5 : st === 3 ? 0.75 : 3.0) * (s8(k.b44) * 0.005 + 1.0) : 1.0;
   const rv = g.cmCrowd?.[own.club];
   const derby = !!rv && [rv[6], rv[7], rv[8]].includes(opp.club);
   const oppMgr = g.staff[g.clubs[opp.club]?.manager ?? -1];

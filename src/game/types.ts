@@ -1330,8 +1330,6 @@ export interface GameState {
   cmStaffOffers?: import('./cmStaff').CmStaffOffer[];
   /** computerklubbernes bud på stab (cmStaffMove.ts: 0x84a020/0x8e5d60 – kompensationen 0x8d0780), besvares på `due` */
   cmStaffMoves?: import('./cmStaffMove').CmStaffMove[];
-  /** løbenummer for computerklubbernes bud på menneskets stab (cmStaffMove.ts) */
-  cmStaffBidSeq?: number;
   /** Lokalt spil mod AI-managere (ingen server): værten spiller sine kampe live */
   localMp?: boolean;
   /** Beskeder mellem managere, der går gennem spillet (AI-managere og lokale spil) */

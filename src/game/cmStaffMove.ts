@@ -18,17 +18,21 @@
 //      klubbens egen, landet/verdensdelen (omdømme < 2750 → kun egen verdensdel; < 4250 og nation +0x85 < 12 → kun personer fra samme verdensdel
 //      som deres klub), omdømmet set af manageren 0x5407e0 ≥ rand(2000) + 3250 (samme land, landskampe eller klub i landet springer prøven over);
 //      vurderet med 0x69d1b0 (cmBoard.ts scoreStaffForJob med jobblokkene 0x69db39/0x69deb6/0x69e22d/0x69e4e7).
-//   4. Buddet 0x84a020 → build_bid 0x8e5d60: for en ikke-spiller er beløbet kompensationen 0x8d0780 (+0x1b, buddets type 5); sælgeren siger ja
-//      straks (0x8c8160: personen har ingen spillerpost → status 0x10). 0x8d0780: kontrakt med +0x35 = 2 → ftol(dage til udløb · ugeløn / 7),
-//      mindst £1.000, højst £1.000.000; uden kontrakt 0.
-//   5. Handlen 0x8c34e0 → nyheden 0x8dbef0 (modtagerne som en spillerhandel, omdømmet fra ikke-spillerposten +8/+0xa/+0xc, ×0,25 for træner,
-//      spejder og fysioterapeut – 0x8d169e) og teksten 0x8dc370: overskriften efter (args) mod 4 – get / moves to / seal … deal / sign – og
-//      brødteksten "{Club} have appointed {Club's} {Name} as {an} {job}." (0xa98b58/0xa98bcc; jobbet 0x53ad00 med små bogstaver).
-//
-// 6. Sælgeren er et menneske (0x8be300 add_offer, 0x8be86b: 0x600a50 på kontraktens klub): svartiden er 0x1c = 28 dage (0x8be884) i stedet for
-//    0x8cc5b0, og mennesket får nyheden "{Club} transfer bid for {Name}" (0xa8f578, 0x8d3520) med "{Club} have made an offer for {Name}." og
-//    "{Club 1} will be due £X in compensation if the deal goes ahead" (0xa8f6ee). Respond: Accept/Reject (cmStaffBidAnswer); ja → personen svarer
-//    som ved computerklubberne, og kompensationen går til mennesket; intet svar inden fristen → buddet bortfalder.
+//   4. Buddet 0x84a020 → build_bid 0x8e5d60 (computerkøber, 0x8e6346): for en ikke-spillerplads giver 0x84b6f0 kompensationen 0x8d0780 (+0x1b) og
+//      0 (kompensationen < personens værdi +0x52 holder aldrig for stab), så 0x8e638b–0x8e6444 springer buddet til klubben over og giver personen
+//      et kontrakttilbud direkte: offer_contract 0x4cda70(staff, køber, kontrakt, −1, 1,0, 2) og buddets +0x2f = 1. 0x8d0780: kontrakt med
+//      +0x35 = 2 → ftol(dage til udløb · ugeløn / 7), mindst £1.000, højst £1.000.000; uden kontrakt 0.
+//   5. add_offer 0x8be300 med +0x2f = 1: tilstanden +0x2c = 7 (0x8be857, "tilbudt kontrakt" – 0x8c63a0 gør intet med den) og ingen svarfrist
+//      for en computerkøber (de 28 dage 0x8be85d gælder kun, når KØBEREN er et menneske; 0x8be884 er spillerbuddenes gren, hvor sælgeren er
+//      menneske). Den gamle klub bliver aldrig spurgt – heller ikke et menneske: buddet når aldrig tilstand 0 (0x8c644d → 4 = venter på
+//      mennesket), så der er intet Respond/Accept/Reject. Nyheden 0x8d3090 (type 0x3e, modtagerne 0x8d1130 med flagene 0x3e – sælgeren
+//      (flag 2) er med) med teksten 0x8d3520: overskriften "{Club} transfer bid for {Name}" (0xa8f578) og brødteksten (+0x2f ≠ 0)
+//      "{Club 1} have offered {Club 2's} {Name} a job as {job}." (0xa91afc; uden klub 0xa91a80) + "{Club} will be due £X in compensation
+//      if the deal goes ahead" (0xa8f6ec, når +0x1b ≠ 0 – klubben er her sælgeren).
+//   6. Personen svarer på kontrakttilbuddet (CONTRACT_MANAGER; se listen over skøn nedenfor). Ja → try_complete_offer 0x8c34e0 (ingen prøve af
+//      sælgerens vilje): nyheden 0x8dbef0 → teksten 0x8dc370: overskriften efter (id) mod 4 – get / moves to / seal … deal / sign – og
+//      brødteksten "{Club} have appointed {Club's} {Name} as {an} {job}." (0xa98b58/0xa98bcc; jobbet 0x53ad00 med små bogstaver); flytningen
+//      0x8c9390 med betalingen 0x8ca8a0 (kompensationen til den gamle klub – også menneskets). Ingen særskilt nyhed om kompensationen.
 // 7. Managerskiftet 0x694c80 sætter trupplanens +4 = 2 (0x694cd2) og kalder 0x84abe0 → 0x83cb40(entry, klub, 0, 1): +4 = 2 i en computerklub giver
 //    [esp+0x60] = 1 (0x83cc44), og halen fyrer indehavere, den nye manager vurderer under T (0x83ee36 → 0x690890 remove_staff_from_club).
 // 8. Kontrakten: 0x4cda70 offer_contract(staff, klub, NULL, −1, 1,0, 2) → 0x85fc50 med 0x849f00's job/status (pladsen i køberens plan) og
@@ -37,8 +41,8 @@
 // *Estimeret* (koden er ikke fulgt hele vejen): målet skal mindst nå pladsens grænse T (0x840112's sammenligning), antallet n i budgettet
 // (originalen sorterer pladserne efter +0xb og stopper ved den 4. åbne spillerplads), hvornår buddet afgives (her straks ved planen; originalen
 // ugentligt, dagligt for omdømme > 6250), personens svar (beslutningsdagen 0x4cd230 er ikke porteret: viljen 0x844780 for jobbet ≥ 0,75 som
-// spillernes 0x8c0080, svaret efter 1–5 dage), overskriftens variant (personens id mod 4), brødtekstens variant for et bud uden kontantbeløb
-// (0xa900b4 "have made an offer for") og at kun klubber i de valgte lande henter stab (planen kører hos os for alle synlige ligaer;
+// spillernes 0x8c0080, svaret efter 1–5 dage), overskriftens variant (personens id mod 4), at budnyheden
+// kun går til den menneskelige sælger (0x8d1130's omdømmeflag for andre mennesker er ikke porteret) og at kun klubber i de valgte lande henter stab (planen kører hos os for alle synlige ligaer;
 // originalens planlægger springer klubber uden kørende liga over, og kun de valgte landes klubber har genereret stab). Ikke porteret:
 // reserveholdets manager (rolle 7 – findes ikke i spillet), 0x690890 for spillets genererede stab (ingen ikke-spillerpost), trupplanen for
 // menneskets klub ved hans egen ansættelse (0x84abe0 – fyrer ikke), arbejdstilladelser for stab (0x84b180).
@@ -68,9 +72,8 @@ const JOB_OF: Partial<Record<StaffRole, number>> = { assistant: 6, coach: 8, sco
 const SHARE: Record<number, number> = { 6: 10, 8: 10, 9: 20, 10: 20 };
 
 export interface CmStaffMove { s: number; c: number; job: number; from: number; fee: number; due: string;
-  /** buddet ligger hos et menneske (sælgeren) til fristen `due` (0x8be884: 28 dage) – nyheden "{klub} transfer bid for {navn}" med Respond */
+  /** ældre gemte spil (v0.27): buddet ventede på menneskets Respond – behandles nu som de andre (originalen spørger ikke sælgeren) */
   h?: 1;
-  /** buddets nummer (nyhedens `sb`) */
   id?: number }
 
 /** pladsernes indehavere (0x83ebfb–0x83ecef: assistenten, trænerne, fysioterapeuterne, spejderne – i ansættelsesrækkefølge) */
@@ -144,15 +147,11 @@ export function cmStaffPlan(g: GameState, cid: number, clubT: number, openPlayer
     if (!best) continue;
     taken.add(best.id);
     const fee = best.club ? cmStaffCompensation(g, best) : 0;
+    // 0x8d3090: nyheden "{klub} transfer bid for {navn}" til den menneskelige sælger (flag 2) – kun en besked; personen svarer selv (punkt 5)
     if (best.club && isHumanClub(best.club)) {
-      // 0x8be300 add_offer: sælgeren er et menneske (0x600a50) → svartiden 0x1c (28 dage, 0x8be884) i stedet for 0x8cc5b0; nyheden "transfer bid for"
-      if ((g.cmStaffMoves ?? []).some((m) => m.s === best!.id && m.h)) continue;   // højst ét ventende bud pr. person hos mennesket
-      const id = (g.cmStaffBidSeq = (g.cmStaffBidSeq ?? 0) + 1);
-      (g.cmStaffMoves ??= []).push({ s: best.id, c: cid, job, from: best.club, fee, due: addDays(g.date, 28), h: 1, id });
       const seller = g.clubs[best.club], who = best;
-      asOwner(best.club, () => addNews({ cat: 'transfer', key: 'cm.stBid', params: { club: club.name, name: `${who.first} ${who.last}`.trim(), last: who.last, from: seller?.name ?? '', fee, job, sb: id },
+      asOwner(best.club, () => addNews({ cat: 'transfer', key: 'cm.stBid', params: { club: club.name, name: `${who.first} ${who.last}`.trim(), last: who.last, from: seller?.name ?? '', fee, job },
         link: { kind: 'club', id: cid } }));
-      continue;
     }
     const r = cmRand(g.seed ?? 0, best.id, cid, dayNum(g.date), 0x4cd230);
     (g.cmStaffMoves ??= []).push({ s: best.id, c: cid, job, from: best.club, fee, due: addDays(g.date, 1 + r(5)) });
@@ -185,34 +184,17 @@ function fireWeakStaff(g: GameState, cid: number, T: number): void {
   }
 }
 
-/** Respond på "{klub} transfer bid for {navn}": det ventende bud på menneskets stab */
-export function cmStaffBidOpen(g: GameState, n: { key: string; params: Record<string, string | number> }): CmStaffMove | null {
-  if (n.key !== 'cm.stBid') return null;
-  const m = (g.cmStaffMoves ?? []).find((x) => x.h && x.id === Number(n.params.sb));
-  if (!m || g.staff[m.s]?.club !== m.from || m.from !== g.userClub) return null;
-  return m;
-}
-
-/** menneskets svar: ja → personen beslutter sig efter 1–5 dage som ved computerklubberne (0x4cd230, se filhovedet); nej → buddet afvises */
-export function cmStaffBidAnswer(g: GameState, id: number, accept: boolean): 'ok' | 'error' {
-  const m = (g.cmStaffMoves ?? []).find((x) => x.h && x.id === id);
-  if (!m || g.staff[m.s]?.club !== m.from || m.from !== g.userClub) return 'error';
-  if (!accept) { g.cmStaffMoves = g.cmStaffMoves!.filter((x) => x !== m); return 'ok'; }
-  const r = cmRand(g.seed ?? 0, m.s, m.c, dayNum(g.date), 0x4cd230);
-  delete m.h;
-  m.fee = cmStaffCompensation(g, g.staff[m.s]);
-  m.due = addDays(g.date, 1 + r(5));
-  return 'ok';
-}
-
 /** dagligt: buddene, hvis tid er kommet – sælgeren har sagt ja (0x8c8160), personen svarer (se filhovedet), handlen og nyheden (0x8c34e0/0x8dbef0) */
 export function cmStaffMovesDaily(g: GameState): void {
   if (!cmActive(g) || !g.cmStaffMoves?.length) return;
-  // bud hos mennesket: fristen udløbet uden svar → buddet bortfalder; personen er ikke længere i klubben → ligeså
-  g.cmStaffMoves = g.cmStaffMoves.filter((m) => !m.h || (m.due > g.date && g.staff[m.s]?.club === m.from));
-  const due = g.cmStaffMoves.filter((m) => !m.h && m.due <= g.date);
+  // ældre gemte spil: bud, der ventede på menneskets Respond, får personens svar som alle andre (1–5 dage)
+  for (const m of g.cmStaffMoves) if (m.h) {
+    delete m.h; delete m.id;
+    m.due = addDays(g.date, 1 + cmRand(g.seed ?? 0, m.s, m.c, dayNum(g.date), 0x4cd230)(5));
+  }
+  const due = g.cmStaffMoves.filter((m) => m.due <= g.date);
   if (!due.length) return;
-  g.cmStaffMoves = g.cmStaffMoves.filter((m) => m.h || m.due > g.date);
+  g.cmStaffMoves = g.cmStaffMoves.filter((m) => m.due > g.date);
   let env: BoardEnv | null = null;
   for (const m of due) {
     const s = g.staff[m.s], buyer = g.clubs[m.c];

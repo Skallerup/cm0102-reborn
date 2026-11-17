@@ -267,10 +267,15 @@ View Finances (der læser Bonuses fra blokken) viste 0 bonusser, selv om pengene
    in compensation." kun når beløbet er over 0). *Estimeret*: målets mindstekrav (grænsen T), n i budgettet, budtidspunktet (straks i stedet for
    0x84a020's uge), personens svar (viljen 0x844780 for jobbet ≥ 0,75, svar efter 1–5 dage – kontrakttilbuddet 0x4cda70/0x864550 ikke porteret),
    overskriftens variant (id mod 4; originalen (arg0 + arg4·arg15) mod 4), kun klubber i de valgte lande.
-   **Runde 2 (17/11):** (1) bud på menneskets stab: 0x8be300 add_offer giver et menneske som sælger svartiden 0x1c = 28 dage (0x8be884) – nyheden
-   `cm.stBid` "{Club} transfer bid for {Name}" (0xa8f578) med "{Club} have made an offer for {Name}." + "{Club 1} will be due £X in compensation if the
-   deal goes ahead" (0xa8f6ee), Respond → Back/Reject/Accept (`StaffBidPanel` i Inbox.tsx, action `staffBid`); ja → personen svarer efter 1–5 dage og
-   kompensationen går til mennesket; intet svar inden fristen → buddet bortfalder (*estimeret*). (2) Fyringen ved managerskiftet: 0x694c80 sætter
+   **Runde 2 (17/11):** (1) bud på menneskets stab – rettet 17/11 (ejeren: i originalen kan mennesket intet gøre): build_bid 0x8e5d60 giver for
+   en ikke-spillerplads (0x84b6f0 → 0 for stab) personen et kontrakttilbud direkte (0x8e638b–0x8e6444: offer_contract 0x4cda70, buddets +0x2f = 1);
+   add_offer 0x8be300 sætter tilstanden 7 (0x8be857) og ingen svarfrist for en computerkøber (28 dage 0x8be85d kun ved menneskelig KØBER; 0x8be884 er
+   spillerbuddenes gren ved menneskelig sælger). Sælgeren spørges aldrig (0x8c644d's tilstand 0 → 4 nås ikke) – ingen Respond. Mennesket får kun
+   nyheden 0x8d3090 (type 0x3e, 0x8d1130 flag 2) med 0x8d3520's tekst: `cm.stBid` "{Club} transfer bid for {Name}" (0xa8f578), "{Club 1} have
+   offered {Club 2's} {Name} a job as {job}." (0xa91afc) + "{Club} will be due £X in compensation if the deal goes ahead" (0xa8f6ec, kun med
+   beløb). Personen svarer selv (1–5 dage, *estimeret*), try_complete_offer 0x8c34e0 prøver ikke sælgerens vilje, 0x8dbef0 giver "… have
+   appointed …", og 0x8c9390/0x8ca8a0 betaler kompensationen til mennesket. Respond/StaffBidPanel/action `staffBid` fjernet; gamle ventende bud
+   får personens svar. (2) Fyringen ved managerskiftet: 0x694c80 sætter
    trupplanens +4 = 2 (0x694cd2) og kalder 0x84abe0 → 0x83cb40(0, 1); +4 = 2 i en computerklub giver [esp+0x60] = 1 (0x83cc44), og halen fyrer
    indehavere, den nye manager vurderer under T (0x83ee36 → 0x690890) – `BoardEnv.newManagerPlan` → `cmSquadPlanNewManager`; spillets genererede stab
    (uden ikke-spillerpost) vurderes ikke, og menneskets egen ansættelse kører ikke planen (fyrer ikke i originalen). (3) Modtagerne: 0x8d1130's regler

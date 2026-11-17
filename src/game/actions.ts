@@ -1,5 +1,4 @@
 import { cmStaffDelayAnswer } from './cmStaff';
-import { cmStaffBidAnswer } from './cmStaffMove';
 import { cmConfirmAnswer } from './cmTransferTalks';
 import { cmFinePlayer, FINE_REASONS } from './cmFine';
 // Alle ændringer en manager kan lave, som serialiserbare handlinger.
@@ -76,7 +75,6 @@ export type Action =
   /** CM 01/02: knappen "Ultimatum" i bestyrelsens svar (nyheden 0x1786) → 0x6ad610 */
   | { t: 'ultimatum'; news: number }
   | { t: 'staffDelay'; news: number; delay: boolean }
-  | { t: 'staffBid'; id: number; accept: boolean }
   | { t: 'faRequest'; kind: import('./board').FaKind }
   | { t: 'appealBan'; pid: number }
   /** CM 01/02: knappen "Appeal" på karantænenyheden (0x55e620 → 0x55ed00 → 0x6ab800 – cmDiscipline.ts) */
@@ -249,7 +247,6 @@ export function applyAction(a: Action): unknown {
     case 'nationalSquad': return selectNationalSquad(a.pids);
     case 'meetBoard': return meetBoard(a.kind);
     case 'staffDelay': { cmStaffDelayAnswer(g, a.news, a.delay); return 'ok'; }
-    case 'staffBid': return cmStaffBidAnswer(g, a.id, a.accept);
     case 'ultimatum': {
       const n = g.news.find((x) => x.id === a.news);
       const req = n ? cmUltimatumReq(g, n) : null;
