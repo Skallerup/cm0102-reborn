@@ -14,11 +14,11 @@ dem på 2026/2027." Regel (CLAUDE.md): 2001-specifikke **tal** (priser, lønnive
   (`staff[11]`/`[12]`, 10.447 af 10.447), staffX (25.159), ratings med omdømmetripletten (`rep`, fx Javi Guerra [100,145,125]), lønninger
   (99 % udfyldt – mod 11 % i 2001-dataene) og kontraktudløb (74 %).
 - **Byggescriptet sletter dem** for alt andet end 2001 (`scripts/build-cm-data.mts`):
-  - l. 34: `parseCM0102(files, ORIGINAL ? { maxTiers: 4, allClubs: true, cmMem: true } : {})` – uden `cmMem` for 2026;
-  - l. 201: `if (!ORIGINAL) delete w.cmRaw`;
-  - l. 207–210: `staff[11]`–`[16]` (ikke-spillerposten, skjulte egenskaber, landshold, hukommelse) kun `ORIGINAL`;
-  - l. 227/244: `staffX`/`clubNames` kun `ORIGINAL`;
-  - l. 253: nationernes sprog (`lang`) slettes; l. 264: `clubFinance` slettes; l. 257: landsholdene (`nationalTeams`) kun `ORIGINAL`.
+  - l. 68: `parseCM0102(files, ORIGINAL ? { maxTiers: 4, allClubs: true, cmMem: true } : {})` – uden `cmMem` for 2026;
+  - l. 243: `if (!ORIGINAL) delete w.cmRaw`;
+  - l. 249–252: `staff[11]`–`[16]` (ikke-spillerposten, skjulte egenskaber, landshold, hukommelse) kun `ORIGINAL`;
+  - l. 269/286: `staffX`/`clubNames` kun `ORIGINAL`;
+  - l. 295: nationernes sprog (`lang`) slettes; l. 306: `clubFinance` slettes; l. 299: landsholdene (`nationalTeams`) kun `ORIGINAL`.
   - Beskåret til world.jsons 641 klubber/22.673 spillere fylder hele `cmRaw` ≈ 0,48 MB (prefs 0,22 MB) – world.json er 8,2 MB, SW-grænsen
     er 10 MB (vite.config.ts:54). staffX (25k poster) passer ikke uden at blive en separat fil, der hentes ved behov.
 - **Spilstarten springer dem over** for 2026: newgame.ts har ~15 betingelser `season < 2020` (l. 177 g.econ, 179–192 g.cm*-felterne, 220
