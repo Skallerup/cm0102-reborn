@@ -345,7 +345,7 @@ View Finances (der læser Bonuses fra blokken) viste 0 bonusser, selv om pengene
 - Økonomien: kontraktbonusser (mål-/assist-/clean sheet-bonus efter kamp, 0x4ca6d0) og signing on fees skal bogføres i originalens poster (View Finances: Bonuses/Signing On Fees) og trækkes fra saldoen som originalen – tjek mod oraklet (K2: cm-day-lockstep.ts sammenligner de 18 sæsonposter). Ejerens billede 16/11 (images/150.png: Fortune, 1.700DKr Assist Bonus). Delvist gjort 16/11 (K2-agenten: køb/salg/signing-on/bonusser bogføres via bookBlock), mangler kontrol.
 
 ### Åbne fund fra natten 16→17/11 (til næste udviklingsrunde)
-- **KRITISK – konverteren i browseren:** e2e-trinnet "gammelt gemt spil → Convert to original (copy)" bliver aldrig færdigt (`[data-convdone]` kommer ikke inden for 10 min), tre gange i træk – også ved lav belastning (load 1,5). tests/cmConvert.test.ts består i Node. Virkede ved e0ca94a; noget udgivet derefter (sæsonskifte pr. land, landshold del 3, vejret, B-hold, budget, stab …) bryder den i workeren. Kør `E2E_STACK2=1 E2E_ENGINE=original node scripts/e2e.mjs klassisk` og se browserkonsollen.
+- ~~KRITISK – konverteren i browseren~~ – rettet 17/11 (v0.29.0): `cmAskingPrice.ts` lagde `w` på x87-stakken i grenen 0x4d3855 (originalen fjerner den ved 0x4d387e).
 - Kampmotorens mål: 2,52–2,66 pr. kamp mod oraklets 2,75–2,98; faldet opstod mellem runde 9 (2,93–3,04) og d554b5c – ikke motivationen (målt 17/11).
 - Klubber i minus 151 → 418 på 3 sæsoner: mest klubber i ikke-valgte lande med omdømme ≥ 5000 (fuld løn, ingen kamp-/tv-indtægt); brasilianske klubber har tilskuertal 0 i dataene. Sammenlign med oraklet.
 - Spillere med udløbet kontrakt, der står på en klub, vokser 329 → 880 på 3 sæsoner.

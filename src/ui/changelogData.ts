@@ -9,6 +9,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.29.0',
+    date: '2026-11-17',
+    title: { da: 'Rettelser i det originale CM 01/02', en: 'Fixes in the original CM 01/02' },
+    items: [
+      { da: "Rettet: \"Konvertér til originalen (kopi)\" blev aldrig færdig – udbudsprisens beregning efterlod et tal i regneren, til konverteringen (og i sjældne tilfælde ønskelisterne) stoppede. Fejler en konvertering, vises fejlen nu i stedet for at vente forgæves.", en: "Fixed: \"Convert to original (copy)\" never finished – the asking price calculation left a number behind in the calculator until the conversion (and in rare cases the shortlists) stopped. If a conversion fails, the error is now shown instead of waiting forever." },
+    ],
+  },
+  {
     version: '0.28.0',
     date: '2026-11-16',
     title: { da: 'Mere af det originale CM 01/02', en: 'More of the original CM 01/02' },
