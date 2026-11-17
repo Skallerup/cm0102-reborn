@@ -300,7 +300,9 @@ if (w.staff) {
     // [10] = managerens taktiske egenskaber (kun for managere i de viste klubber – computerens taktik i gittermotoren)
     // [11] = hele ikke-spillerposten (kun den originale database: originalens spilstart cmStaffInit.ts)
     // [12] = omdømmerne +8/+0xc og de skjulte egenskaber (kun den originale database: bestyrelse/managerjob cmBoard.ts)
-    if (s[0] && !shown.has(s[0])) { if (s[7] < 100) { dropped.push(s); return []; } s = [0, s[1], s[2], s[3], s[4], 0, s[6], s[7], s[8], s[9], null, s[11], s[12], s[13], s[14], s[15], s[16]]; }
+    // (den originale database har alle klubbers stab i kernen – cm0102.ts: også uden egenskaber og jobkode 12) kun de gamle regler giver ledige:
+    // job 5/6/8/9/10 med egenskaber i databasen; de øvrige går til staffX som før
+    if (s[0] && !shown.has(s[0])) { if (s[7] < 100 || (ORIGINAL && !([5, 6, 8, 9, 10].includes(s[5]) && (s[6] as number[]).some(Boolean)))) { dropped.push(s); return []; } s = [0, s[1], s[2], s[3], s[4], 0, s[6], s[7], s[8], s[9], null, s[11], s[12], s[13], s[14], s[15], s[16]]; }
     const r = out(s); src.set(r, s);
     return [r];
   });
