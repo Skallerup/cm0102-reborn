@@ -294,7 +294,7 @@ if (w.staff) {
     const np = full && s[11] ? [s[11]] : [];
     // [14] = landsholdet +0x24/+0x28 (kun den originale database: viljen 0x844780); [15]/[16] = hukommelsen og klub/job (Staff Search)
     const bx = full && s[11] && s[12] ? [s[12], s[13] ? shift(s[13]) : '', s[14] ?? [-1, 0], ...(s[15] !== undefined ? [s[15], s[16] ?? [-1, 0]] : [])] : [];
-    return [s[0], s[1], s[2], s[3], shift(s[4]), s[5], s[6], s[7], s[8], s[9], ...(s[5] === 5 && s[10] ? [s[10]] : np.length ? [null] : []), ...np, ...bx] as typeof s;
+    return [s[0], s[1], s[2], s[3], shift(s[4]), s[5], s[6], s[7], s[8], s[9], ...((s[5] === 5 || s[5] === 12) && s[10] ? [s[10]] : np.length ? [null] : []), ...np, ...bx] as typeof s;
   };
   w.staff = w.staff.flatMap((s) => {
     // [10] = managerens taktiske egenskaber (kun for managere i de viste klubber – computerens taktik i gittermotoren)

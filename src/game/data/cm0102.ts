@@ -590,7 +590,11 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
       const att = OFS.map((k) => { const v = S.u8(np + k); return v >= 1 && v <= 20 ? v : 0; });
       const here = inGame.has(club);
       // kernen (spillets stab): de gamle regler; resten (opts.cmMem) kommer i staffX, når originalen kan have dem i hukommelsen
-      const core = att.some(Boolean) && (here ? [5, 6, 8, 9, 10].includes(job) : ca >= 100);
+      // den originale database (mem): stab i spillets klubber er med, også uden egenskaber i databasen – originalen udfylder dem ved spilstarten
+      // (sub_535a80 → cmStaffInit.ts) og har personen som klubbens manager (fx Nigel Spackman/Barnsley: 0x68f130 regner bestyrelsens tillid fra
+      // hans omdømme np+0xa, ikke klubbens)
+      // (jobkode 12 = spillende manager: Hessenthaler/Gillingham, Preece/Bury – klubbens manager +0xcf i originalen)
+      const core = here ? ([5, 6, 8, 9, 10].includes(job) && att.some(Boolean)) || (!!mem && [5, 6, 8, 9, 10, 12].includes(job)) : att.some(Boolean) && ca >= 100;
       if (!core && !sMem) continue;
       const nation = nationIdx.get(S.i32(o + 26));
       if (nation === undefined) continue;
