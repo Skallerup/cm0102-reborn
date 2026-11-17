@@ -24,6 +24,7 @@ regler, arkitektur og faldgruber.
 - Node (Mac mini fra 17/11): `export PATH="$HOME/.local/share/node/bin:$PATH"` (Node 24). Før push: `npx tsc --noEmit -p tsconfig.app.json` og de berørte testfiler; CI tager resten.
 - **Kun de berørte tests:** `npx vitest related --run --dir tests <ændrede filer>` (finder testene, der importerer filerne) – aldrig hele pakken lokalt.
   Agenter kører ikke e2e; den kører én gang ved udgivelsen.
+- **Uafbrudt arbejde (ejerens ønske 17/11):** når en agent melder færdig – udgiv den og start straks næste opgave fra køen "Vejen til mål" i docs/ORIGINAL_PARITY.md (og agenternes forslag i ~/cm0102-engine/notes/*-plan.md). Hold 3–5 agenter i gang inden for RAM-reglen; stop kun, hvis ejeren siger stop.
 - **Agenttyper** (`.claude/agents/`): `port` (Opus – exe-kode/motor), `ui` (Sonnet – skærme/tekster/tests), `maaling` (Sonnet – bisect/målinger). De faste regler (RAM, measure.mjs, NOTES.md i worktree'en, ingen polling, rapportformat) står i filerne – gentag dem ikke i opgaven.
 - **Udgivelse af en agents arbejde:** `scripts/ship.sh <worktree-gren|commit> "<da-linje>" "<en-linje>" [--new-game]` – cherry-picker, lægger
   ændringslogslinjen i dagens version (ny version pr. dag), typetjekker, kører de berørte tests + K3/K5/ændringslog, én e2e, committer, pusher og
