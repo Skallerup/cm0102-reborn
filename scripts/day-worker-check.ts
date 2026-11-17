@@ -59,5 +59,15 @@ for (let i = 0; i < days; i++) {
   console.log(`${gs().date} ${Math.round(performance.now() - t)} ms sha1 ${sha()}`);
 }
 console.log(`${days} dage: ${Math.round((performance.now() - tAll) / days)} ms pr. dag`);
+// CM_SL_ASK=check / CM_SL_WILL=check: udbudsprisen 0x4d1600 (cmAskingPrice.ts) / viljen 0x846920 (cmPlayerWill.ts) kontrolleret mod den
+// oversatte ved hvert kald (tsMs/genMs: tiden i porten og i den oversatte)
+if (process.env.CM_SL_ASK) { const { ASK_STATS } = await import('../src/game/cmAskingPrice'); console.log('0x4d1600', ASK_STATS); }
+if (process.env.CM_SL_CALLPROF) {
+  for (const f of ['cmAskingPrice', 'cmPlayerWill']) {
+    const { PROF } = await import(`../src/game/${f}`);
+    console.log(f, [...(PROF as Map<number, number>)].sort((a, b) => b[1] - a[1]).slice(0, 12).map(([a, t]) => `${a.toString(16)} ${Math.round(t)}`).join(', '));
+  }
+}
+if (process.env.CM_SL_WILL) { const { WILL_STATS } = await import('../src/game/cmPlayerWill'); console.log('0x846920', WILL_STATS); }
 if (insp) { const r = (await post('Profiler.stop')) as { profile: unknown }; (await import('node:fs')).writeFileSync(process.env.PROF!, JSON.stringify(r.profile)); }
 if (process.env.DUMP) (await import('node:fs')).writeFileSync(process.env.DUMP, JSON.stringify(gs()));

@@ -40,6 +40,8 @@ import { leagueClash } from './cmBoardInterest';
 import { GEN } from './cmGen/index';
 import { humanClub_600a50 } from './cmWageGame';
 import { contractFlag_5445x0, value_840d80_impl, value_840d80_any, PV_DIRECT } from './cmSlEval';
+import { registerAskingPrice } from './cmAskingPrice';
+import { registerPlayerWill } from './cmPlayerWill';
 import { ensureImpls } from './cmGen/impls';
 import { isHumanClub } from './humans';
 import { ageOn } from './dates';
@@ -1444,6 +1446,10 @@ function ensureCmp(): void {
   if (ENV.CM_SL_849 !== '0') registerImpl(0x849ce0, (c, ecx, a) => findSlot_849ce0(c.m, ecx >>> 0, a[0] >>> 0, a[1] >>> 0, a[2], a[3]));
   // (hastighed, runde 10) 0x840d80 håndporteret (cmSlEval.ts – CM_SL_840TS=0: de oversatte; CM_SL_840CHECK=1: begge, sammenlignet)
   registerImpl(0x840d80, (c, e, a) => value_840d80_impl(c, e, a, enter), true);
+  // (hastighed, runde 17) udbudsprisen 0x4d1600 håndporteret (cmAskingPrice.ts – CM_SL_ASK=0: den oversatte; CM_SL_ASK=check: begge, sammenlignet)
+  registerAskingPrice();
+  // (hastighed, runde 17) spillerens vilje 0x846920 håndporteret (cmPlayerWill.ts – CM_SL_WILL=0: den oversatte; CM_SL_WILL=check: begge)
+  registerPlayerWill();
   registerImpl(0x757ea0, (c, _e, a) => byP(c.m, a[0] >>> 0, a[1] >>> 0));
   registerImpl(0x844740, (c, _e, a) => byC(c.m, a[0] >>> 0, a[1] >>> 0));
 }

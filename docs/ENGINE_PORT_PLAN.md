@@ -448,6 +448,29 @@ Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.m
   **Rækkefølge for næste runde:** 0x4d1600 (største oversatte post, ~9 %, også i cmAskingPrice og 0x8e5d60) med CHECK-tilstand mod den oversatte,
   så 0x846920 (~5 %), så 0x83f3a0's accepterede gren 0x840159–0x840a7e og efterløkken 0x840ab3–0x840d62 i TS, og til sidst posterne som typed arrays
   i stedet for SparseMem (fastReject1/skipRun/assessFast/0x840d80 læser i dag via m.u32 – cmMem.ts er 13 % af dagen).
+- **Hastighed, runde 17 (17/11 – udbudsprisen og viljen i håndskrevet TS; < 1 s pr. dag er IKKE nået):** **0x4d1600 håndporteret og koblet ind**
+  (`src/game/cmAskingPrice.ts`, `CM_SL_ASK=0`: den oversatte, `CM_SL_ASK=check`: begge på samme tilstand med samme tilfældige tal og sammenlignet –
+  svar, &ud, x87-stakken, ebx/esi/edi/ebp/esp og 0x1100 bytes stak; `CM_SL_ASKDUMP=1` sammenligner desuden alle kald i alle dybder: argumenter,
+  stakdybde og callee-saved registre). Porten kører på kalderens delte processortilstand (registreret som delt funktion), skubber de kaldte
+  funktioners argumenter i samme dybde, sætter originalens ebx/esi/edi/ebp ved hvert kald og skriver rammens variable, hvor originalen gør (også
+  0x4d3879's tal, der bliver liggende på x87-stakken); hjælpefunktionerne ligger i modulet (lukninger pr. kald kostede ~1,5 % af dagen under tsx).
+  **Kontrol:** 127.064 kald (Arsenal, spilstart + 3 dage) og 125.739 (Man Utd) med 0 afvigelser, 0 afvigende kald i nogen dybde;
+  `tests/cmAskingPrice.test.ts` (spillets hukommelse, 12 klubber × 0/2 købere × med/uden &ud: pris, ud-felt og 8 KiB stak ens); sha1 af hele
+  spiltilstanden ens alle 30 dage for Man Utd og Arsenal (frø 1, 15/7–13/8) mod d554b5c+de39aa8 (f6dfa98). **Målt** (`/usr/bin/time -l node --import
+  tsx scripts/day-worker-check.ts`, instruktioner(30) − instruktioner(0), maskinen delt med andre sessioner – støjen er ±2 %): Man Utd 40,0 → 39,6 mia.
+  pr. dag (−1 %), Arsenal 41,3 → 39,4 mia. (−5 %); spilstarten 403/389 → 388/388 mia. Pr. kald (check-tilstanden): porten 26 µs mod den oversattes
+  34 µs. **Fund:** 0x4d1600's egen kode var kun en mindre del – tiden ligger i de kaldte (0x4d0c60, 0x5431e0, 0x544520, 0x849ce0, 0x4b02e0,
+  0x6e86d0, 0x8c7560, 0x600a50, 0x418f60 … – målt med `CM_SL_CALLPROF=1`) og i kaldmaskineriet (R.call: argumentlister, `top`, try/finally).
+  **0x846920 håndporteret, men SLÅET FRA** (`src/game/cmPlayerWill.ts`, `CM_SL_WILL=1`/`check`/`CM_SL_WILLDUMP=1`): hvert kalds svar, ud-felt og
+  efterladte stak er som den oversattes (42.953 kald, 0 afvigelser, også med 64 KiB stak), men spillet går en anden vej fra dag 2 (sha1 96dcccf45aa5
+  mod 77aa182cd0ff for Man Utd 16/7): porten sætter ikke eax/ecx/edx som originalen ved de kaldte funktioner og ved retur, og de kaldte bruger dem –
+  `CM_SL_WILLDUMP=1` viser 0x53b620 kaldt (dybde 1) med 0x60b i stedet for 0xb, fordi en kaldt funktion skubber eax; kalderne 0x8408d7/0x843753
+  skubber også eax/edx med de øverste bit fra 0x846920's retur som næste kalds status. ecx ved retur (= 0 fra SEH-posten) er sat. Desuden kun ~10 %
+  hurtigere pr. kald (de kaldte og kaldmaskineriet dominerer). **Næste skridt:** (1) for 0x846920: eax/ecx/edx som originalen ved hvert af de ~60
+  kald og ved hver retur (inkl. ah fra den seneste fnstsw) – eller en skyggemodel af heltalsregistrene; (2) for at få reel fart: de kaldte
+  håndportede funktioner (0x4d0c60, 0x849ce0, 0x544520, 0x6e86d0, 0x4cf5f0, 0x600a50) kaldt direkte med en `top`-hjælper i x86.ts i stedet for
+  R.call, og de oversatte blade (0x5431e0, 0x8c7560, 0x418f60, 0x53ca90, 0x5444a0) i TS – først måle, om de kaldte efterlader registre, deres
+  kaldere bruger.
 - **Formændene** (koblet ind): sub_535a80's personlige egenskaber 0x535ea4– for alle personer – uden for 1..20: −1 → rand(16)+5, ellers to terninger:
   Ambition snittet, Loyalty den mindste (`cmStaffInit.ts personalFill_535a80`, cmFinance.ts' og cmBoardGame.ts' formand). Ønskelønnen
   (`scripts/cm-want-game.ts`): ens 1.142 → 1.148, inden for 2 % 1.470 → 1.483, inden for 10 % 1.852 → 1.848, 10/50/90 % 0,59/1,00/1,42 → 0,60/1,00/1,42.
