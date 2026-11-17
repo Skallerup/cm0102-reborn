@@ -1351,6 +1351,8 @@ export const sv: Record<string, string> = {
   "mp.loading": "Hämtar nytt drag…",
   "mp.lobby": "Lobby",
   "mp.lobbyText": "Du är anmäld! Du kommer med i spelet när nästa drag är spelat. När alla har tryckt på \"Klar\" sätter det igång.",
+  "mp.pendingStatus": "Med från nästa drag",
+  "mp.offline": "offline",
   "mp.isReady": "Klar",
   "mp.notReadyYet": "Inte klar",
   "mp.leaveConfirm": "Lämna spelet? Du kan alltid komma tillbaka via Online multiplayer.",

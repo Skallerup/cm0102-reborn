@@ -8,7 +8,7 @@ import { applyTheme, getTheme, modernOn, setTheme } from './theme';
 import { hasGame, inSetup, notify, previewInfo } from '../game/state';
 import { forgetLast, loadGame } from '../game/save';
 import { getLast } from '../game/last';
-import { openSession, savedRooms, session } from '../online/client';
+import { fetchRoom, forgetRoom, openSession, savedRooms, session } from '../online/client';
 import { Shell } from './Shell';
 import { Start } from './Start';
 import { Landing } from './Landing';
@@ -60,7 +60,10 @@ function AppInner() {
   // delt karriere i Hall of Fame (?hall=ID) og en bestemt fane (?community=1&tab=skins)
   const hallParam = Number(new URLSearchParams(location.search).get('hall')) || undefined;
   const tabParam = (new URLSearchParams(location.search).get('tab') ?? undefined) as HubTab | undefined;
-  const [resuming, setResuming] = useState(() => !new URLSearchParams(location.search).get('room') && !!getLast());
+  // ?room=KODE: er man allerede med i rummet (gemt i denne browser), genoptages det i stedet for at vise tilmeldingen igen
+  // (før blev en genindlæsning til en ny, ekstra manager, som de andre så ventede på)
+  const roomQ = new URLSearchParams(location.search).get('room')?.toUpperCase();
+  const [resuming, setResuming] = useState(() => (roomQ ? savedRooms().some((r) => r.code === roomQ) : !!getLast()));
   // forsiden vises for nye besøgende (ikke ved invitationslinks eller når man har trykket "Spil" i denne fane)
   const [landing, setLanding] = useState(() => {
     try { const q = new URLSearchParams(location.search); return !q.get('room') && !q.get('modern') && sessionStorage.getItem('cm0102.play') !== '1'; } catch { return true; }
@@ -81,7 +84,13 @@ function AppInner() {
     const last = getLast();
     (async () => {
       try {
-        if (last?.kind === 'local') {
+        const mine = roomQ ? savedRooms().find((r) => r.code === roomQ) : undefined;
+        if (mine) {
+          // stadig med i rummet? (fjernet af værten → vis tilmeldingen)
+          const room = await fetchRoom(mine.code).catch(() => null);
+          if (room?.players.some((p) => p.pid === mine.pid)) await openSession(mine);
+          else if (room) forgetRoom(mine.code);
+        } else if (last?.kind === 'local') {
           if (!(await loadGame(last.id))) {
             forgetLast();
             // var det en lokal kopi af et online-spil, så åbn det seneste online-spil i stedet

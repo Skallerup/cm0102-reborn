@@ -4,7 +4,7 @@ import { askConfirm } from './confirm';
 import type { GameState } from '../game/types';
 import { compName, dateFmt, t, natName } from '../i18n';
 import {
-  downloadSnapshot, fetchRoom, forgetRoom, joinOnlineGame, openSession, savedRooms, session, skippedMatches, type RoomInfo,
+  activePlayers, allReady, downloadSnapshot, fetchRoom, forgetRoom, joinOnlineGame, openSession, savedRooms, session, skippedMatches, type RoomInfo, type RoomPlayer,
 } from '../online/client';
 import { Panel } from './components';
 import { gs, hasGame, setGame } from '../game/state';
@@ -144,8 +144,8 @@ function blinkTitle(on: boolean) {
 /** Klassisk: "Simulating next turn …" som originalens fremdriftsbjælke i foden (som Continue Game) – teksten, mens alle er klar og trækket simuleres */
 export function onlineSimLabel(): string | null {
   const s = session();
-  if (!s?.room || s.room.players.length === 1) return null;
-  if (s.status === 'error' || !(s.status === 'processing' || !!s.room.processing || s.room.players.every((p) => p.ready))) return null;
+  if (!s?.room || activePlayers(s.room).length <= 1) return null;
+  if (s.status === 'error' || !(s.status === 'processing' || !!s.room.processing || allReady(s.room))) return null;
   const host = s.room.players.find((p) => p.pid === s.room!.host);
   return s.status === 'processing' ? t('mp.simYou') : s.room.processing ? t('mp.simOther', { name: host?.name ?? '' }) : t('mp.simWaitHost', { name: host?.name ?? '' });
 }
@@ -159,19 +159,22 @@ export function OnlineControls({ cx }: { cx?: boolean }) {
   const { nav, route } = useNav();
   const unread = hasGame() ? gs().news.filter((n) => !n.read).length : 0;
   // (beregnes før det tidlige return, så hooket altid kaldes)
-  const waitingForMe = !!s?.room && s.room.players.length > 1 && !s.me?.ready && s.room.players.every((p) => p.ready || p.pid === s.creds.pid);
+  const waitingForMe = !!s?.room && s.inGame && !s.me?.pending && activePlayers(s.room).length > 1 && !s.me?.ready && activePlayers(s.room).every((p) => p.ready || p.pid === s.creds.pid);
   useEffect(() => {
     blinkTitle(waitingForMe);
     if (waitingForMe) notifyUser(t('mp.othersWaitingShort'), t('mp.allWaitingBanner'), 'turn');
     return () => blinkTitle(false);
   }, [waitingForMe]);
   if (!s || !s.room) return null;
+  // tilmeldt, men endnu ikke med i spillet: intet at trykke Klar til (trækket venter ikke på os)
+  if (!s.inGame) return <span data-testid="online-note" className={cx ? 'cx-online-note' : 'muted nowrap'}>{t('mp.pendingStatus')}</span>;
   const me = s.me;
+  const active = activePlayers(s.room);
   // alene i rummet (evt. med AI-managere): knappen fungerer som Fortsæt
-  const solo = s.room.players.length === 1;
-  const waiting = s.room.players.filter((p) => !p.ready).map((p) => (p.pid === s.creds.pid ? t('mp.you') : p.name));
+  const solo = active.length <= 1;
+  const waiting = active.filter((p) => !p.ready).map((p) => (p.pid === s.creds.pid ? t('mp.you') : p.name));
   // alle de andre er klar – nu venter de kun på mig
-  const othersWaiting = !solo && !me?.ready && s.room.players.every((p) => p.ready || p.pid === s.creds.pid);
+  const othersWaiting = !solo && !me?.ready && active.every((p) => p.ready || p.pid === s.creds.pid);
   // min kamp i dag, som endnu ikke er spillet (ikke når en anden menneskelig manager har hjemmekampen)
   const myMatch = (() => {
     if (!hasGame() || !s.inGame) return 0;
@@ -193,9 +196,9 @@ export function OnlineControls({ cx }: { cx?: boolean }) {
       })()}
       {!me && s.inGame && <span className="bad nowrap">{t('mp.youWereRemoved')}</span>}
       {othersWaiting && !onMyMatch && !cx && <div className="waiting-banner" role="alert">⏳ {t('mp.allWaitingBanner')}</div>}
-      {!cx && !solo && !simHidden && s.status !== 'error' && (s.status === 'processing' || !!s.room.processing || s.room.players.every((p) => p.ready)) && <SimOverlay onHide={() => setSimHidden(true)} />}
+      {!cx && !solo && !simHidden && s.status !== 'error' && (s.status === 'processing' || !!s.room.processing || allReady(s.room)) && <SimOverlay onHide={() => setSimHidden(true)} />}
       {!onMyMatch && <>{(() => {
-        const others = s.room.players.filter((p) => !p.ready && p.pid !== s.creds.pid).map((p) => p.name);
+        const others = active.filter((p) => !p.ready && p.pid !== s.creds.pid).map((p) => p.name);
         // klassisk: originalens "Waiting for other players..." (exe'ens streng) når man selv er klar, ellers hvem de andre venter på
         const note = othersWaiting ? t('mp.othersWaitingShort') : s.status === 'processing' ? t('mp.processing') : s.room.processing ? t('mp.otherProcessing') : solo ? '' : cx ? (me?.ready ? t('mp.cxWaitOthers') : others.length ? t('mp.waitingFor', { names: others.join(', ') }) : '') : waiting.length ? t('mp.waitingFor', { names: waiting.join(', ') }) : t('mp.allReady');
         return <span data-testid="online-note" className={cx ? 'cx-online-note' : othersWaiting ? 'waiting-me nowrap' : 'muted nowrap'}>{note}</span>;
@@ -237,7 +240,7 @@ function SimOverlay({ onHide }: { onHide: () => void }) {
         {next && opp && g && <div className="sim-next">{t('mp.simUntil', { date: dateFmt(next.date), opp: opp.name })}</div>}
         <div className="sim-bar"><span /></div>
         <div className="sim-players">
-          {s.room.players.map((p) => <span key={p.pid} className="tag good">✓ {p.name}{g?.clubs[p.club] ? ` · ${g.clubs[p.club].short}` : ''}</span>)}
+          {activePlayers(s.room).map((p) => <span key={p.pid} className="tag good">✓ {p.name}{g?.clubs[p.club] ? ` · ${g.clubs[p.club].short}` : ''}</span>)}
         </div>
         <button className="small" onClick={onHide}>{t('mp.simHide')}</button>
       </div>
@@ -274,6 +277,10 @@ export function ClassicInvite({ code, link, onClose }: { code: string; link: str
   );
 }
 
+function statusText(p: RoomPlayer): string {
+  return p.pending ? t('mp.pendingStatus') : p.ready ? t('mp.isReady') : t('mp.cxStatusWait');
+}
+
 /** Managerne i fællesspillet som originalens grå tabel (Manager · Club · Status) */
 function ClassicPlayers({ kick, busy }: { kick?: (pid: string, name: string) => void; busy?: boolean }) {
   const s = session();
@@ -285,9 +292,9 @@ function ClassicPlayers({ kick, busy }: { kick?: (pid: string, name: string) => 
       <tbody>
         {s.room.players.map((p) => (
           <tr key={p.pid} className={p.pid === s.creds.pid ? 'me' : ''}>
-            <td>{p.name}{p.pid === s.room!.host ? ` (${t('mp.host')})` : ''}</td>
+            <td>{p.name}{p.pid === s.room!.host ? ` (${t('mp.host')})` : ''}{p.online === false ? ` (${t('mp.offline')})` : ''}</td>
             <td>{clubs[p.club]?.short ?? ''}</td>
-            <td className={p.ready ? 'ok' : ''}>{p.ready ? t('mp.isReady') : t('mp.cxStatusWait')}</td>
+            <td className={p.ready && !p.pending ? 'ok' : ''}>{statusText(p)}</td>
             {kick && <td>{p.pid !== s.room!.host && <button className="cx-greybtn" disabled={busy} onClick={() => kick(p.pid, p.name)}>{t('mp.kick')}</button>}</td>}
           </tr>
         ))}
@@ -342,7 +349,7 @@ export function OnlinePlayers() {
           <tr key={p.pid} className={p.pid === s.creds.pid ? 'me' : ''}>
             <td>{p.name}</td>
             <td>{clubs[p.club]?.short ?? p.club}</td>
-            <td>{p.ready ? <span className="tag good">{t('mp.isReady')}</span> : <span className="tag warn">{t('mp.notReadyYet')}</span>}</td>
+            <td>{p.pending ? <span className="tag">{t('mp.pendingStatus')}</span> : p.ready ? <span className="tag good">{t('mp.isReady')}</span> : <span className="tag warn">{t('mp.notReadyYet')}</span>}</td>
           </tr>
         ))}
       </tbody>

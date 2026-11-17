@@ -35,13 +35,30 @@ export interface RoomInfo {
   settings: { nations?: number[]; seed?: number; masking?: boolean; deadlineHours?: number; mode?: 'draft'; draft?: DraftSettings };
   processing: string | null;
   lastTurn: string;
-  players: { pid: string; name: string; club: number; ready: boolean; joined: string; auto?: boolean }[];
+  /** pending: tilmeldt, men først med i spillet efter næste træk (blokerer ikke trækket); online: har rummet åbent */
+  players: RoomPlayer[];
   chat?: RoomChat[];
   /** Draft-liga: fase, rækkefølge, hold og valg */
   draft?: DraftRoomInfo;
   /** Hvem er med i voice-chatten */
   voice?: string[];
 }
+
+export interface RoomPlayer { pid: string; name: string; club: number; ready: boolean; joined: string; auto?: boolean; pending?: boolean; online?: boolean }
+
+/** Managerne, der er med i spillet – kun de skal trykke Klar (nye spillere kommer med i næste træk) */
+export function activePlayers(room: RoomInfo): RoomPlayer[] {
+  return room.players.filter((p) => !p.pending);
+}
+
+/** Er alle managere i spillet klar, så trækket kan simuleres? */
+export function allReady(room: RoomInfo): boolean {
+  const act = activePlayers(room);
+  return act.length > 0 && act.every((p) => p.ready);
+}
+
+/** Handlinger, der ikke ændrer noget for de andre – de gør ikke manageren "ikke klar" (som serveren) */
+const NEUTRAL = new Set<string>(['read', 'chatRead']);
 
 export interface DraftRoomInfo {
   phase: 'lobby' | 'summary' | 'keepers' | 'draft' | 'done' | 'playing';
@@ -109,8 +126,8 @@ async function post<T>(op: string, body: Record<string, unknown>): Promise<T> {
   return data as T;
 }
 
-export async function fetchRoom(code: string): Promise<RoomInfo> {
-  const r = await fetch(`${API}?code=${encodeURIComponent(code.toUpperCase())}`, { cache: 'no-store' });
+export async function fetchRoom(code: string, pid?: string): Promise<RoomInfo> {
+  const r = await fetch(`${API}?code=${encodeURIComponent(code.toUpperCase())}${pid ? `&pid=${encodeURIComponent(pid)}` : ''}`, { cache: 'no-store' });
   const data = await r.json();
   if (!r.ok) throw new Error(data.error ?? `http ${r.status}`);
   return data as RoomInfo;
@@ -124,6 +141,11 @@ export async function downloadSnapshot(url: string): Promise<{ blob: Blob; state
 }
 
 async function uploadSnapshot(c: Credentials, version: number, blob: Blob): Promise<string> {
+  // e2e:mp (kun DEV): øjebliksbilledet gemmes af testserverens falske Blob i stedet for Vercel Blob
+  if (import.meta.env.DEV && import.meta.env.VITE_MP_FAKE_BLOB) {
+    const r = await fetch(`/__mpblob/put?path=${encodeURIComponent(`rooms/${c.code}/v${version}-${Date.now()}.json.gz`)}`, { method: 'POST', body: blob });
+    return ((await r.json()) as { url: string }).url;
+  }
   const res = await upload(`rooms/${c.code}/v${version}.json.gz`, blob, {
     access: 'public',
     handleUploadUrl: `${API}?op=upload`,
@@ -210,6 +232,8 @@ export class OnlineSession {
   // ----- handlinger -----
 
   private enqueue(a: Action) {
+    // endnu ikke med i spillet (lobbyen): der er intet at ændre – og handlingen ville ellers ramme en andens manager lokalt
+    if (!this.inGame) return;
     // samlede taktikændringer: kun den sidste behøver at blive sendt
     if (a.t === 'tactic') this.outbox = this.outbox.filter((x) => x.t !== 'tactic');
     this.outbox.push(a);
@@ -224,7 +248,7 @@ export class OnlineSession {
     try {
       const { last } = await post<{ last: number }>('actions', { ...this.creds, actions: batch });
       batch.forEach((a, i) => this.sent.push([last - batch.length + i + 1, a]));
-      if (this.room) {
+      if (this.room && batch.some((a) => !NEUTRAL.has(a.t))) {
         const me = this.room.players.find((p) => p.pid === this.creds.pid);
         if (me) me.ready = false;
       }
@@ -465,24 +489,33 @@ export class OnlineSession {
     if (ready) await this.maybeProcess();
   }
 
+  private refreshing = false;
   async refresh(force: boolean) {
-    if (this.busy) return;
+    // én opdatering ad gangen (en ny version på 4-5 MB kan tage længere end pollintervallet – før blev den hentet flere gange samtidig)
+    if (this.busy || this.refreshing) return;
+    this.refreshing = true;
     this.lastRefresh = Date.now();
     try {
       const t0 = Date.now();
-      const room = await fetchRoom(this.creds.code);
+      const room = await fetchRoom(this.creds.code, this.creds.pid);
       if (room.draft) this.clockSkew = room.draft.now - (t0 + Date.now()) / 2;
+      // processen kan have committet en nyere version, mens vi hentede
+      if (this.busy || room.version < this.version) return;
       this.room = room;
       if (room.version > this.version || (force && room.snapshot)) {
         await this.loadVersion(room);
       }
+      if (this.error && !this.busy) this.error = '';
       this.emit();
-      if (this.draftLive()) { await this.draftDuty(); return; }
-      await this.maybeProcess();
     } catch (e) {
       this.error = String((e as Error).message);
       this.emit();
+      return;
+    } finally {
+      this.refreshing = false;
     }
+    if (this.draftLive()) { await this.draftDuty(); return; }
+    await this.maybeProcess();
   }
 
   private async loadVersion(room: RoomInfo) {
@@ -519,22 +552,31 @@ export class OnlineSession {
     if (room.draft && room.draft.phase !== 'playing') return;
     // fristen er udløbet: gør de manglende klar (deres assistent tager over i trækket)
     const dl = this.deadline();
-    if (dl && Date.now() >= dl && room.players.some((p) => !p.ready)) {
+    if (dl && Date.now() >= dl && activePlayers(room).some((p) => !p.ready)) {
       try { this.room = await post<RoomInfo>('autoready', { ...this.creds }); this.emit(); } catch { return; }
     }
-    if (!room.players.length || !room.players.every((p) => p.ready)) return;
-    if (room.version !== this.version) return;
+    const cur = this.room ?? room;
+    if (!allReady(cur)) return;
+    if (cur.version !== this.version || !this.pristine) return;
+    // kun managere i spillet kan simulere (en gæst i lobbyen har ikke sin klub i øjebliksbilledet endnu)
+    if (!this.inGame || this.me?.pending) return;
     // Værten simulerer trækket. De andre tager kun over, hvis værten ikke er online (efter 45 sek.),
     // og så i fast rækkefølge, så ikke alle forsøger samtidig
-    const order = room.players.map((p) => p.pid).filter((pid) => pid !== room.host).sort();
-    const delay = this.isHost ? 0 : 45_000 + Math.max(0, order.indexOf(this.creds.pid)) * 4000;
+    const order = activePlayers(cur).map((p) => p.pid).filter((pid) => pid !== cur.host).sort();
+    const hostOnline = cur.players.find((p) => p.pid === cur.host)?.online;
+    const delay = this.isHost ? 0 : (hostOnline === false ? 8_000 : 45_000) + Math.max(0, order.indexOf(this.creds.pid)) * 4000;
     if (delay) {
-      await new Promise((r) => setTimeout(r, delay));
-      try { this.room = await fetchRoom(this.creds.code); } catch { return; }
-      if (this.room.processing || this.room.version !== this.version || !this.room.players.every((p) => p.ready)) return;
+      if (this.takeoverWait) return; // der venter allerede en overtagelse
+      this.takeoverWait = true;
+      try {
+        await new Promise((r) => setTimeout(r, delay));
+        try { this.room = await fetchRoom(this.creds.code, this.creds.pid); } catch { return; }
+        if (this.room.processing || this.room.version !== this.version || !allReady(this.room)) return;
+      } finally { this.takeoverWait = false; }
     }
     await this.process();
   }
+  private takeoverWait = false;
 
   /** Tag låsen og simulér næste træk */
   private async process() {
@@ -566,7 +608,7 @@ export class OnlineSession {
       state.rng = rng.state;
       const blob = await serializeState(state);
       const url = await uploadSnapshot(this.creds, this.version + 1, blob);
-      this.room = await post<RoomInfo>('commit', { ...this.creds, version: this.version + 1, url, lastApplied: last, date: state.date });
+      this.room = await post<RoomInfo>('commit', { ...this.creds, version: this.version + 1, url, lastApplied: last, date: state.date, humans: (state.humans ?? []).filter((h) => !h.bot).map((h) => h.pid) });
       locked = false;
       // draft-liga: sæsonen er slut – næste draft begynder (sidst placerede vælger først)
       if (state.draft?.seasonOver) {
@@ -638,7 +680,7 @@ export async function createOnlineGame(world: WorldData, o: NewGameOptions, bots
   state.lastActionIdx = 0;
   const blob = await serializeState(state);
   const url = await uploadSnapshot(creds, 1, blob);
-  await post('commit', { ...creds, version: 1, url, lastApplied: 0, date: state.date });
+  await post('commit', { ...creds, version: 1, url, lastApplied: 0, date: state.date, humans: [creds.pid] });
   return openSession(creds);
 }
 

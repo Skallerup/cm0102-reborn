@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { askConfirm } from './confirm';
 import { t } from '../i18n';
-import { session } from '../online/client';
+import { activePlayers, session } from '../online/client';
 import { Panel } from './components';
 import { gs, hasGame } from '../game/state';
 
@@ -18,7 +18,8 @@ export function MultiplayerPanel() {
   const room = s.room;
   const link = `${location.origin}${location.pathname}?room=${s.creds.code}`;
   const clubs = hasGame() ? gs().clubs : {};
-  const notReady = room.players.filter((p) => !p.ready);
+  // kun managere i spillet kan mangle at trykke Klar (nye spillere kommer med ved næste træk)
+  const notReady = activePlayers(room).filter((p) => !p.ready);
   const host = s.isHost && room.players.length > 1;
   const run = async (f: () => Promise<void>) => { setBusy(true); setErr(''); try { await f(); } catch (e) { setErr(String((e as Error).message)); } setBusy(false); };
   return (
@@ -38,9 +39,9 @@ export function MultiplayerPanel() {
           <tbody>
             {room.players.map((p) => (
               <tr key={p.pid} className={p.pid === s.creds.pid ? 'me' : ''}>
-                <td>{p.name}{p.pid === room.host ? ` (${t('mp.host')})` : ''}</td>
+                <td>{p.name}{p.pid === room.host ? ` (${t('mp.host')})` : ''}{p.online === false ? <span className="muted"> ({t('mp.offline')})</span> : null}</td>
                 <td>{clubs[p.club]?.short ?? ''}</td>
-                <td>{p.ready ? <span className="tag good">{t('mp.isReady')}</span> : <span className="tag warn">{t('mp.notReadyYet')}</span>}</td>
+                <td>{p.pending ? <span className="tag">{t('mp.pendingStatus')}</span> : p.ready ? <span className="tag good">{t('mp.isReady')}</span> : <span className="tag warn">{t('mp.notReadyYet')}</span>}</td>
                 {host && <td>{p.pid !== room.host && <button className="small danger" disabled={busy} onClick={async () => { if (await askConfirm(t('mp.kickConfirm', { name: p.name }))) void run(() => s.kick(p.pid)); }}>{t('mp.kick')}</button>}</td>}
               </tr>
             ))}

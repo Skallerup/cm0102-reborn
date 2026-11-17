@@ -1351,6 +1351,8 @@ export const nb: Record<string, string> = {
   "mp.loading": "Henter nytt trekk…",
   "mp.lobby": "Lobby",
   "mp.lobbyText": "Du er påmeldt! Du kommer med i spillet når neste trekk er spilt. Når alle har trykket \"Klar\", settes det i gang.",
+  "mp.pendingStatus": "Med fra neste trekk",
+  "mp.offline": "frakoblet",
   "mp.isReady": "Klar",
   "mp.notReadyYet": "Ikke klar",
   "mp.leaveConfirm": "Forlate spillet? Du kan alltid komme tilbake via Online multiplayer.",
