@@ -4,7 +4,7 @@
 // præcis samme spil (sha1 pr. dag). Uden Worker (Node/test), i fællesspil online og nyt spil-forløbet, eller hvis arbejderen fejler: i hovedtråden
 // (spillet er urørt, til arbejderen er færdig – en fejl midt i kørslen starter forfra her).
 import { runUntil, type DayResult } from '../game/sim';
-import { gs, hasGame, inSetup, setGame, indexSnapshot, restoreIndexes } from '../game/state';
+import { gs, hasGame, inSetup, setGame, indexSnapshot, restoreIndexes, packCarry } from '../game/state';
 import { cmShortlistOn } from '../game/cmShortlistGame';
 import { getLang } from '../i18n';
 import { rng } from '../game/rng';
@@ -76,8 +76,10 @@ function inWorker(opts: Opts): Promise<DayResult> {
     const t1 = performance.now();
     // tilfældighedernes tilstand med (hovedtrådens notify gør det samme)
     gs().rng = rng.state;
+    // modulernes tilstand (carry.ts) med – arbejderen fortsætter præcis som hovedtråden (og sender sin tilbage)
+    packCarry(gs());
     const msg: DayIn = { type: 'run', game: gs(), idx: indexSnapshot(), opts: rest as RunOpts, env: { engine, lang: getLang() } };
-    w.postMessage(msg);
+    try { w.postMessage(msg); } finally { delete gs().cmCarry; }
     STATS.sendMs = Math.round(performance.now() - t1);
   });
 }

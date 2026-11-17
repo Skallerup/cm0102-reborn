@@ -169,7 +169,7 @@ export async function listSaves(): Promise<SaveMeta[]> {
 }
 
 /** Trøjenumre i gemte spil fra før Squad Numbers (og efter et evt. hentet sæt fra databasen) */
-function ensureAllNumbers() {
+export function ensureAllNumbers() {
   const g = gs();
   for (const c of Object.values(g.clubs)) ensureNumbers(c.id);
 }
@@ -196,16 +196,23 @@ export function forceMultiplayerAuthentic(g: GameState) {
   if (g.humans?.length && !modernEnabledHere() && legacyExtended(g)) { g.options.mode = 'authentic'; g.options.rules = 'classic'; }
 }
 
+/** spillet er startet med den nuværende kode til den originale database (newgame.ts CM_SAVE_VER – indført 17/11, efter alle engangsrettelserne
+ *  nedenfor): rettelserne hører til ældre gemte spil og må ikke røre det (ellers spiller et gemt og indlæst spil ikke videre som det samme spil:
+ *  cashRound rundede værdierne, reserveSplit og injuryWave ændrede trupperne, og Conference League kom ind i 2001/02) */
+const currentSave = (g: GameState) => (g.cmSaveVer ?? 0) >= 1;
+
 export function upgradeLoaded() {
   repairCupNames();
-  repairInjuryWave();
-  roundValuesOnce();
-  splitReservesOnce();
   const g = gs();
+  if (!currentSave(g)) {
+    repairInjuryWave();
+    roundValuesOnce();
+    splitReservesOnce();
+  }
   // gamle gemte spil i udvidet tilstand åbnes, som de blev gemt (moderne udseende + udvidet) – tilstanden ændres ikke (setGame → setSavedModern)
   // fællesspil er altid det originale (classic + ægte tilstand) – alle klienter stiller samme spil om ens
   forceMultiplayerAuthentic(g);
-  if (addMissingConference()) {
+  if (!currentSave(g) && addMissingConference()) {
     const club = g.clubs[g.userClub];
     if (club && g.comps.UECL?.clubs.includes(club.id)) addNews({ cat: 'general', key: 'news.ueclQualified', params: { club: club.name } });
     notify();

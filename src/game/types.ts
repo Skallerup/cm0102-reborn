@@ -1297,6 +1297,8 @@ export interface GameState {
   id: string; // save-id
   seed: number;
   rng: number;
+  /** modulernes tilstand uden for GameState (carry.ts) – kun i et gemt/kopieret spil; setGame lægger den tilbage og fjerner feltet */
+  cmCarry?: Record<string, unknown>;
   date: string;
   season: number; // startår for sæsonen
   lang: Lang;

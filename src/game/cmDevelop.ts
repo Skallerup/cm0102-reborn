@@ -360,7 +360,7 @@ function clubOf(g: GameState, cid: number, byClub: Map<number, Staff[]>): DevClu
 /** hvad udviklingen læser fra konditionsmodulet (cmFitnessGame.ts sætter det – undgår en cirkulær import) */
 export interface DevCtx { fatigue: (p: Player) => number; injuryW2c: (p: Player) => number | null }
 let dctx: DevCtx | null = null;
-export function setDevCtx(c: DevCtx): void { dctx = c; }
+export function setDevCtx(c: DevCtx | null): void { dctx = c; }
 
 /** spillere uden de interne (regens, opfyldte spillere, ældre gemte spil): de interne skønnes af de viste (sub_544380's omvendte – *estimeret*) */
 export function ensureCmInt(p: Player): void {

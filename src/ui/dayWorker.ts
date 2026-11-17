@@ -5,7 +5,7 @@
 import { runUntil } from '../game/sim';
 import '../game/actions';
 import '../game/newgame';
-import { gs, notify, setGame, indexSnapshot, restoreIndexes, type IndexSnapshot } from '../game/state';
+import { gs, notify, setGame, indexSnapshot, restoreIndexes, packCarry, type IndexSnapshot } from '../game/state';
 import { ENGINE_DEV } from '../game/sim';
 import { SL_PROGRESS } from '../game/cmShortlistGame';
 import { ensureLang, setLang } from '../i18n';
@@ -45,6 +45,7 @@ self.onmessage = async (e: MessageEvent<DayIn>) => {
     SL_PROGRESS.cb = undefined;
     // tilfældighedernes tilstand gemmes i spillet (som hovedtrådens notify)
     notify();
+    packCarry(gs());
     post({ type: 'done', result, game: gs(), idx: indexSnapshot() });
   } catch (err) {
     post({ type: 'error', message: err instanceof Error ? `${err.message}\n${err.stack ?? ''}` : String(err) });

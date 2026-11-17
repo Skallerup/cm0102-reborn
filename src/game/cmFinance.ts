@@ -20,6 +20,7 @@
 // Pengene: originalen regner i hele pund; spillet gemmer euro (Club.balance, newgame.ts GBP = 0,86). Posterne regnes i pund som i
 // originalen og bogføres i rec.tm/ty (pund) og Club.balance/Club.finance (euro = pund / 0,86). Saldoen i pund = round(balance · 0,86).
 // Talrækken er spillets egen (cmRand pr. klub og dag) – originalens kald af 0x90cfc0 i samme rækkefølge pr. klub.
+import { NO_CARRY, registerCarry } from './carry';
 import type { Club, Fixture, GameState, Player, Staff } from './types';
 import { cmActive, cmLogic, cmRand, clubRepMem } from './cmPlayerData';
 import { cmWeekday } from './cmCalendar';
@@ -715,6 +716,8 @@ export function cmLeagueTv(g: GameState, compId: string, clubs: number[]): void 
 }
 /** club +0x5b (sidste sæsons division): klubbens liga lige før sæsonskiftet (cmBeforeRollover) */
 let lastDiv = new Map<number, number>();
+// carry.ts: club +0x5b er spiltilstand – følger med en kopi/et gemt spil (og lækker ikke til næste spil)
+registerCarry('cmFinance.lastDiv', () => (lastDiv.size ? [...lastDiv] : NO_CARRY), (v: [number, number][]) => { lastDiv = new Map(v); }, () => { lastDiv = new Map(); });
 export function cmBeforeRollover(g: GameState, inScope: (cid: number) => boolean = () => true): void {
   // (16/11) sæsonskiftet pr. land (cmSeason.ts): kun skiftets klubber – de andre landes klubber har stadig sidste sæsons division
   for (const c of Object.values(g.clubs)) if (inScope(c.id)) lastDiv.set(c.id, /^CM(\d+)$/.test(c.league) ? +c.league.slice(2) : -1);

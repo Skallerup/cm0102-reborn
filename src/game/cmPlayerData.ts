@@ -320,6 +320,8 @@ export function cmFlagSet(c: CmContract, flag: number): void {
 /** 0x867700's forholdsdel (cmRelations.ts registrerer den – ingen cirkulær import) */
 let relFlagHook: ((g: GameState, p: Player, flag: number, b44: number, rand: (n: number) => number) => void) | null = null;
 export const setRelFlagHook = (h: typeof relFlagHook) => { relFlagHook = h; };
+/** (tests/helpers/gameCache.ts – nøglen) er krogen sat */
+export const relFlagHookSet = (): boolean => !!relFlagHook;
 let flagCtx: { g: GameState; p: Player; rand: (n: number) => number; depth: number } | null = null;
 /** kør fn med en spiller i sammenhængen, så 0x867700's transferønske kan følge et flag */
 export function withFlagCtx<T>(g: GameState, p: Player, rand: (n: number) => number, fn: () => T): T {

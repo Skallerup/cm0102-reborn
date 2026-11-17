@@ -16,13 +16,13 @@ import { serialize, deserialize } from 'node:v8';
 import zlib from 'node:zlib';
 import type { NewGameOptions, WorldData } from '../../src/game/newgame';
 import type { GameState } from '../../src/game/types';
-import { gs, setGame, indexSnapshot, restoreIndexes, type IndexSnapshot, signHooks } from '../../src/game/state';
+import { gs, setGame, indexSnapshot, restoreIndexes, packCarry, type IndexSnapshot, signHooks } from '../../src/game/state';
 import { rng } from '../../src/game/rng';
 import { compHooks, natCompHook, intlHooks, finHooks } from '../../src/game/hooks';
 import { removeHooks } from '../../src/game/humans';
 import { interestHook } from '../../src/game/cmBoardGame';
 import { afterPlanHooks } from '../../src/game/cmSquadPlanGame';
-import { postHooks } from '../../src/game/cmPlayerData';
+import { postHooks, relFlagHookSet } from '../../src/game/cmPlayerData';
 import { getGridFactory } from '../../src/game/engine/liveSim';
 import { GRID_UNKNOWN } from '../../src/game/engine/grid/gridMatch';
 import { LEAGUE_RULES } from '../../src/game/leagues';
@@ -61,6 +61,7 @@ function contextKey(): string {
   return JSON.stringify({
     hooks: [filled(compHooks), filled(natCompHook), filled(intlHooks), filled(finHooks), filled(signHooks), filled(removeHooks), filled(interestHook),
       filled(postHooks), afterPlanHooks.map((f) => sha(String(f)).slice(0, 12)).join(',')],
+    relFlag: relFlagHookSet(),
     lang: getLang(),
     grid: gf ? sha(String(gf)) : null,
     unknown: GRID_UNKNOWN,
@@ -110,7 +111,9 @@ export function cachedCreateGame(create: (w: WorldData, o: NewGameOptions) => Ga
   const g = create(world, o);
   GAME_CACHE_STATS.misses++;
   try {
-    const out = zlib.zstdCompressSync(serialize({ game: g, idx: indexSnapshot(), rng: rng.state } satisfies Entry), { params: { [zlib.constants.ZSTD_c_compressionLevel]: 3 } });
+    packCarry(g);   // modulernes tilstand (src/game/carry.ts) – setGame lægger den tilbage
+    let out: Buffer;
+    try { out = zlib.zstdCompressSync(serialize({ game: g, idx: indexSnapshot(), rng: rng.state } satisfies Entry), { params: { [zlib.constants.ZSTD_c_compressionLevel]: 3 } }); } finally { delete g.cmCarry; }
     fs.mkdirSync(DIR, { recursive: true });
     const tmp = `${file}.${process.pid}.tmp`;
     fs.writeFileSync(tmp, out);

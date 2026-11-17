@@ -1,9 +1,10 @@
 // Langtidstest af motoren: spil N sæsoner og tjek, at verden hænger sammen efter hver sæson.
 // Kør: npx tsx scripts/soak.ts [sæsoner] [world-fil] [klubnavn]   (MODE=authentic = ægte CM 01/02, ENGINE=original = gittermotoren,
-//      NATIONS=Norway,Sweden = flere spilbare lande end England)
+//      NATIONS=Norway,Sweden = flere spilbare lande end England; --snap = spilstarten fra scripts/lib/snapshot.ts – samme forløb bit for bit)
 // Skriver en rapport med fejl (✗) og advarsler (⚠) – exit 1, hvis der er fejl.
 import { readFileSync } from 'node:fs';
 import { createGame, type WorldData } from '../src/game/newgame';
+import { loadOrCreate } from './lib/snapshot';
 import { continueGame, quickPlayUserMatch } from '../src/game/sim';
 import { applyAction } from '../src/game/actions';
 import { gs, squad } from '../src/game/state';
@@ -12,13 +13,18 @@ import { naturalRole } from '../src/game/attributes';
 import { en } from '../src/i18n/en';
 import { da } from '../src/i18n/da';
 
-const seasons = Number(process.argv[2] ?? 5);
-const file = process.argv[3] ?? 'public/data/world.json';
-const clubName = process.argv[4];
+const snap = process.argv.includes('--snap');
+const argv = process.argv.filter((a) => a !== '--snap');
+const seasons = Number(argv[2] ?? 5);
+const file = argv[3] ?? 'public/data/world.json';
+const clubName = argv[4];
 const world = JSON.parse(readFileSync(file, 'utf8')) as WorldData;
 const eng = world.nations.findIndex((x) => x.name === 'England');
 const user = (clubName && world.clubs.find((c) => c[1] === clubName)?.[0]) || world.clubs.find((c) => c[3] === eng)![0];
-createGame(world, { managerName: 'Soak', managerNation: eng, clubId: user, activeNations: [eng, ...(process.env.NATIONS ?? '').split(',').filter(Boolean).map((nm) => world.nations.findIndex((x) => x.name === nm)).filter((i) => i >= 0 && i !== eng)], lang: 'en', masking: true, seed: 11, mode: process.env.MODE === 'authentic' ? 'authentic' : 'extended' });
+const nationNames = (process.env.NATIONS ?? '').split(',').filter(Boolean);
+const soakMode = process.env.MODE === 'authentic' ? 'authentic' : 'extended';
+if (snap) loadOrCreate({ world, worldFile: file, club: user, seed: 11, managerName: 'Soak', nations: nationNames, mode: soakMode, engine: process.env.ENGINE === 'original' ? 'original' : undefined });
+else createGame(world, { managerName: 'Soak', managerNation: eng, clubId: user, activeNations: [eng, ...nationNames.map((nm) => world.nations.findIndex((x) => x.name === nm)).filter((i) => i >= 0 && i !== eng)], lang: 'en', masking: true, seed: 11, mode: soakMode });
 const g = gs();
 if (process.env.ENGINE === 'original') g.options.engine = 'original';   // gittermotoren (kræver MODE=authentic og den originale database)
 const errors: string[] = [], warns: string[] = [];

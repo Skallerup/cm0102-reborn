@@ -22,6 +22,7 @@ import { cmPermitMove } from './cmPermit';
 import { cmActive, cmMediaOn, cmStaffStateMove } from './cmPlayerData';
 import { offInOriginal } from './newsFilter';
 import { legacyExtended } from './rules';
+import { captureCarry, registerCarry, restoreCarry } from './carry';
 
 /**
  * Admin-preview: en spillers gemte spil åbnet til fejlsøgning (Admin → Saves / New careers). Intet gemmes, og intet
@@ -37,9 +38,15 @@ export function setPreview(p: { label: string; theme?: string; setup?: boolean }
 export const inSetup = () => !!preview?.setup;
 export function setSetupGame(g: GameState) { setGame(g); preview = { label: 'setup', setup: true }; notify(); }
 
-export function setGame(g: GameState | null) {
+/** LEAGUE_RULES som modulet definerer dem – et spils customRules lægges oven på (og forrige spils fjernes) */
+const BASE_RULES = { ...LEAGUE_RULES };
+
+/** `keepCarry`: modulernes tilstand (carry.ts) røres ikke, selvom spillet er et nyt objekt (konverteringen bygger videre på createGame's tilstand) */
+export function setGame(g: GameState | null, opts?: { keepCarry?: boolean }) {
   preview = null;
-  // ligaregler fra en importeret database (CM 01/02) skal kendes, før spillet simuleres
+  const other = !!g && g !== G;
+  // ligaregler fra en importeret database (CM 01/02) skal kendes, før spillet simuleres – forrige spils regler følger ikke med
+  if (other && !opts?.keepCarry) { for (const k of Object.keys(LEAGUE_RULES)) if (!(k in BASE_RULES)) delete LEAGUE_RULES[k]; Object.assign(LEAGUE_RULES, BASE_RULES); }
   if (g?.customRules) Object.assign(LEAGUE_RULES, g.customRules);
   G = g;
   // et gammelt udvidet spil åbnes, som det blev gemt – men aldrig fællesspil (de er altid klassiske/ægte, ejeren 16/11)
@@ -49,7 +56,14 @@ export function setGame(g: GameState | null) {
   setModern26(g?.m26);
   if (g) rng.state = g.rng;
   rebuildIndexes();
+  // modulernes tilstand: den gemte (kopi/gem af et spil i gang) eller en ny proces' (nyt spil, gamle gemte spil) – carry.ts
+  if (g?.cmCarry) { const c = g.cmCarry; delete g.cmCarry; restoreCarry(c); }
+  else if (other && !opts?.keepCarry) restoreCarry(undefined);
   notify();
+}
+/** modulernes tilstand lagt i spillet (til en kopi, der skal fortsætte præcis som dette spil: gem, Web Worker) – kun det aktive spil */
+export function packCarry(g: GameState): void {
+  if (g === G) g.cmCarry = captureCarry();
 }
 
 export function notify() {
@@ -95,6 +109,8 @@ export function restoreIndexes(s: IndexSnapshot) {
   squadIndex = new Map(s.sq);
   fixturesByDate = new Map(s.fx);
 }
+// indeksernes rækkefølge følger med en kopi (rebuildIndexes i setGame giver id-rækkefølgen, ikke forløbets); reset = den genbyggede
+registerCarry('state.idx', () => indexSnapshot(), (v: IndexSnapshot) => restoreIndexes(v), () => {});
 
 export function indexFixture(id: number, date: string) {
   let arr = fixturesByDate.get(date);

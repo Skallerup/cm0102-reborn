@@ -40,8 +40,8 @@ regler, arkitektur og faldgruber.
   udgivelsesloggen på én gang – brug den før grep-rundture. Flere ord = alle skal matche.
 - **Orakelkørsler:** `npx tsx scripts/oracle-catalog.ts [ord|--json]` – katalog `~/cm0102-engine/oracle/CATALOG.md` (frø, datoer, målinger, størrelse
   pr. kørsel/udtræk); slå op dér før en ny orakelkørsel (≈4 min + 200 MB–1 GB).
-- **Snapshots (IKKE klar):** `scripts/lib/snapshot.ts` + `scripts/snap-check.ts` gemmer GameState, men en kørsel fra snapshot er IKKE bit-identisk med
-  fra bunden (modulhukommelse uden for GameState: staleSev, lastDiv, WeakMap-caches …) – brug ikke til målinger; ingen `--snap` i soak/grid-season.
+- **Snapshots:** `scripts/lib/snapshot.ts` (`--snap[=dato]` i soak.ts/grid-season.ts) er bit for bit som fra bunden. Modultilstand, der lever fra dag
+  til dag uden for GameState, SKAL registreres i `src/game/carry.ts` (følger med gem, Web Workers og kopier) – kontrol `scripts/snap-verify.ts`, `tests/snapCarry.test.ts`.
 - `npm run e2e` (scripts/e2e.mjs) klikker igennem klassisk og moderne udseende i Chromium: alle hovedskærme, taktik
   (byt, flyt pladser, instruktioner, skift udseende) og en hel kamp. Kører også i CI. Nye skærme/knapper: udvid testen.
 - Ejeren spiller originalen lokalt ("CM 01-02 Bosman Edition.app"). Claude kan selv tage billeder af vinduet med

@@ -249,7 +249,7 @@ export function convertOriginal(old: GameState, fresh: GameState, world: CMWorld
   }
 
   // originalens systemer bygges på spillets dato (som createGame efter klubber, spillere og stab)
-  setGame(g);
+  setGame(g, { keepCarry: true });   // bygger videre på createGame's modultilstand (carry.ts)
   cmBoardInit(g, world.cmRaw?.chairBoard, world.cmRaw?.nationBoard);
   const club = g.clubs[g.userClub];
   g.board = { confidence: 65, expectation: 'mid', expectedPos: 10, warnings: 0 };

@@ -3,7 +3,7 @@
 // (samme form som et gemt spil – Start.tsx lægger den ind med setGame).
 // Samme arbejder konverterer gamle gemte spil (game/cmConvert.ts): en frisk spilstart med samme database/klub/frø, og så konverteringen.
 import { createGame, setNewGameProgress, type NewGameOptions, type WorldData } from '../game/newgame';
-import { gs } from '../game/state';
+import { gs, packCarry } from '../game/state';
 import { convertOriginal, restartInOriginal, type ConvertReport } from '../game/cmConvert';
 import type { CMWorld } from '../game/data/cm0102';
 import type { GameState } from '../game/types';
@@ -25,6 +25,8 @@ self.onmessage = (e: MessageEvent<NewGameJob>) => {
       report = cv.kind === 'convert' ? convertOriginal(cv.old, fresh, e.data.world as CMWorld) : restartInOriginal(cv.old, fresh, e.data.world as CMWorld, !!cv.picked);
     }
     post({ type: 'progress', step: 'done', frac: 1 });
+    // modulernes tilstand (carry.ts) og indeksernes rækkefølge med – hovedtråden fortsætter præcis som spillet bygget her
+    packCarry(gs());
     post({ type: 'done', game: gs(), report });
   } catch (err) {
     post({ type: 'error', message: err instanceof Error ? `${err.message}\n${err.stack ?? ''}` : String(err) });

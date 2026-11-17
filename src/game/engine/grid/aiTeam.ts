@@ -15,6 +15,7 @@
 // *estimeret* (findes ikke uden for originalen): ikke-spillerpostens adresse mod 20 (anføreren) = id mod 20. Uden for den originale database:
 // kondition = Player.condition, ingen træthed/skade.
 
+import { NO_CARRY, registerCarry } from '../../carry';
 import type { Player, Staff } from '../../types';
 import { ATTRS } from '../../attributes';
 import { ageOn } from '../../dates';
@@ -359,6 +360,8 @@ export function aiPickCtx(clubId: number, aiControlled = false): AiPickCtx | nul
 /** klubbens senest valgte taktik i listen (0x8967d0, pick_team og omrokeringen 0x6e1aa0) til 0x896290 efter kampen */
 const chosenTactic = new Map<number, number>();
 export function setChosenTactic(clubId: number | undefined, index: number): void { if (clubId !== undefined) chosenTactic.set(clubId, index); }
+// carry.ts: udtagelser uden et efterfølgende 0x896290 bliver liggende (som i originalen) – følger med en kopi/et gemt spil
+registerCarry('aiTeam.chosenTactic', () => (chosenTactic.size ? [...chosenTactic] : NO_CARRY), (v: [number, number][]) => { chosenTactic.clear(); for (const [k, x] of v) chosenTactic.set(k, x); }, () => chosenTactic.clear());
 /** Tactics::record_tactic_result 0x896290 (kaldt ved 0x6ba9a0 efter kampen): begge holds taktik får resultatet – springes helt over, når et
  *  menneske styrer et af holdene (0x600a50). Kun kampe, gittermotoren spillede (dér er taktikken fra listen); zonemotorens kampe har ingen. */
 export function recordAiTactics(home: number, away: number, hg: number, ag: number, human: (club: number) => boolean): void {

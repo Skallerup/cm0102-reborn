@@ -1,11 +1,12 @@
 // Konditionsmodulet (cmFitness.ts – originalens injury.cpp) koblet til spillet: spilstarten, dagen, kampene og aflæsningerne.
 // Kun den originale database i ægte tilstand (cmActive); ellers gør intet her noget, og spillets egen model (sim.ts) gælder.
 
+import { registerCarry } from './carry';
 import type { Fixture, GameState, MatchReport, Player } from './types';
 import { cmActive, cmBodyOn, cmLogic, cmStaffStateInit, setCmPlayerCtx } from './cmPlayerData';
 import {
   applyMatchEffects, clearKnocks, clubSeason, condition, currentInjury, dayNum, fatigue, fitIso, fitRand, hasSeasonRow, initRecords, initSquadFitness, injuryDaily, injuryStatus,
-  newFit, recordKnock, recoverFatigue, setKnockHook, syncPlayer, trainingLoad, updateFitness, type CmInjury, type FitCtx, type MatchEntry,
+  HURT, newFit, recordKnock, recoverFatigue, setKnockHook, syncPlayer, trainingLoad, updateFitness, type CmInjury, type FitCtx, type MatchEntry,
 } from './cmFitness';
 import { addNews, gs, hasGame, pickNumber, rebuildIndexes, squad } from './state';
 import { asOwner, isHumanClub } from './humans';
@@ -104,7 +105,9 @@ function injuryNews(g: GameState, kind: 'injury' | 'recovered', p: Player, inj: 
 
 /** konditionsmodulets aflæsninger til kontraktens opdatering 0x4cb250 (cmPlayerData.ts): 0x62c400 og sæsontabellen for klubbens land
  *  (0x669340 → 0xb63d60 +0x2a/+0x39: i dag efter starten og før slutningen – tabellens år følger clubSeason, *estimeret*) */
+function unlinkPlayerCtx(): void { linked = false; setTrainCtx(null); setDevCtx(null); setCmPlayerCtx({}); }
 function linkPlayerCtx(g0: GameState): void {
+  linked = true;
   // spillet læses ved kaldet, ikke ved koblingen: newDay's landskampe (intlDaily) kører før dagens cmFitDay og brugte ellers gårsdagens
   // GameState-objekt – efter en indlæsning (eller dagens Web Worker, ui/dayRunner.ts) et andet objekt end det aktuelle
   const cur = () => (hasGame() ? gs() : g0);
@@ -270,6 +273,12 @@ export function cmFitSync(g: GameState, ps: Player[]): void {
 /** kamptrupperne (de 11 + bænken) pr. klub – sat før kampen (sim.ts prepareMatch og computerens udtagelse aiTeam.ts) */
 const matchSquads = new Map<number, number[]>();
 export function setMatchSquad(club: number, ids: number[]): void { matchSquads.set(club, ids); }
+// carry.ts: kamptrupperne (landskampe sletter dem ikke) og om kontekstkrogene er koblet (linkPlayerCtx – ellers først ved dagens cmFitDay,
+// efter at newDay's første trin har kørt uden dem) følger med en kopi/et gemt spil
+let linked = false;
+registerCarry('cmFitnessGame', () => ({ sq: [...matchSquads], linked }),
+  (v: { sq: [number, number[]][]; linked: boolean }) => { matchSquads.clear(); for (const [k, x] of v.sq) matchSquads.set(k, x); if (v.linked) linkPlayerCtx(gs()); else unlinkPlayerCtx(); },
+  () => { matchSquads.clear(); unlinkPlayerCtx(); });
 
 /** efter kampen (sim.ts applyMatchResult): 0x62c080 for begge hold – kampkonditionen, trætheden og skaderne af kampens knocks.
  *  Zonemotorens kampe har ingen knockliste: en skadet spiller får en knock med gittermotorens kategori/sværhed (*estimeret*). */
@@ -287,7 +296,7 @@ export function cmFitMatch(g: GameState, rep: MatchReport, competitive: boolean,
   if (rep.engine !== 'original') {
     for (const line of rep.players) if (line.injured) {
       let sev = c.rand(c.rand(102)); if (sev > 50 && c.rand(3) !== 0) sev = c.rand(c.rand(76));
-      recordKnock(line.id, 1 + c.rand(9), sev, () => true);
+      recordKnock(line.id, 1 + c.rand(9), sev, HURT);
     }
   }
   const entries: MatchEntry[] = [];

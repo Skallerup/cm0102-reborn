@@ -1,9 +1,7 @@
-// !!! IKKE BIT-IDENTISK MED EN KØRSEL FRA BUNDEN (målt 17/11, scripts/snap-check.ts) – brug det ikke til tal, der skal sammenlignes med
-// !!! kørsler fra bunden. Selve GameState (inkl. rng) gemmes og indlæses eksakt (fingeraftryk ens ved D1), men motoren har modulhukommelse
-// !!! uden for GameState (fx cmFitness.staleSev, cmFinance.lastDiv, cmSlMem/cmValue-hukommelser, WeakMap-caches pr. g, kroge fra cmFitNewGame),
-// !!! og allerede den første spildag efter indlæsningen giver andre skader/trætheder. En snapshot-kørsel er deterministisk (to kørsler
-// !!! er ens), men en anden "verden" end fra bunden. Kræver, at motormodulerne gøres snapshot-bevidste (src/), før det kan bruges til målinger.
-// Gemte spiltilstande som startpunkt for målinger (spar newgame + "spil frem til datoen").
+// Gemte spiltilstande som startpunkt for målinger (spar newgame + "spil frem til datoen"). Bit for bit som en kørsel fra bunden: GameState,
+// indeksernes rækkefølge og modulernes tilstand (src/game/carry.ts, cmCarry) følger med – bevist med scripts/snap-verify.ts (kopi midt i
+// forløbet = uafbrudt, også i en ny proces) og scripts/snap-chain.ts (en hel sæson i stykker á 14 dage, hvert i en ny proces = uafbrudt).
+// Brug: `--snap[=dato]` i scripts/soak.ts og scripts/grid-season.ts.
 //   const g = loadOrCreate({ world, worldFile, club: 'Wrexham', date: '2001-09-01', seed: 1, mode: 'authentic', engine: 'original' });
 // Tilstanden gemmes (node:v8 structured clone = Map/Set/NaN/-0/undefined præcis som i hukommelsen, ikke spillets 2-decimalers saveformat)
 // i ~/.cache/cm-measure/snap/<nøgle>.v8.gz sammen med indeksernes rækkefølge (state.indexSnapshot) og RNG-tilstanden.
@@ -18,9 +16,8 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { createGame, type WorldData } from '../../src/game/newgame';
 import { continueGame, quickPlayUserMatch } from '../../src/game/sim';
-import { gs, indexSnapshot, restoreIndexes, setGame, type IndexSnapshot } from '../../src/game/state';
+import { gs, indexSnapshot, packCarry, restoreIndexes, setGame, type IndexSnapshot } from '../../src/game/state';
 import { rng } from '../../src/game/rng';
-import { cmFitPreMatch } from '../../src/game/cmFitnessGame';
 import type { GameState } from '../../src/game/types';
 
 const ROOT = join(import.meta.dirname, '..', '..');
@@ -40,6 +37,8 @@ export interface SnapOpts {
   engine?: 'original';
   /** ekstra aktive lande end England */
   nations?: string[];
+  /** managerens navn (standard 'Lab') */
+  managerName?: string;
   /** navn på fremspolingen (indgår i nøglen) – skift det, hvis du giver din egen `advance` */
   advanceTag?: string;
   /** egen fremspoling til datoen (standard: continueGame + quickPlayUserMatch, som grid-season.ts) */
@@ -84,7 +83,7 @@ function resolveClub(o: SnapOpts): number {
 }
 
 function baseKey(o: SnapOpts) {
-  return sha(String(FORMAT), codeHash(), worldHash(o), String(resolveClub(o)), String(o.seed ?? 1), o.mode ?? '-', o.engine ?? '-', (o.nations ?? []).join(','));
+  return sha(String(FORMAT), codeHash(), worldHash(o), String(resolveClub(o)), String(o.seed ?? 1), o.mode ?? '-', o.engine ?? '-', (o.nations ?? []).join(','), o.managerName ?? 'Lab');
 }
 const dateKey = (o: SnapOpts, date: string) => sha(baseKey(o), date, o.advanceTag ?? 'default');
 const fileOf = (key: string) => join(SNAP_DIR, `${key}.v8.gz`);
@@ -94,7 +93,8 @@ function save(key: string, g: GameState) {
   g.rng = rng.state;
   mkdirSync(SNAP_DIR, { recursive: true });
   const tmp = fileOf(key) + `.tmp${process.pid}`;
-  writeFileSync(tmp, gzipSync(serialize({ g, idx: indexSnapshot() } satisfies Snap), { level: 1 }));
+  packCarry(g);   // modulernes tilstand (src/game/carry.ts) – setGame lægger den tilbage
+  try { writeFileSync(tmp, gzipSync(serialize({ g, idx: indexSnapshot() } satisfies Snap), { level: 1 })); } finally { delete g.cmCarry; }
   renameSync(tmp, fileOf(key));
 }
 function load(key: string): GameState | null {
@@ -102,16 +102,11 @@ function load(key: string): GameState | null {
   if (!existsSync(f)) return null;
   try {
     const s = deserialize(gunzipSync(readFileSync(f))) as Snap;
-    setGame(s.g);            // rng.state, økonomi, indekser (genbygget …)
-    restoreIndexes(s.idx);   // … og så de gemte indeksrækkefølger, som dagens kørsel havde dem
-    prime(s.g);
+    setGame(s.g);            // rng.state, økonomi, indekser og modulernes tilstand (cmCarry)
+    restoreIndexes(s.idx);
     return s.g;
   } catch { return null; }
 }
-
-/** Modulhukommelse, som createGame efterlader uden for GameState (kroge/kontekster, der ellers først kobles af dagens cmFitDay – efter at
- *  den første dags landskampe allerede er kørt). cmFitPreMatch(g, []) kobler dem uden at røre tilstanden. */
-function prime(g: GameState) { cmFitPreMatch(g, []); }
 
 /** standardfremspoling: som scripts/grid-season.ts */
 export function defaultAdvance(g: GameState, until: string) {
@@ -126,7 +121,7 @@ export function loadOrCreate(o: SnapOpts): GameState {
   const eng = o.world.nations.findIndex((x) => x.name === 'England');
   const create = () => {
     const nat = [eng, ...(o.nations ?? []).map((nm) => o.world.nations.findIndex((x) => x.name === nm)).filter((i) => i >= 0 && i !== eng)];
-    createGame(o.world, { managerName: 'Lab', managerNation: eng, clubId: resolveClub(o), activeNations: nat, lang: 'en', masking: true, seed: o.seed ?? 1, mode: o.mode ?? 'extended' });
+    createGame(o.world, { managerName: o.managerName ?? 'Lab', managerNation: eng, clubId: resolveClub(o), activeNations: nat, lang: 'en', masking: true, seed: o.seed ?? 1, mode: o.mode ?? 'extended' });
     const g = gs();
     if (o.engine) g.options.engine = o.engine;
     return g;

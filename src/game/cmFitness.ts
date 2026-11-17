@@ -18,6 +18,7 @@
 import type { Club, GameState, Player, Staff } from './types';
 import { ATTRS } from './attributes';
 import { ageOn, addDays } from './dates';
+import { registerCarry } from './carry';
 import { cmBodyOn, cmRand, STAFF_STATE_OFF } from './cmPlayerData';
 import { staffIntrinsic, staffShown } from './engine/grid/roleScore';
 import { npShown } from './cmStaffInit';
@@ -346,9 +347,12 @@ export function recordKnock(id: number, cat: number, sev: number, hurt: () => bo
   return [n.cat, n.sev];
 }
 export function clearKnocks(): void { knocks.clear(); }
+/** knockens `hurt` for gittermotorens knocks (aldrig båret ud) og zonemotorens skadede (cmFitnessGame.ts cmFitMatch) */
+export const NOT_HURT = (): boolean => false;
+export const HURT = (): boolean => true;
 /** gittermotorens knock (0x6d0980 → 0x62be00): kategorien > −1 registreres (kun i ægte tilstand med den originale database) */
 (globalThis as { cmKnockHook?: (q: { src: Player; b1c: number }, kind: number, sev: number) => void }).cmKnockHook = (q, kind, sev) => {
-  if (s8(kind) > -1 && cmHookOn) recordKnock(q.src.id, kind, sev, () => false);
+  if (s8(kind) > -1 && cmHookOn) recordKnock(q.src.id, kind, sev, NOT_HURT);
 };
 let cmHookOn = false;
 /** slås til af sim.ts, når konditionsmodulet er aktivt (ellers registreres intet – den moderne database rører listen aldrig) */
@@ -364,6 +368,14 @@ export interface MatchEntry {
   /** resultat +0x1f: båret ud skadet */ hurt: boolean;
 }
 let staleSev = -1;                                                                // [esp+0x14] i 0x62c080: ikke sat før første knock (sic)
+// carry.ts: kampens knocks (mellem en kamp og dagens 0x62b7b0), krogen og den gamle sværhed følger med en kopi/et gemt spil
+registerCarry('cmFitness', () => ({ ks: [...knocks].map(([id, n]): [number, number, number, number] => [id, n.cat, n.sev, n.hurt === HURT ? 1 : 0]), cmHookOn, staleSev }),
+  (v: { ks: [number, number, number, number][]; cmHookOn: boolean; staleSev: number }) => {
+    knocks.clear();
+    for (const [id, cat, sev, h] of v.ks) knocks.set(id, { cat, sev, hurt: h ? HURT : NOT_HURT });
+    cmHookOn = v.cmHookOn; staleSev = v.staleSev;
+  },
+  () => { knocks.clear(); cmHookOn = false; staleSev = -1; });
 /** Injury::apply_match_effects 0x62c080 for alle 20 i kamptrupperne. `competitive` = fixture +0x40 (0 for venskabskampe: halv træthed). */
 export function applyMatchEffects(c: FitCtx, entries: MatchEntry[], competitive: boolean, fixture: number): void {
   const start = dayNum(c.g.cmFitStart ?? c.g.date);

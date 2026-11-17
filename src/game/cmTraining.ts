@@ -274,7 +274,7 @@ export function clubCoachValues(g: GameState, cid: number, areas?: (s: Staff) =>
 /** hvad 0x8b1750 får fra resten af spillet (cmFitnessGame.ts sætter skadestatus 0x62c400; humans = menneskets klubber) */
 export interface TrainCtx { injured: (p: Player) => boolean; human: (club: number) => boolean; rand: (p: Player, salt: number) => (n: number) => number }
 let tctx: TrainCtx | null = null;
-export function setTrainCtx(c: TrainCtx): void { tctx = c; }
+export function setTrainCtx(c: TrainCtx | null): void { tctx = c; }
 
 export function cmTrainOn(g: GameState, p: Player): boolean {
   // fyldspillerne (cmVirtual.ts) har ingen TRAINING_MANAGER-post – de laves på ny til hver kamp (*estimeret*)
