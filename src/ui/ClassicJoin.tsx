@@ -10,7 +10,8 @@ import { DraftJoin } from './Draft';
 import { setTheme, getTheme, setStartSkin } from './theme';
 import { compAbbr } from './classic';
 import { DEMONYM } from './demonyms';
-import { Frame, type Prog, type Step } from './ClassicStart';
+import { Frame, REGION_CODE, REGION_ORDER, type Prog, type Step } from './ClassicStart';
+import { regionOfNation } from './classicOptions';
 
 const adjective = (name: string) => (getLang() === 'en' ? DEMONYM[name] ?? name : natName(name));
 
@@ -30,6 +31,7 @@ export function ClassicJoin({ code, onBack, onHome, setBusy }: { code: string; o
   const [first, setFirst] = useState('');
   const [second, setSecond] = useState('');
   const [nat, setNat] = useState(-1);
+  const [region, setRegion] = useState('all');
   const [club, setClub] = useState(0);
 
   useEffect(() => {
@@ -59,14 +61,18 @@ export function ClassicJoin({ code, onBack, onHome, setBusy }: { code: string; o
       id: c.id, short: c.short, name: c.name, nation: c.nation, code: state.nations[c.nation]?.code ?? '',
       div: l.nation === eng && l.tier >= 1 && l.tier <= 4 ? ['PL', 'D1', 'D2', 'D3'][l.tier - 1] : compAbbr(compName(l.name)),
     }))).sort((a, b) => a.short.localeCompare(b.short));
-    const natIds = new Set<number>([...clubs.map((c) => c.nation), ...leagues.map((l) => l.nation)]);
-    const nations = [...natIds].filter((i) => state.nations[i]).map((i) => ({ i, label: adjective(state.nations[i].name), code: state.nations[i].code })).sort((a, b) => a.label.localeCompare(b.label));
+    // nationaliteten er managerens egen (alle lande som i nyt spil) – den filtrerer ikke klubberne, som altid er rummets
+    const natIds = new Set<number>([...Object.values(state.clubs).map((c) => c.nation), ...Object.values(state.comps).filter((c) => c.type === 'league').map((l) => l.nation)]);
+    const nations = [...natIds].filter((i) => state.nations[i]).map((i) => {
+      const key = regionOfNation(state.nations[i].name);
+      return { i, label: adjective(state.nations[i].name), region: REGION_CODE[key], regionKey: key };
+    }).sort((a, b) => a.label.localeCompare(b.label));
     return { clubs, nations };
   }, [state]);
 
   const sel = prep?.clubs.find((c) => c.id === club);
   const managerName = `${first.trim()} ${second.trim()}`.trim();
-  const common = { step, version: code, prog, hist: { back: hist.i > 0, fwd: hist.i < hist.stack.length - 1 }, onHist, onRestart: onBack, onExit: onHome };
+  const common = { step, version: state ? (state.econ ? '2001/02' : '2026/27') : `${t('mp.join')} ${code}`, prog, hist: { back: hist.i > 0, fwd: hist.i < hist.stack.length - 1 }, onHist, onRestart: onBack, onExit: onHome };
   const errText = err && (t(`mp.err.${err}`) !== `mp.err.${err}` ? t(`mp.err.${err}`) : err);
   const note = errText && <div className="cxs-err" role="alert">{errText}</div>;
 
@@ -87,10 +93,16 @@ export function ClassicJoin({ code, onBack, onHome, setBusy }: { code: string; o
   if (step === 'nation') {
     return (
       <Frame {...common} title={t('cxs.title')} sub={t('cxs.selectNat')} onBack={back} onNext={() => go('team')} nextDisabled={nat < 0}>
+        <div className="cxs-filter">
+          <select aria-label={t('cxs.filter')} value={region} onChange={(e) => setRegion(e.target.value)} data-filter>
+            <option value="all">{t('cxs.filter')}</option>
+            {REGION_ORDER.map((r) => <option key={r} value={r}>{REGION_CODE[r]} – {t(`cl.region.${r}`)}</option>)}
+          </select>
+        </div>
         <div className="cxs-list nations">
-          {prep.nations.map((n) => (
+          {prep.nations.filter((n) => region === 'all' || n.regionKey === region).map((n) => (
             <div key={n.i} className={`cxs-it ${nat === n.i ? 'sel' : ''}`} role="button" tabIndex={0} data-nat={n.label} onClick={() => setNat(n.i)} onDoubleClick={() => { setNat(n.i); go('team'); }}>
-              <span className="n">{n.label}</span><span className="code">{n.code}</span>
+              <span className="n">{n.label}</span><span className="code">{n.region}</span>
             </div>
           ))}
         </div>

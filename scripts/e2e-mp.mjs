@@ -177,7 +177,10 @@ try {
     await p.page.locator('[data-name=first]').fill(first, { timeout: 60_000 });
     await p.page.locator('[data-name=second]').fill(second);
     await p.page.locator('.cx-next').click();
-    await p.page.locator('[data-cxs=nation] [data-nat]').first().click({ timeout: 60_000 });
+    // nationaliteten er managerens egen (alle lande) og må ikke filtrere klubberne
+    await p.page.waitForSelector('[data-cxs=nation] [data-nat]', { timeout: 60_000 });
+    if ((await p.page.locator('[data-cxs=nation] [data-nat]').count()) < 5) throw new Error('Select Nationality viser ikke alle lande');
+    await p.page.locator('[data-cxs=nation] [data-nat]').filter({ hasText: /^(English|Engelsk)/ }).first().click();
     await p.page.locator('.cx-next').click();
     await p.page.locator(`[data-cxs=team] [data-club="${clubName}"]`).click({ timeout: 20_000 });
     await p.page.waitForSelector('[data-cxs=confirm]', { timeout: 10_000 });

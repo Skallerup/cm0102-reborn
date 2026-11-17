@@ -71,8 +71,8 @@ const BG: Record<Step, string> = {
   restore: '349416', delete: '349416', convpick: '349416', convdone: '349416', settings: '324855', opts: '324855', extras: '324855', account: '324855',
 };
 
-const REGION_CODE: Record<UiRegion, string> = { europe: 'EUR', southAmerica: 'SAM', northAmerica: 'NAM', asia: 'ASI', oceania: 'OCE', africa: 'AFR' };
-const REGION_ORDER: UiRegion[] = ['europe', 'southAmerica', 'northAmerica', 'asia', 'oceania', 'africa'];
+export const REGION_CODE: Record<UiRegion, string> = { europe: 'EUR', southAmerica: 'SAM', northAmerica: 'NAM', asia: 'ASI', oceania: 'OCE', africa: 'AFR' };
+export const REGION_ORDER: UiRegion[] = ['europe', 'southAmerica', 'northAmerica', 'asia', 'oceania', 'africa'];
 
 interface ClubRow { id: number; short: string; name: string; nation: number; code: string; league: string; div: string }
 interface NatRow { i: number; label: string; region: string; regionKey: UiRegion }
