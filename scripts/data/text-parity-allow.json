@@ -1134,6 +1134,10 @@
     {
       "key": "cl.neg.refused",
       "reason": "set på originalens skærm (images/129.png) – \"has rejected your contract offer.\""
+    },
+    {
+      "key": "cl.tag.Wnt",
+      "reason": "set på originalens skærm (images/123.png: Tottenhams trup, Wnt-mærket) – tre tegn, under strengudtrækkets mindstelængde"
     }
   ],
   "patterns": [
