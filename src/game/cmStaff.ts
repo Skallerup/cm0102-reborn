@@ -232,20 +232,16 @@ export function cmStaffInf(g: GameState, s: Staff): 'Inj' | 'Wnt' | null {
 
 // ---------------------------------------------------------------- kontrakttilbuddet (Approach To Sign → Set Role → Offer Contract)
 
-/** "X has no interest in negotiating terms for this position." (0x4e118d, strengen 0x9b0450). Interessen selv er ikke porteret:
- *  *estimeret* = jobbet skal være et, han kan få (0x4cb990), og en ansat skifter kun til en klub med højere omdømme, eller hvis det
- *  nye job er en forfremmelse (spejder/træner → assistent). */
+/** "X has no interest in negotiating terms for this position." (0x9b0450): originalens afgørelse i Offer Contract 0x4e06e0 – kravet og viljen
+ *  0x85fc50/0x844780 mod bestyrelsens loft 0x597db0 (cmContractGame.ts cmStaffOfferCheck). Jobbet skal være et, han kan tilbydes (0x4cb990 –
+ *  Set Role At Club viser kun dem). */
 export function cmStaffInterestedIn(g: GameState, s: Staff, role: StaffRole): boolean {
   if (!cmRolesFor(s, g.date).includes(role)) return false;
-  const mine = g.clubs[g.userClub];
-  if (!mine) return false;
-  const from = s.club || (s.cmExtra ? s.cmClub ?? 0 : 0);
-  if (!from) return true;
-  const theirs = g.clubs[from];
-  if (!theirs) return true;
-  const promo = role === 'assistant' && (s.role === 'coach' || s.role === 'scout');
-  return mine.rep > theirs.rep + 3 || (promo && mine.rep >= theirs.rep - 5);
+  return offerCheck?.(g, s, g.userClub, JOB_CODE[role])?.interested ?? false;
 }
+/** cmContractGame.ts registrerer cmStaffOfferCheck (en direkte import gav en importcyklus scouting → cmStaff → cmContractGame → transfers) */
+let offerCheck: ((g: GameState, s: Staff, clubId: number, job: number) => { interested: boolean } | null) | null = null;
+export function registerStaffOfferCheck(f: typeof offerCheck): void { offerCheck = f; }
 
 /** lønkravet *estimeret* (som spillets staffDemand: lønnen, +10 % for at forlade en klub). En person uden løn i spillet (databasens ekstra
  *  personer og ledige, cmExtra – løn 0) kræver jobbets løn efter spillets stabsformel (data/generate.ts makeStaff: grundløn for jobbet ·

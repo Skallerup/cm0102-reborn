@@ -58,7 +58,8 @@ export function ClassicStaffNegotiation({ staffId, role, onClose }: { staffId: n
   const [pub, setPub] = useState(false);
   const [ask, setAsk] = useState(false);
   const name = `${s.first} ${s.last}`.trim();
-  const interested = cmStaffInterestedIn(g, s, role);
+  // 0x4e06e0: uden interesse kun teksten og loftet – ingen kontraktrækker og intet tilbud (samme gren 0x4e0d97 som for spillerne)
+  const [interested] = useState(() => cmStaffInterestedIn(g, s, role));
   const bill = Object.values(g.players).filter((x) => x.club === club.id).reduce((a, x) => a + (x.contract?.wage ?? 0), 0);
   // CM 01/02 (ægte tilstand, original DB): bestyrelsens loft for jobbet 0x597db0 (cmBudget.ts); ellers lønbudgettet minus truppens lønsum
   const [cmAllow] = useState(() => cmBoardStaffWageAllow(g, s, role, club.id));
@@ -81,17 +82,19 @@ export function ClassicStaffNegotiation({ staffId, role, onClose }: { staffId: n
         <div className="cx-dlg-body">
           <p className="cx-ts-intro">{interested ? t('cl.neg.wants', { player: name, wage: money(demand), until: end(2), fee: '' }) : t('cm.neg.noInterest', { name })}</p>
           <p className="cx-ts-intro">{t('cl.neg.allow', { allow: money(allow) })}</p>
+          {interested && <>
           <Row label={t('cl.neg.wage')} value={wage} show={money} options={wageOpts.includes(wage) ? wageOpts : [...wageOpts, wage].sort((a, b) => a - b)} onSet={setWage} reset={demand} />
           <Row label={t('cl.neg.signOn')} value={signOn} show={money} options={[0, 5000, 10000, 25000, 50000, 100000, 250000]} onSet={setSignOn} reset={0} />
           <Row label={t('cl.neg.expires')} value={years} show={end} options={[1, 2, 3, 4, 5]} onSet={setYears} reset={2} />
           <div className="cx-neg-row"><span className="cx-neg-label">{t('cl.neg.type')}</span><span /><span className="cx-neg-static cx-neg-type">{t('cl.neg.fullTime')}</span></div>
           <div className="cx-neg-row"><span className="cx-neg-label">{t('cm.neg.public')}</span><span />
             <button className="cx-neg-static cx-neg-type cx-neg-public" onClick={() => setPub(!pub)}>{t(pub ? 'common.yes' : 'common.no')}</button></div>
+          </>}
         </div>
       )}
       <div className="cx-ts-buttons cx-dlg-foot">
         {ask ? <><button onClick={() => setAsk(false)}>{t('common.no')}</button><button className="primary" onClick={send}>{t('common.yes')}</button></>
-          : <><button onClick={() => onClose(false)}>{t('common.cancel')}</button><button className="primary" onClick={() => setAsk(true)}>{t('cl.neg.offer')}</button></>}
+          : <><button onClick={() => onClose(false)}>{t('common.cancel')}</button><button className="primary" disabled={!interested} onClick={() => setAsk(true)}>{t('cl.neg.offer')}</button></>}
       </div>
     </div>
   );

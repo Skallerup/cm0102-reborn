@@ -45,6 +45,7 @@ import { squadIds } from './state';
 import { boardEnv, staffJobInterest } from './cmBoardGame';
 import { leagueClash } from './cmBoardInterest';
 import type { BoardEnv } from './cmBoard';
+import { registerStaffOfferCheck } from './cmStaff';
 
 /** £ → € som newgame.ts */
 const GBP = 0.86;
@@ -631,3 +632,49 @@ export function cmStaffTerms(g: GameState, s: import('./types').Staff, clubId: n
   // 0x8602f8: kravet 250.000 (£ om ugen) er originalens "umuligt" – lønnen over jobbets loft for klubbens omdømme; han skriver ikke under
   return { wage, expires: exp, offered, refuse: !offered && raw >= 250000 };
 }
+
+/** Menneskets Offer Contract til en ikke-spiller (Set Role At Club 0x4dd0f0 → 0x4de1f0 → 0x4deac0 → 0x4e06e0, cm0102.exe 3.9.68):
+ *  - 0x4de1f0: skærmparameter 0xd = status 0xff (ingen trupstatus), 8 = jobbet, 0x18 = loftet 0x597db0(finansposten, job) – for en, der
+ *    er ansat i klubben, mindst hans løn 0x4d0c20 –, 0x16 = 0, 0x1b = hans kontrakts +0x45 (0x4cf5a0).
+ *  - 0x4deac0 (0x4decca): kravet 0x85fc50(kontrakt, staff, klub, −1, 0xd, 8, &0x19, &f) – ikke-spillergrenen 0x8602f8 med viljen
+ *    f = 0x844780(staff, klub, 0, job, …); skærmparameter 0x1a = ftol(f·1000), som 0x4e06e0 læser som float ·0,001.
+ *  - 0x4e06e0: 0x4d4660(kravet) er altid 1 for en ikke-spiller (+0x61 = 0, +0x69 ≠ 0). Han vil forhandle, når lønkravet +0xc < 1,5 · loftet
+ *    og enten f > 2,75, eller han er klubbens egen og +0x45 & 2, eller jobbet er træner/spejder/fysioterapeut (8/9/10) og kravet < 3200,
+ *    eller han er under 24 og kravet < bx + 3250 (bx = omdømmetillægget 0x4e0936 efter kravets trupstatus 1–5 – en ikke-spillers krav har
+ *    status 0xf (0x85fc50 skriver 0xff's nibble), så bx = 0). Ellers 0x4e0d97: klubbens egen → 0x4e0de1 (+0x45 = 0 hos os → 0x9b0964
+ *    "does not wish to negotiate a new contract at the current time"); andre → trupstatussens switch 0x4e0ff9, hvis standardgren 0x4e118d
+ *    skriver 0x9b0450 "… has no interest in negotiating terms for this position." (+0x69 ≠ 0). Skærmparameter 0x16 = 0, så grenen 0x4e0f1f
+ *    (0x16 > 1,5 · loftet) kommer aldrig. Gælder både ledige og ansatte. Null uden for cmActive. */
+export function cmStaffOfferCheck(g: GameState, s: import('./types').Staff, clubId: number, job: number):
+  { interested: boolean; key: 'cm.neg.noInterest' | 'cm.neg.noRenewNow' | null; wage: number; will: number; allow: number } | null {
+  if (!cmActive(g) || g.draft || !g.clubs[clubId]) return null;
+  const X = staffMem(g, s, clubId, job, 0xff);
+  if (!X) return null;
+  const { M, st, club, k } = X, m = M.c.m;
+  const fin = M.W.finOf(clubId);
+  if (!fin) return null;
+  const [d] = isoDay(g.date);
+  M.setRand(cmRand(g.seed ?? 0, s.id, clubId, d, 0x4deac0));
+  // 0x4de1f0 (0x4de461–0x4de532): loftet, for klubbens egen mindst hans løn
+  const own = !!k && (m.u8(k + 0x35) & 0x3f) !== 5 && m.s32(k + 4) === m.s32(club);
+  let allow = maxStaffWage_597db0(M.c, fin, job) | 0;
+  if (own && m.s32(k + 0xc) > allow) allow = m.s32(k + 0xc);
+  const flags = k ? m.u32(k + 0x45) : 0;
+  // 0x4deac0 (0x4dec8d–0x4ded03): kravet og viljen
+  const FOUT = OUT + 0x60, IOUT = OUT + 0x64;
+  m.wf32(FOUT, 0); m.w32(IOUT, 0);
+  constructContract_85e410(m, LOCAL);
+  setToDesiredContract_85fc50(M.c, LOCAL, st, club, -1, 0xff, job, IOUT, FOUT);
+  const f = Math.fround(Math.trunc(m.f32(FOUT) * 1000) * Math.fround(0.001));
+  const wage = m.s32(LOCAL + 0xc);
+  const age = m.s8(st + 0x18);
+  const bx = 0;
+  // 0x4e0aca–0x4e0b3d
+  let ok = !(1.5 * allow <= wage);
+  if (ok && !(f > 2.75) && !(own && flags & 2)) {
+    if (!((job === 8 || job === 10 || job === 9) && wage < 0xc80)) ok = !(age >= 0x18 || wage >= bx + 0xcb2);
+  }
+  const key = ok ? null : own ? 'cm.neg.noRenewNow' : 'cm.neg.noInterest';
+  return { interested: ok, key, wage: Math.round(wage / GBP), will: f, allow: Math.round(allow / GBP) };
+}
+registerStaffOfferCheck(cmStaffOfferCheck);

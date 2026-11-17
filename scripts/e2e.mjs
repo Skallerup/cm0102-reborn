@@ -391,8 +391,8 @@ async function run(look) {
     }
   });
   if (look === 'klassisk' && ENGINE_GRID) await step('stabsprofilen og Approach To Sign (klassisk, original DB)', async () => {
-    // en træner fra databasen i en anden klub, som kan blive træner hos os
-    const sid = await gs(() => { const g = window.__cm.gs(); return Object.values(g.staff).find((s) => s.cmId !== undefined && s.club && s.club !== g.userClub && s.role === 'coach' && s.dob < '1970')?.id; });
+    // en træner fra databasen i en anden klub, som kan blive træner hos os – og som vil forhandle (Offer Contract 0x4e06e0, cmStaffInterestedIn)
+    const sid = await gs(() => { const g = window.__cm.gs(); const xs = Object.values(g.staff).filter((s) => s.cmId !== undefined && s.club && s.club !== g.userClub && s.role === 'coach' && s.dob < '1970'); return (xs.find((s) => window.__cm.cmStaffInterestedIn?.(g, s, 'coach')) ?? xs[0])?.id; });
     if (!sid) throw new Error('ingen træner fra databasen');
     await go({ name: 'staff', id: sid });
     await page.waitForTimeout(300);
