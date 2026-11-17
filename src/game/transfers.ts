@@ -301,6 +301,20 @@ export function preferredYears(p: Player): number {
   return 3;
 }
 
+/** Klubbens omdømme i databasens skala (1..10000): byggescriptet gemmer round((rå/maks)^0,7 · 98) (data/cm0102.ts clubRep), her vendt om */
+const clubRepRaw = (rep: number) => 10000 * Math.pow(Math.max(0, rep) / 98, 1 / 0.7);
+
+/** 2026/27-databasen: er klubben for lille i forhold til spillerens omdømme (databasens, ×50) og hans nuværende klub? Skøn (estimeret) med
+ *  originalens struktur – 0x807450's forfilter (spillerens omdømme > klubbens + 5000 → nej) og 0x846920's sammenligning af spilleren mod
+ *  køberen og den nuværende klub, ambition og alder – indtil 0x846920 (løn/kontrakt) er porteret. Den originale database bruger originalens filter. */
+function dbRepGap(p: Player, club: Club, cur: Club | undefined, age: number): boolean {
+  const own = Math.max(p.cmRep![1], p.cmRep![2]) * 50;
+  // den nuværende klub trækker halvt med (en ung spiller i en storklub skifter ikke til en lille klub); transferlistede spillere vil væk
+  const level = cur && !p.listed ? Math.max(own, (own + clubRepRaw(cur.rep)) / 2) : own;
+  const tol = 1500 - (p.attrs[A.ambition] - 10) * 80 + (age >= 32 ? 1500 : age >= 30 ? 600 : 0);
+  return level > clubRepRaw(club.rep) + tol;
+}
+
 /** Vil spilleren overhovedet tale med klubben? */
 export function playerInterest(p: Player, club: Club): 'yes' | 'reputation' | 'happy' | 'abroad' | 'permit' {
   const g = gs();
@@ -308,12 +322,16 @@ export function playerInterest(p: Player, club: Club): 'yes' | 'reputation' | 'h
   // 2001/02 (kun den originale database): britiske klubber kan ikke hente spillere uden arbejdstilladelse
   if (!permitOk(p, club)) return 'permit';
   const cur = p.club ? g.clubs[p.club] : undefined;
-  const gap = p.rep - club.rep;
-  // omdømmeforskel: ambitiøse spillere vil ikke ned til mindre klubber (før brugte reglen ved en fejl tilpasningsevnen, så
-  // ambitiøse verdensstjerner gik med til små ligaer – også på Bosman); ældre spillere (30+) tager gerne et skridt ned
   const age = ageOn(p.dob, g.date);
-  const tol = 24 - (p.attrs[A.ambition] - 10) * 1.2 + (age >= 32 ? 10 : age >= 30 ? 4 : 0);
-  if (gap > tol) return 'reputation';
+  if (p.cmRep && !isOriginal2001() && Math.max(p.cmRep[1], p.cmRep[2]) > 0) {
+    if (dbRepGap(p, club, cur, age)) return 'reputation';
+  } else {
+    const gap = p.rep - club.rep;
+    // omdømmeforskel: ambitiøse spillere vil ikke ned til mindre klubber (før brugte reglen ved en fejl tilpasningsevnen, så
+    // ambitiøse verdensstjerner gik med til små ligaer – også på Bosman); ældre spillere (30+) tager gerne et skridt ned
+    const tol = 24 - (p.attrs[A.ambition] - 10) * 1.2 + (age >= 32 ? 10 : age >= 30 ? 4 : 0);
+    if (gap > tol) return 'reputation';
+  }
   if (cur && cur.rep > club.rep + 25 && keyPlayerRank(p) <= 11 && p.attrs[A.loyalty] > 13) return 'happy';
   // agent der vil have spilleren til en større liga: ikke et skifte i samme land eller til en fattigere liga – medmindre klubben er markant større
   if (cur && agentOf(p).style === 'abroad' && club.rep < cur.rep + 10
