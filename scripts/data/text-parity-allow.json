@@ -936,6 +936,194 @@
       "reason": "originalens streng 0x9c94ec (0x59fcf0) med to linjeskift – strengudtrækket deler den"
     },
     {
+      "key": "top.budget",
+      "reason": "Moderne topbjælke/statuslinje (kun !cmNav i Shell.tsx)"
+    },
+    {
+      "key": "top.toMatchHint",
+      "reason": "Moderne topbjælke/statuslinje (kun !cmNav i Shell.tsx)"
+    },
+    {
+      "key": "top.exitFullscreen",
+      "reason": "Moderne topbjælke/statuslinje (kun !cmNav i Shell.tsx)"
+    },
+    {
+      "key": "top.running",
+      "reason": "Moderne topbjælke/statuslinje (kun !cmNav i Shell.tsx)"
+    },
+    {
+      "key": "nav.jobs",
+      "reason": "Moderne navigation; i ægte tilstand er Manager-hubbens moderne faner skjult (AUTH_HIDDEN)"
+    },
+    {
+      "key": "wx.clear",
+      "reason": "Vejrnavne vist som i originalens Next Match (billede-/tabeltekst, ikke streng i exe-filen)"
+    },
+    {
+      "key": "wx.cloudy",
+      "reason": "Vejrnavne vist som i originalens Next Match (billede-/tabeltekst, ikke streng i exe-filen)"
+    },
+    {
+      "key": "wx.rain",
+      "reason": "Vejrnavne vist som i originalens Next Match (billede-/tabeltekst, ikke streng i exe-filen)"
+    },
+    {
+      "key": "wx.hot",
+      "reason": "Vejrnavne vist som i originalens Next Match (billede-/tabeltekst, ikke streng i exe-filen)"
+    },
+    {
+      "key": "nav.profile",
+      "reason": "Moderne navigation; i ægte tilstand er Manager-hubbens moderne faner skjult (AUTH_HIDDEN)"
+    },
+    {
+      "key": "nav.draft",
+      "reason": "Moderne navigation; i ægte tilstand er Manager-hubbens moderne faner skjult (AUTH_HIDDEN)"
+    },
+    {
+      "key": "aw.month",
+      "reason": "Prisskærmen i det moderne udseende (Awards.tsx); i ægte tilstand vises AwardsClassic med originalens tekster"
+    },
+    {
+      "key": "aw.gala",
+      "reason": "Prisskærmen i det moderne udseende (Awards.tsx); i ægte tilstand vises AwardsClassic med originalens tekster"
+    },
+    {
+      "key": "aw.noGala",
+      "reason": "Prisskærmen i det moderne udseende (Awards.tsx); i ægte tilstand vises AwardsClassic med originalens tekster"
+    },
+    {
+      "key": "aw.noMonth",
+      "reason": "Prisskærmen i det moderne udseende (Awards.tsx); i ægte tilstand vises AwardsClassic med originalens tekster"
+    },
+    {
+      "key": "aw.allLeagues",
+      "reason": "Prisskærmen i det moderne udseende (Awards.tsx); i ægte tilstand vises AwardsClassic med originalens tekster"
+    },
+    {
+      "key": "aw.ballonDor",
+      "reason": "Prisskærmen i det moderne udseende (Awards.tsx); i ægte tilstand vises AwardsClassic med originalens tekster"
+    },
+    {
+      "key": "aw.season",
+      "reason": "Prisskærmen i det moderne udseende (Awards.tsx); i ægte tilstand vises AwardsClassic med originalens tekster"
+    },
+    {
+      "key": "aw.surprise",
+      "reason": "Prisskærmen i det moderne udseende (Awards.tsx); i ægte tilstand vises AwardsClassic med originalens tekster"
+    },
+    {
+      "key": "aw.surpriseText",
+      "reason": "Prisskærmen i det moderne udseende (Awards.tsx); i ægte tilstand vises AwardsClassic med originalens tekster"
+    },
+    {
+      "key": "inbox.categories",
+      "reason": "Moderne indbakke (kategorifilter, tastaturhjælp); klassisk indbakke har ingen af delene"
+    },
+    {
+      "key": "inbox.mutedHint",
+      "reason": "Moderne indbakke (kategorifilter, tastaturhjælp); klassisk indbakke har ingen af delene"
+    },
+    {
+      "key": "inbox.markRead",
+      "reason": "Moderne indbakke (kategorifilter, tastaturhjælp); klassisk indbakke har ingen af delene"
+    },
+    {
+      "key": "inbox.keys",
+      "reason": "Moderne indbakke (kategorifilter, tastaturhjælp); klassisk indbakke har ingen af delene"
+    },
+    {
+      "key": "renewal.status.refuses",
+      "reason": "Moderne spillerskærm; i PlayerClassic gated med !authentic()"
+    },
+    {
+      "key": "renewal.status.hesitant",
+      "reason": "Moderne spillerskærm; i PlayerClassic gated med !authentic()"
+    },
+    {
+      "key": "renewal.status.convinced",
+      "reason": "Moderne spillerskærm; i PlayerClassic gated med !authentic()"
+    },
+    {
+      "key": "neg.title",
+      "reason": "Moderne kontraktforhandling (Negotiation.tsx); ægte tilstand bruger NegotiationClassic (cl.neg.*)"
+    },
+    {
+      "key": "neg.bosman",
+      "reason": "Moderne kontraktforhandling (Negotiation.tsx); ægte tilstand bruger NegotiationClassic (cl.neg.*)"
+    },
+    {
+      "key": "neg.cancel",
+      "reason": "Moderne kontraktforhandling (Negotiation.tsx); ægte tilstand bruger NegotiationClassic (cl.neg.*)"
+    },
+    {
+      "key": "neg.cancelConfirm",
+      "reason": "Moderne kontraktforhandling (Negotiation.tsx); ægte tilstand bruger NegotiationClassic (cl.neg.*)"
+    },
+    {
+      "key": "neg.accepted",
+      "reason": "Moderne kontraktforhandling (Negotiation.tsx); ægte tilstand bruger NegotiationClassic (cl.neg.*)"
+    },
+    {
+      "key": "neg.counter",
+      "reason": "Moderne kontraktforhandling (Negotiation.tsx); ægte tilstand bruger NegotiationClassic (cl.neg.*)"
+    },
+    {
+      "key": "neg.refused",
+      "reason": "Moderne kontraktforhandling (Negotiation.tsx); ægte tilstand bruger NegotiationClassic (cl.neg.*)"
+    },
+    {
+      "key": "hist.sacked",
+      "reason": "Moderne historik-/stadionskærme (History.tsx, Stadium.tsx); ægte tilstand bruger ClassicManagerHistory"
+    },
+    {
+      "key": "hist.trophyCabinet",
+      "reason": "Moderne historik-/stadionskærme (History.tsx, Stadium.tsx); ægte tilstand bruger ClassicManagerHistory"
+    },
+    {
+      "key": "hist.noTrophies",
+      "reason": "Moderne historik-/stadionskærme (History.tsx, Stadium.tsx); ægte tilstand bruger ClassicManagerHistory"
+    },
+    {
+      "key": "hist.firstSeason",
+      "reason": "Moderne historik-/stadionskærme (History.tsx, Stadium.tsx); ægte tilstand bruger ClassicManagerHistory"
+    },
+    {
+      "key": "top.continueUnread",
+      "reason": "Moderne topbjælke/statuslinje (kun !cmNav i Shell.tsx)"
+    },
+    {
+      "key": "top.continueHint",
+      "reason": "Moderne topbjælke/statuslinje (kun !cmNav i Shell.tsx)"
+    },
+    {
+      "key": "hist.incomeMix",
+      "reason": "Moderne historik-/stadionskærme (History.tsx, Stadium.tsx); ægte tilstand bruger ClassicManagerHistory"
+    },
+    {
+      "key": "hist.liveNote",
+      "reason": "Moderne historik-/stadionskærme (History.tsx, Stadium.tsx); ægte tilstand bruger ClassicManagerHistory"
+    },
+    {
+      "key": "hist.transfers",
+      "reason": "Moderne historik-/stadionskærme (History.tsx, Stadium.tsx); ægte tilstand bruger ClassicManagerHistory"
+    },
+    {
+      "key": "hist.first",
+      "reason": "Moderne historik-/stadionskærme (History.tsx, Stadium.tsx); ægte tilstand bruger ClassicManagerHistory"
+    },
+    {
+      "key": "stat.possession",
+      "reason": "Moderne analyse (Assistant/xG) - udvidet tilstand"
+    },
+    {
+      "key": "stat.xg",
+      "reason": "Moderne analyse (Assistant/xG) - udvidet tilstand"
+    },
+    {
+      "key": "tac.targetMan",
+      "reason": "Moderne analyse (Assistant/xG) - udvidet tilstand"
+    },
+    {
       "key": "cmint.fix.3P",
       "reason": "Kampens trinbetegnelse for bronzekampen; exe'en har 'Third Place Playoff' som turneringsrunde, ikke som kampetiket"
     }

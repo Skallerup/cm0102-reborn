@@ -804,7 +804,7 @@ export const da: Record<string, string> = {
   'stage.LP': 'Ligafase, runde', 'stage.KPO': 'Knockout-playoff',
   'cl.toR16': 'Videre til 1/8-finalen (nr. 1-8)', 'cl.toPlayoff': 'Knockout-playoff (nr. 9-24)', 'cl.out': 'Ude (nr. 25-36)',
   'comp.table': 'Stilling', 'comp.overview': 'Oversigt', 'comp.fixtures': 'Kampe', 'comp.scorers': 'Topscorere', 'comp.history': 'Historik',
-  'comp.winner': 'Vinder', 'comp.runnerUp': 'Nr. 2', 'comp.topScorer': 'Topscorer', 'comp.best': 'Årets spiller', 'comp.young': 'Årets talent', 'comp.noHistory': 'Ingen historik endnu',
+  'comp.winner': 'Vinder', 'comp.runnerUp': 'Nr. 2', 'comp.topScorer': 'Topscorer', 'comp.best': 'Årets spiller', 'comp.young': 'Årets talent', 'comp.noHistory': 'Der er ingen historik tilgængelig.',
   'tbl.p': 'K', 'tbl.w': 'V', 'tbl.d': 'U', 'tbl.l': 'T', 'tbl.gf': 'M+', 'tbl.ga': 'M-', 'tbl.gd': '+/-', 'tbl.pts': 'P',
   'tbl.europe': 'Europa', 'tbl.promotion': 'Oprykning', 'tbl.playoff': 'Playoff', 'tbl.relegation': 'Nedrykning',
 
