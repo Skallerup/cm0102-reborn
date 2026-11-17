@@ -141,6 +141,7 @@ export function cmStaffPlan(g: GameState, cid: number, clubT: number, openPlayer
       if (w >= share || w > (crep + 500) * 10) continue;                          // 0x83fc56–0x83fcb5
       const p = env.person(s.id);
       if (!p || !p.np) continue;
+      if (p.job === 5 || p.natJob === 5) continue;                                 // 0x83fa68/0x83fa72: +0x3d = 5 eller +0x28 = 5 (managere)
       if (!passesScouting(g, env, p, s, club, mgr, rand)) continue;
       const v = scoreStaffForJob(env, p, cid, job, mgr);
       if (v > bestV) { bestV = v; best = s; }
@@ -177,6 +178,7 @@ function fireWeakStaff(g: GameState, cid: number, T: number): void {
       const cur = s.career?.[s.career.length - 1];
       if (cur && !cur.to && cur.club === cid) careerEnd(s, 'sacked');
       else (s.career ??= []).push({ club: cid, from: s.cmJoined || g.date, to: g.date, why: 'sacked' });
+      if (s.cmNp && !s.cmExtra) s.cmDbJob = job;                               // 0x690890 beholder jobkoden +0x3d
       recordStaffMove(s, 0);
       s.club = 0;
       s.assignment = null;

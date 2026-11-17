@@ -64,8 +64,20 @@ function natOfStaff(g: GameState, id: number): number {
   for (const k in nm) if (nm[k] === id) return +k;
   return -1;
 }
-/** staff +0x3d uden klub: 0x68f130 giver personer uden klubjob landsholdsjobbet som klubjob (databasens +0x28, ikke 11) */
-const clublessJob = (s: Staff) => (s.cmNat && s.cmNat[1] !== 11 ? s.cmNat[1] : 0);
+/** staff +0x3d uden klub. Ledige fra spilstarten (databasens job `cmDbJob`) og personer, der har forladt en klub (keepJobCode): 0x68f130 2a beholder jobkoden; kun +0x3d = 0 får
+ *  landsholdsjobbet +0x28 – og ikke landstrænerens (5/12: `continue` før omskrivningen) eller 11; 13/15 uden spillerpost → 8 (oraklets gemte
+ *  spil 15/7-2001: Bruce Arena/Louis van Gaal +0x3d 0, +0x28 5; Billy Davies 5, Kit Carson 9). Ellers (ældre spil, stab fra en klub) som før:
+ *  landsholdsjobbet, medmindre det er 11. */
+/** 0x690890 remove_staff_from_club: jobkoden +0x3d bliver stående, når personen forlader klubben (kun ikke-spillerposten fra databasen) */
+export const keepJobCode = (s: Staff) => { if (s.cmNp && !s.cmExtra) s.cmDbJob = JOB[s.role] ?? 8; };
+const clublessJob = (s: Staff) => {
+  if (s.cmDbJob !== undefined && !s.cmExtra) {
+    if (s.cmDbJob) return s.cmDbJob;
+    const j = s.cmNat && s.cmNat[0] >= 0 ? s.cmNat[1] : 0;
+    return j === 5 || j === 12 || j === 11 ? 0 : j === 13 || j === 15 ? 8 : j;
+  }
+  return s.cmNat && s.cmNat[1] !== 11 ? s.cmNat[1] : 0;
+};
 
 function staffPerson(g: GameState, s: Staff, today: CmDate): Person {
   const hid = s.cmHid ?? [];
@@ -364,7 +376,7 @@ function setManagerGame(g: GameState, _env: BoardEnv, c: number, p: Person | nul
     cmFineReset(g, c);                                                  // 0x69b8f5: 0x5a5960 (Discipline Player-tælleren)
     const m = club.manager;
     if (m === -1) humanLeaves(g, c);
-    else if (m > 0) { const s = g.staff[m]; if (s) { careerEnd(s, 'sacked'); s.club = 0; } }
+    else if (m > 0) { const s = g.staff[m]; if (s) { careerEnd(s, 'sacked'); keepJobCode(s); s.club = 0; } }
     club.manager = 0;
     club.tactic = null;
     return;
@@ -401,7 +413,7 @@ function setNationalManager(g: GameState, n: number, p: Person | null, old: numb
     else {
       const from = g.clubs[old];
       if (from && from.manager === s.id) { from.manager = 0; from.tactic = null; }
-      if (s.club === old) { careerEnd(s, 'poached'); s.club = 0; s.role = 'coach'; }   // +0x3d = 8 (np uden spillerpost)
+      if (s.club === old) { careerEnd(s, 'poached'); s.club = 0; s.role = 'coach'; keepJobCode(s); }   // +0x3d = 8 (np uden spillerpost)
     }
   }
   st.nm[n] = s.id; st.nj[s.id] = 5;
@@ -762,7 +774,7 @@ export function cmBoardInit(g: GameState, chair: Record<number, [number, number,
   g.cmBoardStart = g.date;
   g.cmBoard = { rec: {}, dep: [], vac: [], ult: [], month: -1, tab: {}, nm: {}, nj: {} };
   // 0x68f130 2a: landstrænerne (staff +0x24 = A-holdet, +0x28 = 5/12) bliver A-holdets manager (den sidste i staff-rækkefølgen); de andre
-  // landsholdsjob ryddes, og +0x28 sættes til 0 (staffPerson/clublessJob – +0x3d uden klub = landsholdsjobbet)
+  // landsholdsjob ryddes, og deres +0x28 sættes til 0 (staffPerson/clublessJob – +0x3d uden klub = landsholdsjobbet)
   const off = natClubId(g, 0, false);
   for (const s of Object.values(g.staff).sort((a, b) => a.id - b.id)) {
     const x = s.cmNat;
@@ -770,6 +782,8 @@ export function cmBoardInit(g: GameState, chair: Record<number, [number, number,
     const n = x[0] - off;
     if (n >= 0 && n < g.nations.length) g.cmBoard.nm![n] = s.id;
   }
+  // (2a) landstrænerens +0x28 bliver stående (5/12 – `continue`): 0x83fa72 (ønskelisten) og 0x69f9b8 (managerjob) springer ham over
+  for (const id of Object.values(g.cmBoard.nm!)) { const x = g.staff[id]?.cmNat; if (x) g.cmBoard.nj![id] = x[1]; }
   resetNationalManagers(g);
   const db = `${g.date.slice(0, 4)}-01-01`;
   const env = boardEnv(g, db, g.date);

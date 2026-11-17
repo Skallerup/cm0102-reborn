@@ -485,7 +485,10 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   for (const row of dbStaff.get(0) ?? []) {
     const [, , , , , , a] = row;
     const role: StaffRole = a[3] >= 12 && a[3] >= Math.max(a[0], a[1], a[2]) ? 'physio' : a[1] + a[2] > 2 * a[0] + 2 ? 'scout' : 'coach';
-    addDbStaff(row, 0, role, date, seed);
+    const s = addDbStaff(row, 0, role, date, seed);
+    // personpostens jobkode +0x3d (staff[11][22] = databasens job): en ledig beholder sit job i hukommelsen (0x68f130 rører kun +0x3d = 0) –
+    // oraklets gemte spil 15/7-2001: Billy Davies/Ron Newman 5, Kit Carson/John Dungworth 9 uden klub
+    if (npInit && row[11]) s.cmDbJob = row[11][22] ?? 0;
   }
   // Staff Search (0x7afa70 tager alle personer med ikke-spillerpost i hukommelsen): de øvrige ikke-spillere, som originalens 0x524d70 beholder
   // med de valgte lande – formænd, direktører, stab i klubber uden for spillet, ledige … Kun til søgningen og profilen (cmExtra): de er ikke en
@@ -706,6 +709,8 @@ export function takeOverClub(club: Club, viaJob = false) {
   const old = g.staff[club.manager];
   if (old) {
     old.club = 0;
+    // 0x690890 remove_staff_from_club beholder jobkoden +0x3d (oraklets gemte spil: Arsène Wenger 5 uden klub) – kun den originale database
+    if (old.cmNp && !old.cmExtra) old.cmDbJob = 5;
   }
   club.manager = -1;
   g.userClub = club.id;

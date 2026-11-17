@@ -46,6 +46,19 @@ describe('stabsskifter (cmStaffMove)', () => {
     }
   });
 
+  it('0x68f130/0x83fa68: ledige beholder databasens job +0x3d, landstrænerne +0x28 = 5 – ingen bud på managere (oraklets gemte spil 15/7-2001)', () => {
+    const env = boardEnv(g);
+    const by = (last: string, first: string) => Object.values(g.staff).find((s) => s.last === last && s.first === first && !s.club && s.cmNp && !s.cmExtra)!;
+    const job = (s: { id: number }) => [env.person(s.id)!.job, env.person(s.id)!.natJob];
+    expect(job(by('Davies', 'Billy'))).toEqual([5, 0]);
+    expect(job(by('Carson', 'Kit'))).toEqual([9, 0]);
+    expect(job(by('Arena', 'Bruce'))).toEqual([0, 5]);
+    expect(job(by('van Gaal', 'Louis'))).toEqual([0, 5]);
+    // menneskets forgænger: 0x690890 beholder jobkoden
+    expect(env.person(Object.values(g.staff).find((s) => s.last === 'Wenger')!.id)!.job).toBe(5);
+    for (const m of g.cmStaffMoves ?? []) { const p = env.person(m.s)!; expect(p.job).not.toBe(5); expect(p.natJob).not.toBe(5); }
+  });
+
   it('handlen: kompensationen bogføres som køb/salg, personen skifter, og nyheden har originalens ordlyd', () => {
     const m = (g.cmStaffMoves ?? []).find((x) => x.from && x.fee > 0) ?? (g.cmStaffMoves ?? [])[0];
     const s = g.staff[m.s], buyer = g.clubs[m.c], seller = m.from ? g.clubs[m.from] : undefined;
