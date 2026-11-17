@@ -30,9 +30,9 @@ import { cmMarketOn, cmRand, clubRepMem, nationRepMem } from './cmPlayerData';
 import { cmGbp, payClub } from './cmMoney';
 import { slCall } from './cmShortlist';
 import { playerValue_4d0c60, knowsNation_53d980, seenRep_5407e0, knowledge_5408c0, judge_6e86d0, JUDGE_HI, euCitizen_53d740 } from './cmValue';
-import { contractForClub_4cf5f0, expiryBand_867d30, setToDesiredContract_85fc50, hasActiveReleaseClause_867b50, constructContract_85e410 } from './cmContractWant';
+import { contractForClub_4cf5f0, expiryBand_867d30, setToDesiredContract_85fc50, hasActiveReleaseClause_867b50, constructContract_85e410, calcContractValue_866830 } from './cmContractWant';
 import { getMaxWage_5968d0 } from './cmMaxWage';
-import { addDays_54c5b0, subDays_54c8e0, listRemove_68d1f0, offerContract_4cda70 } from './cmContract';
+import { addDays_54c5b0, subDays_54c8e0, listRemove_68d1f0, offerContract_4cda70, daysSince_54cdb0 } from './cmContract';
 import { entryOf, storeEntry, fromRow, staffTailed, afterBudgetHooks } from './cmSquadPlanGame';
 import { newPlanEntry, type PlanEntry } from './cmSquadPlan';
 import { registerImpl, enter, QSORT_CMP, QSORT_CMP8, SHARED, PC_HOOK, FASTHOST, stackBelow, FAKE_RET, type X86 } from './cmGen/x86';
@@ -516,7 +516,7 @@ function writeOffers(S: SlMem): void {
     m.w32(r + 8, o.buyer); m.w32(r + 0xc, pm); m.w8(r + 0x11, 0xb);
     const d = dayOf(o.created); m.w16(r + 0x12, d.day); m.w16(r + 0x14, d.year); m.w32(r + 0x16, leapY(d.year));
     m.w32(r + 0x1b, Math.round(o.fee * GBP)); m.w8(r + 0x1f, o.loan ? 1 : 0); m.w32(r + 0x24, -1); m.w32(r + 0x28, -1);
-    m.w8(r + 0x2c, o.status === 'pending' ? 0 : o.status === 'countered' ? (o.cmAi ? 1 : 2) : 5); m.w8(r + 0x2d, o.pub ?? 0);
+    m.w8(r + 0x2c, o.status === 'pending' ? 0 : o.status === 'countered' ? (o.cmAi ? 1 : 2) : o.cmK ? 7 : 5); m.w8(r + 0x2d, o.pub ?? 0);
     m.w32(r + 0x35, Math.round((o.lgFee ?? 0) * GBP)); m.w8(r + 0x39, o.lgApps ?? 10);
     m.w32(r + 0x3a, Math.round((o.intFee ?? 0) * GBP)); m.w8(r + 0x3e, o.intApps ?? 10); m.w8(r + 0x3f, o.sellOn ?? 0); m.w8(r + 0x40, o.months ?? 0);
   }
@@ -1852,6 +1852,18 @@ function dropDeadBids(S: SlMem): void {
   }
 }
 
+/** TRANSFER_MANAGER::move_player_to_club 0x8c9720 (fra finalise_transfer 0x8c9390 – køb, leje, klubløse og bytte-spillere), 0x8ca0a4–0x8ca0ce:
+ *  har spilleren en klub efter skiftet (+0x39) og er han ikke transferlistet der (0x5444a0: kontrakten 0x4cf5a0's +0x4e bit 1 – efter et køb den
+ *  nye kontrakt, ved leje moderklubbens), sættes klubbens trupplanstæller +8 = 100: 0x84a020 byder ikke (+8 ≥ 100), før 0x5cccd0 har kørt
+ *  trupplanen igen (0x83cb40 nulstiller den; porten 0x5cdcfa: +8 > rand(70) + 30, så rand(5) = 0). */
+export function cmMovedToClub(g: GameState, p: Player): void {
+  if (!cmShortlistOn(g) || !p.club) return;
+  const st = g.cmPlan?.[p.club];
+  if (!st) return;
+  if (p.loan && ((p.cmContract?.b4e ?? (p.listed ? 1 : 0)) & 1)) return;
+  st.c = 100;
+}
+
 /** 0x84a020 make_club_bids for klubben, når 0x5cccd0's betingelse er opfyldt (omdømme > 6250 hver dag, ellers (dag + klub) % 7 = 0) */
 export function makeBids(S: SlMem, cid: number, day: number): void {
   const { m, g } = S;
@@ -2037,6 +2049,9 @@ export function cmShortlistDaily(g: GameState, planClub: (cid: number) => { drop
     delay: (pid, buyer, site, loan) => offerDelay(S, pid, buyer, site, loan),
     interest: (pid, buyer) => moveInterest(S, pid, buyer),
     rand: (pid, buyer) => cmRand(g.seed ?? 0, pid, buyer, dayNum(g.date), 0x4cd230),
+    offerContract: (pid, buyer, offerId) => offerContract_8c1e40(S, pid, buyer, offerId),
+    decide: (pid, buyer, k) => decide_4ce4e0(S, pid, buyer, k),
+    asking: (pid, buyer) => askingPrice_8c8291(S, pid, buyer),
   });
   (S.m as SparseMem).release();
   tick('d.apply', tt);
@@ -2052,6 +2067,14 @@ export interface SlDueCtx {
   interest(pid: number, buyer: number): number;
   /** en talrække til spillerens beslutningsdag */
   rand(pid: number, buyer: number): (n: number) => number;
+  /** TRANSFER_MANAGER::offer_contract_to_offer_player 0x8c1e40 (computerens køber, accepteret bud): 0x4cda70(staff, køber, &kontrakt,
+   *  buddets indeks, 1,0, 2) → kontraktens 0x50 bytes til add_contract_offer 0x4cc490; null = intet tilbud (buddet trækkes, 0x8bfcb0) */
+  offerContract(pid: number, buyer: number, offerId: number): number[] | null;
+  /** CONTRACT_MANAGER::resolve_contract_offers 0x4ce4e0 for køberens tilbud: ja = han skriver under */
+  decide(pid: number, buyer: number, k: number[]): boolean;
+  /** ai_respond_to_bid 0x8c8291: CONTRACT_MANAGER::calc_asking_price 0x4d1600(sælger, køber, staff, &grund, 1, 1) i dagens hukommelse (£) –
+   *  samme hukommelse, som køberens build_bid 0x8e6533 regnede sin pris i */
+  asking(pid: number, buyer: number): number | null;
 }
 export function setSlDue(f: (cx: SlDueCtx) => void): void { (globalThis as { __cmSlDue?: (cx: SlDueCtx) => void }).__cmSlDue = f; }
 const dueHook = (cx: SlDueCtx) => (globalThis as { __cmSlDue?: (cx: SlDueCtx) => void }).__cmSlDue?.(cx);
@@ -2084,6 +2107,83 @@ function moveInterest(S: SlMem, pid: number, buyer: number): number {
     const status = slCall(S.c, 0x849f00, S.slm, st, bc, 0) & 0xff;
     S.m.w32(DELAY_OUT + 8, 0);
     return slCall(S.c, 0x846920, S.slm, st, bc, 0, 0, status, DELAY_OUT + 8);
+  }, S);
+}
+const K_OUT = 0x5e7f0400, K_DES = 0x5e7f0480, ASK_OUT = 0x5e7f04e0;
+function askingPrice_8c8291(S: SlMem, pid: number, buyer: number): number | null {
+  const { m, g } = S;
+  const id = S.memOf.get(pid), bc = S.clubAdr(buyer), p = g.players[pid];
+  if (id === undefined || !bc || !p) return null;
+  const home = p.loan?.from ?? p.club;
+  const sc = home ? S.clubAdr(home) : 0;
+  if (!sc) return null;
+  refreshClub(S, home);
+  refreshClub(S, buyer);
+  const st = (m.u32(G.STAFF) + 0x6e * id) >>> 0;
+  return shared(() => { m.w32(ASK_OUT, 0); return slCall(S.c, 0x4d1600, m.u32(G.CM), sc, bc, st, ASK_OUT, 1, 1) | 0; }, S);
+}
+function offerContract_8c1e40(S: SlMem, pid: number, buyer: number, offerId: number): number[] | null {
+  const { m, g } = S;
+  const id = S.memOf.get(pid), bc = S.clubAdr(buyer), p = g.players[pid];
+  if (id === undefined || !bc || !p) return null;
+  const home = p.loan?.from ?? p.club;
+  if (home) refreshClub(S, home);
+  refreshClub(S, buyer);
+  const st = (m.u32(G.STAFF) + 0x6e * id) >>> 0;
+  S.M.setRand(cmRand(g.seed ?? 0, pid, buyer, dayNum(g.date), 0x8c1e40));
+  return shared(() => {
+    // 0x8c1e61: CONTRACT 0x85e410 på stakken; 0x8c1e97: 0x4cda70(staff, klub, &kontrakt, [tilbud+0x20] = buddets indeks, 1,0, 2)
+    constructContract_85e410(m, K_OUT);
+    if (offerContract_4cda70(S.M.c, m.u32(G.CM), st, bc, K_OUT, offerId, 1.0, 2) !== 1) return null;
+    const k: number[] = [];
+    for (let i = 0; i < 0x50; i++) k.push(m.u8(K_OUT + i));
+    return k;
+  }, S);
+}
+/** 0x4ce4e0's behandling af ét tilbud (0x4ce5d8–0x4cec9c) fra en anden klub, job +0x61 (spiller: 0xb): kravet L2 = 0x85fc50(staff, klub, −1,
+ *  tilbuddets trupstatus +0x4f >> 4, job), point = 0x866830(tilbud)/0x866830(L2) − (staff +0x5b − +0x57 + +0x59 − 9)/300 (under 0,6 → 0;
+ *  0x8c7560 arbejdstilladelse og under 90 dage til +0x2d → 0), x = 0x846920(staff, klub, 0, 0, status, 0); ≥ 0,9: max(x; 3,15), > 0,8 og
+ *  x > 3,15: x, > 0,7 og x > 3,5: x, ellers intet – ja, når x'·point > 2,75 (startværdien af det bedste). Lejeaftaler (+0x35 = 5/6): 0x846920
+ *  over 3,15 og 2,75. */
+function decide_4ce4e0(S: SlMem, pid: number, buyer: number, k: number[]): boolean {
+  const { m, g } = S;
+  const id = S.memOf.get(pid), bc = S.clubAdr(buyer), p = g.players[pid];
+  if (id === undefined || !bc || !p) return false;
+  const home = p.loan?.from ?? p.club;
+  if (home) refreshClub(S, home);
+  refreshClub(S, buyer);
+  const st = (m.u32(G.STAFF) + 0x6e * id) >>> 0;
+  S.M.setRand(cmRand(g.seed ?? 0, pid, buyer, dayNum(g.date), 0x4ce4e0));
+  return shared(() => {
+    for (let i = 0; i < 0x50; i++) m.w8(K_OUT + i, k[i] ?? 0);
+    const tmA = m.u32(0xde1f54);
+    const type = m.u8(K_OUT + 0x35) & 0x3f;
+    if (type === 5 || type === 6) {
+      const v = type === 5 ? slCall(S.c, 0x846920, S.slm, st, bc, 0, 1, 8, 0)
+        : slCall(S.c, 0x846920, S.slm, st, bc, 0, 1, slCall(S.c, 0x849f00, S.slm, st, bc, 0) & 0xff, 0);
+      return v > 2.75 && !(v < 3.15);
+    }
+    // (tilbudsposten 0x4cc490 = kontrakten + +0x59 transfertilbuddet, +0x61 jobbet: 0x8c1f5d giver 0xb)
+    const s4 = m.u8(K_OUT + 0x4f) >> 4, job = 0xb;
+    constructContract_85e410(m, K_DES);
+    setToDesiredContract_85fc50(S.M.c, K_DES, st, bc, -1, s4, job, 0, 0);
+    const a = calcContractValue_866830(S.M.c, K_DES, st, K_DES) | 0;
+    if (!(a > 0)) return false;
+    const s8v = (v: number) => (v << 24) >> 24;
+    const loyAdj = (s8v(m.u8(st + 0x5b)) - s8v(m.u8(st + 0x57)) + s8v(m.u8(st + 0x59)) - 9) * 0.0033333333333333335;
+    const bv = calcContractValue_866830(S.M.c, K_OUT, st, K_DES) | 0;
+    let score = bv / a - loyAdj;
+    const x = slCall(S.c, 0x846920, S.slm, st, bc, 0, 0, s4, 0);
+    if (score < 0.6) score = 0;
+    // 0x4ceae2 (spiller): arbejdstilladelse og under 90 dage fra +0x2d → 0
+    if (score > 0.5 && slCall(S.c, 0x8c7560, tmA, st, bc, 0) && daysSince_54cdb0(m, K_OUT + 0x2d, { d: m.s16(G.TODAY), y: m.u16(G.TODAY + 2), x: m.u32(G.TODAY + 4) }) < 0x5a) score = 0;
+    let f: number;
+    if (score < 0.9) {
+      if (score > 0.8 && x > 3.15) f = x;
+      else if (score > 0.7 && x > 3.5) f = x > 3.15 ? x : 3.15;
+      else return false;
+    } else f = x > 3.15 ? x : 3.15;
+    return f * score > 2.75;
   }, S);
 }
 const DELAY_REC = 0x5e7f0200;
