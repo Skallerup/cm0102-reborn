@@ -235,8 +235,14 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
 
   const leagueById = new Map(world.leagues.map((l) => [l.id, l]));
 
+  // (den originale database) de skjulte ligaers klubber kun med mindst én spiller i hukommelsen for de valgte lande (CMRatings.tc – fx Englands
+  // non-league, når England er valgt); de øvrige spilbare landes inaktive divisioner kommer ikke med
+  const tcOk = (id: number) => { const tc = cm?.ratings[id]?.tc; return tc === undefined || tc === 1 || (Array.isArray(tc) && tc.some((n) => o.activeNations.includes(n))); };
+  const hiddenWithPlayers = new Set<number>();
+  if (cm) { const Fp = Object.fromEntries(world.playerFields.map((f, i) => [f, i])); for (const r of world.players) if (r[Fp.club] && tcOk(r[Fp.id] as number)) hiddenWithPlayers.add(r[Fp.club] as number); }
   // Klubber
   for (const [id, name, short, nation, league, stadium, seats] of world.clubs) {
+    if (cm && leagueById.get(league)?.hidden && !hiddenWithPlayers.has(id)) continue;
     const h = hash(id);
     g.clubs[id] = {
       id, name, short, nation, league, stadium: stadium || `${short} Stadium`, seats: seats || 5000,
@@ -273,6 +279,8 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     const club = r[F.club] as number;
     if (club && !g.clubs[club]) continue;
     // de klubløse (CMRatings.tf): i ægte tilstand dem, originalens 0x524d70 beholder for de valgte lande; ellers som før kun CA 120+
+    // de skjulte ligaers spillere uden for talentudvalget (CMRatings.tc – fx Englands non-league): kun når 0x524d70 beholder dem for de valgte lande
+    if (club && !tcOk(r[F.id] as number)) continue;
     const tf = club ? undefined : rtOf(r[F.id] as number)?.tf;
     if (tf !== undefined) {
       if (cmStartGame ? tf === 0 || (Array.isArray(tf) && !tf.some((n) => o.activeNations.includes(n))) : rtOf(r[F.id] as number)!.ca < 120) continue;

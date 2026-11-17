@@ -2013,7 +2013,8 @@ export function cmShortlistDaily(g: GameState, planClub: (cid: number) => { drop
     const c = clubs[ci];
     // fremdriftsbjælken (dagens Web Worker – ui/dayWorker.ts): dagens brøkdel, klubløkken er det meste af dagen
     if (prog && (ci & 15) === 0) prog(0.1 + 0.8 * (ci / clubs.length));
-    if (!c.league || g.leagues[c.league]?.hidden || !g.cmPlan[c.id]) continue;
+    // (0x5cdcb4: alle klubber med land +0x53 – også de inaktive divisioner, fx Englands non-league, og de skjulte ligaer)
+    if (!g.cmPlan[c.id]) continue;
     const bids = slotsWithBids(S, c.id);
     readSlots(S, c.id);
     const e = entryOf(g, c.id);

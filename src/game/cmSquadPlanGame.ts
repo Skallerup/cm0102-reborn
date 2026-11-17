@@ -261,7 +261,6 @@ export function cmSquadPlanDaily(g: GameState): void {
     return;
   }
   for (const c of Object.values(g.clubs)) {
-    if (!c.league || g.leagues[c.league]?.hidden) continue;
     const st = g.cmPlan[c.id];
     if (!st) continue;
     const e = entryOf(g, c.id);

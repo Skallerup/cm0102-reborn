@@ -141,6 +141,8 @@ for (const l of w.leagues) {
 // en skjult liga pr. land/division (`hidden`), der ikke spilles – som de ikke-spilbare lande i originalen.
 const hiddenLeagues: typeof w.leagues = [];
 const hiddenKeep = new Set<number>();
+/** de spilbare lande (en liga i spillet) – kun deres valg kan bringe de skjulte ligaers øvrige spillere i hukommelsen (CMRatings.tc) */
+const playableNat = new Set<number>();
 if (ORIGINAL) {
   const cult = JSON.parse(readFileSync(new URL('./cult-players.json', import.meta.url), 'utf8')) as { first: string; last: string; club: string }[];
   const norm = (x: string) => x.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z]/g, '');
@@ -166,6 +168,15 @@ if (ORIGINAL) {
     const club = p[F.club] as number;
     if (club && !keptLeagues.has(clubLeague.get(club) ?? '') && notable(p)) keep.add(club);
   }
+  // de spilbare landes øvrige klubber (inaktive divisioner – Englands Conference, Isthmian/Southern/Northern Premier, "Lower Division"): originalen
+  // har dem og deres spillere i hukommelsen, når landet er valgt (0x524d70 – CMRatings.tc), og de kører trupplan og bud som alle klubber med land
+  // (0x5cccd0). Kun med databasens hukommelsestal (tc); spillerne uden for de valgte lande fjernes ved nyt spil (newgame.ts)
+  const notableClubs = new Set(keep);
+  const hasTc = Object.values(w.ratings).some((r) => r.tc !== undefined);
+  if (hasTc) {
+    for (const l of w.leagues) if (keptLeagues.has(l.id)) playableNat.add(l.nation);
+    for (const c of w.clubs) if (!keptLeagues.has(c[4] as string) && playableNat.has(c[3] as number)) keep.add(c[0] as number);
+  }
   const realLeague = new Map(w.leagues.map((l) => [l.id, l]));
   const hid = new Map<string, (typeof w.leagues)[number]>();
   for (const c of w.clubs) {
@@ -181,18 +192,30 @@ if (ORIGINAL) {
   // de skjulte klubber spiller ikke kampe: talenterne + de bedste op til HIDDEN_SQUAD spillere (sparer plads og tid)
   const HIDDEN_SQUAD = 16;
   const byClub = new Map<number, (string | number)[][]>();
-  for (const p of w.players) { const c = p[F.club] as number; if (keep.has(c)) (byClub.get(c) ?? byClub.set(c, []).get(c)!).push(p); }
+  for (const p of w.players) { const c = p[F.club] as number; if (notableClubs.has(c)) (byClub.get(c) ?? byClub.set(c, []).get(c)!).push(p); }
   for (const list of byClub.values()) {
     const ca = (p: (string | number)[]) => w.ratings[p[F.id] as number]?.ca ?? 0;
     const top = list.filter(notable);
     const rest = list.filter((p) => !notable(p) && ageAt(p[F.dob] as string) <= 34).sort((x, y) => ca(y) - ca(x));
     for (const p of [...top, ...rest.slice(0, Math.max(0, HIDDEN_SQUAD - top.length))]) hiddenKeep.add(p[F.id] as number);
   }
-  console.error(`skjulte klubber: ${keep.size} i ${hid.size} skjulte ligaer`);
+  console.error(`skjulte klubber: ${keep.size} (heraf ${notableClubs.size} med talenter) i ${hid.size} skjulte ligaer`);
 }
 w.leagues = [...w.leagues.filter((l) => keptLeagues.has(l.id)), ...hiddenLeagues];
 const keptClubs = new Set<number>();
 w.clubs = w.clubs.filter((c) => keptLeagues.has(c[4] as string));
+// (de spilbare landes inaktive divisioner) kun klubber med mindst én spiller, originalen kan have i hukommelsen (tomme klubber – åbent punkt)
+if (playableNat.size) {
+  const lgOf = new Map(w.leagues.map((l) => [l.id, l]));
+  const withP = new Set<number>();
+  for (const p of w.players) {
+    const club = p[F.club] as number, r = w.ratings[p[F.id] as number];
+    if (!club) continue;
+    const tc = r?.tc;
+    if (hiddenKeep.has(p[F.id] as number) || tc === undefined || tc === 1 || (Array.isArray(tc) && tc.some((n) => playableNat.has(n)))) withP.add(club);
+  }
+  w.clubs = w.clubs.filter((c) => !lgOf.get(c[4] as string)?.hidden || withP.has(c[0] as number));
+}
 const hiddenIds = new Set(hiddenLeagues.map((l) => l.id));
 const clubLg = new Map(w.clubs.map((c) => [c[0] as number, c[4] as string]));
 const hiddenLeagueOf = (club: number) => hiddenIds.has(clubLg.get(club) ?? '');
@@ -219,7 +242,13 @@ const before = w.players.length;
 w.players = w.players.filter((p) => {
   const club = p[F.club] as number;
   if (club && !keptClubs.has(club)) return false;
-  if (club && ORIGINAL && hiddenLeagueOf(club) && !hiddenKeep.has(p[F.id] as number)) return false;
+  if (club && ORIGINAL && hiddenLeagueOf(club) && !hiddenKeep.has(p[F.id] as number)) {
+    // (de spilbare landes inaktive divisioner) kun dem, originalens 0x524d70 kan have i hukommelsen (CMRatings.tc)
+    const r = w.ratings[p[F.id] as number];
+    if (r && Array.isArray(r.tc)) r.tc = r.tc.filter((n) => playableNat.has(n));
+    const tc = r?.tc;
+    if (!(tc === 1 || (Array.isArray(tc) && tc.length))) return false;
+  }
   return ageAt(shift(p[F.dob] as string)) <= 40;
 });
 const dropped = before - w.players.length;
@@ -239,6 +268,11 @@ for (const [league, fix] of Object.entries(DIV_FIXES)) {
 // Ratings/omdømme/farver: beskær til de spillere og klubber der er med (sparer plads)
 const keptPlayers = new Set(w.players.map((p) => p[F.id] as number));
 for (const k of Object.keys(w.ratings)) if (!keptPlayers.has(Number(k))) delete w.ratings[Number(k)];
+// tc kun for spillerne i de skjulte ligaer uden for talentudvalget (de øvrige er altid med)
+for (const p of w.players) {
+  const r = w.ratings[p[F.id] as number], club = p[F.club] as number;
+  if (r && r.tc !== undefined && !(club && hiddenLeagueOf(club) && !hiddenKeep.has(p[F.id] as number))) delete r.tc;
+}
 for (const k of Object.keys(w.clubRep)) if (!keptClubs.has(Number(k))) delete w.clubRep[Number(k)];
 for (const k of Object.keys(w.clubColors)) if (!keptClubs.has(Number(k))) delete w.clubColors[Number(k)];
 if (w.cmRaw) { for (const t of [w.cmRaw.clubRep, w.cmRaw.clubStat ?? {}, w.cmRaw.crowd ?? {}, w.cmRaw.fin ?? {}, w.cmRaw.chair ?? {}, w.cmRaw.chairBoard ?? {}] as Record<number, unknown>[]) for (const k of Object.keys(t)) if (!keptClubs.has(Number(k))) delete t[Number(k)]; }

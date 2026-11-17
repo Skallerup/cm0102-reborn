@@ -106,8 +106,23 @@ View Finances (der læser Bonuses fra blokken) viste 0 bonusser, selv om pengene
    sælger → 0x8c6a42 accept_transfer_bid 0x8c0080: viljen 0x846920 (køberens status 0x849f00) under 0,75 → nej (0x8d8310), ellers tilstand 5 og
    beslutningen 0x4cd230. Nu lever buddet i g.offers (cmAi) som computer→computer-buddene. Sæson: køb 665 → 585, klubløse 39 → 34, leje
    132 → 140 (measure b14c9351e4a7 → e5704f2ec72b).
-   **Åbne punkter (K2.1):** (a) udlandets klubber handler næsten ikke med England (leje ENG→udl. 4 mod 73, køb fra udl. 77 mod 158) –
-   ønskelisterne for klubber uden for de valgte lande; (b) for mange køb inden for England (508 mod 274); (c) klubløse: flere tilbud på samme
+   **Åbne punkter (K2.1):** ~~(a) udlandets klubber handler næsten ikke med England~~ – **undersøgt 17/11:** "udlandet" i oraklet er næsten
+   kun ENGELSKE non-league-klubber (af 73 lån ENG→"udl." er 70 til Conference/Isthmian/Southern/Northern Premier/"Lower Division", af 158 køb
+   ~140 derfra; reelt udenlandske: AIK, Helsingborg, Lillestrøm, Dundee Utd …). Oraklet har med England valgt 146 non-league-klubber med
+   1.610 spillere i hukommelsen (divisionerne 93/357/358/359/360, alle inaktive, nation +0x11c = 2); world-filen havde 33 "talentklubber"
+   med 352 spillere, og skjulte klubber kørte aldrig trupplan/bud (*estimeret*). **Porteret:** 0x5cccd0 (0x5cdcb4) og 0x83a1b0 kører alle
+   klubber med land – også de skjulte (0x83cb40 trin 1 springer dem uden aktiv liga og omdømme < 4000 tilfældigt over); world-filen får de
+   spilbare landes inaktive divisioners klubber med mindst én spiller, som 0x524d70 beholder, når landet er valgt (`CMRatings.tc`, trim2/
+   trimMemory pr. land), og newgame.ts tager kun dem med for de valgte lande (world-dbs2: England 143 klubber, 1.671 spillere, divisionerne
+   22/55/21/22/23 mod oraklets 22/58/21/22/23). Sæson (størrelse 2, frø 1, measure e5704f2ec72b → 7a27f0f2b5c0): leje ENG→"udl." 4 → 33
+   (orig. 73), køb fra "udl." 77 → 246 (158), køb fra ENG 508 → 558 (274), køb i alt 585 → 804 (432), klubløse skriver under 34 → 28 (45),
+   klubløse 30/6 1.038 → 1.109 (202); tid for sæsonen 763 → 727 s (ingen forsinkelse). **Kræver genbygning af world-original*.json**
+   (Maximum: 24 → 36 MB, gz 4,1 → 5,8 MB, +52.000 spillere i filen – kun de valgte landes kommer med i spillet) – ejerens/hovedsessionens
+   beslutning; uden genbygning kører kun de 986 eksisterende talentklubber nu trupplan. Tilbage: (a1) de skjulte klubbers stab (manager →
+   formationen +7 og managerblokken; build-cm-data.mts løsriver stab fra skjulte klubber), (a2) tomme klubber (originalen har alle klubber, også
+   uden spillere – vi tager kun dem med spillere), (a3) andre landes statsborgere i de inaktive divisioner (tc pr. enkelt land, ikke for
+   kombinationer – trim2's løbende tæller), (a4) for mange køb i alt (nu også fra non-league; samme årsag som (b)), (a5) lån til non-league
+   33 mod 73; (b) for mange køb inden for England (508 mod 274); (c) klubløse: flere tilbud på samme
    spiller afgøres af det første, der bliver færdigt – originalens 0x4ce4e0 vælger det bedste af alle åbne tilbud (0x8cd150 udsætter, mens
    transfertilbuddet står i tilstand 0/1/5/6; 0x8c1e40 i tilstand 5); kontraktsvaret 0x4ce4e0 er stadig ja (*estimeret* i cmAiAiDue);
    (d) klubløse i hukommelsen 30/6: 1.038 mod 202 (engelske statsborgere 149 mod 152 – resten er udlændinge; tidspunktet: oraklets billede
