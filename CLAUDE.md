@@ -29,7 +29,11 @@ regler, arkitektur og faldgruber.
   ændringslogslinjen i dagens version (ny version pr. dag), typetjekker, kører de berørte tests + K3/K5/ændringslog, én e2e, committer, pusher og
   rydder worktree'en. `--no-e2e` kun ved ren motor/data uden UI. Stopper ved første fejl uden at pushe.
 - **Find det hurtigt:** `npx tsx scripts/where.ts <0xadresse|emne>` viser porten i src/, noterne/C-filen i ~/cm0102-engine, tests, scripts og
-  udgivelsesloggen på én gang – brug den før grep-rundture.
+  udgivelsesloggen på én gang – brug den før grep-rundture. Flere ord = alle skal matche.
+- **Orakelkørsler:** `npx tsx scripts/oracle-catalog.ts [ord|--json]` – katalog `~/cm0102-engine/oracle/CATALOG.md` (frø, datoer, målinger, størrelse
+  pr. kørsel/udtræk); slå op dér før en ny orakelkørsel (≈4 min + 200 MB–1 GB).
+- **Snapshots (IKKE klar):** `scripts/lib/snapshot.ts` + `scripts/snap-check.ts` gemmer GameState, men en kørsel fra snapshot er IKKE bit-identisk med
+  fra bunden (modulhukommelse uden for GameState: staleSev, lastDiv, WeakMap-caches …) – brug ikke til målinger; ingen `--snap` i soak/grid-season.
 - `npm run e2e` (scripts/e2e.mjs) klikker igennem klassisk og moderne udseende i Chromium: alle hovedskærme, taktik
   (byt, flyt pladser, instruktioner, skift udseende) og en hel kamp. Kører også i CI. Nye skærme/knapper: udvid testen.
 - Ejeren spiller originalen lokalt ("CM 01-02 Bosman Edition.app"). Claude kan selv tage billeder af vinduet med
