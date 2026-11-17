@@ -1184,6 +1184,8 @@ export interface GameState {
   /** (cmScout.ts) SCOUT_MANAGER +0x5c: spejderanmodningerne (Scout Player) og spejderlisternes +0x1a5 (næste dag, spejderen må se en kamp) */
   cmScoutReq?: import('./cmScout').CmScoutReq[];
   cmScoutWatch?: Record<number, string>;
+  /** spejderlisternes opgaver og resultattabeller (PLAYER_SEARCH +0x18c..+0x1ee, cmScoutAsg.ts) pr. spejder */
+  cmScoutAsg?: Record<number, import('./cmScoutAsg').CmAsg>;
   /** originalens bestyrelse og managerjob (cmBoard.ts/cmBoardGame.ts – kun den originale database i ægte tilstand): MANAGER_MANAGER's poster og lister */
   cmBoard?: import('./cmBoard').CmBoardState;
   /** Fine-objektet [0xae2a3c] (Discipline Player – cmFine.ts): posterne, trænerens rapporter og tælleren pr. klub */

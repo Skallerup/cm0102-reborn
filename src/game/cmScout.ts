@@ -18,14 +18,17 @@
 //                                       hjemmeholdets) skal dækkes, og en af klubbens anmodninger, der er "due", skal spille i kampen; så vurderes
 //                                       alle kampens spillere med mindst 15 minutter (ikke klubbens egne): anmodede (force 1) og ellers dem med
 //                                       karakter 8+ (force 2), der ikke er kendte (0x5407e0 < 4000); skønnet = ((karakter·40 − 260)·minutter)/2.
-//   0x7b62a0 PLAYER_SEARCH::report_on_player (force 1/2 – rapporten): 0x7f9520, kendskabet 0x5b09d0, stjernerne (cmStaff.scoutJudgement med
-//                                       skønnet og fire rand(500)), arbejdstilladelsen (0x8c7560/0x8c7950, EU-pas via anden nationalitet +0x1e i
-//                                       en klub i region 0xe → 2); force 2 kun med 4+ stjerner.
+//                                       En liste med turneringssøgning (+0x195) ser alle turneringens kampe (force 0, uden kendskabsgrænse og
+//                                       karakterkrav); før rapportdagen +0x1ad uden turnering ser listen ingen kampe.
+//   0x7b62a0 PLAYER_SEARCH::report_on_player: 0x7f9520, kendskabet 0x5b09d0, stjernerne (cmStaff.scoutJudgement med skønnet og fire rand(500));
+//                                       undtagen force 1: intet, hvis begge skøn er højst 0,6·L eller viljen 0x846920 < 3,15; listens tabel
+//                                       (cmScoutAsg.ts cmAsgRecord); force 0: et nyt 5-stjernet fund → 0x138b; ellers arbejdstilladelsen
+//                                       (0x8c7560/0x8c7950, EU-pas via anden nationalitet +0x1e i en klub i region 0xe → 2); force 2 kun med 4+ stjerner.
 //   0x7f9890 send_scout_reports         posterne sorteres (0x7fc2a0: spiller, klub, evne, potentiale) og samles pr. spiller og klub
 //   0x7f9a60 send_scout_report_news     nyheden 0x138e til klubbens manager (højst tre spejdere) – teksten 0x7f9d10 (src/ui/cmScoutNews.ts)
 //
-// Ikke porteret: spejderlister med opgave (0x7b3e20 run_scout_day, 0x7b0050 og nyheden 0x138b/0x7b95c0 – vores scouting.ts står for dem),
-//   medierne 0x754740 (rygtet om interessen) og listens resultattabel (Rec) i 0x7b62a0, 0x546ab0/0x5465a0 (spillerens beskrivelse i stedet for
+// Spejderlister med opgave (0x7ae9c0/0x7b0050/0x7b3e20, nyheden 0x138b) og listens resultattabel i 0x7b62a0 (force 0): cmScoutAsg.ts.
+// Ikke porteret: medierne 0x754740 (rygtet om interessen), 0x546ab0/0x5465a0 (spillerens beskrivelse i stedet for
 //   positionsordet – nyheden får derfor ikke markøren 0x420e9), turneringsrundens navn 0x4b4850 (vores rundenavne), Portugal-reglen i 0x53d980.
 // Tilfældige tal: cmRand (egen talrække – spillets rng røres ikke).
 import type { Fixture, GameState, MatchReport, Player, Staff } from './types';
@@ -41,6 +44,7 @@ import { workPermitGranted } from './rules2001';
 import { cmForeign } from './cmNewsScope';
 import { playerRecord } from './engine/grid/aiTeam';
 import { naturalMask } from './engine/grid/aiTacticChoice';
+import { cmAsgCovers, cmAsgOf, cmAsgOn, cmAsgRecord, cmRunScoutDay, cmWill, sendRecommendation } from './cmScoutAsg';
 import REGION from './data/cmNationRegion.json';
 
 /** SCOUT_MANAGER +0x5c: anmodningen (0x11 bytes: +0 klubben, +4 spilleren, +8 datoen, +0x10 antal rapporter) */
@@ -85,10 +89,11 @@ function canClubScoutNation(g: GameState, nation: number, club: number): boolean
 export function coversNation(g: GameState, s: Staff, nation: number): boolean {
   const club = g.clubs[s.club];
   if (!club || nation < 0) return false;
-  // 0x7b7576: med en opgave (0x7aefd0) – klubbens land, opgavens land (resten af opgavetyperne følger listen uden opgave)
+  // 0x7b7576: med en opgave (0x7aefd0) – klubbens land, opgavens land, regionen; ungdom og turnering dækker intet (cmScoutAsg.ts)
+  const ca = cmAsgOf(g, s);
+  if (cmAsgOn(ca)) return cmAsgCovers(g, ca, nation);
   const a = s.assignment;
   if (a && a.kind === 'club') return g.clubs[a.target as number]?.nation === nation;
-  if (a && a.kind === 'nation') return a.target === nation;
   if (eu(g, club.nation) && eu(g, nation)) return true;
   if (region(g, club.nation) === region(g, nation)) return true;
   if (!cmForeign(g, s.nation, nation)) return true;
@@ -146,7 +151,7 @@ function repSeen(g: GameState, p: Player, club: number): number {
 export const posMask = (p: Player) => naturalMask([...p.pos.slice(0, 8), p.side?.[2] ?? 1, p.side?.[0] ?? 1, p.side?.[1] ?? 1]);
 
 /** 0x7b62a0 report_on_player, force 1/2 (spejderen skriver en rapport) – null, hvis der ingen rapport er */
-export function reportOnPlayer(g: GameState, s: Staff, p: Player, force: 1 | 2, score: number, rnd: (n: number) => number,
+export function reportOnPlayer(g: GameState, s: Staff, p: Player, force: 0 | 1 | 2, score: number, rnd: (n: number) => number,
   m?: { f: Fixture; side: 0 | 1; rep: MatchReport }): CmScoutRec | null {
   const club = s.club;
   if (!club || !g.clubs[club]) return null;
@@ -154,21 +159,40 @@ export function reportOnPlayer(g: GameState, s: Staff, p: Player, force: 1 | 2, 
   if (g.options.masking) cmKnowSee(g, p, cmStaffAttr(s, 'judgingAbility'), s.id);
   const age = ageOn(p.dob, g.date);
   const rand: [number, number, number, number] = [rnd(500), rnd(500), rnd(500), rnd(500)];
+  const level = cmClubLevelOf(g, club), raw = { est: 0, pot: 0 };
   const [ab, pot] = scoutJudgement({ rec: playerRecord(p), age, playerId: p.id, ca: p.ca, pa: p.pa, free: !p.club, repSeen: repSeen(g, p, club),
     judge: { id: s.cmId ?? s.id, ja: cmStaffAttr(s, 'judgingAbility'), jp: cmStaffAttr(s, 'judgingPotential') }, clubRep: clubRepMem(g, club),
-    level: cmClubLevelOf(g, club), gameSeed: g.seed, bias: score, rand });
+    level, gameSeed: g.seed, bias: score, rand }, raw);
+  // 0x7b67b1: begge skøn højst 0,6·L, eller viljen 0x846920(spiller, klub, 1, 0, 1) under 3,15 → ingen rapport (undtagen anmodningerne, force 1)
+  if (force !== 1) {
+    const L = Math.min(35000, Math.max(1750, level));
+    if (!(raw.est > 0.6 * L) && !(raw.pot > 0.6 * L)) return null;
+    if (cmWill(g, p, club, 1, 0, 1) < 3.15) return null;
+  }
+  // 0x7b69cf: listens resultattabel (cmScoutAsg.ts)
+  const five = cmAsgRecord(g, s, p, raw.est, raw.pot, ab, pot);
   const needs = cmNeedsPermit(g, p, club, true);
   const granted = needs ? (workPermitGranted(p) ? 1 : 0) : 1;
+  const match = m ? matchOf(m) : undefined;
+  if (force === 0) {
+    // 0x7b701e: et nyt 5-stjernet fund i turneringssøgningen → nyheden 0x138b med kampen
+    const a = cmAsgOf(g, s);
+    if (a && !five && (ab >= 5 || pot >= 5)) sendRecommendation(g, s, a, p, ab, pot, match);
+    return null;
+  }
   if (force === 2 && ab < 4 && pot < 4) return null;
   const rec: CmScoutRec = { mode: force, pid: p.id, club, scout: s.id, age, pos: posMask(p), ab, pot, permit: 0, granted: 0 };
-  if (m) {
-    const r = m.f.result, team = m.side === 0 ? m.f.home : m.f.away, opp = m.side === 0 ? m.f.away : m.f.home;
-    const hg = r?.hg ?? m.rep.stats[0].goals, ag = r?.ag ?? m.rep.stats[1].goals;
-    rec.match = { team, opp, gf: m.side === 0 ? hg : ag, ga: m.side === 0 ? ag : hg, reserve: isResFixture(m.f), comp: m.f.comp, stage: m.f.stage ?? '', round: m.f.round };
-  }
+  if (match) rec.match = match;
   if (needs) { rec.permit = 1; rec.granted = granted; }
   else if (!eu(g, p.nation) && p.cmNation2 !== undefined && p.cmNation2 >= 0 && eu(g, p.cmNation2) && region(g, g.clubs[club].nation) === 0xe) rec.permit = 2;
   return rec;
+}
+
+/** 0x7e4750 fill_match_record_from_fixture: kampen set fra spillerens hold */
+function matchOf(m: { f: Fixture; side: 0 | 1; rep: MatchReport }): NonNullable<CmScoutRec['match']> {
+  const r = m.f.result, team = m.side === 0 ? m.f.home : m.f.away, opp = m.side === 0 ? m.f.away : m.f.home;
+  const hg = r?.hg ?? m.rep.stats[0].goals, ag = r?.ag ?? m.rep.stats[1].goals;
+  return { team, opp, gf: m.side === 0 ? hg : ag, ga: m.side === 0 ? ag : hg, reserve: isResFixture(m.f), comp: m.f.comp, stage: m.f.stage ?? '', round: m.f.round };
 }
 
 /** 0x7f9890 + 0x7f9a60: rapporterne samlet pr. spiller og klub → nyheden 0x138e (højst tre spejdere) */
@@ -203,7 +227,16 @@ function newsOf(g: GameState, rs: CmScoutRec[]): void {
 
 /** 0x7f8750 SCOUT_MANAGER::daily_update – anmodningerne (én gang om dagen, efter dagens øvrige opdateringer) */
 export function cmScoutDaily(g: GameState): void {
-  if (!cmScoutOn(g) || !g.cmScoutReq?.length) return;
+  if (!cmScoutOn(g)) return;
+  if (g.cmScoutReq?.length) scoutRequestsDaily(g);
+  // 0x7f8b8f: for hver menneskemanager (+0x5f = 1) de ti lister → 0x7b3e20 (cmScoutAsg.ts)
+  if (g.cmScoutAsg) {
+    const clubs = [...new Set([g.userClub, ...(g.humans ?? []).map((h) => h.userClub)])].filter((c) => c && isHumanClub(c));
+    for (const c of clubs) for (const s of scoutLists(g, c)) cmRunScoutDay(g, s);
+  }
+}
+
+function scoutRequestsDaily(g: GameState): void {
   const out: CmScoutRec[] = [];
   const list = reqs(g);
   const today = g.date, end14 = addDays(today, 14);
@@ -242,9 +275,12 @@ export function cmScoutDaily(g: GameState): void {
 
 /** 0x7f8c00 + 0x7b5be0: efter en kamp – menneskeklubbernes spejdere uden opgave ser kampen, hvis en anmodet spiller er med */
 export function cmScoutMatch(g: GameState, f: Fixture, rep: MatchReport): void {
-  if (!cmScoutOn(g) || !g.cmScoutReq?.length || !rep.players?.length) return;
+  if (!cmScoutOn(g) || !rep.players?.length) return;
+  // (hastighed) kun klubber med anmodninger eller en turneringssøgning – de andre lister ser ingen kampe
+  const comps = g.cmScoutAsg ? Object.entries(g.cmScoutAsg).filter(([, a]) => a.comp === f.comp).map(([id]) => g.staff[+id]?.club ?? 0) : [];
+  if (!g.cmScoutReq?.length && !comps.length) return;
   const out: CmScoutRec[] = [];
-  const clubs = [...new Set(g.cmScoutReq.map((r) => r.club))].sort((a, b) => a - b);
+  const clubs = [...new Set([...(g.cmScoutReq ?? []).map((r) => r.club), ...comps])].filter(Boolean).sort((a, b) => a - b);
   for (const club of clubs) {
     if (!isHumanClub(club)) continue;
     const lists = scoutLists(g, club);
@@ -262,21 +298,28 @@ export function cmScoutMatch(g: GameState, f: Fixture, rep: MatchReport): void {
   sendScoutReports(g, out);
 }
 
-/** 0x7b5be0 PLAYER_SEARCH::scout_match for en spejderliste uden opgave */
+/** 0x7b5be0 PLAYER_SEARCH::scout_match for én spejderliste: anmodningerne (uden opgave) og turneringssøgningen (cmScoutAsg.ts) */
 function scoutMatchList(g: GameState, s: Staff, f: Fixture, rep: MatchReport, rnd: (n: number) => number, out: CmScoutRec[]): void {
   const club = s.club;
-  // 0x7b5df4: en igangværende opgave (i dag før slutdatoen +0x1ad, uden turnering +0x195) – listen ser ingen kampe for anmodningerne
-  if (s.assignment && s.assignment.kind !== 'player') return;
+  const a = cmAsgOf(g, s);
+  // de opgaver, der stadig kører som før (Club, Next Opposition – scouting.ts): ingen kampe for anmodningerne
+  if (!a && s.assignment && s.assignment.kind !== 'player') return;
   const watch = (g.cmScoutWatch ??= {});
   if (watch[s.id] && g.date < watch[s.id]) return;
-  const nation = g.clubs[f.home]?.nation ?? -1;
-  if (!coversNation(g, s, nation)) return;
+  // 0x7b5df4: før rapportdagen +0x1ad og uden turnering – listen ser ingen kampe
+  if (a && g.date < a.date && !a.comp) return;
+  // 0x7b5e2c: turneringssøgningen ser alle turneringens kampe (force 0)
+  const compMatch = !!a?.comp && f.comp === a.comp;
   const played = rep.players.filter((l) => !l.sub || l.minutes > 0);
-  // 0x7b5e69: klubben har anmodninger, en af dem spiller for et af holdene, og en spiller i kamptrupperne (de 20 pr. hold) er "due"
-  const targets = reqs(g).filter((r) => r.club === club).map((r) => g.players[r.pid]).filter((p): p is Player => !!p);
-  if (!targets.some((p) => p.club === f.home || p.club === f.away || p.loan?.from === f.home || p.loan?.from === f.away)) return;
-  const squadIds = [...rep.players.map((l) => l.id), ...(rep.bench?.[0] ?? []), ...(rep.bench?.[1] ?? [])];
-  if (!squadIds.some((id) => hasScoutRequest(g, id, club, true))) return;
+  if (!compMatch) {
+    const nation = g.clubs[f.home]?.nation ?? -1;
+    if (!coversNation(g, s, nation)) return;
+    // 0x7b5e69: klubben har anmodninger, en af dem spiller for et af holdene, og en spiller i kamptrupperne (de 20 pr. hold) er "due"
+    const targets = reqs(g).filter((r) => r.club === club).map((r) => g.players[r.pid]).filter((p): p is Player => !!p);
+    if (!targets.some((p) => p.club === f.home || p.club === f.away || p.loan?.from === f.home || p.loan?.from === f.away)) return;
+    const squadIds = [...rep.players.map((l) => l.id), ...(rep.bench?.[0] ?? []), ...(rep.bench?.[1] ?? [])];
+    if (!squadIds.some((id) => hasScoutRequest(g, id, club, true))) return;
+  }
   watch[s.id] = addDays(g.date, 1);
   for (const side of [0, 1] as const) {
     for (const l of played) {
@@ -286,12 +329,12 @@ function scoutMatchList(g: GameState, s: Staff, f: Fixture, rep: MatchReport, rn
       if ((p.loan ? p.loan.from : p.club) === club) continue;
       if (g.options.masking) cmKnowSee(g, p, cmStaffAttr(s, 'judgingAbility'), s.id);
       const req = hasScoutRequest(g, p.id, club, false);
-      if (!req && repSeen(g, p, club) >= 4000) continue;
+      if (!req && !compMatch && repSeen(g, p, club) >= 4000) continue;
       if (l.minutes < 15) continue;
       const rating = Math.trunc(l.rating);
       const score = Math.trunc(((rating * 40 - 260) * l.minutes) / 2);
-      if (!req && rating < 8) continue;
-      const rec = reportOnPlayer(g, s, p, req ? 1 : 2, score, rnd, { f, side, rep });
+      if (!compMatch && !req && rating < 8) continue;
+      const rec = reportOnPlayer(g, s, p, compMatch ? 0 : req ? 1 : 2, score, rnd, { f, side, rep });
       if (rec) out.push(rec);
     }
   }

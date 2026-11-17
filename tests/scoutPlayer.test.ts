@@ -30,6 +30,7 @@ describe('Scout Player (ægte tilstand, original DB, masking)', () => {
       expect(g.news.some((n) => n.key.startsWith('cmsr.') && n.link?.id === t.id), `cmsr-rapport for ${t.id}`).toBe(true);
       expect(knowledgeOf(t)).toBeGreaterThanOrEqual(45);
     }
-    expect(g.staff[scout!.id].assignment?.kind).toBe('nation');
+    // søgningen kører videre (originalens opgave, cmScoutAsg.ts) – eller er slut efter sine otte runder
+    expect(g.staff[scout!.id].assignment?.kind === 'nation' || g.news.some((n) => n.key === 'cmsn.a70614')).toBe(true);
   }, 180000);
 });

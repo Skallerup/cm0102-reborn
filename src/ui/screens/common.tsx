@@ -5,6 +5,7 @@ import { ClubLink, PlayerLink } from '../components';
 import type { NewsItem } from '../../game/types';
 import { gs } from '../../game/state';
 import { cmScoutReportBody } from '../cmScoutNews';
+import { cmScoutAsgParams } from '../cmScoutAsgNews';
 import { cmBanAnswerBody, cmBanBody, cmBanParams } from '../cmBanText';
 import { requestBodyKind, requestReasons } from '../../game/cmTransferList';
 import { boardCmText } from '../../game/cmBoardText';
@@ -123,6 +124,8 @@ export function newsParams(n: NewsItem): Record<string, string | number> {
   // scoutrapporten (CM 01/02): hvor han blev set, dommen og bemærkningerne sættes sammen af nøglerne
   // CM 01/02's spejderrapport 0x138e (cmScout.ts): brødteksten 0x7f9d10
   if (n.key.startsWith('cmsr.')) p.body = cmScoutReportBody(gs(), n);
+  // CM 01/02's spejderopgaver 0x1389/0x138a/0x138b (cmScoutAsg.ts): navnene og brødteksten
+  if (n.key.startsWith('cmsn.')) cmScoutAsgParams(gs(), n, p);
   if (n.key === 'scout.report') {
     p.where = p.ctx === 'weeks' ? t('scout.ctx.weeks', { age: p.age, pos: t(`role.${p.pos}`).toLowerCase() }) : t(`scout.ctx.${p.ctx}`, { club: p.club, score: p.score, opp: p.opp });
     p.verdict = t(`scout.v.${p.verdict}`, { club: p.myClub });
@@ -158,6 +161,7 @@ function cmIntParams(n: NewsItem, p: Record<string, string | number>): void {
 
 function bodyKey(n: NewsItem): string {
   if (n.key.startsWith('cmsr.')) return 'cmsr.body';
+  if (n.key.startsWith('cmsn.')) return 'cmsr.body';
   // landsholdenes nyheder (cmIntlSquad.ts): brødteksten er valgt i spillet
   if (n.key.startsWith('cmint.') && typeof n.params?.body === 'string') return n.key.startsWith('cmint.r.') ? 'cmint.r.body' : `cmint.b.${n.params.body}`;
   // CM 01/02 (0x5982 ff.): "Kim Rømer's contract is due to expire in twelve months time." – efter dagene til udløbet (ældre nyheder uden days: datoen)

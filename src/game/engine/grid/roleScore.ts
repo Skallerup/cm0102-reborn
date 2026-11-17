@@ -85,7 +85,7 @@ export interface RoleInput {
   /** flag 0x1000 (managerblokken 0x6e52ca–0x6e5ae8, planScore.ts managerBlock): dommerens ikke-spillerpost m.m. – uden den (eller uden klub,
    *  `hasClub` false) springes blokken over som i originalen uden dommer/klub */
   mgrBlock?: ManagerBlockIn;
-  /** arg6 (klubben) ≠ 0 – kun managerblokken læser det (standard: ja) */
+  /** arg6 (klubben) ≠ 0 – managerblokken og karakterleddets klub-del (0x6e4191) læser det (standard: ja) */
   hasClub?: boolean;
   /** kun under kampen (arg3): kampspilleren og uret – rating- og konditionsleddet tages derfra */
   match?: { p: SubPlayer; ctx: QualityContext };
@@ -226,7 +226,7 @@ function ratingsTerm(i: RoleInput, sum: number, cnt: number, recentJoin: () => b
   if (avg > 8) add += s8(ftol((avg * 25 - 170) * cnt));
   else if (avg > 6.8) add += s8(ftol((avg * 12.5 - 85) * cnt));
   else if (avg > 0) add += s8(ftol((avg * 25 - 170) * cnt));
-  if (i.atClub || d.sameNation) {
+  if ((i.hasClub ?? true) && (i.atClub || d.sameNation)) {                 // 0x6e4191: kun med klub (arg6)
     const def2 = f32(avg * 0.9);
     const r1 = d.avg(1, 0x12, def2);
     if (r1 > 6.8) add += s8(ftol((r1 * 6.25 - 43) * cnt));

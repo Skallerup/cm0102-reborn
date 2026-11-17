@@ -407,7 +407,8 @@ export interface ScoutRecIn {
  *  under 25 år (evnen < 5250 → ×0,85, < 7000 og over 19 år → ×0,9; s < 15/24 → ×0,75/0,95; m < 30/45 → ×0,75/0,9; samme bonusser). Stjernerne
  *  (0x7b687b): over 1,2·L og over 2·omdømmet + 12750 → 5, over L og over 2·omdømmet + 10750 (potentialet + 10500) → 4, over 0,8·L 3, over
  *  0,7·L 2, over 0,6·L 1, ellers 0; L = 0x7bca90 holdt i 1750..35000. */
-export function scoutJudgement(i: ScoutRecIn): [number, number] {
+/** `raw` får skønnene (+0x21 evnen, +0x25 potentialet) */
+export function scoutJudgement(i: ScoutRecIn, raw?: { est: number; pot: number }): [number, number] {
   const ftol = Math.trunc;
   const rec = i.rec;
   const u = (o: number) => s8(rec[o]);
@@ -445,6 +446,7 @@ export function scoutJudgement(i: ScoutRecIn): [number, number] {
   }
   const L = Math.min(35000, Math.max(1750, i.level));
   const rep2 = 2 * s16(i.clubRep);
+  if (raw) { raw.est = est; raw.pot = pot; }
   const stars = (x: number, four: number) => (x > 1.2 * L && x > rep2 + 12750 ? 5 : x > L && x > rep2 + four ? 4 : x > 0.8 * L ? 3 : x > 0.7 * L ? 2 : x > 0.6 * L ? 1 : 0);
   return [stars(est, 10750), stars(pot, 10500)];
 }

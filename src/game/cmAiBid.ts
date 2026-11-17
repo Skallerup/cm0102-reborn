@@ -10,6 +10,7 @@ import { cmRand } from './cmPlayerData';
 import { slCall } from './cmShortlist';
 import { humanClub_600a50 } from './cmWageGame';
 import { hasActiveReleaseClause_867b50 } from './cmContractWant';
+import { registerScoutWill } from './cmScoutAsg';
 
 const dayNum = (iso: string) => Math.round(Date.parse(iso.slice(0, 10) + 'T00:00:00Z') / 86400000);
 const s8 = (v: number) => (v << 24) >> 24;
@@ -41,6 +42,28 @@ export function cmDayWill(g: GameState, p: Player, clubId: number): number {
     return slCall(M.c, 0x846920, m.u32(m.u32(0xde1f54) + 0x856), st, club, 1, 0, 1, 0);
   } catch { return -1; }
 }
+
+/** Shortlist_Manager 0x846920(staff, klub, a3, a4, status, NULL) på dagens hukommelse – spejdernes kald (0x7b0050: (1, 0, 1) og ungdom
+ *  (0, 0, 5), cmScoutAsg.ts); −1, når han ikke er i hukommelsen. Huskes for dagen pr. spiller, klub og argumenter. */
+export function cmWill(g: GameState, p: Player, clubId: number, a3: number, a4: number, status: number): number {
+  const key = `${p.id}|${clubId}|${a3}|${a4}|${status}`;
+  if (!willMemo || willMemo.g !== g || willMemo.date !== g.date) willMemo = { g, date: g.date, m: new Map() };
+  const hit = willMemo.m.get(key);
+  if (hit !== undefined) return hit;
+  let v = -1;
+  try {
+    const S = memFor(g), M = S.M, m = M.c.m;
+    const st = M.W.staffOf(p), club = M.W.clubOf(clubId);
+    if (st && club) {
+      M.setRand(cmRand(g.seed ?? 0, p.id, clubId, dayNum(g.date), 0x846920, a3, status));
+      v = slCall(M.c, 0x846920, m.u32(m.u32(0xde1f54) + 0x856), st, club, a3, a4, status, 0);
+    }
+  } catch { v = -1; }
+  willMemo.m.set(key, v);
+  return v;
+}
+let willMemo: { g: GameState; date: string; m: Map<string, number> } | null = null;
+registerScoutWill(cmWill);
 
 /** build_bid(køber, spiller, værdisætning M i £) – null, hvis originalens funktion ikke vil byde (returnerer 0) */
 export function cmBuildBid(g: GameState, p: Player, buyer: number, maxGbp: number): AiBidTerms | null {

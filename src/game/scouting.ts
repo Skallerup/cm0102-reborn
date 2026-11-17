@@ -15,6 +15,10 @@ import { ATTRS } from './attributes';
 import { cmAttrVisible, cmKnowDaily, cmKnowInit, cmKnowLevel, cmKnowOn, cmKnowSee, KNOW_PCT } from './cmKnow';
 import { cmStaffAttr } from './cmStaff';
 import { addScoutRequest, cmScoutOn, scoutRequestStatus } from './cmScout';
+import { cmAsgOf, cmAsgOn, cmAssignScout, cmRecallScout } from './cmScoutAsg';
+
+/** opgavetyperne, CM 01/02 har som originalens (cmScoutAsg.ts) – Club og Next Opposition kører som før */
+const CM_KINDS = new Set<ScoutAssignment['kind']>(['nation', 'region', 'league', 'youth']);
 
 export function initKnowledge() {
   const g = gs();
@@ -152,8 +156,21 @@ export function scoutDaily() {
     s.watch = [];
     if (s.assignment?.kind === 'player') s.assignment = null;
   }
+  // CM 01/02 (den originale database): Assign Scout ▸ Nation/Region/Youth Players og turneringssøgningen er originalens opgaver (cmScoutAsg.ts –
+  // 0x7b3e20 kører fra cmScoutDaily); ældre gemte spils opgaver af de slags flyttes dertil (en region fra før – vores fem verdensdele – kaldes hjem)
+  const cmAsg = cmScoutOn(g);
+  if (cmAsg) for (const s of scouts) {
+    const a = s.assignment;
+    if (!a || !CM_KINDS.has(a.kind) || cmAsgOn(cmAsgOf(g, s))) continue;
+    if (a.kind === 'nation') cmAssignScout(g, s, { nation: a.target as number });
+    else if (a.kind === 'league') cmAssignScout(g, s, { comp: String(a.target) });
+    else if (a.kind === 'youth') cmAssignScout(g, s, { youth: true });
+    else if (typeof a.target === 'number') cmAssignScout(g, s, { region: a.target });
+    else s.assignment = null;
+  }
   for (const s of scouts) {
     const a = s.assignment;
+    if (cmAsg && a && CM_KINDS.has(a.kind)) continue;
     const skill = ((s.attrs.judgingAbility || 0) + (s.attrs.judgingPotential || 0)) / 40;
     // Scout Player: de bestilte spillere afdækkes én ad gangen, uden at en igangværende søgning afbrydes – rapporten kommer ved fuldt kendskab
     if (s.watch?.length) {
@@ -277,6 +294,17 @@ export function startScoutAssignment(staffId: number, a: ScoutAssignment | null)
     (s.watch ??= []).push(t);
     return;
   }
+  // CM 01/02: originalens opgaver (0x7ae9c0/0x7aee80, cmScoutAsg.ts) – nyheden "… has started his … search" kommer på rapportdagen (0x1389)
+  if (cmScoutOn(g) && (!a || CM_KINDS.has(a.kind))) {
+    if (cmAsgOn(cmAsgOf(g, s))) { cmRecallScout(g, s); if (!a) return; }
+    else if (s.assignment && s.assignment.kind !== 'player') s.scoutList = s.assignment.found?.slice();
+    if (!a) { s.assignment = null; return; }
+    if (a.kind === 'nation') cmAssignScout(g, s, { nation: a.target as number });
+    else if (a.kind === 'league') cmAssignScout(g, s, { comp: String(a.target) });
+    else if (a.kind === 'youth') cmAssignScout(g, s, { youth: true });
+    else cmAssignScout(g, s, { region: Number(a.target) });
+    return;
+  }
   if (s.assignment && s.assignment.kind !== 'player') s.scoutList = s.assignment.found?.slice();   // Recall: listen bliver stående
   s.assignment = a;
   if (a) addNews({ cat: 'scout', key: 'scout.started', params: { scout: `${s.first} ${s.last}`, ...scoutTarget(a) } });
@@ -354,8 +382,9 @@ function scoutKnowledge(pid: number, amount: number, scoutId: number, direct = f
     finds[pid] = g.date;
     const asg = g.staff[scoutId]?.assignment;
     const p = g.players[pid];
-    // en spiller, der lige er skiftet klub, anbefales ikke (han kan ikke sælges videre så hurtigt – *estimeret*, ejerens fund 13/11)
-    const justMoved = !!p && !!p.club && !!p.joined && (p.joined > addDays(g.date, -120) || (!p.listed && p.joined > addDays(g.date, -300)));
+    // kun det moderne spil (CM Reborns egen regel, ejerens fund 13/11): en spiller, der lige er skiftet klub, anbefales ikke. I CM 01/02 er
+    // opgaverne originalens (cmScoutAsg.ts – 0x846920's vilje afgør, om han kommer med).
+    const justMoved = !cmActive(g) && !!p && !!p.club && !!p.joined && (p.joined > addDays(g.date, -120) || (!p.listed && p.joined > addDays(g.date, -300)));
     if (!direct && asg && asg.kind !== 'player' && !justMoved) (asg.found ??= []).push(pid);
     const s = g.staff[scoutId];
     // Gode fund meldes i indbakken – ikke i CM 01/02 (der kommer kun "… search completed, after finding N suitable players")

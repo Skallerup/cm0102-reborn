@@ -27,6 +27,8 @@ import { Head } from './common';
 import { CxTable, type CxCol } from './CxTable';
 import { Deals, Offers, Search, type Filters } from './Transfers';
 import { ClassicNations } from './NationsClassic';
+import { cmAsgOf, cmAsgOn } from '../../game/cmScoutAsg';
+import { cmRegionName } from '../cmScoutAsgNews';
 
 const PAGE = 16;
 
@@ -505,9 +507,16 @@ function ScoutTab({ scout, n, onPick }: { scout?: Staff; n: number; onPick?: (f:
     : x.kind === 'league' ? compName(g.leagues[x.target as string]?.name) ?? String(x.target)
     : x.kind === 'club' ? g.clubs[x.target as number]?.name ?? '' : x.kind === 'region' ? t(`region.${x.target}`)
     : x.kind === 'nextOpp' ? t('cl.sc.nextOpp') : x.kind === 'youth' ? t('cl.sc.youth') : `${g.players[x.target as number]?.first ?? ''} ${g.players[x.target as number]?.last ?? ''}`.trim();
-  const players = !a ? (cm ? [...(scout.watch ?? []), ...(scout.scoutList ?? [])].map((id) => g.players[id]).filter(Boolean) : []) : a.kind === 'player' ? [g.players[a.target as number]].filter(Boolean) : (a.found ?? []).map((id) => g.players[id]).filter(Boolean);
+  // CM 01/02: originalens opgaver har listens resultattabel (PLAYER_SEARCH +0x1ee, cmScoutAsg.ts) – den står også, når søgningen er slut
+  const cmTab = cm ? cmAsgOf(g, scout)?.tab : undefined;
+  const players = cmTab && (!a || cmAsgOn(cmAsgOf(g, scout))) ? cmTab.map((r) => g.players[r.pid]).filter(Boolean)
+    : !a ? (cm ? [...(scout.watch ?? []), ...(scout.scoutList ?? [])].map((id) => g.players[id]).filter(Boolean) : []) : a.kind === 'player' ? [g.players[a.target as number]].filter(Boolean) : (a.found ?? []).map((id) => g.players[id]).filter(Boolean);
+  // Rec (0x80d164): tabelpostens stjerner
+  const recMap = cmTab ? new Map(cmTab.map((r) => [r.pid, Math.max(r.ab, r.pt)])) : undefined;
   // "Assign scout Mick Brown to Argentina ?" (Please Confirm) – derefter går han i gang
   const assign = async (x: Omit<ScoutAssignment, 'since' | 'found'>) => {
+    // CM 01/02 (search_screens 0x80ec1e–0x80ee37): Nation/Region/Youth Players/Next Opposition sættes straks (kun Club spørger)
+    if (cm && x.kind !== 'club') { act({ t: 'scout', staffId: scout.id, assignment: { ...x, since: g.date, found: [] } }); return; }
     // 0x4830ce: "Send scout to watch all Bradford matches ?" (Assign Scout ? / Please Confirm)
     const q = cm && x.kind === 'club' ? t('cm.sc.clubQ', { club: g.clubs[x.target as number]?.short || g.clubs[x.target as number]?.name || '' }) : t('cl.sc.assignQ', { scout: name, target: targetName(x as ScoutAssignment) });
     if (!(await askConfirm(q, { title: cm ? t('cm.sc.assignTitle') : t('cl.sc.assignTitle'), colored: true }))) return;
@@ -519,7 +528,19 @@ function ScoutTab({ scout, n, onPick }: { scout?: Staff; n: number; onPick?: (f:
     REGIONS.map((r) => ({ r, xs: list.filter((x) => regionOfNation(g.nations[x]?.name) === r) })).filter((x) => x.xs.length)
       .map(({ r, xs }) => ({ key: r, label: t(`cl.region.${r}`), sub: xs.map(item) }));
   const lg = g.clubs[g.userClub]?.league;
-  const assignItems: DropItem[] = [
+  // CM 01/02 (0x808690): Nation ▸ landene (0x66a0c0) med nation +0x85 > 8, ligaer i spillet (+0x11c) eller managerens klubs land; Region ▸ de 14
+  // regioner (0x545dc0, navnene 0x616f20)
+  const played = new Set(clubs.map((c) => c.nation));
+  const cmNations = cm ? g.nations.map((_, i) => i).filter((i) => (g.cmNationBoard?.[i]?.[1] ?? 0) > 8 || played.has(i) || g.clubs[g.userClub]?.nation === i)
+    .sort((x, y) => natName(g.nations[x].name).localeCompare(natName(g.nations[y].name), t('cl.locale'))) : [];
+  const cmItems: DropItem[] = [
+    { key: 'club', label: t('cl.sc.club'), onClick: () => onPick?.(() => (cid: number) => { void assign({ kind: 'club', target: cid }); }) },
+    { key: 'opp', label: t('cl.sc.nextOpp'), onClick: () => assign({ kind: 'nextOpp', target: 0 }) },
+    { key: 'youth', label: t('cl.sc.youth'), onClick: () => assign({ kind: 'youth', target: 0 }) },
+    { key: 'nation', label: t('cl.sc.nation'), sub: cmNations.map((nat) => ({ key: `n${nat}`, label: natName(g.nations[nat].name), onClick: () => assign({ kind: 'nation', target: nat }) })) },
+    { key: 'region', label: t('cl.sc.region'), sub: Array.from({ length: 14 }, (_, i) => i + 1).map((r) => ({ key: `r${r}`, label: cmRegionName(r), onClick: () => assign({ kind: 'region', target: r }) })) },
+  ];
+  const assignItems: DropItem[] = cm ? cmItems : [
     ...(!cm && lg && g.leagues[lg] ? [{ key: 'comp', label: compName(g.leagues[lg].name) ?? '', onClick: () => assign({ kind: 'league', target: lg }) } as DropItem, { key: 's1', sep: true } as DropItem] : []),
     cm ? { key: 'club', label: t('cl.sc.club'), onClick: () => onPick?.(() => (cid: number) => { void assign({ kind: 'club', target: cid }); }) }
       : { key: 'club', label: t('cl.sc.club'), sub: byRegion(nationIds, (nat) => ({ key: `n${nat}`, label: natName(g.nations[nat].name),
@@ -546,7 +567,8 @@ function ScoutTab({ scout, n, onPick }: { scout?: Staff; n: number; onPick?: (f:
         <button className="cx-greybtn" disabled>{t('cl.tr.delete')}</button>
       </div>
       <ClassicPlayerTable players={players} title={t('cl.tr.scoutN', { n })} view={view} rec={cm}
-        desc={a ? t('cl.sc.assigned', { scout: short, target: targetName(a) }) : t('cl.sc.notAssigned', { scout: name })} />
+        desc={a ? (cm && a.kind === 'youth' ? t('cm.sc.asgYouth', { scout: short }) : cm && a.kind === 'nextOpp' ? t('cm.sc.asgNext', { scout: short })
+          : t('cl.sc.assigned', { scout: short, target: cm && a.kind === 'region' ? cmRegionName(Number(a.target)) : targetName(a) })) : t('cl.sc.notAssigned', { scout: name })} recMap={recMap} />
     </div>
   );
 }
@@ -565,8 +587,10 @@ export function Pager({ desc, pg, pages, setPg }: { desc: string; pg: number; pa
 }
 
 /** Spillertabellen: blå knap (shortlist), Inf, navn, klub, land/liga, position, værdi – med sider */
-export function ClassicPlayerTable({ players, title, desc, view: viewProp, initialSort = 'val', viewMenu, total, rec }: {
+export function ClassicPlayerTable({ players, title, desc, view: viewProp, initialSort = 'val', viewMenu, total, rec, recMap }: {
   players: Player[]; title: string; desc?: string; view?: string; initialSort?: string;
+  /** Scout #n med originalens opgave: Rec af listens tabel (cmScoutAsg.ts) i stedet for at regne den */
+  recMap?: Map<number, number>;
   /** Scout #n (CM 01/02, original DB i ægte tilstand): kolonnen Rec med spejderens stjerner */
   rec?: boolean;
   /** alle spillere før filtrene – giver "(N filtered out)" under listen */
@@ -600,7 +624,7 @@ export function ClassicPlayerTable({ players, title, desc, view: viewProp, initi
   // Rec (0x80d164): spejderens anbefaling som stjerner – den største af evne-/potentialevurderingen (cmScoutRec, 0x7b62a0)
   const recScout = rec ? cmRecScout(g) : null;
   const recMemo = new Map<number, number>();
-  const recOf = (p: Player) => { let v = recMemo.get(p.id); if (v === undefined) { v = cmScoutRec(g, p, recScout); recMemo.set(p.id, v); } return v; };
+  const recOf = (p: Player) => { let v = recMemo.get(p.id); if (v === undefined) { v = recMap?.get(p.id) ?? cmScoutRec(g, p, recScout); recMemo.set(p.id, v); } return v; };
   if (rec) base.unshift({ key: 'rec', label: t('cm.sc.rec'), render: (p) => { const n = recOf(p); return <span className="cx-rec">{n ? '*'.repeat(n) : ''}</span>; }, sort: (p) => recOf(p) });
   const club: CxCol<Player> = { key: 'club', label: t('col.club'), cls: 'c-club', render: (p) => (p.club ? <span className="link" onClick={() => nav({ name: 'club', id: p.club })}>{g.clubs[p.club]?.name}</span> : t('cl.tr.noClub')), sort: (p) => g.clubs[p.club]?.name ?? '' };
   const pos: CxCol<Player> = { key: 'pos', label: t('cl.tr.position'), cls: 'c-pos', render: (p) => posStr(p), sort: (p) => -p.pos.indexOf(Math.max(...p.pos)) };

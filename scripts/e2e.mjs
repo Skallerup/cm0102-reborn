@@ -361,11 +361,21 @@ async function run(look) {
     await page.locator('.cx-tools .cx-drop-btn', { hasText: /^Search/ }).first().click();
     await page.locator('.cx-drop-pop >> text=Assign Scout').first().hover();
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-scout-menu.png` });
+    if (ENGINE_GRID) {
+      // CM 01/02 (0x808690): Assign Scout ▸ Club, Next Opposition, Youth Players, Nation ▸, Region ▸ (de 14 regioner)
+      for (const it of ['Club', 'Next Opposition', 'Youth Players', 'Nation', 'Region']) if (!(await page.locator('.cx-drop-pop', { hasText: it }).count())) throw new Error(`Assign Scout ▸ ${it} mangler`);
+    }
     await page.locator('.cx-drop-pop >> text=Next Opposition').first().click();
-    await page.waitForSelector('.cx-confirm', { timeout: 3000 });
-    if (!(await page.locator('.cx-confirm').innerText()).includes('Assign scout')) throw new Error('bekræftelsen mangler');
-    await page.locator('.cx-confirm button.primary').click();
-    await page.waitForTimeout(300);
+    if (ENGINE_GRID) {
+      // originalen sætter opgaven straks (0x80ee1c) – ingen bekræftelse
+      await page.waitForTimeout(300);
+      if (await page.locator('.cx-confirm').count()) throw new Error('Next Opposition: originalen spørger ikke');
+    } else {
+      await page.waitForSelector('.cx-confirm', { timeout: 3000 });
+      if (!(await page.locator('.cx-confirm').innerText()).includes('Assign scout')) throw new Error('bekræftelsen mangler');
+      await page.locator('.cx-confirm button.primary').click();
+      await page.waitForTimeout(300);
+    }
     const asg = await gs(() => Object.values(window.__cm.gs().staff).find((x) => x.club === window.__cm.gs().userClub && x.role === 'scout')?.assignment?.kind);
     if (asg !== 'nextOpp') throw new Error('spejderen blev ikke tildelt: ' + asg);
     if (ENGINE_GRID) {
@@ -388,6 +398,23 @@ async function run(look) {
       if (!/Scout \w\.\S+ assigned to/.test(await page.locator('.cx-pager-line').innerText())) throw new Error('linjen "Scout L.Kershaw assigned to …" mangler');
       if (!(await page.locator('.cx-tbl thead', { hasText: 'Rec' }).count())) throw new Error('kolonnen Rec mangler');
       if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-scout-klub.png` });
+      // Recall → Assign Scout ▸ Nation ▸ Frankrig (0x7ae9c0, cmScoutAsg.ts): "assigned to France", listens tabel af franske spillere, og
+      // på rapportdagen nyheden "French search started" (0x1389)
+      await page.locator('.cx-tools .cx-drop-btn', { hasText: /^Search/ }).first().click();
+      await page.locator('.cx-drop-pop >> text=Recall Scout').first().click();
+      await page.waitForTimeout(300);
+      await page.locator('.cx-tools .cx-drop-btn', { hasText: /^Search/ }).first().click();
+      await page.locator('.cx-drop-pop >> text=Assign Scout').first().hover();
+      await page.locator('.cx-drop-pop >> text=/^Nation$/').first().hover();
+      await page.locator('.cx-drop-pop >> text=/^France$/').first().click();
+      await page.waitForTimeout(500);
+      if ((await scoutAsg()) !== 'nation') throw new Error('Assign Scout ▸ Nation: opgaven blev ikke sat');
+      if (await page.locator('.cx-confirm').count()) throw new Error('Assign Scout ▸ Nation: originalen spørger ikke');
+      if (!/Scout \w\.\S+ assigned to France/.test(await page.locator('.cx-pager-line').innerText())) throw new Error('linjen "Scout … assigned to France" mangler');
+      const rows = await gs(() => { const g = window.__cm.gs(); const s = Object.values(g.staff).filter((x) => x.club === g.userClub && x.role === 'scout').sort((a, b) => a.id - b.id)[0]; return g.cmScoutAsg?.[s.id]?.tab.length ?? -1; });
+      if (rows < 1) throw new Error('spejderlisten (0x7b0050) er tom');
+      if ((await page.locator('.cx-tbl tbody tr').count()) < 1) throw new Error('Scout #1 viser ikke listens spillere');
+      if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-scout-nation.png` });
     }
   });
   if (look === 'klassisk' && ENGINE_GRID) await step('stabsprofilen og Approach To Sign (klassisk, original DB)', async () => {
