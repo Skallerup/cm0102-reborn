@@ -414,10 +414,15 @@ function compareDay(v: View) {
 // ------------------------------------------------------------------ nyhederne (scripts/oracle-news.ts: menneskemanagerens ring på 100 poster)
 // Dagen D−1 er færdig på begge sider (billedet tages i dag D's tidspunkt 2). Sammenlignes: antal nyheder den dag, og for de typer, hvor vores
 // nøgle er kendt (ORIG_NEWS_KIND), at hver nyhed findes på den anden side samme dag.
+/** board.cm-nyhedernes art: params.k, ellers beskrivelsen params.bd (cmBoardGame.ts boardParams gemmer k i bd) */
+const kOf = (n: { params: Record<string, string | number> }) => {
+  if (n.params?.k !== undefined) return String(n.params.k);
+  try { return typeof n.params?.bd === 'string' ? String(JSON.parse(n.params.bd).k ?? '') : ''; } catch { return ''; }
+};
 const kindRe = (pat: string) => pat.split('|').map((alt) => {
   const k = alt.match(/^([\w.]+)\(k=(\w+)\)$/);
-  if (k) return (n: { key: string; params: Record<string, string | number> }) => n.key === k[1] && String(n.params?.k) === k[2];
-  if (/\(rq,rc\)$/.test(alt)) return (n: { key: string; params: Record<string, string | number> }) => n.key === 'board.cm' && (n.params?.k === 'rq' || n.params?.k === 'rc');
+  if (k) return (n: { key: string; params: Record<string, string | number> }) => n.key === k[1] && kOf(n) === k[2];
+  if (/\(rq,rc\)$/.test(alt)) return (n: { key: string; params: Record<string, string | number> }) => n.key === 'board.cm' && (kOf(n) === 'rq' || kOf(n) === 'rc');
   const re = new RegExp('^' + alt.replace(/\{[^}]*\}/g, '@').replace(/\.N$|\.\*$|\*$/, '@').replace(/[.]/g, '\\.').replace(/@/g, '.*') + '$');
   return (n: { key: string }) => re.test(n.key);
 });
@@ -428,7 +433,7 @@ function compareNews(v: View, day: string) {
   const om = mine.filter((x) => x.date === day);
   const ours = (g.news ?? []).filter((n) => n.date.slice(0, 10) === day);
   const tv = (xs: number[]) => [...xs.reduce((mp, t) => mp.set(t, (mp.get(t) ?? 0) + 1), new Map<number, number>())].map(([t, n]) => `${hx(t)}×${n}`).join(' ');
-  chk('nyheder: antal på dagen (menneskemanageren)', om.length === ours.length, () => `${day}: ${ours.length} (${[...new Set(ours.map((n) => n.key + (n.params?.k ? `(k=${n.params.k})` : '')))].join(' ')}) mod ${om.length} (${tv(om.map((x) => x.type))})`);
+  chk('nyheder: antal på dagen (menneskemanageren)', om.length === ours.length, () => `${day}: ${ours.length} (${[...new Set(ours.map((n) => n.key + (kOf(n) ? `(k=${kOf(n)})` : '')))].join(' ')}) mod ${om.length} (${tv(om.map((x) => x.type))})`);
   dist('nyheder: pr. dag', ours.length, om.length);
   for (const x of om) {
     const k = KIND.find((y) => y.t === x.type);
@@ -438,7 +443,7 @@ function compareNews(v: View, day: string) {
   for (const n of ours) {
     const ks = KIND.filter((y) => y.ms.some((f) => f(n)));
     if (!ks.length) continue;
-    chk('nyheder: vores nyhed (kendt type) findes i originalen samme dag', om.some((x) => ks.some((y) => y.t === x.type)), () => `${day} ${n.key}${n.params?.k ? `(k=${n.params.k})` : ''} ${JSON.stringify(n.params).slice(0, 60)}: findes mod mangler (${ks.map((y) => hx(y.t)).join('/')})`);
+    chk('nyheder: vores nyhed (kendt type) findes i originalen samme dag', om.some((x) => ks.some((y) => y.t === x.type)), () => `${day} ${n.key}${kOf(n) ? `(k=${kOf(n)})` : ''} ${JSON.stringify(n.params).slice(0, 60)}: findes mod mangler (${ks.map((y) => hx(y.t)).join('/')})`);
   }
 }
 
