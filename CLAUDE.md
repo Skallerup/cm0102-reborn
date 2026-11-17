@@ -52,7 +52,7 @@ regler, arkitektur og faldgruber.
   (`grid-lockstep.ts`, `grid-stats.ts 60 1`, tests) – er uddata bit for bit som før ændringen, kan sæsontallene ikke have flyttet sig,
   og en hel sæson er spild; (2) alle tunge målinger (sæsoner, soak, oraklet, bisect) går gennem `node scripts/measure.mjs [--oracle]
   -- <kommando>`: samme kommando på samme kode (også i andre worktrees) køres kun én gang (gemt i `~/.cache/cm-measure`, `--list`/
-  `--show`), og tunge målinger står i kø – højst to ad gangen på hele maskinen (16 GB RAM; `MEASURE_SLOTS`); (3) oraklets tal med fast frø ændrer sig aldrig:
+  `--show`), og tunge målinger står i kø – 2 ad gangen, 3 når Chrome er lukket og ≥ 6 GB er ledigt (`scripts/ram-budget.mjs`; `MEASURE_SLOTS` overstyrer; vitest lokalt 3 workers, 5 uden Chrome); (3) oraklets tal med fast frø ændrer sig aldrig:
   kør dem med `--oracle`, så måles de kun én gang; (4) mål kort, hvor det er nok: mål/kamp = halv sæson × 2 frø, hel sæson/flere
   sæsoner kun for økonomi, kontrakter og udvikling over tid; `--light` kun til målinger under 1 min.
 - SEO: `scripts/build-seo.ts` (kører i `prebuild` – også på Vercel; outputtet er i .gitignore) laver guiderne (`pages`) og
