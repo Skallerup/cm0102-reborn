@@ -91,6 +91,9 @@ export interface NewGameOptions {
   preview?: boolean;
 }
 
+/** originalens systemer ved spilstarten – gemte spil uden (eller med en lavere) kan konverteres (cmConvert.ts) */
+export const CM_SAVE_VER = 1;
+
 /** Indtægtsniveau i den originale database (kalibreret med scripts/econ-run.ts: løn ≈ 60 % af omsætningen) */
 export let ORIGINAL_INCOME = 0.55;
 export const setOriginalIncome = (v: number) => { ORIGINAL_INCOME = v; };
@@ -220,6 +223,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   const rows = cmStartGame && cm?.cmTrim ? [...world.players, ...reserveRows(cm, o.activeNations, names, seed, F, world.playerFields.length, extraRt)] : world.players;
   const rtOf = (id: number) => cm?.ratings[id] ?? extraRt[id];
   if (cmStartGame && cm?.cmTrim?.pct === 0.01) g.cmMaxMem = true;
+  if (cmStartGame && !o.preview) g.cmSaveVer = CM_SAVE_VER;
   for (const r of rows) {
     const club = r[F.club] as number;
     if (club && !g.clubs[club]) continue;

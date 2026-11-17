@@ -1882,6 +1882,44 @@ async function run(look) {
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-progress.png` });
   });
   await page.screenshot({ path: `${OUT}/${look}-slut.png` });
+  // gamle gemte spil (game/cmConvert.ts): en kopi af spillet uden originalens lag gemmes som "gammelt" spil → Restore Saved Game viser
+  // "Old version" og "Convert to original (copy)" → bekræftelsen → fremdriften → rapporten → Continue åbner det konverterede spil (en ny kopi)
+  if (look === 'klassisk' && ENGINE_GRID) await step('gammelt gemt spil → Convert to original (copy)', async () => {
+    await page.evaluate(async () => {
+      const base = '/cm0102-reborn/src/game/';
+      const { storeSave, forgetLast } = await import(/* @vite-ignore */ `${base}save.ts`);
+      const { serializeState } = await import(/* @vite-ignore */ `${base}snapshot.ts`);
+      const g = JSON.parse(JSON.stringify(window.__cm.gs()));
+      g.options.mode = 'extended';
+      for (const k of ['cmSaveVer', 'cmBoard', 'cmFin', 'cmPlan']) delete g[k];
+      g.id = 'save-e2eold';
+      await storeSave({ id: g.id, manager: g.manager.name, club: 'E2E Old Save', date: g.date, saved: new Date().toISOString() }, await serializeState(g));
+      forgetLast();
+    });
+    // det løbende spils autogem (2,5 s) husker det igen som "seneste" – vent det ud, glem det og gå straks til startmenuen
+    await page.waitForTimeout(3500);
+    await page.evaluate(() => localStorage.removeItem('cm0102.last'));
+    await page.goto(URL);
+    await page.waitForSelector('.cxs [data-field=restore]', { timeout: 60000 });
+    await page.locator('[data-field=restore]').click();
+    const row = page.locator('[data-saves] .cxs-it', { hasText: 'E2E Old Save' });
+    await row.locator('.cxs-oldver').waitFor({ timeout: 60000 });
+    if (await page.locator('[data-saves] .cxs-it[data-kind=current] .cxs-conv').count()) throw new Error('et nyt spil har konverteringsknappen');
+    await row.locator('[data-convert=oldOriginal]').click();
+    await page.waitForSelector('.cx-confirm, .confirm-box', { timeout: 120000 });
+    if (!/copy/i.test(await page.locator('.cx-confirm, .confirm-box').first().innerText())) throw new Error('bekræftelsen nævner ikke kopien');
+    await page.locator('.cx-confirm button.primary, .confirm-box button.primary').first().click();
+    await page.waitForSelector('[data-convdone]', { timeout: 600000 });
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-konvertering-rapport.png` });
+    const rep = await page.locator('[data-convdone]').innerText();
+    if (!/next season/i.test(rep) && !/new season/i.test(rep)) throw new Error(`rapporten nævner ikke kalenderen: ${rep}`);
+    await page.locator('.cx-foot .cx-next').click();
+    await page.waitForFunction(() => { try { return !!window.__cm.gs(); } catch { return false; } }, null, { timeout: 180000 });
+    await page.waitForSelector('.cx-side', { timeout: 120000 });
+    const st = await page.evaluate(() => { const g = window.__cm.gs(); return { id: g.id, mode: g.options.mode, ver: g.cmSaveVer, news: g.news.some((n) => n.key === 'conv.done') }; });
+    if (st.id === 'save-e2eold' || st.mode !== 'authentic' || !st.ver || !st.news) throw new Error(`det konverterede spil: ${JSON.stringify(st)}`);
+    await checkScreen('konverteret spil');
+  });
   await ctx.close();
 }
 

@@ -261,7 +261,15 @@ export function developCore(i: DevIn, r: CmRec, P: DevPers, rand: (n: number) =>
     if (rand(T) > rand(100)) b[0x1e] = ccs(b[0x1e], rand(T), -125, 125);
     if (rand(T) > rand(100)) b[0x24] = ccs(b[0x24], rand(T), -125, 125);
   }
-  // 0x5d5115: aldringen
+  cmAgeing(r, age, P, rand);
+  return T;
+}
+
+
+/** 0x5d5115–0x5d578d: aldringen pr. aldersgruppe (30–32, 33–34, 35–37, 38+) – sidste del af developCore; også brugt af konverteringen af
+ *  gamle gemte spil (cmConvert.ts) for de år, der er gået siden databasens start */
+export function cmAgeing(r: CmRec, age: number, P: DevPers, rand: (n: number) => number): void {
+  const b = r.b;
   const dec3 = (o: number, thr: number) => { if (s8(b[o]) > thr && rand(3) === 0) b[o] = s8(b[o] - 1); };
   const sub = (o: number, n: number) => { b[o] = s8(b[o] - rand(n)); };
   const att = b[0x14] === 20 || b[0x15] === 20;
@@ -312,7 +320,6 @@ export function developCore(i: DevIn, r: CmRec, P: DevPers, rand: (n: number) =>
     }
     dec3(0x1b, 18); dec3(0x36, 18);
   }
-  return T;
 }
 
 // ------------------------------------------------------------------------------------------------ i spillet
@@ -320,6 +327,8 @@ export function developCore(i: DevIn, r: CmRec, P: DevPers, rand: (n: number) =>
 const PERS: [keyof DevPers, string][] = [['amb', 'ambition'], ['det', 'determination'], ['loy', 'loyalty'], ['pres', 'pressure'], ['prof', 'professionalism'],
   ['sport', 'sportsmanship'], ['temp', 'temperament']];
 const AX = (k: string) => ATTRS.indexOf(k as never);
+/** personligheden (Ambition, Determination … Temperament) som udviklingen læser den */
+export const devPersOf = (p: Player): DevPers => Object.fromEntries(PERS.map(([k, a]) => [k, Math.round(p.attrs[AX(a)] ?? 10)])) as unknown as DevPers;
 const dayNum = (iso: string) => Math.round(Date.parse(iso + 'T00:00:00Z') / 86400000);
 
 /** vores stab → en ikke-spillerpost. I originalens hukommelse er postens egenskaber interne værdier (oraklet: Coaching −30…+30), vist =

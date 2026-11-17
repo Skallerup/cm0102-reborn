@@ -103,7 +103,7 @@ function OriginalHallOfFame() {
     const nat = g.nations[c?.nation ?? -1]?.name ?? '';
     const lg = HOF_LEAGUES.findIndex((l) => l[1].includes(nat.toLowerCase()));
     const tro = g.manager.trophies.filter((x) => x.season === h.season).length;
-    return { key: h.season, lg, club: c?.short ?? '', nat, score: Math.max(0, 21 - h.pos) * 10 + tro * 50, date: `${h.season + 1}-06-30` };
+    return { key: h.season, lg, club: c?.short ?? h.clubName ?? '', nat, score: Math.max(0, 21 - h.pos) * 10 + tro * 50, date: `${h.season + 1}-06-30` };
   }).filter((r) => table === 0 || r.lg === table - 1).sort((a, b) => b.score - a.score || a.key - b.key).slice(0, 100);
   const title = table === 0 ? t('cl.hof.janDec') : `${HOF_LEAGUES[table - 1][0]} League`;
   return (
@@ -116,7 +116,7 @@ function OriginalHallOfFame() {
           <tbody>{rows.map((r, i) => (
             <tr key={r.key}>
               <td className="btn-col"><span className="cx-lg-pos">{ordinal(i + 1)}</span></td>
-              <td className="c-yel">{g.manager.name}</td><td>{r.club ? `${r.club}/${natName(r.nat)}` : t('cl.hof.noClub')}</td>
+              <td className="c-yel">{g.manager.name}</td><td>{r.club ? (r.nat ? `${r.club}/${natName(r.nat)}` : r.club) : t('cl.hof.noClub')}</td>
               <td className="c-val">{r.score.toLocaleString(t('cl.locale'))}</td><td>{dateFmt(r.date)}</td>
             </tr>
           ))}</tbody>

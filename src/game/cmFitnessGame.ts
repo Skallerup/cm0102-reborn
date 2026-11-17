@@ -138,6 +138,22 @@ export function cmFitNewGame(g: GameState): void {
   for (const p of ps) { if (p.cmFit) { const h = !!p.club && isHumanClub(p.club); p.cmFit.load = trainingLoad(p, h, h ? humanLevels(g, p) : null); } syncPlayer(c, p); }
 }
 
+/** Konvertering af et gammelt gemt spil (cmConvert.ts): posterne og startens Fitness som cmFitNewGame, men på spillets dato og uden
+ *  forkørslen og databasens startskader (de hører til 2001-starten) – spillets gamle skader er ryddet af konverteringen */
+export function cmFitConvert(g: GameState): void {
+  if (!cmFitOn(g)) return;
+  linkPlayerCtx(g);
+  g.cmFitStart = g.date;
+  const ps = realPlayers(g);
+  const start = dayNum(g.date);
+  setKnockHook(true);
+  initRecords(fitCtx(g, SALT.init, start), ps);
+  cmStaffStateInit(g, g.date);
+  const c = fitCtx(g, SALT.init, start);
+  initSquadFitness(c, ps);
+  for (const p of ps) { if (p.cmFit) { const h = !!p.club && isHumanClub(p.club); p.cmFit.load = trainingLoad(p, h, h ? humanLevels(g, p) : null); } syncPlayer(c, p); }
+}
+
 /** player_setup.cfg 0x7a30c0(0x203b) efter forkørslen (0x5cc850, før 0x62a920): INJURY-linjerne → add_injury(type, 0, staff, 0, 1, −1, niveau,
  *  future) på startdagen (0x7a44c4/0x7a44fa). Linjerne er fundet i databasen af scripts/build-preseason.mts (0x7a50f0 – data/cmPreseason.ts).
  *  Nyheden 0x62dca0 til mennesket sendes ikke (*estimeret* – spillet er ikke begyndt). LOAN/INT_RETIREMENT/MISCONDUCT er ikke porteret. */

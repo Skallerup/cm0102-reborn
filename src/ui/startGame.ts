@@ -3,6 +3,10 @@
 import { createGame, type NewGameOptions, type WorldData } from '../game/newgame';
 import type { GameState, Lang } from '../game/types';
 import { gs, setGame, setSetupGame } from '../game/state';
+import { getLang } from '../i18n';
+import type { CMWorld } from '../game/data/cm0102';
+import type { ConvertReport } from '../game/cmConvert';
+import type { NewGameJob } from './newGameWorker';
 import type { NewGameProgress } from './NewGameLoader';
 import { listDbs, loadCustomWorld } from './customDb';
 import { loadOriginalWorld, loadWorld, ORIGINAL_VERSIONS, withCommunityEdits, type OriginalVersion } from './world';
@@ -65,5 +69,76 @@ export async function createGameAsync(world: WorldData, opts: NewGameOptions, on
     console.warn('Nyt spil i en Worker fejlede – opretter i hovedtråden', e);
     createGame(world, opts);
     if (opts.preview) setSetupGame(gs());
+  }
+}
+
+// ---------------------------------------------------------------- gamle gemte spil (game/cmConvert.ts)
+
+/** Hvad et gammelt spil kan blive til: 'convert' = en kopi med originalens systemer (den originale database), 'restart' = forfra i den originale med
+ *  samme klub (2026/27) – `clubId` null = klubben fandtes ikke i 2001, spilleren vælger blandt `candidates` (samme land og niveau) */
+export type ConvertPrep =
+  | { kind: 'convert'; old: GameState; world: WorldData; opts: NewGameOptions }
+  | { kind: 'restart'; old: GameState; world: WorldData; clubId: number | null; candidates: { id: number; name: string; league: string }[]; oldClub: string };
+
+export async function prepareConversion(old: GameState): Promise<ConvertPrep | null> {
+  const cv = await import('../game/cmConvert');
+  const kind = cv.saveKindOf(old);
+  if (kind === 'oldOriginal') {
+    // udgaven: spillets egen (dbVersion); ældre gemte spil uden den – den udgave, hvor spillernes id'er og navne passer
+    const vers: OriginalVersion[] = old.dbVersion && (ORIGINAL_VERSIONS as readonly string[]).includes(old.dbVersion) ? [old.dbVersion as OriginalVersion] : ['3.9.68', '3.9.60', '3.9.65'];
+    let best: { w: WorldData; m: number } | null = null;
+    for (const v of vers) {
+      const w = await loadStartWorld('original', v);
+      if (!w) continue;
+      const m = vers.length === 1 ? 1 : cv.versionMatch(old, w as CMWorld);
+      if (!best || m > best.m) best = { w, m };
+      if (m >= 0.9) break;
+    }
+    if (!best) return null;
+    return { kind: 'convert', old, world: best.w, opts: cv.convertOptions(old, best.w as CMWorld, getLang()) };
+  }
+  if (kind !== 'modern') return null;
+  const world = await loadStartWorld('original', readVer());
+  if (!world) return null;
+  const c = old.clubs[old.userClub] ?? old.clubs[old.manager.history.at(-1)?.club ?? -1];
+  const nation = cv.mapNation(old.nations[c?.nation ?? old.manager.nation]?.name, world as CMWorld);
+  const clubId = c ? cv.matchClubIn(world as CMWorld, c.name, c.short, nation) : null;
+  const tier = c ? old.leagues[c.league]?.tier ?? 1 : 1;
+  let candidates = cv.clubCandidates(world as CMWorld, nation, tier);
+  if (!candidates.length) candidates = cv.clubCandidates(world as CMWorld, world.nations.findIndex((n) => n.name === 'England'), tier);
+  return { kind: 'restart', old, world, clubId, candidates, oldClub: c?.name ?? '' };
+}
+
+/** Konverteringen i en Web Worker (som nyt spil, med fremdriften) – uden Worker i hovedtråden. Spillet lægges ikke ind (setGame): kalderen gemmer det
+ *  som en ny kopi. */
+export async function runConversion(prep: ConvertPrep, clubId: number | null, onProgress: (p: NewGameProgress) => void): Promise<{ game: GameState; report: ConvertReport }> {
+  const cv = await import('../game/cmConvert');
+  const picked = prep.kind === 'restart' && clubId !== null && clubId !== prep.clubId;
+  const opts = prep.kind === 'convert' ? prep.opts : cv.restartOptions(prep.old, prep.world as CMWorld, clubId ?? prep.clubId!, getLang());
+  const job: NewGameJob = { world: prep.world, opts, convert: { kind: prep.kind, old: prep.old, picked } };
+  const local = () => {
+    createGame(prep.world, opts);
+    const fresh = gs();
+    const report = prep.kind === 'convert' ? cv.convertOriginal(prep.old, fresh, prep.world as CMWorld) : cv.restartInOriginal(prep.old, fresh, prep.world as CMWorld, picked);
+    const game = gs();
+    setGame(null);
+    return { game, report };
+  };
+  if (typeof Worker === 'undefined') return local();
+  try {
+    return await new Promise((resolve, reject) => {
+      const w = new Worker(new URL('./newGameWorker.ts', import.meta.url), { type: 'module' });
+      w.onmessage = (e: MessageEvent<import('./newGameWorker').NewGameMsg>) => {
+        const m = e.data;
+        if (m.type === 'progress') onProgress({ step: m.step, frac: m.frac });
+        else if (m.type === 'done') { w.terminate(); resolve({ game: m.game as GameState, report: m.report! }); }
+        else { w.terminate(); reject(new Error(m.message)); }
+      };
+      w.onerror = (e) => { w.terminate(); reject(new Error(e.message || 'worker')); };
+      w.postMessage(job);
+    });
+  } catch (e) {
+    console.warn('Konverteringen i en Worker fejlede – i hovedtråden', e);
+    return local();
   }
 }

@@ -840,8 +840,9 @@ export interface ManagerProfile {
   rep: number; // 0-100
   /** Seneste jobtilbud (mens man er i job) – der går mindst et par måneder mellem dem */
   lastJobOffer?: string;
-  history: { season: number; club: number; league: string; pos: number }[];
-  trophies: { season: number; comp: string; club: number }[];
+  /** `clubName`: forhistorie fra et spil med 2026/27-databasen, hvis klub ikke findes i den originale (cmConvert.ts – club = 0) */
+  history: { season: number; club: number; league: string; pos: number; clubName?: string }[];
+  trophies: { season: number; comp: string; club: number; clubName?: string }[];
   sacked: number;
   /** originalens menneskerække (cmBoard.ts): ikke-spillerpostens omdømmer [+8, +0xa, +0xc], ankomstdato +0x3e og +0x59 */
   cmRep?: [number, number, number];
@@ -1352,6 +1353,8 @@ export interface GameState {
   /** Ventende pressemøde for den aktive manager */
   press?: PressConf | null;
   /** Databasen spillet er startet fra (udeladt = den moderne) og dens ligaregler */
+  /** originalens systemer ved spilstarten (newgame.ts CM_SAVE_VER) – mangler i gamle gemte spil, der kan konverteres (cmConvert.ts) */
+  cmSaveVer?: number;
   dbKind?: 'cm0102';
   /** den originale databases udgave ('3.9.60' | '3.9.65' | '3.9.68'); mangler = 3.9.60 (eller 3.9.68 i meget gamle spil) */
   dbVersion?: string;

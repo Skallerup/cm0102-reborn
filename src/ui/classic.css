@@ -1953,6 +1953,17 @@ button.cx-bid-swap.removing { cursor: pointer; color: #fff21f; }
 .cx-mt-list .cx-ycard { position: absolute; left: -22px; top: 50%; width: 22px; height: 30px; margin-top: -15px; background: #fff21f; border: 1px solid #8a8400; }
 .cx-mt-list tr.cx-mt-blank td { color: transparent; }
 
+/* Restore Saved Game: gamle gemte spil (cmConvert.ts) – mærket "Gammel version" og knappen til konverteringen/genstarten */
+.cxs-list.saves .cxs-it { grid-template-columns: minmax(0, 1fr) auto auto; column-gap: 8px; }
+.cxs-oldver { margin-left: 8px; padding: 0 5px; font-style: normal; font-size: 12px; color: #000; background: #ffb43c; text-shadow: none; vertical-align: 2px; }
+.cxs-conv { font: inherit; font-size: 12px; font-weight: 700; color: #fff21f; background: #2b2b6e; border: 2px solid; border-color: #8a8ad0 #14143a #14143a #8a8ad0; padding: 2px 8px; cursor: pointer; white-space: nowrap; }
+.cxs-conv:hover { background: #3a3a90; }
+.cxs-convrep { font-size: 17px; max-width: 760px; text-align: left; }
+.cxs-convrep b { display: block; font-size: 22px; color: #fff21f; margin-bottom: 8px; }
+.cxs-convrep ul { margin: 0 0 10px; padding-left: 20px; }
+.cxs-convrep li { margin: 4px 0; }
+.cxs-convrep small { color: #b8bcc6; font-size: 14px; }
+@media (max-width: 760px) { .cxs-list.saves .cxs-it { grid-template-columns: minmax(0, 1fr) auto; } .cxs-conv { grid-column: 1 / -1; justify-self: start; margin-bottom: 4px; } }
 /* Spillerprofilens statistik som CM 01/02 (0x870650, ejerens billeder 145/149/154): grå kolonneknapper, to mørkeblå pileknapper,
    rækkerne skiftevis gule (#ffff55) og orange (#ff9538), Av R i lilla felter med turkis tekst, "-"/"----" hvor der intet er */
 .cx-pl-cmstats { table-layout: fixed; border-spacing: 2px 2px; }

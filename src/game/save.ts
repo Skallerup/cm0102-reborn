@@ -9,7 +9,9 @@ import { gs, setGame, addNews, notify, ensureNumbers, previewInfo, setPreview } 
 import { splitReserves } from './reserves';
 import { cmCupName, cmLeagueRules } from './cmCalendar';
 import { cashRound } from './cmTransferBid';
-import { deserializeState, serializeState } from './snapshot';
+import { deserializeState, gunzipText, serializeState } from './snapshot';
+import { rng } from './rng';
+import { saveKindFromText, saveKindOf, type SaveKind } from './saveKind';
 import type { GameState, Player } from './types';
 
 export interface SaveMeta {
@@ -20,6 +22,8 @@ export interface SaveMeta {
   saved: string;
   /** CM 01/02's Save Game: filnavnet (et navngivet gemt spil er sin egen kopi – id = spillets id + navnet) */
   name?: string;
+  /** hvilken slags spil (saveKind.ts) – 'oldOriginal'/'modern' kan konverteres (Restore Saved Game) */
+  kind?: SaveKind;
 }
 
 /** id'et for et navngivet gemt spil */
@@ -60,6 +64,7 @@ export async function saveGame(opts?: { cloud?: boolean; name?: string }): Promi
     date: g.date,
     saved: new Date().toISOString(),
     ...(name ? { name } : {}),
+    kind: saveKindOf(g),
   };
   await set(`save:${id}`, blob);
   await set(`meta:${id}`, meta);
@@ -73,6 +78,40 @@ export async function saveGame(opts?: { cloud?: boolean; name?: string }): Promi
 export async function storeSave(meta: SaveMeta, blob: Blob) {
   await set(`save:${meta.id}`, blob);
   await set(`meta:${meta.id}`, meta);
+}
+
+/** Slags for et lokalt gemt spil uden `kind` i metadata (gemt af en ældre version): den udpakkede tekst læses (uden at bygge spillet) og
+ *  svaret gemmes i metadata. null = ukendt (afgøres, når spillet åbnes) */
+export async function storedSaveKind(meta: SaveMeta): Promise<SaveKind | null> {
+  if (meta.kind) return meta.kind;
+  try {
+    const blob = await get<Blob>(`save:${meta.id}`);
+    if (!blob) return null;
+    const kind = saveKindFromText(await gunzipText(blob));
+    if (kind) await set(`meta:${meta.id}`, { ...meta, kind });
+    return kind;
+  } catch { return null; }
+}
+
+/** Et gemt spil (lokalt eller hentet fra skyen) som GameState – til konverteringen (det gamle gem røres ikke) */
+export async function readSave(id: string): Promise<GameState | null> {
+  const blob = await get<Blob>(`save:${id}`);
+  return blob ? deserializeState(blob) : null;
+}
+
+/** Konverteringens resultat gemmes som et NYT gemt spil (eget id) – returnerer id'et */
+export async function storeNewGame(g: GameState): Promise<string> {
+  g.id = `save-${Date.now().toString(36)}`;
+  const meta: SaveMeta = { id: g.id, manager: g.manager.name, club: g.clubs[g.userClub]?.name ?? '—', date: g.date, saved: new Date().toISOString(), kind: saveKindOf(g) };
+  // serializeState skriver den globale talrække i spillet – her er spillet ikke lagt ind, så dets egen bruges
+  const keep = rng.state;
+  rng.state = g.rng;
+  const blob = serialize(g);
+  rng.state = keep;
+  await set(`save:${g.id}`, await blob);
+  await set(`meta:${g.id}`, meta);
+  requestPersistentStorage();
+  return g.id;
 }
 
 export async function getSaveMeta(id: string): Promise<SaveMeta | undefined> {

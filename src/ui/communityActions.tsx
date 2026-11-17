@@ -28,7 +28,7 @@ export function careerSummary(g: GameState): HallSummary {
     const p = g.players[id] as Player;
     return { name: `${p.first} ${p.last}`.trim(), pos: posStr(p), apps: x.apps, goals: x.goals, club: g.clubs[x.club]?.short ?? '' };
   });
-  const history = g.manager.history.map((h) => ({ season: h.season, club: g.clubs[h.club]?.name ?? '?', league: compName(g.leagues[h.league]?.name) ?? h.league, pos: h.pos }));
+  const history = g.manager.history.map((h) => ({ season: h.season, club: g.clubs[h.club]?.name ?? h.clubName ?? '?', league: compName(g.leagues[h.league]?.name) ?? h.league, pos: h.pos }));
   const trophies = g.manager.trophies.filter((x) => !/month/i.test(x.comp)).map((x) => ({ season: x.season, comp: compName(x.comp), club: g.clubs[x.club]?.name ?? '' }));
   return {
     manager: g.manager.name, nation: g.nations[g.manager.nation]?.name, db: dbOf(g) ?? 'modern', startSeason: history[0]?.season ?? g.season, season: g.season,

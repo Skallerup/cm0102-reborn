@@ -500,6 +500,10 @@
     {
       "prefix": "staff.short.",
       "reason": "Staff.tsx: attributforkortelser i det moderne udseende"
+    },
+    {
+      "prefix": "conv.",
+      "reason": "Konvertering af gamle gemte spil (cmConvert.ts) – CM Reborn, findes ikke i originalen"
     }
   ],
   "keys": [

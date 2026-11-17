@@ -9,7 +9,9 @@ import { CURRENCIES, LANGS, compName, dateFmt, getCurrency, getLang, natName, se
 import type { Lang } from '../game/types';
 import type { WorldData } from '../game/newgame';
 import { previewClub } from '../game/newgame';
-import { deleteSave, importSave, listSaves, loadGame, storeSave, type SaveMeta } from '../game/save';
+import { deleteSave, importSave, listSaves, loadGame, readSave, storedSaveKind, storeNewGame, storeSave, type SaveMeta } from '../game/save';
+import type { SaveKind } from '../game/saveKind';
+import type { ConvertReport } from '../game/cmConvert';
 import { cloudSaves, deleteCloudSave, downloadCloudSave, type CloudSave } from '../online/account';
 import { notifyNewCareer } from '../online/notify';
 import { gs, inSetup, notify, setGame } from '../game/state';
@@ -29,9 +31,9 @@ import { changeCount, type CustomDb } from '../game/dbEdit';
 import { setTheme, getTheme, modernOn, setStartSkin } from './theme';
 import { ORIGINAL_VERSIONS, type OriginalVersion } from './world';
 import { createOnlineGame } from '../online/client';
-import { createGameAsync, loadStartWorld, LANG_NATION, ORIG_LANG_NATION, readDb, readVer, writeDb, writeVer, type Db } from './startGame';
+import { createGameAsync, loadStartWorld, LANG_NATION, ORIG_LANG_NATION, prepareConversion, readDb, readVer, runConversion, writeDb, writeVer, type ConvertPrep, type Db } from './startGame';
 
-type Step = 'menu' | 'db' | 'leagues' | 'season' | 'name' | 'deadline' | 'nation' | 'team' | 'club' | 'confirm' | 'restore' | 'delete' | 'settings' | 'opts' | 'extras' | 'account';
+type Step = 'menu' | 'db' | 'leagues' | 'season' | 'name' | 'deadline' | 'nation' | 'team' | 'club' | 'confirm' | 'restore' | 'delete' | 'settings' | 'opts' | 'extras' | 'account' | 'convpick' | 'convdone';
 /** Populære spillere og hvilke udgaver (3.9.60/65/68) de findes i – datafilen hentes først, når boksen åbnes */
 function PopularBox({ ver, onClose }: { ver: OriginalVersion | null; onClose: () => void }) {
   const [d, setD] = useState<{ v: string[]; p: [string, ([string, number, number] | null)[]][] } | null>(null);
@@ -66,7 +68,7 @@ export type LegacyView = 'online' | 'challenges' | 'editor' | 'draft';
 /** Baggrundsbillederne fra originalens Pictures-mappe (public/original-bg) – som i skærmbillederne af originalens startskærme */
 const BG: Record<Step, string> = {
   menu: '324855', db: '324855', leagues: 'holywell03', season: 'holywell03', name: '324855', deadline: '324855', nation: '214525', team: 'boro3', club: '407618', confirm: '259396',
-  restore: '349416', delete: '349416', settings: '324855', opts: '324855', extras: '324855', account: '324855',
+  restore: '349416', delete: '349416', convpick: '349416', convdone: '349416', settings: '324855', opts: '324855', extras: '324855', account: '324855',
 };
 
 const REGION_CODE: Record<UiRegion, string> = { europe: 'EUR', southAmerica: 'SAM', northAmerica: 'NAM', asia: 'ASI', oceania: 'OCE', africa: 'AFR' };
@@ -363,6 +365,62 @@ export function ClassicStart({ onLang, onHome, onGo, onLook, online }: { onLang:
     } catch { setErr(t('acc.err.other')); }
     setProg(null);
   };
+  // gamle gemte spil (game/cmConvert.ts): slagsen læses for de lokale (gemt i metadata efter første gang), konverteringen laver en kopi
+  const [kinds, setKinds] = useState<Record<string, SaveKind | null>>({});
+  useEffect(() => {
+    if (step !== 'restore' || !rows) return;
+    let ok = true;
+    void (async () => {
+      for (const r of rows) {
+        if (!ok) return;
+        if (r.id in kinds) continue;
+        const k = r.local ? await storedSaveKind(r.local) : null;
+        if (ok) setKinds((m) => ({ ...m, [r.id]: k }));
+      }
+    })();
+    return () => { ok = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, rows]);
+  const [conv, setConv] = useState<{ prep: ConvertPrep; mid: boolean } | null>(null);
+  const [done, setDone] = useState<{ report: ConvertReport; id: string } | null>(null);
+  const runConv = async (prep: ConvertPrep, clubId: number | null) => {
+    setErr('');
+    setProg({ label: t('cxs.conv.running'), frac: 0.02 });
+    try {
+      const res = await runConversion(prep, clubId, (p) => setProg({ label: t('cxs.conv.running'), frac: p.frac, step: p.step }));
+      const id = await storeNewGame(res.game);
+      setProg(null);
+      setDone({ report: res.report, id });
+      go('convdone');
+    } catch (e) { setProg(null); setErr(String((e as Error).message ?? e)); }
+  };
+  const convertSave = async (r: Row) => {
+    setErr('');
+    setProg({ label: t('cxs.loadingSave'), frac: 0.05, auto: true });
+    try {
+      if (r.cloud && (!r.local || r.cloud.saved > r.local.saved)) {
+        const blob = await downloadCloudSave(r.cloud);
+        await storeSave({ id: r.id, club: r.cloud.club, manager: r.cloud.manager, date: r.cloud.date, saved: r.cloud.saved }, blob);
+      }
+      const old = await readSave(r.id);
+      const prep = old && (await prepareConversion(old));
+      setProg(null);
+      if (!prep) { setErr(t('cxs.conv.cannot')); return; }
+      const mid = Object.values(prep.old.fixtures).some((f) => !f.result && f.date >= prep.old.date);
+      if (prep.kind === 'restart' && prep.clubId === null) { setConv({ prep, mid }); go('convpick'); return; }
+      const club = prep.kind === 'convert' ? (prep.old.clubs[prep.old.userClub]?.name ?? r.club) : (prep.world.clubs.find((c) => c[0] === prep.clubId)?.[1] ?? '');
+      const text = prep.kind === 'convert'
+        ? `${t('cxs.conv.q', { club, date: dateFmt(prep.old.date) })}${mid ? ` ${t('cxs.conv.qNext')}` : ''}`
+        : t('cxs.restart.q', { club, old: prep.oldClub });
+      if (!(await askConfirm(text, { title: t(prep.kind === 'convert' ? 'cxs.conv.btn' : 'cxs.restart.btn') }))) return;
+      await runConv(prep, prep.kind === 'restart' ? prep.clubId : null);
+    } catch (e) { setProg(null); setErr(String((e as Error).message ?? e)); }
+  };
+  const pickConvClub = async (id: number, name: string) => {
+    if (!conv) return;
+    if (!(await askConfirm(t('cxs.restart.q', { club: name, old: conv.prep.kind === 'restart' ? conv.prep.oldClub : '' }), { title: t('cxs.restart.btn') }))) return;
+    await runConv(conv.prep, id);
+  };
   const removeSave = async (r: Row) => {
     if (!(await askConfirm(t('start.confirmDelete'), { danger: true }))) return;
     if (r.local) await deleteSave(r.id);
@@ -579,11 +637,52 @@ export function ClassicStart({ onLang, onHome, onGo, onLook, online }: { onLang:
           {!rows && <div className="cxs-wait">{t('start.loading')}</div>}
           {rows && !rows.length && <div className="cxs-wait">{t('start.noSaves')}</div>}
           {rows?.map((s) => (
-            <div key={s.id} className="cxs-it save" role="button" tabIndex={0} onClick={() => void (del ? removeSave(s) : openSave(s))}>
-              <span className="n">{s.local?.name ?? s.club} <em>– {s.local?.name ? `${s.club}, ` : ""}{s.manager}</em></span>
+            <div key={s.id} className="cxs-it save" role="button" tabIndex={0} data-kind={kinds[s.id] ?? ''} onClick={() => void (del ? removeSave(s) : openSave(s))}>
+              <span className="n">{s.local?.name ?? s.club} <em>– {s.local?.name ? `${s.club}, ` : ""}{s.manager}</em>
+                {(kinds[s.id] === 'oldOriginal' || kinds[s.id] === 'modern') && <i className="cxs-oldver">{t('cxs.conv.old')}</i>}</span>
               <span className="extra">{dateFmt(s.date)}{s.cloud ? ' ☁' : ''}</span>
+              {!del && (kinds[s.id] === 'oldOriginal' || kinds[s.id] === 'modern') && (
+                <button type="button" className="cxs-conv" data-convert={kinds[s.id]} onClick={(e) => { e.stopPropagation(); void convertSave(s); }}>
+                  {t(kinds[s.id] === 'modern' ? 'cxs.restart.btn' : 'cxs.conv.btn')}
+                </button>
+              )}
             </div>
           ))}
+        </div>
+        {note}
+      </Frame>
+    );
+  }
+
+  // ---------- gamle gemte spil: vælg en klub (fandtes ikke i 2001) og rapporten efter konverteringen ----------
+  if (step === 'convpick' && conv?.prep.kind === 'restart') {
+    const p = conv.prep;
+    return (
+      <Frame {...common} title={t('cxs.title')} sub={t('cxs.restart.pick', { club: p.oldClub })} onBack={back}>
+        <div className="cxs-list" data-convpick>
+          {p.candidates.map((c) => (
+            <div key={c.id} className="cxs-it" role="button" tabIndex={0} onClick={() => void pickConvClub(c.id, c.name)}>
+              <span className="n">{c.name}</span><span className="extra">{compName(c.league)}</span>
+            </div>
+          ))}
+        </div>
+        {note}
+      </Frame>
+    );
+  }
+  if (step === 'convdone' && done) {
+    const r = done.report;
+    const lines = r.kind === 'convert'
+      ? [t('cxs.conv.r.players', { n: r.dbPlayers ?? 0, r: r.regens ?? 0 }), t('cxs.conv.r.aged', { n: r.aged ?? 0, c: r.clamped ?? 0 }), t('cxs.conv.r.staff', { n: r.staff ?? 0 }),
+        t('cxs.conv.r.board'), ...(r.injuries ? [t('cxs.conv.r.inj', { n: r.injuries })] : []), t(r.nextSeason ? 'cxs.conv.r.next' : 'cxs.conv.r.now')]
+      : [t('cxs.restart.r.club', { club: r.club }), ...(r.picked ? [t('cxs.restart.r.picked')] : []), t('cxs.restart.r.hist', { n: r.history ?? 0, m: r.trophies ?? 0 })];
+    return (
+      <Frame {...common} title={t('cxs.title')} sub={t('cxs.conv.done')} onBack={() => go('menu')} backLabel={t('cxs.conv.toMenu')}
+        onNext={() => { setProg({ label: t('cxs.loadingSave'), frac: 0.05, auto: true }); void loadGame(done.id).then((ok) => { setProg(null); if (!ok) setErr(t('start.importFailed')); }); }} nextLabel={t('cxs.conv.play')}>
+        <div className="cxs-msg cxs-convrep" data-convdone>
+          <b>{r.club}</b>
+          <ul>{lines.map((l, i) => <li key={i}>{l}</li>)}</ul>
+          <small>{t('cxs.conv.copy')}</small>
         </div>
         {note}
       </Frame>
