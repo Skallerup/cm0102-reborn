@@ -40,7 +40,7 @@ import { cmStartDate } from './cmCalendar';
 import { cmMainNation, cmSeasonOn } from './cmSeason';
 import { cmEuroOn, cmEuroRestoreNext, cmSetupEurope } from './cmEurope';
 import { compHooks } from './hooks';
-import { cmFitNewGame } from './cmFitnessGame';
+import { cmFitNewGame, cmSetupLoans } from './cmFitnessGame';
 import './cmIntl';                                              // landskampkalenderen i ægte tilstand (intlHooks, registerPrerun 'comps1')
 import './cmNatTeams';                                          // landstrænerne i bestyrelsessystemet (intlHooks.ntStart/ntEnd/boardMatch …)
 import './cmPrerunMatches';                                      // forkørslens konkurrencekampe (registerPrerun 'matches')
@@ -566,6 +566,8 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   cmSquadPlanStart(g);
   // 0x83a1b0 efter trupplanen: lønnen for kontrakterne uden løn (0x862720 – cmWageGame.ts)
   cmWageFillNewGame(g, unsetWages);
+  // player_setup.cfg's lejeaftaler (0x7a30c0 efter 0x83a1b0 → 0x8bf400 – cmFitnessGame.ts)
+  cmSetupLoans(g);
   // 0x83a1b0's slutning: positionslisterne 0x83a780 og budgettets fordeling/målene 0x83b6e0 for alle klubber (cmShortlistGame.ts)
   // (nyt spil-forløbets midlertidige verden: ikke – den bruges kun til Select Team, og spillet bygges igen ved Take Control)
   if (!o.preview) cmShortlistStart(g);

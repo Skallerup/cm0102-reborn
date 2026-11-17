@@ -7,7 +7,7 @@ import {
   applyMatchEffects, clearKnocks, clubSeason, condition, currentInjury, dayNum, fatigue, fitIso, fitRand, hasSeasonRow, initRecords, initSquadFitness, injuryDaily, injuryStatus,
   newFit, recordKnock, recoverFatigue, setKnockHook, syncPlayer, trainingLoad, updateFitness, type CmInjury, type FitCtx, type MatchEntry,
 } from './cmFitness';
-import { addNews, gs, hasGame, squad } from './state';
+import { addNews, gs, hasGame, pickNumber, rebuildIndexes, squad } from './state';
 import { asOwner, isHumanClub } from './humans';
 import { cmRand, statCategory } from './cmPlayerData';
 import { cmTrainPlayer, humanLevels, setTrainCtx } from './cmTraining';
@@ -15,7 +15,8 @@ import { setDevCtx } from './cmDevelop';
 import { registerPrerun, runPrerun } from './cmPrerun';
 import { cmRetireInjury } from './cmRetire';
 import { intlHooks } from './hooks';
-import { CM_SETUP_INJURIES } from './data/cmPreseason';
+import { CM_SETUP_INJURIES, CM_SETUP_LOANS } from './data/cmPreseason';
+import { cmPermitMove } from './cmPermit';
 import { addInjury } from './cmFitness';
 
 const pname = (p: Player) => `${p.first} ${p.last}`.trim();
@@ -183,6 +184,42 @@ export function cmSetupInjuries(g: GameState, start: number): void {
     const p = g.players[id];
     if (p) addInjury(c, t, false, p, 0, true, -1, perm, future === 1);
   }
+}
+
+/** player_setup.cfg's LOAN-linjer (0x7a4d24 → TRANSFER_MANAGER 0x8bf400(staff, klub, &start, &slut), samme kald 0x7a30c0 efter trupplanen
+ *  0x83a1b0 og før 0x62a920 – newgame.ts kalder den lige efter cmWageFillNewGame). Linjerne er fundet i databasen af scripts/build-preseason.mts.
+ *  0x8bf400 (læst 17/11-2026): 0x540a50(klub, &ud, 1) – et reservehold som lejeklub giver moderklubben (ingen af filens linjer har et);
+ *  ingen leje, når lejeklubben har 50 i truppen (0x53c590), spilleren allerede er lejet (0x4cf6d0), startdatoen er efter i dag, slutdatoen før
+ *  i dag eller han ingen kontrakt har (0x4cf5a0). Kontraktens udløb (staff +0x46, kontrakt +0x2d) før lejens slut → rykkes til slutdatoen.
+ *  Lejekontrakten 0x85e590(staff, klub, slut, 0 %, 1, 1): lønnen 0 % hos lejeklubben (Player.loan.share 0), +0x25 = startdatoen, 0x4d01e0
+ *  (staff +0x39 = lejeklubben); trøjenummeret 0x85a470 (her pickNumber); arbejdstilladelsen 0x8c7560 → 0x8c7070 (cmPermitMove).
+ *  Ingen klubskifte-følger (0x8c9720 kaldes ikke: indkøringsbyten og klubbernes omdømme uændrede). Bagefter 0x62a920 for de lejede (lejeklubbens
+ *  sæson). Ikke porteret: 0x5563f0 (Discipline), 0x540980(staff, 1) (+0x5e), staff +0x6d 2 → 0x10. */
+export function cmSetupLoans(g: GameState): number {
+  if (!cmFitOn(g)) return 0;
+  const list = CM_SETUP_LOANS[g.dbVersion ?? '3.9.60'] ?? [];
+  const moved: Player[] = [];
+  for (const [id, to, start, end] of list) {
+    const p = g.players[id], club = g.clubs[to];
+    if (!p || !club || !p.club || p.club === to) continue;
+    if (squad(to).filter((x) => !x.virtual).length >= 50) continue;               // 0x8bf466: 0x53c590 < 0x32
+    if (p.loan) continue;                                                         // 0x8bf47c: 0x4cf6d0
+    if (start > g.date || end < g.date) continue;                                 // 0x8bf4a8 / 0x8bf4e2
+    if (!p.contract) continue;                                                    // 0x8bf504: 0x4cf5a0
+    if (p.contract.expires.slice(0, 10) < end) p.contract.expires = end;           // 0x8bf527–0x8bf560
+    const from = p.club;
+    p.loan = { from, until: end, share: 0 };
+    p.club = to;
+    p.number = pickNumber(p, to, p.number);
+    cmPermitMove(g, p, to);
+    moved.push(p);
+  }
+  if (!moved.length) return 0;
+  rebuildIndexes();
+  const c = fitCtx(g, SALT.init, dayNum(g.date));
+  initSquadFitness(c, moved);
+  for (const p of moved) syncPlayer(c, p);
+  return moved.length;
 }
 
 /** forkørslens Injury-trin (0x5cc850 → 0x62b7b0 ved tidspunkt 2) – spillerlisten og stabens antal fra cmFitNewGame */

@@ -57,6 +57,8 @@ const missing = dayIx ? [] : KNOWN.filter(([f]) => !existsSync(f)).map(([f]) => 
 const EXN = Number(process.env.EX ?? 3);
 const ONLY = process.env.ONLY ?? '';
 const CLUB = process.env.CLUB ?? 'Arsenal';
+const DUMP = process.env.DUMP ?? '';
+const dumpRows: unknown[] = [];
 
 // ------------------------------------------------------------------ statistik pr. dag og felt
 interface Stat { n: number; bad: number; ex: string[] }
@@ -168,6 +170,16 @@ function compareDay(v: View) {
     pairedEng++;
     const lab = (e: string) => () => `${p.first} ${p.last} (${oClub || '-'}): ${e}`;
     const row = rowOf(v, mid), k = contractAt(v, m.s32(row)), kl = contractAt(v, m.s32(row + 4));
+    if (DUMP && days.length === 1) {
+      const rec = injBase ? injBase + 31 * mid : 0, c0 = p.contract;
+      dumpRows.push({ pid, mid, name: `${p.first} ${p.last}`, club: oClub, mClub, league: g.clubs[p.club]?.league, ca: p.ca, mca: m.s16(a.pr + 5), pa: p.pa, mpa: m.s16(a.pr + 7),
+        joined: p.joined ?? p.cmJoined, mJoined: dayIso(m.s16(a.st + 0x3e), m.u16(a.st + 0x40)), age: p.dob,
+        ss: p.cmStaffState ?? 0, mss: m.u8(row + 0xa), row: Array.from({ length: 79 }, (_, i) => m.u8(row + i)),
+        wage: c0 ? Math.round(c0.wage * GBP) : null, mwage: k ? m.s32(k + 0xc) : null, bon: c0?.cmBonusGbp ?? null, mbon: k ? [m.s32(k + 0x10), m.s32(k + 0x14), m.s32(k + 0x18)] : null,
+        st: (p.cmContract?.b4f ?? 0) >> 4, mst: k ? m.u8(k + 0x4f) >> 4 : null, b4e: p.cmContract?.b4e, mb4e: k ? m.u8(k + 0x4e) : null, b3d: p.cmContract?.b3d, mb3d: k ? m.s8(k + 0x3d) : null,
+        value: Math.round(p.value * GBP), mvalue: m.s32(a.st + 0x52), inj: p.cmFit?.inj ?? null, minj: rec ? m.s32(rec + 0xe) : null, minjRec: rec ? Array.from({ length: 31 }, (_, i) => m.u8(rec + i)) : null, fit: p.cmFit ?? null,
+        loan: p.loan ?? null, mloan: !!kl, dbw: +(rowById.get(p.id)?.[W_IX] ?? 0), mpos: Array.from({ length: 7 }, (_, i) => m.s8(a.pr + 0xf + i)), mk: k ? Array.from({ length: 80 }, (_, i) => m.u8(k + i)) : null, P: p });
+    }
     chk('spiller: klub (staff +0x39 = den nuværende, også lejeklubben)', mClub === oClub, lab(`${oClub || '-'} mod ${mClub || '-'}`));
     // inddata, databasen ikke har (originalen trækker dem med tilfældige tal ved indlæsningen): sammenlignes kun som fordeling
     const r = w.ratings[p.id] as undefined | { ca: number; tf?: unknown; paRaw?: number; rep?: number[]; rd?: number; attrs: number[] };
@@ -280,7 +292,8 @@ function compareDay(v: View) {
       }
     }
     chk('klub: omdømme (+0x80)', (g.cmClubRep?.[c.id] ?? c.rep * 100) === m.s16(adr + 0x80), lab(`${g.cmClubRep?.[c.id]} mod ${m.s16(adr + 0x80)}`));
-    const ours = Object.values(g.players).filter((p) => !p.virtual && (p.loan ? p.loan.from : p.club) === c.id).length;
+    // staff +0x39 = den nuværende klub (lejeklubben for de udlejede) – samme hos os: p.club
+    const ours = Object.values(g.players).filter((p) => !p.virtual && p.club === c.id).length;
     chk('klub: truppens størrelse (staff +0x39)', ours === (memSquad.get(ix) ?? 0), lab(`${ours} mod ${memSquad.get(ix) ?? 0}`));
     dist('klub: truppens størrelse', ours, memSquad.get(ix) ?? 0);
     const mgrP = m.u32(adr + 0xcf), mgr = g.staff[c.manager];
@@ -495,6 +508,7 @@ for (const x of [...firstField.values()].filter((x) => !isRandIn(x.field)).sort(
 const lines: string[] = [];
 const out = (s = '') => { console.log(s); lines.push(s); };
 const cell = (s: string) => s.replace(/\|/g, '/');
+if (DUMP) writeFileSync(DUMP, JSON.stringify(dumpRows));
 out(`\n# Dag for dag mod originalen – ${days[0]} → ${days[days.length - 1]} (${days.length} billeder, ${CLUB}, frø 1, ${worldFile})`);
 out('Eksempler: «vores mod originalen». Berørte = afvigelser/tjekket den dag. Billedet for dag D er taget før 0x4c7ac0(D, 2, 1); vores spil står ved dag D−1, færdigspillet.');
 out('\n## Første afvigelse pr. område (uden felter med tilfældige inddata)');

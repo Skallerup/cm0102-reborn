@@ -45,14 +45,14 @@ function injuryType(s: string): number {
 }
 
 /** cfg-linjen: "TYPE" "First" "Common" "Last" "Club" "Extra" [tal] */
-function parseCfg(): { first: string; common: string; last: string; club: string; extra: string; num: number | null }[] {
+function parseCfg(kind = 'INJURY'): { first: string; common: string; last: string; club: string; extra: string; num: number | null; rest: string }[] {
   const out = [];
   for (const line of dec.decode(readFileSync(CFG)).split(/\r?\n/)) {
-    if (!line.startsWith('"INJURY"')) continue;
+    if (!line.startsWith(`"${kind}"`)) continue;
     const q = line.split('"');
     // [ '', INJURY, ' ', first, ' ', common, ' ', last, ' ', club, ' ', extra, rest ]
     const rest = (q[12] ?? '').trim();
-    out.push({ first: q[3], common: q[5], last: q[7], club: q[9], extra: q[11], num: /^-?\d+/.test(rest) ? parseInt(rest, 10) : null });
+    out.push({ first: q[3], common: q[5], last: q[7], club: q[9], extra: q[11], num: /^-?\d+/.test(rest) ? parseInt(rest, 10) : null, rest });
   }
   return out;
 }
@@ -86,7 +86,9 @@ const nameOk = (s: { f: string | null; l: string | null; c: string | null }, e: 
   (!e.first || s.f === null || strncmpEq(s.f, e.first, 0x1a)) && (!e.last || s.l === null || strncmpEq(s.l, e.last, 0x1a)) && (!e.common || s.c === null || strncmpEq(s.c, e.common, 0x1a));
 
 const cfg = parseCfg();
+const loanCfg = parseCfg('LOAN');
 const out: Record<string, [number, number, number, number][]> = {};
+const loans: Record<string, [number, number, string, string][]> = {};
 let nationsOut: Record<number, number[]> = {};
 for (const [ver, dir] of Object.entries(DBS)) {
   const db = readDb(dir);
@@ -108,11 +110,39 @@ for (const [ver, dir] of Object.entries(DBS)) {
   }
   out[ver] = list;
   console.log(ver, `${list.length} fundet, ${miss} ikke fundet`);
+  // LOAN (0x7a4d24–0x7a5011): staff = 0x7a50f0(fornavn, kælenavn, efternavn, moderklub, 1); lejeklubben = den første klub i klubtabellen med
+  // strncmp(navn, felt 5, 0x33) = 0; sscanf(resten, "%d %d %d %d %d %d") = 6 → dag, måned − 1, år (< 10 → +2000, < 100 → +1900) for start og
+  // slut; dag 1..31, måned 0..11, år 1980..2010 – ellers ingen leje. Så 0x8bf400(staff, klub, &start, &slut) – i spillet (cmSetupLoans).
+  const worldClubs = new Set((JSON.parse(readFileSync(`public/data/${ver === '3.9.60' ? 'world-original' : `world-original-${ver.replace(/\./g, '')}`}.json`, 'utf8')).clubs as number[][]).map((c) => c[0]));
+  const ll: [number, number, string, string][] = [];
+  let lmiss = 0;
+  for (const e of loanCfg) {
+    let hit: (typeof db.staff)[number] | undefined;
+    if (e.club) { const club = db.clubs.find((c) => strncmpEq(c.name, e.club, 0x33)); if (club) hit = db.staff.find((s) => s.club === club.id && nameOk(s, e)); }
+    else hit = db.staff.find((s) => nameOk(s, e));
+    const to = db.clubs.find((c) => strncmpEq(c.name, e.extra, 0x33));
+    const v = e.rest.split(/\s+/).map((x) => parseInt(x, 10));
+    if (!hit || !players.has(hit.id) || !to || !worldClubs.has(to.id) || v.length < 6 || v.slice(0, 6).some((x) => !Number.isFinite(x))) {
+      lmiss++;
+      if (process.env.DEBUG) console.log(`  ${ver} LOAN ikke fundet: ${e.first} ${e.last} (${e.club} → ${e.extra}): ${!hit ? 'ingen person' : !players.has(hit.id) ? 'ikke i spillet' : !to ? 'ingen klub' : 'klubben ikke i spillet'}`);
+      continue;
+    }
+    const yy = (y: number) => (y < 10 ? y + 2000 : y < 100 ? y + 1900 : y);
+    const [d1, m1, y1, d2, m2, y2] = [v[0], v[1] - 1, yy(v[2]), v[3], v[4] - 1, yy(v[5])];
+    const ok = (d: number, m: number, y: number) => d >= 1 && d <= 31 && m >= 0 && m <= 11 && y >= 1980 && y <= 2010;
+    if (!ok(d1, m1, y1) || !ok(d2, m2, y2)) { lmiss++; continue; }
+    const iso = (d: number, m: number, y: number) => `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    ll.push([hit.id, to.id, iso(d1, m1, y1), iso(d2, m2, y2)]);
+  }
+  loans[ver] = ll;
+  console.log(ver, `LOAN: ${ll.length} fundet, ${lmiss} ikke fundet`);
 }
 const ts = `// Genereret af scripts/build-preseason.mts – ret ikke i hånden.
 // Originalens player_setup.cfg (INJURY-linjerne, appens Data/ – også brugt med 3.9.60/3.9.65) fundet i databasen som 0x7a50f0:
 // [spiller-id, skadetype (0x7a32e0), PERMANENT-niveau (0 = ingen), FUTURE (1 = kun tilbagevendende, ingen skade nu)]
 export const CM_SETUP_INJURIES: Record<string, readonly (readonly [number, number, number, number])[]> = ${JSON.stringify(out)};
+// LOAN-linjerne (0x7a4d24): [spiller-id, lejeklubbens id, startdato, slutdato] – lejen sættes i spillet af cmSetupLoans (0x8bf400)
+export const CM_SETUP_LOANS: Record<string, readonly (readonly [number, number, string, string])[]> = ${JSON.stringify(loans)};
 /** nation.dat pr. nation-id: [+0x86, +0x84, +0x7e, +0x8e, +0x75, +0x71 verdensdel, nabolandene +0x110, +0x114, +0x118] (3.9.60) */
 export const CM_NATION_FR: Record<number, readonly number[]> = ${JSON.stringify(nationsOut)};
 `;
