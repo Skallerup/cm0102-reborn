@@ -405,8 +405,9 @@ async function run(look) {
       await page.waitForTimeout(300);
       await page.locator('.cx-tools .cx-drop-btn', { hasText: /^Search/ }).first().click();
       await page.locator('.cx-drop-pop >> text=Assign Scout').first().hover();
-      await page.locator('.cx-drop-pop >> text=/^Nation$/').first().hover();
-      await page.locator('.cx-drop-pop >> text=/^France$/').first().click();
+      // (undermenuens knap har pilen › i teksten – derfor ikke text=/^Nation$/)
+      await page.locator('.cx-drop-pop .cx-drop-subbtn', { hasText: /^\s*Nation\b/ }).first().hover();
+      await page.locator('.cx-drop-sub button', { hasText: /^\s*France\s*$/ }).first().click();
       await page.waitForTimeout(500);
       if ((await scoutAsg()) !== 'nation') throw new Error('Assign Scout ▸ Nation: opgaven blev ikke sat');
       if (await page.locator('.cx-confirm').count()) throw new Error('Assign Scout ▸ Nation: originalen spørger ikke');
