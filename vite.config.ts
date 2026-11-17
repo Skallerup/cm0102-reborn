@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
@@ -85,4 +86,7 @@ export default defineConfig({
     }),
   ],
   worker: { format: 'es' },
+  // Lokalt højst 3 test-workers: hver indlæser world-filerne (~1,2 GB), og 11 parallelle (standard = kerner-1) fyldte
+  // de 16 GB og fik Mac mini'en til at gå ned 17/11 (WindowServer-watchdog). CI bruger standarden.
+  test: { maxWorkers: process.env.CI ? undefined : 3 },
 })
