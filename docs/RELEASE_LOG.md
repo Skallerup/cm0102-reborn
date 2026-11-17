@@ -2,6 +2,7 @@
 
 Flyttet fra CLAUDE.md 17/11-2026 (så CLAUDE.md er kort i hver session). Nyeste først. Tilføj en linje øverst ved hver udgivelse.
 
+- 2026-11-17 – Skudt live (v0.29.0): 2026-11-17 – Klubdata udfyldes som create_game 0x82992b (omdømme/tilskuertal/min-maks/træningsanlæg fra omdømmet; 0 = udfyld): klubber i minus 301 mod Maximum-oraklets 317 efter 1 sæson. CONTRACT_MANAGER 0x4c81a3 før typetjekket. Udløbne kontrakter på klubben vokser også i originalen (Maximum 26 → 197 → 2.286) – ikke en fejl. Maximum-orakel: ~/cm0102-engine/oracle/tools/max/.
 - 2026-11-17 – Skudt live (v0.29.0): 2026-11-17 – K2 punkt 1: klubløses underskrift går via svartiden (0x8cc5b0 → 0x8c63a0 → 0x8c0080, vilje 0x846920 ≥ 0,75, 0x4cd230) i cmAiAiDue; scripts/k2-transfers.ts (orakel vs os). Klubløse var IKKE for mange med samme DB-størrelse; åbne: udenlandske klubbers handel med England, for mange køb, 0x4ce4e0.
 - 2026-11-17 – Skudt live (v0.29.0): 2026-11-17 – Stabsskifter: managere aldrig mål (0x83fa68/0x83fa72), jobkoder som originalen, målvalget 0x83f3a0 (0x840112–0x84094e) frasorterer uvillige via 0x844780/0x84662e (cmStaffWill, 0x864550, 0x597db0). Sæson: 61 skifter/12 fra klub (før 23/2, orakel 173/151) – rest åben i ORIGINAL_PARITY.
 - 2026-11-17 – Skudt live (v0.29.0): 2026-11-17 – Club → Transfers: alle 7 View-punkter som exe'en (0x4542f0/0x8ccb80): Future Transfers (g.offers + contract.futureClub, src/game/futureTransfers.ts), Loans In/Out, Staff In/Out (stabsskift gemmes i src/game/staffMoves.ts); 'Transfer Listed' fjernet (findes ikke i originalen). Forslag #28.
