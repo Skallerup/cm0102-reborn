@@ -40,6 +40,7 @@ import type { BoardAsk, BotStyle, ContractClauses, MatchReport, ScoutAssignment,
 import { giveTalk, matchExpectation } from './teamtalk';
 import type { SquadStatus } from './squadStatus';
 import { startScoutAssignment } from './scouting';
+import { addScoutRequest, scoutRequestStatus } from './cmScout';
 import { answerNationalOffer, resignNational, selectNationalSquad } from './international';
 import { appealBan } from './rules2001';
 import { cmAppeal } from './cmDiscipline';
@@ -84,6 +85,9 @@ export type Action =
   | { t: 'preContract'; pid: number }
   | { t: 'shortlist'; pid: number; on: boolean }
   | { t: 'scout'; staffId: number; assignment: ScoutAssignment | null }
+  /** CM 01/02 Action → Scout Player (cmScout.ts): status 0x7f8ff0 og anmodningen 0x7f9290 (+ Short List 0x7f75f0) */
+  | { t: 'scoutStatus'; pid: number }
+  | { t: 'scoutReq'; pid: number }
   | { t: 'negotiate'; pid: number; wage: number; years: number; clauses?: ContractClauses }
   | { t: 'cmOfferRole'; pid: number; role: import('./squadStatus').SquadStatus }
   | { t: 'cmConfirm'; offer: number; answer: 'yes' | 'no' | 'delay' }
@@ -265,6 +269,19 @@ export function applyAction(a: Action): unknown {
       if (a.on) g.shortlist.push(a.pid);
       return 'ok';
     case 'scout': return startScoutAssignment(a.staffId, a.assignment) ?? 'ok';
+    case 'scoutStatus': {
+      const g = gs(), p = g.players[a.pid];
+      const st = p ? scoutRequestStatus(g, p) : 2;
+      // 0x8898e5/0x88993c: med spørgsmålet (status 0/1) kommer spilleren på Short List (0x7f75f0) – uanset svaret
+      if (p && st <= 1 && !g.shortlist.includes(p.id)) g.shortlist.push(p.id);
+      return st;
+    }
+    case 'scoutReq': {
+      const g = gs(), p = g.players[a.pid];
+      if (!p || scoutRequestStatus(g, p) > 1) return 'error';
+      addScoutRequest(g, p);
+      return 'ok';
+    }
     case 'cmOfferRole': { const o = myOffer(a.pid); if (!o) return 'error'; o.cmRole = a.role; return 'ok'; }
     case 'negotiate': { const o = myOffer(a.pid); return o ? negotiate(o.id, a.wage, a.years, a.clauses) : 'refused'; }
     case 'cmConfirm': { const o = gs().offers.find((x) => x.id === a.offer); return o ? cmConfirmAnswer(o, a.answer, completeTransfer) : 'refused'; }

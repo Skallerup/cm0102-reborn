@@ -6,6 +6,7 @@ import { cmStaffMovesDaily } from './cmStaffMove';
 import { cmActive, cmAfterMatch, cmContractDaily, cmFlagSet, cmRand, cmSquadMoraleDaily, MORALE_OFF, withFlagCtx } from './cmPlayerData';
 import { cmFitAfterMatch, cmFitDay, cmFitMatch, cmFitOn, cmFitPreMatch, setMatchSquad } from './cmFitnessGame';
 import { cmPermitAfterMatch, cmPermitDaily } from './cmPermit';
+import { cmScoutDaily, cmScoutMatch } from './cmScout';
 import { cmSquadPlanDaily } from './cmSquadPlanGame';
 import { cmDevDaily } from './cmDevelop';
 import { cmRelDaily } from './cmRelations';
@@ -358,6 +359,7 @@ function playResMatch(f: Fixture): MatchReport | null {
   cmAfterMatch(g, f, rep, squad, { cats });
   cmPermitAfterMatch(g, f, rep, (p) => !!p.injury || p.banned > 0);
   cmFitMatch(g, rep, true, f.id, [f.home, f.away]);
+  cmScoutMatch(g, f, rep);
   // 0x90d6b0: fyldspillerne ud igen
   cmVirtualDrop(g, f.home); cmVirtualDrop(g, f.away);
   return rep;
@@ -460,6 +462,8 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
   if (cm) cmFitAfterMatch(g, f, rep);
   // 0x6951e0: bestyrelsen efter kampen (efter tabellen) – begge hold (cmBoardGame.ts)
   cmBoardAfterMatch(g, f, rep);
+  // 0x7f8c00 (0x6b6195): menneskenes spejdere ser kampen, når en anmodet spiller er med (cmScout.ts)
+  cmScoutMatch(g, f, rep);
   // 0x896290: taktiklistens statistik efter en kamp mellem to computerhold (gittermotorens valg fra pick_team/omrokeringen)
   if (cmActive(g)) recordAiTactics(f.home, f.away, hs.goals, as.goals, (c) => isHumanClub(c) || c === g.userClub);
   // karantæner afsones for spillere der ikke spillede
@@ -711,6 +715,8 @@ function newDay() {
   // mediets daglige rygter 0x754a30 (0x5cdd8f): dagens nye bud → køen, rygterne og computerens svar (cmRumours.ts)
   cmRumoursDaily(g);
   forEachHuman(scoutDaily);
+  // SCOUT_MANAGER::daily_update 0x7f8750: spejderanmodningerne (Scout Player) – originalens rapporter 0x138e (cmScout.ts)
+  cmScoutDaily(g);
   if (day(d) % 3 === 0 && !cmBoardOn(g)) fillVacancies();
   if (weekday(d) === 1) {
     forEachHuman(weeklyRumours);

@@ -20,6 +20,7 @@ import { cmActive, statCell, statColumns } from '../../game/cmPlayerData';
 import { squadMoveOption } from '../../game/cmBTeam';
 import { cmTalksOpen } from '../../game/cmTransferTalks';
 import { cmPermitHistory } from '../../game/cmPermit';
+import { cmScoutOn } from '../../game/cmScout';
 import { ClassicNegotiation } from './NegotiationClassic';
 import { DEMONYM } from '../demonyms';
 import { cmAvailability, cmFutureLines } from '../../game/cmTransferList';
@@ -586,7 +587,17 @@ export function ClassicPlayer({ id }: { id: number }) {
       if (!trialOf(p.id) && !authentic()) items.push({ key: 'trial', label: t('trial.invite'), onClick: () => { const r = dispatch<string>({ t: 'trial', pid: p.id }); setMsg(r === 'ok' ? t('trial.invited') : t(`trial.err.${r}`)); } });
     }
     if (canPreContract(p)) items.push({ key: 'pre', label: t('player.preContract'), onClick: () => act(dispatch<TransferOffer | string>({ t: 'preContract', pid: p.id })) });
-    if (scouts.length > 0 && g.options.masking && k < 100) {
+    if (authentic() && cmScoutOn(g)) {
+      // CM 01/02 Action → Scout Player (0x889880): status 0x7f8ff0 → besked eller spørgsmålet, Yes → anmodningen 0x7f9290 (cmScout.ts)
+      const nm = `${p.first} ${p.last}`.trim();
+      items.push({ key: 'scout', label: t('cl.pl.scoutPlayer'), onClick: async () => {
+        const st = dispatch<number>({ t: 'scoutStatus', pid: p.id });
+        if (st === 2) void askNotice(t('cmsr.a8b1e4'), { head: t('cmsr.a8b1c8') });
+        else if (st === 4) void askNotice(t('cmsr.a8b16c'), { head: t('cmsr.a8b1c8') });
+        else if (st === 3) void askNotice(t('cmsr.a8b144'), { head: t('cmsr.a8b134') });
+        else if (await askConfirm(t(st === 0 ? 'cmsr.a8b3c4' : 'cmsr.a8b36c', { player: nm }), { head: t('cl.pl.scoutPlayer') })) dispatch({ t: 'scoutReq', pid: p.id });
+      } });
+    } else if (scouts.length > 0 && g.options.masking && k < 100) {
       items.push({ key: 'scout', label: t('cl.pl.scoutPlayer'), sub: scouts.map((s) => ({ key: `sc${s.id}`, label: `${s.first} ${s.last}`, onClick: () => { const r = dispatch<string>({ t: 'scout', staffId: s.id, assignment: { kind: 'player', target: p.id } }); if (r !== 'ok') setMsg(t(r)); else if (!authentic()) setMsg(t('player.scoutSent', { scout: `${s.first} ${s.last}` })); } })) });
     }
     items.push({ key: 'nick', label: t(p.realName ? 'cl.pl.editNick' : 'cl.pl.setNick'), onClick: () => setNickOpen(true) });

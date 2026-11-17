@@ -1,5 +1,5 @@
 {
- "total": 191,
+ "total": 173,
  "areas": {
   "common": 1,
   "top": 2,
@@ -22,7 +22,6 @@
   "tbl": 1,
   "role": 4,
   "contract": 2,
-  "scout": 18,
   "staff": 3,
   "club": 6,
   "exp": 2,

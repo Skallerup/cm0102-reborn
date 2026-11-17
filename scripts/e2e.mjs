@@ -1245,6 +1245,17 @@ async function run(look) {
     await page.locator('.cx-confirm button.primary').click();
     await page.waitForTimeout(200);
     if ((await gs((id) => window.__cm.gs().offers.filter((x) => x.player === id).at(-1)?.status, pid)) !== 'withdrawn') throw new Error('buddet blev ikke trukket tilbage');
+    // CM 01/02 Action → Scout Player (0x889880, cmScout.ts): "Have … assessed by your scouts ?" Yes → anmodningen 0x7f9290 (ellers originalens besked)
+    if (await gs(() => { const g = window.__cm.gs(); return g.dbKind === 'cm0102' && g.options.mode === 'authentic' && (g.dbYear ?? g.season) < 2020; })) {
+      await page.locator('.cx-act .cx-drop-btn').click();
+      await page.locator('.cx-drop-pop button, .cx-drop-pop [role=menuitem]', { hasText: 'Scout Player' }).first().click();
+      await page.waitForSelector('.cx-confirm', { timeout: 3000 });
+      const q = await page.locator('.cx-confirm').innerText();
+      await page.locator('.cx-confirm button.primary').click();
+      await page.waitForTimeout(200);
+      if (/assessed by your scouts|watched when your scouts become available/.test(q) && !(await gs((id) => (window.__cm.gs().cmScoutReq ?? []).some((r) => r.pid === id), pid))) throw new Error('Scout Player: anmodningen blev ikke oprettet');
+      if (!/assessed by your scouts|watched when your scouts become available|no scouts available|resources available|already scouting/.test(q)) throw new Error(`Scout Player: uventet dialog ${q}`);
+    }
     await gs(() => { const g = window.__cm.gs(); g.options.mode = window.__e2eBidMode; window.__cm.notify(); });
   });
   // CM 01/02 efter et accepteret bud (cmTransferTalks.ts, 0x8c0080): "<X> transfer offer accepted" og "Offer contract to <X>" samme dag;

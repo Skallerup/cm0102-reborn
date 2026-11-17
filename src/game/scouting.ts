@@ -14,6 +14,7 @@ import { addDays, ageOn, daysBetween } from './dates';
 import { ATTRS } from './attributes';
 import { cmAttrVisible, cmKnowDaily, cmKnowInit, cmKnowLevel, cmKnowOn, cmKnowSee, KNOW_PCT } from './cmKnow';
 import { cmStaffAttr } from './cmStaff';
+import { addScoutRequest, cmScoutOn, scoutRequestStatus } from './cmScout';
 
 export function initKnowledge() {
   const g = gs();
@@ -143,6 +144,14 @@ export function scoutDaily() {
     const left = daysBetween(g.date, s.expires);
     if ([365, 182, 91, 61, 30, 7].includes(left)) addNews({ cat: 'contract', key: 'scout.contractReminder', params: { scout: `${s.first} ${s.last}`, date: s.expires, days: left } });
   }
+  // CM 01/02 (den originale database): Scout Player er originalens anmodning (cmScout.ts) – ældre gemte spils bestillinger flyttes dertil
+  if (cmScoutOn(g)) for (const s of scouts) {
+    const ids = [...(s.watch ?? []), ...(s.assignment?.kind === 'player' ? [s.assignment.target as number] : [])];
+    if (!ids.length) continue;
+    for (const id of ids) { const p = g.players[id]; if (p && scoutRequestStatus(g, p) <= 1) addScoutRequest(g, p); }
+    s.watch = [];
+    if (s.assignment?.kind === 'player') s.assignment = null;
+  }
   for (const s of scouts) {
     const a = s.assignment;
     const skill = ((s.attrs.judgingAbility || 0) + (s.attrs.judgingPotential || 0)) / 40;
@@ -255,6 +264,13 @@ export function startScoutAssignment(staffId: number, a: ScoutAssignment | null)
   const s = g.staff[staffId];
   if (!s || s.club !== g.userClub) return;
   // Action → Scout Player (originalens "Already scouted": "You are already scouting this player.") – en ny bestilling afbryder hverken scoutens søgning eller de andre spillere
+  if (a?.kind === 'player' && cmScoutOn(g)) {
+    const p = g.players[a.target as number];
+    const st = p ? scoutRequestStatus(g, p) : 2;
+    if (st === 3) return 'scout.already';
+    if (p && st <= 1) addScoutRequest(g, p);
+    return;
+  }
   if (a?.kind === 'player') {
     const t = a.target as number;
     if (Object.values(g.staff).some((x) => x.club === g.userClub && (x.watch?.includes(t) || (x.assignment?.kind === 'player' && x.assignment.target === t)))) return 'scout.already';

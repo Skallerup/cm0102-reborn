@@ -1150,6 +1150,78 @@
     {
       "key": "cl.tag.Wnt",
       "reason": "set på originalens skærm (images/123.png: Tottenhams trup, Wnt-mærket) – tre tegn, under strengudtrækkets mindstelængde"
+    },
+    {
+      "key": "scout.ctx.win",
+      "reason": "Spillets egen spejderrapport (scouting.ts scoutReport) – kun uden den originale database / i det udvidede spil; i ægte CM 01/02 er Scout Player originalens anmodning med rapporten 0x138e (cmScout.ts, tekster cmsr.* fra 0x7f9d10)"
+    },
+    {
+      "key": "scout.ctx.draw",
+      "reason": "Spillets egen spejderrapport (scouting.ts scoutReport) – kun uden den originale database / i det udvidede spil; i ægte CM 01/02 er Scout Player originalens anmodning med rapporten 0x138e (cmScout.ts, tekster cmsr.* fra 0x7f9d10)"
+    },
+    {
+      "key": "scout.ctx.loss",
+      "reason": "Spillets egen spejderrapport (scouting.ts scoutReport) – kun uden den originale database / i det udvidede spil; i ægte CM 01/02 er Scout Player originalens anmodning med rapporten 0x138e (cmScout.ts, tekster cmsr.* fra 0x7f9d10)"
+    },
+    {
+      "key": "scout.ctx.weeks",
+      "reason": "Spillets egen spejderrapport (scouting.ts scoutReport) – kun uden den originale database / i det udvidede spil; i ægte CM 01/02 er Scout Player originalens anmodning med rapporten 0x138e (cmScout.ts, tekster cmsr.* fra 0x7f9d10)"
+    },
+    {
+      "key": "scout.v.8",
+      "reason": "Spillets egen spejderrapport (scouting.ts scoutReport) – kun uden den originale database / i det udvidede spil; i ægte CM 01/02 er Scout Player originalens anmodning med rapporten 0x138e (cmScout.ts, tekster cmsr.* fra 0x7f9d10)"
+    },
+    {
+      "key": "scout.v.9",
+      "reason": "Spillets egen spejderrapport (scouting.ts scoutReport) – kun uden den originale database / i det udvidede spil; i ægte CM 01/02 er Scout Player originalens anmodning med rapporten 0x138e (cmScout.ts, tekster cmsr.* fra 0x7f9d10)"
+    },
+    {
+      "key": "scout.v.10",
+      "reason": "Spillets egen spejderrapport (scouting.ts scoutReport) – kun uden den originale database / i det udvidede spil; i ægte CM 01/02 er Scout Player originalens anmodning med rapporten 0x138e (cmScout.ts, tekster cmsr.* fra 0x7f9d10)"
+    },
+    {
+      "key": "scout.v.11",
+      "reason": "Spillets egen spejderrapport (scouting.ts scoutReport) – kun uden den originale database / i det udvidede spil; i ægte CM 01/02 er Scout Player originalens anmodning med rapporten 0x138e (cmScout.ts, tekster cmsr.* fra 0x7f9d10)"
+    },
+    {
+      "key": "scout.v.12",
+      "reason": "Spillets egen spejderrapport (scouting.ts scoutReport) – kun uden den originale database / i det udvidede spil; i ægte CM 01/02 er Scout Player originalens anmodning med rapporten 0x138e (cmScout.ts, tekster cmsr.* fra 0x7f9d10)"
+    },
+    {
+      "key": "scout.x.strength",
+      "reason": "Spillets egen spejderrapport (scouting.ts scoutReport) – kun uden den originale database / i det udvidede spil; i ægte CM 01/02 er Scout Player originalens anmodning med rapporten 0x138e (cmScout.ts, tekster cmsr.* fra 0x7f9d10)"
+    },
+    {
+      "key": "scout.x.skill",
+      "reason": "Spillets egen spejderrapport (scouting.ts scoutReport) – kun uden den originale database / i det udvidede spil; i ægte CM 01/02 er Scout Player originalens anmodning med rapporten 0x138e (cmScout.ts, tekster cmsr.* fra 0x7f9d10)"
+    },
+    {
+      "key": "scout.x.weakness",
+      "reason": "Spillets egen spejderrapport (scouting.ts scoutReport) – kun uden den originale database / i det udvidede spil; i ægte CM 01/02 er Scout Player originalens anmodning med rapporten 0x138e (cmScout.ts, tekster cmsr.* fra 0x7f9d10)"
+    },
+    {
+      "key": "scout.str.professionalism",
+      "reason": "Spillets egen spejderrapport (scouting.ts scoutReport) – kun uden den originale database / i det udvidede spil; i ægte CM 01/02 er Scout Player originalens anmodning med rapporten 0x138e (cmScout.ts, tekster cmsr.* fra 0x7f9d10)"
+    },
+    {
+      "key": "scout.str.bigGames",
+      "reason": "Spillets egen spejderrapport (scouting.ts scoutReport) – kun uden den originale database / i det udvidede spil; i ægte CM 01/02 er Scout Player originalens anmodning med rapporten 0x138e (cmScout.ts, tekster cmsr.* fra 0x7f9d10)"
+    },
+    {
+      "key": "scout.skill.longThrows",
+      "reason": "Spillets egen spejderrapport (scouting.ts scoutReport) – kun uden den originale database / i det udvidede spil; i ægte CM 01/02 er Scout Player originalens anmodning med rapporten 0x138e (cmScout.ts, tekster cmsr.* fra 0x7f9d10)"
+    },
+    {
+      "key": "scout.weak.temper",
+      "reason": "Spillets egen spejderrapport (scouting.ts scoutReport) – kun uden den originale database / i det udvidede spil; i ægte CM 01/02 er Scout Player originalens anmodning med rapporten 0x138e (cmScout.ts, tekster cmsr.* fra 0x7f9d10)"
+    },
+    {
+      "key": "scout.weak.injuries",
+      "reason": "Spillets egen spejderrapport (scouting.ts scoutReport) – kun uden den originale database / i det udvidede spil; i ægte CM 01/02 er Scout Player originalens anmodning med rapporten 0x138e (cmScout.ts, tekster cmsr.* fra 0x7f9d10)"
+    },
+    {
+      "key": "scout.assignment",
+      "reason": "Scouting.tsx – kun uden den originale database (Shell.tsx: ægte CM 01/02 åbner Transfers → Scout #1)"
     }
   ],
   "patterns": [
