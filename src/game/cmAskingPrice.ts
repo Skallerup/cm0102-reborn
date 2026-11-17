@@ -5,7 +5,7 @@
 //     argumenter skubbet på stakken i samme dybde og med originalens værdier i ebx/esi/edi/ebp (de kaldte gemmer dem på stakken – efterladt
 //     stakindhold, runde 13), og rammens lokale variable skrives i hukommelsen, hvor originalen skriver dem (0x8c bytes under returadressen);
 //   • x87-semantikken som oversætteren: mellemregninger i double i samme rækkefølge, _ftol = trunkering til 32 bit (uendelig → 0),
-//     float32-konstanterne (0x969078–0x969084) er eksakte; 0x4d3879-grenen efterlader et tal på x87-stakken som originalen;
+//     float32-konstanterne (0x969078–0x969084) er eksakte; x87-stakken efterlades tom som originalen (0x4d387e fstp st(0) fjerner w);
 //   • tilfældige tal: funktionen trækker ingen selv – de kaldte kaldes i samme rækkefølge.
 // CM_SL_ASK=0: den oversatte; CM_SL_ASK=check: begge (porten, så den oversatte på samme tilstand og samme tilfældige tal) – svaret, ud-felterne,
 // x87-stakken og 0x1100 bytes stak sammenlignes (ASK_STATS).
@@ -656,8 +656,7 @@ function asking(R: X86): number {
       if (s16(L24) < 0x3c) eaxT = ft(V * 0.67 + L14 * 0.33);
       else {
         const w = 1.27 - L6c * 0.01;
-        eaxT = ft((1.0 - w) * L14 + V * w);
-        R.fpush(w);                                     // (0x4d3879: w bliver liggende på x87-stakken)
+        eaxT = ft((1.0 - w) * L14 + V * w);             // (0x4d387e fstp st(0): w fjernes – intet bliver liggende på x87-stakken)
       }
       tail = 1;
     } else tail = 0;

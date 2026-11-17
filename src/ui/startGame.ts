@@ -132,12 +132,15 @@ export async function runConversion(prep: ConvertPrep, clubId: number | null, on
         const m = e.data;
         if (m.type === 'progress') onProgress({ step: m.step, frac: m.frac });
         else if (m.type === 'done') { w.terminate(); resolve({ game: m.game as GameState, report: m.report! }); }
-        else { w.terminate(); reject(new Error(m.message)); }
+        else { w.terminate(); reject(Object.assign(new Error(m.message), { inJob: true })); }
       };
       w.onerror = (e) => { w.terminate(); reject(new Error(e.message || 'worker')); };
       w.postMessage(job);
     });
   } catch (e) {
+    // en fejl i selve konverteringen (arbejderen meldte den) vises for spilleren – den køres ikke igen i hovedtråden (det samme ville ske dér,
+    // efter endnu en spilstart). Kun når arbejderen ikke kan køre (indlæsning, hukommelse), konverteres i hovedtråden.
+    if ((e as { inJob?: boolean }).inJob) { console.error('Konverteringen fejlede', e); throw e; }
     console.warn('Konverteringen i en Worker fejlede – i hovedtråden', e);
     return local();
   }

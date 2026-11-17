@@ -114,3 +114,20 @@ describe('2026/27: forfra i den originale', () => {
     expect(gs().news.some((n) => n.key === 'conv.restart')).toBe(true);
   });
 });
+
+// Browserens forløb (e2e-trinnet): et spil startet i ægte tilstand, hvor kun cmSaveVer/cmBoard/cmFin/cmPlan er fjernet. Konverteringens ønskelister
+// (cmShortlistStart) kalder udbudsprisen 0x4d1600 mange gange i én 0x83b6e0 – den håndporterede 0x4d3855-gren efterlod w på x87-stakken (originalen
+// fjerner den med fstp st(0) 0x4d387e), og efter 8 kald stoppede konverteringen med "x87-stakken over 8" (17/11).
+describe('konverteringen af et spil startet i ægte tilstand (e2e-forløbet)', () => {
+  it('bliver færdig', () => {
+    createGame(world as WorldData, { managerName: 'Old Save', managerNation: eng, clubId: arsenal, activeNations: [eng], lang: 'en', masking: true, seed: 7, mode: 'authentic' });
+    for (let i = 0; i < 3; i++) { const r = continueGame(); if (r?.match) quickPlayUserMatch(); }
+    const o = JSON.parse(JSON.stringify(gs())) as GameState;
+    o.options.mode = 'extended';
+    for (const k of ['cmSaveVer', 'cmBoard', 'cmFin', 'cmPlan']) delete (o as unknown as Record<string, unknown>)[k];
+    createGame(world as WorldData, convertOptions(o, world, 'en'));
+    const r = convertOriginal(o, gs(), world);
+    expect(r.kind).toBe('convert');
+    expect(gs().cmSaveVer).toBeTruthy();
+  }, 900_000);
+});

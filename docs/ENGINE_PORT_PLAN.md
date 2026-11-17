@@ -463,7 +463,8 @@ Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.m
   svar, &ud, x87-stakken, ebx/esi/edi/ebp/esp og 0x1100 bytes stak; `CM_SL_ASKDUMP=1` sammenligner desuden alle kald i alle dybder: argumenter,
   stakdybde og callee-saved registre). Porten kører på kalderens delte processortilstand (registreret som delt funktion), skubber de kaldte
   funktioners argumenter i samme dybde, sætter originalens ebx/esi/edi/ebp ved hvert kald og skriver rammens variable, hvor originalen gør (også
-  0x4d3879's tal, der bliver liggende på x87-stakken); hjælpefunktionerne ligger i modulet (lukninger pr. kald kostede ~1,5 % af dagen under tsx).
+  0x4d3879's tal – NB 17/11: w bliver IKKE liggende på x87-stakken, 0x4d387e fstp st(0) fjerner det; porten skubbede det, og efter 8 kald i én
+  0x83b6e0 stoppede bl.a. konverteringen med "x87-stakken over 8"); hjælpefunktionerne ligger i modulet (lukninger pr. kald kostede ~1,5 % af dagen under tsx).
   **Kontrol:** 127.064 kald (Arsenal, spilstart + 3 dage) og 125.739 (Man Utd) med 0 afvigelser, 0 afvigende kald i nogen dybde;
   `tests/cmAskingPrice.test.ts` (spillets hukommelse, 12 klubber × 0/2 købere × med/uden &ud: pris, ud-felt og 8 KiB stak ens); sha1 af hele
   spiltilstanden ens alle 30 dage for Man Utd og Arsenal (frø 1, 15/7–13/8) mod d554b5c+de39aa8 (f6dfa98). **Målt** (`/usr/bin/time -l node --import
