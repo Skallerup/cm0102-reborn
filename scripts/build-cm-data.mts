@@ -237,7 +237,7 @@ for (const c of w.clubs) {
 }
 
 // Spillere: beholdes hvis klubben er med; frie agenter (klub 0) beholdes som signérbare stjerner.
-// Desuden frasorteres ex-spiller-trænere (staff-poster med en spiller-post, alle 40+ med værdi 0).
+// Desuden frasorteres ex-spiller-trænere (staff-poster med en spiller-post, alle 40+ med værdi 0) – ikke i den originale database.
 const before = w.players.length;
 w.players = w.players.filter((p) => {
   const club = p[F.club] as number;
@@ -249,7 +249,9 @@ w.players = w.players.filter((p) => {
     const tc = r?.tc;
     if (!(tc === 1 || (Array.isArray(tc) && tc.length))) return false;
   }
-  return ageAt(shift(p[F.dob] as string)) <= 40;
+  // den originale database: originalen beholder alle med en spillerpost (fx Dave Beasant 42 år i Portsmouth, Tony Ford i Rochdale) –
+  // fødselsdatoen kontrolleres kun mod 14..50 år (sub_535a80 0x536804, cmDobRedateYear i parseren)
+  return ORIGINAL || ageAt(shift(p[F.dob] as string)) <= 40;
 });
 const dropped = before - w.players.length;
 

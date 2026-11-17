@@ -221,6 +221,16 @@ export function cmRandomDob(yob: number, rand: (n: number) => number): string {
   const month = rand(11), day = rand(27) + 1;
   return `${yob}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
+/** sub_535a80 0x536804–0x53689c: fødselsdatoens kontrol ved indlæsningen mod spillets dato (databasens 1/1-2001: dag 0, år 2001). Alderen
+ *  er bytes (år & 0xff, med fortegn): dag i året efter i dag → år − år − 1, ellers år − år; under 14 eller over 50 (også datoer med år
+ *  1900 = ingen dato) → ny dato (cmRandomDob) i året +0x18, når det er > 1900, ellers 1967 (0x7af) med en ikke-spillerpost (+0x69) og 1980
+ *  (0x7bc) uden. Giver året for den nye dato, eller undefined når datoen beholdes. */
+export function cmDobRedateYear(day: number, year: number, yob18: number, nonPlayer: boolean, curDay = 0, curYear = 2001): number | undefined {
+  const b = (x: number) => (x << 24) >> 24;
+  const age = day - curDay > 0 ? b(curYear - year - 1) : b(curYear - year);
+  if (age >= 14 && age <= 50) return undefined;
+  return yob18 > 1900 ? yob18 : nonPlayer ? 1967 : 1980;
+}
 const hashRand = (key: string) => { let k = 0; return (n: number) => hashStr(`${key}:${k++}`) % n; };
 
 /** Konverter CM 01/02's Data-mappe til spillets verdensformat */
@@ -801,14 +811,17 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
     let dob = S.date(o + 16);
     // kun fødselsåret: originalen trækker dag og måned ved indlæsningen (cmRandomDob – før brugte vi datoens dag i året, så de 6.733
     // spillere af den slags i 3.9.60 alle var født 1. februar; originalen viste fx Stuart Edwards født 11.11.83)
-    const rdob = !dob && S.i16(o + 24) > 1900 && S.i16(o + 24) < 2100;
-    if (rdob) dob = cmRandomDob(S.i16(o + 24), hashRand(`dob${id}`));
+    // (den originale database) originalens kontrol 0x536804 (cmDobRedateYear): uden dato eller under 14/over 50 år → ny dato; uden fødselsår
+    // 1980 (1967 med ikke-spillerpost) – før sprang vi dem over (fx Oxfords otte unge født "1980" i originalen, Bury's Michael Nelson)
+    const redateYear = opts.cmMem
+      ? cmDobRedateYear(S.i16(o + 16), S.i16(o + 18), S.i16(o + 24), NON_REF >= 0 && nonAt.has(S.i32(o + NON_REF)))
+      : !dob && S.i16(o + 24) > 1900 && S.i16(o + 24) < 2100 ? S.i16(o + 24) : undefined;
+    const rdob = redateYear !== undefined;
+    if (rdob) dob = cmRandomDob(redateYear, hashRand(`dob${id}`));
     const nation = nationIdx.get(S.i32(o + 26));
     let club = S.i32(o + 57);
     // (den originale database) originalens klubløse ved spilstarten (0x524d70 – CMRatings.tf)
     const tf = club === -1 ? freeTf.get(id) : undefined;
-    // uden fødselsdato og -år: originalen giver dem 1980 (*målt*: alle 11 af den slags blandt de 277 klubløse; dagen *estimeret*)
-    if (!dob && tf !== undefined) dob = new Date(Date.UTC(1980, 0, 1 + (hashStr(`dob${id}`) % 365))).toISOString().slice(0, 10);
     if (!dob || nation === undefined) continue;
     if (!inGame.has(club)) club = 0;
     const get = (f: PField) => S.i8(po + 15 + PF.indexOf(f));

@@ -127,7 +127,11 @@ View Finances (der læser Bonuses fra blokken) viste 0 bonusser, selv om pengene
    transfertilbuddet står i tilstand 0/1/5/6; 0x8c1e40 i tilstand 5); kontraktsvaret 0x4ce4e0 er stadig ja (*estimeret* i cmAiAiDue);
    (d) klubløse i hukommelsen 30/6: 1.038 mod 202 (engelske statsborgere 149 mod 152 – resten er udlændinge; tidspunktet: oraklets billede
    er før 0x4c7ac0 30/6); (e) frigivne tælles ikke i Player.moves (0 mod 50).
-2. **Forkørslens marked 1/1–13/7** (0x5cc850 med transfer-/lejemarkedet): 40 lejeaftaler og trupændringer ved spilstarten (Arsenal 48 mod 43).
+2. ~~**Forkørslens marked 1/1–13/7**~~ – **der er intet marked i forkørslen** (17/11): oraklets pre-0 → pre-194 har kun 43 klubskifter, alle fra
+   player_setup.cfg (cmSetupLoans). Truppernes størrelse 14/7 (29/92 klubber) skyldtes indlæsningen: fødselsdatoens kontrol sub_535a80
+   0x536804 (alder < 14 eller > 50, også ingen dato → nyt år +0x18 / 1967 med ikke-spillerpost / 1980; `cmDobRedateYear`) – vi sprang
+   spillerne uden dato over – og konverterens aldersgrænse 40 (Beasant, Tony Ford). Efter rettelsen 5/92 (de 5 = lejeaftaler fra cfg'en til
+   klubber uden for ligaerne: Boston, Telford, Carlisle ← Barnet, Roussel, Villa). Kræver genbygning af world-filerne.
 3. ~~**Værdien +0x52 ved start**~~ – gjort 16/11 (punkt 17): `p.value` = 0x4d0c60 som 0x4c7ec5 (cmValueGame.ts).
 4. **Trupstatus for klubber uden for ligaerne** (0x83a1b0 for alle indlæste klubber – fjern *estimeret* spring) og de 976 ligaspillere med anden status.
 5. **Moral i forsæsonen** (+0x45 skilles på 6 dage) og **klubomdømmet** +0x80 (ændres dagligt/efter venskabskampe i originalen).
