@@ -85,6 +85,9 @@ og læg ændringen i samme push.
   (regressionstest i `tests/stadiums.test.ts`; gemte spil rettes ved indlæsning i `game/save.ts`).
 - I det klassiske tema må DOM'en ikke ændres i selve `dragstart` (Chrome afbryder trækket).
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
+- World-filerne må ikke rettes i hånden – genbyg med `scripts/build-cm-data.mts` (skriver sha256 i `scripts/data/world-builds.json`;
+  `tests/worldBuild.test.ts` fanger håndrettede filer). `npx tsx scripts/world-repro.ts [3965|3968]` genbygger fra kilderne og viser forskellen.
+  Kilder: 3.9.60 = `.orig-db/…-3.9.60-Database-Swedish_fixed`, 3.9.65 = appens officielle `game/Data-3.9.65`, 3.9.68 = `.orig-db/…-3.9.68-Database` + `NO_LEGACY=1`.
 
 ## Udgivelseslog (nyeste først)
 - 2026-11-15 – (staging, ikke pushet) Priserne som originalen (`cmAwards.ts`, noter ~/cm0102-engine/notes/awards.md; kun cmActive): EnglandAwards 0x5788c0 – månedens spiller/unge (≤ 20)/manager i fire divisioner (MONTH_RATINGS 0x767ee0/0x768130, Staff_Records' point 0x868830/0x86f950; aug–maj), PFA-priserne og årets hold 6/4 (0x768cf0/0x7698f0, Comp_Stats type 0x11, TEAM_AWARD 0x8afa40), årets manager 31/5 (0x86fab0), ugens hold (0x769c70 – *estimeret* mandag), omdømmet 0x412f00, originalens nyheder (`cmaw.*`), klassisk `AwardsClassic.tsx` ("English Awards"/"International Awards", databasens tidligere vindere fra staff_comp_history.dat via `scripts/build-cm-awards.py` → `src/game/data/cmAwards.json`). Spillets egne månedspriser/gallaaften slået fra i ægte tilstand. *Estimeret*: ligaens vigtighed (10), nyhedsvarianternes valg. Ikke porteret: International/European Awards (afstemningerne), Fans Player of the Year.

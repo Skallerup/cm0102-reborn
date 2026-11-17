@@ -1,0 +1,30 @@
+{
+  "world-original-3965.json": {
+    "source": "/Applications/CM 01-02 Bosman Edition.app/Contents/Resources/game/Data-3.9.65",
+    "season": 2001,
+    "sha256": "0dde32a4c24dcedb889dadf0107bb59d86a2e2ba1998f7e8f02953dd088be164",
+    "careers": "careers-original-3965.json",
+    "careersSha256": "afe12d552f24452f3307e0b15cf826c6e5895ca2fab8efda0d2d1a1c4c231ce1",
+    "reproducible": false,
+    "note": "Sidst bygget 14/11 før databasestørrelse Maximum (e2f757c byggede kun world-original.json) og rettet i hånden siden (5f21e37: kun kontrakterne). En genbygning giver Maximum (+17.848 spillere, næsten alle klubløse), staffX/clubNames, compHist, cmTrim, nation76, seats, nationernes adj/col og 7597c59-fødselsdatoerne – scripts/world-repro.ts 3965"
+  },
+  "world-original-3968.json": {
+    "source": ".orig-db/Original-3.9.68-Database",
+    "season": 2001,
+    "noLegacy": true,
+    "sha256": "fa9a2b80ed270430c98c64df5931d0f96c424e2b2d90f91cf2d879c34c73ed01",
+    "careers": "careers-original-3968.json",
+    "careersSha256": "3141aeeb06df8cbf7a3967e183e5ee8beb95d488217c0a1b08cb81715933b1f8",
+    "reproducible": false,
+    "note": "Som 3965: bygget før Maximum og rettet i hånden siden. En genbygning: +25.238 spillere (Maximum), staffX/clubNames, compHist, cmTrim, nation76, seats, adj/col, fødselsdatoerne – scripts/world-repro.ts 3968"
+  },
+  "world-original.json": {
+    "source": ".orig-db/Original-3.9.60-Database-Swedish_fixed",
+    "season": 2001,
+    "sha256": "54d717244b5350fe6bfef489db0da3231db194fcf43477762b9a2ce81a6aa392",
+    "careers": "careers-original.json",
+    "careersSha256": "c748dbe5df3dc2a7167344d1505d2ef64af87d561f887834e1f459f1332c8ac7",
+    "reproducible": false,
+    "note": "Bygget 14/11 (e2f757c) og siden rettet i hånden: 7597c59 (fødselsdatoer uden dag/måned, nationernes adj/col, compHist fra den officielle club_comp_history.dat, clubNames), 33da7e8 (stabens løn staff[12][11]). Ikke med: 9379ed3s pokalvalg (rules.cup) og b1c4e21s cmRaw.seats. En genbygning: +4 skjulte klubber, +49/−8 spillere – scripts/world-repro.ts"
+  }
+}

@@ -413,7 +413,8 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
       const c = comps.get(cid);
       if (!c || year < 1850 || w < 0) continue;
       const key = rules[lid(cid)] ? lid(cid) : EURO[c.name] ?? (cupNames.has(c.name) ? `cup:${c.name}` : '');
-      if (key) (compHist[key] ??= []).push([year, w, ru]);
+      // samme sæson, vinder og nr. 2 to gange = en dobbeltpost (Swedish_fixed-udgaven af 3.9.60 har Allsvenskan 1999 to gange)
+      if (key && !compHist[key]?.some((r) => r[0] === year && r[1] === w && r[2] === ru)) (compHist[key] ??= []).push([year, w, ru]);
     }
     for (const rows of Object.values(compHist)) rows.sort((a, b) => b[0] - a[0]);
   }

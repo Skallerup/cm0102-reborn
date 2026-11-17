@@ -7,7 +7,8 @@
 //
 // Brug: npx tsx scripts/build-cm-data.mts "<Data-mappe>" [out.json] [sæson]
 import { readFileSync, readdirSync, writeFileSync, existsSync, copyFileSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve, basename, dirname } from 'node:path';
+import { createHash } from 'node:crypto';
 import { parseCM0102 } from '../src/game/data/cm0102';
 import { CLUB_NAME_FIXES } from '../src/game/data/clubNames';
 
@@ -329,3 +330,17 @@ const ages = w.players.map((p) => ageAt(p[F.dob] as string)).sort((a, b) => a - 
 const med = ages[Math.floor(ages.length / 2)];
 console.error(`OK: season ${w.season}, ${w.leagues.length} ligaer, ${w.clubs.length} klubber, ${w.players.length} spillere (frasorteret ${dropped}: over 40 eller uden for de medtagne klubber) -> ${out} (${kb} KB)`);
 console.error(`aldre ved ${start}: min ${ages[0]}, median ${med}, max ${ages[ages.length - 1]} (under 15: ${ages.filter((a) => a < 15).length}, over 40: ${ages.filter((a) => a > 40).length})`);
+
+// ---- Byggeloggen (scripts/data/world-builds.json): kilde og sha256 for hver world-fil i public/data. tests/worldBuild.test.ts kræver, at den
+// committede fil har den sha256, så en fil, der er rettet i hånden (uden at køre dette script), fanges; scripts/world-repro.ts bygger filerne
+// igen fra kilderne og sammenligner. Byg til en anden mappe (fx /tmp) for at prøve uden at røre loggen.
+if (resolve(dirname(out)) === resolve('public/data')) {
+  const logFile = 'scripts/data/world-builds.json';
+  const log = existsSync(logFile) ? JSON.parse(readFileSync(logFile, 'utf8')) : {};
+  const sha = (f: string) => createHash('sha256').update(readFileSync(f)).digest('hex');
+  const src = dir.includes('.orig-db/') ? dir.slice(dir.indexOf('.orig-db/')) : dir;
+  log[basename(out)] = { source: src.replace(/\/+$/, ''), season: SEASON, ...(process.env.NO_LEGACY ? { noLegacy: true } : {}), sha256: sha(out),
+    ...(existsSync(careersOut) && careersOut !== out ? { careers: basename(careersOut), careersSha256: sha(careersOut) } : {}), reproducible: true };
+  writeFileSync(logFile, JSON.stringify(Object.fromEntries(Object.entries(log).sort(([a], [b]) => a.localeCompare(b))), null, 2) + '\n');
+  console.error(`byggeloggen: ${logFile} (${basename(out)})`);
+}
