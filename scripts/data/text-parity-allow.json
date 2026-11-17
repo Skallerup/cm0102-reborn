@@ -508,6 +508,18 @@
   ],
   "keys": [
     {
+      "key": "cmwx.p0",
+      "reason": "originalens nedbørsord 0xad4f20 \"Dry\" (weather_format_description 0x9233a0) – tre tegn, under strengudtrækkets mindstelængde 4"
+    },
+    {
+      "key": "cmwx.p1",
+      "reason": "originalens nedbørsord 0xad4f1c \"Wet\" (0x9233a0) – tre tegn, under strengudtrækkets mindstelængde 4"
+    },
+    {
+      "key": "pitch.dry",
+      "reason": "originalens banetekst 0xad4f20 \"Dry\" (pitch_condition_text 0x923b60, tilstand 4) – tre tegn, under mindstelængden 4"
+    },
+    {
       "key": "cl.pl.tck",
       "reason": "originalens kolonnenavn 0x6161c8 \"Tck\" (0x7c1b20 art 14) – tre tegn, under strengudtrækkets mindstelængde 4"
     },

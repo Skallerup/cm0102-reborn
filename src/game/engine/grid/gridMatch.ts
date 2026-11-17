@@ -217,6 +217,9 @@ export interface GridMatchCtx {
   needsWinner?: (hg: number, ag: number) => boolean;
   /** kun spor: skuddets H/B/K-linjer som match_trace.c (H = indgangen til sub_702050, B = skudlinjen 0x6cc540, K = keeperværdien 0x700420) */
   onShot?: (kind: 'H' | 'B' | 'K' | 'L' | 'Q' | 'O' | 'J' | 'D' | 'N', v: number[]) => void;
+  /** kampens vejr (cmWeather.ts – Weather 0x923010/0x923970): rekorden engine+0x4756 [vind, nedbør, temperatur, byens vind] og banen engine+1;
+   *  mangler = GRID_UNKNOWN (laboratoriet, låsetrinet) */
+  weather?: { rec: number[]; pitch: number };
   /** engine+0x8ebb: kampen vises på skærmen (den kamp, mennesket ser live) – originalens ekstra kommentarer (appeller, buh) */
   watched?: boolean;
   /** turneringen hører til landet i [0x9cf2e4] (England): "10 yards"-reglen i sub_716e10 0x7171a0 (fixture+0x14 → +0x5d) */
@@ -846,12 +849,14 @@ export const GRID_UNKNOWN = {
     }
     return null;
   },
-  /** match+0x4756 vejret 1..4 (sub_6fad40 §4.2/§5.5, skuddet) – ukendt i laboratoriet, *estimeret* 3 som skuddets ctx. */
+  /** match+0x4756's laveste byte = vinden 0..4 (sub_6fad40 §4.2/§5.5, skuddet). Spillets kampe får originalens vejr (ctx.weather, cmWeather.ts);
+   *  kun laboratoriet uden ctx bruger 3, låsetrinet sporets byte. */
   weather: 3,
   /** match+0x4756 som dword til kommentarens vejrvariant (sub_6d5d80: lav byte og næste byte) – oraklets ligakampe har 0 i begge
-   *  (cmt2-sporet 11/11: 0x0212/0x001c/0x011c… i de høje bytes); *estimeret* 0 */
+   *  (cmt2-sporet 11/11: 0x0212/0x001c/0x011c… i de høje bytes) – laboratoriets 0; spillets kampe: ctx.weather (cmWeather.ts) */
   weatherWord: 0,
-  /** match+0x1 (2 / 0x20 trækker fra modtagelsens passPower, sub_6f6c00) – "?", *estimeret* 0. */
+  /** match+0x1 = banen (Weather::get_pitch_condition 0x923970: 1 Muddy, 2 Damp, 4 Dry, 8 Water-logged, 0x10 Frozen, 0x20 Snowy, 0x40 Hard –
+   *  2 / 0x20 trækker fra modtagelsens passPower, sub_6f6c00) – laboratoriets 0; spillets kampe: ctx.weather (cmWeather.ts). */
   byte1: 0,
   /** sub_6ec010's [esp+0x24] i Work Rate-floaten (0x6ee225: + 0,5·X): anførerleddet 0x6ec1be–0x6ec2ed eller trænerleddet 0x6ed376
    *  (0,02·træner+0x0e + 0,1, holdets stab engine+0x904d) – ingen af delene findes i laboratoriet; *estimeret* 4,5 = medianen af
@@ -1192,6 +1197,11 @@ export function runGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx: Gr
 
 export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx: GridMatchCtx = {}): GridMatch {
   const teams = [home, away];
+  // kampens vejr engine+0x4756 (vind = laveste byte, nedbør = næste) og banen engine+1 (init_match 0x6b8042/0x6b8055): spillets kampe fra
+  // cmWeather.ts (ctx.weather), låsetrinet/laboratoriet fra GRID_UNKNOWN
+  const WX_WIND = ctx.weather ? (ctx.weather.rec[0] << 24) >> 24 : GRID_UNKNOWN.weather;
+  const WX_WORD = ctx.weather ? (ctx.weather.rec[0] & 0xff) | ((ctx.weather.rec[1] & 0xff) << 8) : GRID_UNKNOWN.weatherWord;
+  const WX_PITCH = ctx.weather ? ctx.weather.pitch & 0xff : GRID_UNKNOWN.byte1;
   { const g = hasGame() ? gs() : null;
     if (g && cmFitOn(g)) {
       const fr = cmFitRead(g); kickFit = (p) => fr.condition(p); kickFat = (p) => fr.fatigue(p);
@@ -1343,7 +1353,7 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
   const events = new MatchEvents(rand, {
     get ballX() { return m.ballX; }, get ballY() { return m.ballY; }, get b8eab() { return m.lastTouch; }, get shootout() { return m.shootout; },
     get clock() { return m.clock; }, get periodEnd() { return m.periodEnd; }, get shotMinute() { return shotMark.minute; }, get shotSide() { return shotMark.side; },
-  }, { lo: GRID_UNKNOWN.weatherWord & 0xff, hi: (GRID_UNKNOWN.weatherWord >> 8) & 0xff, pitch: GRID_UNKNOWN.byte1, gate: true });
+  }, { lo: WX_WORD & 0xff, hi: (WX_WORD >> 8) & 0xff, pitch: WX_PITCH, gate: true });
   const comment = (id: number, p1?: GP | null, s1?: number, p2?: GP | null, s2?: number, x = 0) =>
     events.add(id, p1 ? idxOf.get(p1) ?? -1 : -1, s1 ?? (p1 ? p1.side : -1), p2 ? idxOf.get(p2) ?? -1 : -1, s2 ?? (p2 ? p2.side : -1), x);
   /** sub_6c54a0 0x6c587d–0x6c5953: TIME_ADDED_ON (0x21c1) én gang pr. halvleg, når minuttet ved dødbolden er 40–45 (pe 495) eller 85–90 (pe 990);
@@ -1500,7 +1510,7 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
   };
   // afleveringen, opsnapningen, modtagelsen, landingen og blokeringen (pass.ts) – limens funktioner kaldes først, når kampen kører
   const P = makePass({
-    m, rand, weather: GRID_UNKNOWN.weather, byte1: GRID_UNKNOWN.byte1,
+    m, rand, weather: WX_WIND, byte1: WX_PITCH,
     comment: (id, p1, s1, p2, s2, x) => comment(id, p1, s1, p2 ?? null, s2 ?? -1, x ?? 0),
     onBlock: ctx.onShot ? (q, S, d, soft, r) => ctx.onShot!('L', [q.side, q.pslot ?? q.slot, q.x, q.y, q.busy, q.roll.workRate, m.poss, m.ballH, m.lastTouch, S, d, soft ? 1 : 0, q.skill[0x24], r]) : undefined,
     takeBall: (p) => takeBall(p),
@@ -2167,8 +2177,8 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
   const BYTE1_DRAIN: Record<number, number> = { 1: 1.4, 2: 1.2, 4: 1.05, 8: 1.45, 16: 1.05, 32: 1.15, 64: 1.1 };
   const stepDrain = (p: GP, ox: number, oy: number) => {
     if (p.slot < 0 || !p.active) return;
-    let f = Math.fround(BYTE1_DRAIN[GRID_UNKNOWN.byte1] ?? 1);
-    if (GRID_UNKNOWN.weather === 3) f = Math.fround(f * Math.fround(1.05)); else if (GRID_UNKNOWN.weather === 4) f = Math.fround(f * Math.fround(1.1));   // 0x6f3d0a/0x6f3cfe: float-konstanter
+    let f = Math.fround(BYTE1_DRAIN[WX_PITCH] ?? 1);
+    if (WX_WIND === 3) f = Math.fround(f * Math.fround(1.05)); else if (WX_WIND === 4) f = Math.fround(f * Math.fround(1.1));   // 0x6f3d0a/0x6f3cfe: float-konstanter
     const st = p.f.stamina ?? 0;
     let drain = Math.fround(L.DIST[Math.min(11, Math.abs(p.y - oy))][Math.min(8, Math.abs(p.x - ox))] * Math.fround(5 - (0.5 * st + 15) / 6 + 2) * f);
     if (p.pos !== p.posAttack) {
@@ -3185,7 +3195,7 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
     const base = p.skill[action === 0xf ? 0xf : action === 0x12 ? 0x12 : 0x11];
     let vc = randS(rand, base - tired + p.momentum);
     // 0x6f0d90–0x6f0ddc: banen engine+1 (tabellen 0x6f42d4 → 0x6f42c4): 1/2 → −1 − rand(3), 8 → −2 − rand(5), 32 → −3 − rand(8)
-    const pitch = GRID_UNKNOWN.byte1;
+    const pitch = WX_PITCH;
     if (pitch === 1 || pitch === 2) vc += -1 - rand(3);
     else if (pitch === 8) vc += -2 - rand(5);
     else if (pitch === 32) vc += -3 - rand(8);
@@ -3308,7 +3318,7 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
     return { side: p.side, x: p.x, y: p.y, D: L.dist(p.x, p.y, 4, gr), ballHeight: m.ballH, facingGoal: GRID_UNKNOWN.facingGoal(m, p, rand), creativityRoll: p.roll.creativity,
       flairRoll: p.roll.flair, condition: p.condition, w29: p.w29, momentum: p.momentum, form: p.form, prevAction: p.action, attrs: shotAttrs(p),
       keeper: k ? { x: k.x, y: k.y, side: opp, down: k.busy, distToShooter: L.dist(k.x, k.y, p.x, p.y), distToOwnGoal: L.dist(k.x, k.y, 4, gr) } : null,
-      weather: GRID_UNKNOWN.weather, matchByte1: GRID_UNKNOWN.byte1 } as Parameters<typeof shotScore>[0];
+      weather: WX_WIND, matchByte1: WX_PITCH } as Parameters<typeof shotScore>[0];
   };
   /** sub_700420(k: x, y, høj, type, &tilstand, &fumle): keeperværdien (shot.ts keeperValue). Grundværdien er handlingsevnen +0x16a (høj) /
    *  +0x168 (0x700440), afstanden er keeperens til BOLDEN (0x70045e), mål imod = keeperens +0xf (0x700a5d). Uden keeper (sub_6ce110 = 0) *estimeret* */
@@ -3326,7 +3336,7 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
     evSide: (id, s, x) => comment(id, null, s, null, -1, x),
     evFlag: (s, id) => s >= 0 && s <= 1 && events.happened[s].has(id),
     get watched() { return !!ctx.watched; },
-    byte1: GRID_UNKNOWN.byte1, fixtureFlags38: ctx.fixtureInfo?.flags38 ?? 0,
+    byte1: WX_PITCH, fixtureFlags38: ctx.fixtureInfo?.flags38 ?? 0,
     // kampens rammer (fixture): ctx.fixtureInfo, ellers ligakamp i klubbernes egen liga uden første kamp; holdenes løb = ctx.teamRuns
     fixture: { hasComp: ctx.fixtureInfo?.hasComp ?? true, inOwnLeague: (sd: Side) => ctx.fixtureInfo ? ctx.fixtureInfo.ownLeague[sd] : ctx.league !== false,
       inOwnContinental: (sd: Side) => ctx.fixtureInfo?.ownContinental[sd] ?? false, stillInContention: () => true, runs: (sd: Side) => ctx.teamRuns?.(sd) ?? null,
@@ -3554,7 +3564,7 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
     let shotType = 0xff;                                                                       // sub_7109f0 [esp+0x88]
     const ctx = () => ({ side: p.side, x: p.x, y: p.y, D, ballHeight: m.ballH, facingGoal: GRID_UNKNOWN.facingGoal(m, p, rand), creativityRoll: p.roll.creativity, flairRoll: p.roll.flair,
       condition: p.condition, w29: p.w29, momentum: p.momentum, form: p.form, prevAction: p.action, attrs: shotAttrs(p),
-      keeper: k ? { x: k.x, y: k.y, side: opp, down: k.busy, distToShooter: L.dist(k.x, k.y, p.x, p.y), distToOwnGoal: L.dist(k.x, k.y, 4, gr) } : null, weather: GRID_UNKNOWN.weather, matchByte1: GRID_UNKNOWN.byte1 });
+      keeper: k ? { x: k.x, y: k.y, side: opp, down: k.busy, distToShooter: L.dist(k.x, k.y, p.x, p.y), distToOwnGoal: L.dist(k.x, k.y, 4, gr) } : null, weather: WX_WIND, matchByte1: WX_PITCH });
     // (runde 10B) objektet har kun datafelter (de dovne felter er lukninger, som SIT_PROTO's accessorer kalder) – med getters i
     // literalen fik hver situation sin egen skjulte klasse og blev bygget langsomt; felterne regnes i samme rækkefølge som før
     const sit: SitData = {

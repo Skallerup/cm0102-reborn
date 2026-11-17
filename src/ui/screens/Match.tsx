@@ -11,6 +11,7 @@ import { opponentReport } from '../../game/analysis';
 import type { LiveSim } from '../../game/engine/liveSim';
 import { createLiveMatch, quickReport, userTactic } from '../../game/sim';
 import { PITCH_ICON, WEATHER_ICON, pitchFor, refereeFor, weatherFor } from '../../game/weather';
+import { cmFixtureWeather, cmWeatherText, cmWxOn } from '../../game/cmWeather';
 import { act } from '../../game/actions';
 import { humanManager, isHumanClub } from '../../game/humans';
 import { isBotClub } from '../../game/bots';
@@ -301,6 +302,8 @@ export function CxOverview({ f, colors, line, poss, half, goals, injuries = [], 
   const home = poss.length ? Math.round((poss.filter(([, p]) => p === 0).length / poss.length) * 100) : 50;
   const bar = cxLineStyle(line, colors, f.comp);
   const w = weatherFor(f);
+  // den originale database i ægte tilstand: originalens tekst (weather_format_description 0x9233a0 – "Breezy, Wet, 12°C")
+  const wText = cmWxOn(g) ? cmWeatherText(cmFixtureWeather(g, f).rec, t) : t(`wx.${w}`);
   return (
     <div className="cx-mo">
       <div className="cx-subtitle small">{half}</div>
@@ -340,7 +343,7 @@ export function CxOverview({ f, colors, line, poss, half, goals, injuries = [], 
           <span style={{ width: `${100 - home}%`, background: colors[2], color: colors[3] }}>{100 - home}%</span>
         </div>
       </div>
-      <div className="cx-mo-foot"><span>{t('ref.label')} - {refereeFor(f).name}</span>{/* tilskuertallet kommer først ved pausen (CM 01/02: "Attendance - 40200") */}{ht && <span className="cx-mo-att">{t('cl.mt.att')} - {f.result?.att ?? estimateGate(g.clubs[f.home], g.clubs[f.home].ticketPrice).attendance}</span>}<span>{t('match.weather')} - {t(`wx.${w}`)}</span></div>
+      <div className="cx-mo-foot"><span>{t('ref.label')} - {refereeFor(f).name}</span>{/* tilskuertallet kommer først ved pausen (CM 01/02: "Attendance - 40200") */}{ht && <span className="cx-mo-att">{t('cl.mt.att')} - {f.result?.att ?? estimateGate(g.clubs[f.home], g.clubs[f.home].ticketPrice).attendance}</span>}<span>{t('match.weather')} - {wText}</span></div>
     </div>
   );
 }

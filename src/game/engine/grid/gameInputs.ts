@@ -36,6 +36,7 @@ import { crowd85cba0, type CrowdCity, type CrowdClub, type CrowdFixture, type Cr
 import { gameLeagueRow } from './gameTable';
 import type { AiModeInput } from './aiMode';
 import type { Fixture, GameState } from '../../types';
+import { cmFixtureWeather, cmWxOn, setCmWxCompId } from '../../cmWeather';
 import { daysBetween } from '../../dates';
 import { npShown } from '../../cmStaffInit';
 import { captainRel, dislikesPerson, matchRelOf, personKey } from '../../cmRelations';
@@ -259,6 +260,8 @@ export function gameInputsCtx(home: number, away: number, o: { compId?: string; 
       leagueTable: ((memo: (AiModeInput['league'] | undefined)[]) => (s: 0 | 1) => (memo[s] === undefined ? (memo[s] = gameAiLeague(g, compId, [home, away], s, date)) : memo[s]))([]),
     } : {}),
     ...(fx.comp ? { compRep: fx.comp.rep } : {}),
+    // init_match 0x6b8042/0x6b8055: kampens vejr engine+0x4756 og bane engine+1 (cmWeather.ts – gemt på kampen ved kampstarten)
+    ...(g && fixture && !intl && cmWxOn(g) ? { weather: cmFixtureWeather(g, fixture) } : {}),
     rep: [sides[0].clubRep, sides[1].clubRep] as [number, number],
     ...(sides[0].national || sides[1].national ? { national: [!!sides[0].national, !!sides[1].national] as [boolean, boolean] } : {}),
     matchValuesEnv: (q: { side: number; src: Player }) => {
@@ -311,6 +314,7 @@ export const CM_COMP_ID = (g: GameState, id: string): number => {
   if (/charity|community shield/.test(n)) return 353;
   return -1;
 };
+setCmWxCompId(CM_COMP_ID);   // banens hash 0x923994 (fixture+0 = turneringens id)
 export function fixtureCodesOf(g: GameState, f: Fixture | undefined, compId: string | undefined, home: number): GameFixtureCodes {
   compId ??= f?.comp ?? g.clubs[home]?.league;
   const c = compId ? g.comps[compId] : undefined;

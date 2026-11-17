@@ -306,7 +306,12 @@ View Finances (der læser Bonuses fra blokken) viste 0 bonusser, selv om pengene
     = 0x600e90 (assistenten, ellers træneren med højest np+0xa – oraklets ls20-post var Pat Rice, ikke menneskets; HUMAN_NP fjernet), omdømmet i
     duellen sub_5407e0/0x5408c0/0x53d980 af spillets data (`repView`), straffe straks efter 90 ved fixture+0x38 & 1 uden & 2 (0x6bdaf7), aiTeam's
     sprognibble. Målt: lockstep-sporene uændret identiske; grid-season frø 1: 2,64 mål · 54/20/26 (oraklet 2,75–2,98 · 51–53 %).
-    Tilbage (bl.a.): vejret engine+0x4756/+1 (Weather 0x923010/0x923970 kræver klimatabeller og den daglige vejrmodel), Work Rate-leddet [esp+0x24]
+    **Vejret porteret 17/11** (`cmWeather.ts`, data/cmWeather.json fra weather.cfg + city/stadium/nation.dat via scripts/build-cm-weather.py): byernes
+    fire bytes 0x922810, den daglige opdatering 0x922ee0 (forkørslen og hoveddagsløkken), kampens vejr 0x923010/0x9232c0 → engine+0x4756 og banen
+    0x923970 → engine+1 (ctx.weather – låsetrinet bruger stadig sporets bytes via GRID_UNKNOWN), teksterne 0x9233a0/0x923b60 på kampskærmen og
+    Next Match (udsigten først dagen før, 0x45e76a). Ikke porteret: udsatte/afbrudte kampe Weather::check_postponement 0x923630 (+ nyhederne og
+    init_match's afbrydelsesminut engine+0xf638); neutral bane bruger hjemmeholdets stadion (*estimeret*).
+    Tilbage (bl.a.): Work Rate-leddet [esp+0x24]
     i laboratoriet, menneskets udskiftnings-/taktiktidspunkt (kampskærmens match_screens.cpp ikke læst), bænkens målmandsmaske, gittercellernes
     startrækkefølge, assisten, anførerens adresse mod 20, laboratoriets reserveværdier (tilskuere/kapacitet/dommer), zonevalgets ry uden cmRep,
     kontraktposten for holdets samspil, stabens pensionsmelding (0x7a7eb0 for manageren = nej).

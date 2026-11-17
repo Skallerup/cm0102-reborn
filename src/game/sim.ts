@@ -1,5 +1,6 @@
 // Spillets dag-for-dag-løkke.
 import { cmBoardAfterMatch, cmBoardDaily, cmBoardOn } from './cmBoardGame';
+import { cmWxDaily, cmWxFix } from './cmWeather';
 import { cmStaffOffersDaily } from './cmStaff';
 import { cmStaffMovesDaily } from './cmStaffMove';
 import { cmActive, cmAfterMatch, cmContractDaily, cmFlagSet, cmRand, cmSquadMoraleDaily, MORALE_OFF, withFlagCtx } from './cmPlayerData';
@@ -194,6 +195,8 @@ export function prepareMatch(f: Fixture, userAuto = false): { home: EngineTeam; 
   cmFitPreMatch(gs(), [f.home, f.away]);
   // 0x55d270/0x7e85b0: udelukket i netop denne turnering (cmDiscipline.ts – organ 0 og turneringens organ)
   cmBanPreMatch(gs(), f);
+  // init_match 0x6b8042/0x6b8055: originalens vejr og bane for kampen (cmWeather.ts; kun den originale database i ægte tilstand)
+  cmWxFix(gs(), f);
   const ht = tacticFor(f.home, f.away, true, userAuto, f.comp);
   const at = tacticFor(f.away, f.home, false, userAuto, f.comp);
   if (cmFitOn(gs())) { setMatchSquad(f.home, [...ht.lineup, ...ht.bench].filter(Boolean)); setMatchSquad(f.away, [...at.lineup, ...at.bench].filter(Boolean)); }
@@ -598,6 +601,8 @@ function newDay() {
   cmVirtualClear(g);
   // MANAGER_MANAGER::daily_update 0x68f9c0 for dagen, der lige er spillet (efter dagens kampe – cmBoardGame.ts; kun den originale database i ægte tilstand)
   cmBoardDaily(g);
+  // Weather::update_city_weather 0x922ee0 (tidspunkt 2, efter dagens kampe – cmWeather.ts)
+  cmWxDaily(g);
   g.date = addDays(g.date, 1);
   // MANAGER_MANAGER 0x6abef0 (appellernes svar) og karantænerne for klubbernes næste kamp (cmDiscipline.ts)
   cmDiscDaily(g);

@@ -108,7 +108,7 @@ export interface ShotContext {
     distToShooter: number;
     distToOwnGoal: number;
   };
-  weather: number;        // match+0x4756 – TODO: guessed weather 2..4
+  weather: number;        // match+0x4756 laveste byte: vinden 0..4 (Weather 0x923010 – cmWeather.ts)
   matchByte1: number;     // match+1 – TODO: unknown (2, 0x20 used here)
 }
 

@@ -8,6 +8,16 @@ Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.m
   0x600e90 (aiTeam.ts `holidayManager`), sub_5408c0/0x53d980 (gameInputs.ts `repView5408c0`, challenge.ts `carrierRep`), 0x6bdaf7 (straffe uden
   forlænget), engine+0x8ebb kun på kampskærmen (adapter.ts). Laboratoriet (uden spillets data) beholder de gamle forenklinger; lockstep uændret.
 
+## Vejret (2026-11-17, kun original DB i ægte tilstand – `src/game/cmWeather.ts`)
+- **Porteret:** Weather::load_config 0x922810 (klimaområderne fra weather.cfg 0x922c40/0x922d20 → `src/game/data/cmWeather.json`,
+  `scripts/build-cm-weather.py`; byernes fire bytes), update_city_weather 0x922ee0 (forkørslens trin 'weather' og newDay – efter dagens kampe),
+  get_match_weather 0x923010 (by: stadion → hovedstad, område: byens +0x34 → landets hovedstad → 0, perioden efter fixture+0x2a, frost → 6..9),
+  get_temperature 0x9232c0 (aften fixture+0x3f = 2 koldere), get_pitch_condition 0x923970 (stadium +0x3c/+0x4c/+0x4d, fixturens hash),
+  teksterne 0x9233a0/0x923b60. Kampens rekord gemmes på kampen (`Fixture.wx`) og går til gittermotoren som `ctx.weather` (engine+0x4756 vind/
+  nedbør til skud, aflevering, skridtets kondition og kommentarens vejrvariant; engine+1 banen). Zonemotoren og 2D-banen får en grov afbildning.
+- **Ikke porteret:** check_postponement 0x923630 (udsatte og afbrudte kampe, nyhederne 0x923cc0/0x924050, init_match's +0xf638); kampens eget
+  stadion på neutral bane (*estimeret*: hjemmeholdets). Låsetrinet bruger fortsat sporets bytes (GRID_UNKNOWN).
+
 ## Priserne (2026-11-15, kun original DB i ægte tilstand – `src/game/cmAwards.ts`, `ui/screens/AwardsClassic.tsx`, noter `~/cm0102-engine/notes/awards.md`)
 
 - **Porteret:** EnglandAwards 0x5788c0/0x579610/0x579900 (26 priser uden Conference), MONTH_RATINGS 0x767ee0/0x767fa0/0x768130 (snit, min 3→0

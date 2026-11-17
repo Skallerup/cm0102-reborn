@@ -4,6 +4,7 @@ import { randomName } from './data/generate';
 import { gs } from './state';
 import type { Fixture, GameState } from './types';
 import { refereeFactor } from './engine/cm0102-original-rules';
+import { cmFixtureWeather, cmWxOn } from './cmWeather';
 
 export type Weather = 'clear' | 'cloudy' | 'rain' | 'heavyRain' | 'wind' | 'snow' | 'hot';
 
@@ -13,6 +14,11 @@ const COLD = new Set(['Norway', 'Sweden', 'Finland', 'Iceland', 'Russia', 'Ukrai
 /** Vejret til en kamp (deterministisk: samme kamp giver altid samme vejr) */
 export function weatherFor(f: Fixture): Weather {
   const g = gs();
+  // den originale database i ægte tilstand: originalens vejr (cmWeather.ts) – her kun som zonemotorens og 2D-banens grove vejrtype
+  if (cmWxOn(g)) {
+    const [wind, p, temp] = cmFixtureWeather(g, f).rec;
+    return p >= 6 ? 'snow' : p === 5 ? 'heavyRain' : p >= 1 ? 'rain' : wind >= 3 ? 'wind' : temp >= 29 ? 'hot' : 'clear';
+  }
   const nation = g.nations[g.clubs[f.home]?.nation]?.name ?? '';
   const m = Number(f.date.slice(5, 7));
   const winter = m === 12 || m === 1 || m === 2;
@@ -57,8 +63,12 @@ export const WEATHER_ICON: Record<Weather, string> = { clear: '☀️', cloudy: 
 /** Banens tilstand (som i CM 01/02): afhænger af vejret, årstiden og landet */
 export type Pitch = 'normal' | 'damp' | 'muddy' | 'waterlogged' | 'frozen' | 'snowy' | 'hard';
 
+const CM_PITCH: Record<number, Pitch> = { 1: 'muddy', 2: 'damp', 8: 'waterlogged', 0x10: 'frozen', 0x20: 'snowy', 0x40: 'hard' };
+
 export function pitchFor(f: Fixture, w: Weather = weatherFor(f)): Pitch {
   const g = gs();
+  // originalens bane (cmWeather.ts 0x923970); "Dry" (4) har ingen virkning i zonemotoren
+  if (cmWxOn(g)) return CM_PITCH[cmFixtureWeather(g, f).pitch] ?? 'normal';
   const nation = g.nations[g.clubs[f.home]?.nation]?.name ?? '';
   const m = Number(f.date.slice(5, 7));
   const winter = m === 12 || m === 1 || m === 2;

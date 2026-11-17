@@ -11,6 +11,7 @@ import { sortTable } from '../../game/competitions';
 import { ordinal } from './Competitions';
 import { stageLabel } from './Fixtures';
 import { pitchFor, refereeFor, weatherFor } from '../../game/weather';
+import { cmFixtureWeather, cmPitchText, cmWeatherText, cmWxOn } from '../../game/cmWeather';
 import { compName, natName, t } from '../../i18n';
 import { useGame, useNav } from '../core';
 import { classicDate, cxLongDate } from '../classic';
@@ -67,6 +68,7 @@ export function ClassicNextMatch({ onAssistant }: { onAssistant?: () => void }) 
   const today = f.date === g.date;
   const ven = club(f.home);
   const w = weatherFor(f);
+  const cmWx = orig && cmWxOn(g) ? cmFixtureWeather(g, f) : null;
   // klubnyt: skadede og karantæneramte i ens egen trup
   const days = daysBetween(g.date, f.date);
   // CM 01/02: "Saturday 18th August (35 days)"; vejrudsigten er ukendt mere end en uge før (*estimeret*), dommer og bane først på kampdagen
@@ -78,8 +80,11 @@ export function ClassicNextMatch({ onAssistant }: { onAssistant?: () => void }) 
     [t('cl.nm.venue'), ven?.stadium ?? '-'],
     [t('cl.nm.rules'), [t('cl.nm.noRestr'), t('cl.nm.subs', { named: benchSize(), used: maxSubs() })]],
     [t('cl.nm.last'), meetings[0] ? score(meetings[0]) : '-'],
-    ...(days <= 7 ? [[t('cl.nm.weather'), t(`wx.${w}`)] as [string, string]] : [[t('cl.nm.forecast'), t('cl.nm.unknown')] as [string, string]]),
-    ...(days <= 0 ? [[t('cl.nm.pitch'), t(`pitch.${pitchFor(f, w)}`)], [t('cl.nm.referee'), refereeFor(f).name]] as [string, string][] : []),
+    // originalens Next Match 0x45e76a–0x45e9a8: "Weather" på kampdagen, ellers "Weather Forecast"; vejret først, når kampen er før i dag + 2
+    // dage (0x54c770(2)), ellers "Unknown"; banen kun på kampdagen
+    ...(cmWx ? [[t(days <= 0 ? 'cl.nm.weather' : 'cl.nm.forecast'), days <= 1 ? cmWeatherText(cmWx.rec, t) : t('cl.nm.unknown')] as [string, string]]
+      : days <= 7 ? [[t('cl.nm.weather'), t(`wx.${w}`)] as [string, string]] : [[t('cl.nm.forecast'), t('cl.nm.unknown')] as [string, string]]),
+    ...(days <= 0 ? [[t('cl.nm.pitch'), cmWx ? cmPitchText(cmWx.pitch, t) : t(`pitch.${pitchFor(f, w)}`)], [t('cl.nm.referee'), refereeFor(f).name]] as [string, string][] : []),
     [t('cl.nm.news', { club: club(me)?.short ?? '' }), myNews.length ? myNews : '-'],
     [t('cl.nm.news', { club: club(opp)?.short ?? '' }), (() => { const n = clubNews(g, opp, f); return n.length ? n : '-'; })()],
   ] : [

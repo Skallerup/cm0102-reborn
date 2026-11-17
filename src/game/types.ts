@@ -660,6 +660,8 @@ export interface Fixture {
   result?: MatchResultShort;
   /** (runde 10A) tidspunktet på dagen i originalens kalender: 0 formiddag, 1 eftermiddag, 2 aften (skemaets +4 / tv-pladsen) */
   slot?: number;
+  /** (cmWeather.ts) vejret og banen ved kampstarten som originalens engine+0x4756/+1: [vind, nedbør, temperatur, byens vind, banen] */
+  wx?: number[];
   /** (kalenderen, runde 10C) originalens fixture-koder fra turneringens rundetabel (Cup-runden +0x07/+0x09/+0x0d/+0x0f/+0x17, skemaet) –
    *  sat, når kampen oprettes efter originalens format (kun den originale database i ægte tilstand); gameInputs.ts fixtureCodesOf bruger dem
    *  før afbildningen af spillets egne formater. w30 = fixture +0x30 (runde-id, +3/+4 for første/andet ben), w32 = +0x32 (stage-id), b34 =
@@ -1365,6 +1367,8 @@ export interface GameState {
   /** Databasen spillet er startet fra (udeladt = den moderne) og dens ligaregler */
   /** originalens systemer ved spilstarten (newgame.ts CM_SAVE_VER) – mangler i gamle gemte spil, der kan konverteres (cmConvert.ts) */
   cmSaveVer?: number;
+  /** originalens vejr (cmWeather.ts, Weather 0x922810/0x922ee0): sidste opdaterede dag (dagnummer) og byernes fire bytes pakket (by-id → b0|b1<<8|b2<<16|b3<<24) */
+  cmWx?: { d: number; c: Record<number, number> };
   dbKind?: 'cm0102';
   /** den originale databases udgave ('3.9.60' | '3.9.65' | '3.9.68'); mangler = 3.9.60 (eller 3.9.68 i meget gamle spil) */
   dbVersion?: string;
