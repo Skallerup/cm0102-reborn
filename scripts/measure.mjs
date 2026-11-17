@@ -67,19 +67,25 @@ if (!flags.has('--force') && fs.existsSync(out) && fs.existsSync(meta)) {
 }
 
 const alive = (pid) => { try { process.kill(pid, 0); return true; } catch { return false; } };
+// Højst SLOTS tunge kørsler ad gangen på hele maskinen (standard 2: ~1,5 GB hver; MEASURE_SLOTS=1 for én ad gangen).
+const SLOTS = Math.max(1, Number(process.env.MEASURE_SLOTS) || 2);
+const slotDirs = Array.from({ length: SLOTS }, (_, i) => (i === 0 ? LOCK : `${LOCK}${i + 1}`));
+let held = null;
 async function lock() {
   let said = false;
   for (;;) {
-    try { fs.mkdirSync(LOCK); fs.writeFileSync(path.join(LOCK, 'owner'), JSON.stringify({ pid: process.pid, cmd: cmdText, at: new Date().toISOString() })); return; }
-    catch {
-      let o = null; try { o = JSON.parse(fs.readFileSync(path.join(LOCK, 'owner'), 'utf8')); } catch {}
-      if (o && !alive(o.pid)) { fs.rmSync(LOCK, { recursive: true, force: true }); continue; }
-      if (!said) { console.error(`[measure] venter i kø – kører nu: ${o ? o.cmd : '?'}`); said = true; }
-      await new Promise((r) => setTimeout(r, 5000));
+    for (const d of slotDirs) {
+      try { fs.mkdirSync(d); fs.writeFileSync(path.join(d, 'owner'), JSON.stringify({ pid: process.pid, cmd: cmdText, at: new Date().toISOString() })); held = d; return; }
+      catch {
+        let o = null; try { o = JSON.parse(fs.readFileSync(path.join(d, 'owner'), 'utf8')); } catch {}
+        if (o && !alive(o.pid)) fs.rmSync(d, { recursive: true, force: true });
+      }
     }
+    if (!said) { console.error(`[measure] venter i kø (${SLOTS} pladser optaget)`); said = true; }
+    await new Promise((r) => setTimeout(r, 5000));
   }
 }
-const unlock = () => { try { const o = JSON.parse(fs.readFileSync(path.join(LOCK, 'owner'), 'utf8')); if (o.pid === process.pid) fs.rmSync(LOCK, { recursive: true, force: true }); } catch {} };
+const unlock = () => { if (!held) return; try { const o = JSON.parse(fs.readFileSync(path.join(held, 'owner'), 'utf8')); if (o.pid === process.pid) fs.rmSync(held, { recursive: true, force: true }); } catch {} held = null; };
 
 const heavy = !flags.has('--light');
 if (heavy) { await lock(); for (const s of ['SIGINT', 'SIGTERM', 'exit']) process.on(s, () => { unlock(); if (s !== 'exit') process.exit(130); }); }
