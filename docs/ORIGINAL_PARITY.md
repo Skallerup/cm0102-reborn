@@ -8,6 +8,23 @@ må afvige fra originalen: nye features, konto/bruger, fællesskab, rangliste og
 holdes adskilt fra originalens egne Game Options-punkter (tydeligt som CM Reborn) og undtages fra K3/K4. Nye ikke-originale
 funktioner placeres her – aldrig på originalens skærme.
 
+## Vejen til mål – fast arbejdsgang (ejeren 17/11: "vi stopper ikke, før vi er i mål")
+Hovedsessionen holder denne kø i gang: når en agent er færdig, startes den næste opgave herfra (agenttyper i `.claude/agents/`,
+RAM-reglerne dér). Rækkefølge:
+1. **K2 hele sæsonen** (én `maaling`/`port`-agent): `scripts/cm-day-lockstep.ts` udvides fra 4 dage til billeder pr. uge (helst pr. dag)
+   gennem en hel sæson og stopper ved første afvigelse; nyhedslisten afkodes. Hver første afvigelse = én `port`-opgave.
+2. **K2-listen nedenfor i rækkefølge** (2–3 `port`-agenter ad gangen): leje/klubløse, forkørslens marked, trupstatus uden for ligaerne,
+   moral/klubomdømme i forsæsonen, managerskifter, præmier/tv-penge, CA-udviklingen (+2,5), startskader (6 % mod 4 %).
+3. **K5 nedad**: 247 `*estimeret*` (17/11) → mål 150 – de oftest kaldte først (tæl kald i en sæson).
+4. **K3/K4**: 191 ikke-originale tekster (17/11; flest `cl` 71, `scout` 18, `intl` 11) og skærmene side om side (originalen via cmctl,
+   testspil – aldrig ejerens karriere) mod e2e-billederne.
+5. **Browserens vej = testenes vej**: nyt spil (ui/newGameWorker.ts) og dagene (ui/dayWorker.ts) kører med frisk modultilstand, tests i ét
+   stræk – de afviger fra dag 1 (cmFitness knocks/staleSev m.fl.). Modultilstanden flyttes ind i GameState (opgave i gang 17/11); kontrol:
+   `scripts/perf-fingerprint.ts` (DAILY=1) og `scripts/day-worker-check.ts CLONE=1` en hel sæson. Derefter kan createGame-cachen
+   (tests/helpers/gameCache.ts) slås til lokalt.
+6. **K7**: 3–5 sæsoner mod oraklets fordelinger (mål, transfers, klubber i minus, regens, CA-udvikling).
+Status for hvert punkt skrives i afsnittene nedenfor og i `docs/RELEASE_LOG.md` ved udgivelsen.
+
 ## Sådan sikrer vi det (kontroller, der skal køre hele tiden)
 
 | # | Kontrol | Hvad den fanger | Status |
