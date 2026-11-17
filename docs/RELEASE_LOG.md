@@ -2,6 +2,7 @@
 
 Flyttet fra CLAUDE.md 17/11-2026 (så CLAUDE.md er kort i hver session). Nyeste først. Tilføj en linje øverst ved hver udgivelse.
 
+- 2026-11-17 – Skudt live (v0.29.0): 2026-11-17 – Multiplayer: sektion i Options (MultiplayerPanel.tsx), rullemenuens Invitér/Værtens kontrolpanel → ét punkt; klassisk join = nyt-spil-trinnene (ClassicJoin.tsx) låst til rummets liga, Taken-klubber.
 - 2026-11-17 – Skudt live (v0.29.0): 2026-11-17 – Scout Player 1:1 (src/game/cmScout.ts): status 0x7f8ff0, anmodning 0x7f9290, dagligt 0x7f8750, kampe 0x7f8c00/0x7b5be0, vurdering 0x7b62a0, nyhed 0x7f9890/0x7f9a60 → 0x7f9d10 (cmsr.<adr>, 10 sprog); spejder med opgave dækker kun opgavens land/klub (0x7b7576/0x7b5df4). K3 191 → 173 (scout 0). Åbent: opgave-delen 0x7b3e20/0x7b0050 + nyhed 0x138b (0x7b95c0), 0x754740.
 - 2026-11-17 – Skudt live (v0.29.0): 2026-11-17 – Stabens startkontrakter som 0x4c7560/0x85e960 (managere ingen kontrakt, ellers databasens løn eller −1 → 0x862720 via 0x83a1b0); lønsum gns. 145.191 mod orakel 146.711 (før 153.802). Konverterrettelsen for managere uden egenskaber/job 12 (b7d11c1b, bestyrelsens tillid via 0x68f130) venter på samlet genbygning af world-filerne.
 - 2026-11-17 – Skudt live (v0.29.0): 2026-11-17 – Spilstart, spillere: player_setup.cfg LOAN (0x7a4d24 → 0x8bf400, cmSetupLoans) – udlejede afviger 40 → 5; trupstatus 2/+0x4e=4 fra 0x85e960 og 0x83a1b0 for alle klubber (skjulte 268 → 57). Bonusser/indkøring/værdi afviger pga. talrækken (cmRand ≠ rand) og 0x6e86d0's id-hash; startskader kræver hukommelsesudvalget 0x524d70 i world-filen.
