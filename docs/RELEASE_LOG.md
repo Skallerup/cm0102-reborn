@@ -2,6 +2,7 @@
 
 Flyttet fra CLAUDE.md 17/11-2026 (så CLAUDE.md er kort i hver session). Nyeste først. Tilføj en linje øverst ved hver udgivelse.
 
+- 2026-11-17 – Skudt live (v0.29.0): 2026-11-17 – MP: join = inGame straks, room.joins anvendes lokalt (loadVersion/refresh), protokolversion 2 (x-mp-proto, 426 → genindlæs); CFTG5 hang pga. gammel kode (oprettet før fixen + SW prompt).
 - 2026-11-17 – Skudt live (v0.29.0): 2026-11-17 – 2026/27: scripts/data/divisions-2026.json retter opdateringens divisionsfelter (ejerens fund: Næstved i 1. div.); dansk 2. division ny; 14 ligaer rettet til virkelighedens holdantal; world.json genbygget (nu i world-builds.json); åbent: MLS (2001-data), Gimcheon Sangmu 3 spillere.
 - 2026-11-17 – Skudt live (v0.29.0): 2026-11-17 – ClassicJoin: alle nationer (som nyt spil, regionsfilter), klubvalg = rummets klubber uanset nation; sidebar viser 2001/02/2026/27; e2e:mp vælger English.
 - 2026-11-17 – Skudt live (v0.29.0): 2026-11-17 – Multiplayer-dødvande (rum ZKH84): lock krævede Ready fra gæster, der ikke var i spillet endnu (klassisk lobby har ingen Ready) → inGame/pending i api/mp.ts; genindlæsning genoptager rummet; læsning gør ikke værten ikke-klar; tving/frist kun aktive; presence/offline; npm run e2e:mp (3 browsere, fake Redis/Blob, 38 træk).
