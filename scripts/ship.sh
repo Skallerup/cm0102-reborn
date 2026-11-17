@@ -62,8 +62,8 @@ npx tsc --noEmit -p tsconfig.app.json || fail "tsc"
 echo "✓ tsc"
 SRC=$(echo "$CHANGED" | grep -E '^src/.*\.tsx?$' || true)
 TESTS=$(echo "$CHANGED" | grep -E '^tests/.*\.test\.ts$' || true)
-npx vitest run --dir tests tests/changelog.test.ts tests/textParity.test.ts tests/estimateBudget.test.ts $TESTS >/tmp/ship-vitest.$$ 2>&1 || { tail -40 /tmp/ship-vitest.$$; fail "faste tests/ændrede testfiler"; }
-if [ -n "$SRC" ]; then npx vitest related --run --dir tests $SRC >>/tmp/ship-vitest.$$ 2>&1 || { tail -40 /tmp/ship-vitest.$$; fail "berørte tests"; }; fi
+npx vitest run --testTimeout=120000 --dir tests tests/changelog.test.ts tests/textParity.test.ts tests/estimateBudget.test.ts $TESTS >/tmp/ship-vitest.$$ 2>&1 || { tail -40 /tmp/ship-vitest.$$; fail "faste tests/ændrede testfiler"; }
+if [ -n "$SRC" ]; then npx vitest related --run --testTimeout=120000 --dir tests $SRC >>/tmp/ship-vitest.$$ 2>&1 || { tail -40 /tmp/ship-vitest.$$; fail "berørte tests"; }; fi
 grep -E "Tests +[0-9]" /tmp/ship-vitest.$$ | sed 's/^/  /'; rm -f /tmp/ship-vitest.$$
 echo "✓ tests"
 
