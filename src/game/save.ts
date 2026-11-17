@@ -171,6 +171,9 @@ export async function listSaves(): Promise<SaveMeta[]> {
 /** Trøjenumre i gemte spil fra før Squad Numbers (og efter et evt. hentet sæt fra databasen) */
 export function ensureAllNumbers() {
   const g = gs();
+  // et spil fra den nuværende kode har sine numre (dubletter, fx fyldspillerne og lejespillere, er spillets egne – en omnummerering ved
+  // indlæsningen gjorde det gemte spil til et andet end det uafbrudte)
+  if (currentSave(g)) return;
   for (const c of Object.values(g.clubs)) ensureNumbers(c.id);
 }
 

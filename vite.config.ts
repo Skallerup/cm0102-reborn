@@ -90,7 +90,7 @@ export default defineConfig({
   // Lokalt højst 3 test-workers: hver indlæser world-filerne (~1,2 GB), og 11 parallelle (standard = kerner-1) fyldte
   // de 16 GB og fik Mac mini'en til at gå ned 17/11 (WindowServer-watchdog). CI bruger standarden. Er Chrome lukket (og ≥ 6 GB ledig), 5
   // (scripts/ram-budget.mjs; CM_TEST_WORKERS=n overstyrer).
-  // createGame gennem cachen på disken, når CM_GAME_CACHE=1 (tests/helpers/gameCache.ts – foreløbig fra som standard)
+  // createGame gennem cachen på disken (tests/helpers/gameCache.ts): lokalt til, i CI fra; CM_GAME_CACHE=0/1 overstyrer
   // Lokalt 120 s pr. test: under belastning (flere agenter) ramte 5 s-standarden falske fejl. CI giver selv --testTimeout.
-  test: { testTimeout: process.env.CI ? undefined : 120_000, maxWorkers: process.env.CI ? undefined : ramBudget().testWorkers, setupFiles: process.env.CM_GAME_CACHE === '1' ? ['tests/helpers/setupGameCache.ts'] : [] },
+  test: { testTimeout: process.env.CI ? undefined : 120_000, maxWorkers: process.env.CI ? undefined : ramBudget().testWorkers, setupFiles: (process.env.CM_GAME_CACHE ?? (process.env.CI ? '0' : '1')) === '1' ? ['tests/helpers/setupGameCache.ts'] : [] },
 })

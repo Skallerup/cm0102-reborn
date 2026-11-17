@@ -6,7 +6,7 @@
 // derefter er det kun, når al modultilstand følger med (kontrol: scripts/perf-fingerprint.ts med og uden CM_GAME_CACHE_USE=1, DAILY=1).
 // Nøglen: sha256 af alle filer i src/, world-objektet (JSON), valgene, de registrerede kroge (hvilke moduler testen har indlæst), sproget,
 // gittermotorens fabrik, GRID_UNKNOWN, LEAGUE_RULES, og miljøvariablerne CM_/GRID_/MODE/RECOMP_.
-// Slås til med CM_GAME_CACHE=1 (se gameCacheOn). Mappen holdes under CM_GAME_CACHE_MB (standard 4000 MB).
+// Lokalt til, i CI fra (se gameCacheOn). Mappen holdes under CM_GAME_CACHE_MB (standard 4000 MB).
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -32,10 +32,10 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const DIR = process.env.CM_GAME_CACHE_DIR || path.join(os.homedir(), '.cache', 'cm-game');
 const sha = (s: string | Buffer) => createHash('sha256').update(s).digest('hex');
 
-// FORELØBIG SLÅET FRA som standard (CM_GAME_CACHE=1 slår den til): modulernes tilstand uden for GameState (cmFitness' knocks/staleSev m.fl.)
-// følger ikke med en kopi endnu, så et spil fra cachen afviger fra dag 1. Når den tilstand ligger i GameState/nulstilles ved spilstarten
-// (en anden opgave), kan standarden blive: lokalt til, CI fra.
-export const gameCacheOn = (): boolean => process.env.CM_GAME_CACHE === '1';
+// Lokalt til som standard, i CI fra (CM_GAME_CACHE=0 slår den fra, =1 til – også i CI): modulernes tilstand uden for GameState følger med
+// kopien (src/game/carry.ts, cmCarry), så et spil fra cachen spiller bit for bit som et nyopbygget – målt en hel sæson med
+// scripts/perf-fingerprint.ts (DAILY=1) direkte mod CM_GAME_CACHE_USE=1: samme hash hver dag.
+export const gameCacheOn = (): boolean => (process.env.CM_GAME_CACHE ?? (process.env.CI ? '0' : '1')) === '1';
 
 let codeHash: string | null = null;
 /** sha256 af alle filer i src/ (sti + indhold) – én gang pr. proces */
