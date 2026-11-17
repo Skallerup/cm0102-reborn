@@ -56,7 +56,7 @@ import { judgeAbility, type Day } from './engine/grid/roleScore';
 import { nationLanguage, playerLanguages } from './languages';
 import { dislikesClub, dislikesPerson, favoursClub, favoursPerson, managerStaff, relHas, DIS_CLUB, FAV_CLUB } from './cmRelations';
 
-const SLOTS0 = 0x5f100000, OFFERS0 = 0x5e800000, OREC0 = 0x5e900000, INJ0 = 0x5e780000, LISTS0 = 0x61000000;
+const SLOTS0 = 0x5f100000, OFFERS0 = 0x5e800000, OREC0 = 0x5e900000, RIV0 = 0x5eb00000, T86E0 = 0x5ec00000, INJ0 = 0x5e780000, LISTS0 = 0x61000000;
 const SLOT = 0x25, NSLOT = 40;
 const BRITISH = new Set(['ENG', 'SCO', 'WAL', 'NIR', 'IRL']);
 const dayOf = (iso: string): Day => { const d = new Date(iso.slice(0, 10) + 'T00:00:00Z'), y = d.getUTCFullYear(); return { day: Math.round((d.getTime() - Date.UTC(y, 0, 1)) / 86400000), year: y }; };
@@ -500,25 +500,63 @@ function readPairs(S: SlMem): void {
   S.g.cmSlPairs = out;
 }
 
-/** TRANSFER_MANAGER [0xde1f54]: +0 pegertabellen over buddene (indeks = spillets bud-id), +4 antallet; posterne (0x41 bytes) af spillets åbne bud */
+/** TRANSFER_MANAGER [0xde1f54]: +0 pegertabellen over buddene (indeks = spillets bud-id), +4 dens størrelse, +8 antallet; posterne (0x41 bytes) af
+ *  spillets åbne bud og de lukkede, originalen endnu har i tabellen (GameState.cmTmKept). Som add_transfer_offer 0x8be300/remove_offer 0x8d0f60:
+ *  +0x20 = indekset, alle bud på samme spiller deler rivallisten +0 (indeksene i den rækkefølge, de kom ind – her id-rækkefølgen), og spillerens
+ *  +0x86e-byte: +0 bit 0 = et åbent bud (ryddes, når det sidste lukkes – samme test som get_offers_for_player 0x8c5cf0: ikke 2/3/4/0x10/0x14 og
+ *  ikke 0xf med +0x2e ≥ 3), +1 = antallet i tabellen. Oraklets dagsbilleder 15/7–29/8: flaget og antallet stemmer for alle spillere. */
 function writeOffers(S: SlMem): void {
   const { m, g, memOf } = S;
   const tm = m.u32(0xde1f54);
   const n = g.nextId.offer + 1;
-  m.w32(tm, OFFERS0); m.w32(tm + 4, n);
-  let k = 0;
+  m.w32(tm, OFFERS0); m.w32(tm + 4, n); m.w32(tm + 0x86e, T86E0);
+  const recs: [number, number, number][] = [];
+  const rec = (id: number, buyer: number, player: number, created: string, fee: number, loan: boolean, st: number, r: number, pub: number | undefined) => {
+    const pm = memOf.get(player);
+    if (pm === undefined || id >= n) return 0;
+    const a = OREC0 + 0x48 * recs.length;
+    recs.push([id, pm, [2, 3, 4, 0x10, 0x14].includes(st) || (st === 0xf && r >= 3) ? 0 : 1]);
+    m.w32(OFFERS0 + 4 * id, a);
+    m.w32(a, 0); m.w32(a + 4, 0);
+    m.w32(a + 8, buyer); m.w32(a + 0xc, pm); m.w8(a + 0x11, 0xb);
+    const d = dayOf(created); m.w16(a + 0x12, d.day); m.w16(a + 0x14, d.year); m.w32(a + 0x16, leapY(d.year));
+    m.w32(a + 0x1b, Math.round(fee * cmGbp(g, buyer))); m.w8(a + 0x1f, loan ? 1 : 0); m.w32(a + 0x20, id); m.w32(a + 0x24, -1); m.w32(a + 0x28, -1);
+    m.w8(a + 0x2c, st); m.w8(a + 0x2d, pub ?? 0); m.w8(a + 0x2e, r);
+    return a;
+  };
   for (const o of g.offers) {
     if (!['pending', 'negotiating', 'countered'].includes(o.status) || isHumanClub(o.buyer) && isHumanClub(o.seller)) continue;
-    const pm = memOf.get(o.player);
-    if (pm === undefined || o.id >= n) continue;
-    const r = OREC0 + 0x48 * k++, GBP = cmGbp(g, o.buyer);   // buddets beløb: køberens penge (cmMoney.ts)
-    m.w32(OFFERS0 + 4 * o.id, r);
-    m.w32(r + 8, o.buyer); m.w32(r + 0xc, pm); m.w8(r + 0x11, 0xb);
-    const d = dayOf(o.created); m.w16(r + 0x12, d.day); m.w16(r + 0x14, d.year); m.w32(r + 0x16, leapY(d.year));
-    m.w32(r + 0x1b, Math.round(o.fee * GBP)); m.w8(r + 0x1f, o.loan ? 1 : 0); m.w32(r + 0x24, -1); m.w32(r + 0x28, -1);
-    m.w8(r + 0x2c, o.status === 'pending' ? 0 : o.status === 'countered' ? (o.cmAi ? 1 : 2) : o.cmK ? 7 : 5); m.w8(r + 0x2d, o.pub ?? 0);
-    m.w32(r + 0x35, Math.round((o.lgFee ?? 0) * GBP)); m.w8(r + 0x39, o.lgApps ?? 10);
-    m.w32(r + 0x3a, Math.round((o.intFee ?? 0) * GBP)); m.w8(r + 0x3e, o.intApps ?? 10); m.w8(r + 0x3f, o.sellOn ?? 0); m.w8(r + 0x40, o.months ?? 0);
+    const GBP = cmGbp(g, o.buyer);   // buddets beløb: køberens penge (cmMoney.ts)
+    const st = o.status === 'pending' ? 0 : o.status === 'countered' ? (o.cmAi ? 1 : 2) : o.cmK ? 7 : 5;
+    const a = rec(o.id, o.buyer, o.player, o.created, o.fee, o.loan, st, 0, o.pub);
+    if (!a) continue;
+    m.w32(a + 0x35, Math.round((o.lgFee ?? 0) * GBP)); m.w8(a + 0x39, o.lgApps ?? 10);
+    m.w32(a + 0x3a, Math.round((o.intFee ?? 0) * GBP)); m.w8(a + 0x3e, o.intApps ?? 10); m.w8(a + 0x3f, o.sellOn ?? 0); m.w8(a + 0x40, o.months ?? 0);
+  }
+  for (const k of g.cmTmKept ?? []) rec(k.id, k.buyer, k.player, k.created, k.fee, !!k.loan, k.st, k.r, k.pub);
+  m.w32(tm + 8, recs.length);
+  // spillernes flag og rivallister (listen 0xe bytes: +0 antal, +2 hoved, +6 hale, +0xa iterator; knude: +0 data → id, +4 størrelse 4, +6 næste, +0xa forrige)
+  recs.sort((x, y) => x[1] - y[1] || x[0] - y[0]);
+  let L = RIV0;
+  for (let i = 0; i < recs.length;) {
+    let j = i, open = 0;
+    while (j < recs.length && recs[j][1] === recs[i][1]) open |= recs[j++][2];
+    const f = (T86E0 + 8 * recs[i][1]) >>> 0;
+    m.w8(f, (m.u8(f) & 0xfe) | open); m.w8(f + 1, j - i);
+    if (j - i > 1) {
+      const list = L; L += 0xe;
+      let prev = 0;
+      for (let k = i; k < j; k++) {
+        const node = L, data = L + 0xe; L += 0x14;
+        m.w32(data, recs[k][0]);
+        m.w32(node, data); m.w16(node + 4, 4); m.w32(node + 6, 0); m.w32(node + 0xa, prev);
+        if (prev) m.w32(prev + 6, node); else m.w32(list + 2, node);
+        prev = node;
+        m.w32(m.u32(OFFERS0 + 4 * recs[k][0]), list);
+      }
+      m.w16(list, j - i); m.w32(list + 6, prev); m.w32(list + 0xa, 0);
+    }
+    i = j;
   }
 }
 
@@ -1731,6 +1769,9 @@ function addBid(S: SlMem, r: number, loan: boolean, lt?: { until: string; share:
   const buyer = m.s32(r + 8), p = S.byMem.get(m.s32(r + 0xc));
   if (!p || !g.clubs[buyer]) return -1;
   const id = g.nextId.offer++;
+  // 0x8be673: indekset skrives tilbage i buddet (+0x20) – 0x84a020 sætter pladsens budmærke +0x17 = det (0x84a9c2); uden det stod mærket 0,
+  // og dropDeadBids tog målet af pladsen dagen efter (så 0x849f00 gav trupstatus 7, og spilleren sagde nej i 0x8c0080)
+  m.w32(r + 0x20, id);
   const eur = (v: number) => Math.max(0, v);
   // 0x8be300: menneskets sælger får 28 dage (0x8be884 – spillets egen frist bruges), ellers 0x8cc5b0's svartid (også for klubløse)
   const st = (m.u32(G.STAFF) + 0x6e * m.s32(r + 0xc)) >>> 0, k = getContract(m, st);

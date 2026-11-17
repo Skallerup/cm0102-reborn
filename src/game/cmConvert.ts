@@ -162,7 +162,7 @@ export function convertOriginal(old: GameState, fresh: GameState, world: CMWorld
   const gr = g as unknown as Record<string, unknown>, fr = F as unknown as Record<string, unknown>;
   for (const k of STATIC) if (fr[k] !== undefined) gr[k] = fr[k];
   // den gamle tilstand fra originalens systemer (et delvist konverteret spil) bygges forfra
-  for (const k of ['cmBoard', 'cmFin', 'cmPlan', 'cmCm', 'cmPermit', 'cmRet', 'cmFine', 'cmDisc', 'cmRum', 'cmClubUnhappy', 'cmClubMood', 'cmSlPairs', 'cmSup']) delete gr[k];
+  for (const k of ['cmBoard', 'cmFin', 'cmPlan', 'cmCm', 'cmPermit', 'cmRet', 'cmFine', 'cmDisc', 'cmRum', 'cmClubUnhappy', 'cmClubMood', 'cmSlPairs', 'cmTmKept', 'cmSup']) delete gr[k];
 
   // klubberne: originalens værdiklub-felter
   for (const c of Object.values(g.clubs)) {

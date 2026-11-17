@@ -761,6 +761,9 @@ export interface TransferDeal { player: number; from: number; to: number; fee: n
 
 export type OfferStatus = 'pending' | 'accepted' | 'rejected' | 'countered' | 'negotiating' | 'completed' | 'withdrawn' | 'collapsed';
 
+/** et lukket bud i TRANSFER_MANAGER's tabel (GameState.cmTmKept) */
+export interface CmTmKept { id: number; buyer: number; player: number; seller: number; fee: number; loan?: true; created: string; st: number; r: number; until: string; pub?: 1 | 2 }
+
 export interface TransferOffer {
   id: number;
   player: number;
@@ -1289,6 +1292,9 @@ export interface GameState {
   cmCm?: { dec: number[][]; off: [number, string][]; row: Record<number, number> };
   /** Shortlist_Manager's par (spiller, klub) – computerklubbernes ønskelister (0x8423f0, cmShortlistGame.ts) */
   cmSlPairs?: [number, number][];
+  /** TRANSFER_MANAGER: de lukkede computer → computer-bud, originalen beholder i budtabellen, til den planlagte remove_offer 0x8d0f60 (0x8c63a0):
+   *  tilstanden +0x2c, runderne +0x2e og dagen, de fjernes (cmShortlistGame.ts writeOffers, transfers.ts cmTmClose) */
+  cmTmKept?: CmTmKept[];
   /** spillets startdato ([0xdd6ec8]) */
   cmStart?: string;
   cmNationRep?: number[];
