@@ -4,6 +4,7 @@
 import { readdirSync, readFileSync, statSync, existsSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { homedir } from 'node:os';
+process.stdout.on('error', (e: NodeJS.ErrnoException) => { if (e.code === 'EPIPE') process.exit(0); throw e; }); // tåler | head
 
 const root = join(import.meta.dirname, '..');
 const engine = process.env.CM_ENGINE ?? join(homedir(), 'cm0102-engine');
