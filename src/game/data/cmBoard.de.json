@@ -299,7 +299,11 @@
   "difficult": "Vorstand erwartet schwierige Saison",
   "look": "Vorstand blickt der neuen Saison entgegen",
   "announce": "Vorstand gibt Erwartungen bekannt",
-  "confidence": "Vertrauen des Vorstands"
+  "confidence": "Vertrauen des Vorstands",
+  "faExp": "Verband gibt Erwartungen bekannt",
+  "faConf": "Vertrauen des Verbands",
+  "faPerf": "Bewertung durch den {national} Verband",
+  "faOffer": "{nation} bietet dir den Posten des Managers an"
  },
  "faConf": [
   "Der {national} Fußballverband ist begeistert von deiner Leistung als Manager.",
@@ -492,5 +496,48 @@
    "Die Direktoren von {club} erwarten, dass der Verein in dieser Saison im Pokal erfolgreich ist und tapfer gegen den Abstieg kämpft."
   ],
   "improve": "Die Direktoren von {club} erwarten, dass du den Kader des Vereins in dieser Saison verbesserst."
+ },
+ "faComp": {
+  "wc": "FIFA-Weltmeisterschaft",
+  "euro": "Europameisterschaft",
+  "euroq": "EM-Qualifikation"
+ },
+ "faExp": {
+  "u21": "Der {national} Fußballverband erwartet, dass du in den kommenden Freundschaftsspielen die Stars der Zukunft förderst.",
+  "friendly": "Der {national} Fußballverband erwartet, dass die Mannschaft in den kommenden Freundschaftsspielen die Ehre des Landes verteidigt.",
+  "win": "Der {national} Fußballverband erwartet, dass die Mannschaft die {comp} gewinnt.",
+  "qualFrom": "Der {national} Fußballverband erwartet, dass die Mannschaft sich in der {comp} durchsetzt.",
+  "qualFor": "Der {national} Fußballverband erwartet, dass die Mannschaft sich für die {comp} qualifiziert.",
+  "hopeQualFrom": "Der {national} Fußballverband hofft, dass die Mannschaft sich in der {comp} durchsetzt.",
+  "secondPhase": "Der {national} Fußballverband hofft, dass die Mannschaft die zweite Phase der {comp} erreicht.",
+  "secondRound": "Der {national} Fußballverband hofft, dass die Mannschaft die zweite Runde der {comp} erreicht.",
+  "qf": "Der {national} Fußballverband hofft, dass die Mannschaft das Viertelfinale der {comp} erreicht.",
+  "sf": "Der {national} Fußballverband hofft, dass die Mannschaft das Halbfinale der {comp} erreicht.",
+  "hopeWin": "Der {national} Fußballverband hofft, dass die Mannschaft die {comp} gewinnt.",
+  "perform": "Der {national} Fußballverband hofft, dass die Mannschaft bei der {comp} gut abschneidet."
+ },
+ "faPerf": [
+  "Der {national} Fußballverband ist begeistert von deiner Leistung als Manager bei der {comp}.",
+  "Der {national} Fußballverband ist sehr zufrieden mit deiner Leistung als Manager bei der {comp}.",
+  "Der {national} Fußballverband ist zufrieden mit deiner Leistung als Manager bei der {comp}.",
+  "Der {national} Fußballverband ist nicht ganz zufrieden mit deiner Leistung als Manager bei der {comp}.",
+  "Der {national} Fußballverband ist enttäuscht von deiner Leistung als Manager bei der {comp}.",
+  "Der {national} Fußballverband ist sehr enttäuscht von deiner Leistung als Manager bei der {comp}."
+ ],
+ "faOffer": [
+  "Der {national} Fußballverband bietet dir den Posten des Managers an.\n\nEr wartet darauf, dass du das Angebot annimmst.",
+  "Der {national} Fußballverband bietet dir den Posten des Managers an.\n\nEr wartet darauf, dass du das Angebot annimmst.\n\nDu hast das Angebot angenommen.",
+  "Der {national} Fußballverband bietet dir den Posten des Managers an.\n\nEr wartet darauf, dass du das Angebot annimmst.\n\nDu hast das Angebot abgelehnt."
+ ],
+ "faDep": {
+  "tSack": "{nation}: Manager {m} entlassen",
+  "tResign": "{m} tritt als Manager von {nation} zurück",
+  "tRetire": "{nation}: Manager {m} geht in den Ruhestand",
+  "resign": "{m} ist als Manager von {nation} zurückgetreten.\n\nDer {national} Fußballverband sucht nun aktiv nach einem Nachfolger.",
+  "retire": "{m} hat sich als Manager von {nation} in den Ruhestand verabschiedet.\n\nDer {national} Fußballverband sucht nun aktiv nach einem Nachfolger.",
+  "sack": "{m} wurde vom {national} Fußballverband als Nationaltrainer entlassen.",
+  "relieved": "{m} wurde von seinem Posten als Manager von {nation} entbunden.\n\nDer {national} Fußballverband hielt die Zeit für einen Wechsel für gekommen und sucht nun aktiv nach einem Nachfolger.",
+  "pressure": "Auf massiven Druck der Fans wurde {m} vom {national} Fußballverband als Nationaltrainer entlassen.",
+  "poor": "Nach einer Reihe schlechter Ergebnisse wurde {m} vom {national} Fußballverband als Nationaltrainer entlassen."
  }
 }

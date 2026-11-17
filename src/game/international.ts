@@ -16,7 +16,7 @@ import type { GameState, MatchReport, MiniReport, Player } from './types';
 import { getGridFactory } from './engine/liveSim';
 import { cmNationalFillers, natClub } from './cmVirtual';
 import { packReport } from './miniReport';
-import { cmActive, recordPlayerMatch, repMemOf } from './cmPlayerData';
+import { cmActive, postHooks, recordPlayerMatch, repMemOf } from './cmPlayerData';
 import { intlHooks } from './hooks';
 import { cmSquadOf, cmIntlMatchReport, selectFinals, selectSquad, type FixName } from './cmIntlSquad';
 import { cmFifaRanking, cmFifaRecord, type FifaComp } from './cmFifa';
@@ -63,6 +63,8 @@ export interface IntlState {
   cmSq?: import('./cmIntlSquad').CmIntlSquads;
   /** (ægte tilstand) originalens FIFA-rangliste (cmFifa.ts) */
   cmFifa?: import('./cmFifa').CmFifa;
+  /** (ægte tilstand) NationalTeams' aktuelle turnering pr. land og de forudsagte/opnåede placeringer (cmNatTeams.ts) */
+  ntc?: import('./cmNatTeams').NtState;
 }
 
 
@@ -193,9 +195,8 @@ function prepareFillers(g: GameState, nations: number[], u21: boolean, kind: Int
   setNationFillers(m.size ? m : null);
 }
 
-/** 0x6b6cc0 efter landskampen i gittermotoren: kamprapportens moral og omdømme til spillerne (fyldspillerne findes ikke bagefter) og landsholdenes
- *  omdømme (nat_club +0x80 – g.intl.info). Landstrænerens omdømme (0x6d3610 → ikke-spillerposten) skrives ikke tilbage (cmBoard.ts har ingen
- *  landstrænere). */
+/** 0x6b6cc0 efter landskampen i gittermotoren: kamprapportens moral og omdømme til spillerne (fyldspillerne findes ikke bagefter), landsholdenes
+ *  omdømme (nat_club +0x80 – g.intl.info) og landstrænernes omdømme (0x6d3610 → ikke-spillerposten, når landsholdene er i bestyrelsen). */
 function applyNationalPost(g: GameState, home: number, away: number, rep: MatchReport): void {
   const post = rep.cmPost!;
   for (const [id, v] of Object.entries(post.players)) {
@@ -204,6 +205,8 @@ function applyNationalPost(g: GameState, home: number, away: number, rep: MatchR
     p.cmRepMem = [repMemOf(v.rep[0]), repMemOf(v.rep[1]), repMemOf(v.rep[2])];
   }
   [home, away].forEach((n, i) => { const v = post.clubRep[i]; const inf = g.intl?.info?.[n]; if (v !== null && inf) inf.rep = v; });
+  // landstrænernes omdømme (0x6d3610 → ikke-spillerposten +8/+0xa/+0xc) – bestyrelsens landstrænere (cmBoardGame.ts postHooks.managerRep)
+  if (intlHooks.boardOn?.()) [home, away].forEach((n, i) => { const v = post.managers?.[i]; if (v) postHooks.managerRep?.(g, natClub(n), v); });
 }
 
 /** Spil en landskamp i kampmotoren og bogfør landskampe, mål og skader */
@@ -237,6 +240,8 @@ export function playNation(home: number, away: number, kind: IntlResult['kind'],
   } finally { setNationFillers(null); zoneNeedsGk = true; }
   // 0x6b6cc0 for landskampen: spillernes moral og omdømme og landsholdenes omdømme (nat_club +0x80) efter kamprapporten 0x6d1cc0
   if (grid && rep.cmPost) applyNationalPost(g, home, away, rep);
+  // (ægte tilstand) bestyrelsen efter kampen 0x6951e0 for landsholdene (forbundets tillid – cmBoardGame.ts/cmNatTeams.ts)
+  if (cmOn) intlHooks.boardMatch?.(home, away, rep, kind, stage);
   const [hs, as] = rep.stats;
   // ægte tilstand (original DB): klubbernes nyhed efter kampen 0x7706c0 og FIFA-ranglisten 0x58cf70 (cmIntlSquad.ts, cmFifa.ts) i stedet for spillets egne
   const cmRep = cmActive(g) && !g.draft && !u21;
@@ -277,12 +282,15 @@ export function playNation(home: number, away: number, kind: IntlResult['kind'],
     cmIntlMatchReport(g, rep, home, away, res.hg, res.ag, fx, caps);
   } else updateFifa(home, away, res.hg, res.ag, kind);
   // brugerens landshold: resultat og statistik
+  const board = !!intlHooks.boardOn?.();
   forEachHuman(() => {
     const nj = g.manager.national;
     if (!nj || (nj.nation !== home && nj.nation !== away)) return;
     const mine = nj.nation === home ? res.hg : res.ag, theirs = nj.nation === home ? res.ag : res.hg;
     nj.played++; if (mine > theirs) nj.won++;
     nj.form = [...(nj.form ?? []), mine > theirs ? 3 : mine === theirs ? 1 : 0].slice(-6);
+    // ægte tilstand: forbundets tillid og fyringen er originalens (cmBoard.ts afterMatch/considerDeparture), omdømmet 0x6d3610
+    if (board) return;
     // CM 01/02: forbundet fyrer landstræneren "following a run of poor results" (grænsen er *estimeret*)
     if (nj.played >= 6 && nj.form.length >= 5 && nj.form.reduce((s2, v) => s2 + v, 0) <= 3) {
       g.manager.national = undefined;
@@ -375,6 +383,7 @@ function startTournament(name: 'wc' | 'euro', year: number) {
   for (const n of field) t.table[n] = { n, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 };
   state().tournament = t;
   state().qual = undefined;
+  intlHooks.ntStart?.(name, year, field);                                // (ægte tilstand) NationalTeams: set_predicted_positions + 0x775220
   if (cmActive(g) && !g.draft) selectFinals(g, field, name, `${year}-${GROUP_DAYS[0]}`, `${year}-${KO_DAYS.F}`);
   else callUpNews(field, new Map(), name);
   forEachHuman(() => addNews({ cat: 'general', key: `intl.start.${name}`, params: { year, n: field.length } }));
@@ -517,6 +526,7 @@ function tournamentDay(t: IntlTournament | undefined) {
   const winners = ko.map((x) => x.winner!);
   if (t.stage === 'F') {
     t.winner = winners[0]; t.runnerUp = ko[0].a === t.winner ? ko[0].b : ko[0].a; t.stage = 'done';
+    if (t.name === 'wc' || t.name === 'euro') intlHooks.ntEnd?.(t.name, t.year, t);
     state().history.unshift({ year: t.year, name: t.name, winner: t.winner, runnerUp: t.runnerUp });
     forEachHuman(() => addNews({ cat: 'general', key: `intl.winner.${t.name}`, params: { nation: g.nations[t.winner!]?.name ?? '', runnerUp: g.nations[t.runnerUp!]?.name ?? '', year: t.year } }));
     return;
@@ -596,6 +606,7 @@ export function intlDaily() {
  */
 export function nationalOffers() {
   const g = gs();
+  if (intlHooks.boardOn?.()) return;                                     // ægte tilstand: forbundenes ledige job (cmBoard.ts addVacancy/jobOfferToHuman)
   forEachHuman(() => {
     if (g.manager.national || g.manager.nationalOffer !== undefined || g.manager.rep < 55 || !rng.chance(0.35)) return;
     const own = g.manager.nation;
@@ -609,6 +620,8 @@ export function nationalOffers() {
 
 export function answerNationalOffer(accept: boolean): string {
   const g = gs();
+  const cm = intlHooks.nationalAnswer?.(accept);
+  if (cm !== null && cm !== undefined) return cm;
   const n = g.manager.nationalOffer;
   if (n === undefined) return 'error';
   g.manager.nationalOffer = undefined;
@@ -620,6 +633,8 @@ export function answerNationalOffer(accept: boolean): string {
 
 export function resignNational(): string {
   const g = gs();
+  const cm = intlHooks.nationalResign?.();
+  if (cm !== null && cm !== undefined) return cm;
   const nj = g.manager.national;
   if (!nj) return 'error';
   g.manager.national = undefined;

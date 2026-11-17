@@ -7,8 +7,7 @@
 // Kun kaldet med check = 0 (0x69f810 is_staff_suitable_for_job: (s, c, 0, 5, NULL)), så kontraktdelen 0x84662e (0x864550/0x597db0) indgår ikke.
 //
 // Inddata, spillet ikke har (*afvigelser*, ikke regler): personerne er ikke spillere (s->player = NULL → sproget Lf = 10, ingen fremtidig
-// overgang), landsholdene er ikke klubber (0x53b900 altid falsk; en person uden klub med et landsholdsjob ≠ 5/11 ville få landsholdet som H –
-// her 0, se `natH`), kontrakten k med H har +0x44 = 0 og +0x45 = 0 (stabens tilfredshed/klager føres ikke), klubbernes [0xae2d14]-plads er −1
+// overgang), kontrakten k med H har +0x44 = 0 og +0x45 = 0 (stabens tilfredshed/klager føres ikke), klubbernes [0xae2d14]-plads er −1
 // (som i cmSquadPlanGame.ts), club +0x73 er databasens gennemsnitlige tilskuertal (0x48aff0's opdatering efter hjemmekampe er ikke porteret).
 import type { BoardEnv, Person, BoardRec, StatsEntry } from './cmBoard';
 import { ftol, f32, s16, s8, repFor } from './cmBoard';
@@ -134,9 +133,12 @@ function sideMix(E: InterestEnv, s: Person, X: number, job: number, target: bool
     case 1: rp = ftol(rp * 1.25); if (s16(rp) < (target ? 4250 : 4750)) rp = target ? 4250 : 4750; break;
     case 2: rp = ftol(rp * 1.5); if (s16(rp) < 5750) rp = 5750; break;
   }
-  const eE = ftol(s16(E.targetRep(X)) * 0.4 + s16(rp) * 0.6);
+  // A-landsholdet (0x53b900 og ikke 0x5409b0): klubbens omdømme ·1,45 (målet) / ·1,35 (H) i stedet for målomdømmet
+  const nat = !!env.isNat?.(X);
+  const eE = nat ? ftol(s16(rp) * (target ? 1.45 : 1.35)) : ftol(s16(E.targetRep(X)) * 0.4 + s16(rp) * 0.6);
   let mix = ftol(((((s16(eur) * w.f60 + s16(dv) * w.f84) + s16(boss) * w.f74) + s16(bse) * w.f88) + s16(eE)) / w.f8c);
-  const st = E.status(X);
+  if (target && nat && env.clubNation(X) === s.nation) mix = ftol(s16(mix) * 1.45);   // 0x8458a9
+  const st = nat ? 1 : E.status(X);
   if (st !== 1) {
     let q = s.b22 & 0xff; q = q * q + 400;
     mix = Math.min(tdiv(s16(mix), 2), s16(mix) - 5 * q);
@@ -192,7 +194,13 @@ export function staffInterest(E: InterestEnv, s: Person, c: number, job: number)
   const W = { f60, f84, f74, f88, f8c };
   // H = klubben, hvor personen er nu
   let H = s.club, curJob = cj;
-  if (!H && nc && nj !== 11) return 0.0;                                       // H = landsholdet (findes ikke som klub hos os)
+  if (!H || env.isNat?.(c)) {
+    if (nc && nj !== 11) {
+      // H = landsholdet (staff +0x24, curJob = +0x28) – uden landsholdene som klubber i bestyrelsen (gamle gemte spil) som før: ingen vilje
+      if (!s.nat) return 0.0;
+      H = s.nat; curJob = nj;
+    }
+  }
   const Hn = H ? env.clubNation(H) : -1;
   if (H && Hn < 0) return 3.5;
   // kontrakten k med H: +0x44 = +0x45 = +0x49 = 0 (se filhovedet)

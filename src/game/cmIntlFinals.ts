@@ -28,6 +28,7 @@ import { msvcQsort } from './engine/grid/subs';
 import { forEachHuman } from './humans';
 import { addNews } from './state';
 import { selectFinals } from './cmIntlSquad';
+import { intlHooks } from './hooks';
 import { intlState, playNation, rowsOf, WC2002, type IntlName, type IntlTie, type IntlTournament } from './international';
 
 /** en planlagt slutrundekamp: dato, hold, runde ('G' = gruppespillet med gruppens indeks) */
@@ -87,6 +88,7 @@ function wcDraw(g: GameState): void {
   if (groups.flat().some((n) => n < 0)) return;
   const rounds = [cmDate(12, 5, 2002, 4), cmDate(19, 5, 2002, 4), cmDate(24, 5, 2002, 2)];
   create(g, 'wc', 2002, groups, groupMatches(groups, rounds, WC_TV), '2002-07-14');
+  intlHooks.ntStart?.('wc', 2002, groups.flat());                      // 0x92f680 set_predicted_positions → 0x775220 (NationalTeams)
 }
 
 /** Afrikamesterskabet 2002: lodtrækningen 6/10-2001 (0x4022c0) */
@@ -179,6 +181,7 @@ function finish(gs0: GameState, t: IntlTournament): void {
   const fin = t.ko.find((x) => x.stage === 'F');
   if (!fin || fin.winner === undefined) return;
   t.winner = fin.winner; t.runnerUp = fin.a === fin.winner ? fin.b : fin.a; t.stage = 'done';
+  if (t.name === 'wc') intlHooks.ntEnd?.('wc', t.year, t);              // 0x92d310 record_season_honours → 0x775420 (forbundenes vurdering)
   intlState().history.unshift({ year: t.year, name: t.name, winner: t.winner, runnerUp: t.runnerUp });
   forEachHuman(() => addNews({ cat: 'general', key: `intl.winner.${t.name}`, params: { nation: gs0.nations[t.winner!]?.name ?? '', runnerUp: gs0.nations[t.runnerUp!]?.name ?? '', year: t.year } }));
 }

@@ -3,7 +3,7 @@
 export interface BoardPack {
   /** de 290 blade til tillidsteksten (0x690d80), samme rækkefølge som data/cmBoardTexts.json */
   S: string[];
-  title: Record<'fa' | 'glory' | 'title' | 'hope' | 'difficult' | 'look' | 'announce' | 'confidence', string>;
+  title: Record<'fa' | 'glory' | 'title' | 'hope' | 'difficult' | 'look' | 'announce' | 'confidence' | 'faExp' | 'faConf' | 'faPerf' | 'faOffer', string>;
   /** Football Association-tillid (6 trin, fra "delighted" til "very disappointed"), {national} = nationaliteten */
   faConf: string[];
   tail: Record<'a1' | 'a2' | 'a3' | 'a4' | 'f1' | 'f2' | 'f3' | 'f4', string>;
@@ -19,6 +19,13 @@ export interface BoardPack {
   inexp: string;
   appoint: { prev: string; plain: string };
   expect: Record<'e1eu' | 'e1con' | 'e2' | 'promo' | 'playoff' | 'mid' | 'safe' | 'fight', string[]> & { improve: string };
+  /** landsholdene (forbundet): turneringernes navne, forventningerne 0x6a4550, vurderingen 0x6a5b40 (delighted … very disappointed),
+   *  jobtilbuddet 0x6a5120 (venter/accepteret/afslået) og afgangen 0x6a1d60 */
+  faComp: Record<'wc' | 'euro' | 'euroq', string>;
+  faExp: Record<'u21' | 'friendly' | 'win' | 'qualFrom' | 'qualFor' | 'hopeQualFrom' | 'secondPhase' | 'secondRound' | 'qf' | 'sf' | 'hopeWin' | 'perform', string>;
+  faPerf: string[];
+  faOffer: string[];
+  faDep: Record<'tSack' | 'tResign' | 'tRetire' | 'resign' | 'retire' | 'sack' | 'relieved' | 'pressure' | 'poor', string>;
 }
 
 const packs: Record<string, BoardPack> = {};

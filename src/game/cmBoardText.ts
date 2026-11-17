@@ -65,7 +65,7 @@ export interface ConfidenceIn {
 }
 
 /** 0x690d80 build_board_confidence_text */
-export const confidenceTitle = () => P().title.confidence;
+export const confidenceTitle = (national = false) => (national ? P().title.faConf : P().title.confidence);
 export function confidenceText(i: ConfidenceIn): string {
   const p = P(), TAIL_ = p.tail, SS = p.S;
   const W = Math.max(-2, Math.min(2, i.wealth)) + 2;
@@ -146,6 +146,45 @@ export function appointText(club: string, manager: string, prevClub: string): st
   return (prevClub ? a.prev : a.plain).replace(/\{club\}/g, club).replace(/\{manager\}/g, manager).replace(/\{prevClub\}/g, prevClub);
 }
 
+// ---------------------------------------------------------------- landsholdene (forbundet)
+
+type FaComp = 'wc' | 'euro' | 'euroq';
+const faFill = (s: string, national: string, comp = '', nation = '', m = '') =>
+  s.replace(/\{national\}/g, national).replace(/\{comp\}/g, comp).replace(/\{nation\}/g, nation).replace(/\{m\}/g, m);
+const compName = (c: FaComp | '' | undefined) => (c ? P().faComp[c] ?? '' : '');
+
+/** 0x6a4550 news_fa_expectations_text: koden (turneringens vtable +0x70) – −4 anden fase, −3 håber kvalifikation, −2 forventer kvalifikation
+ *  (til turneringen vtable +0x78 – `tg` – ellers fra den), −1 forventer sejr, 0 venskabskampene (uden turnering; U21: "groom the stars") ellers
+ *  "perform well", 20 anden runde, 120 kvartfinale, 130/140 semifinale, 150 "hope … win", andet "perform well" */
+export function faExpectText(national: string, code: number, comp: FaComp | '', tg: FaComp | '', u21: boolean): string {
+  const E = P().faExp;
+  let s: string;
+  if (code === -4) s = E.secondPhase;
+  else if (code === -3) s = E.hopeQualFrom;
+  else if (code === -2) { if (tg) return faFill(E.qualFor, national, compName(tg)); s = E.qualFrom; }
+  else if (code === -1) s = E.win;
+  else if (code === 20) s = E.secondRound;
+  else if (code === 120) s = E.qf;
+  else if (code === 130 || code === 140) s = E.sf;
+  else if (code === 150) s = E.hopeWin;
+  else if (!comp) s = u21 ? E.u21 : E.friendly;
+  else s = E.perform;
+  return faFill(s, national, compName(comp));
+}
+/** 0x6a5b40 news_fa_performance_assessment_text: 3 delighted, 2 very pleased, 0 satisfied, −1 less than satisfied, −2 disappointed, ellers very disappointed */
+export function faPerfText(national: string, grade: number, comp: FaComp | ''): string {
+  const i = grade === 3 ? 0 : grade === 2 ? 1 : grade === 0 ? 2 : grade === -1 ? 3 : grade === -2 ? 4 : 5;
+  return faFill(P().faPerf[i], national, compName(comp));
+}
+/** 0x6a1d60 for A-landsholdet: overskriften efter typen (1 fyret, 2 trådt tilbage, 3 pension) og brødteksten efter grunden (2 dårlige resultater,
+ *  4 tilhængerne, 6 "relieved", ellers fyret) */
+export function faDepText(type: number, reason: number, m: string, nation: string, national: string): { title: string; body: string } {
+  const D = P().faDep;
+  const title = type === 1 ? D.tSack : type === 3 ? D.tRetire : D.tResign;
+  const body = type === 1 ? (reason === 2 ? D.poor : reason === 4 ? D.pressure : reason === 6 ? D.relieved : D.sack) : type === 3 ? D.retire : D.resign;
+  return { title: faFill(title, national, '', nation, m), body: faFill(body, national, '', nation, m) };
+}
+
 // ---------------------------------------------------------------- nyhedernes tekst bygges ved visning
 
 /** Det, der skal til for at bygge en bestyrelsesnyhed igen på det valgte sprog (gemt som JSON i nyhedens `bd`) */
@@ -153,13 +192,22 @@ export type BoardCmDesc =
   | { k: 'e'; club: string; f: number; ne: boolean; ap: boolean }
   | { k: 'c'; i: ConfidenceIn }
   | { k: 'r'; club: string; req: number; code: number }
-  | { k: 'u'; type: number; req: number; res: number; sub: number; club: string; short: string; m: string; st: string; small: boolean; poor: boolean };
+  | { k: 'u'; type: number; req: number; res: number; sub: number; club: string; short: string; m: string; st: string; small: boolean; poor: boolean }
+  /** forbundets forventninger (0x177e), vurdering (0x1781), jobtilbuddet (0x1774: st 0 venter, 1 accepteret, 2 afslået) og afgangen (0x1770) */
+  | { k: 'x'; nat: string; code: number; c: FaComp | ''; tg: FaComp | ''; u21?: boolean }
+  | { k: 'p'; nat: string; grade: number; c: FaComp | '' }
+  | { k: 'o'; nat: string; nation: string; st: number }
+  | { k: 'd'; type: number; reason: number; m: string; nation: string; nat: string };
 
 export function boardCmText(d: BoardCmDesc): { title: string; body: string } {
   switch (d.k) {
     case 'e': return { title: expectTitle(d.f), body: expectBody(d.club, d.f, d.ne, d.ap) };
-    case 'c': return { title: confidenceTitle(), body: confidenceText(d.i) };
+    case 'c': return { title: confidenceTitle(d.i.national !== undefined), body: confidenceText(d.i) };
+    case 'x': return { title: P().title.faExp, body: faExpectText(d.nat, d.code, d.c, d.tg, !!d.u21) };
+    case 'p': return { title: faFill(P().title.faPerf, d.nat), body: faPerfText(d.nat, d.grade, d.c) };
+    case 'o': return { title: faFill(P().title.faOffer, d.nat, '', d.nation), body: faFill(P().faOffer[d.st] ?? P().faOffer[0], d.nat) };
+    case 'd': return faDepText(d.type, d.reason, d.m, d.nation, d.nat);
     case 'r': return { title: requestTitle(d.req), body: requestReply(d.club, d.req, d.code) };
-    default: return { title: ultimatumTitle(d.type, d.req, d.res, d.short), body: ultimatumBody(d.type, d.req, d.sub, d.club, d.m, d.st, d.small, d.poor) };
+    case 'u': return { title: ultimatumTitle(d.type, d.req, d.res, d.short), body: ultimatumBody(d.type, d.req, d.sub, d.club, d.m, d.st, d.small, d.poor) };
   }
 }

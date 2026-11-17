@@ -299,7 +299,11 @@
   "difficult": "La directiva prevé una temporada difícil",
   "look": "La directiva afronta la nueva temporada con ilusión",
   "announce": "La directiva anuncia sus expectativas",
-  "confidence": "Informe de confianza de la directiva"
+  "confidence": "Informe de confianza de la directiva",
+  "faExp": "La federación anuncia sus expectativas",
+  "faConf": "Informe de confianza de la federación",
+  "faPerf": "Valoración de la federación {national}",
+  "faOffer": "{nation} te ofrece el puesto de seleccionador"
  },
  "faConf": [
   "La Federación de Fútbol {national} está encantada con tu trabajo como entrenador.",
@@ -492,5 +496,48 @@
    "Los directivos del {club} esperan que el club logre el éxito en la copa y luche con valentía contra el descenso esta temporada."
   ],
   "improve": "Los directivos del {club} esperan que mejores la plantilla del club durante esta temporada."
+ },
+ "faComp": {
+  "wc": "Copa Mundial de la FIFA",
+  "euro": "Eurocopa",
+  "euroq": "clasificación para la Eurocopa"
+ },
+ "faExp": {
+  "u21": "La Federación de Fútbol {national} espera que desarrolles a las estrellas del futuro en los próximos amistosos.",
+  "friendly": "La Federación de Fútbol {national} espera que el equipo defienda el honor del país en los próximos amistosos.",
+  "win": "La Federación de Fútbol {national} espera que el equipo gane la {comp}.",
+  "qualFrom": "La Federación de Fútbol {national} espera que el equipo supere la {comp}.",
+  "qualFor": "La Federación de Fútbol {national} espera que el equipo se clasifique para la {comp}.",
+  "hopeQualFrom": "La Federación de Fútbol {national} confía en que el equipo supere la {comp}.",
+  "secondPhase": "La Federación de Fútbol {national} confía en que el equipo llegue a la segunda fase de la {comp}.",
+  "secondRound": "La Federación de Fútbol {national} confía en que el equipo llegue a la segunda ronda de la {comp}.",
+  "qf": "La Federación de Fútbol {national} confía en que el equipo llegue a los cuartos de final de la {comp}.",
+  "sf": "La Federación de Fútbol {national} confía en que el equipo llegue a las semifinales de la {comp}.",
+  "hopeWin": "La Federación de Fútbol {national} confía en que el equipo gane la {comp}.",
+  "perform": "La Federación de Fútbol {national} confía en que el equipo haga un buen papel en la {comp}."
+ },
+ "faPerf": [
+  "La Federación de Fútbol {national} está encantada con tu trabajo como seleccionador en la {comp}.",
+  "La Federación de Fútbol {national} está muy satisfecha con tu trabajo como seleccionador en la {comp}.",
+  "La Federación de Fútbol {national} está satisfecha con tu trabajo como seleccionador en la {comp}.",
+  "La Federación de Fútbol {national} está poco satisfecha con tu trabajo como seleccionador en la {comp}.",
+  "La Federación de Fútbol {national} está decepcionada con tu trabajo como seleccionador en la {comp}.",
+  "La Federación de Fútbol {national} está muy decepcionada con tu trabajo como seleccionador en la {comp}."
+ ],
+ "faOffer": [
+  "La Federación de Fútbol {national} te ofrece el puesto de seleccionador.\n\nEspera que aceptes la oferta.",
+  "La Federación de Fútbol {national} te ofrece el puesto de seleccionador.\n\nEspera que aceptes la oferta.\n\nHas aceptado la oferta.",
+  "La Federación de Fútbol {national} te ofrece el puesto de seleccionador.\n\nEspera que aceptes la oferta.\n\nHas rechazado la oferta."
+ ],
+ "faDep": {
+  "tSack": "{nation} destituye a su seleccionador {m}",
+  "tResign": "{m} dimite como seleccionador de {nation}",
+  "tRetire": "{m}, seleccionador de {nation}, se retira",
+  "resign": "{m} ha dimitido como seleccionador de {nation}.\n\nLa Federación de Fútbol {national} busca ahora activamente un sustituto.",
+  "retire": "{m} se ha retirado de su puesto de seleccionador de {nation}.\n\nLa Federación de Fútbol {national} busca ahora activamente un sustituto.",
+  "sack": "{m} ha sido destituido como seleccionador por la Federación de Fútbol {national}.",
+  "relieved": "{m} ha sido relevado de su puesto de seleccionador de {nation}.\n\nLa Federación de Fútbol {national} creía que era hora de un cambio y busca ahora activamente un sustituto.",
+  "pressure": "Debido a la enorme presión de la afición, {m} ha sido destituido como seleccionador por la Federación de Fútbol {national}.",
+  "poor": "Tras una serie de malos resultados, {m} ha sido destituido como seleccionador por la Federación de Fútbol {national}."
  }
 }

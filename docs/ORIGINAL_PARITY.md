@@ -157,6 +157,21 @@ View Finances (der læser Bonuses fra blokken) viste 0 bonusser, selv om pengene
    første tv-plads. **Mangler stadig:** landstrænerjob og fyring (0x775000/0x775220 → 0x6a3770: landstrænerne hører under bestyrelsessystemet med
    FA-tilliden, som cmBoard.ts ikke har for landshold – spillets egne regler bruges stadig), landstrænerens omdømme efter kampen (0x6d3610), 'B'-hold,
    rundenavnet i nyhederne for kvalifikation/slutrunder, slutrunder efter 2002 (spillets egne), VM-zonerne fra 2004, golden goal (0x383).
+   **Etape 4 17/11** (`src/game/cmNatTeams.ts`, landsholdsgrenene i `cmBoard.ts`/`cmBoardGame.ts`/`cmBoardInterest.ts`, `natPlayers`): **porteret**
+   landstrænerne i bestyrelsessystemet – A-holdene er klubber (`natClub(n)`, 0x53b900) for lande med verdensdel: spilstarten 0x68f130 (databasens
+   landstrænere bliver A-holdets manager, +0x28 = 0, +0x3d uden klub = landsholdsjobbet), forventningerne 0x6a3770 (landsholdsgrenen: aktuel
+   turnering 0x7751e0 og vtable +0x70) med nyheden 0x6a44a0/0x6a4550, efter kampen 0x695240 (venskabskampe 0,67, spillestedets nation, ·2), ugens
+   tillid 0x697c40 (uden liga og formue, omdømmets vægte for landshold), fyringen 0x69aba0 (landsholdet som division) og 0x69b350 (grund 0),
+   vurderingen 0x6a5610 + nyheden 0x6a5a60/0x6a5b40 efter VM/EM (0x775420), NationalTeams 0x775220/0x775000/0x775070 og set_predicted_positions
+   for VM 0x92f680, EM 0x57c9f0 og EM-kvalifikationen 0x5806d0 med vtable +0x70/+0x74 (0x92fae0/0x92fb40, 0x57cd30/0x57cd80, 0x580b50/0x580b80),
+   ledige job 0x69ba50 (n88 ≤ 100, kun managere, altid rygtefasen), scoren 0x69d1b0 (landsholdsjobbet, alderen, NT-grenen, menneskets omdømme og
+   23/7-2003), egnetheden 0x69f810 (udnævnte landstrænere, landets egne), viljen 0x844780 (H = landsholdet, ·1,45/·1,35), udnævnelsen i 0x68f9c0
+   (omdømme > 6000: klubben forlades), afgangen 0x69b790 med 0x6a1d60's landsholdstekster, jobtilbuddet 0x6a5120 og svaret (0x69ebc0/0x6b2790),
+   fratrædelsen, landstrænerens omdømme efter kampen (0x6d3610 → 0x6b6cc0). Spillets egne `nationalOffers`, fyringen efter formen og omdømmets
+   tillæg er slået fra. **Afvigelser (inddata):** de internationale turneringers omdømme (nation_comp +0x69) findes ikke (0), landsholdene har
+   ingen formand, assistenter eller præferencelister, mediehistorierne 0x5a/0x44 er ikke porteret, landstrænere kun i hukommelsen (cmExtra) er
+   med som personer, U21-holdene (0x5409b0) er ikke med. **Mangler:** VM-zonerne fra 2004 (0x90f600 …), forbundets trykmeddelelser 0x6a0e70 til
+   mennesket, U21-landstrænerne.
 5. Sæsonskiftet og pensioneringer (0x7a7f20, INT_RETIREMENT), end_season pr. nation.
 6. ~~Reservekampe (fixtures −2, 0x84be20)~~ – **porteret 16/11** (cmReserves.ts, noter ~/cm0102-engine/notes/reserve-matches.md): originalen har
    INGEN reservekampe for klubber i de spilbare ligaer ("Reserve"-turneringen [0x9cf684] har ingen klubber/kampe; reserveskærmene viser altid

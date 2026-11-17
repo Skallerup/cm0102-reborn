@@ -7,7 +7,11 @@
   "difficult": "Board expecting difficult season",
   "look": "Board look forward to new season",
   "announce": "Board announce expectations",
-  "confidence": "Board Confidence Update"
+  "confidence": "Board Confidence Update",
+  "faExp": "Football Association announce expectations",
+  "faConf": "Football Association Confidence Update",
+  "faPerf": "{national} FA performance assessment",
+  "faOffer": "{nation} offer you the position of manager"
  },
  "faConf": [
   "The {national} Football Association are delighted with your performance as manager.",
@@ -200,5 +204,48 @@
    "The {club} directors expect the club to achieve cup success and battle bravely against relegation this season."
   ],
   "improve": "The {club} directors expect you to improve the club's squad during this season."
+ },
+ "faComp": {
+  "wc": "FIFA World Cup",
+  "euro": "European Championship",
+  "euroq": "European Championship Qualifying"
+ },
+ "faExp": {
+  "u21": "The {national} Football Association expect you to groom the stars of the future in the forthcoming friendly matches.",
+  "friendly": "The {national} Football Association expect the team to uphold the countries honour in the forthcoming friendly matches.",
+  "win": "The {national} Football Association expect the team to win the {comp}.",
+  "qualFrom": "The {national} Football Association expect the team to qualify from the {comp}.",
+  "qualFor": "The {national} Football Association expect the team to qualify for the {comp}.",
+  "hopeQualFrom": "The {national} Football Association hope the team will qualify from the {comp}.",
+  "secondPhase": "The {national} Football Association hope the team will qualify for the second phase of the {comp}.",
+  "secondRound": "The {national} Football Association hope the team get to the second round of the {comp}.",
+  "qf": "The {national} Football Association hope the team get to the quarter-finals of the {comp}.",
+  "sf": "The {national} Football Association hope the team will get to the semi-finals of the {comp}.",
+  "hopeWin": "The {national} Football Association hope the team will win the {comp}.",
+  "perform": "The {national} Football Association hope the team will perform well in the {comp}."
+ },
+ "faPerf": [
+  "The {national} Football Association are delighted with your performance as manager within the {comp}.",
+  "The {national} Football Association are very pleased with your performance as manager within the {comp}.",
+  "The {national} Football Association are satisfied with your performance as manager within the {comp}.",
+  "The {national} Football Association are less than satisfied with your performance as manager within the {comp}.",
+  "The {national} Football Association are disappointed with your performance as manager within the {comp}.",
+  "The {national} Football Association are very disappointed with your performance as manager within the {comp}."
+ ],
+ "faOffer": [
+  "The {national} Football Association offer you the position of manager.\n\nThey await your acceptance of this job offer.",
+  "The {national} Football Association offer you the position of manager.\n\nThey await your acceptance of this job offer.\n\nYou have accepted this job offer.",
+  "The {national} Football Association offer you the position of manager.\n\nThey await your acceptance of this job offer.\n\nYou have declined this job offer."
+ ],
+ "faDep": {
+  "tSack": "{nation} manager {m} sacked",
+  "tResign": "{m} resigns as manager of {nation}",
+  "tRetire": "{nation} manager {m} retires",
+  "resign": "{m} has resigned as manager of {nation}.\n\nThe {national} Football Association are now actively seeking a replacement.",
+  "retire": "{m} has retired from his position as {nation} manager.\n\nThe {national} Football Association are now actively seeking a replacement.",
+  "sack": "{m} has been sacked from his role as national team manager by the {national} Football Association.",
+  "relieved": "{m} has been relieved of his position as {nation} manager.\n\nThe {national} Football Association felt that it was time for a change and are now actively seeking a replacement.",
+  "pressure": "Due to overwhelming supporter pressure, {m} has been sacked from his role as national team manager by the {national} Football Association.",
+  "poor": "Following a run of poor results, {m} has been sacked from his role as national team manager by the {national} Football Association."
  }
 }

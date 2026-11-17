@@ -299,7 +299,11 @@
   "difficult": "Diretoria prevê temporada difícil",
   "look": "Diretoria aguarda a nova temporada",
   "announce": "Diretoria divulga expectativas",
-  "confidence": "Atualização da Confiança da Diretoria"
+  "confidence": "Atualização da Confiança da Diretoria",
+  "faExp": "Federação divulga expectativas",
+  "faConf": "Atualização da Confiança da Federação",
+  "faPerf": "Avaliação da federação {national}",
+  "faOffer": "{nation} lhe oferece o cargo de técnico"
  },
  "faConf": [
   "A Federação de Futebol {national} está encantada com o seu desempenho como técnico.",
@@ -492,5 +496,48 @@
    "A diretoria do {club} espera que o clube tenha sucesso na copa e lute bravamente contra o rebaixamento nesta temporada."
   ],
   "improve": "A diretoria do {club} espera que você melhore o elenco do clube durante esta temporada."
+ },
+ "faComp": {
+  "wc": "Copa do Mundo da FIFA",
+  "euro": "Eurocopa",
+  "euroq": "Eliminatórias da Eurocopa"
+ },
+ "faExp": {
+  "u21": "A Federação de Futebol {national} espera que você desenvolva as estrelas do futuro nos próximos amistosos.",
+  "friendly": "A Federação de Futebol {national} espera que a equipe defenda a honra do país nos próximos amistosos.",
+  "win": "A Federação de Futebol {national} espera que a equipe vença a {comp}.",
+  "qualFrom": "A Federação de Futebol {national} espera que a equipe avance na {comp}.",
+  "qualFor": "A Federação de Futebol {national} espera que a equipe se classifique para a {comp}.",
+  "hopeQualFrom": "A Federação de Futebol {national} espera que a equipe consiga avançar na {comp}.",
+  "secondPhase": "A Federação de Futebol {national} espera que a equipe chegue à segunda fase da {comp}.",
+  "secondRound": "A Federação de Futebol {national} espera que a equipe chegue à segunda rodada da {comp}.",
+  "qf": "A Federação de Futebol {national} espera que a equipe chegue às quartas de final da {comp}.",
+  "sf": "A Federação de Futebol {national} espera que a equipe chegue às semifinais da {comp}.",
+  "hopeWin": "A Federação de Futebol {national} espera que a equipe consiga vencer a {comp}.",
+  "perform": "A Federação de Futebol {national} espera que a equipe tenha um bom desempenho na {comp}."
+ },
+ "faPerf": [
+  "A Federação de Futebol {national} está encantada com o seu desempenho como técnico na {comp}.",
+  "A Federação de Futebol {national} está muito satisfeita com o seu desempenho como técnico na {comp}.",
+  "A Federação de Futebol {national} está satisfeita com o seu desempenho como técnico na {comp}.",
+  "A Federação de Futebol {national} está pouco satisfeita com o seu desempenho como técnico na {comp}.",
+  "A Federação de Futebol {national} está decepcionada com o seu desempenho como técnico na {comp}.",
+  "A Federação de Futebol {national} está muito decepcionada com o seu desempenho como técnico na {comp}."
+ ],
+ "faOffer": [
+  "A Federação de Futebol {national} lhe oferece o cargo de técnico.\n\nEla aguarda que você aceite a oferta.",
+  "A Federação de Futebol {national} lhe oferece o cargo de técnico.\n\nEla aguarda que você aceite a oferta.\n\nVocê aceitou a oferta.",
+  "A Federação de Futebol {national} lhe oferece o cargo de técnico.\n\nEla aguarda que você aceite a oferta.\n\nVocê recusou a oferta."
+ ],
+ "faDep": {
+  "tSack": "{nation} demite o técnico {m}",
+  "tResign": "{m} deixa o cargo de técnico de {nation}",
+  "tRetire": "{m}, técnico de {nation}, se aposenta",
+  "resign": "{m} deixou o cargo de técnico de {nation}.\n\nA Federação de Futebol {national} procura agora ativamente um substituto.",
+  "retire": "{m} se aposentou do cargo de técnico de {nation}.\n\nA Federação de Futebol {national} procura agora ativamente um substituto.",
+  "sack": "{m} foi demitido do cargo de técnico da seleção pela Federação de Futebol {national}.",
+  "relieved": "{m} foi afastado do cargo de técnico de {nation}.\n\nA Federação de Futebol {national} achou que era hora de mudar e procura agora ativamente um substituto.",
+  "pressure": "Devido à enorme pressão da torcida, {m} foi demitido do cargo de técnico da seleção pela Federação de Futebol {national}.",
+  "poor": "Após uma série de maus resultados, {m} foi demitido do cargo de técnico da seleção pela Federação de Futebol {national}."
  }
 }

@@ -19,7 +19,13 @@
 // Spillets data → originalens felter (cmBoardData nederst): klubbens omdømme = clubRepMem (club +0x80), divisionen = klubbens liga (club_comp
 // +0x69 = GameState.cmCompRep), formanden = world.cmRaw.chair (np +0x16, +0x1d Patience, staff +0x57 Ambition), managerne = Staff med
 // ikke-spillerpost (Staff.cmNp/cmRep/cmHid), menneskene = de 16 sidste staffrækker (id ≥ N − 16) med ManagerProfile.cmRep.
-// Findes ikke i spillet (dokumenteret i ENGINE_PORT_PLAN.md "Bestyrelse og job"): landsholdene som klubber (0x53b900 er altid falsk), B-hold
+// Landsholdene (17/11-2026): A-holdene er klubber i bestyrelsessystemet (BoardEnv.isNat = 0x53b900; id'erne natClub(n) efter klubberne) –
+// forbundets tillid og forventninger (0x6a3770's landsholdsgren, NationalTeams' aktuelle turnering i cmNatTeams.ts), kampene 0x695240 (vægten 0,67
+// for venskabskampe, spillestedets nation, ·2), ugens tillid (ingen liga, ingen formue), fyringen 0x69aba0 (landsholdet som division),
+// vurderingen efter VM/EM 0x6a5610, ledige landstrænerjob 0x69ba50 (kun managere, altid rygtesøgningen), scoren 0x69d1b0's NT-gren og alderen,
+// egnetheden 0x69f810 (landstrænere er ikke egnede; landets egne), udnævnelsen i 0x68f9c0 (landsholdets omdømme > 6000: klubben forlades),
+// jobtilbuddet til mennesket 0x6a5120 og nyhederne 0x6a44a0/0x6a5a60/0x6a1d60/0x6a2e00. U21-holdene (0x5409b0) er ikke med (kan ikke styres).
+// Findes ikke i spillet (dokumenteret i ENGINE_PORT_PLAN.md "Bestyrelse og job"): B-hold
 // (0x540a50), spillende managere (staff +0x61), staffs præferencelister (+0x65), klubbens yndlings-/uønskede personer (+0x9b..+0xaf), lån af
 // stab, dyn+0xb & 0x30, Media::post_team_media_story 0x74b060 (dens tilfældige tal trækkes ikke), nyhederne til andre end mennesket.
 
@@ -81,6 +87,10 @@ export interface CmBoardState {
   month: number;
   /** Comp_Stats i vores spil: [bedste, dårligste placering, dag for seneste ligakamp] pr. klub i sæsonen */
   tab?: Record<number, [number, number, number]>;
+  /** landsholdenes managere (A-holdets club +0xcf): nation → staff-id (menneskene: ManagerProfile.national) – sat ved spilstarten 0x68f130 */
+  nm?: Record<number, number>;
+  /** staff +0x28 landsholdsjobbet efter 0x68f130 (0 for databasens landstrænere; 5 når bestyrelsen har udnævnt dem): staff-id → job */
+  nj?: Record<number, number>;
 }
 
 export const newRec = (): BoardRec => ({ b0: 0, b1: 0, b2: 0, b3: 0, b4: 0, b5: 0, w6: 0, w8: 0, wa: 0, wc: 0, e: 0, w10: 0, w12: 0, w14: 0, w16: 0,
@@ -108,6 +118,9 @@ export interface Person {
   at: (off: number) => number;
   /** omdømmerne [+8 hjemme, +0xa aktuel, +0xc verden] (læses og skrives) */
   rep: [number, number, number];
+  /** staff +0x24 landsholdsklubben (bestyrelsens id for landsholdet, 0 = ingen) og +0x28 landsholdsjobbet (efter 0x68f130: 0, medmindre en
+   *  udnævnelse har sat 5) */
+  nat?: number; natJob?: number;
 }
 export const HUMAN0 = 1_000_000_000;
 
@@ -194,6 +207,13 @@ export interface BoardEnv {
   // ---- skrivere (spillet udfører originalens bivirkninger)
   setManager(c: number, p: Person | null, old: number): void;
   news(kind: BoardNews): void;
+  // ---- landsholdene (0x53b900: A-holdene som klubber i bestyrelsessystemet; U21-holdene er ikke med – se cmBoardGame.ts)
+  /** 0x53b900 database_is_national_team */
+  isNat?(c: number): boolean;
+  /** NationalTeams::get_current_competition 0x7751e0 (landsholdets aktuelle turnering): turneringens vtable +0x70 (forventningen) og id'et; null = ingen */
+  natComp?(c: number): { f: number; t: number } | null;
+  /** nation +0x88 for landsholdets nation (de indlæste spillere af nationaliteten) */
+  natPlayers?(c: number): number;
 }
 
 export type BoardNews =
@@ -208,7 +228,11 @@ export type BoardNews =
   | { t: 'protest'; club: number }
   | { t: 'pressure'; club: number; kind: number }
   | { t: 'match'; club: number; opp: number; flags: number; gf: number; ga: number }
-  | { t: 'ultimatum'; club: number; opp: number };
+  | { t: 'ultimatum'; club: number; opp: number }
+  /** 0x6a44a0 (0x177e): forbundets forventninger – kode (vtable +0x70) og turneringen (−1 = ingen) */
+  | { t: 'faExpect'; club: number; code: number; comp: number }
+  /** 0x6a5a60 (0x1781): forbundets vurdering efter turneringen (−3..3) */
+  | { t: 'faReview'; club: number; grade: number; comp: number };
 
 // ---------------------------------------------------------------- 0x5407e0 / 0x5408c0 omdømmet set af en "seer"
 
@@ -260,11 +284,14 @@ export function scoreStaffForJob(env: BoardEnv, s: Person, c: number, job: numbe
   const sp = seer && seer.np ? seer : null;
   const age = s8(s.age);
   let cur = s8(s.job);
-  if (cur === 0) cur = 11;                                             // (landsholdsjob +0x28 findes ikke i spillet)
+  if (cur === 0) { cur = s8(s.natJob ?? 0); if (cur === 0) cur = 11; } // klubjobbet, ellers landsholdsjobbet +0x28, ellers 11
   const crep = s16(env.clubRep(c));
+  const nat = !!env.isNat?.(c);
   // seeren: arg 3 med ikke-spillerpost, ellers formanden med ikke-spillerpost, ellers den falske post (klubbens nation, klub = c)
   const viewer: Viewer = { club: ch ? (ch.nation === -1 ? 0 : c) : c, nation: ch ? ch.nation : env.clubNation(c) };
-  let sc = s16(repFor(env, s, sp ? { club: sp.club, nation: sp.nation } : ch ? { club: c, nation: ch.nation } : viewer));
+  // evaluatoren ev (seeren eller formanden) – NULL uden nogen af dem (landsholdene: ingen formand)
+  const evView: Viewer | null = sp ? { club: sp.club, nation: sp.nation } : ch ? { club: c, nation: ch.nation } : null;
+  let sc = s16(repFor(env, s, evView ?? viewer));
   if ((cur === 12 || cur === 5) && crep > 4250) {
     sc += 25 * s16(s.ca);
     if (s16(s.rep[2]) > 3250) sc += 5 * s16(s.pa);
@@ -282,11 +309,11 @@ export function scoreStaffForJob(env: BoardEnv, s: Person, c: number, job: numbe
     }
     for (const [o, k] of blk.attr) sc = ftol((s8(s.at(o)) * k + 1.0) * sc);
     for (const b of [s.b59, s.det, s.pres, s.prof]) sc = ftol(((s8(b) - 10) * blk.pers + 1.0) * sc);
-    return scoreTail(env, s, c, job, cur, crep, sc);
+    return scoreTail(env, s, c, job, cur, crep, sc, evView);
   }
   if (job !== 5 && job !== 12) return -10000;                          // (11 → 0x69d5fc; 16 → 0x69d65a: ikke brugt)
   if (!s.human) {
-    const atClub = s.club === c;
+    const atClub = s.club === c || (!!s.nat && s.nat === c);
     switch (cur) {
       case 5: break;
       case 6: if (atClub) sc = ftol(sc * 0.75); else { sc = ftol(sc * 0.6); if (crep > 5750) return -10000; } break;
@@ -300,7 +327,7 @@ export function scoreStaffForJob(env: BoardEnv, s: Person, c: number, job: numbe
       case 16: sc = ftol(sc * 0.75); if (!atClub && crep > 5750) return -10000; break;
       default: sc = ftol(sc * 0.001); if (crep > 5750) return -10000; break;
     }
-    if (age > 59) sc = ftol(sc * (crep > 7250 ? 0.9 : 0.95));
+    if (age > 59) sc = ftol(sc * (nat && crep > 7000 ? 0.875 : crep > 7250 ? 0.9 : 0.95));
     else if (age < 38 && s16(s.rep[2]) < 4250) sc = ftol((age * 0.05 - 0.95) * sc);
     if (age < 45 && crep < 7000) {
       let pot = s16(s.pa) - s16(s.ca); if (pot > 50) pot = 50;
@@ -322,12 +349,13 @@ export function scoreStaffForJob(env: BoardEnv, s: Person, c: number, job: numbe
     sc = ftol(sc * (1 + (s8(s.pres) - 10) * 0.005));
     sc = ftol(sc * (1 + (s8(s.prof) - 10) * 0.005));
   }
-  return scoreTail(env, s, c, job, cur, crep, sc);
+  return scoreTail(env, s, c, job, cur, crep, sc, evView);
 }
-/** 0x69e5b9–0x69eae4: fælles hale (landets styrke, topklubbernes krav, sproget, verdensdelen +0x7e) – job 9 springer verdensomdømmefaktoren over (0x69e978/0x69e9fd) */
-function scoreTail(env: BoardEnv, s: Person, c: number, job: number, cur: number, crep: number, sc: number): number {
+/** 0x69e5b9–0x69eae4: fælles hale (landets styrke, topklubbernes krav, landsholdsgrenen NT, sproget, verdensdelen +0x7e) – job 9 springer
+ *  verdensomdømmefaktoren over (0x69e978/0x69e9fd) */
+function scoreTail(env: BoardEnv, s: Person, c: number, job: number, cur: number, crep: number, sc: number, ev: Viewer | null): number {
   const cn = env.clubNation(c);
-  const NAT = s.club && env.clubNation(s.club) === cn ? cn : s.nation;
+  const NAT = s.club && env.clubNation(s.club) === cn ? cn : s.nat && env.clubNation(s.nat) === cn ? cn : s.nation;
   if (crep > 4750 && cn >= 0 && s.nation >= 0 && env.foreign(s, cn) && !(s.club && env.clubNation(s.club) === cn)) {
     const cnb = s8(env.nat85(cn));
     let sn = s8(env.nat85(s.nation));
@@ -343,7 +371,24 @@ function scoreTail(env: BoardEnv, s: Person, c: number, job: number, cur: number
       sc = ftol(sc * f);
     }
   }
-  {
+  if (env.isNat?.(c)) {
+    // NT (0x69e7a8): landsholdet – egen nation, ikke udlænding (fx britisk gruppe) eller udlænding; topholdene vægter verdensomdømmet
+    if (s.nation === cn) { const a = sc * 1.2, b = sc + 2000; sc = ftol(a > b ? a : b); }
+    else if (!env.foreign(s, cn)) sc = ftol((0.75 - crep * 2.5e-5) * sc);
+    else sc = ftol(sc * 0.35);
+    if (crep > 6250) {
+      const wr = s16(s.rep[2]);
+      const f = cur !== 12 && cur !== 5 ? wr * 2.5e-5 + 0.5 : env.foreign(s, cn) ? wr * 5e-5 + 0.5 : wr * 2.5e-5 + 0.75;
+      sc = ftol(f * sc);
+    }
+    if (s.human) {
+      // 0x5407e0(s, ev, 1) – uden evaluator (landsholdene har ingen formand) verdensomdømmet; før 23/7-2003 (Date(23, 6, 2003)) ×0,75 under 7250
+      const r = s16(repFor(env, s, ev));
+      if (r < 4250) sc = 0;
+      else if (r < 6750) sc = ftol(sc * 0.75);
+      if (r < 7250 && after({ day: 203, year: 2003 }, env.today)) sc = ftol(sc * 0.75);
+    }
+  } else {
     const div = env.division(c);
     if (crep > 7250 && div && cn >= 0 && s8(env.nat85(cn)) > 10) {
       const d = s.club ? s16(env.clubRep(s.club)) - crep : s16(s.rep[2]) - crep;
@@ -383,7 +428,7 @@ export function suitable(env: BoardEnv, s: Person, c: number, minInterest: numbe
   const cn = env.clubNation(c), crep = s16(env.clubRep(c));
   if (C > 4250 && s.nation >= 0 && cn >= 0 && s.nation !== cn && s8(env.nat85(cn)) < 10) return false;
   if (H > 6250 && s.nation !== cn && s.job === 5 && crep < 5750) return false;
-  // R3 (landshold) / R4 (spiller → manager): findes ikke i spillet
+  // R3 (landsholdet på personens liste over ikke-likede klubber – præferencelisterne har kun klubber) / R4 (spiller → manager): findes ikke i spillet
   const div = env.division(c), sdiv = s.club ? env.division(s.club) : null;
   if (s.job === 5 && div && s.club && sdiv) {
     if (s16(env.divLevel(div)) < s16(env.divLevel(sdiv))) return false;
@@ -392,10 +437,16 @@ export function suitable(env: BoardEnv, s: Person, c: number, minInterest: numbe
     if (srep > crep) return false;
     if (daysSince(env.today, s.joined) < (s8(s.b59) + 21) * 10 && srep > 5250) return false;
   }
+  if (s.nat && s.natJob === 5) return false;                           // landstræner (udnævnt) – 0x69f9b8
   if (A <= 4750 && crep < 2250) return false;
   if ((s.b22 & 0xff) > 75 && crep < 3250) return false;
   if (env.retiring(s)) return false;
-  if (crep < 2500 && s.nation === cn && H < 1500 && !s.club) return true;
+  if (crep < 2500 && s.nation === cn && H < 1500 && !s.club && !s.nat) return true;
+  if (env.isNat?.(c) && s.nation === cn) {
+    if (A < 6750) return true;
+    if (!s.club) return true;
+    if (daysSince(env.today, s.joined) > (s8(s.b59) + 21) * 10 && s16(env.clubRep(s.club)) < 7750 && s16(env.clubRep(s.club)) + 750 < crep) return true;
+  }
   if (crep > 7750) {
     let v = s16(W(env, c)); if (v > 8250) v = s16(8250 - ftol((v - 8250) * -1.1));
     if (s.club) {
@@ -525,8 +576,9 @@ export function setSeasonExpectations(env: BoardEnv, st: CmBoardState, c: number
   R.b0 = 0;
   const m = env.manager(c);
   const ch = env.chair(c);
+  const nat = !!env.isNat?.(c);
   // (a) fyringskø for "gamle" managere
-  if (!(R.b2 & 1) && m) {
+  if (!(R.b2 & 1) && m && !nat) {
     days = daysSince(env.today, m.joined);
     const conf = s16(R.w6);
     let add = false;
@@ -534,10 +586,18 @@ export function setSeasonExpectations(env: BoardEnv, st: CmBoardState, c: number
     else if (days > 1825 && conf < 3000) { const r = rand(20); add = ch ? r > s8(ch.b1d) : r > 10; }
     if (add) st.dep.push({ type: 1, reason: 6, club: c });
   }
-  // (c) klub (landsholdene findes ikke som klubber i spillet)
-  const [cl, uefa] = env.nationPlaces(c);
+  // (b) landsholdet (A-holdet): forventningen er den aktuelle turnerings vtable +0x70, +0x2c = turneringen (−1 = ingen) – derefter REP
+  if (nat) {
+    const cc = env.natComp?.(c) ?? null;
+    F = cc ? cc.f : 0; t = cc ? cc.t : -1;
+    R.e = F & 0xffff; R.t2c = t;
+    if (postNews) env.news({ t: 'faExpect', club: c, code: s16(F), comp: t });
+  }
+  // (c) klub
+  const [cl, uefa] = nat ? [1, 1] : env.nationPlaces(c);
   let skipRep = false;
-  if (m) {
+  if (nat) { /* REP */ }
+  else if (m) {
     const div = env.division(c);
     const L = div ? env.league(div) : null;
     if (!div || !L || !env.activeLeague(c)) {
@@ -607,7 +667,7 @@ export function setSeasonExpectations(env: BoardEnv, st: CmBoardState, c: number
     R.wa = s16(ftol((s16(R.wa) * 5.0 + 25000.0) * 0.1));
     R.wc = s16(ftol((s16(R.wc) * 5.0 + 25000.0) * 0.1));
   }
-  R.b1 = env.wealthBand(c);
+  R.b1 = nat ? 0 : env.wealthBand(c);
   if (m && m.np && s16(m.rep[1]) < rep) {
     m.rep[1] = s16(m.rep[1] - ftol((rep - s16(m.rep[1])) * -0.1)); if (s16(m.rep[1]) > 10000) m.rep[1] = 10000;
     m.rep[2] = s16(m.rep[2] - ftol((rep - s16(m.rep[2])) * -0.05)); if (s16(m.rep[2]) > 10000) m.rep[2] = 10000;
@@ -622,7 +682,9 @@ export function setSeasonExpectations(env: BoardEnv, st: CmBoardState, c: number
 
 export function addVacancy(env: BoardEnv, st: CmBoardState, c: number, prev: Person | null, rand: Rand): void {
   const crep = s16(env.clubRep(c));
-  if (!env.division(c) && crep < 5000) return;
+  const nat = !!env.isNat?.(c);
+  if (!nat && !env.division(c) && crep < 5000) return;
+  if (nat && (env.natPlayers?.(c) ?? 0) <= 100) return;                    // A-holdet: nation +0x88 ≤ 100 → ingen ledighed
   const e: Vacancy = { altFound: 0, rumourDone: 0, alt: -1, cand: -1, prev: prev ? prev.id : -1, club: c, score: 0, date1: { day: 40, year: 1972 }, date2: { day: 40, year: 1972 } };
   let best = -1000000;
   const R = recOf(st, c);
@@ -633,12 +695,14 @@ export function addVacancy(env: BoardEnv, st: CmBoardState, c: number, prev: Per
   // FASE 1
   for (const s of persons) {
     if (prev && s.id === prev.id) continue;
+    if (s.human && nat && s.nation !== cn && s16(s.rep[2]) < 4000) continue;
     if (s.human && !env.canBeManaged(c)) continue;
     if (isVacancyCandidate(st, s)) continue;
     if (cn < 0 || s.nation < 0) continue;
     if (cn !== s.nation && s16(s.rep[1]) < 3750) continue;
     if (env.nat75(cn) !== env.nat75(s.nation)) { if (s16(s.rep[2]) < 4250) continue; if (crep < 4750) continue; }
     if (!suitable(env, s, c, 3.5)) continue;
+    if (nat && s.job !== 5) continue;                                     // landsholdet tager kun managere (klubjobbet +0x3d)
     const v = scoreStaffForJob(env, s, c, 5);
     if (v > best) { e.cand = s.id; e.score = best; best = v; }
   }
@@ -653,7 +717,8 @@ export function addVacancy(env: BoardEnv, st: CmBoardState, c: number, prev: Per
         const s = ai[k];
         if (![0, 5, 6, 7, 8, 11, 12, 15].includes(s.job)) continue;
         if (isVacancyCandidate(st, s)) continue;
-        if (s.club && (env.activeLeague(s.club) || s16(env.clubRep(s.club)) > 6500) && s.job === 5) continue;
+        if (s.nat && s.natJob === 5) continue;
+        if (!nat && s.club && (env.activeLeague(s.club) || s16(env.clubRep(s.club)) > 6500) && s.job === 5) continue;
         e.cand = s.id; e.score = 100; found = true; break;
       }
       if (!found) return;
@@ -661,7 +726,7 @@ export function addVacancy(env: BoardEnv, st: CmBoardState, c: number, prev: Per
   }
   // FASE 2: rygtekandidaten
   e.altFound = 0; e.rumourDone = 0; e.alt = -1;
-  if (crep > 4500 && crep > rand(2000) + 4500) {
+  if (nat || (crep > 4500 && crep > rand(2000) + 4500)) {
     let best2 = -1000000;
     const n = persons.length;
     for (let k = 0; k < n; k++) {
@@ -693,14 +758,14 @@ export function addVacancy(env: BoardEnv, st: CmBoardState, c: number, prev: Per
   if (s16(e.date1.day) > 364) { e.date1.day = rand(5) + 4; e.date1.year++; }
   st.vac.push(e);
   if (env.manager(c)) return;
-  if (!env.canBeManaged(c)) return;
+  if (!env.canBeManaged(c) || nat) return;
   for (const h of persons) if (h.human && env.humanOnHolidaySearching(h) && (!h.club || s16(env.clubRep(h.club)) < crep)) applyForJob(env, st, c, h, rand);
 }
 
 // ---------------------------------------------------------------- 0x69ca00 apply_for_job
 
 export function applyForJob(env: BoardEnv, st: CmBoardState, c: number, a: Person, rand: Rand): void {
-  if (a.club && rand(4) !== 0) {
+  if (a.club && rand(4) !== 0 && !env.isNat?.(c)) {
     if (daysSince(env.today, a.joined) < 180) {
       if (s8(a.b59) > 1) a.b59--;
       if (rand(tdiv(s8(a.b59), 3)) === 0) env.news({ t: 'boardMemo', human: a, employer: a.club, target: c });
@@ -733,6 +798,8 @@ export function applyForJob(env: BoardEnv, st: CmBoardState, c: number, a: Perso
 
 function jobOfferToHuman(env: BoardEnv, st: CmBoardState, c: number, h: Person, rand: Rand): void {
   if (env.manager(c)) return;
+  // landsholdet: ingen forventninger og intet budget (slot 2 = 0, slot 3 = −1, slot 4 = 0)
+  if (env.isNat?.(c)) { env.news({ t: 'jobOffer', club: c, human: h, budget: 0, flags: -1, variant: 0 }); return; }
   const R = recOf(st, c);
   R.d38 = 0;
   const budget = env.transferBudget(c);
@@ -815,17 +882,24 @@ export function boardDaily(env: BoardEnv, st: CmBoardState, rand: Rand, weeklyFn
       }
       if (!s || !s.np) { R.d20 = { ...NULLDATE }; removeE(); addVacancy(env, st, e.club, s, rand); step(); continue; }
       if (env.manager(e.club) || env.underOffer(s)) { R.d20 = { ...NULLDATE }; removeE(); step(); continue; }
-      // UDNÆVNELSEN
-      const old = s.club || 0;
+      // UDNÆVNELSEN (inline i 0x68f9c0 – landsholdene: den gamle post er landsholdet, eller klubben, når landsholdets omdømme > 6000)
+      const isN = !!env.isNat?.(e.club);
+      let old = 0;
+      if (isN && s.nat && s.natJob !== 11) old = s.nat;
+      else if (!isN && s.club) old = s.club;
+      else if (isN && s16(env.clubRep(e.club)) > 6000) old = s.club || 0;
       if (old) {
         const om = env.manager(old);
         if (om && om.id === s.id && env.canBeManaged(old)) { setSeasonExpectations(env, st, old, true, rand); addVacancy(env, st, old, s, rand); }
       }
       R.d20 = { ...NULLDATE };
-      env.news({ t: 'appointed', club: e.club, manager: s, prev: old, kind: old && s.job === 5 ? 3 : 2 });
-      s.joined = { ...today };
+      // jobtypen til nyheden 0x6a2e00 (0x6906a4/0x6906fc): klubben efter klubjobbet, landsholdet efter landsholdsjobbet
+      const nj = s8(s.natJob ?? 0);
+      const kind = !old ? 2 : !isN ? (s.job === 5 ? 3 : 2) : nj === 5 ? 3 : nj === 11 ? 1 : 2;
+      env.news({ t: 'appointed', club: e.club, manager: s, prev: old, kind });
+      if (!isN) s.joined = { ...today };
       env.setManager(e.club, s, old);
-      R.b1 = env.wealthBand(e.club);
+      R.b1 = isN ? 0 : env.wealthBand(e.club);
       removeE();
       resetForNewManager(env, st, e.club, rand);
       step(); continue;
@@ -876,6 +950,8 @@ export interface MatchIn {
   /** derby: samme by / rivaler / afstand */
   derby: (club: number, opp: number) => 0 | 0x40 | 0x80;
   venueHome: boolean;                        // spillestedet er hjemmeholdets stadion
+  /** landskampe: spillestedets by +0x1f (nationen, −1 = ukendt/intet stadion) */
+  venueNation?: number;
   sides: [MatchSide, MatchSide] | null;
 }
 
@@ -892,9 +968,10 @@ function afterMatchSide(env: BoardEnv, st: CmBoardState, m: MatchIn, isHome: boo
   const crep = s16(env.clubRep(club)), orep = s16(env.clubRep(opp));
   let dflt = 0.5, w: number;
   const isDiv = m.isDivision(club);
+  const nat = !!env.isNat?.(club);
   if (m.compRep === null) w = 0.01;
   else if (!m.inContention(club)) w = 0.2;
-  else if (m.friendly) w = 0.05;
+  else if (m.friendly) w = env.isNat?.(m.home) ? 0.67 : 0.05;
   else if (isDiv) { dflt = s16(m.compRep) * 0.06 + 0.27; w = 1.0; }
   else {
     const x = Math.abs(s16(m.compRep) * 500 - crep);
@@ -903,7 +980,12 @@ function afterMatchSide(env: BoardEnv, st: CmBoardState, m: MatchIn, isHome: boo
     switch (s16(m.w30)) { case 120: w *= 1.25; break; case 130: w *= 1.5; break; case 140: w *= 0.75; break; case 150: w *= 2; break; case 160: w *= 2; break; }
   }
   // spillestedet
-  let delta = isHome ? (m.venueHome ? -20 : 0) : (m.venueHome ? (env.clubNation(opp) !== env.clubNation(club) ? 30 : 20) : 0);
+  let delta: number;
+  if (nat) {
+    // 0x6953c0 (landshold): spillestedets by i holdets land → −20, i modstanderens → +20 (landsholdenes egne stadioner er i landet)
+    const v = m.venueNation ?? -1;
+    delta = v >= 0 && v === env.clubNation(club) ? -20 : v >= 0 && v === env.clubNation(opp) ? 20 : 0;
+  } else delta = isHome ? (m.venueHome ? -20 : 0) : (m.venueHome ? (env.clubNation(opp) !== env.clubNation(club) ? 30 : 20) : 0);
   let S: number;
   if (m.sides) {
     const own = m.sides[away ? 1 : 0], O = m.sides[isHome ? 1 : 0];
@@ -969,7 +1051,7 @@ function afterMatchSide(env: BoardEnv, st: CmBoardState, m: MatchIn, isHome: boo
   flags |= m.derby(club, opp);
   if (flags & 0x40) { w *= 2.25; if (flags & 0x800) delta += 12; else if (flags & 0x1000) delta -= 12; }
   else if (flags & 0x80) { w *= 1.5; if (flags & 0x800) delta += 5; else if (flags & 0x1000) delta -= 5; }
-  let f = w;
+  let f = nat ? 2 * w : w;                                              // 0x5409b0 (U21: ·0,5) / 0x53b900 (A-holdet: ·2)
   if (m.b3a === 8) {
     if (R.e & 0x400) { f *= 2; if (s16(delta) < 0) delta = ftol(s16(delta) * 1.5); }
     else f *= 1.5;
@@ -1100,8 +1182,9 @@ export function considerDeparture(env: BoardEnv, st: CmBoardState, c: number, lo
     }
     return false;
   };
+  const natOrDiv = !!div || !!env.isNat?.(c);
   if (ch) {
-    if (div && rand(s8(ch.b1d)) < 5 && rand(20) !== 0) {
+    if (natOrDiv && rand(s8(ch.b1d)) < 5 && rand(20) !== 0) {
       if (compare()) return;
       if (m.np) { m.rep[1] = s16(m.rep[1] - 250); if (s16(m.rep[1]) < 1500) m.rep[1] = 1500; }
     } else {
@@ -1109,15 +1192,70 @@ export function considerDeparture(env: BoardEnv, st: CmBoardState, c: number, lo
       return;
     }
   } else {
-    if (div && rand(3) === 0) { if (compare()) return; }
+    if (natOrDiv && rand(3) === 0) { if (compare()) return; }
     if (m.np) { m.rep[1] = s16(m.rep[1] - 250); if (s16(m.rep[1]) < 1) m.rep[1] = 1; }
   }
   st.dep.push({ type: 1, reason: departureReason(env, st, c, rand), club: c });
   R.b2 |= 2;
 }
 
+/** 0x6a5610 review_national_team_performance(comp, landsholdet) – kaldt af NationalTeams 0x775420, når en slutrunde er færdig (VM/EM:
+ *  record_season_honours 0x92d310/0x57b730): `grade` = turneringens vtable +0x74 (get_qualification_status_change, −3..3). Forbundets tillid
+ *  (+6) flyttes og klemmes, vurderingen sendes (0x6a5a60, ikke ved 1), og efter mange år eller et dårligt resultat fyres landstræneren (afgang
+ *  type 1, grund 6/0) eller fyringsovervejelsen 0x69aba0 køres. */
+export function reviewNational(env: BoardEnv, st: CmBoardState, c: number, comp: number, grade: number, rand: Rand): void {
+  const m = env.manager(c);
+  if (!m) return;
+  const R = recOf(st, c);
+  const days = daysSince(env.today, m.joined);                         // m +0x3e (klubjobbets dato)
+  if (days < 365 && s16(R.w6) < 6500) R.w6 = 6500;
+  const crep = s16(env.clubRep(c));
+  const dep = (reason: number) => { st.dep.push({ type: 1, reason, club: c }); };
+  const news = (gr: number) => env.news({ t: 'faReview', club: c, grade: gr, comp });
+  const clamp = (hi: number, lo: number) => { if (s16(R.w6) > hi) R.w6 = hi; else if (s16(R.w6) < lo) R.w6 = lo; };
+  switch (s8(grade)) {
+    case 3: R.w6 = s16(R.w6 + 1250); if (s16(R.w6) > 10000) R.w6 = 10000; if (s16(R.w6) < 8500) R.w6 = 8500; news(3); return;
+    case 2:
+      R.w6 = s16(R.w6 + 750); if (s16(R.w6) > 10000) R.w6 = 10000; if (s16(R.w6) < 6500) R.w6 = 6500;
+      news(2);
+      if (env.isHumanClub(c) || days <= 3650) return;
+      if (s16(rand(15000) + 3750) < crep) dep(6);
+      return;
+    case 1: return;
+    case 0:
+      R.w6 = s16(R.w6 - 250);
+      if (s16(R.e) !== -3) return;
+      R.w6 = 3500;
+      news(0);
+      if (days > 3650) { dep(6); return; }
+      if (crep <= 6750 || days <= 1460) return;
+      if (rand(15000) >= crep) considerDeparture(env, st, c, false, rand); else dep(6);
+      return;
+    case -1:
+      R.w6 = s16(R.w6 - 750); clamp(3500, 1);
+      news(-1);
+      if (days > 1460) { dep(6); return; }
+      if (days <= 730) return;
+      if (rand(20000) >= crep) considerDeparture(env, st, c, false, rand); else dep(0);
+      return;
+    case -2:
+      R.w6 = s16(R.w6 - 1250); clamp(3000, 1);
+      news(-2);
+      if (days > 730) { dep(0); return; }
+      if (s16(rand(15000) + 1250) >= crep) considerDeparture(env, st, c, false, rand); else dep(0);
+      return;
+    case -3:
+      R.w6 = s16(R.w6 - 1750); clamp(3000, 1);
+      news(-3);
+      dep(0);
+      return;
+    default: return;
+  }
+}
+
 /** 0x69b350 get_departure_reason (0..11) */
 function departureReason(env: BoardEnv, st: CmBoardState, c: number, rand: Rand): number {
+  if (env.isNat?.(c)) return 0;
   const R = recOf(st, c);
   const inSeason = env.inSeason(c);
   const run = currentRun(env, c);
@@ -1243,7 +1381,7 @@ export const humanAppointRep = (clubRep: number): [number, number, number] => {
 
 /** hver 7. dag (dag-i-året % 7 = 0): alle klubber med manager (med ikke-spillerpost), der kan styres. Mediehistorierne (0x74b060: 0x5a/0x44/0x5b/
  *  0x5d/0x42/0x5f–0x63/0x40/0x41/0x5e/0x3e/0x3f/0x3c) er ikke porteret – deres tilfældige tal trækkes ikke, og FINAL-grenens +0x16 −= 250 (kræver
- *  0x4ae300's projektion) mangler; landsholdsgrenen findes ikke (ingen landshold som klubber). */
+ *  0x4ae300's projektion) mangler. Landsholdene (A-holdene med verdensdel): trin 1 og PART2 uden formuebånd (medieteksterne 0x5a/0x44 ikke porteret). */
 export function weeklyUpdate(env: BoardEnv, st: CmBoardState, rand: Rand): void {
   for (const c of env.clubs) {
     const m = env.manager(c);
@@ -1264,6 +1402,7 @@ export function weeklyUpdate(env: BoardEnv, st: CmBoardState, rand: Rand): void 
     if (s16(R.w8) > 10000) R.w8 = 10000; else if (s16(R.w8) < 0) R.w8 = 0;
     if (!(R.b2 & 0x0d)) {
       weeklyRep(env, c, m, dconf);
+      if (env.isNat?.(c)) continue;                                      // §17 kun klubhold (0x69a8a7)
       // §17 formuebåndet mod sæsonstartens (+1); club +0x82 findes ikke i spillet (0)
       const wb = env.wealthBand(c), sb = s8(R.b1), crep = s16(env.clubRep(c));
       const add = (a: number, b: number) => { R.w6 = s16(R.w6 + a); R.w10 = s16(R.w10 + b); };
@@ -1433,8 +1572,9 @@ function weeklyRep(env: BoardEnv, c: number, m: Person, d: number): void {
   const tA = band(wa + u, 3000, 3000, wa), tH = band(wh + u, 3000, 3000, s16(wh + u)), tC = band(wc + u, 1000, 5000, s16(wc + u));
   const kk = (v: number) => Math.max(22, s8(tdiv(v, 1000) + 16));
   let nA = s16(kk(wa) - 19); if (nA === 0) nA = 1;
-  let nH = env.clubNation(c) !== m.nation ? s16(23 - tdiv(rep, 500)) : s16(kk(wh) - 19); if (nH === 0) nH = 1;
-  let nC = s16(23 - tdiv(rep, 500)); if (nC === 0) nC = 1;
+  const nat = !!env.isNat?.(c);
+  let nH = !nat && env.clubNation(c) !== m.nation ? s16(23 - tdiv(rep, 500)) : s16(kk(wh) - 19); if (nH === 0) nH = 1;
+  let nC = nat ? s16(kk(wc) - 19) : s16(23 - tdiv(rep, 500)); if (nC === 0) nC = 1;
   const qA = tdiv((nA - 1) * wa + tA, nA), qH = tdiv((nH - 1) * wh + tH, nH), qC = tdiv((nC - 1) * wc + tC, nC);
   const fA = f32(2.0 - wa * 0.0001), fH = f32(2.0 - wh * 0.0001), fC = 2.0 - wc * 0.0001;
   const bnd = (Lo: number, U: number, q: number) => (Lo > q ? Lo : U < q ? U : q);

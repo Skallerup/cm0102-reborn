@@ -41,6 +41,7 @@ import { cmEuroOn, cmEuroRestoreNext, cmSetupEurope } from './cmEurope';
 import { compHooks } from './hooks';
 import { cmFitNewGame } from './cmFitnessGame';
 import './cmIntl';                                              // landskampkalenderen i ægte tilstand (intlHooks, registerPrerun 'comps1')
+import './cmNatTeams';                                          // landstrænerne i bestyrelsessystemet (intlHooks.ntStart/ntEnd/boardMatch …)
 import './cmPrerunMatches';                                      // forkørslens konkurrencekampe (registerPrerun 'matches')
 import './cmFriendly';                                              // forkørslens venskabskampe (registerPrerun 'comps1')
 import { cmRelNewGame } from './cmRelations';

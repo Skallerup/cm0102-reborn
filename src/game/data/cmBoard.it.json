@@ -299,7 +299,11 @@
   "difficult": "La dirigenza prevede una stagione difficile",
   "look": "La dirigenza guarda con fiducia alla nuova stagione",
   "announce": "La dirigenza annuncia le aspettative",
-  "confidence": "Aggiornamento sulla fiducia della dirigenza"
+  "confidence": "Aggiornamento sulla fiducia della dirigenza",
+  "faExp": "La federazione annuncia le aspettative",
+  "faConf": "Aggiornamento sulla fiducia della federazione",
+  "faPerf": "Valutazione della {national} FA",
+  "faOffer": "{nation} ti offre il posto di commissario tecnico"
  },
  "faConf": [
   "La {national} Football Association è entusiasta del tuo rendimento come allenatore.",
@@ -492,5 +496,48 @@
    "I dirigenti del {club} si aspettano che il club ottenga successi in coppa e lotti con coraggio contro la retrocessione in questa stagione."
   ],
   "improve": "I dirigenti del {club} si aspettano che tu migliori la rosa del club durante questa stagione."
+ },
+ "faComp": {
+  "wc": "Coppa del Mondo FIFA",
+  "euro": "Campionato Europeo",
+  "euroq": "qualificazioni al Campionato Europeo"
+ },
+ "faExp": {
+  "u21": "La {national} Football Association si aspetta che tu faccia crescere le stelle del futuro nelle prossime amichevoli.",
+  "friendly": "La {national} Football Association si aspetta che la squadra difenda l'onore del paese nelle prossime amichevoli.",
+  "win": "La {national} Football Association si aspetta che la squadra vinca: {comp}.",
+  "qualFrom": "La {national} Football Association si aspetta che la squadra superi il turno: {comp}.",
+  "qualFor": "La {national} Football Association si aspetta che la squadra si qualifichi: {comp}.",
+  "hopeQualFrom": "La {national} Football Association spera che la squadra superi il turno: {comp}.",
+  "secondPhase": "La {national} Football Association spera che la squadra raggiunga la seconda fase: {comp}.",
+  "secondRound": "La {national} Football Association spera che la squadra raggiunga il secondo turno: {comp}.",
+  "qf": "La {national} Football Association spera che la squadra raggiunga i quarti di finale: {comp}.",
+  "sf": "La {national} Football Association spera che la squadra raggiunga le semifinali: {comp}.",
+  "hopeWin": "La {national} Football Association spera che la squadra vinca: {comp}.",
+  "perform": "La {national} Football Association spera che la squadra faccia bella figura: {comp}."
+ },
+ "faPerf": [
+  "La {national} Football Association è entusiasta del tuo lavoro come commissario tecnico ({comp}).",
+  "La {national} Football Association è molto soddisfatta del tuo lavoro come commissario tecnico ({comp}).",
+  "La {national} Football Association è soddisfatta del tuo lavoro come commissario tecnico ({comp}).",
+  "La {national} Football Association è poco soddisfatta del tuo lavoro come commissario tecnico ({comp}).",
+  "La {national} Football Association è delusa del tuo lavoro come commissario tecnico ({comp}).",
+  "La {national} Football Association è molto delusa del tuo lavoro come commissario tecnico ({comp})."
+ ],
+ "faOffer": [
+  "La {national} Football Association ti offre il posto di commissario tecnico.\n\nAttende che tu accetti l'offerta.",
+  "La {national} Football Association ti offre il posto di commissario tecnico.\n\nAttende che tu accetti l'offerta.\n\nHai accettato l'offerta.",
+  "La {national} Football Association ti offre il posto di commissario tecnico.\n\nAttende che tu accetti l'offerta.\n\nHai rifiutato l'offerta."
+ ],
+ "faDep": {
+  "tSack": "{nation}: esonerato il commissario tecnico {m}",
+  "tResign": "{m} si dimette da commissario tecnico di {nation}",
+  "tRetire": "{nation}: il commissario tecnico {m} si ritira",
+  "resign": "{m} si è dimesso da commissario tecnico di {nation}.\n\nLa {national} Football Association sta ora cercando attivamente un sostituto.",
+  "retire": "{m} si è ritirato dal ruolo di commissario tecnico di {nation}.\n\nLa {national} Football Association sta ora cercando attivamente un sostituto.",
+  "sack": "{m} è stato esonerato dal ruolo di commissario tecnico dalla {national} Football Association.",
+  "relieved": "{m} è stato sollevato dall'incarico di commissario tecnico di {nation}.\n\nLa {national} Football Association riteneva che fosse il momento di cambiare e sta ora cercando attivamente un sostituto.",
+  "pressure": "A causa delle enormi pressioni dei tifosi, {m} è stato esonerato dal ruolo di commissario tecnico dalla {national} Football Association.",
+  "poor": "Dopo una serie di cattivi risultati, {m} è stato esonerato dal ruolo di commissario tecnico dalla {national} Football Association."
  }
 }

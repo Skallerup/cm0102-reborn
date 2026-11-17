@@ -299,7 +299,11 @@
   "difficult": "Styret venter en vanskelig sesong",
   "look": "Styret ser frem til den nye sesongen",
   "announce": "Styret kunngjør forventninger",
-  "confidence": "Oppdatering om styrets tillit"
+  "confidence": "Oppdatering om styrets tillit",
+  "faExp": "Fotballforbundet kunngjør forventninger",
+  "faConf": "Oppdatering om fotballforbundets tillit",
+  "faPerf": "{national} FAs vurdering av innsatsen din",
+  "faOffer": "{nation} tilbyr deg jobben som manager"
  },
  "faConf": [
   "{national} fotballforbund er henrykt over innsatsen din som manager.",
@@ -492,5 +496,48 @@
    "Styremedlemmene i {club} forventer at klubben oppnår cupsuksess og kjemper tappert mot nedrykk denne sesongen."
   ],
   "improve": "Styremedlemmene i {club} forventer at du forbedrer klubbens tropp i løpet av denne sesongen."
+ },
+ "faComp": {
+  "wc": "VM",
+  "euro": "EM",
+  "euroq": "EM-kvalifiseringen"
+ },
+ "faExp": {
+  "u21": "{national} fotballforbund forventer at du utvikler fremtidens stjerner i de kommende vennskapskampene.",
+  "friendly": "{national} fotballforbund forventer at laget forsvarer landets ære i de kommende vennskapskampene.",
+  "win": "{national} fotballforbund forventer at laget vinner {comp}.",
+  "qualFrom": "{national} fotballforbund forventer at laget går videre fra {comp}.",
+  "qualFor": "{national} fotballforbund forventer at laget kvalifiserer seg til {comp}.",
+  "hopeQualFrom": "{national} fotballforbund håper at laget går videre fra {comp}.",
+  "secondPhase": "{national} fotballforbund håper at laget kvalifiserer seg til andre fase av {comp}.",
+  "secondRound": "{national} fotballforbund håper at laget når andre runde av {comp}.",
+  "qf": "{national} fotballforbund håper at laget når kvartfinalene i {comp}.",
+  "sf": "{national} fotballforbund håper at laget når semifinalene i {comp}.",
+  "hopeWin": "{national} fotballforbund håper at laget vinner {comp}.",
+  "perform": "{national} fotballforbund håper at laget gjør det bra i {comp}."
+ },
+ "faPerf": [
+  "{national} fotballforbund er henrykt over innsatsen din som manager i {comp}.",
+  "{national} fotballforbund er svært fornøyd med innsatsen din som manager i {comp}.",
+  "{national} fotballforbund er fornøyd med innsatsen din som manager i {comp}.",
+  "{national} fotballforbund er mindre enn fornøyd med innsatsen din som manager i {comp}.",
+  "{national} fotballforbund er skuffet over innsatsen din som manager i {comp}.",
+  "{national} fotballforbund er svært skuffet over innsatsen din som manager i {comp}."
+ ],
+ "faOffer": [
+  "{national} fotballforbund tilbyr deg jobben som manager.\n\nDe venter på at du takker ja til jobbtilbudet.",
+  "{national} fotballforbund tilbyr deg jobben som manager.\n\nDe venter på at du takker ja til jobbtilbudet.\n\nDu har takket ja til jobbtilbudet.",
+  "{national} fotballforbund tilbyr deg jobben som manager.\n\nDe venter på at du takker ja til jobbtilbudet.\n\nDu har takket nei til jobbtilbudet."
+ ],
+ "faDep": {
+  "tSack": "{nation}s manager {m} sparket",
+  "tResign": "{m} går av som manager for {nation}",
+  "tRetire": "{nation}s manager {m} går av med pensjon",
+  "resign": "{m} har gått av som manager for {nation}.\n\n{national} fotballforbund leter nå aktivt etter en erstatter.",
+  "retire": "{m} har gått av med pensjon fra jobben som manager for {nation}.\n\n{national} fotballforbund leter nå aktivt etter en erstatter.",
+  "sack": "{m} har fått sparken som landslagstrener av {national} fotballforbund.",
+  "relieved": "{m} har blitt fritatt fra jobben som manager for {nation}.\n\n{national} fotballforbund mente at det var på tide med en endring, og leter nå aktivt etter en erstatter.",
+  "pressure": "På grunn av massivt press fra supporterne har {m} fått sparken som landslagstrener av {national} fotballforbund.",
+  "poor": "Etter en rekke dårlige resultater har {m} fått sparken som landslagstrener av {national} fotballforbund."
  }
 }

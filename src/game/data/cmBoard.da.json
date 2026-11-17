@@ -299,7 +299,11 @@
   "difficult": "Bestyrelsen forventer en vanskelig sæson",
   "look": "Bestyrelsen ser frem til den nye sæson",
   "announce": "Bestyrelsen offentliggør forventninger",
-  "confidence": "Opdatering af bestyrelsens tillid"
+  "confidence": "Opdatering af bestyrelsens tillid",
+  "faExp": "Fodboldforbundet offentliggør forventninger",
+  "faConf": "Opdatering af fodboldforbundets tillid",
+  "faPerf": "{national} FA's vurdering af din indsats",
+  "faOffer": "{nation} tilbyder dig jobbet som manager"
  },
  "faConf": [
   "Det {national} fodboldforbund er henrykt med din indsats som manager.",
@@ -492,5 +496,48 @@
    "Bestyrelsen i {club} forventer, at klubben opnår pokalsucces og kæmper tappert mod nedrykning i denne sæson."
   ],
   "improve": "Bestyrelsen i {club} forventer, at du forbedrer klubbens trup i løbet af denne sæson."
+ },
+ "faComp": {
+  "wc": "VM",
+  "euro": "EM",
+  "euroq": "EM-kvalifikationen"
+ },
+ "faExp": {
+  "u21": "Det {national} fodboldforbund forventer, at du udvikler fremtidens stjerner i de kommende venskabskampe.",
+  "friendly": "Det {national} fodboldforbund forventer, at holdet forsvarer landets ære i de kommende venskabskampe.",
+  "win": "Det {national} fodboldforbund forventer, at holdet vinder {comp}.",
+  "qualFrom": "Det {national} fodboldforbund forventer, at holdet kvalificerer sig fra {comp}.",
+  "qualFor": "Det {national} fodboldforbund forventer, at holdet kvalificerer sig til {comp}.",
+  "hopeQualFrom": "Det {national} fodboldforbund håber, at holdet kvalificerer sig fra {comp}.",
+  "secondPhase": "Det {national} fodboldforbund håber, at holdet kvalificerer sig til anden fase af {comp}.",
+  "secondRound": "Det {national} fodboldforbund håber, at holdet når anden runde af {comp}.",
+  "qf": "Det {national} fodboldforbund håber, at holdet når kvartfinalerne ved {comp}.",
+  "sf": "Det {national} fodboldforbund håber, at holdet når semifinalerne ved {comp}.",
+  "hopeWin": "Det {national} fodboldforbund håber, at holdet vinder {comp}.",
+  "perform": "Det {national} fodboldforbund håber, at holdet klarer sig godt ved {comp}."
+ },
+ "faPerf": [
+  "Det {national} fodboldforbund er henrykt med din indsats som manager ved {comp}.",
+  "Det {national} fodboldforbund er meget tilfreds med din indsats som manager ved {comp}.",
+  "Det {national} fodboldforbund er tilfreds med din indsats som manager ved {comp}.",
+  "Det {national} fodboldforbund er mindre end tilfreds med din indsats som manager ved {comp}.",
+  "Det {national} fodboldforbund er skuffet med din indsats som manager ved {comp}.",
+  "Det {national} fodboldforbund er meget skuffet med din indsats som manager ved {comp}."
+ ],
+ "faOffer": [
+  "Det {national} fodboldforbund tilbyder dig jobbet som manager.\n\nDe venter på, at du accepterer jobtilbuddet.",
+  "Det {national} fodboldforbund tilbyder dig jobbet som manager.\n\nDe venter på, at du accepterer jobtilbuddet.\n\nDu har accepteret jobtilbuddet.",
+  "Det {national} fodboldforbund tilbyder dig jobbet som manager.\n\nDe venter på, at du accepterer jobtilbuddet.\n\nDu har afslået jobtilbuddet."
+ ],
+ "faDep": {
+  "tSack": "{nation}s manager {m} fyret",
+  "tResign": "{m} træder tilbage som manager for {nation}",
+  "tRetire": "{nation}s manager {m} går på pension",
+  "resign": "{m} er trådt tilbage som manager for {nation}.\n\nDet {national} fodboldforbund leder nu aktivt efter en afløser.",
+  "retire": "{m} er gået på pension fra jobbet som manager for {nation}.\n\nDet {national} fodboldforbund leder nu aktivt efter en afløser.",
+  "sack": "{m} er blevet fyret som landstræner af det {national} fodboldforbund.",
+  "relieved": "{m} er blevet fritaget for jobbet som manager for {nation}.\n\nDet {national} fodboldforbund mente, at tiden var inde til en forandring, og leder nu aktivt efter en afløser.",
+  "pressure": "På grund af massivt pres fra tilhængerne er {m} blevet fyret som landstræner af det {national} fodboldforbund.",
+  "poor": "Efter en række dårlige resultater er {m} blevet fyret som landstræner af det {national} fodboldforbund."
  }
 }

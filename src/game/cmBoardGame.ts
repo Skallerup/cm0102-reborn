@@ -29,7 +29,7 @@ import { fixtureCodesOf } from './engine/grid/gameInputs';
 import {
   type BoardEnv, type BoardNews, type BoardRec, type CmBoardState, type CmDate, type LeagueInfo, type MatchIn, type Person, type StatsEntry,
   HUMAN0, addVacancy, after, afterMatch, currentRun, daysSince, leagueBand, s8, applyForJob, boardDaily, cmToIso, confidenceBand, initRecords, initStaffRep, humanAppointRep, isoToCm, resetForNewManager,
-  setSeasonExpectations, s16, weeklyUpdate, managerRepAfterMatch, newRec,
+  setSeasonExpectations, s16, weeklyUpdate, managerRepAfterMatch, newRec, reviewNational,
 } from './cmBoard';
 import type { CMWorld } from './data/cm0102';
 import { appointText, boardCmText, confidenceText, type BoardCmDesc, type ConfidenceIn } from './cmBoardText';
@@ -41,6 +41,9 @@ import { personKey } from './cmRelations';
 import { cmClubEuro } from './cmFitnessGame';
 import { cmFineReset, cmFineSeasonHalve } from './cmFine';
 import { clubNewsToMe, cmForeign } from './cmNewsScope';
+import { natClub, natClubId, natOfClub, resetNationalManagers } from './cmVirtual';
+import { DEMONYM } from '../ui/demonyms';
+import { natCompHook } from './hooks';
 
 const GBP = 0.86;
 const dayNum = (iso: string) => Math.round(Date.parse(iso + 'T00:00:00Z') / 86400000);
@@ -54,14 +57,26 @@ export function cmBoardOn(g: GameState): boolean {
 
 const JOB: Record<string, number> = { manager: 5, assistant: 6, coach: 8, scout: 9, physio: 10 };
 
-function staffPerson(_g: GameState, s: Staff, today: CmDate): Person {
+/** landstræneren (A-holdets manager) pr. nation og omvendt – bestyrelsens nm (sat ved spilstarten, ændret af udnævnelser og afgange) */
+function natOfStaff(g: GameState, id: number): number {
+  const nm = g.cmBoard?.nm;
+  if (!nm) return -1;
+  for (const k in nm) if (nm[k] === id) return +k;
+  return -1;
+}
+/** staff +0x3d uden klub: 0x68f130 giver personer uden klubjob landsholdsjobbet som klubjob (databasens +0x28, ikke 11) */
+const clublessJob = (s: Staff) => (s.cmNat && s.cmNat[1] !== 11 ? s.cmNat[1] : 0);
+
+function staffPerson(g: GameState, s: Staff, today: CmDate): Person {
   const hid = s.cmHid ?? [];
   const np = s.cmNp!;
   const rep = (s.cmRep ??= [1, 1, 1]);
   const p: Person = {
     id: s.id, human: false, np: true, nation: s.nation ?? -1,
     get club() { return s.club; }, set club(v: number) { s.club = v; },
-    get job() { return s.club ? JOB[s.role] ?? 8 : 0; }, set job(_v: number) { /* rollen sættes af setManager */ },
+    get job() { return s.club ? JOB[s.role] ?? 8 : clublessJob(s); }, set job(_v: number) { /* rollen sættes af setManager */ },
+    get nat() { const n = natOfStaff(g, s.id); return n >= 0 ? natClub(n) : 0; },
+    get natJob() { return g.cmBoard?.nj?.[s.id] ?? 0; },
     get joined() { return isoToCm(s.cmJoined || '1990-01-01'); }, set joined(d: CmDate) { s.cmJoined = cmToIso(d); },
     age: s.dob ? ageOn(s.dob, cmToIso(today)) : 45,
     get b59() { return hid[3] ?? 10; }, set b59(v: number) { hid[3] = v; },
@@ -78,6 +93,8 @@ function humanPerson(g: GameState, h: HumanRef): Person {
     id: HUMAN0 + h.k, human: true, np: true, nation: m().nation,
     get club() { return h.get().userClub; }, set club(_v: number) { /* */ },
     get job() { return h.get().userClub ? 5 : 0; }, set job(_v: number) { /* */ },
+    get nat() { const n = m().national?.nation; return n !== undefined ? natClub(n) : 0; },
+    get natJob() { return m().national ? 5 : 0; },
     get joined() { return isoToCm(m().cmJoined || g.date); }, set joined(d: CmDate) { m().cmJoined = cmToIso(d); },
     age: 40,
     get b59() { return m().cmB59 ?? 20; }, set b59(v: number) { m().cmB59 = v; },
@@ -180,44 +197,51 @@ export function boardEnv(g: GameState, todayIso = g.date, startIso?: string, laz
   const allPersons = () => {
     if (persons) return persons;
     persons = [];
-    for (const s of Object.values(g.staff).sort((a, b) => a.id - b.id)) if (s.cmNp && !s.cmExtra) { const p = staffPerson(g, s, today); persons.push(p); byId.set(p.id, p); }
+    // landstrænerne er med, også når de kun er i hukommelsen (cmExtra: uden klub i spillet) – originalens landshold har dem som manager
+    const natM = new Set(Object.values(g.cmBoard?.nm ?? {}));
+    for (const s of Object.values(g.staff).sort((a, b) => a.id - b.id)) if (s.cmNp && (!s.cmExtra || natM.has(s.id))) { const p = staffPerson(g, s, today); persons.push(p); byId.set(p.id, p); }
     for (const h of humanRefs(g)) { const p = humanPerson(g, h); persons.push(p); byId.set(p.id, p); }
     return persons;
   };
   const personOfStaff = (id: number) => { allPersons(); return byId.get(id) ?? null; };
   const humanOfClub = (c: number) => allPersons().find((p) => p.human && p.club === c) ?? null;
+  const humanOfNat = (n: number) => allPersons().find((p) => p.human && p.nat === natClub(n)) ?? null;
+  const natRep = (n: number) => g.intl?.info?.[n]?.rep ?? g.cmNationRep?.[n] ?? 0;
   const nationName = (n: number) => g.nations[n]?.name ?? '';
   // (hastighed, runde 14) med `lazy` rangeringen og klublisten først, når de bruges (ønskelisterne bygger et miljø pr. udbudspris)
   let rk: number[] | null = null, cl: number[] | null = null;
-  if (!lazy) { rk = nationRanking(); cl = Object.keys(g.clubs).map(Number).sort((a, b) => a - b); }
+  if (!lazy) { rk = nationRanking(); cl = clubList(g); }
   const ranking = () => (rk ??= nationRanking());
   let ie: InterestEnv | null = null;
   const env: BoardEnv = {
     today, gameStart,
-    get clubs() { return (cl ??= Object.keys(g.clubs).map(Number).sort((a, b) => a - b)); },
-    clubRep: (c) => clubRepMem(g, c),
-    clubNation: (c) => g.clubs[c]?.nation ?? -1,
+    get clubs() { return (cl ??= clubList(g)); },
+    clubRep: (c) => { const n = natOfClub(c); return n !== null ? natRep(n) : clubRepMem(g, c); },
+    clubNation: (c) => { const n = natOfClub(c); return n !== null ? n : g.clubs[c]?.nation ?? -1; },
     division: (c) => leagueOf(g, c),
-    lastDivision: (c) => { const ld = g.cmClubStat?.[c]?.[2]; return ld !== undefined && ld > 0 ? `CM${ld}` : leagueOf(g, c); },
+    lastDivision: (c) => { if (natOfClub(c) !== null) return null; const ld = g.cmClubStat?.[c]?.[2]; return ld !== undefined && ld > 0 ? `CM${ld}` : leagueOf(g, c); },
     divLevel: (div) => { const n = compNum(div); return n >= 0 ? g.cmCompRep?.[n] ?? 0 : 0; },
     league: (div) => leagueInfo(g, div),
-    canBeManaged: (c) => !!leagueOf(g, c) && g.activeNations.includes(g.clubs[c].nation),
+    canBeManaged: (c) => { const n = natOfClub(c); return n !== null ? natPlayers(g, n) > 150 : !!leagueOf(g, c) && g.activeNations.includes(g.clubs[c].nation); },
     activeLeague: (c) => !!leagueOf(g, c) && g.activeNations.includes(g.clubs[c].nation),
     entry: (c) => entryOf(g, c, today),
     euroEntry: () => null,
     nationPlaces: (c) => {
+      if (natOfClub(c) !== null) return [1, 1];
       const n = g.clubs[c]?.nation;
       if (n === undefined || !UEFA_NATIONS.has(nationName(n))) return [1, 1];
       const r = ranking().indexOf(n);
       return r < 0 ? [1, 1] : [CL_SPOTS[r] ?? 1, UEFA_SPOTS[r] ?? 1];
     },
     isAustralia: (c) => nationName(g.clubs[c]?.nation ?? -1) === 'Australia',
-    wealthBand: (c) => financeStatus(Math.round((g.clubs[c]?.balance ?? 0) * GBP), clubRepMem(g, c)),
+    wealthBand: (c) => natOfClub(c) !== null ? 0 : financeStatus(Math.round((g.clubs[c]?.balance ?? 0) * GBP), clubRepMem(g, c)),
     transferBudget: (c) => Math.round((g.clubs[c]?.transferBudget ?? 0) * GBP),
     balance: (c) => Math.round((g.clubs[c]?.balance ?? 0) * GBP),
     chair: (c) => { const x = g.cmChair?.[c]; return x ? { b16: x[0], b1d: x[1], amb: x[2], nation: x[3] } : null; },
     manager: (c) => {
       if (tempManager.has(c)) return tempManager.get(c)!;
+      const nn = natOfClub(c);
+      if (nn !== null) { const h = humanOfNat(nn); if (h) return h; const id = g.cmBoard?.nm?.[nn]; const s = id !== undefined ? g.staff[id] : undefined; return s ? (s.cmNp ? personOfStaff(s.id) : noNp(s)) : null; }
       const m = g.clubs[c]?.manager ?? 0;
       if (m === -1) return humanOfClub(c);
       if (m > 0) { const s = g.staff[m]; return s?.cmNp ? personOfStaff(m) : s ? noNp(s) : null; }
@@ -230,41 +254,59 @@ export function boardEnv(g: GameState, todayIso = g.date, startIso?: string, laz
     nat75: (n) => g.cmNationBoard?.[n]?.[0] ?? 0,
     nat85: (n) => g.cmNationBoard?.[n]?.[1] ?? 0,
     nat7e: (n) => g.cmNation7e?.[n] ?? 0,
-    isHumanClub: (c) => g.clubs[c]?.manager === -1,
+    isHumanClub: (c) => { const n = natOfClub(c); return n !== null ? !!humanOfNat(n) : g.clubs[c]?.manager === -1; },
     dismissedBy: (p, c) => {
       const d = p.human && p.id === HUMAN0 ? g.manager.cmDismissed?.[c] : undefined;
       return !!d && daysBetween(d, g.date) < 180;
     },
     humanOnHolidaySearching: (p) => p.human && !!humanRefs(g)[p.id - HUMAN0]?.get().manager.holiday?.applyJobs,
     fluency: (p, c) => {
-      const cl = g.nations[g.clubs[c]?.nation ?? -1]?.lang?.[0], pl = g.nations[p.nation]?.lang?.[0];
+      const cl = g.nations[natOfClub(c) ?? g.clubs[c]?.nation ?? -1]?.lang?.[0], pl = g.nations[p.nation]?.lang?.[0];
       return cl !== undefined && cl === pl ? 10 : 0;
     },
     foreign: (p, n) => cmForeign(g, p.nation, n),
     interest: (p, c) => (interestHook.fn ? interestHook.fn(g, p, c) : staffInterest((ie ??= interestEnv(g, env)), p, c, 5)),
     retiring: () => false,
-    inSeason: (c) => clubSeason(g.clubs[c]?.nation, dayNum(todayIso))[0],
+    inSeason: (c) => natOfClub(c) === null && clubSeason(g.clubs[c]?.nation, dayNum(todayIso))[0],
     nextFixture: (c, days) => {
+      if (natOfClub(c) !== null) return null;
       const from = dayNum(todayIso), to = from + days;
       const f = Object.values(g.fixtures).filter((x) => (x.home === c || x.away === c) && !x.result && dayNum(x.date) > from && dayNum(x.date) <= to)
         .sort((a, b) => a.date.localeCompare(b.date))[0];
       return f ? { opp: f.home === c ? f.away : f.home, hasComp: !!g.comps[f.comp] } : null;
     },
     underOffer: () => false,
-    inEurope: (c) => Object.values(g.comps).some((x) => x.type === 'continental' && x.clubs.includes(c) && !/intertoto/i.test(x.name)),
-    inEuropeAny: (c) => Object.values(g.comps).some((x) => x.type === 'continental' && x.clubs.includes(c)),
+    inEurope: (c) => c > 0 && Object.values(g.comps).some((x) => x.type === 'continental' && x.clubs.includes(c) && !/intertoto/i.test(x.name)),
+    inEuropeAny: (c) => c > 0 && Object.values(g.comps).some((x) => x.type === 'continental' && x.clubs.includes(c)),
     pro: (c) => (g.cmClubStat?.[c]?.[0] ?? 1) === 1,
     lowNation: (c) => ['Wales', 'Republic Of Ireland', 'Ireland', 'Northern Ireland'].includes(nationName(g.clubs[c]?.nation ?? -1)),
     setManager: (c, p, old) => setManagerGame(g, env, c, p, old),
     // 0x84abe0 → 0x83cb40 med +4 = 2 (computerklubber, når trupplanen er startet – ikke i forkørslen før 0x83a1b0)
     newManagerPlan: (c) => { if (g.clubs[c] && g.clubs[c].manager !== -1 && g.cmPlan?.[c]) cmSquadPlanNewManager(g, c); },
     news: (n) => boardNews(g, env, n),
+    isNat: (c) => natOfClub(c) !== null,
+    natComp: (c) => { const n = natOfClub(c); return n !== null ? natCompHook.fn?.(g, n) ?? null : null; },
+    natPlayers: (c) => { const n = natOfClub(c); return n !== null ? natPlayers(g, n) : 0; },
   };
   return env;
 }
+/** 0x68f9c0's klubløkke: klubberne (id-rækkefølgen), så A-landsholdene (klub-id'erne efter klubberne) for lande med verdensdel (nation +0x71) */
+function clubList(g: GameState): number[] {
+  const out = Object.keys(g.clubs).map(Number).sort((a, b) => a - b);
+  if (g.cmBoard?.nm) for (let n = 0; n < g.nations.length; n++) if ((g.cmNationCont?.[n] ?? -1) >= 0) out.push(natClub(n));
+  return out;
+}
+/** nation +0x88: de indlæste spillere af nationaliteten (0x524d70) – én optælling pr. spil */
+const n88Cache = new WeakMap<GameState, Record<number, number>>();
+export function natPlayers(g: GameState, n: number): number {
+  let m = n88Cache.get(g);
+  if (!m) { m = {}; for (const p of Object.values(g.players)) if (!p.virtual) m[p.nation] = (m[p.nation] ?? 0) + 1; n88Cache.set(g, m); }
+  return m[n] ?? 0;
+}
+
 /** spillets genererede stab: ingen ikke-spillerpost (np = NULL) */
 function noNp(s: Staff): Person {
-  return { id: s.id, human: false, np: false, nation: s.nation, club: s.club, job: s.club ? JOB[s.role] ?? 8 : 0, joined: isoToCm(s.cmJoined || '1990-01-01'), age: 45,
+  return { id: s.id, human: false, np: false, nation: s.nation, club: s.club, job: s.club ? JOB[s.role] ?? 8 : clublessJob(s), joined: isoToCm(s.cmJoined || '1990-01-01'), age: 45,
     b59: 10, det: 10, pres: 10, prof: 10, temper: 10, amb: 10, b22: 0, ca: 0, pa: 0, at: () => 0, rep: [1, 1, 1] };
 }
 
@@ -288,7 +330,12 @@ function interestEnv(g: GameState, b: BoardEnv): InterestEnv {
     b,
     rec: (c) => (st ? st.rec[c] ?? newRec() : null),
     name: (p) => { const s = staffOf(p); return s ? `${s.first} ${s.last}`.trim() : p.human ? g.manager.name : ''; },
-    nat: (p) => { const x = staffOf(p)?.cmNat; return { nc: !!x && x[0] >= 0, nj: x ? x[1] : 0 }; },
+    // staff +0x24/+0x28 efter 0x68f130 (landsholdene i bestyrelsen): kun landstrænerne beholder landsholdet, jobbet 0 til en udnævnelse sætter 5;
+    // gamle gemte spil uden landshold i bestyrelsen: databasens værdier
+    nat: (p) => {
+      if (g.cmBoard?.nm) return { nc: !!p.nat, nj: p.natJob ?? 0 };
+      const x = staffOf(p)?.cmNat; return { nc: !!x && x[0] >= 0, nj: x ? x[1] : 0 };
+    },
     rel: (p) => staffOf(p)?.cmRel,
     key: (p) => { const s = staffOf(p); return s ? personKey(s) : -1 - p.id; },
     status: (c) => g.cmClubStat?.[c]?.[0] ?? 1,
@@ -307,9 +354,11 @@ function interestEnv(g: GameState, b: BoardEnv): InterestEnv {
 // ---------------------------------------------------------------- skrivere
 
 function setManagerGame(g: GameState, _env: BoardEnv, c: number, p: Person | null, old: number): void {
+  if (old === -2) { if (p) tempManager.set(c, p); else tempManager.delete(c); return; }
+  const nn = natOfClub(c);
+  if (nn !== null) { setNationalManager(g, nn, p, old); return; }
   const club = g.clubs[c];
   if (!club) return;
-  if (old === -2) { if (p) tempManager.set(c, p); else tempManager.delete(c); return; }
   if (!p) {
     // afgang: manageren forlader klubben (0x69b790 → 0x690890)
     cmFineReset(g, c);                                                  // 0x69b8f5: 0x5a5960 (Discipline Player-tælleren)
@@ -331,6 +380,39 @@ function setManagerGame(g: GameState, _env: BoardEnv, c: number, p: Person | nul
   careerStart(s, c);
 }
 
+/** A-landsholdets manager (club +0xcf, staff +0x24/+0x28): afgang (p = null – 0x69b790) eller udnævnelse (0x68f9c0's inline-udnævnelse); `old` =
+ *  posten, han forlader (et andet landshold eller – landshold med omdømme > 6000 – klubben: 0x6906fc's standardgren fjerner ham fra klubben) */
+function setNationalManager(g: GameState, n: number, p: Person | null, old: number): void {
+  const st = stateOf(g);
+  st.nm ??= {}; st.nj ??= {};
+  if (!p) {
+    let human = false;
+    forHumans(g, (m) => { if (m.national?.nation === n) { m.national = undefined; human = true; } });
+    if (!human) { const id = st.nm[n]; if (id !== undefined) { delete st.nm[n]; delete st.nj[id]; } }
+    resetNationalManagers(g);
+    return;
+  }
+  if (p.human) return;                                                  // mennesket ansættes via cmBoardNationalAnswer (0x69ebc0)
+  const s = g.staff[p.id];
+  if (!s) return;
+  if (old) {
+    const on = natOfClub(old);
+    if (on !== null) { if (st.nm[on] === s.id) delete st.nm[on]; }
+    else {
+      const from = g.clubs[old];
+      if (from && from.manager === s.id) { from.manager = 0; from.tactic = null; }
+      if (s.club === old) { careerEnd(s, 'poached'); s.club = 0; s.role = 'coach'; }   // +0x3d = 8 (np uden spillerpost)
+    }
+  }
+  st.nm[n] = s.id; st.nj[s.id] = 5;
+  resetNationalManagers(g);
+}
+/** alle menneskers ManagerProfile (det aktive og de andre i fællesspil) */
+function forHumans(g: GameState, fn: (m: GameState['manager']) => void): void {
+  fn(g.manager);
+  for (const h of g.humans ?? []) if (h.pid !== g.active && h.manager) fn(h.manager);
+}
+
 function humanLeaves(g: GameState, c: number): void {
   const doIt = () => {
     if (g.userClub !== c) return;
@@ -345,17 +427,39 @@ function humanLeaves(g: GameState, c: number): void {
 /** nyhedens parametre: teksten nu (som reserve) og `bd` = det, der skal til for at bygge den igen på et andet sprog (common.tsx newsParams) */
 function boardParams(d: BoardCmDesc, extra: Record<string, string | number> = {}): Record<string, string | number> {
   const r = boardCmText(d);
-  return { club: d.k === 'c' ? d.i.club : d.club, title: r.title, body: r.body, bd: JSON.stringify(d), ...extra };
+  return { club: d.k === 'c' ? d.i.club : 'club' in d ? d.club : '', title: r.title, body: r.body, bd: JSON.stringify(d), ...extra };
 }
 
 const EXP_KEY = (f: number) => (f & 0x02 ? 'title' : f & 0x01 ? 'top3' : f & 0x04 ? 'promotion' : f & 0x08 ? 'playoffs' : f & 0x40 ? 'tophalf' : f & 0x30 ? 'survive' : 'mid');
 
+/** landsholdets nation og nationaliteten ("English") til forbundets tekster */
+const natAdj = (g: GameState, n: number) => { const nm = g.nations[n]?.name ?? ''; return DEMONYM[nm] ?? nm; };
+/** 0x5806d0/0x57c9f0/0x92f680's turneringsnøgle → tekstens navn */
+const FA_COMP: Record<number, 'wc' | 'euro' | 'euroq'> = { 404: 'wc', 406: 'euro', 396: 'euroq' };
+
 function boardNews(g: GameState, _env: BoardEnv, n: BoardNews): void {
   if (prerunQuiet) return;                                                     // forkørslen: ingen nyheder (se cmBoardPrerun)
-  const clubName = (c: number) => g.clubs[c]?.name ?? '';
+  const clubName = (c: number) => { const nn = natOfClub(c); return nn !== null ? g.nations[nn]?.name ?? '' : g.clubs[c]?.name ?? ''; };
   const mname = (p: Person) => { const s = g.staff[p.id]; return s ? `${s.first} ${s.last}`.trim() : g.manager.name; };
   const mine = (c: number) => c === g.userClub;
+  /** menneskets eget landshold (A-holdet) */
+  const myNat = (c: number) => { const nn = natOfClub(c); return nn !== null && g.manager.national?.nation === nn ? nn : null; };
   switch (n.t) {
+    case 'faExpect': {
+      // 0x6a44a0 (0x177e) til landsholdets manager: "Football Association announce expectations"
+      const nn = myNat(n.club);
+      if (nn === null) return;
+      const c = FA_COMP[n.comp] ?? '';
+      addNews({ cat: 'board', key: 'board.cm', params: boardParams({ k: 'x', nat: natAdj(g, nn), code: n.code, c, tg: c === 'euroq' ? 'euro' : '' }, { club: clubName(n.club) }) });
+      return;
+    }
+    case 'faReview': {
+      // 0x6a5a60 (0x1781): "{nationality} FA performance assessment"
+      const nn = myNat(n.club);
+      if (nn === null || after(_env.gameStart, _env.today)) return;
+      addNews({ cat: 'board', key: 'board.cm', params: boardParams({ k: 'p', nat: natAdj(g, nn), grade: n.grade, c: FA_COMP[n.comp] ?? '' }, { club: clubName(n.club) }) });
+      return;
+    }
     case 'expect':
       if (mine(n.club)) {
         g.board.expectation = EXP_KEY(n.flags);
@@ -371,18 +475,36 @@ function boardNews(g: GameState, _env: BoardEnv, n: BoardNews): void {
       // 0x6a4c40 / 0x6a4d40: "Board Confidence Update" med 0x690d80 (formandens trupvurdering 0x693850 er ikke porteret)
       if (mine(n.club)) addNews({ cat: 'board', key: 'board.cm', params: boardParams({ k: 'c', i: confidenceIn(g, _env, n.club, n.days) }),
         link: { kind: 'club', id: n.club } });
+      // landsholdet: "Football Association Confidence Update" (0x690d80's landsholdsgren)
+      else if (myNat(n.club) !== null) addNews({ cat: 'board', key: 'board.cm', params: boardParams({ k: 'c', i: confidenceIn(g, _env, n.club, n.days) }) });
       return;
-    case 'jobOffer':
+    case 'jobOffer': {
+      // landsholdet (0x6a5120): "The {nationality} Football Association offer you the position of manager." – svaret på International-skærmen
+      const on = natOfClub(n.club);
+      if (on !== null) {
+        if (n.human.id !== HUMAN0 || g.manager.nationalOffer === on) return;
+        g.manager.nationalOffer = on;
+        addNews({ cat: 'job', key: 'board.cm', params: boardParams({ k: 'o', nat: natAdj(g, on), nation: g.nations[on]?.name ?? '', st: 0 }, { club: clubName(n.club) }) });
+        return;
+      }
       if (n.human.id === HUMAN0 && !g.jobOffers.includes(n.club)) {
         g.jobOffers.push(n.club);
         addNews({ cat: 'job', key: 'news.jobOffer', params: { club: clubName(n.club) }, link: { kind: 'club', id: n.club } });
       }
       return;
+    }
     case 'applyReply':
       // 0x69c6b0: "{klub} acknowledge / dismiss your job application" (nyhed 0x1773, samme dag)
       if (n.human.id === HUMAN0) addNews({ cat: 'job', key: n.dismissed ? 'job.cmDismiss' : 'job.cmAck', params: { club: g.clubs[n.club]?.short ?? clubName(n.club) }, link: { kind: 'club', id: n.club } });
       return;
-    case 'departed':
+    case 'departed': {
+      // 0x6a1d60 for A-landsholdet: "{nation} manager X sacked" / "X resigns as manager of {nation}" – til alle managere (0x6a1b00: landshold)
+      const dn = natOfClub(n.club);
+      if (dn !== null) {
+        if (n.manager.human ? n.manager.id !== HUMAN0 : !_env.canBeManaged(n.club)) return;
+        addNews({ cat: 'job', key: 'board.cm', params: boardParams({ k: 'd', type: n.type, reason: n.reason, m: mname(n.manager), nation: g.nations[dn]?.name ?? '', nat: natAdj(g, dn) }, { club: clubName(n.club) }) });
+        return;
+      }
       // 0x69b790: afgangen skrives før nyheden (humanLeaves har allerede nulstillet userClub) – derfor managerens id, ikke mine(); før kom
       // fyringen uden besked (ejerens test 16/11: fyret på ferie uden nyhed). runUntil stopper ferien, når klubben er væk.
       if (n.manager.human) {
@@ -394,7 +516,15 @@ function boardNews(g: GameState, _env: BoardEnv, n: BoardNews): void {
       }
       else if (newsOn(g, n.club)) addNews({ cat: 'job', key: 'news.managerSacked', params: { club: clubName(n.club), manager: mname(n.manager) }, link: { kind: 'club', id: n.club } });
       return;
+    }
     case 'appointed':
+      // landsholdet (0x6a2e00): kun når landets ligaer kører (nation +0x11c), så til alle managere
+      if (natOfClub(n.club) !== null) {
+        if (!g.activeNations.includes(natOfClub(n.club)!) || (!n.manager.human && !_env.canBeManaged(n.club))) return;
+        addNews({ cat: 'job', key: 'news.cmAppoint', params: { club: clubName(n.club), manager: mname(n.manager), full: clubName(n.club), prev: n.prev && n.kind === 3 ? clubName(n.prev) : '',
+          body: appointBody(clubName(n.club), mname(n.manager), n.prev && n.kind === 3 ? clubName(n.prev) : '') } });
+        return;
+      }
       // 0x6a3060: overskriften "{kort navn} appoint X as manager", brødteksten efter den forrige klub (−1 → 0xa09e18) og arten (3 → 0xa0a2f8)
       if (n.manager.human ? clubNewsToMe(g, n.club, true) : newsOn(g, n.club)) addNews({ cat: 'job', key: 'news.cmAppoint', params: { club: g.clubs[n.club]?.short ?? clubName(n.club), manager: mname(n.manager), full: clubName(n.club), prev: n.prev > 0 && n.kind === 3 ? clubName(n.prev) : '',
         body: appointBody(clubName(n.club), mname(n.manager), n.prev > 0 && n.kind === 3 ? clubName(n.prev) : '') }, link: { kind: 'club', id: n.club } });
@@ -424,8 +554,9 @@ function confidenceOf(g: GameState, env: BoardEnv, c: number, days: number): str
 function confidenceIn(g: GameState, env: BoardEnv, c: number, days: number): ConfidenceIn {
   const R = g.cmBoard?.rec[c];
   const run = currentRun(env, c);
+  const nn = natOfClub(c);
   return ({
-    club: g.clubs[c]?.name ?? '', days, wealth: env.wealthBand(c), leagueBand: leagueBand(R?.w12 ?? 0), confBand: confidenceBand(R?.w6 ?? 5000),
+    club: nn !== null ? g.nations[nn]?.name ?? '' : g.clubs[c]?.name ?? '', days, wealth: env.wealthBand(c), ...(nn !== null ? { national: natAdj(g, nn) } : {}), leagueBand: leagueBand(R?.w12 ?? 0), confBand: confidenceBand(R?.w6 ?? 5000),
     runType: run.type, runLen: run.len, arrogDays: R ? daysSince(env.today, R.d41) : 9999, conf: s16(R?.w6 ?? 5000), fans: s16(R?.w16 ?? 0),
   });
 }
@@ -629,7 +760,17 @@ export function cmBoardInit(g: GameState, chair: Record<number, [number, number,
   for (const [cid, x] of Object.entries(chair ?? {})) g.cmChair[+cid] = [x[0], x[1], personalFill_535a80(x[2], cmRand(g.seed ?? 0, +cid, 0x535f04), 'avg'), x[3]];
   g.cmNationBoard = nationBoard ? nationBoard.map((x) => x.slice() as [number, number, number]) : [];
   g.cmBoardStart = g.date;
-  g.cmBoard = { rec: {}, dep: [], vac: [], ult: [], month: -1, tab: {} };
+  g.cmBoard = { rec: {}, dep: [], vac: [], ult: [], month: -1, tab: {}, nm: {}, nj: {} };
+  // 0x68f130 2a: landstrænerne (staff +0x24 = A-holdet, +0x28 = 5/12) bliver A-holdets manager (den sidste i staff-rækkefølgen); de andre
+  // landsholdsjob ryddes, og +0x28 sættes til 0 (staffPerson/clublessJob – +0x3d uden klub = landsholdsjobbet)
+  const off = natClubId(g, 0, false);
+  for (const s of Object.values(g.staff).sort((a, b) => a.id - b.id)) {
+    const x = s.cmNat;
+    if (!x || (x[1] !== 5 && x[1] !== 12)) continue;
+    const n = x[0] - off;
+    if (n >= 0 && n < g.nations.length) g.cmBoard.nm![n] = s.id;
+  }
+  resetNationalManagers(g);
   const db = `${g.date.slice(0, 4)}-01-01`;
   const env = boardEnv(g, db, g.date);
   initRecords(env, stateOf(g), rnd(g, dayNum(db), 0x68f130));
@@ -786,6 +927,94 @@ export function cmBoardAfterMatch(g: GameState, f: Fixture, rep: MatchReport): v
   syncHuman(g);
 }
 
+/** international.ts playNation (ægte tilstand, efter landskampen og kamprapporten): 0x6951e0 for begge A-landshold. `venue` = spillestedets
+ *  nation (hjemmeholdets land; slutrunderne: værtslandet). *Afvigelse*: de internationale turneringers omdømme (club_comp +0x69 for nation_comp)
+ *  findes ikke i world-filen (0 som i gamePostReport). */
+export function cmBoardNationalAfterMatch(g: GameState, home: number, away: number, rep: MatchReport, x: { b3a: number; w30: number; compId: number; friendly: boolean; venue: number }): void {
+  if (!cmBoardOn(g) || !g.cmBoard?.nm) return;
+  const st = stateOf(g), env = boardEnv(g, g.date, undefined, true);
+  const [hs, as] = rep.stats;
+  const nat = [home, away];
+  const sideOf = (t: 0 | 1) => {
+    const oppN = nat[t ? 0 : 1];
+    return {
+      club: natClub(nat[t]), b8: 0, b9: 0,
+      rows: rep.players.filter((l) => l.team === t).map((l) => {
+        const p = g.players[l.id];
+        const r = p?.cmRepMem ?? p?.cmRep ?? [50, 50, 50];
+        // 1.4b: modstanderens nation = spillerens → +9, ikke udlænding → +9, ellers +0xd
+        const v = p && (p.nation === oppN || !cmForeign(g, p.nation, oppN)) ? r[0] : r[2];
+        return { rating: Math.max(1, Math.min(10, Math.round(l.rating))), minutes: Math.max(0, Math.min(127, l.minutes)), redAt: l.red ? l.minutes : -1, rep: Math.round(v * 50) };
+      }),
+    };
+  };
+  const m: MatchIn = {
+    home: natClub(home), away: natClub(away), len: rep.et ? 120 : 90, b3a: x.b3a, w30: x.w30, w32: 0, w38: 0,
+    gh: hs.goals, ga: as.goals, aggH: 0xff, aggA: 0xff, penH: rep.pens?.[0] ?? 0, penA: rep.pens?.[1] ?? 0,
+    compRep: g.cmCompRep?.[x.compId] ?? 0, isDivision: () => false, friendly: x.friendly, inContention: () => true, derby: () => 0,
+    venueHome: true, venueNation: x.venue, sides: [sideOf(0), sideOf(1)],
+  };
+  const touched = { done: false };
+  afterMatch({ ...env, manager: (c) => managerPerson(g, c, env.today, touched) }, st, m, rnd(g, dayNum(g.date), 0x695240, 1000 + home, away));
+}
+
+/** 0x6a5610 for et landshold, når slutrunden er færdig (NationalTeams 0x775420 – cmNatTeams.ts) */
+export function cmBoardNationalReview(g: GameState, n: number, comp: number, grade: number): void {
+  if (!cmBoardOn(g) || !g.cmBoard?.nm) return;
+  const env = boardEnv(g, g.date, undefined, true);
+  reviewNational(env, stateOf(g), natClub(n), comp, grade, rnd(g, dayNum(g.date), 0x6a5610, n));
+}
+/** 0x775000/0x775220 → set_season_expectations(landsholdet, 1), når landsholdets aktuelle turnering skifter */
+export function cmBoardNationalExpect(g: GameState, n: number): void {
+  if (!cmBoardOn(g) || !g.cmBoard?.nm || (g.cmNationCont?.[n] ?? -1) < 0) return;
+  const env = boardEnv(g, g.date, undefined, true);
+  setSeasonExpectations(env, stateOf(g), natClub(n), true, rnd(g, dayNum(g.date), 0x6a3770, n));
+}
+
+/** International-skærmen (ægte tilstand): svaret på forbundets tilbud – Accept = 0x69ebc0 appoint_manager_to_club for landsholdet, Decline =
+ *  add_job_vacancy(landsholdet, mennesket) (0x6b2790). null = ikke bestyrelsens tilbud */
+export function cmBoardNationalAnswer(g: GameState, accept: boolean): string | null {
+  if (!cmBoardOn(g) || !g.cmBoard?.nm) return null;
+  const n = g.manager.nationalOffer;
+  if (n === undefined) return 'error';
+  g.manager.nationalOffer = undefined;
+  const st = stateOf(g), env = boardEnv(g);
+  const c = natClub(n);
+  const rand = rnd(g, dayNum(g.date), 0x6b2790, n);
+  const h = env.persons().find((p) => p.human && p.id === HUMAN0) ?? null;
+  // nyhedens slot 1 (1 accepteret, 2 afslået)
+  const offer = g.news.find((x) => x.key === 'board.cm' && typeof x.params.bd === 'string' && x.params.bd.includes('"k":"o"') && x.params.club === g.nations[n]?.name);
+  if (offer) { try { const d = JSON.parse(String(offer.params.bd)); d.st = accept ? 1 : 2; Object.assign(offer.params, boardParams(d, { club: offer.params.club })); } catch { /* */ } }
+  if (!accept) { if (h) addVacancy(env, st, c, h, rand); return 'ok'; }
+  // 0x69ebc0 tjekker ikke, om jobbet er besat imens: club +0xcf = mennesket (en udnævnt computermanager mister landsholdet)
+  if (st.nm?.[n] !== undefined) { const id = st.nm[n]; delete st.nm[n]; delete st.nj?.[id]; }
+  // 0x69ebc0 for landsholdet: det gamle landshold (menneskets +0x24) – ingen ny ledighed (kun for lande uden verdensdel), han fjernes dér
+  const old = g.manager.national?.nation;
+  if (old !== undefined && old !== n) g.manager.national = undefined;
+  recOfG(g, c).d20 = { day: 234, year: 1971 };
+  if (h) boardNews(g, env, { t: 'appointed', club: c, manager: h, prev: old !== undefined && old !== n ? natClub(old) : 0, kind: old !== undefined && old !== n ? 3 : 2 });
+  g.manager.national = { nation: n, since: g.date, played: 0, won: 0 };
+  resetForNewManager(env, st, c, rand);                                  // (ledighedsposten bliver – 0x68f9c0 dropper den, når jobbet er besat)
+  resetNationalManagers(g);
+  return 'ok';
+}
+
+/** International-skærmen (ægte tilstand): fratræd landsholdet – remove_club_manager(landsholdet, 2, 0, 0) + add_job_vacancy(landsholdet, mennesket) */
+export function cmBoardNationalResign(g: GameState): string | null {
+  if (!cmBoardOn(g) || !g.cmBoard?.nm) return null;
+  const nj = g.manager.national;
+  if (!nj) return 'error';
+  const st = stateOf(g), env = boardEnv(g);
+  const c = natClub(nj.nation);
+  const h = env.persons().find((p) => p.human && p.id === HUMAN0) ?? null;
+  if (h) boardNews(g, env, { t: 'departed', club: c, manager: h, type: 2, reason: 0 });
+  g.manager.national = undefined;
+  recOfG(g, c).w6 = 3500;
+  resetNationalManagers(g);
+  if (h && env.canBeManaged(c)) addVacancy(env, st, c, h, rnd(g, dayNum(g.date), 0x6b204e, 1000 + nj.nation));
+  return 'ok';
+}
+
 /** menneskets Board-skærm og bestyrelse (board.ts' felter) følger originalens post */
 function syncHuman(g: GameState): void {
   const R = g.cmBoard?.rec[g.userClub];
@@ -800,6 +1029,13 @@ function syncHuman(g: GameState): void {
  *  personerne med env.persons() (identiteten): kamprapportens managerdel og bestyrelsen efter kampen (afterMatch læser kun manageren). */
 function managerPerson(g: GameState, club: number, today: CmDate, touched: { done: boolean; all?: Staff[] }): Person | null {
   if (tempManager.has(club)) return tempManager.get(club)!;
+  const nn = natOfClub(club);
+  if (nn !== null) {
+    const h = humanRefs(g).find((x) => x.get().manager.national?.nation === nn);
+    if (h) { h.get().manager.cmRep ??= [1, 1, 1]; return humanPerson(g, h); }
+    const s = g.cmBoard?.nm?.[nn] !== undefined ? g.staff[g.cmBoard!.nm![nn]] : undefined;
+    return s ? (s.cmNp ? staffPerson(g, s, today) : noNp(s)) : null;
+  }
   const mid = g.clubs[club]?.manager ?? 0;
   if (mid === -1 || (mid > 0 && g.staff[mid]?.cmNp)) {
     if (!touched.done) {

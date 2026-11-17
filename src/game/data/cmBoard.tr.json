@@ -299,7 +299,11 @@
   "difficult": "Yönetim zor bir sezon bekliyor",
   "look": "Yönetim yeni sezonu iple çekiyor",
   "announce": "Yönetim beklentilerini açıkladı",
-  "confidence": "Yönetim güven durumu"
+  "confidence": "Yönetim güven durumu",
+  "faExp": "Federasyon beklentilerini açıkladı",
+  "faConf": "Federasyonun güven durumu",
+  "faPerf": "{national} Federasyonu performans değerlendirmesi",
+  "faOffer": "{nation} sana teknik direktörlük teklif ediyor"
  },
  "faConf": [
   "{national} Futbol Federasyonu, teknik direktör olarak performansından çok memnun.",
@@ -492,5 +496,48 @@
    "{club} yönetimi, kulübün bu sezon kupada başarı elde etmesini ve küme düşmeye karşı cesurca mücadele etmesini bekliyor."
   ],
   "improve": "{club} yönetimi, bu sezon kulübün kadrosunu güçlendirmeni bekliyor."
+ },
+ "faComp": {
+  "wc": "FIFA Dünya Kupası",
+  "euro": "Avrupa Şampiyonası",
+  "euroq": "Avrupa Şampiyonası Elemeleri"
+ },
+ "faExp": {
+  "u21": "{national} Futbol Federasyonu önümüzdeki hazırlık maçlarında geleceğin yıldızlarını yetiştirmeni bekliyor.",
+  "friendly": "{national} Futbol Federasyonu önümüzdeki hazırlık maçlarında takımın ülkenin onurunu korumasını bekliyor.",
+  "win": "{national} Futbol Federasyonu takımın {comp} şampiyonu olmasını bekliyor.",
+  "qualFrom": "{national} Futbol Federasyonu takımın {comp} aşamasını geçmesini bekliyor.",
+  "qualFor": "{national} Futbol Federasyonu takımın {comp} için vize almasını bekliyor.",
+  "hopeQualFrom": "{national} Futbol Federasyonu takımın {comp} aşamasını geçmesini umuyor.",
+  "secondPhase": "{national} Futbol Federasyonu takımın {comp} ikinci aşamasına kalmasını umuyor.",
+  "secondRound": "{national} Futbol Federasyonu takımın {comp} ikinci turuna çıkmasını umuyor.",
+  "qf": "{national} Futbol Federasyonu takımın {comp} çeyrek finaline çıkmasını umuyor.",
+  "sf": "{national} Futbol Federasyonu takımın {comp} yarı finaline çıkmasını umuyor.",
+  "hopeWin": "{national} Futbol Federasyonu takımın {comp} şampiyonu olmasını umuyor.",
+  "perform": "{national} Futbol Federasyonu takımın {comp} turnuvasında iyi bir performans göstermesini umuyor."
+ },
+ "faPerf": [
+  "{national} Futbol Federasyonu, {comp} turnuvasındaki teknik direktörlük performansından çok memnun.",
+  "{national} Futbol Federasyonu, {comp} turnuvasındaki teknik direktörlük performansından oldukça memnun.",
+  "{national} Futbol Federasyonu, {comp} turnuvasındaki teknik direktörlük performansından memnun.",
+  "{national} Futbol Federasyonu, {comp} turnuvasındaki teknik direktörlük performansından pek memnun değil.",
+  "{national} Futbol Federasyonu, {comp} turnuvasındaki teknik direktörlük performansından hayal kırıklığına uğradı.",
+  "{national} Futbol Federasyonu, {comp} turnuvasındaki teknik direktörlük performansından büyük hayal kırıklığına uğradı."
+ ],
+ "faOffer": [
+  "{national} Futbol Federasyonu sana teknik direktörlük teklif ediyor.\n\nTeklifi kabul etmeni bekliyorlar.",
+  "{national} Futbol Federasyonu sana teknik direktörlük teklif ediyor.\n\nTeklifi kabul etmeni bekliyorlar.\n\nBu teklifi kabul ettin.",
+  "{national} Futbol Federasyonu sana teknik direktörlük teklif ediyor.\n\nTeklifi kabul etmeni bekliyorlar.\n\nBu teklifi reddettin."
+ ],
+ "faDep": {
+  "tSack": "{nation} teknik direktörü {m} görevden alındı",
+  "tResign": "{m}, {nation} teknik direktörlüğünden istifa etti",
+  "tRetire": "{nation} teknik direktörü {m} emekli oluyor",
+  "resign": "{m}, {nation} teknik direktörlüğünden istifa etti.\n\n{national} Futbol Federasyonu şimdi aktif olarak yerine birini arıyor.",
+  "retire": "{m}, {nation} teknik direktörlüğü görevinden emekli oldu.\n\n{national} Futbol Federasyonu şimdi aktif olarak yerine birini arıyor.",
+  "sack": "{m}, {national} Futbol Federasyonu tarafından milli takım teknik direktörlüğünden görevden alındı.",
+  "relieved": "{m}, {nation} teknik direktörlüğü görevinden alındı.\n\n{national} Futbol Federasyonu değişim zamanının geldiğini düşündü ve şimdi aktif olarak yerine birini arıyor.",
+  "pressure": "Taraftarların yoğun baskısı nedeniyle {m}, {national} Futbol Federasyonu tarafından milli takım teknik direktörlüğünden görevden alındı.",
+  "poor": "Bir dizi kötü sonucun ardından {m}, {national} Futbol Federasyonu tarafından milli takım teknik direktörlüğünden görevden alındı."
  }
 }

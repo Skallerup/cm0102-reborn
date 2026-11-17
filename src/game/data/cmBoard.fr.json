@@ -299,7 +299,11 @@
   "difficult": "La direction s'attend à une saison difficile",
   "look": "La direction attend la nouvelle saison avec impatience",
   "announce": "La direction annonce ses attentes",
-  "confidence": "Point sur la confiance de la direction"
+  "confidence": "Point sur la confiance de la direction",
+  "faExp": "La fédération annonce ses attentes",
+  "faConf": "Point sur la confiance de la fédération",
+  "faPerf": "Bilan de la fédération ({national})",
+  "faOffer": "{nation} vous propose le poste de sélectionneur"
  },
  "faConf": [
   "La fédération de football ({national}) est ravie de votre travail d'entraîneur.",
@@ -492,5 +496,48 @@
    "Les dirigeants de {club} attendent du club qu'il connaisse le succès en coupe et lutte courageusement contre la relégation cette saison."
   ],
   "improve": "Les dirigeants de {club} attendent de vous que vous renforciez l'effectif du club au cours de cette saison."
+ },
+ "faComp": {
+  "wc": "Coupe du monde de la FIFA",
+  "euro": "Championnat d'Europe",
+  "euroq": "éliminatoires du Championnat d'Europe"
+ },
+ "faExp": {
+  "u21": "La fédération de football ({national}) attend de vous que vous fassiez éclore les stars de demain lors des prochains matchs amicaux.",
+  "friendly": "La fédération de football ({national}) attend de l'équipe qu'elle défende l'honneur du pays lors des prochains matchs amicaux.",
+  "win": "La fédération de football ({national}) attend de l'équipe qu'elle remporte la compétition : {comp}.",
+  "qualFrom": "La fédération de football ({national}) attend de l'équipe qu'elle se qualifie à l'issue de la compétition : {comp}.",
+  "qualFor": "La fédération de football ({national}) attend de l'équipe qu'elle se qualifie pour la compétition : {comp}.",
+  "hopeQualFrom": "La fédération de football ({national}) espère que l'équipe se qualifiera à l'issue de la compétition : {comp}.",
+  "secondPhase": "La fédération de football ({national}) espère que l'équipe atteindra la deuxième phase de la compétition : {comp}.",
+  "secondRound": "La fédération de football ({national}) espère que l'équipe atteindra le deuxième tour de la compétition : {comp}.",
+  "qf": "La fédération de football ({national}) espère que l'équipe atteindra les quarts de finale de la compétition : {comp}.",
+  "sf": "La fédération de football ({national}) espère que l'équipe atteindra les demi-finales de la compétition : {comp}.",
+  "hopeWin": "La fédération de football ({national}) espère que l'équipe remportera la compétition : {comp}.",
+  "perform": "La fédération de football ({national}) espère que l'équipe fera bonne figure dans la compétition : {comp}."
+ },
+ "faPerf": [
+  "La fédération de football ({national}) est ravie de votre travail de sélectionneur dans la compétition : {comp}.",
+  "La fédération de football ({national}) est très satisfaite de votre travail de sélectionneur dans la compétition : {comp}.",
+  "La fédération de football ({national}) est satisfaite de votre travail de sélectionneur dans la compétition : {comp}.",
+  "La fédération de football ({national}) est peu satisfaite de votre travail de sélectionneur dans la compétition : {comp}.",
+  "La fédération de football ({national}) est déçue de votre travail de sélectionneur dans la compétition : {comp}.",
+  "La fédération de football ({national}) est très déçue de votre travail de sélectionneur dans la compétition : {comp}."
+ ],
+ "faOffer": [
+  "La fédération de football ({national}) vous propose le poste de sélectionneur.\n\nElle attend que vous acceptiez cette offre.",
+  "La fédération de football ({national}) vous propose le poste de sélectionneur.\n\nElle attend que vous acceptiez cette offre.\n\nVous avez accepté cette offre.",
+  "La fédération de football ({national}) vous propose le poste de sélectionneur.\n\nElle attend que vous acceptiez cette offre.\n\nVous avez refusé cette offre."
+ ],
+ "faDep": {
+  "tSack": "{nation} : le sélectionneur {m} limogé",
+  "tResign": "{m} démissionne de son poste de sélectionneur de {nation}",
+  "tRetire": "{nation} : le sélectionneur {m} prend sa retraite",
+  "resign": "{m} a démissionné de son poste de sélectionneur de {nation}.\n\nLa fédération de football ({national}) cherche désormais activement un remplaçant.",
+  "retire": "{m} a pris sa retraite de son poste de sélectionneur de {nation}.\n\nLa fédération de football ({national}) cherche désormais activement un remplaçant.",
+  "sack": "{m} a été limogé de son poste de sélectionneur par la fédération de football ({national}).",
+  "relieved": "{m} a été relevé de son poste de sélectionneur de {nation}.\n\nLa fédération de football ({national}) estimait qu'il était temps de changer et cherche désormais activement un remplaçant.",
+  "pressure": "Sous l'énorme pression des supporters, {m} a été limogé de son poste de sélectionneur par la fédération de football ({national}).",
+  "poor": "Après une série de mauvais résultats, {m} a été limogé de son poste de sélectionneur par la fédération de football ({national})."
  }
 }

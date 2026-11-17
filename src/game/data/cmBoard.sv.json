@@ -299,7 +299,11 @@
   "difficult": "Styrelsen räknar med en svår säsong",
   "look": "Styrelsen ser fram emot den nya säsongen",
   "announce": "Styrelsen meddelar förväntningar",
-  "confidence": "Uppdatering av styrelsens förtroende"
+  "confidence": "Uppdatering av styrelsens förtroende",
+  "faExp": "Fotbollsförbundet meddelar förväntningar",
+  "faConf": "Uppdatering av fotbollsförbundets förtroende",
+  "faPerf": "{national} FA:s bedömning av dina prestationer",
+  "faOffer": "{nation} erbjuder dig jobbet som manager"
  },
  "faConf": [
   "Det {national} fotbollsförbundet är överförtjust i dina prestationer som manager.",
@@ -492,5 +496,48 @@
    "Styrelseledamöterna i {club} förväntar sig att klubben uppnår cupframgång och kämpar tappert mot nedflyttning den här säsongen."
   ],
   "improve": "Styrelseledamöterna i {club} förväntar sig att du förstärker klubbens trupp under den här säsongen."
+ },
+ "faComp": {
+  "wc": "VM",
+  "euro": "EM",
+  "euroq": "EM-kvalet"
+ },
+ "faExp": {
+  "u21": "Det {national} fotbollsförbundet förväntar sig att du utvecklar framtidens stjärnor i de kommande vänskapsmatcherna.",
+  "friendly": "Det {national} fotbollsförbundet förväntar sig att laget försvarar landets ära i de kommande vänskapsmatcherna.",
+  "win": "Det {national} fotbollsförbundet förväntar sig att laget vinner {comp}.",
+  "qualFrom": "Det {national} fotbollsförbundet förväntar sig att laget går vidare från {comp}.",
+  "qualFor": "Det {national} fotbollsförbundet förväntar sig att laget kvalificerar sig för {comp}.",
+  "hopeQualFrom": "Det {national} fotbollsförbundet hoppas att laget går vidare från {comp}.",
+  "secondPhase": "Det {national} fotbollsförbundet hoppas att laget når andra fasen av {comp}.",
+  "secondRound": "Det {national} fotbollsförbundet hoppas att laget når andra omgången av {comp}.",
+  "qf": "Det {national} fotbollsförbundet hoppas att laget når kvartsfinalerna i {comp}.",
+  "sf": "Det {national} fotbollsförbundet hoppas att laget når semifinalerna i {comp}.",
+  "hopeWin": "Det {national} fotbollsförbundet hoppas att laget vinner {comp}.",
+  "perform": "Det {national} fotbollsförbundet hoppas att laget gör bra ifrån sig i {comp}."
+ },
+ "faPerf": [
+  "Det {national} fotbollsförbundet är överförtjust i dina prestationer som manager i {comp}.",
+  "Det {national} fotbollsförbundet är mycket nöjt med dina prestationer som manager i {comp}.",
+  "Det {national} fotbollsförbundet är nöjt med dina prestationer som manager i {comp}.",
+  "Det {national} fotbollsförbundet är mindre än nöjt med dina prestationer som manager i {comp}.",
+  "Det {national} fotbollsförbundet är besviket på dina prestationer som manager i {comp}.",
+  "Det {national} fotbollsförbundet är mycket besviket på dina prestationer som manager i {comp}."
+ ],
+ "faOffer": [
+  "Det {national} fotbollsförbundet erbjuder dig jobbet som manager.\n\nDe väntar på att du accepterar jobberbjudandet.",
+  "Det {national} fotbollsförbundet erbjuder dig jobbet som manager.\n\nDe väntar på att du accepterar jobberbjudandet.\n\nDu har accepterat jobberbjudandet.",
+  "Det {national} fotbollsförbundet erbjuder dig jobbet som manager.\n\nDe väntar på att du accepterar jobberbjudandet.\n\nDu har tackat nej till jobberbjudandet."
+ ],
+ "faDep": {
+  "tSack": "{nation}s manager {m} sparkad",
+  "tResign": "{m} avgår som manager för {nation}",
+  "tRetire": "{nation}s manager {m} går i pension",
+  "resign": "{m} har avgått som manager för {nation}.\n\nDet {national} fotbollsförbundet söker nu aktivt en ersättare.",
+  "retire": "{m} har gått i pension från jobbet som manager för {nation}.\n\nDet {national} fotbollsförbundet söker nu aktivt en ersättare.",
+  "sack": "{m} har sparkats som förbundskapten av det {national} fotbollsförbundet.",
+  "relieved": "{m} har befriats från jobbet som manager för {nation}.\n\nDet {national} fotbollsförbundet ansåg att det var dags för en förändring och söker nu aktivt en ersättare.",
+  "pressure": "På grund av massiva påtryckningar från supportrarna har {m} sparkats som förbundskapten av det {national} fotbollsförbundet.",
+  "poor": "Efter en rad dåliga resultat har {m} sparkats som förbundskapten av det {national} fotbollsförbundet."
  }
 }

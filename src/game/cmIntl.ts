@@ -293,6 +293,7 @@ function startEuroQual(g: GameState): void {
   const per = groups.map(roundRobin);
   const sched = EURO04_Q_DATES.map((_, r) => per.flatMap((x) => x[r] ?? []));
   st.qual = { name: 'euro', year: 2004, groups, region: groups.map(() => 'europe'), table, round: 0, dates: EURO04_Q_DATES.slice(), sched, cm: 1 };
+  intlHooks.ntStart?.('euroq', 2004, groups.flat());                    // 0x5806d0 set_predicted_positions → 0x775220 (NationalTeams)
   forEachHuman(() => addNews({ cat: 'general', key: 'intl.qual.start.euro', params: { year: 2004 } }));
 }
 
@@ -326,6 +327,7 @@ function cmEuroQualDay(g: GameState): void {
       t.winner = aGoals > bGoals ? t.a : bGoals > aGoals ? t.b : res.ag > (t.ag ?? 0) ? t.a : res.ag < (t.ag ?? 0) ? t.b : rng.chance(0.5) ? t.a : t.b;
     }
     if (pi === 1) {
+      intlHooks.ntOut?.('euroq', 2004, q.po.map((t) => (t.winner === t.a ? t.b : t.a)));   // 0x57f261: playoffens tabere
       q.qualified = [...(q.qualified ?? []), ...q.po.map((t) => t.winner!)];
       announceQualified(g, q.qualified);
     }
@@ -343,6 +345,9 @@ function euroQualGroupsDone(g: GameState): void {
   q.po = [];
   for (let i = 0; i + 1 < rest.length; i += 2) q.po.push({ stage: 'PO', a: rest[i], b: rest[i + 1] } as IntlTie);
   q.poDates = EURO04_PO_DATES.slice();
+  // create_playoff_stage 0x57ef50 → 0x775000: de, der hverken er kvalificeret eller i playoff, mister turneringen
+  const inPo = new Set(q.po.flatMap((t) => [t.a, t.b]));
+  intlHooks.ntOut?.('euroq', 2004, q.groups.flat().filter((n) => !q.qualified!.includes(n) && !inPo.has(n)));
   if (!q.po.length) announceQualified(g, q.qualified);
 }
 

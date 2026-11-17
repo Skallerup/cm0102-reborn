@@ -308,7 +308,12 @@ export const natClub = (n: number) => -1000 - n;
 export const natOfClub = (c: number): number | null => (c <= -1000 ? -1000 - c : null);
 /** landstræneren: personen med landsholdsjobbet manager (personpost +0x24 = holdet, +0x28 = 5 – Staff.cmNat) */
 const mgrCache = new WeakMap<GameState, Map<number, Staff>>();
+/** bestyrelsen (cmBoardGame.ts) har skiftet en landstræner */
+export function resetNationalManagers(g: GameState): void { mgrCache.delete(g); }
 export function nationalManager(g: GameState, n: number): Staff | undefined {
+  // landsholdene i bestyrelsessystemet (0x68f130 og senere udnævnelser/afgange): A-holdets club +0xcf
+  const nm = g.cmBoard?.nm;
+  if (nm) { const id = nm[n]; return id !== undefined ? g.staff[id] : undefined; }
   let m = mgrCache.get(g);
   if (!m) {
     m = new Map();
