@@ -24,9 +24,20 @@ Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.m
   2001-verden, "V" i MODERN_PARITY) – nu også for computerens bænk (`AiPickCtx.benchSize = benchSize()`; før altid 5). 2001: uændret 3/5.
 - **Mål (scripts/grid-season-cm.ts, Premier League til 31/12):** 2001 frø 1 (measure 8dcf2308be99): 210 kampe, 2,93 mål (H/U/B 54/23/22), gule
   1,93, røde 0,12, skadet 0,60, indskiftede 4,16 pr. kamp, 2,2–2,7 s/dag. 2026 frø 1 til 20/8 (røgprøve, 20 kampe): 2,75 mål, gule 2,70, røde 0,20,
-  skadet 0,60, indskiftede 8,35 (5 udskiftninger), 73 ms/dag, spilstart 0,9 s. Den halve sæson × 2 frø for 2026 (grid og zone) blev stoppet af
-  systemet (lav RAM) – køres igen med `node scripts/measure.mjs -- npx tsx scripts/grid-season-cm.ts 2026 <frø> [2026-12-31] [original|zone]`.
+  skadet 0,60, indskiftede 8,35 (5 udskiftninger), 73 ms/dag, spilstart 0,9 s.
+  Samlet gren med vilje/kontrakter (18/11), 190 kampe til 31/12 (Brentford): 2026 gittermotoren frø 1/2 (f60ab8e08aa0/83d5a7282484) 2,53/2,82 mål,
+  H/U/B 48/25/27 og 56/16/28, gule 2,35/2,46, røde 0,23/0,18, skadet 0,46/0,53, indskiftede 8,07/8,20, ≈200 ms/dag; zonemotoren frø 1/2
+  (f9eaaffccf1c/f5a99130fb03) 2,71/2,55 mål, gule 3,13/3,26, røde 0,13/0,16, skadet 0,32/0,27, indskiftede 4,25/4,19, ≈60 ms/dag. 2001 frø 2
+  (26c966fadfc3, Wrexham, 209 kampe): 3,00 mål, H/U/B 50/22/27, gule 2,04, røde 0,19, skadet 0,67, indskiftede 4,22, 2,4 s/dag.
   2001 er bit for bit uændret (perf-fingerprint 2001-08-20 b5ecf86d561c0ba3 før/efter).
+- **Spaniens klubber i minus (cm-econ-2026, Vejle, 1 → 6 af 20):** årsagen er Signing On Fee, ikke omregningen. 0x85fc50 +8 = 20 % af værdien
+  0x4d0c60 (×0,25–0,9 efter omdømme/status, ×≤1,4 ved lønloftet), og i kontraktlaget (genCtx) er 0x4d0c60 den håndporterede formel
+  (cmValue.ts `playerValue_4d0c60`) på databasens felter – originalens £, ikke spillets markedsværdi. €-beløbet = £ / køberens faktor
+  (Spanien 0,1366), helt som lønnen. Målt (seed 3): signOn ≈ 0,43 × årslønnen i Spanien (0,3–0,4 i de andre store ligaer) og ≈ 0,5 × spillets
+  værdi (Palmer til Real Madrid: €37 mio. ved værdi €52 mio.); de tre i minus (Racing −13,4m, Málaga, Alavés) betalte 11–14m i sign-on mod
+  saldoer på 16–21m ved start. Den spanske saldo er spillets moderne (median 23m mod England 76m), og originalens formel ganget med en
+  lønfaktor giver gebyrer, der er store i forhold til den. Ingen rettelse (1:1: formlen og faktoren er begge originalens/ejerens princip).
+  Bemærk: `valueOf` (p.value × faktor) i cmContractGame/cmSlMem bruges kun i base-kaldet; gennem genCtx går 0x4d0c60 til formlen.
 
 ## Målefælder for mål/kamp (2026-11-17 – læs før sæsontallene nedenfor sammenlignes)
 - **`grid-season.ts`' tal fra runde 9 til 13/11 måler IKKE gittermotoren i Premier League.** Indtil a898c948 (14/11) spillede `gridFixture()` (sim.ts)

@@ -5,7 +5,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { createGame, type WorldData } from '../src/game/newgame';
 import { gs, setClub } from '../src/game/state';
 import { makeBid, negotiate } from '../src/game/transfers';
-import { cmActive } from '../src/game/cmPlayerData';
+import { cmActive, cmLogic } from '../src/game/cmPlayerData';
 import { cmCupName, cmLeagueRules } from '../src/game/cmCalendar';
 import { continueGame } from '../src/game/sim';
 import type { GameState } from '../src/game/types';
@@ -20,8 +20,9 @@ describe('#20/#21/#24: 2026/27-databasen i ægte tilstand – accepteret bud →
     g = gs();
   }, 300_000);
 
-  it('originalens forløb (cmActive) er ikke tændt – det gamle forløb med nyhed og Offer Contract gælder', () => {
+  it('2001-modulerne (cmActive) er ikke tændt, men originalens logik (cmLogic) er – også på 2026/27 (fra 18/11)', () => {
     expect(cmActive(g)).toBe(false);
+    expect(cmLogic(g)).toBe(true);
   });
 
   it('et accepteret bud giver en nyhed med link til buddet, og forhandlingen kan føres til ende', () => {
@@ -34,9 +35,10 @@ describe('#20/#21/#24: 2026/27-databasen i ægte tilstand – accepteret bud →
     const o = g.offers.find((x) => x.player === target.id && x.buyer === g.userClub)!;
     expect(['negotiating', 'countered', 'rejected', 'completed']).toContain(o.status);
     if (o.status === 'negotiating') {
-      expect(g.news.some((n) => (n.key === 'transfer.bidAccepted' || n.key === 'transfer.releaseMet') && n.link?.kind === 'offer' && n.link.id === o.id)).toBe(true);
+      // originalens Offer Contract-forløb (cmTransferTalks.ts): nyheden "contract talks" med link til buddet, svaret kommer som nyhed
+      expect(g.news.some((n) => n.key === 'transfer.cmTalks' && n.link?.kind === 'offer' && n.link.id === o.id)).toBe(true);
       const r = negotiate(o.id, Math.round((o.demand?.wage ?? target.contract?.wage ?? 10000) * 1.5), 3);
-      expect(['accepted', 'counter', 'budget']).toContain(r);
+      expect(['cmSent', 'budget']).toContain(r);
     }
   });
 });
