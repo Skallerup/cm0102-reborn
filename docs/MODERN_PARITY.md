@@ -19,7 +19,7 @@ dem på 2026/2027." Regel (CLAUDE.md): 2001-specifikke **tal** (priser, lønnive
   - l. 249–252: `staff[11]`–`[16]` (ikke-spillerposten, skjulte egenskaber, landshold, hukommelse) kun `ORIGINAL`;
   - l. 269/286: `staffX`/`clubNames` kun `ORIGINAL`;
   - l. 295: nationernes sprog (`lang`) slettes; l. 306: `clubFinance` slettes; l. 299: landsholdene (`nationalTeams`) kun `ORIGINAL`.
-  - Beskåret til world.jsons 641 klubber/22.673 spillere fylder hele `cmRaw` ≈ 0,48 MB (prefs 0,22 MB) – world.json er 8,2 MB, SW-grænsen
+  - Beskåret til world.jsons klubber (målt på 641 klubber/22.673 spillere før genbygningen 17/11) fylder hele `cmRaw` ≈ 0,48 MB (prefs 0,22 MB) – world.json er nu 9,1 MB (656 klubber), SW-grænsen
     er 10 MB (vite.config.ts:54). staffX (25k poster) passer ikke uden at blive en separat fil, der hentes ved behov.
 - **Spilstarten springer dem over** for 2026: newgame.ts har ~15 betingelser `season < 2020` (l. 177 g.econ, 179–192 g.cm*-felterne, 220
   `cmStartGame`, 241 fødselsdag, 278–298 `cmRepMem`/`cmFree`/`cmNation2`/`cmJoined`/`cmInt`, 320 sprog, 479 stabens spilstart, 520 compHist,
@@ -126,7 +126,7 @@ kalibrering af logikken – men ejeren skal godkende princippet, før nogen bygg
 ## 5. Prioriteret liste (mest mærkbart for spillerne først)
 
 Fællesforudsætning for alt nedenfor (**F0, let – dag 1**): (a) byggescriptet beholder `cmRaw` (beskåret), `staff[11]`–`[14]`, `nations.lang`
-og `clubFinance` for 2026 og kalder `parseCM0102` med `cmMem: true` (world.json +≈ 0,5–1 MB; staffX som separat fil eller senere); genbyg
+og `clubFinance` for 2026 og kalder `parseCM0102` med `cmMem: true` (world.json +≈ 0,5–1 MB – tæt på SW-grænsen 10 MB, så cm-felterne bør ligge i en separat fil, der hentes ved ægte tilstand; staffX som separat fil eller senere); genbyg
 world.json med `scripts/build-cm-data.mts` (sha i world-builds.json, `tests/worldBuild.test.ts`). (b) En ny gate, fx `cmLogic(g)` = CM-format +
 ægte tilstand (uanset år), adskilt fra `cmActive`/`isOriginal2001` (= 2001-verden); i newgame.ts deles `season < 2020` i "har cmRaw" og
 "2001-verden". Selve skiftet kræver et **nyt spil** (felterne sættes ved spilstart; eksisterende 2026-spil kunne evt. konverteres som cmConvert.ts).
@@ -158,7 +158,7 @@ Alle punkter er porte, der allerede findes – der skal ikke oversættes ny exe-
   (udvidet har egne tilføjelser – pressemøder, xG, sponsorer – der læser de nuværende systemer).
 - **Datakvalitet i opdateringen:** markedsværdierne er næsten tomme (1.666 af 139k) – originalen regner dem selv (0x4d0c60), så det er ikke en
   hindring. Lønningerne er udfyldt i opdateringens enheder (skal kontrolleres mod exe'ens forventede skala).
-- **Hastighed:** ægte tilstand på 2001 (~54k spillere i world-original.json) er målt hurtig nok; world.json har 22,7k – samme eller bedre.
+- **Hastighed:** ægte tilstand på 2001 (~54k spillere i world-original.json) er målt hurtig nok; world.json har 23k – samme eller bedre.
 - **Gemte spil:** alle punkter kræver et nyt spil (eller en konvertering à la cmConvert.ts, som i dag afviser 2026/27).
 - **Orakel:** referencen for 1:1 på 2026/27 er cm0102.exe med opdateringens Data-mappe. Kør kun på en kopi – aldrig ejerens
   `~/Library/Application Support/cm0102`.
