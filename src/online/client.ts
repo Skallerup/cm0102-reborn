@@ -42,6 +42,8 @@ export interface RoomInfo {
   draft?: DraftRoomInfo;
   /** Hvem er med i voice-chatten */
   voice?: string[];
+  /** Tilmeldinger, der endnu ikke er med i øjebliksbilledet – anvendes lokalt i rækkefølge, så gæsten er med straks */
+  joins?: { idx: number; pid: string; a: Action }[];
 }
 
 export interface RoomPlayer { pid: string; name: string; club: number; ready: boolean; joined: string; auto?: boolean; pending?: boolean; online?: boolean }
@@ -97,6 +99,35 @@ export interface Credentials {
 }
 
 const API = '/api/mp';
+/** Protokolversion (samme tal som MP_PROTOCOL i api/mp.ts). Serveren afviser ældre klienter med 426 → genindlæs med den nye version. */
+export const MP_PROTOCOL = 2;
+const HEADERS = { 'x-mp-proto': String(MP_PROTOCOL) };
+
+let reloading = false;
+/** Serveren kører en nyere protokol: hent den nye version (service workeren kan holde fanen fast på en gammel udgave) og genindlæs.
+ *  Højst 3 gange på 10 min. pr. fane, så en forældet cache ikke giver en genindlæsningsløkke. */
+function outdatedClient() {
+  if (reloading || typeof window === 'undefined') return;
+  let n: number[] = [];
+  try { n = (JSON.parse(sessionStorage.getItem('cm0102.mpReload') ?? '[]') as number[]).filter((x) => Date.now() - x < 600_000); } catch { /* ignorer */ }
+  if (n.length >= 3) return;
+  reloading = true;
+  try { sessionStorage.setItem('cm0102.mpReload', JSON.stringify([...n, Date.now()])); } catch { /* ignorer */ }
+  void (async () => {
+    try {
+      const reg = await navigator.serviceWorker?.getRegistration();
+      await reg?.update();
+      reg?.waiting?.postMessage({ type: 'SKIP_WAITING' });
+    } catch { /* ingen service worker */ }
+    setTimeout(() => location.reload(), 1500);
+  })();
+}
+
+async function mpFetch(input: string, init?: RequestInit): Promise<Response> {
+  const r = await fetch(input, { ...init, headers: { ...(init?.headers as Record<string, string> | undefined), ...HEADERS } });
+  if (r.status === 426) outdatedClient();
+  return r;
+}
 const STORE = 'cm0102.online';
 
 // ---------- gemte rum ----------
@@ -120,14 +151,14 @@ export function forgetRoom(code: string) {
 export async function mpPost<T>(op: string, body: Record<string, unknown>): Promise<T> { return post<T>(op, body); }
 
 async function post<T>(op: string, body: Record<string, unknown>): Promise<T> {
-  const r = await fetch(`${API}?op=${op}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  const r = await mpFetch(`${API}?op=${op}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
   const data = await r.json();
   if (!r.ok) throw new Error(data.error ?? `http ${r.status}`);
   return data as T;
 }
 
 export async function fetchRoom(code: string, pid?: string): Promise<RoomInfo> {
-  const r = await fetch(`${API}?code=${encodeURIComponent(code.toUpperCase())}${pid ? `&pid=${encodeURIComponent(pid)}` : ''}`, { cache: 'no-store' });
+  const r = await mpFetch(`${API}?code=${encodeURIComponent(code.toUpperCase())}${pid ? `&pid=${encodeURIComponent(pid)}` : ''}`, { cache: 'no-store' });
   const data = await r.json();
   if (!r.ok) throw new Error(data.error ?? `http ${r.status}`);
   return data as RoomInfo;
@@ -506,6 +537,9 @@ export class OnlineSession {
       this.room = room;
       if (room.version > this.version || (force && room.snapshot)) {
         await this.loadVersion(room);
+      } else if (this.pristine) {
+        // nye tilmeldinger siden sidst: med i spillet med det samme (gæsten selv: kan åbne sin trup og trykke Klar)
+        this.applyJoins(room);
       }
       if (this.error && !this.busy) this.error = '';
       this.emit();
@@ -530,6 +564,8 @@ export class OnlineSession {
     this.version = room.version;
     forceMultiplayerAuthentic(state);
     setGame(state);
+    this.joined = new Set();
+    this.applyJoins(room);
     if (state.humans?.some((h) => h.pid === this.creds.pid)) activate(this.creds.pid, state);
     // genanvend egne handlinger der ikke nåede med i dette træk
     const applied = state.lastActionIdx ?? 0;
@@ -540,6 +576,28 @@ export class OnlineSession {
     }
     this.status = 'idle';
     this.emit();
+  }
+
+  /** Tilmeldinger (idx), der er anvendt lokalt oven på det nuværende øjebliksbillede */
+  private joined = new Set<number>();
+
+  /**
+   * Anvend ventende tilmeldinger lokalt i serverens rækkefølge – samme join-handling, som trækket senere afspiller fra det uberørte
+   * øjebliksbillede, så gæsten er med i spillet med det samme (trup, taktik, Klar) uden at vente på værten. Det kræver ingen
+   * bestemt klient: hver klient gør det selv, også når værten er offline.
+   */
+  private applyJoins(room: RoomInfo) {
+    let state: GameState;
+    try { state = gs(); } catch { return; }
+    const applied = state.lastActionIdx ?? 0;
+    let mine = false;
+    for (const j of [...(room.joins ?? [])].sort((x, y) => x.idx - y.idx)) {
+      if (j.idx <= applied || this.joined.has(j.idx) || j.a?.t !== 'join') continue;
+      this.joined.add(j.idx);
+      applyActionAs(j.pid, j.a);
+      if (j.pid === this.creds.pid) mine = true;
+    }
+    if (mine && state.humans?.some((h) => h.pid === this.creds.pid)) activate(this.creds.pid, state);
   }
 
   /** Hvornår udløber trækkets frist (ms siden epoch), eller null hvis rummet ikke har en frist */
@@ -628,6 +686,8 @@ export class OnlineSession {
       }
       this.pristine = blob;
       this.version += 1;
+      this.joined = new Set();
+      if (this.room) this.applyJoins(this.room);
       if (state.humans?.some((h) => h.pid === this.creds.pid)) activate(this.creds.pid, state);
       this.sent = this.sent.filter(([idx]) => idx > last);
       for (const [, a] of this.sent) applyActionAs(this.creds.pid, a);

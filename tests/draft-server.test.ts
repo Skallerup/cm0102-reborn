@@ -33,7 +33,7 @@ vi.mock('@vercel/blob/client', () => ({ handleUpload: async () => ({}) }));
 
 let api: typeof import('../api/mp');
 const post = async (op: string, body: Record<string, unknown>) => {
-  const r = await api.POST(new Request(`http://x/api/mp?op=${op}`, { method: 'POST', body: JSON.stringify(body) }));
+  const r = await api.POST(new Request(`http://x/api/mp?op=${op}`, { method: 'POST', headers: { 'x-mp-proto': '2' }, body: JSON.stringify(body) }));
   return { status: r.status, body: await r.json() };
 };
 beforeAll(async () => { api = await import('../api/mp'); });

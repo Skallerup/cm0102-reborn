@@ -254,7 +254,7 @@ export const de: Record<string, string> = {
   'mp.codePlaceholder': 'Code', 'mp.myGames': 'Meine Onlinespiele', 'mp.connecting': 'Verbinde…', 'mp.players': 'Spieler', 'mp.taken': 'Vergeben',
   'mp.invite': 'Einladen', 'mp.inviteLink': 'Einladungslink', 'mp.copied': 'Link kopiert!', 'mp.ready': 'Bereit ✓', 'mp.notReady': 'Nicht bereit',
   'mp.waitingFor': 'Warte auf: {names}', 'mp.allReady': 'Alle sind bereit', 'mp.processing': 'Nächster Zug wird simuliert…', 'mp.otherProcessing': 'Jemand anderes simuliert den Zug…',
-  'mp.loading': 'Neuer Zug wird geladen…', 'mp.lobby': 'Lobby', 'mp.lobbyText': 'Du bist angemeldet! Du steigst ins Spiel ein, sobald der nächste Zug gespielt ist. Wenn alle „Bereit“ gedrückt haben, geht es los.',
+  'mp.loading': 'Neuer Zug wird geladen…', 'mp.lobby': 'Lobby', 'mp.lobbyText': "Du bist angemeldet! Gleich geht es zu deinem Verein…",
   'mp.pendingStatus': 'Ab dem nächsten Zug dabei', 'mp.offline': 'offline', 'mp.isReady': 'Bereit', 'mp.notReadyYet': 'Nicht bereit', 'mp.leaveConfirm': 'Spiel verlassen? Du kannst jederzeit über Online-Mehrspieler zurückkehren.',
   'mp.joined': '{manager} hat {club} übernommen', 'mp.err.not-found': 'Spiel nicht gefunden – prüfe den Code.', 'mp.err.club-taken': 'Dieser Verein ist bereits vergeben.',
   'mp.err.full': 'Das Spiel ist voll (max. 8 Trainer).', 'mp.err.not-ready': 'Der Gastgeber erstellt das Spiel noch – versuch es gleich noch einmal.',

@@ -259,7 +259,7 @@ export const da: Record<string, string> = {
   'mp.codePlaceholder': 'Kode', 'mp.myGames': 'Mine online spil', 'mp.connecting': 'Forbinder…', 'mp.players': 'Spillere', 'mp.taken': 'Taget',
   'mp.invite': 'Invitér', 'mp.inviteLink': 'Invitationslink', 'mp.copied': 'Link kopieret!', 'mp.ready': 'Klar ✓', 'mp.notReady': 'Ikke klar',
   'mp.waitingFor': 'Venter på: {names}', 'mp.allReady': 'Alle er klar', 'mp.processing': 'Simulerer næste træk…', 'mp.otherProcessing': 'En anden simulerer trækket…',
-  'mp.loading': 'Henter nyt træk…', 'mp.lobby': 'Lobby', 'mp.lobbyText': 'Du er tilmeldt! Du kommer med i spillet, når næste træk er spillet. Når alle har trykket "Klar", går det i gang.',
+  'mp.loading': 'Henter nyt træk…', 'mp.lobby': 'Lobby', 'mp.lobbyText': "Du er tilmeldt! Du kommer ind til din klub om et øjeblik…",
   'mp.isReady': 'Klar', 'mp.pendingStatus': 'Med fra næste træk', 'mp.offline': 'offline', 'mp.notReadyYet': 'Ikke klar', 'mp.leaveConfirm': 'Forlad spillet? Du kan altid vende tilbage via Online multiplayer.',
   'mp.joined': '{manager} har overtaget {club}', 'mp.err.not-found': 'Spillet findes ikke – tjek koden.', 'mp.err.club-taken': 'Klubben er allerede taget.',
   'mp.err.full': 'Spillet er fyldt (max 8 managere).', 'mp.err.not-ready': 'Værten er ved at oprette spillet – prøv igen om lidt.',

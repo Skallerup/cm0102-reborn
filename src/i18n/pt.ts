@@ -254,7 +254,7 @@ export const pt: Record<string, string> = {
   'mp.codePlaceholder': 'Código', 'mp.myGames': 'Meus jogos online', 'mp.connecting': 'Conectando…', 'mp.players': 'Jogadores', 'mp.taken': 'Ocupado',
   'mp.invite': 'Convidar', 'mp.inviteLink': 'Link de convite', 'mp.copied': 'Link copiado!', 'mp.ready': 'Pronto ✓', 'mp.notReady': 'Não está pronto',
   'mp.waitingFor': 'Aguardando: {names}', 'mp.allReady': 'Todos estão prontos', 'mp.processing': 'Simulando o próximo turno…', 'mp.otherProcessing': 'Outra pessoa está simulando o turno…',
-  'mp.loading': 'Carregando novo turno…', 'mp.lobby': 'Lobby', 'mp.lobbyText': 'Você está inscrito! Você entra no jogo assim que o próximo turno for jogado. Quando todos clicarem em "Pronto", começa.',
+  'mp.loading': 'Carregando novo turno…', 'mp.lobby': 'Lobby', 'mp.lobbyText': "Você está inscrito! Levando você ao seu clube…",
   'mp.pendingStatus': 'Entra no próximo turno', 'mp.offline': 'offline', 'mp.isReady': 'Pronto', 'mp.notReadyYet': 'Não está pronto', 'mp.leaveConfirm': 'Sair do jogo? Você sempre pode voltar pelo Multiplayer online.',
   'mp.joined': '{manager} assumiu o {club}', 'mp.err.not-found': 'Jogo não encontrado – confira o código.', 'mp.err.club-taken': 'Esse clube já está ocupado.',
   'mp.err.full': 'O jogo está cheio (máx. 8 técnicos).', 'mp.err.not-ready': 'O anfitrião ainda está criando o jogo – tente novamente em instantes.',

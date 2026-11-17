@@ -254,7 +254,7 @@ export const it: Record<string, string> = {
   'mp.codePlaceholder': 'Codice', 'mp.myGames': 'Le mie partite online', 'mp.connecting': 'Connessione…', 'mp.players': 'Giocatori', 'mp.taken': 'Occupato',
   'mp.invite': 'Invita', 'mp.inviteLink': 'Link di invito', 'mp.copied': 'Link copiato!', 'mp.ready': 'Pronto ✓', 'mp.notReady': 'Non pronto',
   'mp.waitingFor': 'In attesa di: {names}', 'mp.allReady': 'Tutti sono pronti', 'mp.processing': 'Simulazione del turno successivo…', 'mp.otherProcessing': 'Qualcun altro sta simulando il turno…',
-  'mp.loading': 'Caricamento del nuovo turno…', 'mp.lobby': 'Lobby', 'mp.lobbyText': 'Sei iscritto! Entrerai nella partita dopo che sarà giocato il prossimo turno. Quando tutti avranno premuto «Pronto», si parte.',
+  'mp.loading': 'Caricamento del nuovo turno…', 'mp.lobby': 'Lobby', 'mp.lobbyText': "Sei iscritto! Ti portiamo al tuo club…",
   'mp.pendingStatus': 'Entra al prossimo turno', 'mp.offline': 'offline', 'mp.isReady': 'Pronto', 'mp.notReadyYet': 'Non pronto', 'mp.leaveConfirm': 'Lasciare la partita? Puoi sempre tornare da Multigiocatore online.',
   'mp.joined': '{manager} ha preso il {club}', 'mp.err.not-found': 'Partita non trovata – controlla il codice.', 'mp.err.club-taken': 'Quel club è già occupato.',
   'mp.err.full': 'La partita è al completo (max 8 allenatori).', 'mp.err.not-ready': "L'host sta ancora creando la partita – riprova tra poco.",

@@ -254,7 +254,7 @@ export const en: Record<string, string> = {
   'mp.codePlaceholder': 'Code', 'mp.myGames': 'My online games', 'mp.connecting': 'Connecting…', 'mp.players': 'Players', 'mp.taken': 'Taken',
   'mp.invite': 'Invite', 'mp.inviteLink': 'Invite link', 'mp.copied': 'Link copied!', 'mp.ready': 'Ready ✓', 'mp.notReady': 'Not ready',
   'mp.waitingFor': 'Waiting for: {names}', 'mp.allReady': 'Everyone is ready', 'mp.processing': 'Simulating next turn…', 'mp.otherProcessing': 'Someone else is simulating the turn…',
-  'mp.loading': 'Loading new turn…', 'mp.lobby': 'Lobby', 'mp.lobbyText': 'You are signed up! You join the game once the next turn has been played. When everyone has pressed "Ready", it starts.',
+  'mp.loading': 'Loading new turn…', 'mp.lobby': 'Lobby', 'mp.lobbyText': "You are signed up! Taking you to your club…",
   'mp.isReady': 'Ready', 'mp.pendingStatus': 'Joins next turn', 'mp.offline': 'offline', 'mp.notReadyYet': 'Not ready', 'mp.leaveConfirm': 'Leave the game? You can always come back via Online multiplayer.',
   'mp.joined': '{manager} has taken over {club}', 'mp.err.not-found': 'Game not found – check the code.', 'mp.err.club-taken': 'That club is already taken.',
   'mp.err.full': 'The game is full (max 8 managers).', 'mp.err.not-ready': 'The host is still creating the game – try again shortly.',

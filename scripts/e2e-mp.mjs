@@ -2,10 +2,11 @@
 // Starter selv Vite (dev) med en middleware, der kører api/mp.ts lokalt; Redis er en in-memory-erstatning (scripts/mp-test/fakeRedis.mjs)
 // og øjebliksbillederne gemmes i hukommelsen i stedet for Vercel Blob (VITE_MP_FAKE_BLOB) – ingen rigtige data røres.
 //
-// Forløb: værten opretter rummet (moderne database, Danmark) → gæst B tilmelder sig via ?room=KODE før første træk (må ikke blokere) →
-// værten spiller første træk → B er med → gæst C tilmelder sig midt i spillet → flere træk med Ready fra alle, mindst én kampdag,
-// B og værten genindlæser siden undervejs (genoptages – ingen ny manager), en "død" spiller (tilmeldt via API, trykker aldrig Ready)
-// springes over med værtens Tving igennem og fjernes med Fjern. Fejler ved sidefejl, dubletter eller et træk, der hænger.
+// Forløb: værten opretter rummet (moderne database, Danmark) → gæst B tilmelder sig via ?room=KODE før første træk og er med STRAKS
+// (protokol 2: join-handlingen anvendes lokalt) – B åbner sin trup, genindlæser, og trækket venter på B's Ready → træk 1 →
+// gæst C tilmelder sig midt i spillet (også med straks) og en "død" spiller (tilmeldt via API, trykker aldrig Ready) → værten tvinger
+// igennem og fjerner den → flere træk med Ready fra alle, mindst én kampdag, B og værten genindlæser undervejs. Klienter uden
+// protokolversion afvises (426). Fejler ved sidefejl, dubletter eller et træk, der hænger.
 // Kør: npm run e2e:mp   (PORT=<n> for en anden port, HEADED=1 for synlige vinduer, SHOTS=1 for skærmbilleder i e2e-shots/)
 import { mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -54,7 +55,9 @@ const server = await createServer({
             apiCalls++;
             const mod = await srv.ssrLoadModule('/api/mp.ts');
             const body = req.method === 'POST' ? await readBody(req) : undefined;
-            const r = await (req.method === 'POST' ? mod.POST : mod.GET)(new Request(`http://localhost:${PORT}${url}`, { method: req.method, headers: { 'content-type': 'application/json' }, body }));
+            const headers = { 'content-type': 'application/json' };
+            if (req.headers['x-mp-proto']) headers['x-mp-proto'] = String(req.headers['x-mp-proto']);
+            const r = await (req.method === 'POST' ? mod.POST : mod.GET)(new Request(`http://localhost:${PORT}${url}`, { method: req.method, headers, body }));
             res.statusCode = r.status;
             r.headers.forEach((v, k) => res.setHeader(k, v));
             res.end(Buffer.from(await r.arrayBuffer()));
@@ -72,13 +75,14 @@ const server = await createServer({
 });
 await server.listen();
 
+const PROTO = { 'x-mp-proto': '2' };
 const api = async (op, body) => {
-  const r = await fetch(`http://localhost:${PORT}/api/mp${op ? `?op=${op}` : ''}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  const r = await fetch(`http://localhost:${PORT}/api/mp${op ? `?op=${op}` : ''}`, { method: 'POST', headers: { 'content-type': 'application/json', ...PROTO }, body: JSON.stringify(body) });
   const j = await r.json();
   if (!r.ok) throw new Error(`${op}: ${j.error}`);
   return j;
 };
-const getRoom = async (code) => (await fetch(`http://localhost:${PORT}/api/mp?code=${code}`)).json();
+const getRoom = async (code) => (await fetch(`http://localhost:${PORT}/api/mp?code=${code}`, { headers: PROTO })).json();
 
 const browser = await chromium.launch({ headless: !process.env.HEADED });
 const failures = [];
@@ -103,7 +107,7 @@ const state = (p) => p.page.evaluate(async () => {
   const st = await import(/* @vite-ignore */ '/cm0102-reborn/src/game/state.ts');
   const s = c.session();
   const g = st.hasGame() ? st.gs() : null;
-  return s ? { pid: s.creds.pid, code: s.creds.code, version: s.version, inGame: s.inGame, ready: !!s.me?.ready, pending: !!s.me?.pending, status: s.status, error: s.error, players: s.room?.players.length ?? 0, date: g?.date, pf: g?.pendingFixture ?? null } : null;
+  return s ? { pid: s.creds.pid, code: s.creds.code, version: s.version, inGame: s.inGame, ready: !!s.me?.ready, pending: !!s.me?.pending, status: s.status, error: s.error, players: s.room?.players.length ?? 0, date: g?.date, pf: g?.pendingFixture ?? null, club: g?.userClub ?? 0, humans: (g?.humans ?? []).map((h) => h.pid) } : null;
 });
 
 async function waitFor(p, pred, what, ms = TURN_MS) {
@@ -188,43 +192,47 @@ try {
     await waitFor(p, (s) => s.pid && s.players > 0 && s.version >= 1 && s.status === 'idle', 'tilmelding');
   };
 
-  await step('gæst B tilmelder sig før første træk og venter i lobbyen (blokerer ikke)', async () => {
-    await join(b, 'Guest B', 'Brøndby');
-    const s = await state(b);
-    if (s.inGame || !s.pending) throw new Error(`B burde være tilmeldt, men ikke med endnu: ${JSON.stringify(s)}`);
-    await b.page.waitForSelector('[data-testid=online-lobby]', { timeout: 20_000 });
-    const lobby = await b.page.locator('[data-testid=online-lobby]').innerText();
-    if (!/Joins next turn/.test(lobby)) throw new Error(`lobbyen viser ikke "Joins next turn": ${lobby}`);
-    if (process.env.SHOTS) await b.page.screenshot({ path: `${OUT}/mp-lobby.png` });
-    // værten venter ikke på B
-    await host.page.waitForTimeout(4000);
-    const note = await host.page.locator('.cx-side [data-testid=online-note]').innerText().catch(() => '');
-    if (/Guest B/.test(note)) throw new Error(`værten venter på gæsten i lobbyen: ${note}`);
+  await step('gamle klienter uden protokolversion afvises (426)', async () => {
+    const r = await fetch(`http://localhost:${PORT}/api/mp?code=${code}`);
+    if (r.status !== 426) throw new Error(`forventede 426, fik ${r.status}`);
   });
 
-  await step('B genindlæser i lobbyen → samme manager (ingen dublet)', async () => {
+  await step('gæst B tilmelder sig før første træk og er med STRAKS: egen klub, truppen kan åbnes', async () => {
+    await join(b, 'Guest B', 'Brøndby');
+    const s = await waitFor(b, (x) => x.inGame && !x.pending, 'B med i spillet', 30_000);
+    if (s.club !== clubs.bro || s.version !== 1) throw new Error(`B styrer ikke Brøndby i version 1: ${JSON.stringify(s)}`);
+    if (await b.page.locator('[data-testid=online-lobby]').count()) throw new Error('B står stadig i lobbyen');
+    await b.page.evaluate(() => window.__cmNav({ name: 'squad' }));
+    await b.page.waitForSelector('.cx-sq-row, .cx-sq-name', { timeout: 20_000 });
+    const rows = await b.page.locator('.cx-sq-row, .cx-sq-name').count();
+    if (rows < 11) throw new Error(`B's trup er tom (${rows})`);
+    if (process.env.SHOTS) await b.page.screenshot({ path: `${OUT}/mp-gaest-trup.png` });
+    // værten ser også B som manager (join anvendt lokalt hos værten)
+    await waitFor(host, (x) => x.humans.includes(s.pid), 'værten ser B', 20_000);
+  });
+
+  await step('B genindlæser før første træk → samme manager, stadig med (ingen dublet)', async () => {
     const before = await state(b);
     await b.page.reload();
-    await waitFor(b, (s) => s.pid === before.pid, 'genoptagelse', 60_000);
+    await waitFor(b, (s) => s.pid === before.pid && s.inGame && s.club === clubs.bro, 'genoptagelse', 60_000);
     const room = await getRoom(code);
     if (room.players.length !== 2) throw new Error(`forventede 2 managere, fik ${room.players.map((x) => x.name).join(', ')}`);
   });
 
-  await step('træk 1: kun værten trykker Ready → B kommer med', async () => {
+  await step('træk 1: værten Ready → venter på B; B trykker selv Ready → trækket spilles', async () => {
     await pressReady(host);
+    await host.page.waitForTimeout(4000);
+    if ((await state(host)).version !== 1) throw new Error('trækket blev spillet uden B');
+    await pressReady(b);
     await waitFor(host, (s) => s.version === 2 && s.status === 'idle', 'træk 1 (vært)');
-    await waitFor(b, (s) => s.version === 2 && s.inGame && !s.pending, 'B med i spillet');
-  });
-
-  await step('gæst C tilmelder sig midt i spillet', async () => {
-    await join(c, 'Guest C', 'FC København');
-    const s = await state(c);
-    if (s.inGame) throw new Error('C er med før næste træk');
+    await waitFor(b, (s) => s.version === 2 && s.inGame && !s.pending && s.club === clubs.bro, 'B i version 2');
   });
 
   let ghost;
-  await step('en "død" spiller tilmelder sig (via API) og lukker straks', async () => {
-    // vælg en ledig klub fra værtens spil
+  await step('gæst C tilmelder sig midt i spillet og er med straks; en "død" spiller tilmelder sig via API', async () => {
+    await join(c, 'Guest C', 'FC København');
+    const s = await waitFor(c, (x) => x.inGame && !x.pending, 'C med i spillet', 30_000);
+    if (s.club !== clubs.fck) throw new Error(`C styrer ikke FCK: ${JSON.stringify(s)}`);
     const free = await host.page.evaluate(async (taken) => {
       const st = await import(/* @vite-ignore */ '/cm0102-reborn/src/game/state.ts');
       const g = st.gs();
@@ -235,34 +243,23 @@ try {
     ghost = await api('join', { code, name: 'Ghost', club: free.id, nation: free.nation });
   });
 
-  await step('træk 2: vært og B trykker Ready (C og Ghost er nye og blokerer ikke)', async () => {
-    await waitFor(b, (s) => s.version === 2 && s.inGame && !s.ready, 'version 2 hentet');
-    await pressReady(b);
-    await pressReady(host);
-    await waitFor(host, (s) => s.version === 3 && s.status === 'idle', 'træk 2');
-    await waitFor(c, (s) => s.version === 3 && s.inGame, 'C med i spillet');
-  });
-
-  await step('træk 3: Ghost er nu med og trykker aldrig Ready → værten tvinger igennem', async () => {
-    for (const p of [b, c]) await waitFor(p, (s) => s.version === 3 && s.inGame && !s.ready, 'version 3 hentet');
+  await step('træk 2: vært, B og C trykker Ready; Ghost blokerer → værten tvinger igennem og fjerner Ghost', async () => {
+    await waitFor(b, (s) => s.version === 2 && !s.ready, 'version 2 hentet');
     await pressReady(b); await pressReady(c); await pressReady(host);
     const room = await getRoom(code);
     const gh = room.players.find((x) => x.pid === ghost.pid);
-    if (!gh || gh.pending || gh.ready) throw new Error(`Ghost burde blokere nu: ${JSON.stringify(gh)}`);
-    const hn = await host.page.locator('.cx-side [data-testid=online-note]').innerText();
-    if (!/Ghost/.test(hn) && !/Waiting/.test(hn)) throw new Error(`værtens note nævner ikke Ghost: ${hn}`);
+    if (!gh || gh.pending || gh.ready) throw new Error(`Ghost burde blokere: ${JSON.stringify(gh)}`);
+    await host.page.waitForTimeout(3000);
+    if ((await state(host)).version !== 2) throw new Error('trækket blev spillet uden Ghost');
     await host.page.evaluate(async () => { const cl = await import(/* @vite-ignore */ '/cm0102-reborn/src/online/client.ts'); await cl.session().forceContinue(); });
-    await waitFor(host, (s) => s.version === 4 && s.status === 'idle', 'træk 3 (tvunget)');
-  });
-
-  await step('værten fjerner Ghost', async () => {
+    await waitFor(host, (s) => s.version === 3 && s.status === 'idle', 'træk 2 (tvunget)');
+    await waitFor(c, (s) => s.version === 3 && s.inGame && s.club === clubs.fck, 'C i version 3');
     await host.page.evaluate(async (pid) => { const cl = await import(/* @vite-ignore */ '/cm0102-reborn/src/online/client.ts'); await cl.session().kick(pid); }, ghost.pid);
-    const room = await getRoom(code);
-    if (room.players.some((x) => x.pid === ghost.pid)) throw new Error('Ghost er der stadig');
+    if ((await getRoom(code)).players.some((x) => x.pid === ghost.pid)) throw new Error('Ghost er der stadig');
   });
 
   // flere træk, til mindst én kampdag er overstået (Midtjyllands første kamp har et resultat); genindlæsning undervejs
-  let turn = 4;
+  let turn = 3;
   let matchDone = false;
   const players = [host, b, c];
   const firstMatch = await host.page.evaluate(async (club) => {

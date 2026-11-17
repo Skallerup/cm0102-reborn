@@ -254,7 +254,7 @@ export const es: Record<string, string> = {
   'mp.codePlaceholder': 'Código', 'mp.myGames': 'Mis partidas online', 'mp.connecting': 'Conectando…', 'mp.players': 'Jugadores', 'mp.taken': 'Ocupado',
   'mp.invite': 'Invitar', 'mp.inviteLink': 'Enlace de invitación', 'mp.copied': '¡Enlace copiado!', 'mp.ready': 'Listo ✓', 'mp.notReady': 'No listo',
   'mp.waitingFor': 'Esperando a: {names}', 'mp.allReady': 'Todos están listos', 'mp.processing': 'Simulando el siguiente turno…', 'mp.otherProcessing': 'Otro jugador está simulando el turno…',
-  'mp.loading': 'Cargando nuevo turno…', 'mp.lobby': 'Sala', 'mp.lobbyText': '¡Ya estás inscrito! Entrarás en la partida en cuanto se juegue el siguiente turno. Cuando todos hayan pulsado "Listo", empezará.',
+  'mp.loading': 'Cargando nuevo turno…', 'mp.lobby': 'Sala', 'mp.lobbyText': "¡Ya estás inscrito! Te llevamos a tu club…",
   'mp.pendingStatus': 'Entra en el próximo turno', 'mp.offline': 'desconectado', 'mp.isReady': 'Listo', 'mp.notReadyYet': 'No listo', 'mp.leaveConfirm': '¿Abandonar la partida? Siempre puedes volver desde Multijugador online.',
   'mp.joined': '{manager} se ha hecho cargo de {club}', 'mp.err.not-found': 'Partida no encontrada – comprueba el código.', 'mp.err.club-taken': 'Ese club ya está ocupado.',
   'mp.err.full': 'La partida está llena (máx. 8 mánagers).', 'mp.err.not-ready': 'El anfitrión aún está creando la partida – inténtalo de nuevo en breve.',

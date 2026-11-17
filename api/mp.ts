@@ -23,18 +23,34 @@ interface PlayerRec {
   joined: string;
   /** Gjort klar automatisk, fordi trækkets frist udløb (assistenten tager over) */
   auto?: boolean;
-  /** Er manageren med i det seneste øjebliksbillede? (sættes ved hvert commit ud fra spillets humans) */
+  /** Er manageren med i spillet? Sættes til true ved join (klienterne anvender join-handlingen lokalt med det samme) og ved hvert commit
+   *  ud fra spillets humans (+ tilmeldinger, som trækket ikke nåede at afspille). false = tilmeldingen mislykkedes i trækket. */
   inGame?: boolean;
+  /** Join-handlingens plads i handlingslisten (1-baseret som lastApplied) */
+  joinIdx?: number;
 }
 
 /**
- * Er spilleren med i spillet? Nye spillere kommer først med ved næste træk og må ikke blokere det
- * (før: alle skulle være klar, også gæster i lobbyen uden Klar-knap → dødvande).
- * Gamle rum uden flaget: tilmeldt efter sidste træk = endnu ikke med.
+ * Protokolversion: klienten sender den i headeren x-mp-proto. Ældre klienter (fx en fane, som service workeren holder fast på en
+ * gammel udgave – rum CFTG5 17/11) afvises med 426, og nye klienter genindlæser sig selv. Hæv den, når protokollen ændres
+ * (samme tal i src/online/client.ts – tests/mp-server.test.ts tjekker det).
+ * 2 = gæster er med i spillet straks ved join (publicRoom.joins anvendes lokalt), PlayerRec.joinIdx.
  */
-function inGame(p: PlayerRec, room: RoomRec): boolean {
-  if (typeof p.inGame === 'boolean') return p.inGame;
-  return !(room.lastTurn && p.joined > room.lastTurn);
+export const MP_PROTOCOL = 2;
+const OUTDATED = 'New version of CM Reborn – reload the page (Ny version – genindlæs siden)';
+function outdated(request: Request): Response | null {
+  const v = Number(request.headers.get('x-mp-proto') ?? 0);
+  return v >= MP_PROTOCOL ? null : json({ error: OUTDATED, upgrade: MP_PROTOCOL }, 426);
+}
+
+/**
+ * Er spilleren med i spillet (og skal trykke Klar)? Fra protokol 2 er en gæst med straks ved join – klienterne anvender
+ * join-handlingen lokalt (publicRoom.joins), så gæsten kan åbne sin trup og trykke Klar uden at vente et træk.
+ * Kun en tilmelding, som trækket ikke kunne afspille (fx klubben var taget), giver false – den blokerer ikke.
+ * Gamle rum uden flaget (som CFTG5): med.
+ */
+function inGame(p: PlayerRec): boolean {
+  return p.inGame !== false;
 }
 
 /** Handlinger, der ikke ændrer spillet for andre (læst besked) – de gør ikke manageren "ikke klar" igen */
@@ -212,12 +228,24 @@ async function publicRoom(code: string) {
     processing: lock ?? null,
     players: players.map((p) => ({
       pid: p.pid, name: p.name, club: p.club, ready: p.ready, joined: p.joined, auto: !!p.auto,
-      pending: !inGame(p, room), online: seen[p.pid] != null && now - Number(seen[p.pid]) < SEEN_MS,
+      pending: !inGame(p), online: seen[p.pid] != null && now - Number(seen[p.pid]) < SEEN_MS,
     })),
+    joins: await pendingJoins(code, room, players),
     chat,
     draft: await publicDraft(code),
     voice: await voiceMembers(code),
   };
+}
+
+/** Tilmeldinger, som endnu ikke er med i et øjebliksbillede – klienterne anvender dem lokalt i rækkefølge (idx), så gæsterne er med straks */
+async function pendingJoins(code: string, room: RoomRec, players: PlayerRec[]) {
+  const waiting = players.filter((p) => p.joinIdx != null && p.joinIdx > room.lastApplied);
+  if (!waiting.length) return [];
+  const from = Math.min(...waiting.map((p) => p.joinIdx!)) - 1;
+  const raw = await redis.lrange<string | { pid: string; a: { t: string } }>(k(code).actions, from, -1);
+  const pids = new Set(waiting.map((p) => p.pid));
+  return raw.map((x, i) => ({ idx: from + i + 1, ...(typeof x === 'string' ? JSON.parse(x) : x) }) as { idx: number; pid: string; a: { t: string } })
+    .filter((x) => x.a?.t === 'join' && pids.has(x.pid));
 }
 
 /** Hvem er med i voice-chatten lige nu (hjerteslag inden for 25 sekunder) */
@@ -245,6 +273,8 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = (url.searchParams.get('code') ?? '').toUpperCase();
   if (!code) return json({ error: 'code' }, 400);
+  const old = outdated(request);
+  if (old) return old;
   // hjerteslag: hvem har rummet åbent (værten kan se, hvem der er offline)
   const seenPid = (url.searchParams.get('pid') ?? '').replace(/[^a-z0-9]/g, '').slice(0, 20);
   if (seenPid) { await redis.hset(`room:${code}:seen`, { [seenPid]: Date.now() }); await redis.expire(`room:${code}:seen`, TTL); }
@@ -255,7 +285,10 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const url = new URL(request.url);
   const op = url.searchParams.get('op');
+  // (upload kaldes også af Vercel Blobs egne servere uden headeren)
   if (op === 'upload') return upload(request);
+  const old = outdated(request);
+  if (old) return old;
   let body: Record<string, unknown>;
   try { body = await request.json(); } catch { return json({ error: 'bad-json' }, 400); }
   const code = String(body.code ?? '').toUpperCase();
@@ -318,9 +351,9 @@ export async function POST(request: Request) {
       if (players.some((p) => p.club === club)) return json({ error: 'club-taken' }, 409);
       const pid = rid(10, 'abcdefghijkmnpqrstuvwxyz23456789');
       const token = rid(24, 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789');
-      // med i spillet først, når et træk har afspillet join-handlingen (inGame: false indtil commit siger andet)
-      await savePlayer(code, { pid, name, club, token, ready: false, joined: new Date().toISOString(), inGame: false });
-      await redis.rpush(keys.actions, JSON.stringify({ pid, a: { t: 'join', name, club, nation } }));
+      // med i spillet med det samme: klienterne anvender join-handlingen lokalt (publicRoom.joins), og trækket venter på gæstens Klar
+      const joinIdx = await redis.rpush(keys.actions, JSON.stringify({ pid, a: { t: 'join', name, club, nation } }));
+      await savePlayer(code, { pid, name, club, token, ready: false, joined: new Date().toISOString(), inGame: true, joinIdx });
       await touch(code);
       return json({ code, pid, token });
     }
@@ -383,7 +416,7 @@ export async function POST(request: Request) {
       const hours = Number(settings.deadlineHours ?? 0);
       if (!hours) return json({ error: 'no-deadline' }, 400);
       if (Date.now() - Date.parse(room.lastTurn) < hours * 3_600_000) return json({ error: 'too-early' }, 409);
-      for (const p of await getPlayers(code)) if (!p.ready && inGame(p, room)) { p.ready = true; p.auto = true; await savePlayer(code, p); }
+      for (const p of await getPlayers(code)) if (!p.ready && inGame(p)) { p.ready = true; p.auto = true; await savePlayer(code, p); }
       return json(await publicRoom(code));
     }
     case 'force': {
@@ -393,7 +426,7 @@ export async function POST(request: Request) {
       const room = await getRoom(code);
       if (!room) return json({ error: 'not-found' }, 404);
       if (room.host !== me.pid) return json({ error: 'not-host' }, 403);
-      for (const p of await getPlayers(code)) if (!p.ready && inGame(p, room)) { p.ready = true; p.auto = true; await savePlayer(code, p); }
+      for (const p of await getPlayers(code)) if (!p.ready && inGame(p)) { p.ready = true; p.auto = true; await savePlayer(code, p); }
       await touch(code);
       return json(await publicRoom(code));
     }
@@ -427,7 +460,7 @@ export async function POST(request: Request) {
       const room = await getRoom(code);
       if (!room || room.version !== Number(body.version)) return json({ error: 'version' }, 409);
       // kun managere, der er med i spillet, skal være klar (nye spillere kommer med i dette træk)
-      const active = (await getPlayers(code)).filter((p) => inGame(p, room));
+      const active = (await getPlayers(code)).filter((p) => inGame(p));
       if (!active.length || !active.every((p) => p.ready)) return json({ error: 'not-ready' }, 409);
       const ok = await redis.set(keys.lock, me.pid, { nx: true, ex: LOCK_SECONDS });
       if (!ok) return json({ error: 'locked' }, 409);
@@ -464,9 +497,11 @@ export async function POST(request: Request) {
       });
       // hvem er med i det nye øjebliksbillede (gamle klienter sender ikke listen – så gætter inGame() ud fra tidspunktet)
       const humans = Array.isArray(body.humans) ? new Set(body.humans.map(String)) : null;
+      const applied = Number(body.lastApplied ?? room.lastApplied);
       const players = await getPlayers(code);
       for (const p of players) {
-        const ig = humans ? humans.has(p.pid) : p.inGame;
+        // en tilmelding efter trækkets handlinger (mens det blev simuleret) er stadig med – den afspilles i næste træk
+        const ig = humans ? humans.has(p.pid) || (p.joinIdx ?? 0) > applied : p.inGame;
         if (p.ready || p.auto || ig !== p.inGame) { p.ready = false; p.auto = false; if (ig === undefined) delete p.inGame; else p.inGame = ig; await savePlayer(code, p); }
       }
       await redis.del(keys.lock);

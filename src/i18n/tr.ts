@@ -254,7 +254,7 @@ export const tr: Record<string, string> = {
   'mp.codePlaceholder': 'Kod', 'mp.myGames': 'Çevrimiçi oyunlarım', 'mp.connecting': 'Bağlanıyor…', 'mp.players': 'Oyuncular', 'mp.taken': 'Alındı',
   'mp.invite': 'Davet et', 'mp.inviteLink': 'Davet bağlantısı', 'mp.copied': 'Bağlantı kopyalandı!', 'mp.ready': 'Hazır ✓', 'mp.notReady': 'Hazır değil',
   'mp.waitingFor': 'Beklenenler: {names}', 'mp.allReady': 'Herkes hazır', 'mp.processing': 'Sonraki tur simüle ediliyor…', 'mp.otherProcessing': 'Turu başka biri simüle ediyor…',
-  'mp.loading': 'Yeni tur yükleniyor…', 'mp.lobby': 'Lobi', 'mp.lobbyText': 'Kaydoldun! Sonraki tur oynandığında oyuna katılırsın. Herkes “Hazır”a bastığında başlar.',
+  'mp.loading': 'Yeni tur yükleniyor…', 'mp.lobby': 'Lobi', 'mp.lobbyText': "Kaydoldun! Kulübüne yönlendiriliyorsun…",
   'mp.pendingStatus': 'Sonraki turda katılır', 'mp.offline': 'çevrimdışı', 'mp.isReady': 'Hazır', 'mp.notReadyYet': 'Hazır değil', 'mp.leaveConfirm': 'Oyundan ayrılınsın mı? Çevrimiçi çok oyunculu üzerinden her zaman geri dönebilirsin.',
   'mp.joined': '{manager}, {club} kulübünü devraldı', 'mp.err.not-found': 'Oyun bulunamadı – kodu kontrol et.', 'mp.err.club-taken': 'Bu kulüp zaten alındı.',
   'mp.err.full': 'Oyun dolu (en fazla 8 menajer).', 'mp.err.not-ready': 'Kurucu hâlâ oyunu oluşturuyor – birazdan tekrar dene.',

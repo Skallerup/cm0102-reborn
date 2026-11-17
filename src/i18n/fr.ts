@@ -254,7 +254,7 @@ export const fr: Record<string, string> = {
   'mp.codePlaceholder': "Code", 'mp.myGames': "Mes parties en ligne", 'mp.connecting': "Connexion…", 'mp.players': "Joueurs", 'mp.taken': "Pris",
   'mp.invite': "Inviter", 'mp.inviteLink': "Lien d'invitation", 'mp.copied': "Lien copié !", 'mp.ready': "Prêt ✓", 'mp.notReady': "Pas prêt",
   'mp.waitingFor': "En attente de : {names}", 'mp.allReady': "Tout le monde est prêt", 'mp.processing': "Simulation du tour suivant…", 'mp.otherProcessing': "Quelqu'un d'autre simule le tour…",
-  'mp.loading': "Chargement du nouveau tour…", 'mp.lobby': "Salon", 'mp.lobbyText': "Vous êtes inscrit ! Vous rejoindrez la partie une fois le prochain tour joué. Quand tout le monde a appuyé sur « Prêt », elle commence.",
+  'mp.loading': "Chargement du nouveau tour…", 'mp.lobby': "Salon", 'mp.lobbyText': "Vous êtes inscrit ! Direction votre club…",
   'mp.pendingStatus': 'Rejoint au prochain tour', 'mp.offline': 'hors ligne', 'mp.isReady': "Prêt", 'mp.notReadyYet': "Pas prêt", 'mp.leaveConfirm': "Quitter la partie ? Vous pourrez toujours revenir via Multijoueur en ligne.",
   'mp.joined': "{manager} a pris les rênes de {club}", 'mp.err.not-found': "Partie introuvable – vérifiez le code.", 'mp.err.club-taken': "Ce club est déjà pris.",
   'mp.err.full': "La partie est complète (8 entraîneurs max).", 'mp.err.not-ready': "L'hôte est encore en train de créer la partie – réessayez dans un instant.",
