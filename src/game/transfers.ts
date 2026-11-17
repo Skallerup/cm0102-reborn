@@ -1776,29 +1776,22 @@ function cmBidsForListed() {
 registerAskingPrice(askingPrice, playerInterest, (p) => transferRealism(p).level);
 
 /** Ønskelisternes bud (cmShortlistGame.ts, 0x84a020 → 0x8e5d60/0x8be300): bud på menneskets spillere bliver ventende bud (Respond i indbakken);
- *  bud på computerens spillere lever i g.offers (`cmAi`) til sælgerens svar efter 0x8cc5b0's svartid (cmAiAiDue); klubløse spillere skriver
- *  under med det samme (*estimeret*: originalen venter også her på svartiden og spillerens beslutning). */
+ *  bud på computerens spillere OG på klubløse lever i g.offers (`cmAi`) til svartiden 0x8cc5b0 er gået (cmAiAiDue) – også en klubløs får et
+ *  transfertilbud i TRANSFER_MANAGER (0x84a728 → 0x8be300 med build_bid's kontrakttilbud, 0x84a75c add_contract_offer 0x4cc490), som
+ *  process_due_offer 0x8c63a0 behandler på svardagen (tilstand 0 uden sælger → 0x8c0080). Før skrev de klubløse under samme dag. */
 export function cmShortlistApply(events: SlEvent[]) {
   const g = gs();
   for (const e of events) {
     const p = g.players[e.player], buyer = g.clubs[e.buyer];
     if (!p || !buyer || p.contract?.futureClub || p.club === buyer.id || isHumanClub(buyer.id)) continue;
-    if (!p.club) {
-      if (e.loan) continue;
-      p.contract = aiNewContract(p, buyer, () => ({ wage: wageDemand(p, buyer), expires: `${year(g.date) + preferredYears(p)}-06-30` }));
-      recordMove(p, buyer.id, 0);
-      setClub(p, buyer.id);
-      p.joined = g.date;
-      forEachHuman(() => { originalTransferNews(p, buyer, undefined, 0, false); });
-      continue;
-    }
+    if (!p.club && e.loan) continue;
     if (p.loan || g.offers.some((o) => o.player === p.id && o.buyer === buyer.id && ['pending', 'negotiating', 'countered'].includes(o.status))) continue;
     const o: TransferOffer = { id: e.id, player: p.id, buyer: buyer.id, seller: p.club, fee: e.loan ? 0 : fromGbp(e.fee), loan: e.loan, status: 'pending', created: g.date,
       respondBy: addDays(g.date, 5), maxFee: fromGbp(Math.max(e.max, e.fee)),
       ...(e.months > 0 ? { months: e.months } : {}), ...(e.sellOn > 0 ? { sellOn: e.sellOn } : {}),
       ...(e.lgFee > 0 ? { lgFee: fromGbp(e.lgFee), lgApps: e.lgApps } : {}), ...(e.intFee > 0 ? { intFee: fromGbp(e.intFee), intApps: e.intApps } : {}),
       ...(e.pub ? { pub: e.pub as 1 | 2 } : {}) };
-    if (isHumanClub(p.club)) {
+    if (p.club && isHumanClub(p.club)) {
       if (refusedBy(p, buyer.id)) continue;
       g.offers.push(o);
       asOwner(p.club, () => addNews({ cat: 'transfer', key: e.loan ? 'transfer.incomingLoan' : 'transfer.incomingBid', params: { club: buyer.name, player: pname(p), fee: o.fee }, link: { kind: 'offer', id: o.id } }));
@@ -1810,7 +1803,7 @@ export function cmShortlistApply(events: SlEvent[]) {
   }
 }
 /** målinger (fejlsøgning): computer → computer-svarene på ønskelisternes bud */
-export const CM_AIAI = { loan: 0, loanOk: 0, bid: 0, accept: 0, counter: 0, counterOk: 0, reject: 0, refused: 0, withdrawn: 0, review: 0, rebid: 0, done: 0, open: 0, openDays: 0 };
+export const CM_AIAI = { free: 0, freeRefused: 0, freeDone: 0, loan: 0, loanOk: 0, bid: 0, accept: 0, counter: 0, counterOk: 0, reject: 0, refused: 0, withdrawn: 0, review: 0, rebid: 0, done: 0, open: 0, openDays: 0 };
 const cmOpen = (o: TransferOffer) => o.status === 'pending' || o.status === 'countered' || o.status === 'negotiating';
 /** TRANSFER_MANAGER::daily_update 0x8c5880 → process_due_offer 0x8c63a0 for computer → computer-buddene, hvis tid er kommet:
  *  tilstand 0 (pending): lejebud → 0x84af00 (0 = ja → lejen; ellers reject_loan_offer 0x8bfa30), køb → 0x8c8090 (aiRespond): accept → 0x8c0080
@@ -1826,6 +1819,16 @@ function cmAiAiDue(cx: SlDueCtx) {
     const p = g.players[o.player], buyer = g.clubs[o.buyer];
     if (!p || !buyer || p.club !== o.seller || p.loan || p.contract?.futureClub || isHumanClub(p.club) || isHumanClub(buyer.id)) { o.status = 'withdrawn'; CM_AIAI.withdrawn++; closed = true; continue; }
     if (o.status === 'pending') {
+      if (!o.seller) {
+        // 0x8c63a0: tilstand 0 uden sælgerens kontrakt (klubløs) → 0x8c6a42 accept_transfer_bid 0x8c0080 direkte (ingen sælger svarer):
+        // 0x8c01b8 job 0xb → viljen 0x846920 med køberens trupstatus 0x849f00 under 0,75 → nej (0x8d8310, tilstand 0xf); ellers tilstand 5 og
+        // spillerens beslutning (0x4cd230) som ved et accepteret bud
+        CM_AIAI.free++;
+        if (cx.interest(p.id, buyer.id) < 0.75) { CM_AIAI.freeRefused++; o.status = 'collapsed'; closed = true; continue; }
+        o.status = 'negotiating';
+        o.respondBy = addDays(g.date, Math.min(cx.rand(p.id, buyer.id)(5) + 1, Math.max(1, cx.delay(p.id, buyer.id, 0x4cd230))));
+        continue;
+      }
       if (o.loan) {
         CM_AIAI.loan++;
         if (cx.loanAnswer(p.id, buyer.id, o.seller) === 0) { CM_AIAI.loanOk++; o.status = 'negotiating'; completeTransfer(o, p.contract?.wage ?? 0, 0); }
@@ -1868,6 +1871,18 @@ function cmAiAiDue(cx: SlDueCtx) {
     // accepteret, og spilleren har besluttet sig: handlen (køberen skal stadig have råd – rater: kun første rate)
     if (!o.loan && !(o.months && o.months > 0) && buyer.transferBudget < o.fee) { o.status = 'collapsed'; closed = true; continue; }
     CM_AIAI.done++;
+    if (!o.seller) {
+      // klubløs: computerklubbens kontrakt (0x4cda70/0x85fc50 – aiNewContract), som før samme dag
+      CM_AIAI.freeDone++;
+      p.contract = aiNewContract(p, buyer, () => ({ wage: wageDemand(p, buyer), expires: `${year(g.date) + preferredYears(p)}-06-30` }));
+      recordMove(p, buyer.id, 0);
+      setClub(p, buyer.id);
+      p.joined = g.date;
+      o.status = 'completed';
+      forEachHuman(() => { originalTransferNews(p, buyer, undefined, 0, false); });
+      closed = true;
+      continue;
+    }
     completeTransfer(o, wageDemand(p, buyer), preferredYears(p));
     closed = true;
   }

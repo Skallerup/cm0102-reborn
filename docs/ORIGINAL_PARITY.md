@@ -97,6 +97,21 @@ View Finances (der læser Bonuses fra blokken) viste 0 bonusser, selv om pengene
    sæsonen (Maximum, scripts/sl-season.ts) 441 køb / 162 leje / 200 klubløse mod originalens 621 / 226 / 95 (før 346 / 0 / 1). Tilbage: for mange
    klubløse skriver under (Maximum-hukommelsen har ~6× oraklets engelske klubløse – kør cm-day-lockstep med størrelse 2), for få køb/lån,
    frigivne tælles ikke i Player.moves (0 mod 65).
+   **Målt 17/11 med samme databasestørrelse som oraklet** (`scripts/k2-transfers.ts`, world bygget med CM_DBSIZE=2, frø 1, Arsenal; engelske
+   = klubberne i CM7–CM10; oraklet `xfer3-snap/pre-180-2002.bin`): klubløse skriver under 39 (orig. 45, D3 29/29, CA-median 12/26) – med
+   størrelse 2 er der IKKE for mange; "200" var Maximum-hukommelsens ~6× flere klubløse. Afvigelserne er køb og lån: køb med sum til ENG
+   665 (orig. 432) – heraf fra ENG 574 (274) og fra udlandet 91 (158); leje 132 (189) – ENG→ENG 131 (116), ENG→udlandet 1 (73).
+   **Rettet 17/11 (største årsag i den del, der er vores):** klubløse skrev under samme dag som buddet (*estimeret*). Originalen: 0x84a728
+   add_transfer_offer 0x8be300 + 0x84a75c add_contract_offer 0x4cc490 → på svardagen (0x8cc5b0) process_due_offer 0x8c63a0, tilstand 0 uden
+   sælger → 0x8c6a42 accept_transfer_bid 0x8c0080: viljen 0x846920 (køberens status 0x849f00) under 0,75 → nej (0x8d8310), ellers tilstand 5 og
+   beslutningen 0x4cd230. Nu lever buddet i g.offers (cmAi) som computer→computer-buddene. Sæson: køb 665 → 585, klubløse 39 → 34, leje
+   132 → 140 (measure b14c9351e4a7 → e5704f2ec72b).
+   **Åbne punkter (K2.1):** (a) udlandets klubber handler næsten ikke med England (leje ENG→udl. 4 mod 73, køb fra udl. 77 mod 158) –
+   ønskelisterne for klubber uden for de valgte lande; (b) for mange køb inden for England (508 mod 274); (c) klubløse: flere tilbud på samme
+   spiller afgøres af det første, der bliver færdigt – originalens 0x4ce4e0 vælger det bedste af alle åbne tilbud (0x8cd150 udsætter, mens
+   transfertilbuddet står i tilstand 0/1/5/6; 0x8c1e40 i tilstand 5); kontraktsvaret 0x4ce4e0 er stadig ja (*estimeret* i cmAiAiDue);
+   (d) klubløse i hukommelsen 30/6: 1.038 mod 202 (engelske statsborgere 149 mod 152 – resten er udlændinge; tidspunktet: oraklets billede
+   er før 0x4c7ac0 30/6); (e) frigivne tælles ikke i Player.moves (0 mod 50).
 2. **Forkørslens marked 1/1–13/7** (0x5cc850 med transfer-/lejemarkedet): 40 lejeaftaler og trupændringer ved spilstarten (Arsenal 48 mod 43).
 3. ~~**Værdien +0x52 ved start**~~ – gjort 16/11 (punkt 17): `p.value` = 0x4d0c60 som 0x4c7ec5 (cmValueGame.ts).
 4. **Trupstatus for klubber uden for ligaerne** (0x83a1b0 for alle indlæste klubber – fjern *estimeret* spring) og de 976 ligaspillere med anden status.
