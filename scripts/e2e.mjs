@@ -1018,17 +1018,16 @@ async function run(look) {
     await page.evaluate((room) => { window.__cm.devFakeSession(room, 'p1', true); }, mkRoom(true));
     await page.click('.cx-gopt');
     const items = (await page.locator('.cx-drop-pop button').allInnerTexts()).map((x) => x.trim());
-    for (const need of [/^Invite · ABCDE$/, /^Host controls$/]) if (!items.some((x) => need.test(x))) throw new Error(`Game Options mangler ${need}: ${items.join(' | ')}`);
+    // multiplayer-funktionerne ligger i Game Options: ét punkt "Online multiplayer" (ingen Invite/Host-punkter i rullemenuen), der åbner sektionen i Alle indstillinger
+    if (!items.some((x) => /^Online multiplayer$/.test(x))) throw new Error(`Game Options mangler Online multiplayer: ${items.join(' | ')}`);
+    if (items.some((x) => /^Invite|^Host controls$/.test(x))) throw new Error(`Invite/Host ligger stadig i rullemenuen: ${items.join(' | ')}`);
     if (items.some((x) => /Save game to cloud/.test(x))) throw new Error('Save game to cloud findes i fællesspil');
-    await page.locator('.cx-drop-pop >> text=/^Invite/').click();
-    await wsel('.cx-online-dlg .invite-code');
-    if ((await page.locator('.cx-online-dlg .invite-code').innerText()).trim() !== 'ABCDE') throw new Error('invitationskoden mangler');
-    await page.locator('.cx-online-dlg .cx-ts-buttons button', { hasText: 'Close' }).click();
-    await page.click('.cx-gopt');
-    await page.locator('.cx-drop-pop >> text=Host controls').click();
-    await wsel('.cx-online-dlg [data-testid=online-players]');
+    await page.locator('.cx-drop-pop >> text=/^Online multiplayer$/').click();
+    await wsel('[data-testid=mp-section]');
+    if ((await page.locator('[data-testid=mp-code]').innerText()).trim() !== 'ABCDE') throw new Error('invitationskoden mangler i Multiplayer-sektionen');
+    await wsel('[data-testid=mp-players]');
+    if (!/Host controls/.test(await page.locator('[data-testid=mp-section]').innerText())) throw new Error('værtens kontrolpanel mangler i Multiplayer-sektionen');
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-fællesspil-vært.png` });
-    await page.locator('.cx-online-dlg .cx-ts-buttons button', { hasText: 'Cancel' }).click();
     await page.evaluate(() => { window.__cm.closeSession(); window.__cm.notify(); });
     await page.unroute(/\/api\/mp\?op=ready/);
     // enkeltspil: Save game to cloud findes i Game Options
@@ -2085,6 +2084,45 @@ async function multiplayer() {
     await page.locator('.cx-back').click(); // deadline → name
     await page.locator('.cx-back').click(); // Cancel → Network Play
     await page.waitForSelector('.cxl', { timeout: 10000 });
+  });
+  // Join (?room=KODE): samme trin som nyt spil (Enter Name → Select Nationality → Select Team → Please Confirm), optagne klubber = Taken, "Join the game"
+  await step('Join via ?room= bruger nyt-spil-trinnene, optagne klubber er Taken (D2)', async () => {
+    // et ægte snapshot fra et hurtigt nyt spil i en separat side
+    const p2 = await ctx.newPage();
+    await p2.goto(URL);
+    await p2.waitForFunction(() => !!window.__cm, null, { timeout: 30000 });
+    await p2.waitForSelector('[data-field=quick]', { timeout: 30000 });
+    await p2.locator('[data-field=quick]').click();
+    await p2.waitForFunction(() => { try { return !!window.__cm.gs()?.userClub; } catch { return false; } }, null, { timeout: 180000 });
+    const snap = await p2.evaluate(async () => {
+      const blob = await window.__cm.serializeState(window.__cm.gs());
+      const bytes = new Uint8Array(await blob.arrayBuffer());
+      let s = ''; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+      return { b64: btoa(s), club: window.__cm.gs().userClub };
+    });
+    await p2.close();
+    await page.route('https://snap.test/**', (r) => r.fulfill({ contentType: 'application/gzip', body: Buffer.from(snap.b64, 'base64') }));
+    await page.route(/\/api\/mp\?code=ZKH84/, (r) => r.fulfill({ contentType: 'application/json', body: JSON.stringify({ code: 'ZKH84', host: 'h1', status: 'playing', version: 1, snapshot: 'https://snap.test/s.gz', date: '2001-07-14', lastApplied: 0, actionCount: 0, settings: {}, processing: null, lastTurn: '', players: [{ pid: 'h1', name: 'Host M', club: snap.club, ready: false, joined: '' }] }) }));
+    await page.goto(`${URL}?room=ZKH84`);
+    await page.waitForSelector('[data-cxs=name]', { timeout: 30000 });
+    if (await page.locator('.cxl:visible, .start-card:visible').count()) throw new Error('den gamle join-formular vises');
+    await page.locator('[data-name=first]').fill('Test');
+    await page.locator('[data-name=second]').fill('Joiner');
+    await page.locator('.cx-next').click();
+    await page.waitForSelector('[data-cxs=nation] [data-nat]', { timeout: 60000 });
+    await page.locator('[data-nat]').first().click();
+    await page.locator('.cx-next').click();
+    await page.waitForSelector('[data-cxs=team] [data-club]', { timeout: 10000 });
+    if ((await page.locator('.cxs-it.taken').count()) !== 1) throw new Error('værtens klub er ikke markeret Taken (præcis én)');
+    if (!/Taken/.test(await page.locator('.cxs-it.taken').innerText())) throw new Error('Taken-mærket mangler');
+    await page.locator('.cxs-it.taken').click({ force: true }).catch(() => {});
+    if ((await page.locator('[data-cxs=confirm]').count()) !== 0) throw new Error('en optaget klub kunne vælges');
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-join-hold.png` });
+    await page.locator('.cxs-it:not(.taken)').first().click();
+    await page.waitForSelector('[data-cxs=confirm]', { timeout: 10000 });
+    if (!/Join the game/.test(await page.locator('.cx-next').innerText())) throw new Error('afslutningsknappen hedder ikke Join the game');
+    await page.unroute(/\/api\/mp\?code=ZKH84/);
+    await page.goto(URL);
   });
   // forsiden: nyheden (gratis + online), nostalgi-designet, ingen Draft/moderne omtalt, ingen vandret rulning på mobil
   for (const [name, vp] of [['desktop', { width: 1280, height: 900 }], ['mobil', { width: 390, height: 844 }]]) {

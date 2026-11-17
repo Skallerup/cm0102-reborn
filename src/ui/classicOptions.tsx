@@ -19,7 +19,6 @@ import { CxDrop, type DropItem } from './classic';
 import { bgPack, bgSet, setBgPack, setBgSet, type BgSet } from './backgrounds';
 import { askConfirm, askNotice } from './confirm';
 import { LoginModal } from './Login';
-import { ClassicHost, ClassicInvite } from './Online';
 import { session } from '../online/client';
 import { getAccount } from '../online/account';
 import { saveGame } from '../game/save';
@@ -98,7 +97,6 @@ export function GameOptionsMenu({ onSave, onQuit, online, allowed }: { onSave: (
   const [, setInst] = useState(0);
   useEffect(() => onInstallChange(() => setInst((x) => x + 1)), []);
   const [login, setLogin] = useState(false);
-  const [dlg, setDlg] = useState<'invite' | 'host' | null>(null);
   const os = online ? session() : null;
   const standalone = (() => { try { return window.matchMedia('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true; } catch { return false; } })();
   const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -126,9 +124,8 @@ export function GameOptionsMenu({ onSave, onQuit, online, allowed }: { onSave: (
   // CM Reborns egne punkter (ikke i originalen): installér som app, gem i skyen (ikke i fællesspil – det gemmes allerede online)
   const canInst = !standalone && (canInstall() || ios);
   if (canInst || !online || os) items.push({ key: 'sepR', sep: true });
-  // fællesspil: invitationen og værtens boks hører til her (ikke i sidebjælken)
-  if (os && !os.room?.draft) items.push({ key: 'invite', label: `${t('mp.invite')} · ${os.creds.code}`, onClick: () => setDlg('invite') });
-  if (os?.isHost && (os.room?.players.length ?? 0) > 1) items.push({ key: 'host', label: t('mp.hostTitle'), onClick: () => setDlg('host') });
+  // fællesspil: ét punkt til Multiplayer-sektionen i Alle indstillinger (invitation, spillere, værtens kontrolpanel)
+  if (os) items.push({ key: 'mp', label: t('mp.title'), onClick: () => nav({ name: 'options' }) });
   if (canInst) items.push({ key: 'install', label: t('cl.go.install'), onClick: () => { if (canInstall()) void installApp(); else void askNotice(t('cl.go.installIos'), { head: t('cl.go.install') }); } });
   if (!online) items.push({ key: 'cloud', label: t('cl.go.cloud'), onClick: () => { if (getAccount()) void cloudSave(); else setLogin(true); } });
   items.push({ key: 'sep', sep: true }, { key: 'restart', label: t('cl.go.restart'), onClick: onQuit }, { key: 'quit', label: t('cl.go.exit'), onClick: onQuit });
@@ -136,8 +133,6 @@ export function GameOptionsMenu({ onSave, onQuit, online, allowed }: { onSave: (
     <>
       <CxDrop className="cx-gameopt" fixed caret={false} label={t('cl.options')} items={items} btn={{ className: 'cx-sbtn cx-gopt' }} />
       {settings && <GameSettings onClose={() => setSettings(false)} />}
-      {dlg === 'invite' && os && <ClassicInvite code={os.creds.code} link={`${location.origin}${location.pathname}?room=${os.creds.code}`} onClose={() => setDlg(null)} />}
-      {dlg === 'host' && <ClassicHost onClose={() => setDlg(null)} />}
       {login && createPortal(<LoginModal onClose={() => setLogin(false)} onDone={() => { setLogin(false); void cloudSave(); }} />, document.body)}
       {show === 'changelog' && createPortal(<ChangelogModal onClose={() => setShow(null)} />, document.body)}
       {show === 'info' && createPortal(<Modal title={t('info.title')} onClose={() => setShow(null)}><GameInfoTable route={route.name} /></Modal>, document.body)}

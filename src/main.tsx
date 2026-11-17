@@ -17,8 +17,8 @@ if (import.meta.env.DEV) {
   const cm: Record<string, unknown> = { t };
   (window as unknown as { __cm: unknown }).__cm = cm;
   // (advance går gennem dagens Web Worker som Continue Game – ui/dayRunner.ts; ønskelisternes dage frøs ellers siden i et minut)
-  void Promise.all([import('./game/state'), import('./ui/dayRunner'), import('./game/dates'), import('./game/press'), import('./game/cmTransferTalks'), import('./online/client'), import('./game/cmStaff')]).then(([{ gs, notify }, { runDays }, { addDays }, { invitePress }, { cmAcceptBid, cmAgreed }, { devFakeSession, closeSession }, { cmStaffInterestedIn }]) => {
-    Object.assign(cm, { gs, notify, cmStaffInterestedIn, advance: (days: number) => runDays({ untilDate: addDays(gs().date, days), autoPlay: true }).then(() => notify()), invitePress, cmAcceptBid, cmAgreed, devFakeSession, closeSession });
+  void Promise.all([import('./game/state'), import('./ui/dayRunner'), import('./game/dates'), import('./game/press'), import('./game/cmTransferTalks'), import('./online/client'), import('./game/cmStaff'), import('./game/snapshot')]).then(([{ gs, notify }, { runDays }, { addDays }, { invitePress }, { cmAcceptBid, cmAgreed }, { devFakeSession, closeSession }, { cmStaffInterestedIn }, { serializeState }]) => {
+    Object.assign(cm, { gs, notify, cmStaffInterestedIn, advance: (days: number) => runDays({ untilDate: addDays(gs().date, days), autoPlay: true }).then(() => notify()), invitePress, cmAcceptBid, cmAgreed, devFakeSession, closeSession, serializeState });
   });
 }
 

@@ -29,6 +29,7 @@ import { Editor } from './Editor';
 import { listDbs, loadCustomWorld } from './customDb';
 import { changeCount, type CustomDb } from '../game/dbEdit';
 import { ClassicStart } from './ClassicStart';
+import { ClassicJoin } from './ClassicJoin';
 
 type View = 'menu' | 'new' | 'load' | 'challenges' | 'online' | 'newOnline' | 'newDraft' | 'editor';
 
@@ -65,6 +66,10 @@ export function Start({ onLang, onHome }: { onLang: (l: Lang) => void; onHome?: 
   // nyt fællesspil i det klassiske udseende: samme forløb som nyt spil (ClassicStart) – ikke den gamle formular
   if (view === 'newOnline' && initialLook() === 'classic') {
     return <ClassicStart online={{ onBack: () => setView('online') }} onLang={onLang} onHome={onHome} onLook={() => bump((x) => x + 1)} onGo={() => {}} />;
+  }
+  // ?room=KODE i det klassiske udseende: tilmelding i nyt-spil-forløbet (ClassicJoin), låst til rummets verden
+  if (view === 'online' && roomParam && initialLook() === 'classic') {
+    return <ClassicJoin code={roomParam.toUpperCase()} onHome={onHome} setBusy={setBusy} onBack={() => { history.replaceState(null, '', location.pathname); setView('menu'); }} />;
   }
   return (
     <div className={`start ${view === 'menu' ? 'start-menu' : ''} ${modernOn() ? '' : 'cxl'}`}>

@@ -33,7 +33,7 @@ import { ORIGINAL_VERSIONS, type OriginalVersion } from './world';
 import { createOnlineGame } from '../online/client';
 import { createGameAsync, loadStartWorld, LANG_NATION, ORIG_LANG_NATION, prepareConversion, readDb, readVer, runConversion, writeDb, writeVer, type ConvertPrep, type Db } from './startGame';
 
-type Step = 'menu' | 'db' | 'leagues' | 'season' | 'name' | 'deadline' | 'nation' | 'team' | 'club' | 'confirm' | 'restore' | 'delete' | 'settings' | 'opts' | 'extras' | 'account' | 'convpick' | 'convdone';
+export type Step = 'menu' | 'db' | 'leagues' | 'season' | 'name' | 'deadline' | 'nation' | 'team' | 'club' | 'confirm' | 'restore' | 'delete' | 'settings' | 'opts' | 'extras' | 'account' | 'convpick' | 'convdone';
 /** Populære spillere og hvilke udgaver (3.9.60/65/68) de findes i – datafilen hentes først, når boksen åbnes */
 function PopularBox({ ver, onClose }: { ver: OriginalVersion | null; onClose: () => void }) {
   const [d, setD] = useState<{ v: string[]; p: [string, ([string, number, number] | null)[]][] } | null>(null);
@@ -105,9 +105,9 @@ function makePrep(world: WorldData, playable: Set<number>): Prep {
   return { clubs, nations };
 }
 
-interface Prog { label: string; frac: number; auto?: boolean; step?: string }
+export interface Prog { label: string; frac: number; auto?: boolean; step?: string }
 
-function Frame({ step, version, title, sub, children, onBack, onNext, backLabel, nextLabel, nextDisabled, prog, hist, onHist, onRestart, onExit, className }: {
+export function Frame({ step, version, title, sub, children, onBack, onNext, backLabel, nextLabel, nextDisabled, prog, hist, onHist, onRestart, onExit, className }: {
   step: Step; version: string; title: ReactNode; sub?: ReactNode; children: ReactNode;
   onBack?: () => void; onNext?: () => void; backLabel?: string; nextLabel?: string; nextDisabled?: boolean; prog: Prog | null;
   hist: { back: boolean; fwd: boolean }; onHist: (d: -1 | 1) => void; onRestart: () => void; onExit?: () => void; className?: string;

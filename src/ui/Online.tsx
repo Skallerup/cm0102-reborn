@@ -6,7 +6,7 @@ import { compName, dateFmt, t, natName } from '../i18n';
 import {
   downloadSnapshot, fetchRoom, forgetRoom, joinOnlineGame, openSession, savedRooms, session, skippedMatches, type RoomInfo,
 } from '../online/client';
-import { Modal, Panel } from './components';
+import { Panel } from './components';
 import { gs, hasGame, setGame } from '../game/state';
 import { act } from '../game/actions';
 import { useNav } from './core';
@@ -152,9 +152,6 @@ export function onlineSimLabel(): string | null {
 
 export function OnlineControls({ cx }: { cx?: boolean }) {
   const s = session();
-  const [copied, setCopied] = useState(false);
-  const [hostOpen, setHostOpen] = useState(false);
-  const [inviteOpen, setInviteOpen] = useState(false);
   // simuleringsvisningen kan skjules – den kommer igen ved næste træk
   const [simHidden, setSimHidden] = useState(false);
   const turnKey = s?.room ? `${s.room.version}` : '';
@@ -175,7 +172,6 @@ export function OnlineControls({ cx }: { cx?: boolean }) {
   const waiting = s.room.players.filter((p) => !p.ready).map((p) => (p.pid === s.creds.pid ? t('mp.you') : p.name));
   // alle de andre er klar – nu venter de kun på mig
   const othersWaiting = !solo && !me?.ready && s.room.players.every((p) => p.ready || p.pid === s.creds.pid);
-  const link = `${location.origin}${location.pathname}?room=${s.creds.code}`;
   // min kamp i dag, som endnu ikke er spillet (ikke når en anden menneskelig manager har hjemmekampen)
   const myMatch = (() => {
     if (!hasGame() || !s.inGame) return 0;
@@ -188,20 +184,6 @@ export function OnlineControls({ cx }: { cx?: boolean }) {
   const onMyMatch = !!myMatch && route.name === 'match' && (route as { id?: number }).id === myMatch;
   return (
     <>
-      {!cx && !gs().draft && <button className="small" data-testid="invite" title={link} onClick={() => setInviteOpen(true)}>🔗 {t('mp.invite')} · {s.creds.code}</button>}
-            {inviteOpen && !cx && (
-        <Modal title={t('mp.inviteTitle')} onClose={() => setInviteOpen(false)}>
-          <div className="col">
-            <p className="muted">{t('mp.inviteText')}</p>
-            <div className="invite-code">{s.creds.code}</div>
-            <input readOnly value={link} onFocus={(e) => e.target.select()} style={{ width: '100%' }} />
-            <div className="row" style={{ justifyContent: 'flex-end' }}>
-              {'share' in navigator && <button onClick={() => { void navigator.share({ title: 'CM Reborn', text: t('mp.shareText', { code: s.creds.code }), url: link }).catch(() => {}); }}>{t('mp.share')}</button>}
-              <button className="primary" onClick={async () => { try { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { prompt(t('mp.inviteLink'), link); } }}>{copied ? t('mp.copied') : t('mp.copyLink')}</button>
-            </div>
-          </div>
-        </Modal>
-      )}
       {(() => {
         const dl = s.deadline();
         if (!dl || !waiting.length || s.room.processing) return null;
@@ -209,8 +191,6 @@ export function OnlineControls({ cx }: { cx?: boolean }) {
         const h = Math.floor(left / 3_600_000), m = Math.max(0, Math.floor((left % 3_600_000) / 60_000));
         return <span className={cx ? 'cx-online-note' : 'muted nowrap'} title={t('mp.deadlineTip')}>{cx ? '' : '⏱ '}{left > 0 ? t('mp.deadlineLeft', { h, m }) : t('mp.deadlinePassed')}</span>;
       })()}
-      {!cx && s.isHost && s.room.players.length > 1 && <button className="small" title={t('mp.hostTitle')} onClick={() => setHostOpen(true)}>👑 {t('mp.host')}</button>}
-      {hostOpen && <HostModal onClose={() => setHostOpen(false)} />}
       {!me && s.inGame && <span className="bad nowrap">{t('mp.youWereRemoved')}</span>}
       {othersWaiting && !onMyMatch && !cx && <div className="waiting-banner" role="alert">⏳ {t('mp.allWaitingBanner')}</div>}
       {!cx && !solo && !simHidden && s.status !== 'error' && (s.status === 'processing' || !!s.room.processing || s.room.players.every((p) => p.ready)) && <SimOverlay onHide={() => setSimHidden(true)} />}
@@ -265,40 +245,6 @@ function SimOverlay({ onHide }: { onHide: () => void }) {
   );
 }
 
-/** Værten: se hvem der er klar, tving trækket igennem eller fjern spillere, der er gået offline */
-function HostModal({ onClose }: { onClose: () => void }) {
-  const s = session();
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState('');
-  if (!s?.room) return null;
-  const clubs = hasGame() ? gs().clubs : {};
-  const notReady = s.room.players.filter((p) => !p.ready);
-  const run = async (f: () => Promise<void>) => { setBusy(true); setErr(''); try { await f(); } catch (e) { setErr(String((e as Error).message)); } setBusy(false); };
-  return (
-    <Modal title={t('mp.hostTitle')} onClose={onClose}>
-      <div className="col">
-        <table className="grid">
-          <tbody>
-            {s.room.players.map((p) => (
-              <tr key={p.pid}>
-                <td>{p.name}{p.pid === s.room!.host ? ' 👑' : ''}</td>
-                <td>{clubs[p.club]?.short ?? ''}</td>
-                <td>{p.ready ? <span className="tag good">{t('mp.isReady')}</span> : <span className="tag warn">{t('mp.notReadyYet')}</span>}</td>
-                <td>{p.pid !== s.room!.host && <button className="small danger" disabled={busy} onClick={async () => { if (await askConfirm(t('mp.kickConfirm', { name: p.name }))) void run(() => s.kick(p.pid)); }}>{t('mp.kick')}</button>}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <div className="muted" style={{ fontSize: 12 }}>{t('mp.kickHint')}</div>
-        {err && <div className="insight bad">{err}</div>}
-        <div className="row" style={{ justifyContent: 'flex-end' }}>
-          <button onClick={onClose}>{t('common.cancel')}</button>
-          <button className="primary" disabled={busy || notReady.length === 0} title={t('mp.forceHint')} onClick={async () => { if (await askConfirm(t('mp.forceConfirm', { names: notReady.map((p) => p.name).join(', ') }))) void run(async () => { await s.forceContinue(); onClose(); }); }}>{t('mp.force')}</button>
-        </div>
-      </div>
-    </Modal>
-  );
-}
 
 /** Klassisk dialog (som SaveGameClassic): titelbjælke, grå brødtekst, knapper i foden */
 function CxDialog({ title, sub, onClose, foot, children, full }: { title: string; sub?: string; onClose?: () => void; foot: ReactNode; children: ReactNode; full?: boolean }) {
@@ -324,24 +270,6 @@ export function ClassicInvite({ code, link, onClose }: { code: string; link: str
     </>}>
       <div className="invite-code">{code}</div>
       <input className="cx-dlg-input" readOnly value={link} onFocus={(e) => e.target.select()} />
-    </CxDialog>
-  );
-}
-
-export function ClassicHost({ onClose }: { onClose: () => void }) {
-  const s = session();
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState('');
-  if (!s?.room) return null;
-  const notReady = s.room.players.filter((p) => !p.ready);
-  const run = async (f: () => Promise<void>) => { setBusy(true); setErr(''); try { await f(); } catch (e) { setErr(String((e as Error).message)); } setBusy(false); };
-  return (
-    <CxDialog title={t('mp.hostTitle')} sub={t('mp.kickHint')} onClose={onClose} foot={<>
-      <button onClick={onClose}>{t('common.cancel')}</button>
-      <button className="primary" disabled={busy || notReady.length === 0} title={t('mp.forceHint')} onClick={async () => { if (await askConfirm(t('mp.forceConfirm', { names: notReady.map((p) => p.name).join(', ') }), { head: t('cl.mt.confirm') })) void run(async () => { await s.forceContinue(); onClose(); }); }}>{t('mp.force')}</button>
-    </>}>
-      <ClassicPlayers kick={(pid, name) => { void askConfirm(t('mp.kickConfirm', { name }), { head: t('cl.mt.confirm') }).then((ok) => { if (ok) void run(() => s.kick(pid)); }); }} busy={busy} />
-      {err && <div className="cx-online-err">{err}</div>}
     </CxDialog>
   );
 }
