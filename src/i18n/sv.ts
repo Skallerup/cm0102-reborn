@@ -2167,6 +2167,8 @@ export const sv: Record<string, string> = {
   "cl.tag.Lon": "Lån",
   "cl.tag.Unh": "Mis",
   "cl.tag.Wnt": "Öns",
+  "cl.tr.famous": "Kända spelare i din region",
+  "cl.tag.Bid": "Bud",
   "cl.tag.Fgn": "Utl",
   "cl.tag.Fre": "Fri",
   "cl.tag.Exp": "Kon",

@@ -405,6 +405,8 @@ export const en: Record<string, string> = {
   'cl.ct.moves': 'Transfers this season', 'cl.ct.none': 'No transfers this season yet', 'cl.ct.inOut': 'In/Out', 'cl.ct.club': 'Club', 'cl.ct.fee': 'Fee', 'cl.ct.in': 'In', 'cl.ct.out': 'Out', 'cl.ct.loan': 'Loan', 'cl.ct.listed': 'Transfer listed', 'cl.ct.noListed': 'No players on the transfer list', 'cl.cn.none': 'No more matches this season', 'cl.cn.form': 'Form', 'cl.cn.w': 'W', 'cl.cn.d': 'D', 'cl.cn.l': 'L', 'cl.ci.v.squad': 'Squad', 'cl.ci.v.transfers': 'Transfers', 'cl.ci.v.next': 'Next Match', 'cl.ci.v.fixtures': 'Fixtures',
   'cl.menu.all': 'All screens …',
   'cl.tag.Yel': "Yel", 'cl.tag.yelTitle': "One booking away from a suspension", 'cl.tag.Inj': 'Inj', 'cl.tag.Sus': 'Sus', 'cl.tag.Fut': 'Fut', 'cl.tag.Lst': 'Lst', 'cl.tag.Lon': 'Loa', 'cl.tag.Unh': 'Unh', 'cl.tag.Wnt': 'Wnt', 'cl.tag.Fgn': 'Fgn', 'cl.tag.Fre': 'Fre', 'cl.tag.Exp': 'Exp',
+  'cl.tr.famous': "Famous players in your region",
+  'cl.tag.Bid': 'Bid',
   'cl.pl.career': 'Playing Career', 'career.sourceCm': 'Earlier seasons from the Championship Manager 01/02 database.',
   'cl.cup.rounds': 'Rounds', 'cl.cup.results': 'Results', 'cl.cup.fixtures': 'Fixtures', 'cl.cup.schedule': 'Schedule', 'cl.cup.seedings': 'Seedings', 'cl.cup.teamstats': 'Team Stats', 'cl.cup.playerstats': 'Player Stats', 'cl.cup.history': 'History', 'cl.cup.round': 'Round', 'cl.cup.notDrawn': 'The draw has not been made yet.', 'cl.cup.noResults': 'No results yet', 'cl.cup.noFixtures': 'No fixtures', 'cl.cup.firstSeed': 'First seeds', 'cl.cup.secondSeed': 'Second seeds', 'cl.cup.form': 'Form', 'cl.cup.w': 'W', 'cl.cup.d': 'D', 'cl.cup.l': 'L',
   'cl.ts.menu': 'Set Transfer Status', 'cl.ts.title': 'Set Staff Transfer Status', 'cl.ts.valued': '{player} is currently valued at {value}.', 'cl.ts.asking': 'Asking Price', 'cl.ts.auto': 'Auto', 'cl.ts.squad': 'Squad Status', 'cl.ts.transfer': 'Transfer Status', 'cl.ts.set': 'Set',
@@ -793,7 +795,7 @@ export const en: Record<string, string> = {
   'tbl.p': 'P', 'tbl.w': 'W', 'tbl.d': 'D', 'tbl.l': 'L', 'tbl.gf': 'F', 'tbl.ga': 'A', 'tbl.gd': 'GD', 'tbl.pts': 'Pts',
   'tbl.europe': 'Europe', 'tbl.promotion': 'Promotion', 'tbl.playoff': 'Play-off', 'tbl.relegation': 'Relegation',
 
-  'tr.search': 'Player search',
+  'tr.search': 'Player Search',
   'real.col': 'Realism', 'real.hint': 'Would he come, would the club sell, and can you afford it? Hover the tag to see why.',
   'real.all': 'All players', 'real.only': 'Realistic targets only', 'real.maybe': 'Realistic + maybe',
   'real.level0': 'Realistic', 'real.level1': 'Maybe', 'real.level2': 'Unrealistic',

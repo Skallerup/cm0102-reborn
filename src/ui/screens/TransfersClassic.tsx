@@ -6,14 +6,14 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { act } from '../../game/actions';
 import { ageOn } from '../../game/dates';
 import { ATTRS } from '../../game/attributes';
-import { interestedClubs, transferRealism } from '../../game/transfers';
+import { interestedClubs, myPendingBid, transferRealism } from '../../game/transfers';
 import { nationLanguage } from '../../game/languages';
 import { willJoin } from '../../game/staff';
 import { attrMasked, attrRange, knowledgeOf, scoutStars } from '../../game/scouting';
 import type { Trait } from '../../game/personality';
 import type { GameState, Player, ScoutAssignment, Staff, StaffRole } from '../../game/types';
 import { compName, dateFmt, money, natName, t } from '../../i18n';
-import { ClassicSub, CxDrop, CxPm, nationRoute, type DropItem } from '../classic';
+import { ClassicFoot, ClassicSub, CxDrop, CxPm, nationRoute, type DropItem } from '../classic';
 import { REGIONS, Seg, regionOfNation, showRealism } from '../classicOptions';
 import { authentic } from '../../game/rules';
 import { JOB_CODE, cmJobCode, cmScoutRec, cmRecScout, cmActive, cmStaffClub, cmStaffInSearch, cmStaffInf, cmJobKey, cmStaffRep, cmStaffRepRank, cmStaffRepWord } from '../../game/cmStaff';
@@ -32,7 +32,7 @@ const PAGE = 16;
 
 export function ClassicTransfers({ tab: initial }: { tab?: string }) {
   const g = useGame()!;
-  const { nav } = useNav();
+  const { nav, back } = useNav();
   const [tab, setTab] = useRouteState('tab', initial ?? 'search');
   const pending = g.offers.filter((o) => o.status === 'pending' && o.seller === g.userClub).length;
   const club = g.clubs[g.userClub];
@@ -52,7 +52,7 @@ export function ClassicTransfers({ tab: initial }: { tab?: string }) {
         [scoutKey(1), t('cl.tr.scoutN', { n: 1 })], [scoutKey(2), t('cl.tr.scoutN', { n: 2 })],
       ]} value={tab === 'listed' ? 'deals' : tab} onChange={setTab} disabled={[1, 2].filter((n) => !scouts[n - 1]).map(scoutKey)} />
       <ClassicSub items={[
-        ...[3, 4, 5].map((n) => ({ key: scoutKey(n), label: t('cl.tr.scoutN', { n }), disabled: !scouts[n - 1], on: tab === scoutKey(n), onClick: () => setTab(scoutKey(n)) })),
+        ...[3, 4, 5, 6, 7].map((n) => ({ key: scoutKey(n), label: t('cl.tr.scoutN', { n }), disabled: !scouts[n - 1], on: tab === scoutKey(n), onClick: () => setTab(scoutKey(n)) })),
         // Offers og Deals findes ikke i CM 01/02 – kun i det udvidede spil
         // (2026/27-databasen i ægte tilstand har dem også: der er ingen originale skærme for den – bud, accepterede bud og bud på egen trup)
         ...(authentic() && cmActive(g) ? [] : [
@@ -66,6 +66,11 @@ export function ClassicTransfers({ tab: initial }: { tab?: string }) {
       {scoutTab > 0 && <ScoutTab scout={scouts[scoutTab - 1]} n={scoutTab} onPick={setPicker} />}
       {tab === 'offers' && !(authentic() && cmActive(g)) && <Offers />}
       {(tab === 'deals' || tab === 'listed') && !(authentic() && cmActive(g)) && <Deals />}
+      {/* CM 01/02: søgeskærmen har Cancel/Ok i bundbjælken (begge forlader skærmen) */}
+      <ClassicFoot cols="1fr 1fr">
+        <button onClick={back}>{t('common.cancel')}</button>
+        <button className="primary" onClick={back}>{t('cl.ci.fin.ok')}</button>
+      </ClassicFoot>
     </div>
   );
 }
@@ -167,7 +172,7 @@ export function ClassicSearch({ f, setF, defaults, results, total, active, natio
         <button className="cx-greybtn" disabled>{t('cl.tr.delete')}</button>
       </div>
       <ClassicPlayerTable players={results} title={shortlist ? t('cl.tr.shortlist') : t('tr.search')} view={view} total={total}
-        desc={named || (shortlist && !active ? t('cl.tr.shortlistDesc') : preset ? t(`cl.tr.p.${preset.key}`) : t('cl.tr.custom', { n: active }))} initialSort={f.realism && realism ? 'real' : 'val'} />
+        desc={named || (shortlist && !active ? t('cl.tr.shortlistDesc') : preset ? (authentic() && preset.key === 'all' ? t('cl.tr.famous') : t(`cl.tr.p.${preset.key}`)) : t('cl.tr.custom', { n: active }))} initialSort={f.realism && realism ? 'real' : 'val'} />
       {open && <FilterDialog f={f} defaults={defaults} nations={nations} onOk={(v) => { setF(v); setOpen(false); }} onClose={() => setOpen(false)} />}
     </div>
   );
@@ -580,6 +585,8 @@ export function ClassicPlayerTable({ players, title, desc, view: viewProp, initi
   const inf = (p: Player): [string, string, boolean] | null => {
     if (p.injury) return ['Inj', t(`injury.${p.injury.key}`), true];
     if (p.banned > 0) return ['Sus', t('tag.ban'), true];
+    // Bid: menneskets ventende bud på spilleren (grå mærke som Wnt)
+    if (cmActive(g) && p.club > 0 && myPendingBid(p.id)) return ['Bid', '', false];
     if (interestedClubs(p).length) return ['Wnt', authentic() ? '' : t('cl.sq.wanted'), false];
     return null;
   };
@@ -587,8 +594,8 @@ export function ClassicPlayerTable({ players, title, desc, view: viewProp, initi
   const realismOn = showRealism();
   const base: CxCol<Player>[] = [
     // mærket kan klikkes og åbner spillerens side om det (Inj/Sus → Injuries & Bans, Wnt → Transfer) som i originalen
-    { key: 'inf', label: t('cl.tn.inf'), render: (p) => { const x = inf(p); return x ? <button className={`cx-inf ${x[2] ? 'bad' : ''} ${x[0] === 'Inj' && (p.injury?.days ?? 0) > 7 ? 'full' : ''}`} title={x[1]} onClick={() => nav({ name: 'player', id: p.id, tab: x[0] === 'Wnt' ? 'transfer' : 'injuries' })}>{t(`cl.tag.${x[0]}`)}</button> : null; }, sort: (p) => inf(p)?.[0] ?? '~' },
-    { key: 'name', label: t('col.name'), cls: 'c-name', render: (p) => <span className="link" onClick={() => nav({ name: 'player', id: p.id })}>{p.last}{p.first ? `, ${p.first}` : ''}</span>, sort: (p) => `${p.last} ${p.first}` },
+    { key: 'inf', label: t('cl.tn.inf'), render: (p) => { const x = inf(p); return x ? <button className={`cx-inf ${x[2] ? 'bad' : ''} ${x[0] === 'Inj' && (p.injury?.days ?? 0) > 7 ? 'full' : ''}`} title={x[1]} onClick={() => nav({ name: 'player', id: p.id, tab: x[0] === 'Wnt' || x[0] === 'Bid' ? 'transfer' : 'injuries' })}>{t(`cl.tag.${x[0]}`)}</button> : null; }, sort: (p) => inf(p)?.[0] ?? '~' },
+    { key: 'name', label: t('col.name'), cls: 'c-name', render: (p) => <span className={`link ${g.shortlist.includes(p.id) ? 'cx-short' : ''}`} onClick={() => nav({ name: 'player', id: p.id })}>{p.last}{p.first ? `, ${p.first}` : ''}</span>, sort: (p) => `${p.last} ${p.first}` },
   ];
   // Rec (0x80d164): spejderens anbefaling som stjerner – den største af evne-/potentialevurderingen (cmScoutRec, 0x7b62a0)
   const recScout = rec ? cmRecScout(g) : null;

@@ -1363,7 +1363,7 @@ button.cx-sl-cell:disabled { opacity: 1; cursor: default; }
   :root[data-skin='retro'] :is(.cx-backnext button, .cx-grey):disabled { color: #4a504a; text-shadow: 1px 1px 0 #bebebe; }
 
   /* nyhederne: 5 rækker à 24 px med originalens grå rullebjælke, datocellen 211 px */
-  :root[data-skin='retro'] .cx-inbox .cx-nlist { height: calc(5 * 24.4px + 2px); max-height: none; padding: 0; margin: 0 16px; background: rgba(0, 0, 0, 0.4); border: 0; }
+  :root[data-skin='retro'] .cx-inbox .cx-nlist { height: calc(5 * 24.4px + 2px); max-height: none; overflow-y: scroll; padding: 0; margin: 0 16px; background: rgba(0, 0, 0, 0.4); border: 0; }
   :root[data-skin='retro'] .cx-inbox .cx-nlist::-webkit-scrollbar { width: 20px; }
   :root[data-skin='retro'] .cx-inbox .cx-nlist::-webkit-scrollbar-track { background: rgba(119, 119, 119, 0.44); border-left: 1px solid #454545; }
   :root[data-skin='retro'] .cx-inbox .cx-nlist::-webkit-scrollbar-thumb { background: #838183; border: 1.5px solid; border-color: #dadada #3f3f3f #3f3f3f #dadada; }
@@ -1997,3 +1997,10 @@ button.cx-bid-swap.removing { cursor: pointer; color: #fff21f; }
   .cx-bid .cx-bid-bot .cx-bid-total { margin-top: 0; }
   .cx-bid .cx-ts-intro { font-size: 20px; line-height: 1.4; }
 }
+
+/* shortlistede spillere: gult navn i spillerlisterne (CM 01/02 Player & Staff Search) */
+:root[data-skin='retro'] .cx-tbl td.c-name > span.cx-short { color: #fff21f; }
+
+/* Player & Staff Search: beskrivelsen midt i linjen og større bladreknapper som originalen */
+.cx-pager-line .grow { text-align: center; }
+:root[data-skin='retro'] .cx-pager-line button { width: 38px; height: 26px; font-size: 12px; }
