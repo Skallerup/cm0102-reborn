@@ -35,7 +35,7 @@ import { monthlyDevelopment, recordDevelopment } from './training';
 import { cmRand, fillReputation } from './cmPlayerData';
 import { npFromWorld, npTemplate, staffConvert, staffInitRecord, type NpTemplate } from './cmStaffInit';
 import { initialLanguages } from './cmLanguage';
-import { cmActive } from './cmPlayerData';
+import { cmActive, cmLogic } from './cmPlayerData';
 import { cmStartDate } from './cmCalendar';
 import { cmMainNation, cmSeasonOn } from './cmSeason';
 import { cmEuroOn, cmEuroRestoreNext, cmSetupEurope } from './cmEurope';
@@ -633,8 +633,8 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   rebuildIndexes();
   progress('done', 0.98);
   initialTransferList();
-  // runde 8: originalens kampmotor (gittermotoren) som standard i ægte tilstand med den originale database – én konstant (liveSim.ts)
-  if (GRID_ENGINE_DEFAULT && g.options.mode === 'authentic' && cmDatabase(g) === 'original') g.options.engine = 'original';
+  // runde 8: originalens kampmotor (gittermotoren) som standard i ægte tilstand med en CM-database (cmLogic – 2026/27 fra 17/11) – én konstant (liveSim.ts)
+  if (GRID_ENGINE_DEFAULT && cmLogic(g)) g.options.engine = 'original';
   // (runde 10C) forkørslen: de europæiske kampe før startdatoen (sim.ts registrerer krogen)
   compHooks.euroCatchUp?.(g);
   // (16/11) forkørslen 0x5cc850 spiller alle turneringers kampe fra databasens dato til starten – ligaer og pokaler, der begyndte før startdatoen

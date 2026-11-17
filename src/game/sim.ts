@@ -3,7 +3,7 @@ import { cmBoardAfterMatch, cmBoardDaily, cmBoardOn } from './cmBoardGame';
 import { cmWxDaily, cmWxFix } from './cmWeather';
 import { cmStaffOffersDaily } from './cmStaff';
 import { cmStaffMovesDaily } from './cmStaffMove';
-import { cmActive, cmAfterMatch, cmContractDaily, cmFlagSet, cmRand, cmSquadMoraleDaily, MORALE_OFF, withFlagCtx } from './cmPlayerData';
+import { cmActive, cmLogic, cmAfterMatch, cmContractDaily, cmFlagSet, cmRand, cmSquadMoraleDaily, MORALE_OFF, withFlagCtx } from './cmPlayerData';
 import { cmFitAfterMatch, cmFitDay, cmFitMatch, cmFitOn, cmFitPreMatch, setMatchSquad } from './cmFitnessGame';
 import { cmPermitAfterMatch, cmPermitDaily } from './cmPermit';
 import { cmScoutDaily, cmScoutMatch } from './cmScout';
@@ -253,7 +253,8 @@ function tacticFor(club: number, opp: number, home: boolean, userAuto: boolean, 
 
 // ---------- kampmotoren ----------
 
-/** Gittermotoren (porten af originalens kampmotor) i stedet for zonemotoren? Kun den originale database i ægte tilstand,
+/** Gittermotoren (porten af originalens kampmotor) i stedet for zonemotoren? Kun en CM-database i ægte tilstand (cmLogic – den originale og,
+ * fra 17/11, 2026/27-opdateringen),
  * og kun når spillet har valgt den (Options.engine – standard i nye spil, når GRID_ENGINE_DEFAULT er sand) eller udviklerkontakten
  * localStorage `cm0102.engine` = 'original' er sat ('zone' slår den fra). */
 // gittermotoren (originalens kampmotor) – bruges kun, når gridEngineOn(g) er sand
@@ -264,7 +265,7 @@ intlHooks.gridOn = () => gridEngineOn(gs());
 /** udviklerkontakten `cm0102.engine`, sat af dagens Web Worker (undefined = læs localStorage) */
 export const ENGINE_DEV: { v?: string | null } = {};
 export function gridEngineOn(g: GameState): boolean {
-  if (cmDatabase(g) !== 'original' || !authentic()) return false;
+  if (!cmLogic(g) || !authentic()) return false;
   // udviklerkontakten localStorage `cm0102.engine`: 'original' slår gittermotoren til, 'zone' fra (også i nye spil, hvor den er standard –
   // GRID_ENGINE_DEFAULT i engine/liveSim.ts)
   let dev: string | null = null;
@@ -273,7 +274,8 @@ export function gridEngineOn(g: GameState): boolean {
   else try { dev = typeof localStorage !== 'undefined' ? localStorage.getItem('cm0102.engine') : null; } catch { dev = null; }
   if (dev === 'zone') return false;
   // GRID_ENGINE_DEFAULT (staging, 12/11 – ejerens ønske): også spil uden valg (gemt før runde 8) får gittermotoren; 'zone' fravælger den
-  return g.options.engine === 'original' || dev === 'original' || (g.options.engine === undefined && GRID_ENGINE_DEFAULT);
+  // (17/11) 2026/27: kun spil, der er startet med den (newgame.ts sætter Options.engine) – ældre 2026/27-spil i ægte tilstand bliver på zonemotoren
+  return g.options.engine === 'original' || dev === 'original' || (g.options.engine === undefined && GRID_ENGINE_DEFAULT && cmActive(g));
 }
 
 /** Hvilke kampe spiller gittermotoren? Menneskets egne kampe og alle hjemlige kampe (liga, pokal, play-off) i de spilbare (valgte) lande –
@@ -465,7 +467,7 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
   // 0x7f8c00 (0x6b6195): menneskenes spejdere ser kampen, når en anmodet spiller er med (cmScout.ts)
   cmScoutMatch(g, f, rep);
   // 0x896290: taktiklistens statistik efter en kamp mellem to computerhold (gittermotorens valg fra pick_team/omrokeringen)
-  if (cmActive(g)) recordAiTactics(f.home, f.away, hs.goals, as.goals, (c) => isHumanClub(c) || c === g.userClub);
+  if (cmLogic(g)) recordAiTactics(f.home, f.away, hs.goals, as.goals, (c) => isHumanClub(c) || c === g.userClub);
   // karantæner afsones for spillere der ikke spillede
   for (const club of [f.home, f.away]) {
     for (const p of squad(club)) {

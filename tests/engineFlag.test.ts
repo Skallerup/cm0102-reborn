@@ -1,5 +1,5 @@
 // Kampmotoren bag et flag: makeMatch giver zonemotoren (MatchSim), medmindre gittermotoren er slået til OG registreret,
-// og gridEngineOn er kun sand med den originale database i ægte tilstand.
+// og gridEngineOn er kun sand med en CM-database (den originale eller 2026/27) i ægte tilstand.
 import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createGame, type WorldData } from '../src/game/newgame';
@@ -70,15 +70,34 @@ describe('kampmotoren bag et flag', () => {
     if (cup) expect(gridFixture(cup.home, cup.away, cup.id)).toBe(true);
   }, 120_000);
 
-  it('moderne database: aldrig – heller ikke i ægte tilstand', () => {
-    const g = start(load('world.json'), 'Brentford FC', 'authentic');
+  // (17/11, MODERN_PARITY punkt 2) 2026/27-opdateringen er i CM-format: originalens kampmotor i ægte tilstand (cmLogic), aldrig i udvidet
+  it('2026/27 (CM-format): gittermotoren i nye spil i ægte tilstand – ikke i udvidet og ikke i ældre spil uden valg', () => {
+    const w = load('world.json') as WorldData & { cmRaw?: unknown };
+    w.cmRaw = (JSON.parse(readFileSync('public/data/world-cm.json', 'utf8')) as { cmRaw: unknown }).cmRaw;
+    const g = start(w, 'Brentford FC', 'authentic');
+    expect(g.options.engine).toBe(GRID_ENGINE_DEFAULT ? 'original' : undefined);
     g.options.engine = 'original';
+    expect(gridEngineOn(g)).toBe(true);
+    g.options.engine = undefined;                 // 2026/27-spil fra før 17/11: zonemotoren som før
     expect(gridEngineOn(g)).toBe(false);
-  }, 60_000);
+    // kampmotorens inddata fra databasen (world-cm.json): de interne egenskaber, omdømmet i hukommelsen og tilskuerposterne
+    const p = Object.values(g.players).find((x) => x.club === g.userClub)!;
+    expect(p.cmInt?.length).toBe(18);
+    expect(p.cmRepMem).toBeDefined();
+    expect(g.cmCrowd?.[g.userClub]).toBeDefined();
+    expect(g.cmCompRep?.[+g.clubs[g.userClub].league.slice(2)]).toBeGreaterThan(0);
+    // 2001-verdenens moduler gælder ikke (økonomi, kondition …)
+    expect(g.cmFin).toBeUndefined();
+    expect(g.econ).toBeUndefined();
+    const e = start(w, 'Brentford FC', 'extended');
+    expect(e.options.engine).toBeUndefined();
+    e.options.engine = 'original';
+    expect(gridEngineOn(e)).toBe(false);
+    expect(Object.values(e.players).some((x) => x.cmInt)).toBe(false);
+  }, 120_000);
 
-  it('udvidet tilstand og den moderne database får ikke gittermotoren som standard', () => {
+  it('udvidet tilstand får ikke gittermotoren som standard', () => {
     expect(start(load('world-original.json'), 'Arsenal', 'extended').options.engine).toBeUndefined();
-    expect(start(load('world.json'), 'Brentford FC', 'authentic').options.engine).toBeUndefined();
   }, 60_000);
 
   it('fabrikken giver MatchSim, når flaget er slået fra – også med en registreret gittermotor', () => {

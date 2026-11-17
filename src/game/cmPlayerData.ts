@@ -517,23 +517,25 @@ export function repMemOf(v: number): number {
  *  club +0x80 = cmClubRep). Originalen overfører dem i 0x6b5f00 før 0x4ca6d0/0x7c0d70 (0x6b6cc0 kommer først) – derfor først her. */
 /** cmBoardGame.ts registrerer managerens omdømme (undgår en cirkulær import) */
 export const postHooks: { managerRep?: (g: GameState, club: number, v: [number, number, number]) => void } = {};
-export function cmApplyPost(g: GameState, f: Fixture, rep: MatchReport): void {
+export function cmApplyPost(g: GameState, f: Fixture, rep: MatchReport, world2001 = true): void {
   const post = rep.cmPost;
   if (!post) return;
   for (const [id, v] of Object.entries(post.players)) {
     const p = g.players[+id]; if (!p) continue;
-    p.morale = v.morale;
+    if (world2001) p.morale = v.morale;
     p.cmRepMem = [repMemOf(v.rep[0]), repMemOf(v.rep[1]), repMemOf(v.rep[2])];
   }
   // 0x6b6cc0: managerens omdømme (og en fjerdedel til assistenten og trænerne) FØR klubbens omdømme
-  if (post.managers) [f.home, f.away].forEach((c, i) => { const v = post.managers![i]; if (v) postHooks.managerRep?.(g, c, v); });
+  if (world2001 && post.managers) [f.home, f.away].forEach((c, i) => { const v = post.managers![i]; if (v) postHooks.managerRep?.(g, c, v); });
   if (g.cmClubRep) [f.home, f.away].forEach((c, i) => { const v = post.clubRep[i]; if (v !== null) g.cmClubRep![c] = v; });
 }
 
 /** 0x7c0d70 + 0x4ca6d0 for en klubkamp: statistik pr. kategori, formen, karaktersnittet og kontraktens tællere for begge hold. */
 export function cmAfterMatch(g: GameState, f: Fixture, rep: MatchReport, squadOf: (club: number) => Player[],
   bg?: { cats: [number, number] }): void {
-  if (!cmActive(g)) return;
+  // 2026/27 i ægte tilstand (cmLogic uden cmActive): kun kampmotorens omdømme (spillerne +9/+0xb/+0xd, klubben +0x80) – moralen, managerens
+  // omdømme, PlayerStats og kontraktens tællere hører til modulerne, der endnu kun gælder 2001-verdenen (spillets egen moral i sim.ts gælder)
+  if (!cmActive(g)) { if (cmLogic(g) && !g.draft) cmApplyPost(g, f, rep, false); return; }
   cmApplyPost(g, f, rep);
   // baggrundskampene (fixture −2, 0x84be20 – cmReserves.ts): kategorien pr. hold rand(9) ? 2 : 3, og spillets karaktersnit tæller dem ikke
   const cat = statCategory(g, f);
