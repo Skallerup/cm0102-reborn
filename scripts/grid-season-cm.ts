@@ -10,6 +10,7 @@ import { unpackReport } from '../src/game/miniReport';
 import type { MatchReport } from '../src/game/types';
 
 const year = Number(process.argv[2] ?? 2026), seed = Number(process.argv[3] ?? 1);
+if (!Number.isFinite(year) || !Number.isFinite(seed)) throw new Error(`år/frø: ${process.argv.slice(2).join(" ")} (ét argument pr. ord)`);
 const until = process.argv[4] || (year >= 2020 ? '2026-12-31' : '2001-12-31');
 const engine = (process.argv[5] ?? 'original') as 'original' | 'zone';
 const clubName = process.argv[6] ?? (year >= 2020 ? 'Brentford FC' : 'Wrexham');

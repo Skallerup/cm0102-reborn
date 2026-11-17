@@ -3,6 +3,31 @@
 *2026-11-10. Ejeren har (som Bosman Editions forfatter) tilladelse til at bruge så meget af originalens motor som muligt.
 Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.md`, byggestenene: `GRID_ENGINE.md`.*
 
+## 2026/27 i ægte tilstand – `cmLogic` (2026-11-17, MODERN_PARITY punkt 2)
+
+- **Kontakten:** `cmLogic(g)` (cmPlayerData.ts) = CM-format + ægte tilstand uanset år; `cmActive` = cmLogic + 2001-verdenen (år < 2020). Udvidet
+  tilstand beholder CM Reborns regler. `gridEngineOn` og newgame-standarden (`Options.engine = 'original'`) bruger cmLogic; 2026/27-spil uden valg
+  (startet før 17/11) bliver på zonemotoren → **kræver et nyt spil**.
+- **Data:** byggescriptet skriver 2026/27's `cmRaw` i `public/data/world-cm.json` (505 KB; world.json uændret, 8,9 MB < SW-grænsen 10 MB);
+  `ui/world.ts` lægger den på. newgame (`cmRawLogic`) sætter kun kampmotorens inddata: cmClubRep/NationRep/CompRep/Crowd/Cities/Nation7e,
+  p.cmRepMem (fillReputation), cmInt (shownFromStored), cmFree, cmNation2, cmJoined (databasens 2001-ur + 25 år), forholdene (cmRelNewGame) og
+  create_game 0x829960. cmIntSync følger cmLogic (de viste af CA + de interne, som 2001 før 0x5ce2d0 blev porteret).
+- **Efter kampen:** kun motorens omdømme (spillere +9/+0xb/+0xd, klub +0x80) og taktiklistens statistik 0x896290. Moral, managerens omdømme,
+  PlayerStats/form, kontrakttællere 0x4ca6d0, konditionsmodulet, karantæner og landskampe i gittermotoren hører til de moduler, der stadig er
+  cmActive (MODERN_PARITY punkt 5–12) – dér bruger motoren sine "uden"-grene (`AiPickCtx.cm` = cmActive).
+- **Udskiftninger/bænk (exe):** fixture word +0x4d: lav nibble = navngivne udskiftere (0x6dbac0 → bænken idx 11..10+n), høj nibble = udskiftninger
+  (hold+0x17 = min(høj, bænkens antal)). Basisklassen 0x48f2fa kopierer turneringens +0x49 (navngivne) og +0x4a (udskiftninger); værdierne er
+  hårdkodet i turneringsklassernes konstruktører (subs = 3 ×57, navngivne 5 ×39 / 7 ×88), venskabskampe 0x5ea3d0 (0x37, mod w30 = 10: 0x77),
+  finaler 0x5bb100. **Datafilerne har ingen regler** (October 2026 Data Update: kun .dat + euro.cfg/player_setup.cfg/weather.cfg) – en upatchet
+  cm0102.exe ville give 3/5 også med 2026-dataene. Motoren selv har 20 MATCH_PLAYER pr. side (0x6e0d00) og bænkpladstabellen 0x6dd214 håndterer
+  over 14 pladser, så 11 + 9 og 5 udskiftninger ligger inden for originalens motor. **Valg:** rules.ts' 5/9 (ejerens beslutning: 3/5 er
+  2001-verden, "V" i MODERN_PARITY) – nu også for computerens bænk (`AiPickCtx.benchSize = benchSize()`; før altid 5). 2001: uændret 3/5.
+- **Mål (scripts/grid-season-cm.ts, Premier League til 31/12):** 2001 frø 1 (measure 8dcf2308be99): 210 kampe, 2,93 mål (H/U/B 54/23/22), gule
+  1,93, røde 0,12, skadet 0,60, indskiftede 4,16 pr. kamp, 2,2–2,7 s/dag. 2026 frø 1 til 20/8 (røgprøve, 20 kampe): 2,75 mål, gule 2,70, røde 0,20,
+  skadet 0,60, indskiftede 8,35 (5 udskiftninger), 73 ms/dag, spilstart 0,9 s. Den halve sæson × 2 frø for 2026 (grid og zone) blev stoppet af
+  systemet (lav RAM) – køres igen med `node scripts/measure.mjs -- npx tsx scripts/grid-season-cm.ts 2026 <frø> [2026-12-31] [original|zone]`.
+  2001 er bit for bit uændret (perf-fingerprint 2001-08-20 b5ecf86d561c0ba3 før/efter).
+
 ## Målefælder for mål/kamp (2026-11-17 – læs før sæsontallene nedenfor sammenlignes)
 - **`grid-season.ts`' tal fra runde 9 til 13/11 måler IKKE gittermotoren i Premier League.** Indtil a898c948 (14/11) spillede `gridFixture()` (sim.ts)
   kun menneskets egen liga og hans kampe på gittermotoren; grid-season spiller Wrexham (Second Division), så alle PL-kampe gik på zonemotoren
