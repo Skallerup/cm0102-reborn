@@ -5,8 +5,8 @@ import { createGame, type WorldData } from '../src/game/newgame';
 import { gs } from '../src/game/state';
 import { cmStaffCompensation, cmStaffRestGbp } from '../src/game/cmStaff';
 import { cmStaffMovesDaily, cmStaffPlan } from '../src/game/cmStaffMove';
-import { cmStaffTerms } from '../src/game/cmContractGame';
-import { boardEnv } from '../src/game/cmBoardGame';
+import { cmStaffTerms, cmStaffWill } from '../src/game/cmContractGame';
+import { boardEnv, staffJobInterest } from '../src/game/cmBoardGame';
 import { scoreStaffForJob } from '../src/game/cmBoard';
 import { t } from '../src/i18n';
 
@@ -44,6 +44,21 @@ describe('stabsskifter (cmStaffMove)', () => {
       expect(g.clubs[m.c].manager).not.toBe(-1);
       expect([6, 8, 9, 10]).toContain(m.job);
     }
+  });
+
+  it('0x840682/0x8407a2: målet er kun personer med viljen 0x844780(staff, klub, 1, job) ≥ 3,15 – de svarer ja (≥ 0,75)', () => {
+    const env = boardEnv(g);
+    const moves = (g.cmStaffMoves ?? []).slice(0, 12);
+    expect(moves.length).toBeGreaterThan(0);
+    for (const m of moves) {
+      const s = g.staff[m.s], p = env.person(s.id)!;
+      const S = staffJobInterest(g, env, p, m.c, m.job);
+      expect(cmStaffWill(g, s, m.c, m.job, S)).toBeGreaterThanOrEqual(3.15);
+      expect(S).toBeGreaterThanOrEqual(0.75);
+    }
+    // under 1,75 indgår kontraktdelen ikke (0x846639)
+    const any = g.staff[moves[0].s];
+    expect(cmStaffWill(g, any, moves[0].c, moves[0].job, 1.5)).toBe(1.5);
   });
 
   it('0x68f130/0x83fa68: ledige beholder databasens job +0x3d, landstrænerne +0x28 = 5 – ingen bud på managere (oraklets gemte spil 15/7-2001)', () => {

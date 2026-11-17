@@ -17,7 +17,9 @@
 //      managerjob (0x69fc60), restkontrakten (dage til udløb 0x85fa00 · ugeløn / 7) under pladsens +7 og højst (klubbens omdømme + 500) · 10, ikke
 //      klubbens egen, landet/verdensdelen (omdømme < 2750 → kun egen verdensdel; < 4250 og nation +0x85 < 12 → kun personer fra samme verdensdel
 //      som deres klub), omdømmet set af manageren 0x5407e0 ≥ rand(2000) + 3250 (samme land, landskampe eller klub i landet springer prøven over);
-//      vurderet med 0x69d1b0 (cmBoard.ts scoreStaffForJob med jobblokkene 0x69db39/0x69deb6/0x69e22d/0x69e4e7).
+//      vurderet med 0x69d1b0 (cmBoard.ts scoreStaffForJob med jobblokkene 0x69db39/0x69deb6/0x69e22d/0x69e4e7). Vurderingen 0x840112–0x84094e:
+//      v ≥ T og ≥ bedste − 10.000, v' = ftol((rand(17) + 92) · 0,01 · v) > bedste (begynder ved T), og personens vilje med kontraktdelen
+//      0x844780(staff, klub, 1, job, NULL) ≥ 3,15 (cmContractGame.ts cmStaffWill) – de uvillige bliver aldrig mål.
 //   4. Buddet 0x84a020 → build_bid 0x8e5d60 (computerkøber, 0x8e6346): for en ikke-spillerplads giver 0x84b6f0 kompensationen 0x8d0780 (+0x1b) og
 //      0 (kompensationen < personens værdi +0x52 holder aldrig for stab), så 0x8e638b–0x8e6444 springer buddet til klubben over og giver personen
 //      et kontrakttilbud direkte: offer_contract 0x4cda70(staff, køber, kontrakt, −1, 1,0, 2) og buddets +0x2f = 1. 0x8d0780: kontrakt med
@@ -38,7 +40,7 @@
 // 8. Kontrakten: 0x4cda70 offer_contract(staff, klub, NULL, −1, 1,0, 2) → 0x85fc50 med 0x849f00's job/status (pladsen i køberens plan) og
 //    lønloftet 0x597db0 (cmContractGame.ts cmStaffTerms); uden tilbud personens krav 0x85fc50.
 //
-// *Estimeret* (koden er ikke fulgt hele vejen): målet skal mindst nå pladsens grænse T (0x840112's sammenligning), antallet n i budgettet
+// *Estimeret* (koden er ikke fulgt hele vejen): antallet n i budgettet
 // (originalen sorterer pladserne efter +0xb og stopper ved den 4. åbne spillerplads), hvornår buddet afgives (her straks ved planen; originalen
 // ugentligt, dagligt for omdømme > 6250), personens svar (beslutningsdagen 0x4cd230 er ikke porteret: viljen 0x844780 for jobbet ≥ 0,75 som
 // spillernes 0x8c0080, svaret efter 1–5 dage), overskriftens variant (personens id mod 4), at budnyheden
@@ -55,7 +57,7 @@ import { bookBlock, K as CMK, GBP } from './cmFinance';
 import { cmStaffDemand, cmStaffRestGbp, cmStaffCompensation } from './cmStaff';
 import { asOwner, forEachHuman, isHumanClub } from './humans';
 import { careerEnd } from './careers';
-import { cmStaffTerms } from './cmContractGame';
+import { cmStaffTerms, cmStaffWill } from './cmContractGame';
 import { transferNewsToMe } from './cmNewsScope';
 import { afterPlanHooks } from './cmSquadPlanGame';
 import { addDays } from './dates';
@@ -133,7 +135,8 @@ export function cmStaffPlan(g: GameState, cid: number, clubT: number, openPlayer
   const taken = new Set((g.cmStaffMoves ?? []).filter((m) => m.c === cid).map((m) => m.s));
   for (const job of todo) {
     const share = Math.trunc(budget / (SHARE[job] * n));
-    let best: Staff | null = null, bestV = T - 1;
+    // 0x83f8b3: [esp+0x58] (bedste hidtil) = pladsens grænse T
+    let best: Staff | null = null, bestV = T;
     for (const s of Object.values(g.staff)) {
       if (!s.cmNp || s.cmExtra || s.club === cid || taken.has(s.id) || vac.has(s.id)) continue;
       if (s.role === 'manager' && s.club) continue;                                // (klubbens manager – managerjobbet er MANAGER_MANAGER's)
@@ -143,8 +146,15 @@ export function cmStaffPlan(g: GameState, cid: number, clubT: number, openPlayer
       if (!p || !p.np) continue;
       if (p.job === 5 || p.natJob === 5) continue;                                 // 0x83fa68/0x83fa72: +0x3d = 5 eller +0x28 = 5 (managere)
       if (!passesScouting(g, env, p, s, club, mgr, rand)) continue;
+      // 0x840112–0x840153: v = 0x69d1b0 ≥ T ([esp+0x68]) og ≥ bedste − 10.000
       const v = scoreStaffForJob(env, p, cid, job, mgr);
-      if (v > bestV) { bestV = v; best = s; }
+      if (v < T || v < bestV - 10000) continue;
+      // 0x84060e–0x84063c: v' = ftol((rand(17) + 92) · 0,01 · v) skal slå den bedste
+      const v2 = ftol((rand(17) + 0x5c) * 0.01 * v);
+      if (v2 <= bestV) continue;
+      // 0x840682/0x8407a2: viljen 0x844780(staff, klub, 1, job, NULL) ≥ 3,15 – ellers er han ikke mål
+      if (cmStaffWill(g, s, cid, job, staffJobInterest(g, env, p, cid, job)) < 3.15) continue;
+      bestV = v2; best = s;                                                         // 0x84093f
     }
     if (!best) continue;
     taken.add(best.id);

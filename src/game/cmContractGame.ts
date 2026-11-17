@@ -27,7 +27,7 @@ import { type CmCtx, G } from './cmMem';
 import { buildWageMem, cmMemCall, type WageMem } from './cmWageGame';
 import { setToDesiredContract_85fc50, constructContract_85e410, calcContractValue_866830 } from './cmContractWant';
 import { offerContract_4cda70 } from './cmContract';
-import { getClubFinance_5a0590 } from './cmWage';
+import { getClubFinance_5a0590, defaultStaffContract_864550 } from './cmWage';
 import { maxStaffWage_597db0 } from './cmMaxWage';
 import { genCtx } from './cmGen/impls';
 import { slCall, slmOf } from './cmShortlist';
@@ -529,16 +529,9 @@ export type { ContractClauses };
 
 // ---------------------------------------------------------------- stab (cmStaffMove.ts)
 
-/** Originalens kontrakttilbud, når computerklubben `clubId` henter en ikke-spiller til jobbet `job` (6 assistent, 8 træner, 9 spejder,
- *  10 fysioterapeut): 0x4cda70(staff, klub, NULL, −1, 1,0, 2) → 0x85fc50 med Shortlist_Manager 0x849f00's job og status (pladsen i køberens
- *  trupplan med jobbet – gruppen +0x24 >> 1) og lønloftet 0x597db0(job). Uden tilbud: personens krav 0x85fc50(staff, klub, −1, status, job).
- *  Posterne: stabens ikke-spillerpost (omdømme +8/+0xa/+0xc, CA +4, PA +6, egenskaberne +0x0e..), personpostens alder/nationalitet/fødselsdato/
- *  skjulte egenskaber +0x56..+0x5d og den nuværende kontrakt (løn, udløb); viljen 0x844780 af spillets data. `refuse`: kravet er originalens
- *  250.000-loft (han skriver ikke under – *estimeret*: beslutningen 0x4ce4e0 er ikke porteret). Null uden for cmActive. */
-export function cmStaffTerms(g: GameState, s: import('./types').Staff, clubId: number, job: number): { wage: number; expires: string; offered: boolean; refuse: boolean } | null {
-  if (!cmActive(g) || g.draft || !g.clubs[clubId]) return null;
-  const row = g.cmPlan?.[clubId]?.s.find((r) => r[0] === job);
-  const status = row ? (row[2] >> 1) & 0xf : 5;
+/** stabens poster i hukommelsen til 0x4cda70/0x85fc50/0x864550 (cmStaffTerms, cmStaffWill): personposten, ikke-spillerposten og den nuværende
+ *  kontrakt (k = 0 uden kontrakt); 0x849f00 svarer med pladsens job og status, 0x597db0 er lønloftet og 0x844780 viljen af spillets data */
+function staffMem(g: GameState, s: import('./types').Staff, clubId: number, job: number, status: number): { M: WantMem; st: number; club: number; k: number } | null {
   let stAdr = 0;
   const M = buildWantMem(g, s.club ? [s.club, clubId] : [clubId], {
     full: false,
@@ -577,6 +570,51 @@ export function cmStaffTerms(g: GameState, s: import('./types').Staff, clubId: n
   const ix = m.s32(m.u32(G.ROWS) + 79 * m.s32(st));
   const k = ix >= 0 ? (m.u32(m.u32(G.CM)) + 80 * ix) >>> 0 : 0;
   if (k && s.expires) { const [d, y] = isoDay(s.expires); m.w16(k + 0x2d, d); m.w16(k + 0x2f, y); m.w32(k + 0x31, leap(y)); m.w8(k + 0x35, 2); m.w32(k + 0x4a, -1); }
+  return { M, st, club, k };
+}
+
+/** 0x844780(staff, klub, **1**, job, NULL) – viljen S (check = 0, cmBoardInterest.ts) med kontraktdelen 0x84662e–0x8467f7: S < 1,75 → S;
+ *  ellers standardkontrakten R = 0x864550(staff, klub, 0, −1, job, 0), m = max(3,5 / max(S; 0,1); 0,9), kravet m·R mod lønloftet 0x597db0(job)
+ *  (over loftet: S·loft/krav og W = loftet) og W mod den nuværende kontrakts løn k+0xc (mindst 10): q < 0,1 eller q < 1 → S', q > 10 → S'·10/m,
+ *  ellers S'·q/m. Uden kontrakt S'. Bruges af trupplanens mål 0x83f3a0 (0x840682, krav ≥ 3,15) – cmStaffMove.ts. */
+export function cmStaffWill(g: GameState, s: import('./types').Staff, clubId: number, job: number, S: number): number {
+  if (S < 1.75) return S;
+  const row = g.cmPlan?.[clubId]?.s.find((r) => r[0] === job);
+  const X = staffMem(g, s, clubId, job, row ? (row[2] >> 1) & 0xf : 5);
+  if (!X) return S;
+  const { M, st, club, k } = X, m = M.c.m;
+  const fin = M.W.finOf(clubId);
+  if (!fin) return 0;
+  M.setRand(cmRand(g.seed ?? 0, s.id, clubId, isoDay(g.date)[0], 0x84662e));
+  const R = Math.fround(defaultStaffContract_864550(M.c, st, club, 0, -1, job, 0));
+  let mm = 3.5 / Math.max(S, 0.1);
+  if (mm < 0.9) mm = 0.9;
+  const ask = mm * R, maxW = maxStaffWage_597db0(M.c, fin, job) | 0;
+  let Sx = S, W = ask;
+  if (ask > maxW && ask > 0) { Sx = (maxW / ask) * S; W = maxW; }
+  if (!k) return Sx;
+  let cw = m.s32(k + 0xc);
+  if (cw < 10) cw = 10;
+  const q = W / cw;
+  if (q < 0.1) return Sx;
+  if (q > 10) return Sx * (10 / mm);
+  if (q < 1) return Sx;
+  return Sx * (q / mm);
+}
+
+/** Originalens kontrakttilbud, når computerklubben `clubId` henter en ikke-spiller til jobbet `job` (6 assistent, 8 træner, 9 spejder,
+ *  10 fysioterapeut): 0x4cda70(staff, klub, NULL, −1, 1,0, 2) → 0x85fc50 med Shortlist_Manager 0x849f00's job og status (pladsen i køberens
+ *  trupplan med jobbet – gruppen +0x24 >> 1) og lønloftet 0x597db0(job). Uden tilbud: personens krav 0x85fc50(staff, klub, −1, status, job).
+ *  Posterne: stabens ikke-spillerpost (omdømme +8/+0xa/+0xc, CA +4, PA +6, egenskaberne +0x0e..), personpostens alder/nationalitet/fødselsdato/
+ *  skjulte egenskaber +0x56..+0x5d og den nuværende kontrakt (løn, udløb); viljen 0x844780 af spillets data. `refuse`: kravet er originalens
+ *  250.000-loft (han skriver ikke under – *estimeret*: beslutningen 0x4ce4e0 er ikke porteret). Null uden for cmActive. */
+export function cmStaffTerms(g: GameState, s: import('./types').Staff, clubId: number, job: number): { wage: number; expires: string; offered: boolean; refuse: boolean } | null {
+  if (!cmActive(g) || g.draft || !g.clubs[clubId]) return null;
+  const row = g.cmPlan?.[clubId]?.s.find((r) => r[0] === job);
+  const status = row ? (row[2] >> 1) & 0xf : 5;
+  const X = staffMem(g, s, clubId, job, status);
+  if (!X) return null;
+  const { M, st, club } = X, m = M.c.m;
   const [d] = isoDay(g.date);
   M.setRand(cmRand(g.seed ?? 0, s.id, clubId, d, 0x85fc50));
   for (let i = 0; i < 0x50; i++) m.w8(OUT + i, 0);
