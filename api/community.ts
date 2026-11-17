@@ -2,6 +2,7 @@
 // Identitet = ranglisteprofilen (prof:{pid} med hash af et hemmeligt token). Admin-handlinger kræver ADMIN_TOKEN.
 import { SITE, postDiscord } from './_lib/discord.js';
 import { makeRedis } from './_lib/redis.js';
+import { isAdminToken } from './_lib/adminToken.js';
 
 const redis = makeRedis();
 
@@ -37,10 +38,7 @@ async function auth(pid: string, token: string) {
   if (!prof?.th || prof.th !== (await sha(String(token)))) return null;
   return prof;
 }
-const isAdmin = (req: Request, body?: Record<string, unknown>) => {
-  const tok = process.env.ADMIN_TOKEN;
-  return !!tok && (req.headers.get('x-admin-token') === tok || body?.admin === tok);
-};
+const isAdmin = (req: Request, body?: Record<string, unknown>) => isAdminToken(req.headers.get('x-admin-token')) || isAdminToken(body?.admin);
 
 async function getSug(id: number): Promise<Suggestion | null> {
   const s = await redis.hgetall<Record<string, unknown>>(`sg:${id}`);

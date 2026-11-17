@@ -11,11 +11,12 @@ import type { Redis } from '@upstash/redis';
 import { makeRedis } from './_lib/redis.js';
 import { del } from '@vercel/blob';
 import { renderNews, sendNews, unsubLink, type Sub } from './_lib/mail.js';
+import { isAdminToken } from './_lib/adminToken.js';
 
 const redis = makeRedis();
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
 const clip = (v: unknown, n: number) => String(v ?? '').replace(/\u0000/g, '').trim().slice(0, n);
-const isAdmin = (req: Request) => { const tok = process.env.ADMIN_TOKEN; return !!tok && req.headers.get('x-admin-token') === tok; };
+const isAdmin = (req: Request) => isAdminToken(req.headers.get('x-admin-token'));
 const ipOf = (req: Request) => req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'local';
 const ROLES = ['developer', 'designer', 'data', 'testing', 'translation', 'community', 'other'] as const;
 const APP_STATUSES = ['new', 'contacted', 'accepted', 'rejected'] as const;

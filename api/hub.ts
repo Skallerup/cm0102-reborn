@@ -10,6 +10,7 @@ import type { Redis } from '@upstash/redis';
 import { put } from '@vercel/blob';
 import { SITE, postDiscord } from './_lib/discord.js';
 import { makeRedis } from './_lib/redis.js';
+import { isAdminToken } from './_lib/adminToken.js';
 
 const redis = makeRedis();
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
@@ -17,7 +18,7 @@ const clean = (v: unknown, max: number) => String(v ?? '').replace(/[<>]/g, '').
 const cleanBody = (v: unknown, max: number) => String(v ?? '').replace(/[<>]/g, '').replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim().slice(0, max);
 const parse = <T>(v: unknown, fb: T): T => { if (v && typeof v === 'object') return v as T; if (typeof v !== 'string') return fb; try { return JSON.parse(v) as T; } catch { return fb; } };
 const ipOf = (req: Request) => req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'local';
-const isAdmin = (req: Request) => { const tok = process.env.ADMIN_TOKEN; return !!tok && req.headers.get('x-admin-token') === tok; };
+const isAdmin = (req: Request) => isAdminToken(req.headers.get('x-admin-token'));
 const BAD = /(fuck|cunt|nigg|hitler|nazi|fisse|kusse|luder|neger)/i;
 
 async function sha(s: string) {
