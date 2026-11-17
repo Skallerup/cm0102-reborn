@@ -33,7 +33,8 @@ import type { Contract, GameState, Player } from './types';
 import { ageOn } from './dates';
 import { ATTRS } from './attributes';
 import { rulesFor } from './leagues';
-import { cmActive, cmRand, clubRepMem } from './cmPlayerData';
+import { cmActive, cmContractOf, cmRand, clubRepMem } from './cmPlayerData';
+import { contractLanguageNibble } from './cmLanguage';
 import { cmStandardWages } from './cmWageGame';
 
 /** £ → € som newgame.ts (databasens beløb er pund) */
@@ -175,6 +176,17 @@ export function applyInitialContract(c: Contract, o: InitContractOut): void {
   c.cmBonusGbp = o.goal > 0 || o.assist > 0 || o.cleanSheet > 0 ? [o.goal, o.assist, o.cleanSheet] : undefined;
 }
 
+/** 0x85e960's start (0x85e9a6–0x85ea3f) for kontraktens bytes: +0x4f høj nibble = 2 (trupstatus 2 for alle – trupplanen 0x83a1b0 skriver
+ *  den bagefter for klubberne, den når), +0x4e = 4, +0x44/+0x45/+0x3e/+0x3f = 0; den lave nibble = min(10, 0x7c6830(staff, klub, sprog))
+ *  med klub og klubbens land (ellers uændret). +0x3d skrives ikke (0x85e410 heller ikke). */
+function initContractBytes(g: GameState, p: Player): void {
+  const c = cmContractOf(p);
+  const club = p.loan?.from ?? p.club;
+  const lo = club && g.clubs[club] && g.nations[g.clubs[club].nation] ? contractLanguageNibble(g, p, club) & 0xf : (c.b4f ?? 0) & 0xf;
+  c.b4f = 0x20 | lo;
+  c.b4e = 4; c.b44 = 0; c.b45 = 0; c.b3e = 0; c.b3f = 0;
+}
+
 /** nyt spil: alle databasens spillere med klub og kontrakt (kun cmActive). `dbWage`: spiller-id → databasens ugeløn (£).
  *  `unset` = spillerne med +0xc = −1 (databasens løn mangler eller er over 15 · omdømmet) – 0x83a1b0 fylder dem ud efter trupplanen
  *  (cmWageGame.ts cmWageFillNewGame). Deres bonusser regnes af standardlønnen 0x864550(staff, klub, 0, −1, 0xb, 0) som i 0x85eca3. */
@@ -196,6 +208,7 @@ export function cmContractsNewGame(g: GameState, dbWage: Map<number, number>, se
     const o = initialContract_85e960(x, cmRand(seed, p.id, 0x85e960));
     if (x.dbWage && o.wage < 0) dbRejected++;
     applyInitialContract(p.contract!, o);
+    initContractBytes(g, p);
     n++;
   }
   return { n, dbRejected, unset };

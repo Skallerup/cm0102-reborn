@@ -231,12 +231,12 @@ function syncBack(p: Player, pp: PlanPlayer): void {
 
 // ---------------------------------------------------------------- spilstarten og dagen
 
-/** 0x83a1b0 (newgame, efter trupperne og konditionsmodulets start): alle klubber i en aktiv liga (de skjulte spiller aldrig – *estimeret*: springes over) */
+/** 0x83a1b0 (newgame, efter trupperne og konditionsmodulets start): ALLE klubber i [0xae2d1c] – også dem uden aktiv liga (de skjulte/udenlandske):
+ *  0x83cb40's første trin giver dem porten rand(omd + 1000) < rand(5000) → ud (planSquad, activeLeague = 0) */
 export function cmSquadPlanStart(g: GameState): void {
   if (!cmActive(g)) return;
   g.cmStart = g.date;
   for (const c of Object.values(g.clubs)) {
-    if (!c.league || g.leagues[c.league]?.hidden) continue;
     cmSquadPlanClub(g, c.id, false, true, false);
     if (isHumanClub(c.id)) cmSquadPlanClub(g, c.id, false, true, true);   // overtagelsen 0x84abe0 (P1 = P2 = 1)
   }
