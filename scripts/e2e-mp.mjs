@@ -269,7 +269,7 @@ try {
   }, clubs.mid);
   log('Midtjyllands første ligakamp', firstMatch);
   let sawMatchday = false;
-  for (let k = 0; k < 40 && !(matchDone && turn >= 7); k++) {
+  for (let k = 0; k < (Number(process.env.MP_TURNS) || 40) && !(matchDone && turn >= 7); k++) {
     const v = (await state(host)).version;
     await step(`træk ${turn}${k === 1 ? ' (B genindlæser efter Ready)' : ''}${k === 2 ? ' (værten genindlæser før Ready)' : ''}`, async () => {
       if (k === 2) { await host.page.goto(BASE); await waitFor(host, (s) => s.code === code && s.version === v && s.inGame, 'værten genoptager', 60_000); }
@@ -291,8 +291,8 @@ try {
     log(`  dato ${(await state(host)).date}, ligakamp spillet: ${matchDone}`);
     turn++;
   }
-  if (!matchDone) failures.push('ingen kampdag nået');
-  if (!sawMatchday) failures.push('ingen manager havde en kamp at spille (pendingFixture) i et træk');
+  if (!matchDone && !process.env.MP_TURNS) failures.push('ingen kampdag nået');
+  if (!sawMatchday && !process.env.MP_TURNS) failures.push('ingen manager havde en kamp at spille (pendingFixture) i et træk');
   // alle ser samme dato og version
   const st = await Promise.all(players.map(state));
   if (new Set(st.map((x) => `${x.version}|${x.date}`)).size !== 1) failures.push(`klienterne er ude af trit: ${JSON.stringify(st)}`);

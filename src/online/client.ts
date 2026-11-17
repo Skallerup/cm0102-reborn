@@ -223,7 +223,9 @@ export class OnlineSession {
 
   serverNow() { return Date.now() + this.clockSkew; }
 
+  private stopped = false;
   stop() {
+    this.stopped = true;
     if (this.pollTimer) clearInterval(this.pollTimer);
     if (this.flushTimer) clearTimeout(this.flushTimer);
     setActionSink(null);
@@ -514,8 +516,9 @@ export class OnlineSession {
     } finally {
       this.refreshing = false;
     }
-    if (this.draftLive()) { await this.draftDuty(); return; }
-    await this.maybeProcess();
+    // draftens automatik og trækket køres uden at holde opdateringen (og openSession) hen
+    if (this.draftLive()) { void this.draftDuty(); return; }
+    void this.maybeProcess();
   }
 
   private async loadVersion(room: RoomInfo) {
@@ -566,13 +569,22 @@ export class OnlineSession {
     const hostOnline = cur.players.find((p) => p.pid === cur.host)?.online;
     const delay = this.isHost ? 0 : (hostOnline === false ? 8_000 : 45_000) + Math.max(0, order.indexOf(this.creds.pid)) * 4000;
     if (delay) {
+      // overtagelsen planlægges uden at vente på den her – før blokerede ventetiden openSession (genindlæsning viste
+      // "Genoptager…" i 45 sek., mens værten for længst havde simuleret trækket)
       if (this.takeoverWait) return; // der venter allerede en overtagelse
       this.takeoverWait = true;
-      try {
-        await new Promise((r) => setTimeout(r, delay));
-        try { this.room = await fetchRoom(this.creds.code, this.creds.pid); } catch { return; }
-        if (this.room.processing || this.room.version !== this.version || !allReady(this.room)) return;
-      } finally { this.takeoverWait = false; }
+      setTimeout(() => {
+        void (async () => {
+          try {
+            if (this.stopped) return;
+            const fresh = await fetchRoom(this.creds.code, this.creds.pid);
+            if (fresh.processing || fresh.version !== this.version || !allReady(fresh)) return;
+            this.room = fresh;
+            await this.process();
+          } catch { /* næste opdatering prøver igen */ } finally { this.takeoverWait = false; }
+        })();
+      }, delay);
+      return;
     }
     await this.process();
   }
