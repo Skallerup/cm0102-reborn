@@ -14,6 +14,7 @@ import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { ramBudget } from './ram-budget.mjs';
 
 const DIR = process.env.CM_MEASURE_DIR || path.join(os.homedir(), '.cache', 'cm-measure');
 const LOCK = path.join(DIR, 'lock');
@@ -67,14 +68,17 @@ if (!flags.has('--force') && fs.existsSync(out) && fs.existsSync(meta)) {
 }
 
 const alive = (pid) => { try { process.kill(pid, 0); return true; } catch { return false; } };
-// Højst SLOTS tunge kørsler ad gangen på hele maskinen (standard 2: ~1,5 GB hver; MEASURE_SLOTS=1 for én ad gangen).
-const SLOTS = Math.max(1, Number(process.env.MEASURE_SLOTS) || 2);
-const slotDirs = Array.from({ length: SLOTS }, (_, i) => (i === 0 ? LOCK : `${LOCK}${i + 1}`));
+// Højst SLOTS tunge kørsler ad gangen på hele maskinen (~1,5 GB hver): MEASURE_SLOTS=n, ellers scripts/ram-budget.mjs – 2, og 3, når Chrome er
+// lukket og der er ≥ 6 GB ledig (ejerens ønske 17/11: Chrome bruger 3–4 GB). Tælles igen ved hvert forsøg i køen.
+const slotCount = () => Math.max(1, Number(process.env.MEASURE_SLOTS) || ramBudget().heavySlots);
+const slotDir = (i) => (i === 0 ? LOCK : `${LOCK}${i + 1}`);
 let held = null;
 async function lock() {
   let said = false;
   for (;;) {
-    for (const d of slotDirs) {
+    const SLOTS = slotCount();
+    for (let i = 0; i < SLOTS; i++) {
+      const d = slotDir(i);
       try { fs.mkdirSync(d); fs.writeFileSync(path.join(d, 'owner'), JSON.stringify({ pid: process.pid, cmd: cmdText, at: new Date().toISOString() })); held = d; return; }
       catch {
         let o = null; try { o = JSON.parse(fs.readFileSync(path.join(d, 'owner'), 'utf8')); } catch {}

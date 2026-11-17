@@ -8,7 +8,7 @@ Du arbejder i CM Reborn (browser-remake af CM 01/02; det klassiske spil skal væ
 ## Faste regler (gælder altid)
 - Svar/rapport på dansk, kort. Læs CLAUDE.md først (især "Målinger"). Node: `export PATH="$HOME/.local/share/node/bin:$PATH"`.
 - Arbejd kun i din egen git-worktree (eller den worktree, opgaven nævner). Rebase på `main`, før du er færdig.
-- **RAM (Mac mini, 16 GB, flere agenter):** højst én tung node-proces ad gangen. Vitest kun enkelte filer eller `npx vitest related --run --dir tests <ændrede filer>` – aldrig hele pakken, ingen e2e.
+- **RAM (Mac mini, 16 GB, flere agenter):** højst én tung node-proces ad gangen – to, når Chrome er lukket (Chrome bruger 3–4 GB; `node scripts/ram-budget.mjs` viser status; measure.mjs giver 2 tunge pladser på maskinen, 3 uden Chrome, og vitest 3 workers, 5 uden Chrome). Vitest kun enkelte filer eller `npx vitest related --run --dir tests <ændrede filer>` – aldrig hele pakken, ingen e2e.
 - **Målinger:** billigste kontrol først (fast frø, lockstep/fingeraftryk). Alle tunge kørsler via `node scripts/measure.mjs -- <kommando>` (genbrug + kø; `--list`/`--show`).
 - **Ventetid:** start lange kørsler med Bash `run_in_background` og afslut din tur – du bliver vækket, når de er færdige. Poll ikke, og skriv ikke "venter stadig"-beskeder; hver opvågning koster hele din kontekst.
 - **NOTES.md:** hold `NOTES.md` i roden af worktree'en opdateret efter hvert vigtigt skridt: opgaven i én linje, fund, målinger med measure-id, hvad der er prøvet/udelukket, næste skridt. En ny agent skal kunne fortsætte efter et crash ud fra den alene. Den må ikke committes (tilføj `NOTES.md` til `$(git rev-parse --git-common-dir)/info/exclude`).

@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import { readFileSync } from 'node:fs'
+import { ramBudget } from './scripts/ram-budget.mjs'
 
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string }
 
@@ -87,6 +88,8 @@ export default defineConfig({
   ],
   worker: { format: 'es' },
   // Lokalt højst 3 test-workers: hver indlæser world-filerne (~1,2 GB), og 11 parallelle (standard = kerner-1) fyldte
-  // de 16 GB og fik Mac mini'en til at gå ned 17/11 (WindowServer-watchdog). CI bruger standarden.
-  test: { maxWorkers: process.env.CI ? undefined : 3 },
+  // de 16 GB og fik Mac mini'en til at gå ned 17/11 (WindowServer-watchdog). CI bruger standarden. Er Chrome lukket (og ≥ 6 GB ledig), 5
+  // (scripts/ram-budget.mjs; CM_TEST_WORKERS=n overstyrer).
+  // createGame gennem cachen på disken, når CM_GAME_CACHE=1 (tests/helpers/gameCache.ts – foreløbig fra som standard)
+  test: { maxWorkers: process.env.CI ? undefined : ramBudget().testWorkers, setupFiles: process.env.CM_GAME_CACHE === '1' ? ['tests/helpers/setupGameCache.ts'] : [] },
 })
