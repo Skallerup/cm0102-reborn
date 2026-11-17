@@ -211,7 +211,7 @@ function CupView({ comp }: { comp: Competition }) {
   return (
     <div>
       {comp.winner && <div className="insight good">{t('comp.winner')}: <ClubLink id={comp.winner} long /></div>}
-      {comp.type === 'continental' && comp.table.length > 0 && (
+      {comp.type === 'continental' && comp.table.length > 0 && !authentic() && (
         <Panel title={t('stage.LP')} className="flush">
           <LeagueTable rows={comp.table} comp={comp} zones={(i) => (i < 8 ? 'euro' : i < 24 ? 'playoff' : 'releg')} />
           <div className="legend" style={{ padding: 8 }}>

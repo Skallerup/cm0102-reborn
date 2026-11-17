@@ -87,7 +87,7 @@ export function PlayedMatchClassic({ id }: { id: number }) {
       {tab === 'report' && <CxReport lines={lines} commentary={rep.commentary} finished ctx={ctx} />}
       {tab === 'hstats' && <CxTeamStats rows={rows[0]} />}
       {tab === 'astats' && <CxTeamStats rows={rows[1]} />}
-      {tab === 'ratings' && <CxRatings rows={rows} mom={rep.mom} />}
+      {tab === 'ratings' && <CxRatings rows={rows} mom={rep.mom} noCond />}
       {tab === 'table' && <CxLiveTable f={f} live={[st[0].goals, st[1].goals]} others={others} minute={minute} finished kicked />}
       {tab === 'scores' && <CxScores own={{ f, scorers: goals.map((e) => [e.m, e.t, e.og ? undefined : e.p] as [number, number, number?]) }} others={others} minute={minute} finished title={t('cl.mt.latest', { comp: compName(g.comps[f.comp]?.name) })} open={(o) => nav({ name: 'report', id: o.id })} />}
       <ClassicSub items={[['hstats', t('cl.mt.teamStats', { club: home })], ['ratings', t('match.ratings')], ['scores', t('cl.mt.scores')], ...(g.comps[f.comp]?.type === 'league' ? [['table', t('cl.mt.leagueTable')]] : []), ['astats', t('cl.mt.teamStats', { club: away })]].map(([k, l]) => ({ key: k, label: l, on: tab === k, onClick: () => setTab(k) }))} />

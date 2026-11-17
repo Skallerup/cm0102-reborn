@@ -1744,13 +1744,13 @@ export function CxTeamStats({ rows }: { rows: CxRow[] }) {
 }
 
 /** Player Ratings: begge hold side om side – nummer, navn, on/sub, kondition, karakter (hele tal) og mål */
-export function CxRatings({ rows, mom }: { rows: readonly [CxRow[], CxRow[]]; mom?: number }) {
+export function CxRatings({ rows, mom, noCond }: { rows: readonly [CxRow[], CxRow[]]; mom?: number; noCond?: boolean }) {
   return (
     <>
     <div className="cx-rt">{([0, 1] as const).map((side) => (
       <table key={side} className="cx-tbl"><tbody>{rows[side].map((r) => (
         <tr key={r.id} className={`${r.dim ? 'dim' : ''} ${r.id === mom ? 'cx-mom' : ''}`}><td className="btn-col"><span className="cx-rowbtn narrow">{r.num}</span></td><td className="c-name"><CxName r={r} /></td>
-          <td className={r.noteOn ? 'c-pos' : ''}>{r.note ?? ''}</td><td className={`c-num ${(r.cond ?? 0) >= 92 ? 'c-good' : (r.cond ?? 0) >= 70 ? 'c-orange' : 'c-bad'}`}>{r.cond !== undefined ? `${r.cond}%` : ''}</td>
+          <td className={r.noteOn ? 'c-pos' : ''}>{r.note ?? ''}</td>{!noCond && <td className={`c-num ${(r.cond ?? 0) >= 92 ? 'c-good' : (r.cond ?? 0) >= 70 ? 'c-orange' : 'c-bad'}`}>{r.cond !== undefined ? `${r.cond}%` : ''}</td>}
           <td className="c-num c-cyan">{r.line ? r.rating : ''}</td><td className="c-num c-yel">{r.line?.goals || ''}</td></tr>
       ))}</tbody></table>
     ))}</div>
