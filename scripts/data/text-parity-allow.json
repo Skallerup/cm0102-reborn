@@ -1126,6 +1126,14 @@
     {
       "key": "cmint.fix.3P",
       "reason": "Kampens trinbetegnelse for bronzekampen; exe'en har 'Third Place Playoff' som turneringsrunde, ikke som kampetiket"
+    },
+    {
+      "key": "cl.pl.season",
+      "reason": "set på originalens skærm (images/6.png) – \"Season total\""
+    },
+    {
+      "key": "cl.neg.refused",
+      "reason": "set på originalens skærm (images/129.png) – \"has rejected your contract offer.\""
     }
   ],
   "patterns": [

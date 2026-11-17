@@ -180,6 +180,15 @@ function compareDay(v: View) {
       dist('transferstatus: andel lejelistet', p.loanListed ? 1 : 0, b4e & 2 ? 1 : 0);
       chk('kontrakt: tællere +0x44 (tilfredshed)', (p.cmContract?.b44 ?? 0) === m.s8(k + 0x44), lab(`${p.cmContract?.b44} mod ${m.s8(k + 0x44)}`));
       chk('kontrakt: flag +0x45', (p.cmContract?.b45 ?? 0) === m.u32(k + 0x45), lab(`${(p.cmContract?.b45 ?? 0).toString(16)} mod ${m.u32(k + 0x45).toString(16)}`));
+      // bonusserne +0x10/+0x14/+0x18 (−1 = ingen) – 0x4ca6d0 betaler dem efter kampen (Finance::add_bonus 0x599960)
+      const ob = c.cmBonusGbp ?? [-1, -1, -1], mb = [m.s32(k + 0x10), m.s32(k + 0x14), m.s32(k + 0x18)];
+      ['mål', 'assist', 'clean sheet'].forEach((nm, i) => {
+        const o = ob[i] > 0 ? ob[i] : 0, t = mb[i] > 0 ? mb[i] : 0;
+        if (!o && !t) return;
+        chk(`kontrakt: ${nm}bonus (+0x${(0x10 + 4 * i).toString(16)})`, o === t, lab(`${o} mod ${t}`));
+        dist(`kontrakt: ${nm}bonus (£, andel med)`, o ? 1 : 0, t ? 1 : 0);
+        dist(`kontrakt: ${nm}bonus (£)`, o, t);
+      });
     }
     // evner
     const pr = a.pr;

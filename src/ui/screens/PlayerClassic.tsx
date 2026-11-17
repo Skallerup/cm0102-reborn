@@ -18,6 +18,7 @@ import { SCHEDULES } from '../../game/training';
 import { askingPrice, canPreContract, interestedClubs, myPendingBid, nextWindow, releaseCost, windowOpen } from '../../game/transfers';
 import { cmActive, statCell, statColumns } from '../../game/cmPlayerData';
 import { cmTalksOpen } from '../../game/cmTransferTalks';
+import { cmPermitHistory } from '../../game/cmPermit';
 import { ClassicNegotiation } from './NegotiationClassic';
 import { DEMONYM } from '../demonyms';
 import { cmAvailability, cmFutureLines } from '../../game/cmTransferList';
@@ -263,6 +264,15 @@ function InjuriesTab({ p, mine }: { p: Player; mine: boolean }) {
 /** Kontrakter fra før det nye transfersystem (1. september 2001) – som i CM 01/02 */
 const NEW_SYSTEM = '2001-09-01';
 
+/** CM 01/02 0x87da71–0x87db13: arbejdstilladelsens linje (originalens fire former efter ental/flertal) */
+function permitLine(played: number, missed: number): string {
+  const pct = played + missed ? Math.trunc((100 * played) / (played + missed)) : 0;
+  if (played === 1 && missed === 1) return t('cl.pl.permit11');
+  if (played === 1) return t('cl.pl.permit1n', { m: missed, pct });
+  if (missed === 1) return t('cl.pl.permitn1', { n: played, pct });
+  return t('cl.pl.permitnn', { n: played, m: missed, pct });
+}
+
 function ContractTab({ p, mine }: { p: Player; mine: boolean }) {
   const g = useGame()!;
   const k = knowledgeOf(p);
@@ -273,24 +283,35 @@ function ContractTab({ p, mine }: { p: Player; mine: boolean }) {
   const isProtected = !!c && (before || (!!p.joined && daysBetween(p.joined, g.date) < (ageAtSign < 28 ? 3 : 2) * 365));
   const squad = p.club ? Object.values(g.players).filter((x) => x.club === p.club) : [];
   const status = p.squadStatus ?? (p.club ? expectedStatus(p, squad, g.date) : undefined);
+  // CM 01/02 (0x87d723–0x87d7d3): én række pr. bonus i rækkefølgen +0x10 mål, +0x14 assist, +0x18 clean sheet – overskriften kun på den første
   const bonuses = c ? ([
     c.goalBonus ? t('cl.pl.bonus.goal', { v: money(c.goalBonus) }) : '',
-    c.appBonus ? t('cl.pl.bonus.app', { v: money(c.appBonus) }) : '',
     c.cmAssistBonus ? t('cl.pl.bonus.assist', { v: money(c.cmAssistBonus) }) : '',
     c.cleanSheetBonus ? t('cl.pl.bonus.cs', { v: money(c.cleanSheetBonus) }) : '',
+    c.appBonus ? t('cl.pl.bonus.app', { v: money(c.appBonus) }) : '',
   ].filter(Boolean)) : [];
+  // CM 01/02 (0x87d057–0x87d23d): Started/Protected kun for en almindelig kontrakt (+0x35 = 2), når det nye transfersystem er trådt i kraft
+  // ([0xae233c], sat fra 1/9-2001 i 0x5cdb5d)
+  const showStarted = !!c && !p.loan && (c.cmType ?? 2) === 2 && g.date >= NEW_SYSTEM;
+  // Work Permit (0x87d99f–0x87db3d): spilleren har en post i arbejdstilladelseshistorikken (0x8c7260), skal have tilladelse i klubben
+  // (0x8c7560(…, 1)) og har en almindelig kontrakt – "N games played, M games missed (P%)", P = 100 · spillet / (spillet + ikke spillet)
+  const permit = c && !p.loan && (c.cmType ?? 2) === 2 && cmActive(g) ? cmPermitHistory(g, p) : null;
+  const permitText = permit ? permitLine(permit.w4, permit.w6) : '';
   // CM 01/02 (0x85e960): originalens klausuler med det fælles beløb +0x21 (Manager Job Release Clause har intet beløb)
   const cmCl = c?.cmClauses ? c.cmClauses.map((v, i) => (v ? (i < 4 && c.cmClauseFee ? t('cm.clause.fee', { name: t(`cm.clause.${i}`), v: money(c.cmClauseFee) }) : t(`cm.clause.${i}`)) : '')).filter(Boolean).join(', ') : '';
   const type = p.loan ? <>{t('cl.pl.ctLoan')} <ClubLink id={p.loan.from} /> ({dateFmt(p.loan.until)})</> : !c ? t('common.none') : t(c.partTime ? 'cl.pl.ctPart' : 'cl.pl.ctFull');
   const rows: [string, ReactNode, string?][] = [
     [t('cl.pl.ctType'), type],
     [t('cl.pl.wages'), c ? `${money(c.wage)} ${t('cl.pl.perWeek')}` : t('common.none')],
-    [t('cl.pl.started'), before ? t('cl.pl.beforeSystem') : p.joined ? classicDate(p.joined)[1] : '-'],
-    [t('cl.pl.protected'), c ? t(isProtected ? 'common.yes' : 'common.no') : '-'],
+    ...(showStarted ? [
+      [t('cl.pl.started'), before ? t('cl.pl.beforeSystem') : p.joined ? classicDate(p.joined)[1] : '-'],
+      [t('cl.pl.protected'), t(isProtected ? 'common.yes' : 'common.no')],
+    ] as [string, ReactNode][] : []),
     [t('col.expires'), c ? classicDate(c.expires)[1] : '-'],
     [t('cl.pl.squadStatus'), status ? t(`cl.ts.s.${status}`) : '-'],
-    [t('cl.pl.bonuses'), bonuses.length ? bonuses.join(', ') : t('common.none')],
+    ...(bonuses.length ? bonuses.map((b, i): [string, ReactNode] => [i === 0 ? t('cl.pl.bonuses') : '', b]) : [[t('cl.pl.bonuses'), t('common.none')] as [string, ReactNode]]),
     [t('cl.pl.clauses'), (mine || k >= 40) && cmCl ? cmCl : (mine || k >= 40) && c && clauseText(c) ? clauseText(c) : c?.release && (mine || k >= 40) ? `${t('clause.release')} ${money(c.release)}` : t('common.none')],
+    ...(permit ? [[t('cl.pl.workPermit'), permitText] as [string, ReactNode]] : []),
     [t('cl.pl.notes'), p.notes || '-'],
   ];
   if (p.contract?.futureClub) rows.push([t('player.nextClub'), <ClubLink id={p.contract.futureClub} />]);

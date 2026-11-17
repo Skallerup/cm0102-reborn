@@ -73,10 +73,25 @@ describe('originalens økonomi (cmFinance)', () => {
     expect(s0 - seller.balance).toBeLessThanOrEqual(-fee + 1);             // sælgeren får beløbet én gang
     expect(b0 - buyer.balance).toBeGreaterThanOrEqual(fee - 1);            // køberen betaler (+ evt. signing on fee)
     const q = g.players[p.id];
-    q.contract!.goalBonus = 1000;
-    const bon0 = rb.ty[K.bonuses];
+    // 0x4ca6d0: kontraktens beløb i pund (+0x10 mål, +0x14 assist, +0x18 clean sheet) – mål × +0x10 + assists × +0x14
+    q.contract!.cmBonusGbp = [860, 500, 300];
+    const bon0 = rb.ty[K.bonuses], bal0 = buyer.balance;
+    afterAppearance(q, 2, false, { assists: 1, pay: true });
+    expect(rb.ty[K.bonuses] - bon0).toBe(2 * 860 + 500);
+    expect(bal0 - buyer.balance).toBeCloseTo((2 * 860 + 500) / 0.86, 6);
+    // clean sheet-leddet (sic): kun når 0x4ca6d0's betingelse holder (keeperens plads, mål imod ≠ 0) – og ganget med assists
+    afterAppearance(q, 0, true, { assists: 2, pay: true });
+    expect(rb.ty[K.bonuses] - bon0).toBe(2 * 860 + 500 + 2 * 500 + 2 * 300);
+    // prøvekontrakt (+0x35 = 5): ingen bonusser
+    q.contract!.cmType = 5;
+    const bon1 = rb.ty[K.bonuses];
+    afterAppearance(q, 3, false, { assists: 0, pay: true });
+    expect(rb.ty[K.bonuses]).toBe(bon1);
+    // ældre kontrakter uden pundbeløbene: de viste beløb omregnet
+    delete q.contract!.cmType; delete q.contract!.cmBonusGbp; q.contract!.goalBonus = 1000; q.contract!.cmAssistBonus = undefined;
+    const bon2 = rb.ty[K.bonuses];
     afterAppearance(q, 2, false, { assists: 0, pay: true });
-    expect(rb.ty[K.bonuses] - bon0).toBe(Math.round(2000 * 0.86));
+    expect(rb.ty[K.bonuses] - bon2).toBe(2 * Math.round(1000 * 0.86));
   });
 
   it('den moderne database og det udvidede spil har ingen cmFin', () => {

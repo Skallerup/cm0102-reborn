@@ -4462,4 +4462,9 @@ Object.assign(tr, {
   "cm.stm.j.10": "fizyoterapist",
   "cm.stBid": "{club}, {name} için teklif yaptı",
   "cm.stBid.body": "{club}, {name} için bir teklif yaptı.\n\nAnlaşma gerçekleşirse {from} {fee} tazminat alacak.",
+  "cl.pl.workPermit": "Çalışma izni",
+  "cl.pl.permit11": "1 maç oynadı, 1 maç kaçırdı (%50)",
+  "cl.pl.permit1n": "1 maç oynadı, {m} maç kaçırdı (%{pct})",
+  "cl.pl.permitn1": "{n} maç oynadı, 1 maç kaçırdı (%{pct})",
+  "cl.pl.permitnn": "{n} maç oynadı, {m} maç kaçırdı (%{pct})",
 });

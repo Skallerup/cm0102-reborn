@@ -24,6 +24,7 @@
 // *Estimeret*: [0xae2330]'s opdatering, ingen nyheder (0x4d6790/0x4da590/0x4d49a0/0x4d6d70 går kun til mennesket), transfertilbuddene/
 // forhandlingerne (TRANSFER_MANAGER 0x8c5cf0/0x8c5e40/0x8c1870 = spillets åbne bud på spilleren), karrierens slut 0x7a7eb0 = Player.cmRetire,
 // ønskelisterne 0x842c00 (intet), sign_contract 0x4cf720's felter (+0x3d.. som cmPlayerData newCmContract).
+import { bookBlock, K as FK } from './cmFinance';
 import type { Contract, GameState, Player } from './types';
 import { G, clubAt, getContract, type CmMem } from './cmMem';
 import { buildWantMem, applyCmTerms, type CmTerms, type WantMem } from './cmContractGame';
@@ -307,6 +308,9 @@ function applySigned(g: GameState, p: Player, m: CmMem, k: number): void {
   p.contract = c;
   const status = (m.u8(k + 0x4f) >> 4) & 0xf;
   p.cmContract = { ...newCmContract(status || statusCode(p)), b4e: m.u8(k + 0x4e), b4f: m.u8(k + 0x4f) };
-  if (t.signOn > 0) { club.balance -= t.signOn; club.finance.signOn = (club.finance.signOn ?? 0) + t.signOn; }
+  // TRANSFER_MANAGER 0x8c38b0 (0x8c39b2–0x8c39c4): efter sign_contract 0x4cf720 Finance::add_signing_on 0x5998e0 med kontraktens +8 –
+  // blok +0x9c/+0x13c og saldoen. Før blev saldoen trukket, men blokken (View Finances: Signing On Fees) stod på 0 for forlængelser og frie spillere.
+  const son = m.s32(k + 8);
+  if (son > 0) { const e = son / GBP; club.balance -= e; club.finance.signOn = (club.finance.signOn ?? 0) + e; bookBlock(g, club, FK.signOn, son); }
   cmSignContractMorale(g, p);
 }

@@ -940,7 +940,8 @@ export function renewContract(pid: number, wage: number, years: number, clauses?
   const cl = cleanClauses(clauses);
   if (wage + clausesWorthFor(p, club.id, wage, years, cl) >= demand * AGENT_RULES[agentOf(p).style].accept) {
     p.contract = { wage, expires: renewalExpiry(p.contract?.expires, years, g.date), ...cl };
-    if (cl.signOn) { club.balance -= cl.signOn; club.finance.signOn = (club.finance.signOn ?? 0) + cl.signOn; }
+    // CM 01/02 0x8c38b0 → Finance::add_signing_on 0x5998e0 (blokken; kun originalens økonomi – bookBlock tjekker cmFinOn)
+    if (cl.signOn) { club.balance -= cl.signOn; club.finance.signOn = (club.finance.signOn ?? 0) + cl.signOn; bookBlock(g, club, CMK.signOn, Math.round(cl.signOn * GBP_CM)); }
     const hadDemand = !!p.demand;
     // original DB i ægte tilstand: sign_contract 0x4cf720's +20 (cmMedia.ts) i stedet for spillets +2/+4
     if (cmActive(g)) cmSignContractMorale(g, p); else p.morale = Math.min(20, p.morale + (p.demand ? 4 : 2));

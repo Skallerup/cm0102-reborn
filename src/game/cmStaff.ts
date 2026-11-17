@@ -329,7 +329,8 @@ export function cmStaffOffersDaily(g: GameState): void {
     s.assignment = null;
     s.wage = o.wage;
     s.expires = `${Number(g.date.slice(0, 4)) + o.years}-06-30`;
-    if (o.signOn) { club.balance -= o.signOn; club.finance.signOn = (club.finance.signOn ?? 0) + o.signOn; }
+    // stabens kontrakt underskrives også gennem 0x8c38b0 → Finance::add_signing_on 0x5998e0 (blokken)
+    if (o.signOn) { club.balance -= o.signOn; club.finance.signOn = (club.finance.signOn ?? 0) + o.signOn; bookBlock(g, club, CMK.signOn, Math.round(o.signOn * GBP_CM)); }
     addNews({ cat: 'contract', key: 'cm.staffAccepts', params: { last: s.last, name, club: club.short || club.name } });
   }
 }

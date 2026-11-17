@@ -121,21 +121,32 @@ export function settleSellOn(p: Player, fee: number, seller: Club | undefined, m
   if (isHumanClub(seller.id) && seller.id !== to.id) asOwner(seller.id, news);
 }
 
-/** Efter hver kamp: kamp- og målbonusser (kun kontrakter med bonusser) og nedtælling af add-ons */
+/** Efter hver kamp: kamp- og målbonusser (kun kontrakter med bonusser) og nedtælling af add-ons.
+ *  `cm` (den originale database i ægte tilstand): `cleanSheet` = originalens betingelse for clean sheet-delen (se nedenfor), ikke holdets clean sheet. */
 export function afterAppearance(p: Player, goals: number, cleanSheet = false, cm?: { assists: number; pay: boolean }) {
   const g = gs();
   const club = g.clubs[p.club];
   const c = p.contract;
   if (club && c && !p.loan && (!cm || cm.pay)) {
-    // den originale database i ægte tilstand: CONTRACT_MANAGER::update_after_match 0x4ca6d0 – mål × +0x10 (resultatlinjen +0x21), assists × +0x14
-    // (+0x27) og ved holdets clean sheet (+0x154 = 1, linjen +0x22) +0x18 × +0x27 (sic: assisttallet, ikke 1)
-    const bonus = cm
-      ? (c.goalBonus ?? 0) * goals + (c.cmAssistBonus ?? 0) * cm.assists + (cleanSheet ? (c.cleanSheetBonus ?? 0) * cm.assists : 0)
-      : (c.appBonus ?? 0) + (c.goalBonus ?? 0) * goals + (cleanSheet ? c.cleanSheetBonus ?? 0 : 0);
-    if (bonus > 0) {
-      club.balance -= bonus; club.finance.bonuses = (club.finance.bonuses ?? 0) + bonus;
-      // Finance::add_bonus 0x599960 (kaldt 3 gange fra 0x4ca6d0): blokkens Bonuses +0x28 – View Finances læser blokken (før stod den på 0)
-      if (cm) bookBlock(g, club, CMK.bonuses, Math.round(bonus * GBP_CM));
+    if (cm) {
+      // CONTRACT_MANAGER::update_after_match 0x4ca6d0 (0x4ca964–0x4ca9da): ingen bonusser for prøvekontrakter (+0x35 & 0x3f = 5) og type 6;
+      // mål × +0x10 (linjen +0x21), assists × +0x14 (+0x27), og – når pladsens positionsord +0x154 = 1 (keeperens plads) og linjen +0x22
+      // (mål imod) ≠ 0 (sic) – +0x18 × +0x27 (sic: assisttallet). Hvert led bogføres med Finance::add_bonus 0x599960 (blok +0x28/+0xc8, saldo −).
+      // Beløbene i pund fra kontrakten (cmBonusGbp – originalens heltal); ældre kontrakter uden dem: de viste beløb omregnet.
+      const t = c.cmType ?? 2;
+      if (t !== 5 && t !== 6) {
+        const gb = c.cmBonusGbp ?? [Math.round((c.goalBonus ?? 0) * GBP_CM), Math.round((c.cmAssistBonus ?? 0) * GBP_CM), Math.round((c.cleanSheetBonus ?? 0) * GBP_CM)];
+        const parts = [gb[0] > 0 ? gb[0] * goals : 0, gb[1] > 0 ? gb[1] * cm.assists : 0, cleanSheet && gb[2] > 0 ? gb[2] * cm.assists : 0];
+        for (const gbp of parts) {
+          if (gbp <= 0) continue;
+          const eur = gbp / GBP_CM;
+          club.balance -= eur; club.finance.bonuses = (club.finance.bonuses ?? 0) + eur;
+          bookBlock(g, club, CMK.bonuses, gbp);
+        }
+      }
+    } else {
+      const bonus = (c.appBonus ?? 0) + (c.goalBonus ?? 0) * goals + (cleanSheet ? c.cleanSheetBonus ?? 0 : 0);
+      if (bonus > 0) { club.balance -= bonus; club.finance.bonuses = (club.finance.bonuses ?? 0) + bonus; }
     }
   }
   const a = p.addOn;

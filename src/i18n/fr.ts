@@ -4462,4 +4462,9 @@ Object.assign(fr, {
   "cm.stm.j.10": "kinésithérapeute",
   "cm.stBid": "{club} font une offre pour {name}",
   "cm.stBid.body": "{club} ont fait une offre pour {name}.\n\n{from} recevront {fee} de compensation si l'accord se fait.",
+  "cl.pl.workPermit": "Permis de travail",
+  "cl.pl.permit11": "1 match joué, 1 match manqué (50%)",
+  "cl.pl.permit1n": "1 match joué, {m} matchs manqués ({pct}%)",
+  "cl.pl.permitn1": "{n} matchs joués, 1 match manqué ({pct}%)",
+  "cl.pl.permitnn": "{n} matchs joués, {m} matchs manqués ({pct}%)",
 });

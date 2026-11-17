@@ -47,7 +47,7 @@ import { rng, Rng as RngClass, hash } from './rng';
 import { addNews, fixturesOn, gs, squad } from './state';
 import { counterPlan, type CounterPlan } from './aitactics';
 import { autoSelect, available, lineupComplete, newTactic, slotValue, validateTactic } from './tactics';
-import type { Fixture, GameState, MatchReport, MatchResultShort, NewsItem, Player, Tactic } from './types';
+import type { Fixture, GameState, MatchReport, MatchResultShort, NewsItem, Player, PlayerMatchLine, Tactic } from './types';
 import { monthlyDevelopment, monthlyTrainingReport, monthlyValues, weeklyDevelopment } from './training';
 import { aiLoanOptions, aiPursuits, aiBidsForListed, aiBosman, aiFillSquads, aiReleaseClauses, aiRenewals, aiTransferTick, answerPendingRenewals, contractReminders, processOffers, refreshShortlists, resolveAuctions, resolveSignings, weeklyTransferDigest, windowNews, respondToOffer, askingPrice, cmMonthlyInstalments, cmAppsAfterMatch, holidaySignings } from './transfers';
 import { afterAppearance } from './clauses';
@@ -94,6 +94,14 @@ export const INJURIES: [string, number, number, number][] = [
 const pname = (p: Player) => `${p.first} ${p.last}`.trim();
 
 // ---------- holdudtagelse ----------
+
+/** 0x4ca6d0's betingelse for clean sheet-bonussen (0x4ca9b7–0x4ca9c6): pladsens positionsord (resultatet +0x154 = taktikkens +0x12d) = 1 –
+ *  keeperens plads i startopstillingen – og linjen +0x22 (mål imod, MATCH_PLAYER +0xf) ≠ 0. Ja, originalen betaler kun, når keeperen har
+ *  lukket mål ind (sic), og ganger med assisttallet (sic) – derfor næsten aldrig. */
+function cmKeeperConceded(line: PlayerMatchLine, rep: MatchReport): boolean {
+  if (line.sub || line.slot !== 0) return false;
+  return (line.cmr ? line.cmr[0] : rep.stats[1 - line.team].goals) > 0;
+}
 
 export function aiTactic(clubId: number, oppId?: number, home = true): Tactic {
   const g = gs();
@@ -342,7 +350,7 @@ function playResMatch(f: Fixture): MatchReport | null {
     if (line.red) { s.reds++; p.lastRed = g.date; }
     p.form = [...p.form, line.rating].slice(-5);
     // 0x4ca6d0: +0x3a = 2 (ikke venskabskamp) – bonusserne betales
-    if (p.contract?.goalBonus || p.contract?.cleanSheetBonus || p.contract?.cmAssistBonus || p.addOn) afterAppearance(p, line.goals, rep.stats[1 - line.team].goals === 0, { assists: line.assists, pay: true });
+    if (p.contract?.goalBonus || p.contract?.cleanSheetBonus || p.contract?.cmAssistBonus || p.addOn) afterAppearance(p, line.goals, cmKeeperConceded(line, rep), { assists: line.assists, pay: true });
   }
   cmAfterMatch(g, f, rep, squad, { cats });
   cmPermitAfterMatch(g, f, rep, (p) => !!p.injury || p.banned > 0);
@@ -399,7 +407,7 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
     s.ratingCount++;
     if (rep.mom === p.id) s.mom++;
     p.form = [...p.form, line.rating].slice(-5);
-    if (p.contract?.appBonus || p.contract?.goalBonus || p.contract?.cleanSheetBonus || p.contract?.cmAssistBonus || p.addOn) afterAppearance(p, line.goals, rep.stats[1 - line.team].goals === 0, cm ? { assists: line.assists, pay: cmBonusPaid(g, f, line.team) } : undefined);
+    if (p.contract?.appBonus || p.contract?.goalBonus || p.contract?.cleanSheetBonus || p.contract?.cmAssistBonus || p.addOn) afterAppearance(p, line.goals, cm ? cmKeeperConceded(line, rep) : rep.stats[1 - line.team].goals === 0, cm ? { assists: line.assists, pay: cmBonusPaid(g, f, line.team) } : undefined);
     // CM 01/02 0x8c39f0: "Fee after N League Apps." tæller konkurrencekampe (ikke venskabskampe)
     if (p.cmApps && comp) cmAppsAfterMatch(p, 'lg');
     // draft-liga: ingen træthed eller moral, der hænger ved – mange kampe kan spilles samme dag

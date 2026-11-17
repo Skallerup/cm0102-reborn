@@ -7886,4 +7886,9 @@ Object.assign(nb, {
   "cm.stm.j.10": "fysioterapeut",
   "cm.stBid": "{club} byr på {name}",
   "cm.stBid.body": "{club} har lagt inn et bud på {name}.\n\n{from} får {fee} i kompensasjon hvis avtalen blir noe av.",
+  "cl.pl.workPermit": "Arbeidstillatelse",
+  "cl.pl.permit11": "1 kamp spilt, 1 kamp gått glipp av (50%)",
+  "cl.pl.permit1n": "1 kamp spilt, {m} kamper gått glipp av ({pct}%)",
+  "cl.pl.permitn1": "{n} kamper spilt, 1 kamp gått glipp av ({pct}%)",
+  "cl.pl.permitnn": "{n} kamper spilt, {m} kamper gått glipp av ({pct}%)",
 });

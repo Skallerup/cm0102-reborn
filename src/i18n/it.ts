@@ -4462,4 +4462,9 @@ Object.assign(it, {
   "cm.stm.j.10": "fisioterapista",
   "cm.stBid": "{club} offerta per {name}",
   "cm.stBid.body": "{club} hanno fatto un'offerta per {name}.\n\n{from} riceveranno {fee} di indennizzo se l'accordo andrà in porto.",
+  "cl.pl.workPermit": "Permesso di lavoro",
+  "cl.pl.permit11": "1 partita giocata, 1 partita saltata (50%)",
+  "cl.pl.permit1n": "1 partita giocata, {m} partite saltate ({pct}%)",
+  "cl.pl.permitn1": "{n} partite giocate, 1 partita saltata ({pct}%)",
+  "cl.pl.permitnn": "{n} partite giocate, {m} partite saltate ({pct}%)",
 });
