@@ -424,6 +424,30 @@ Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.m
   arrays); baggrundskampene er zonemotoren selv (step/buildZones/tickFatigue – ingen enkelt post over 2 %); landskampenes byNation bygges stadig én
   gang pr. landskamp (kampen kan skade spillere – listerne skal bygges igen); rygternes ekstra buildSlMem (noStale) og cmAskingPrice' buildWantMem
   pr. bud er ikke bit for bit med dagens hukommelse (runde 12/14).
+- **Hastighed, runde 16 (17/11, målrapport – ingen kodeændring; ×10 / < 1 s pr. dag er IKKE nået):** målet var genudfyldningen (dropDeadBids/makeBids →
+  0x843e10 → 0x83f3a0) og buddene som én håndskrevet TS-model. **Målt** (`scripts/day-worker-check.ts`, Man Utd og Arsenal, frø 1, 30 dage 15/7–13/8,
+  `/usr/bin/time -l` på `node --import tsx` – NB: gennem `npx tsx` tæller time kun forældreprocessen –, dagene = instruktioner(30) − instruktioner(0)):
+  main efter runde 15 (d554b5c) **40,2 mia. instruktioner pr. dag** (spilstarten 393 mia.), vægur 3,9–6,5 s pr. dag (load 5–11). **Profilen nu**
+  (7 dage fra 15/7, tsx): newDay 89 %, heraf ønskelisterne 70 % (dropDeadBids 45,5, makeBids 10,8 – næsten alt 0x843e10 → 0x83f3a0 igen –, buildSlMem 6,6,
+  rygterne cmDayWill 7,2), landskampene 3,8, kontrakterne 3,8. I 0x83f3a0: kandidatløkken 29,6 % (evalInLoop 20,2 – planValue 12,9: planScore 5,0, selv 3,1,
+  playerBase 2,3, rdOf 1,4 –, fastReject1 4,6, skipRun 3,6), den accepterede kandidats oversatte 0x4d1600 8,9 % og 0x846920 5,3 %; oversat kode i alt
+  ~21 % (f_*.ts selv 11,3 + x86.ts/cmMem under dem 9,5). **Tal, der afgør vejen:** ~350.000 vurderinger pr. dag (dag 3–4; spilstarten 1,47 mio.);
+  samme (spiller, klub, plads, flag) gentages kun 25–30 % inden for dagen; de afviste vurderingers ud-værdi mod grænsen max([esp+0x68], bedste −
+  10000): 28 % under 0 (planScore's tidlige udgang), 9 % < ¼, 19 % ¼–½, 21 % ½–¾, 14 % ¾–1, 8 % ≥ 1 – en billig øvre grænse før planValue kan ikke
+  sortere mange fra. **Prøvet, bit for bit (sha1 af hele spiltilstanden ens alle 30 dage, begge klubber; memcheck/stalecheck som før), men IKKE
+  taget med:** (1) planValue's svar gemt pr. dag pr. (spiller, klub, plads, flag, transferliste, kontraktens +0x3d/+0x3e/+0x3f/+0x44/+0x45/+0x4f) med
+  tærsklen som planScore bruger den (et svar ≠ −10000 ved tærsklen t gælder for alle t' ≤ t, −10000 for alle t' ≥ t; kontrol mod planScore hvert kald:
+  0 afvigelser); (2) 0x840d80's aldersblok og evalInLoop's stackBelow uden lukning pr. kald. På e0ca94a (før runde 15) −0,8/−0,9 % instruktioner, på
+  d554b5c ±0 (+0,1 % Man Utd, +0,4 % Arsenal) – runde 15 gjorde planScore billigere, så opslaget koster det, det sparer. (3) SparseMem med den
+  sidst læste side gemt (rp): +1,5 % instruktioner (de fleste læsninger skifter side). **Konklusion:** profilen er flad – ingen post over 10 % kan
+  fjernes med målrettede ændringer, og ×10 kræver stadig hele modellen (runde 12/14): 0x83f3a0 (2.048 x86-instruktioner i listingen), 0x843e10 (374),
+  0x4d1600 (3.185, 79 × _ftol), 0x846920 (3.881), 0x84a020 (906) og 0x8e5d60 (2.013) – ~12.400 instruktioner – som TS på spillets data, med
+  originalens rand-rækkefølge (også fastReject1's rand(2000) i afvisningerne), x87-semantikken og [0xae1080]; vurderingen må højst koste ~1 µs alt
+  medregnet (i dag ~4 µs alene i evalInLoop). Risiko ved hver delport: stakkens indhold under esp (runde 13 – en oversat funktion læser en
+  ikke-initialiseret lokal variabel), så en håndport af 0x4d1600 midt i de oversatte kald skal kontrolleres med sha1 over mange dage.
+  **Rækkefølge for næste runde:** 0x4d1600 (største oversatte post, ~9 %, også i cmAskingPrice og 0x8e5d60) med CHECK-tilstand mod den oversatte,
+  så 0x846920 (~5 %), så 0x83f3a0's accepterede gren 0x840159–0x840a7e og efterløkken 0x840ab3–0x840d62 i TS, og til sidst posterne som typed arrays
+  i stedet for SparseMem (fastReject1/skipRun/assessFast/0x840d80 læser i dag via m.u32 – cmMem.ts er 13 % af dagen).
 - **Formændene** (koblet ind): sub_535a80's personlige egenskaber 0x535ea4– for alle personer – uden for 1..20: −1 → rand(16)+5, ellers to terninger:
   Ambition snittet, Loyalty den mindste (`cmStaffInit.ts personalFill_535a80`, cmFinance.ts' og cmBoardGame.ts' formand). Ønskelønnen
   (`scripts/cm-want-game.ts`): ens 1.142 → 1.148, inden for 2 % 1.470 → 1.483, inden for 10 % 1.852 → 1.848, 10/50/90 % 0,59/1,00/1,42 → 0,60/1,00/1,42.
