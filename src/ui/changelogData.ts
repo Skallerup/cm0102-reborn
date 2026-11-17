@@ -13,6 +13,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '2026-11-17',
     title: { da: 'Rettelser i det originale CM 01/02', en: 'Fixes in the original CM 01/02' },
     items: [
+      { da: "Klubbens Transfers-skærm har nu alle visninger som originalen: Future Transfers (aftalte og igangværende handler med status), Loans In/Out og Staff In/Out.", en: "The club Transfers screen now has all of the original's views: Future Transfers (agreed and pending deals with their status), Loans In/Out and Staff In/Out." },
       { da: "Rettet: \"Konvertér til originalen (kopi)\" blev aldrig færdig – udbudsprisens beregning efterlod et tal i regneren, til konverteringen (og i sjældne tilfælde ønskelisterne) stoppede. Fejler en konvertering, vises fejlen nu i stedet for at vente forgæves.", en: "Fixed: \"Convert to original (copy)\" never finished – the asking price calculation left a number behind in the calculator until the conversion (and in rare cases the shortlists) stopped. If a conversion fails, the error is now shown instead of waiting forever." },
     ],
   },
