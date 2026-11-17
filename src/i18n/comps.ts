@@ -6,7 +6,7 @@ import { isNationName, nationLabel } from './nations';
 import CM_NAMES from './data/cmCompNames.json';
 
 const LEAGUES_DA: Record<string, string> = {
-  'Danish Premier Division': 'Superligaen', 'Danish First Division': '1. division',
+  'Danish Premier Division': 'Superligaen', 'Danish First Division': '1. division', 'Danish Second Division': '2. division',
   'English Premier Division': 'Premier League', 'English First Division': 'Championship',
   'Scottish Premier Division': 'Scottish Premiership',
   'Spanish First Division': 'LaLiga', 'Spanish Second Division': 'LaLiga 2',

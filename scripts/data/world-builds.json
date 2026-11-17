@@ -26,5 +26,13 @@
     "careersSha256": "c748dbe5df3dc2a7167344d1505d2ef64af87d561f887834e1f459f1332c8ac7",
     "reproducible": false,
     "note": "Bygget 14/11 (e2f757c) og siden rettet i hånden: 7597c59 (fødselsdatoer uden dag/måned, nationernes adj/col, compHist fra den officielle club_comp_history.dat, clubNames), 33da7e8 (stabens løn staff[12][11]). Ikke med: 9379ed3s pokalvalg (rules.cup) og b1c4e21s cmRaw.seats. En genbygning: +4 skjulte klubber, +49/−8 spillere – scripts/world-repro.ts"
+  },
+  "world.json": {
+    "source": ".data-update/October 2026 Data Update",
+    "season": 2026,
+    "sha256": "62d556398159d51b3446aa84852806654e757d86bd731d2d18198774e5cc21d7",
+    "careers": "careers-cm.json",
+    "careersSha256": "352c28a022160e40a07080603ae5562c15b915ee6447696430a099ff6eae48db",
+    "reproducible": true
   }
 }

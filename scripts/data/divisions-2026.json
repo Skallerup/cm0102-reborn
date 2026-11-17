@@ -1,0 +1,73 @@
+{
+  "_note": "Rækkerne i 2026/27 (October 2026 Data Update har flere ligaer med klubber fra rækken under/over – fx 16 i dansk 1. division). Bruges af scripts/build-cm-data.mts (kun sæson >= 2026): `remove` flyttes til `rest` (en turnering i club_comp.dat eller null = ingen division), `add` flyttes ind; bagefter skal ligaen have `size` klubber. Navnene er databasens (club.dat). Kilder (hentet 17/11-2026): Wikipedias 2026–27-/2026-sæsonsider for hver liga; Danmark også fotmob/BeSoccer (B.93 og Middelfart i 2. division), Kroatien tportal.hr (Rudeš erstatter Vukovar). `rules`: rundeantal/op- og nedrykning for ligaen (overskriver parserens 3/3).",
+  "leagues": {
+    "Danish Premier Division": {
+      "size": 12,
+      "rules": { "relegated": 2 }
+    },
+    "Danish First Division": {
+      "size": 12,
+      "remove": ["Boldklubben af 1893", "Middelfart Boldklub", "Naestved Boldklub", "FC Roskilde"],
+      "rest": "Danish Second Division",
+      "rules": { "rounds": 3, "promoted": 2, "relegated": 2 }
+    },
+    "Danish Second Division": {
+      "size": 12,
+      "remove": ["Vanlöse IF", "Brönshöj Boldklub", "Holbaek B&I", "Sundby Boldklub", "FC Helsingør", "Ishöj IF", "Hörsholm-Usseröd IK", "Naesby Boldklub"],
+      "rest": "Danish Kvalifikationsrækken",
+      "rules": { "rounds": 3, "promoted": 2 }
+    },
+    "Croatian First Division": {
+      "size": 10,
+      "remove": ["HNK Cibalia Vinkovci", "NK Dubrava Tim kabel", "NK Dugopolje", "NK BSK Bijelo Brdo", "HNK Vukovar 1991", "NK Sesvete"],
+      "rest": "Croatian Second Division"
+    },
+    "Brazilian National First Division": {
+      "size": 20,
+      "remove": ["Clube de Regatas Brasil (AL)", "Ceará Sporting Club", "Criciúma EC", "Fortaleza Esporte Clube", "Goiás Esporte Clube", "Esporte Clube Juventude", "Grêmio Novorizontino (SP)", "Sport Club do Recife"],
+      "rest": "Brazilian National Second Division"
+    },
+    "French Second Division": {
+      "size": 18,
+      "remove": ["Amiens SC", "SC Bastia"],
+      "rest": "French National"
+    },
+    "Australian National Soccer League": {
+      "size": 12,
+      "remove": ["Western United FC"],
+      "rest": null
+    },
+    "Italian Serie A": {
+      "size": 20,
+      "add": ["Venezia FC", "AC Monza"]
+    },
+    "Italian Serie B": {
+      "size": 20,
+      "add": ["Ascoli Calcio", "Virtus Entella"]
+    },
+    "Swedish Premier Division": {
+      "size": 16,
+      "add": ["Halmstads BK", "Örgryte IS"]
+    },
+    "Norwegian Premier Division": {
+      "size": 16,
+      "add": ["Kristiansund BK", "IK Start"]
+    },
+    "Polish First Division": {
+      "size": 18,
+      "add": ["Slask Wroclaw", "Wieczysta Krakow"]
+    },
+    "Korean League": {
+      "size": 12,
+      "add": ["Gimcheon Sangmu", "Gwangju FC"]
+    },
+    "Japanese J-League 1": {
+      "size": 20,
+      "add": ["JEF United Chiba", "Mito HollyHock", "Tokyo Verdy", "V-Varen Nagasaki"]
+    },
+    "Argentine Premier Division": {
+      "size": 30,
+      "add": ["Aldosivi", "Atlético Tucumán", "Banfield", "Belgrano de Córdoba", "AA Estudiantes (Río Cuarto)", "Gimnasia y Esgrima de Mendoza", "Instituto de Córdoba", "Newell's Old Boys", "CA Sarmiento (Junin)", "Talleres de Córdoba"]
+    }
+  }
+}

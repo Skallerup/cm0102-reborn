@@ -31,7 +31,41 @@ for (const f of readdirSync(dir)) {
 
 // Den originale database: alle klubber læses, så talenterne uden for de spilbare ligaer kan komme med (se nedenfor)
 const ORIGINAL = SEASON === 2001;
-const w = parseCM0102(files, ORIGINAL ? { maxTiers: 4, allClubs: true, cmMem: true } : {});
+
+// 2026/27: datasættets rækker rettet til virkeligheden (scripts/data/divisions-2026.json) – klubbens division (club.dat +87) sættes, før
+// parseren læser filen, så ligaerne, reglerne og holdantallet følger af sig selv
+type DivFix = { size: number; add?: string[]; remove?: string[]; rest?: string | null; rules?: Record<string, number> };
+const DIV_FIXES: Record<string, DivFix> = SEASON >= 2026
+  ? (JSON.parse(readFileSync(new URL('./data/divisions-2026.json', import.meta.url), 'utf8')) as { leagues: Record<string, DivFix> }).leagues : {};
+if (Object.keys(DIV_FIXES).length) {
+  const dec = new TextDecoder('windows-1252');
+  const str = (buf: ArrayBuffer, o: number, n: number) => { const b = new Uint8Array(buf, o, n); const e = b.indexOf(0); return dec.decode(b.subarray(0, e < 0 ? n : e)).trim(); };
+  const CC = new DataView(files['club_comp.dat']), CL = new DataView(files['club.dat']);
+  const compByName = new Map<string, { id: number; nation: number }>();
+  for (let o = 0; o + 107 <= CC.byteLength; o += 107) compByName.set(str(files['club_comp.dat'], o + 4, 51), { id: CC.getInt32(o, true), nation: CC.getInt32(o + 93, true) });
+  const clubs: { o: number; name: string; nation: number }[] = [];
+  for (let o = 0; o + 581 <= CL.byteLength; o += 581) clubs.push({ o, name: str(files['club.dat'], o + 4, 51), nation: CL.getInt32(o + 83, true) });
+  const comp = (name: string) => { const c = compByName.get(name); if (!c) throw new Error(`divisions-2026.json: turneringen "${name}" findes ikke`); return c; };
+  const club = (name: string, nation: number) => {
+    const hit = clubs.filter((c) => c.name === name && c.nation === nation);
+    if (hit.length !== 1) throw new Error(`divisions-2026.json: klubben "${name}" findes ${hit.length} gange i landet`);
+    return hit[0];
+  };
+  for (const [league, fix] of Object.entries(DIV_FIXES)) {
+    const L = comp(league);
+    const rest = fix.rest ? comp(fix.rest).id : -1;
+    for (const n of fix.remove ?? []) { const c = club(n, L.nation); if (CL.getInt32(c.o + 87, true) !== L.id) throw new Error(`divisions-2026.json: "${n}" står ikke i ${league}`); CL.setInt32(c.o + 87, rest, true); }
+    for (const n of fix.add ?? []) CL.setInt32(club(n, L.nation).o + 87, L.id, true);
+  }
+  for (const [league, fix] of Object.entries(DIV_FIXES)) {
+    const id = comp(league).id, n = clubs.filter((c) => CL.getInt32(c.o + 87, true) === id).length;
+    if (n !== fix.size) throw new Error(`divisions-2026.json: ${league} har ${n} klubber, ikke ${fix.size}`);
+  }
+  console.error(`rækkerne 2026/27: ${Object.keys(DIV_FIXES).length} ligaer rettet (scripts/data/divisions-2026.json)`);
+}
+
+// moderne: tre rækker læses, så Danmarks 2. division kan komme med (TIERS nedenfor bestemmer, hvad der beholdes)
+const w = parseCM0102(files, ORIGINAL ? { maxTiers: 4, allClubs: true, cmMem: true } : { maxTiers: 3 });
 
 // skub en ISO-dato (yyyy-mm-dd) frem med SHIFT år
 const shift = (iso: string) => {
@@ -92,7 +126,9 @@ if (ORIGINAL && !/3\.9\.6[05]/.test(dir) && !process.env.NO_LEGACY && existsSync
 }
 
 // Originalen: flere rækker i de lande, hvor de lavere rækker rummer kendte køb (Zamora, Earnshaw, Mexicos 2. række …)
-const EXTRA_TIERS: Record<string, number> = ORIGINAL ? { England: 4, Scotland: 4, Holland: 2, Portugal: 2, Argentina: 2, Mexico: 2, Norway: 2 } : {};
+const EXTRA_TIERS: Record<string, number> = ORIGINAL ? { England: 4, Scotland: 4, Holland: 2, Portugal: 2, Argentina: 2, Mexico: 2, Norway: 2 }
+  // 2026/27: Danmarks 2. division (12 klubber med trupper i datasættet) – rækkerne rettet i divisions-2026.json
+  : { Denmark: 3 };
 const nationName = (idx: number) => w.nations[idx]?.name ?? '';
 const keptLeagues = new Set<string>();
 for (const l of w.leagues) {
@@ -192,6 +228,12 @@ for (const id of Object.keys(w.rules)) if (!keptLeagues.has(id)) delete w.rules[
 for (const r of Object.values(w.rules)) {
   if (r.below && !keptLeagues.has(r.below)) { delete r.below; delete r.relegated; }
   if (r.above && !keptLeagues.has(r.above)) { delete r.above; delete r.promoted; }
+}
+// 2026/27: rundeantal og op-/nedrykning fra divisions-2026.json (fx dansk 1./2. division: 12 klubber, 3 runder, 2 op/2 ned)
+for (const [league, fix] of Object.entries(DIV_FIXES)) {
+  if (!fix.rules) continue;
+  const l = w.leagues.find((x) => x.name === league && !x.hidden);
+  if (l && w.rules[l.id]) Object.assign(w.rules[l.id], fix.rules);
 }
 // Ratings/omdømme/farver: beskær til de spillere og klubber der er med (sparer plads)
 const keptPlayers = new Set(w.players.map((p) => p[F.id] as number));
