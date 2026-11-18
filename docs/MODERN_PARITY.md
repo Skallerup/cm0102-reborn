@@ -170,3 +170,14 @@ Alle punkter er porte, der allerede findes – der skal ikke oversættes ny exe-
 2. Pengefrie moduler: 6 (kondition), 12 (vejr/priser/reserver/sprog), 9 (kendskab/spejdere), 8 (forhold/medier), 5 (udvikling), 10 (disciplin).
 3. Kampmotoren (2) – efter verifikation af udskiftningsreglerne.
 4. Ejerens beslutning om pengeprincip (A/B) → 1 (Interesseret/vilje), 4 (kontrakter/løn), 3 (transfers), 7 (bestyrelse), 11, 13.
+
+## Status punkt 3 (18/11): computerens transfers på 2026/27
+
+Ny gate `cmMarketOn(g)` (cmPlayerData.ts) = cmActive, eller cmLogic + spil, hvis spilstart kørte trupplanen 0x83a1b0 (`g.cmPlan` – cmSquadPlanStart
+kører nu på cmLogic). Den slår trupplanen 0x83cb40, ønskelisterne 0x83b6e0/0x84a020/0x8e5d60, computer → computer-svarene 0x8c63a0/0x8c8090/0x8c0810,
+raterne 0x8caee0 og spilstartens listning til; spillets eget marked (aiClubTurn, jagt, aiFillSquads, freeAgentDrift …) er slået fra som i 2001.
+Pengene: buddenes beløb med køberens €→£-faktor (cmMoney.ts), værdien/saldoen med spillerens/sælgerens (`ValueCtx.k`, `toK/fromK` i transfers.ts).
+Menneskets egne handler (budskærmene, svar på bud, modbud) følger stadig spillets forløb på 2026/27 (UI'et er cmActive) – næste skridt.
+Målt (`scripts/cm-market-2026.ts`, England, Brentford, frø 1, 1/7-26 → 30/6-27): computer → computer 1.110 → 159, PL-køb 25 for €569M (median
+€18,0M) → 37 for €417M (median €8,1M), Championship 30 for €108M → 63 for €164M; klubber i minus 132 → 109 af 656; klubløse 759 → 3.135 før,
+759 → 816 nu. 2001 bit for bit uændret (02ec66f5a29512d1). Kræver et nyt spil.

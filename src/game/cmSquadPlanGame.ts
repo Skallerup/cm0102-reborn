@@ -1,6 +1,6 @@
 // Computerens trupplan 0x83cb40 (cmSquadPlan.ts) i vores spil: originalens felter af spiltilstanden og trupstatus tilbage (Player.squadStatus og
 // kontraktens +0x4f/+0x4e i Player.cmContract), som computerens holdudtagelse 0x6e2f20 (aiTeam.ts → roleScore.ts) læser. Kun den originale
-// database i ægte tilstand (cmActive); egen talrække (cmRand) – spillets rng og den moderne database/zonemotoren røres ikke.
+// database i ægte tilstand (cmActive) og (MODERN_PARITY 3) 2026/27 i ægte tilstand i spil startet med trupplanen (cmMarketOn); egen talrække (cmRand) – spillets rng og den moderne database/zonemotoren røres ikke.
 //
 // Tidspunkterne som i originalen: spilstarten 0x83a1b0 (alle klubber: arg3 = 0, arg4 = 1; menneskets klub også med P1 = P2 = 1 som ved
 // overtagelsen 0x84abe0), hver dag 0x5cccd0 → dailyGate → 0x83a730 (arg3 = 1, arg4 = 0) og managerskiftet 0x84abe0 (0, 1, cmSquadPlanClub).
@@ -17,7 +17,7 @@ import { ATTRS } from './attributes';
 import { ageOn } from './dates';
 import { setClub, squad } from './state';
 import { isHumanClub } from './humans';
-import { cmActive, cmContractOf, cmRand, cmUnhappy, clubRepMem, nationRepMem, squadPlacement, statusCode } from './cmPlayerData';
+import { cmActive, cmLogic, cmMarketOn, cmContractOf, cmRand, cmUnhappy, clubRepMem, nationRepMem, squadPlacement, statusCode } from './cmPlayerData';
 import { cmClubEuro, cmFitRead } from './cmFitnessGame';
 import { clubStrength, dailyGate, financeStatus, newPlanEntry, planSquad, type PlanEntry, type PlanInput, type PlanPlayer, type PlanSlot } from './cmSquadPlan';
 import { aiPickCtx, playerRecord, roleDataOf } from './engine/grid/aiTeam';
@@ -28,8 +28,8 @@ import { SQUAD_STATUSES } from './squadStatus';
 import { dislikesClub, dislikesPerson, favoursClub, favoursPerson, managerStaff } from './cmRelations';
 import { targetRep } from './cmBoardInterest';
 import { cmShortlistDaily, cmShortlistOn } from './cmShortlistGame';
+import { cmGbp } from './cmMoney';
 
-const GBP = 0.86;                                                             // £ = € · 0,86 (newgame.ts)
 const dayNum = (iso: string) => Math.round(Date.parse(iso + 'T00:00:00Z') / 86400000);
 const dayOf = (iso: string): Day => { const d = new Date(iso + 'T00:00:00Z'), y = d.getUTCFullYear(); return { day: Math.round((d.getTime() - Date.UTC(y, 0, 1)) / 86400000), year: y }; };
 const sh = (p: Player, k: string) => p.attrs[ATTRS.indexOf(k as never)] || 10;
@@ -66,6 +66,8 @@ function planPlayer(g: GameState, p: Player, fit: ReturnType<typeof cmFitRead>, 
   const joined = dayOf(p.joined ?? p.cmJoined ?? g.date);   // staff +0x3e: skiftet i spillet går forud for databasens dato
   const inj = fit.injury(p);
   const r = p.cmFit;
+  // € → £ med faktoren for klubben, pengene tilhører (cmMoney.ts – den originale database: 0,86)
+  const GBP = cmGbp(g, p.loan ? p.loan.from : p.club);
   return {
     id: p.id, generated: !!p.regen, job: 0xb, age: ageOn(p.dob, g.date), clubId: p.loan ? p.loan.from : p.club,
     b5a: sh(p, 'pressure'), b5b: sh(p, 'professionalism'), value: Math.round(p.value * GBP), joinedDay: joined.day, joinedYear: joined.year,
@@ -95,7 +97,7 @@ function managerNp(g: GameState, cid: number): number[] | null {
 
 /** 0x83cb40(entry, klub, daily, first) for en klub i vores spil */
 export function cmSquadPlanClub(g: GameState, cid: number, daily: boolean, first: boolean, human?: boolean): import('./cmSquadPlan').PlanResult | null {
-  if (!cmActive(g)) return null;
+  if (!cmMarketOn(g)) return null;
   const club = g.clubs[cid];
   if (!club) return null;
   const e = entryOf(g, cid);
@@ -114,7 +116,7 @@ export function cmSquadPlanClub(g: GameState, cid: number, daily: boolean, first
   const euroRep = euro > -1 ? g.cmCompRep?.[euro] ?? EURO_REP[euro] ?? null : null;
   const count = all.filter((p) => !p.regen).length;
   const { T, R } = clubStrength({ rep, minAtt, status, leagueRep, leagueActive: !!lg && !lg.hidden && !!g.comps[club.league], euroRep, squadCount: count,
-    finance: financeStatus(Math.round(club.balance * GBP), rep) });
+    finance: financeStatus(Math.round(club.balance * cmGbp(g, cid)), rep) });
   const st = g.staff[club.manager ?? -1];
   const mj = st?.career?.[st.career.length - 1]?.from ? dayOf(st.career[st.career.length - 1].from) : { day: 0, year: 1900 };
   const today = dayOf(g.date);
@@ -218,7 +220,7 @@ export const afterPlanHooks: ((g: GameState, cid: number, T: number, openPlayerS
 
 /** 0x694c80 reset_board_for_new_manager for en computerklub: trupplanens +4 = 2 (0x694cd2) og 0x84abe0 → 0x83cb40(entry, klub, 0, 1) */
 export function cmSquadPlanNewManager(g: GameState, cid: number): void {
-  if (!cmActive(g) || !g.clubs[cid]) return;
+  if (!cmMarketOn(g) || !g.clubs[cid]) return;
   const e = entryOf(g, cid);
   e.state = 2;
   storeEntry(g, cid, e);
@@ -234,8 +236,11 @@ function syncBack(p: Player, pp: PlanPlayer): void {
 /** 0x83a1b0 (newgame, efter trupperne og konditionsmodulets start): ALLE klubber i [0xae2d1c] – også dem uden aktiv liga (de skjulte/udenlandske):
  *  0x83cb40's første trin giver dem porten rand(omd + 1000) < rand(5000) → ud (planSquad, activeLeague = 0) */
 export function cmSquadPlanStart(g: GameState): void {
-  if (!cmActive(g)) return;
+  // spilstarten (newgame.ts/cmConvert.ts): enhver CM-database i ægte tilstand – trupplanen g.cmPlan slår markedet til (cmMarketOn, MODERN_PARITY 3)
+  if (!cmActive(g) && (g.draft || !cmLogic(g))) return;
   g.cmStart = g.date;
+  // (2026/27) cmMarketOn kræver posten fra første klub; den originale database som før (nøglernes rækkefølge i gemte spil uændret)
+  if (!cmActive(g)) g.cmPlan ??= {};
   for (const c of Object.values(g.clubs)) {
     cmSquadPlanClub(g, c.id, false, true, false);
     if (isHumanClub(c.id)) cmSquadPlanClub(g, c.id, false, true, true);   // overtagelsen 0x84abe0 (P1 = P2 = 1)
@@ -244,7 +249,7 @@ export function cmSquadPlanStart(g: GameState): void {
 
 /** 0x5cccd0 (hver dag, efter datoskiftet – sim.ts newDay før konditionsmodulet): +8-tælleren og 0x83a730 for de klubber, porten åbner */
 export function cmSquadPlanDaily(g: GameState): void {
-  if (!cmActive(g) || !g.cmPlan) return;
+  if (!cmMarketOn(g) || !g.cmPlan) return;
   const day = dayNum(g.date);
   // ønskelisterne (cmShortlistGame.ts): samme løkke med 0x844540, 0x83b6e0 og 0x84a020
   if (cmShortlistOn(g)) {

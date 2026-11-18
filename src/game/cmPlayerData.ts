@@ -36,6 +36,13 @@ export function cmBodyOn(g: GameState): boolean {
   return cmActive(g) || (cmLogic(g) && !g.draft && g.cmFitStart !== undefined);
 }
 
+/** (MODERN_PARITY 3) computerens marked – trupplanen 0x83cb40, ønskelisterne 0x83b6e0/0x84a020, buddene 0x8e5d60 og svarene 0x8c8090/0x8c63a0:
+ *  2001-verdenen, eller en CM-database i ægte tilstand fra et spil, hvis spilstart kørte trupplanen 0x83a1b0 (g.cmPlan – cmSquadPlanGame.ts).
+ *  Ældre 2026/27-spil uden trupplanen beholder spillets eget marked. For den originale database = cmActive. */
+export function cmMarketOn(g: GameState): boolean {
+  return cmActive(g) || (cmLogic(g) && !g.draft && g.cmPlan !== undefined);
+}
+
 // ---------------------------------------------------------------- en egen talrække (0x90cfc0's rolle)
 
 function mix(...xs: number[]): number {

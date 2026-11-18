@@ -11,6 +11,7 @@ import { ageOn } from './dates';
 import { financeStatus } from './cmSquadPlan';
 import { cmContractOf, cmRand, clubRepMem, nationRepMem, statusCode } from './cmPlayerData';
 import { aiPickCtx, roleDataOf } from './engine/grid/aiTeam';
+import { cmGbp, payClub } from './cmMoney';
 
 /** € → £ og tilbage (spillets faste kurs) */
 export const GBP = 0.86;
@@ -160,14 +161,19 @@ export interface ValueCtx {
   band: number | null;
   /** bytte-spillernes værdi (£) */
   swapValue: (pid: number) => number;
+  /** (MODERN_PARITY 3) € → £ for buddets beløb: køberens faktor (cmMoney.ts); uden: den faste kurs 0,86 (den originale database) */
+  k?: number;
 }
+/** buddets beløb € → £ og tilbage med vurderingens kurs */
+const tk = (c: ValueCtx, eur: number) => Math.round(eur * (c.k ?? GBP));
+const fk = (c: ValueCtx, gbp: number) => Math.round(gbp / (c.k ?? GBP));
 
 /** TRANSFER_OFFER::get_total_value 0x8e7a70(udenKlausuler, udenBytte, –, medVideresalg) – i pund */
 export function totalValue(t: BidTerms, c: ValueCtx, noClauses: boolean, noSwap: boolean, sellOn: boolean): number {
-  let v = toGbp(t.fee);
+  let v = tk(c, t.fee);
   if (!noClauses) {
-    if (t.lgFee > 0) v += toGbp(t.lgFee);
-    if (t.intFee > 0) v += toGbp(t.intFee);
+    if (t.lgFee > 0) v += tk(c, t.lgFee);
+    if (t.intFee > 0) v += tk(c, t.intFee);
     if (t.sellOn > 0 && sellOn) v += trunc(c.value * t.sellOn / 100);
   }
   if (!noSwap) for (const id of t.swap) v += c.swapValue(id);
@@ -184,14 +190,14 @@ export function weightedValue(t: BidTerms, c: ValueCtx, a1: boolean, a2: boolean
     else if (c.band === 0) f = t.months < 7 ? 0.9 : t.months < 13 ? 0.7 : 0.4;
     else if (c.band === 1) { if (t.months > 12) f = 0.9; }
   }
-  let sum = toGbp(t.fee);
+  let sum = tk(c, t.fee);
   if (!a1) {
-    if (t.lgFee > 0) sum += trunc((1 - t.lgApps * 0.005) * toGbp(t.lgFee) * k);
+    if (t.lgFee > 0) sum += trunc((1 - t.lgApps * 0.005) * tk(c, t.lgFee) * k);
     const x = 65 * s16(c.B);
     if (t.intFee > 0 && c.caps === 0 && c.age < 28 && x > c.nationRep) {
       let q = (1 - Math.abs(c.age - 24) * (1 / 15)) * (1 - t.intApps * 0.005) * ((x - c.nationRep) * (1 / 750) + 0.3);
       if (q > 0.75) q = 0.75;
-      sum += trunc(toGbp(t.intFee) * q * k);
+      sum += trunc(tk(c, t.intFee) * q * k);
     }
     if (t.sellOn > 0 && a5 && c.A < c.B * 0.8) sum += trunc(c.value * t.sellOn * (c.B - c.A) * (1 / 33) * k * 0.01);
   }
@@ -211,10 +217,10 @@ export interface ClauseOptIn {
 export function clauseOption(base: BidTerms, c: ValueCtx, i: ClauseOptIn): { terms: BidTerms; appeal: number } | null {
   if (i.buyerRep - i.sellerRep <= 3 || i.paGap < 25 || c.age > 30) return null;
   const t: BidTerms = { ...base, swap: [] };
-  const f = toGbp(base.fee), r = trunc(i.rep / 1000);
-  if (i.buyerRep < 15 && r - i.buyerRep > 2) return { terms: { ...t, fee: fromGbp(trunc(f * 0.8)), sellOn: 20 }, appeal: 80 };
-  if (c.nationRep > 5000 && c.caps === 0) return { terms: { ...t, intFee: fromGbp(trunc(f * 0.3)), intApps: 10, fee: fromGbp(trunc(f * 0.8)) }, appeal: 70 };
-  if (r - i.buyerRep < -3) return { terms: { ...t, lgFee: fromGbp(trunc(f * 0.3)), lgApps: 20, fee: fromGbp(trunc(f * 0.8)) }, appeal: 60 };
+  const f = tk(c, base.fee), r = trunc(i.rep / 1000);
+  if (i.buyerRep < 15 && r - i.buyerRep > 2) return { terms: { ...t, fee: fk(c, trunc(f * 0.8)), sellOn: 20 }, appeal: 80 };
+  if (c.nationRep > 5000 && c.caps === 0) return { terms: { ...t, intFee: fk(c, trunc(f * 0.3)), intApps: 10, fee: fk(c, trunc(f * 0.8)) }, appeal: 70 };
+  if (r - i.buyerRep < -3) return { terms: { ...t, lgFee: fk(c, trunc(f * 0.3)), lgApps: 20, fee: fk(c, trunc(f * 0.8)) }, appeal: 60 };
   return null;
 }
 
@@ -230,8 +236,8 @@ export function aiRespond(t: BidTerms, c: ValueCtx, o: { asking: number; rivals:
   const noSwap = weightedValue(t, c, false, true, true, true);
   if (noSwap > P) P = noSwap;
   // 0x8c8740 kontant (appel 50) og 0x8c8fd0 klausul; bytte-muligheden 0x8c8860 er ikke porteret
-  const opts: { terms: BidTerms; appeal: number }[] = [{ terms: { ...o.base, fee: fromGbp(P), swap: [] }, appeal: 50 }];
-  const co = clauseOption({ ...o.base, fee: fromGbp(P), swap: [] }, c, o.clause);
+  const opts: { terms: BidTerms; appeal: number }[] = [{ terms: { ...o.base, fee: fk(c, P), swap: [] }, appeal: 50 }];
+  const co = clauseOption({ ...o.base, fee: fk(c, P), swap: [] }, c, o.clause);
   if (co) opts.push(co);
   let best = opts[0], bestA = -1;
   for (const op of opts) {
@@ -256,7 +262,7 @@ export function aiReview(t: BidTerms, c: ValueCtx, M: number, askingOf: (pid: nu
   }
   if (W > M) return { kind: 'withdraw' };
   let add = Math.min(pool, M - W); if (add < 0) add = 0;
-  n.fee = fromGbp(toGbp(n.fee) + add);
+  n.fee = fk(c, tk(c, n.fee) + add);
   if (totalValue(n, c, false, true, false) > budget) return { kind: 'withdraw' };
   return { kind: 'rebid', terms: n };
 }
@@ -309,8 +315,9 @@ export function statusSatisfaction(b44: number, oldStatus: number, newStatus: nu
 
 // ---------------------------------------------------------------- spillets data → ValueCtx
 
-/** Vurderingens tal af spillet: sælgerklubbens manager vurderer (0x6e86d0), formuebåndet 0x5986b0 af sælgerens saldo og omdømme */
-export function valueCtx(g: GameState, p: Player): ValueCtx {
+/** Vurderingens tal af spillet: sælgerklubbens manager vurderer (0x6e86d0), formuebåndet 0x5986b0 af sælgerens saldo og omdømme. Pengene i £ med
+ *  faktoren for klubben, de tilhører (cmMoney.ts): værdien og saldoen sælgerens, bytte-spillerne deres klubs, buddet køberens (`buyer`). */
+export function valueCtx(g: GameState, p: Player, buyer?: number): ValueCtx {
   const sellerId = p.club;
   const seller: Club | undefined = g.clubs[sellerId];
   const age = ageOn(p.dob, g.date);
@@ -319,9 +326,10 @@ export function valueCtx(g: GameState, p: Player): ValueCtx {
   const A = judge(2, repMem(p));
   const B = judge(1, 50 * A);
   return {
-    value: toGbp(p.value), A, B, age, caps: Math.min(255, p.caps ?? 0), nationRep: nationRepMem(g, p.nation),
-    band: seller ? financeStatus(toGbp(seller.balance), clubRepMem(g, sellerId)) : null,
-    swapValue: (id) => toGbp(g.players[id]?.value ?? 0),
+    value: Math.round(p.value * cmGbp(g, payClub(p))), A, B, age, caps: Math.min(255, p.caps ?? 0), nationRep: nationRepMem(g, p.nation),
+    band: seller ? financeStatus(Math.round(seller.balance * cmGbp(g, sellerId)), clubRepMem(g, sellerId)) : null,
+    swapValue: (id) => { const q = g.players[id]; return q ? Math.round(q.value * cmGbp(g, payClub(q))) : 0; },
+    k: cmGbp(g, buyer ?? payClub(p)),
   };
 }
 export function clauseOptIn(g: GameState, p: Player, buyer: number): ClauseOptIn {

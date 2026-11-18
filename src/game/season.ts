@@ -1,7 +1,7 @@
 // Sæsonskifte: priser, historik, op/nedrykning, kontrakter, pensioneringer, regens.
 import { cmDiscSeason } from './cmDiscipline';
 import { cmBoardOn, cmBoardSeasonSetup } from './cmBoardGame';
-import { cmActive } from './cmPlayerData';
+import { cmActive, cmMarketOn } from './cmPlayerData';
 import { cmShortlistOn } from './cmShortlistGame';
 import { cmRetireOn } from './cmRetire';
 import { cmCmOn, cmCmScope } from './cmContractManager';
@@ -161,7 +161,7 @@ function promotionRelegation(sc: Scope | null = null) {
     const oldLeague = club.league;
     club.league = league;
     // nedrykkede AI-klubber må sælge stjernerne (nedrykningsklausuler, lønninger) – ellers vinder de næste liga med 110+ point
-    if (!wasUp && !isHumanClub(cid) && !cmActive(g)) {
+    if (!wasUp && !isHumanClub(cid) && !cmMarketOn(g)) {
       for (const p of squad(cid).filter((x) => !x.loan && x.contract).sort((a, b) => b.ca - a.ca).slice(0, 8)) {
         p.listed = true;
         p.listPrice = Math.max(10_000 * econ(), Math.round(p.value * 0.65 / 50_000) * 50_000);

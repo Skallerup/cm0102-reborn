@@ -26,7 +26,8 @@ import type { GameState, Player } from './types';
 import { type CmCtx, type CmMem, G, getContract, clubAt, SparseMem } from './cmMem';
 import { buildSlWantMem, slMemPages, SLMEM_DEFER } from './cmSlMem';
 import { buildWantMem, type WantMem } from './cmContractGame';
-import { cmActive, cmRand, clubRepMem, nationRepMem } from './cmPlayerData';
+import { cmMarketOn, cmRand, clubRepMem, nationRepMem } from './cmPlayerData';
+import { cmGbp, payClub } from './cmMoney';
 import { slCall } from './cmShortlist';
 import { playerValue_4d0c60, knowsNation_53d980, seenRep_5407e0, knowledge_5408c0, judge_6e86d0, JUDGE_HI, euCitizen_53d740 } from './cmValue';
 import { contractForClub_4cf5f0, expiryBand_867d30, setToDesiredContract_85fc50, hasActiveReleaseClause_867b50, constructContract_85e410 } from './cmContractWant';
@@ -54,7 +55,6 @@ import { judgeAbility, type Day } from './engine/grid/roleScore';
 import { nationLanguage, playerLanguages } from './languages';
 import { dislikesClub, dislikesPerson, favoursClub, favoursPerson, managerStaff, relHas, DIS_CLUB, FAV_CLUB } from './cmRelations';
 
-const GBP = 0.86;
 const SLOTS0 = 0x5f100000, OFFERS0 = 0x5e800000, OREC0 = 0x5e900000, INJ0 = 0x5e780000, LISTS0 = 0x61000000;
 const SLOT = 0x25, NSLOT = 40;
 const BRITISH = new Set(['ENG', 'SCO', 'WAL', 'NIR', 'IRL']);
@@ -75,7 +75,7 @@ const ENV = typeof process !== 'undefined' ? process.env ?? {} : {};
  *  (ui/dayRunner.ts), så siden ikke fryser. I Node: til, undtagen under vitest (testene ville tage minutter) og med CM_SL=0; CM_SL=1 tvinger dem til. */
 export const SL_ON = { on: ENV.CM_SL ? ENV.CM_SL === '1' : !ENV.VITEST };
 /** ønskelisterne kører (den originale database i ægte tilstand, ikke draft, og SL_ON) */
-export const cmShortlistOn = (g: GameState) => SL_ON.on && cmActive(g) && !g.draft;
+export const cmShortlistOn = (g: GameState) => SL_ON.on && cmMarketOn(g) && !g.draft;
 
 // ---------------------------------------------------------------- begivenhederne, transfers.ts udfører
 
@@ -495,7 +495,7 @@ function writeOffers(S: SlMem): void {
     if (!['pending', 'negotiating', 'countered'].includes(o.status) || isHumanClub(o.buyer) && isHumanClub(o.seller)) continue;
     const pm = memOf.get(o.player);
     if (pm === undefined || o.id >= n) continue;
-    const r = OREC0 + 0x48 * k++;
+    const r = OREC0 + 0x48 * k++, GBP = cmGbp(g, o.buyer);   // buddets beløb: køberens penge (cmMoney.ts)
     m.w32(OFFERS0 + 4 * o.id, r);
     m.w32(r + 8, o.buyer); m.w32(r + 0xc, pm); m.w8(r + 0x11, 0xb);
     const d = dayOf(o.created); m.w16(r + 0x12, d.day); m.w16(r + 0x14, d.year); m.w32(r + 0x16, leapY(d.year));
@@ -1673,7 +1673,7 @@ const memValue = (g: GameState, p: Player) => {
   const e = VALUES.get(g);
   if (e && e.date === g.date && (e.skipped.has(p.id) || e.lazy.has(p.id) || (e.dp?.has(p.id) && !e.v.has(p.id)))) SL_STATS.skipHit++;
   const v = e && e.date === g.date ? e.v.get(p.id) : undefined;
-  return v ?? Math.round(p.value * GBP);
+  return v ?? Math.round(p.value * cmGbp(g, payClub(p)));
 };
 /** de udskudte værdier for klubbens spillere (refreshClub, før klubbens poster ændres) */
 function lazyValues(S: SlMem, cid: number): void {
@@ -1730,7 +1730,7 @@ function maxOf(S: SlMem, buyer: number, p: Player): number {
   const { m } = S;
   const ent = (m.u32(S.slm + 0xdc) + 9 * buyer) >>> 0, base = m.u32(ent), id = S.memOf.get(p.id);
   for (let i = 0; i < NSLOT; i++) if (m.s32(base + SLOT * i + 0xf) === id) return Math.max(0, m.s32(base + SLOT * i + 7));
-  return Math.round(p.value * GBP);
+  return Math.round(p.value * cmGbp(S.g, payClub(p)));
 }
 
 /** opdaterer en klubs spillere i hukommelsen efter trupplanen (kontraktens +0x3d/+0x3e/+0x3f/+0x4e/+0x4f, værdien) */

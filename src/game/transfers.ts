@@ -1,5 +1,5 @@
 // Transfers, kontrakter og AI-transfermarked (forbedring #7: behovsstyrede AI-klubber).
-import { cmActive, cmLogic, cmRand, setRequestHooks, setStatusCode } from './cmPlayerData';
+import { cmActive, cmLogic, cmMarketOn, cmRand, setRequestHooks, setStatusCode } from './cmPlayerData';
 import { cmBidChance, cmInterested, cmRequestNews } from './cmTransferList';
 import { transferNewsToMe } from './cmNewsScope';
 import { cmSignContractMorale } from './cmMedia';
@@ -33,6 +33,11 @@ import { econ } from './econ';
 import { authentic, extended } from './rules';
 import { aiRespond, aiReview, applyRejectReason, clauseOptIn, newTerms, putTerms, termsOf, toGbp, fromGbp, valueCtx, MAX_SWAP, type BidTerms, type RejectKey } from './cmTransferBid';
 import { bookBlock, K as CMK, GBP as GBP_CM } from './cmFinance';
+import { cmGbp } from './cmMoney';
+
+/** (MODERN_PARITY 3) € ↔ originalens £ med faktoren for klubben, pengene tilhører (cmMoney.ts – den originale database: 0,86 som toGbp/fromGbp) */
+const toK = (eur: number, cid?: number) => Math.round(eur * cmGbp(gs(), cid || undefined));
+const fromK = (gbp: number, cid?: number) => Math.round(gbp / cmGbp(gs(), cid || undefined));
 
 /** Klubben, vinduet gælder for i den originale database i ægte tilstand: den angivne, ellers menneskets (landets regelsæt 0x8e8800) */
 function cmWindowClub(club?: number): Club | undefined {
@@ -772,9 +777,10 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
     p.loan = { from: p.club, until: cmUntil ?? `${year(g.date) + (month(g.date) >= 7 ? 1 : 0)}-06-30`, ...(o.option ? { option: o.option } : {}) };
     if (cmShortlistOn(g)) noteLoan(buyer.id);
   } else {
-    const cm = cmActive(g) && !!seller;
+    // (MODERN_PARITY 3) 2026/27: computer → computer som originalen; menneskets handler følger dets budskærme (cmActive)
+    const cm = !!seller && (cmActive(g) || (cmMarketOn(g) && !isHumanClub(seller.id) && !isHumanClub(buyer.id)));
     // en tidligere klub kan have krav på en del af fortjenesten (CM 01/02 0x8cb0f0: procent af hele summen + bytte-spillernes værdi, ≥ £1000)
-    if (cm) { if (p.sellOn) settleSellOn(p, o.fee + (o.swap ?? []).reduce((s2, id) => s2 + (g.players[id]?.value ?? 0), 0), seller, fromGbp(1000), buyer); }
+    if (cm) { if (p.sellOn) settleSellOn(p, o.fee + (o.swap ?? []).reduce((s2, id) => s2 + (g.players[id]?.value ?? 0), 0), seller, fromK(1000, buyer.id), buyer); }
     else if (o.fee > 0) settleSellOn(p, o.fee, seller, 0, buyer);
     // CM 01/02 0x8ca8a0: med rater betales første rate nu (transferbudgettet trækkes for hele summen, *estimeret*)
     const now = cm ? cmBookClauses(o, p, buyer, seller!) : o.fee;
@@ -1139,7 +1145,7 @@ function cmAiAnswer(o: TransferOffer, p: Player, buyer: Club) {
 /** CM 01/02 0x8ca8a0: første rate (fee / måneder) betales nu, resten hver måned (0x8caee0); klausulerne gemmes på spilleren. Returnerer det, der betales nu. */
 function cmBookClauses(o: TransferOffer, p: Player, buyer: Club, seller: Club) {
   const g = gs();
-  const first = o.months && o.months > 0 ? fromGbp(Math.trunc(toGbp(o.fee) / o.months)) : o.fee;
+  const first = o.months && o.months > 0 ? fromK(Math.trunc(toK(o.fee, buyer.id) / o.months), buyer.id) : o.fee;
   if (o.months && o.months > 1) (g.cmInstalments ??= []).push({ amount: first, buyer: buyer.id, seller: seller.id, left: o.months - 1, player: p.id });
   // 0x8c91e0: den gamle klubs klausuler på spilleren er afregnet/bortfalder
   p.cmApps = undefined;
@@ -1354,7 +1360,7 @@ function aiClubTurn(club: Club) {
   if (cmActive(g) && !windowOpen(g.date, club.id)) return;
   const sq = squad(club.id);
   // den originale database i ægte tilstand: computerens trupplan 0x83cb40 sætter til salg/leje og fritstiller (cmSquadPlanGame.ts) – ikke her
-  const plan = cmActive(g) && !!g.cmPlan?.[club.id];
+  const plan = cmMarketOn(g) && !!g.cmPlan?.[club.id];
   // Økonomisk krise: sæt de dyreste (ikke-nøgle)spillere til salg, og frigiv ældre storlønnede
   if (club.balance < 0 && plan) { club.transferBudget = 0; return; }
   if (club.balance < 0) {
@@ -1808,6 +1814,8 @@ export function cmShortlistApply(events: SlEvent[]) {
     if (!p || !buyer || p.contract?.futureClub || p.club === buyer.id || isHumanClub(buyer.id)) continue;
     if (!p.club && e.loan) continue;
     if (p.loan || g.offers.some((o) => o.player === p.id && o.buyer === buyer.id && ['pending', 'negotiating', 'countered'].includes(o.status))) continue;
+    // buddets beløb er køberens penge: £ → € med køberens faktor (cmMoney.ts – den originale database 0,86)
+    const fromGbp = (x: number) => fromK(x, buyer.id);
     const o: TransferOffer = { id: e.id, player: p.id, buyer: buyer.id, seller: p.club, fee: e.loan ? 0 : fromGbp(e.fee), loan: e.loan, status: 'pending', created: g.date,
       respondBy: addDays(g.date, 5), maxFee: fromGbp(Math.max(e.max, e.fee)),
       ...(e.months > 0 ? { months: e.months } : {}), ...(e.sellOn > 0 ? { sellOn: e.sellOn } : {}),
@@ -1859,8 +1867,8 @@ function cmAiAiDue(cx: SlDueCtx) {
         continue;
       }
       CM_AIAI.bid++;
-      const c = valueCtx(g, p);
-      const asking = cmAskingPrice(g, p, buyer.id) ?? toGbp(askingPrice(p));
+      const c = valueCtx(g, p, buyer.id);
+      const asking = cmAskingPrice(g, p, buyer.id) ?? toK(askingPrice(p), p.club);
       const rivals = g.offers.filter((x) => x !== o && x.player === p.id && x.status === 'pending' && !x.loan).map(termsOf);
       const t = termsOf(o);
       const r = aiRespond(t, c, { asking, rivals, unwanted: false, final: !!o.final, base: newTerms(g, p, buyer.id, 0), clause: clauseOptIn(g, p, buyer.id) });
@@ -1879,8 +1887,8 @@ function cmAiAiDue(cx: SlDueCtx) {
     if (o.status === 'countered') {
       CM_AIAI.review++;
       const t = o.cmCounter ?? termsOf(o);
-      const c = valueCtx(g, p);
-      const r = aiReview(t, c, toGbp(o.maxFee ?? o.fee), (id) => toGbp(g.players[id] ? askingPrice(g.players[id]) : 0), toGbp(buyer.transferBudget));
+      const c = valueCtx(g, p, buyer.id);
+      const r = aiReview(t, c, toK(o.maxFee ?? o.fee, buyer.id), (id) => (g.players[id] ? toK(askingPrice(g.players[id]), g.players[id].club) : 0), toK(buyer.transferBudget, buyer.id));
       o.cmCounter = undefined;
       if (r.kind === 'withdraw') { o.status = 'withdrawn'; closed = true; continue; }
       CM_AIAI.rebid++;
@@ -2124,7 +2132,7 @@ export function interestedClubs(p: Player): Interest[] {
   // den originale database i ægte tilstand, menneskets spiller: computerklubberne efter 0x842180 (cmTransferList.ts, *estimeret*)
   // nyt spil-forløbet (Take Control): klubben vises, som den bliver efter indlæsningen – før stod spillets egne ønskelister som røde Wnt-mærker,
   // der forsvandt, når spillet var indlæst (ejerens test 16/11)
-  const cm = cmActive(g) && (isHumanClub(p.club) || cmShortlistOn(g) || inSetup());
+  const cm = cmShortlistOn(g) || (cmActive(g) && (isHumanClub(p.club) || inSetup()));
   if (cm) for (const id of cmShortlistOn(g) ? cmInterestedClubs(g, p) : cmInterested(g, p, clubLevel)) out.push({ club: id });
   for (const c of Object.values(g.clubs)) {
     if (c.id === p.club || cm) continue;
@@ -2256,8 +2264,8 @@ export function recallLoan(pid: number): string {
  */
 export function initialTransferList() {
   const g = gs();
-  // den originale database i ægte tilstand: spilstartens trupplan 0x83a1b0 → 0x83cb40 lister (cmSquadPlanGame.ts)
-  if (cmActive(g)) return;
+  // den originale database i ægte tilstand (og 2026/27 med trupplanen): spilstartens trupplan 0x83a1b0 → 0x83cb40 lister (cmSquadPlanGame.ts)
+  if (cmMarketOn(g)) return;
   // egen generator: spillets fælles rng må ikke forskydes af åbningslisten
   const rng = new Rng(hash(g.seed, 4242));
   for (const c of Object.values(g.clubs)) {

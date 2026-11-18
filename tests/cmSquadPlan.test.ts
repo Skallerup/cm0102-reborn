@@ -46,7 +46,7 @@ describe('0x83c090 og 0x7bca90', () => {
 });
 
 describe('i spillet', () => {
-  it('den originale database i ægte tilstand: computerens klubber får originalens trupstatus; den moderne database har ingen plan', () => {
+  it('den originale database i ægte tilstand: computerens klubber får originalens trupstatus; udvidet tilstand har ingen plan', () => {
     const w = JSON.parse(readFileSync('public/data/world-original.json', 'utf8')) as WorldData;
     const eng = w.nations.findIndex((n) => n.name === 'England');
     createGame(w, { managerName: 'T', managerNation: eng, clubId: w.clubs.find((c) => c[1] === 'Arsenal')![0], activeNations: [eng], lang: 'en', masking: true, seed: 3, mode: 'authentic' });
@@ -59,7 +59,8 @@ describe('i spillet', () => {
     expect(st.has('rotation') || st.has('first')).toBe(true);
     expect(st.has('young')).toBe(true);
     const m = JSON.parse(readFileSync('public/data/world.json', 'utf8')) as WorldData;
-    createGame(m, { managerName: 'T', managerNation: 0, clubId: m.clubs[0][0], activeNations: [m.clubs[0][3]], lang: 'en', masking: true, seed: 3, mode: 'authentic' });
+    // (MODERN_PARITY 3) 2026/27 i ægte tilstand får trupplanen (computerens marked); i udvidet tilstand ingen plan
+    createGame(m, { managerName: 'T', managerNation: 0, clubId: m.clubs[0][0], activeNations: [m.clubs[0][3]], lang: 'en', masking: true, seed: 3, mode: 'extended' });
     expect(gs().cmPlan).toBeUndefined();
   }, 120_000);
 });

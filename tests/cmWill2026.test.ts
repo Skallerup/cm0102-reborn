@@ -9,6 +9,8 @@ import { cmMoveInterest, cmTalkDemand } from '../src/game/cmContractGame';
 import { cmBoardWageAllow } from '../src/game/cmBudget';
 import { cmGbp, GBP_2001 } from '../src/game/cmMoney';
 import { playerInterest } from '../src/game/transfers';
+import { cmMarketOn } from '../src/game/cmPlayerData';
+import { valueCtx } from '../src/game/cmTransferBid';
 import type { GameState, Player } from '../src/game/types';
 
 const world = JSON.parse(readFileSync('public/data/world.json', 'utf8')) as WorldData & { cmRaw?: unknown };
@@ -48,5 +50,17 @@ describe('2026/27 i ægte tilstand: originalens vilje og kontrakter', () => {
     expect(d.wage).toBeGreaterThan(own.contract!.wage * 0.5);
     expect(d.wage).toBeLessThan(own.contract!.wage * 3);
     expect(cmBoardWageAllow(g, own, g.userClub)!).toBeGreaterThan(0);
+  });
+
+  it('(MODERN_PARITY 3) computerens marked: trupplanen 0x83a1b0 kører ved spilstarten og slår cmMarketOn til; buddene i køberens £', () => {
+    expect(g.cmPlan && Object.keys(g.cmPlan).length).toBeGreaterThan(100);
+    expect(cmMarketOn(g)).toBe(true);
+    const p = find('Javi', 'Guerra');
+    const c = valueCtx(g, p, city);
+    expect(c.k).toBe(cmGbp(g, city));
+    expect(c.value).toBe(Math.round(p.value * cmGbp(g, p.club)));
+    // ældre 2026/27-spil uden trupplanen og udvidet tilstand: spillets eget marked
+    expect(cmMarketOn({ ...g, cmPlan: undefined } as GameState)).toBe(false);
+    expect(cmMarketOn({ ...g, options: { ...g.options, mode: 'extended' } } as GameState)).toBe(false);
   });
 });
