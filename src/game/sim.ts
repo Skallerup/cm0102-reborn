@@ -44,7 +44,7 @@ import { friendliesDaily } from './friendlies';
 import { cmFriendlyDay } from './cmFriendly';
 import { achievementsAfterMatch } from './achievements';
 import { storyAfterMatch } from './story';
-import { gateReceipts, januaryBudgetTopUp, monthlyIncome, snapshotFinanceMonth, sponsorWinBonus, weeklyWages } from './finance';
+import { addPrize, gateReceipts, januaryBudgetTopUp, monthlyIncome, snapshotFinanceMonth, sponsorWinBonus, weeklyWages } from './finance';
 import { rng, Rng as RngClass, hash } from './rng';
 import { addNews, fixturesOn, gs, squad } from './state';
 import { counterPlan, type CounterPlan } from './aitactics';
@@ -56,7 +56,8 @@ import { afterAppearance } from './clauses';
 import { cmBonusPaid } from './cmContractInit';
 import { knowledgeAfterMatch, scoutDaily } from './scouting';
 import { cmCalendarDay } from './cmCalendar';
-import { cmFinanceDay, cmFinOn, cmMatchIncome, GBP as CM_GBP } from './cmFinance';
+import { cmFinanceDay, cmFinOn, cmMatchIncome } from './cmFinance';
+import { cmGbp } from './cmMoney';
 import { fixtureCodesOf, gameCrowd } from './engine/grid/gameInputs';
 import { cmEuroCatchUp, cmEuroDay, cmEuroNextSeason, cmEuroPlayDay } from './cmEurope';
 import { compHooks, finHooks, intlHooks } from './hooks';
@@ -383,7 +384,7 @@ function cmGate(f: Fixture, rep?: MatchReport): { att: number; income: number } 
   const comp = g.comps[f.comp];
   const gate = cmMatchIncome(g, f, att, { b3a: codes.b3a, b3b: codes.b3b, b3c: codes.b3c, compRep: codes.compRep, friendly: !comp,
     leagueOfHome: !!comp && comp.type === 'league' && g.clubs[f.home]?.league === f.comp });
-  return { att, income: gate / CM_GBP };
+  return { att, income: gate / cmGbp(g, f.home) };
 }
 
 export function applyMatchResult(f: Fixture, rep: MatchReport) {
@@ -400,7 +401,8 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
   const comp = g.comps[f.comp];
   const isLeague = comp?.type === 'league';
   const played = new Set<number>();
-  const cm = cmActive(g) && !g.draft;
+  // (MODERN_PARITY 4) bonusserne 0x4ca6d0 (Finance::add_bonus) følger originalens økonomi – også nye 2026/27-spil (cmFinOn)
+  const cm = (cmActive(g) && !g.draft) || cmFinOn(g);
   // (MODERN_PARITY 10) karantænerne efter originalens organer (cmDiscipline.ts): 2001-verdenen og nye 2026/27-spil i ægte tilstand (cmDiscOn –
   // for den originale database = cm); bonusserne nedenfor følger cm
   const disc = cmDiscOn(g);
@@ -501,8 +503,8 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
     for (const [cid, gf, ga] of [[f.home, hs.goals, as.goals], [f.away, as.goals, hs.goals]] as const) {
       const c = g.clubs[cid];
       const amount = Math.round(euroPrize(comp.id, f.stage, tie?.legs ?? 1, c.rep, nLP, gf, ga));
-      c.balance += amount;
-      c.finance.prize += amount;
+      // (MODERN_PARITY 4) med originalens økonomi (cmFinOn) i Prize Money-posten (£ med klubbens faktor) – ellers som før
+      addPrize(c, amount);
     }
   } else if (comp?.type === 'continental') {
     const win = (comp.id === 'CL' ? 2_800_000 : 800_000) * econIncome();

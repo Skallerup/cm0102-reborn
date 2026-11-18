@@ -31,7 +31,7 @@ describe('originalens økonomi (cmFinance)', () => {
     expect(g.cmFin).toBeTruthy();
     const club = (n: string) => Object.values(g.clubs).find((c) => c.name === n)!;
     // Man Utd: club.dat £30,4M → originalen £30,59M; Bury: intet beløb → tabellen (omdømme 3500 → £750K · 0,05 · 19²/19) → originalen £694K
-    const mu = balGbp(club('Manchester United')), bury = balGbp(club('Bury'));
+    const mu = balGbp(g, club('Manchester United')), bury = balGbp(g, club('Bury'));
     expect(mu).toBeGreaterThanOrEqual(30_400_000 - 6_080_000);
     expect(mu).toBeLessThanOrEqual(30_400_000 + 6_080_000);
     expect(bury).toBeGreaterThanOrEqual(712_500 - 142_500);

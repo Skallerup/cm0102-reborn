@@ -43,7 +43,7 @@ const start = g.date;
 console.log(`start ${start}`);
 for (const id of ids) {
   const c = g.clubs[id], o = oracle.get(1)?.get(c.name);
-  console.log(`${c.name}: saldo ${fmt(balGbp(c))}${o ? ` (originalen ${fmt(o.balance)})` : ''} · lønsum ${fmt(g.cmFin![id].wb)}${o ? ` (${fmt(o.wageBill)})` : ''} · tilhængere ${g.cmSup?.[id]}`);
+  console.log(`${c.name}: saldo ${fmt(balGbp(g, c))}${o ? ` (originalen ${fmt(o.balance)})` : ''} · lønsum ${fmt(g.cmFin![id].wb)}${o ? ` (${fmt(o.wageBill)})` : ''} · tilhængere ${g.cmSup?.[id]}`);
 }
 let lastMonth = g.date.slice(0, 7);
 for (let i = 0; i < 340 && g.date < '2002-06-10'; i++) {
@@ -57,11 +57,11 @@ for (let i = 0; i < 340 && g.date < '2002-06-10'; i++) {
     console.log(`\n${g.date} (dag ${d}${od !== undefined ? `, oraklet d${od}` : ''}) – sidste måned spillet/originalen`);
     for (const id of ids) {
       const c = g.clubs[id], rec = g.cmFin![id], o = od !== undefined ? oracle.get(od)?.get(c.name) : undefined;
-      console.log(` ${c.name}: saldo ${fmt(balGbp(c))}${o ? `/${fmt(o.balance)}` : ''} · sæsonkort ${rec.st}${o ? `/${o.stHolders}` : ''}`);
+      console.log(` ${c.name}: saldo ${fmt(balGbp(g, c))}${o ? `/${fmt(o.balance)}` : ''} · sæsonkort ${rec.st}${o ? `/${o.stHolders}` : ''}`);
       line('LM', rec.lm, o?.lastMonth);
     }
   }
 }
 console.log('\nsæsonen (this year) spillet/originalen');
 const last = oracle.get(Math.max(...oracle.keys()));
-for (const id of ids) { const c = g.clubs[id]; console.log(` ${c.name}: saldo ${fmt(balGbp(c))}${last?.get(c.name) ? `/${fmt(last.get(c.name)!.balance)}` : ''}`); line('TY', g.cmFin![id].ty, last?.get(c.name)?.thisYear); }
+for (const id of ids) { const c = g.clubs[id]; console.log(` ${c.name}: saldo ${fmt(balGbp(g, c))}${last?.get(c.name) ? `/${fmt(last.get(c.name)!.balance)}` : ''}`); line('TY', g.cmFin![id].ty, last?.get(c.name)?.thisYear); }

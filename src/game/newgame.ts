@@ -510,6 +510,10 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
       // (foreløbigt – cmRefreshTransferBudgets sætter originalens 0x598800, når økonomien er bygget)
       c.transferBudget = originalTransferFunds(c.balance);
     }
+    // (MODERN_PARITY 4) 2026/27 i ægte tilstand: træningsanlægget +0x7f fra club.dat (world-cm.json cmRaw.clubFin) som for den originale database –
+    // originalens økonomi (træningsanlæggets månedlige udgift 0x59c438, transferbudgettet 0x598800) og træningen læser det
+    const fin26 = cmRawLogic && !g.draft ? cm?.cmRaw?.clubFin?.[c.id] : undefined;
+    if (fin26 && fin26[2] > 0) c.facilities = clampInt(fin26[2], 1, 20);
     c.ticketPrice = fairTicketPrice(c.rep, c.league);
     if (!c.seats || c.seats < 1000) c.seats = Math.round(2000 + c.rep * c.rep * 6);
   }
@@ -621,7 +625,8 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   // PLAYER_REGEN's første pensioneringsliste 0x7a58f0 ved indlæsningen – før forkørslen (cmRetire.ts)
   cmRetireInit(g);
   cmFitNewGame(g);
-  // originalens økonomi (cmFinance.ts): Finance::init_for_club 0x5961d0 og ugens lønsum – kun den originale database i ægte tilstand
+  // originalens økonomi (cmFinance.ts): Finance::init_for_club 0x5961d0 og ugens lønsum – CM-database i ægte tilstand (den originale database og,
+  // MODERN_PARITY 4, nye 2026/27-spil med world-cm.json's club.dat-økonomi)
   if (cm) { g.cmFinStartYear = season; cmFinanceNewGame(g, cm, seed); }
   // originalens startkontrakter 0x85e960 (cmContractInit.ts): bonusser, klausuler og deltid – kun den originale database i ægte tilstand
   // staben: 0x4c7560's startkontrakter – managerne ingen, de andre databasens løn eller −1 (cmWageGame.ts)

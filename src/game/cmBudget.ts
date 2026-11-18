@@ -20,9 +20,8 @@ import { cmGbp } from './cmMoney';
 import { cmKnowLevel } from './cmKnow';
 import { cmClubEuro } from './cmFitnessGame';
 import { getMaxWage_5968d0, maxStaffWage_597db0 } from './cmMaxWage';
-import { K } from './cmFinance';
+import { cmFinOn, K } from './cmFinance';
 
-const GBP = 0.86;
 /** skrabeområde til menneskenes ikke-spillerposter (én pr. klub i kaldet) */
 const MNP0 = 0x6a100000;
 
@@ -66,7 +65,8 @@ export function cmTransferBudget(g: GameState, cid: number): number | null {
 }
 /** som cmTransferBudget, men med originalens fortegn (negativ i gæld) – begivenhederne 0x59ed70 vælger nyhedens tekst efter det */
 export function cmTransferBudgetRaw(g: GameState, cid: number): number | null {
-  if (!cmActive(g) || !g.clubs[cid]) return null;
+  // (MODERN_PARITY 4) også 2026/27 med originalens økonomi (cmFinOn)
+  if (!(cmActive(g) || cmFinOn(g)) || !g.clubs[cid]) return null;
   return budgetsOf(g, [cid]).get(cid) ?? null;
 }
 
@@ -88,19 +88,20 @@ function budgetsOf(g: GameState, cids: number[]): Map<number, number> {
 /** i spillets valuta (€) */
 export function cmTransferFunds(g: GameState, cid: number): number | null {
   const v = cmTransferBudget(g, cid);
-  return v === null ? null : v / GBP;
+  return v === null ? null : v / cmGbp(g, cid);
 }
 
-/** Club.transferBudget = originalens Funds (0x598800, negativ → 0) for klubberne (standard: alle) – ægte tilstand med den originale database */
+/** Club.transferBudget = originalens Funds (0x598800, negativ → 0) for klubberne (standard: alle) – originalens økonomi (cmFinOn: den originale
+ *  database og nye 2026/27-spil; beløbet i klubbens £ → € med cmMoney-faktoren) */
 export function cmRefreshTransferBudgets(g: GameState, cids?: number[]): void {
-  if (!cmActive(g) || !g.cmFin || g.draft) return;
+  if (!cmFinOn(g)) return;
   // standard: klubberne i de valgte lande (og menneskenes) – de andres Funds vises ikke (originalens skærme skjuler andre klubbers økonomi) og
   // bruges ikke af computerens handler (ønskelisterne kalder 0x598800 selv); ~1,5 ms pr. klub
   const act = new Set(g.activeNations ?? []), hum = new Set(humanClubIds(g));
-  const ids = (cids ?? Object.keys(g.cmFin).map(Number).filter((cid) => hum.has(cid) || act.has(g.clubs[cid]?.nation))).filter((cid) => g.clubs[cid]);
+  const ids = (cids ?? Object.keys(g.cmFin!).map(Number).filter((cid) => hum.has(cid) || act.has(g.clubs[cid]?.nation))).filter((cid) => g.clubs[cid]);
   // i bidder, så hukommelsen ikke vokser over alle klubber på én gang
   for (let i = 0; i < ids.length; i += 400) {
-    for (const [cid, v] of budgetsOf(g, ids.slice(i, i + 400))) g.clubs[cid].transferBudget = Math.max(0, v) / GBP;
+    for (const [cid, v] of budgetsOf(g, ids.slice(i, i + 400))) g.clubs[cid].transferBudget = Math.max(0, v) / cmGbp(g, cid);
   }
 }
 

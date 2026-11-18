@@ -22,6 +22,7 @@ import { clubAt, getContract } from './cmMem';
 import { humanClub_600a50 } from './cmWageGame';
 import { cmActive } from './cmPlayerData';
 import { isHumanClub } from './humans';
+import { cmGbp } from './cmMoney';
 
 const GBP = 0.86;
 /** CM_VALUE_MGR=sel (målinger mod oraklet, databasestørrelse 2): kun de valgte landes managere er i hukommelsen (Staff.cmMem er Maximum's) */
@@ -136,11 +137,11 @@ export function cmReceivershipValues(g: GameState, cid: number): void {
   const ps = Object.values(g.players).filter((p) => p.club === cid && !p.loan && p.contract && !p.virtual);
   if (!ps.length) return;
   const M = cmValueMem(g, [cid]);
-  const club = M.W.clubOf(cid);
+  const club = M.W.clubOf(cid), k = cmGbp(g, cid);
   for (const p of ps.slice(0, 50)) {
     const st = M.W.staffOf(p);
     if (!st) continue;
     const v = playerValue_4d0c60(M.c, st, club, 0, -1, 1) | 0;
-    if (v < Math.round(p.value * GBP)) { p.value = v / GBP; delete p.cmAsk; }
+    if (v < Math.round(p.value * k)) { p.value = v / k; delete p.cmAsk; }
   }
 }

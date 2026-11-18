@@ -31,7 +31,7 @@ import { combineScore, positionFactor } from './engine/grid/subs';
 import { playerRecord } from './engine/grid/aiTeam';
 import { clubRepMem } from './cmPlayerData';
 import { STAFF_LIMITS } from './staff';
-import { bookBlock, K as CMK, GBP as GBP_CM } from './cmFinance';
+import { bookBlockEur, K as CMK } from './cmFinance';
 import type { GameState, Staff, StaffRole } from './types';
 import { recordStaffMove } from './staffMoves';
 
@@ -322,8 +322,8 @@ export function cmStaffOffersDaily(g: GameState): void {
     }
     if (from && fee > 0) {
       // bogført som en transfer (Finance::add_bought 0x599890 / add_sold 0x599800) – kompensationen er buddets beløb (+0x1b, 0x8e7602)
-      club.balance -= fee; club.finance.transfersOut += fee; bookBlock(g, club, CMK.bought, Math.round(fee * GBP_CM));
-      from.balance += fee; from.finance.transfersIn += fee; bookBlock(g, from, CMK.sold, Math.round(fee * GBP_CM));
+      club.balance -= fee; club.finance.transfersOut += fee; bookBlockEur(g, club, CMK.bought, fee);
+      from.balance += fee; from.finance.transfersIn += fee; bookBlockEur(g, from, CMK.sold, fee);
     }
     const role = o.role;
     recordStaffMove(s, o.club, fee);
@@ -335,7 +335,7 @@ export function cmStaffOffersDaily(g: GameState): void {
     s.wage = o.wage;
     s.expires = `${Number(g.date.slice(0, 4)) + o.years}-06-30`;
     // stabens kontrakt underskrives også gennem 0x8c38b0 → Finance::add_signing_on 0x5998e0 (blokken)
-    if (o.signOn) { club.balance -= o.signOn; club.finance.signOn = (club.finance.signOn ?? 0) + o.signOn; bookBlock(g, club, CMK.signOn, Math.round(o.signOn * GBP_CM)); }
+    if (o.signOn) { club.balance -= o.signOn; club.finance.signOn = (club.finance.signOn ?? 0) + o.signOn; bookBlockEur(g, club, CMK.signOn, o.signOn); }
     addNews({ cat: 'contract', key: 'cm.staffAccepts', params: { last: s.last, name, club: club.short || club.name } });
   }
 }

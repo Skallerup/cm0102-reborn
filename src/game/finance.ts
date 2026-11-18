@@ -6,6 +6,7 @@ import { rng } from './rng';
 import { legacyExtended } from './rules';
 import type { Club, ClubFinance, Fixture } from './types';
 import { book, cmFinOn, hasLeagueMoney, nationLoaded, K as CMK } from './cmFinance';
+import { cmGbp } from './cmMoney';
 
 export function weeklyWages() {
   const g = gs();
@@ -196,7 +197,7 @@ export function seasonPrizeMoney(inScope?: (compId: string) => boolean) {
 
 export function addPrize(c: Club, amount: number) {
   // original DB i ægte tilstand: præmien i originalens Prize Money-post (pokal-/Europapræmierne er stadig spillets – ikke porteret)
-  if (cmFinOn(gs())) { book(gs(), c, CMK.prize, Math.round(amount * 0.86)); return; }
+  if (cmFinOn(gs())) { book(gs(), c, CMK.prize, Math.round(amount * cmGbp(gs(), c.id))); return; }
   c.balance += amount;
   c.finance.prize += amount;
 }

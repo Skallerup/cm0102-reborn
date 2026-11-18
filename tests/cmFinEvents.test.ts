@@ -48,7 +48,7 @@ describe('process_club_finance_events 0x59ed70', () => {
     cmFinEvents(g, nc, r, true, zero);
     const amount = r.tm[K.investments] - inv0;
     expect(amount).toBeGreaterThan(20_000_000);                      // (omdømme + 1000)·1000 + gælden
-    expect(balGbp(nc)).toBe(debt + amount);
+    expect(balGbp(g, nc)).toBe(debt + amount);
     expect(r.s165).toBe(0);
     expect(nc.transferBudget).toBeGreaterThan(0);                    // 0x598800 efter indskuddet (krogen fra sim.ts)
     if (r.chair) expect(r.chair[1]).toBe(1);                         // Resources rand(20) + 1, under 5 → trukket igen

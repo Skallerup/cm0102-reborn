@@ -55,7 +55,7 @@ import { addNews } from './state';
 import { cmStaffOn, cmRand, clubRepMem, cmPlanKick } from './cmPlayerData';
 import { boardEnv, staffJobInterest } from './cmBoardGame';
 import { repFor, scoreStaffForJob, type BoardEnv, type Person } from './cmBoard';
-import { bookBlock, K as CMK, GBP } from './cmFinance';
+import { bookBlockEur, K as CMK } from './cmFinance';
 import { cmStaffDemand, cmStaffRestGbp, cmStaffCompensation } from './cmStaff';
 import { asOwner, forEachHuman, isHumanClub } from './humans';
 import { careerEnd } from './careers';
@@ -350,9 +350,9 @@ export function cmStaffMovesDaily(g: GameState): void {
     // nyheden FØR kontrakten flyttes (0x8dbef0 kaldes fra try_complete_offer før skiftet)
     forEachHuman(() => staffMoveNews(g, s, buyer, seller, m.job));
     if (seller && m.fee > 0) {
-      buyer.balance -= m.fee; buyer.finance.transfersOut += m.fee; bookBlock(g, buyer, CMK.bought, Math.round(m.fee * GBP));
+      buyer.balance -= m.fee; buyer.finance.transfersOut += m.fee; bookBlockEur(g, buyer, CMK.bought, m.fee);
       buyer.transferBudget = Math.max(0, buyer.transferBudget - m.fee);
-      seller.balance += m.fee; seller.finance.transfersIn += m.fee; bookBlock(g, seller, CMK.sold, Math.round(m.fee * GBP));
+      seller.balance += m.fee; seller.finance.transfersIn += m.fee; bookBlockEur(g, seller, CMK.sold, m.fee);
     }
     const last = s.career?.[s.career.length - 1];
     if (last && !last.to && s.club) { last.to = g.date; last.why = 'poached'; }

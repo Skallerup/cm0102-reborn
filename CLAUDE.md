@@ -68,7 +68,7 @@ regler, arkitektur og faldgruber.
   fælles skabelon `scripts/seo/layout.ts` (+ public/seo.css), sitemap-indeks `sitemap.xml` → `sitemap-<gruppe>.xml`, `llms.txt`.
   Hvem der får en spillerside: `keep` i build-seo.ts (~13k sider, ~190 MB HTML). `CONTENT_DATE` = lastmod – hæv ved mærkbare
   ændringer. Url'erne skal være stabile (navn → slug; dubletter + klub). Nye stier: SW `globIgnores` + `navigateFallbackDenylist`.
-- Den originale database og den moderne må ikke dele økonomi: alt 2001-specifikt ligger bag `g.econ` (kun original).
+- Økonomien: originalens LOGIK (cmFinance.ts m.fl.) gælder alle CM-databaser i ægte tilstand (`cmFinOn`; 2026/27 fra 18/11, beløb i £ omregnet pr. liga med `cmGbp`, cmMoney.ts); 2001-specifikke TAL/kalibreringer ligger bag `g.econ` (kun original), CM Reborns egen økonomi (econ26) kun i udvidet tilstand/ældre 2026-spil.
 - Prisniveau: `src/game/econ.ts`. Nye spil med den originale database får `GameState.econ` (faktor pr. liga, målt i
   newgame.ts) – faste beløb ganges med `econ(liga)`, og `valueFromCA` bruger originalens værdikurve. Nye faste beløb
   i økonomien skal ganges med `econ(...)`. Mål med `scripts/econ-run.ts`.

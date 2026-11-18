@@ -51,7 +51,7 @@ function compare(day: number) {
     const act = g.activeNations?.includes(c.nation), hid = g.leagues[c.league]?.hidden;
     const k = act ? 'aktivt land' : `${hid ? 'skjult' : 'andet land'} ${rep(c.id) >= 5000 ? 'rep≥5000' : 'rep<5000'}`;
     const e = (grp[k] ??= [0, 0, 0]); e[0]++; if (c.balance < 0) e[1]++; if (or.balance < 0) e[2]++;
-    if (c.balance < 0 && or.balance >= 0 && rows.length < 30) rows.push(`  ${c.name} (${g.nations[c.nation]?.name}${hid ? ', skjult' : ''}) rep ${rep(c.id)} tilsk ${g.cmCrowd?.[c.id]?.[0]} · saldo ${Math.round(balGbp(c))}/${or.balance} · billet ${r.ty[K.gate]}/${or.thisYear.gate} · tv ${r.ty[K.tv]}/${or.thisYear.tv} · løn ${r.ty[K.wages]}/${or.thisYear.wages} · merch ${r.ty[K.merch]}/${or.thisYear.merch}`);
+    if (c.balance < 0 && or.balance >= 0 && rows.length < 30) rows.push(`  ${c.name} (${g.nations[c.nation]?.name}${hid ? ', skjult' : ''}) rep ${rep(c.id)} tilsk ${g.cmCrowd?.[c.id]?.[0]} · saldo ${Math.round(balGbp(g, c))}/${or.balance} · billet ${r.ty[K.gate]}/${or.thisYear.gate} · tv ${r.ty[K.tv]}/${or.thisYear.tv} · løn ${r.ty[K.wages]}/${or.thisYear.wages} · merch ${r.ty[K.merch]}/${or.thisYear.merch}`);
   }
   console.log(`d${day} ${g.date} parrede klubber [antal, i minus spillet, i minus originalen]: ${JSON.stringify(grp)}`);
   console.log(rows.join('\n'));

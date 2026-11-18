@@ -3,7 +3,8 @@ import { Info } from '../help';
 import { currentWageBill, estimateGate, fairTicketPrice, financePeriod, nextBudgetInfo, seasonForecast, sponsorOffers, sponsorSeasonValue } from '../../game/finance';
 import type { Club, ClubFinance } from '../../game/types';
 import { squad } from '../../game/state';
-import { cmFinPeriod, GBP as CM_GBP, type FinKey } from '../../game/cmFinance';
+import { cmFinPeriod, type FinKey } from '../../game/cmFinance';
+import { cmGbp } from '../../game/cmMoney';
 import { ageOn } from '../../game/dates';
 import { isInternational, u21Squad } from '../../game/international';
 import { CxDrop } from '../classic';
@@ -335,7 +336,7 @@ export function ClassicFinanceBody({ view, clubId }: { view: 'finances' | 'incom
   const cmKey = (rows: [keyof ClubFinance | null, string][], i: number) => (g.cmFin?.[c.id] ? (rows === INCOME ? CM_IN : CM_OUT)[i] : null);
   const val = (rows: [keyof ClubFinance | null, string][], i: number, p: Period) => {
     const ck = cmKey(rows, i), k = rows[i][0];
-    if (ck) return (cmFinPeriod(g, c.id, ck, p) ?? 0) / CM_GBP;
+    if (ck) return (cmFinPeriod(g, c.id, ck, p) ?? 0) / cmGbp(g, c.id);
     return k ? financePeriod(c, k, p) : 0;
   };
   const sum = (rows: [keyof ClubFinance | null, string][], p: Period) => rows.reduce((s, _r, i) => s + val(rows, i, p), 0);

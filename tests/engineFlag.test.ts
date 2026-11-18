@@ -86,8 +86,8 @@ describe('kampmotoren bag et flag', () => {
     expect(p.cmRepMem).toBeDefined();
     expect(g.cmCrowd?.[g.userClub]).toBeDefined();
     expect(g.cmCompRep?.[+g.clubs[g.userClub].league.slice(2)]).toBeGreaterThan(0);
-    // 2001-verdenens moduler gælder ikke (økonomi, kondition …)
-    expect(g.cmFin).toBeUndefined();
+    // (MODERN_PARITY 4) originalens økonomi (finance.cpp) med club.dat-saldoen; 2001-tallene (g.econ) gælder ikke
+    expect(g.cmFin?.[g.userClub]).toBeDefined();
     expect(g.econ).toBeUndefined();
     const e = start(w, 'Brentford FC', 'extended');
     expect(e.options.engine).toBeUndefined();

@@ -20,7 +20,8 @@
 import type { Club, GameState } from './types';
 import { addNews } from './state';
 import { asOwner, forEachHuman, isHumanClub } from './humans';
-import { balGbp, book, GBP, K, wealthBand, type CmFinRec } from './cmFinance';
+import { balGbp, book, K, wealthBand, type CmFinRec } from './cmFinance';
+import { cmGbp } from './cmMoney';
 import { clubRepMem } from './cmPlayerData';
 import { finHooks } from './hooks';
 
@@ -103,7 +104,7 @@ function eventNews(g: GameState, c: Club, r: CmFinRec, type: number, amount: num
     case 6: head = 'cmfe.h.sponsor'; body = 'sponsor'; break;
     default: head = 'cmfe.h.plc'; body = 'plc';
   }
-  const n = { cat: 'finance' as const, key: head, params: { club: c.name, amt: amount / GBP, funds: funds / GBP, body }, link: { kind: 'club' as const, id: c.id } };
+  const n = { cat: 'finance' as const, key: head, params: { club: c.name, amt: amount / cmGbp(g, c.id), funds: funds / cmGbp(g, c.id), body }, link: { kind: 'club' as const, id: c.id } };
   if (type === 2 || type === 7) {
     forEachHuman(() => {
       const me = g.clubs[g.userClub];
@@ -131,7 +132,7 @@ function leaveState(c: Club, r: CmFinRec, to: number): void {
 /** én klubs begivenheder (`flag` = 0x59ed70's andet argument) */
 export function cmFinEvents(g: GameState, c: Club, r: CmFinRec, flag: boolean, rand: Rand): void {
   const rep = repOf(g, c);
-  const band = wealthBand(balGbp(c), rep);
+  const band = wealthBand(balGbp(g, c), rep);
   const decay = () => { if (c.facilities === 20 && rep < 7250 && rand(10) === 0) c.facilities--; };
   if (band === -2) {
     if (r.s165 !== 1) {
@@ -209,13 +210,13 @@ function neglect(g: GameState, c: Club, r: CmFinRec, rep: number, rand: Rand): v
 function invest(g: GameState, c: Club, amount: number): number {
   book(g, c, K.investments, amount);
   const tb = finHooks.budget?.(g, c.id) ?? 0;
-  c.transferBudget = Math.max(0, tb) / GBP;
+  c.transferBudget = Math.max(0, tb) / cmGbp(g, c.id);
   return tb;
 }
 
 /** 0x59dd40: "The board has injected X to help with the club's running costs." (type 4) */
 function injection(g: GameState, c: Club, r: CmFinRec, rand: Rand): boolean {
-  const rep = repOf(g, c), bal = balGbp(c), band = wealthBand(bal, rep);
+  const rep = repOf(g, c), bal = balGbp(g, c), band = wealthBand(bal, rep);
   let k: number;
   if (band === -2) k = 2.0;
   else if (band === -1) k = rep >= 3500 ? 0.4 : 2.0;
@@ -236,7 +237,7 @@ function injection(g: GameState, c: Club, r: CmFinRec, rand: Rand): boolean {
 function boost(g: GameState, c: Club, r: CmFinRec, rand: Rand): boolean {
   const nn = nationName(g, c.nation);
   if (NO_BOOST.has(nn) || r.status === 2 || r.status === 3) return false;
-  const rep = repOf(g, c), bal = balGbp(c), band = wealthBand(bal, rep);
+  const rep = repOf(g, c), bal = balGbp(g, c), band = wealthBand(bal, rep);
   const ch = chairOf(g, c, r);
   let k: number;
   if (band === -2) k = rep > 3750 ? 0.125 : 0.075;
@@ -290,7 +291,7 @@ function boost(g: GameState, c: Club, r: CmFinRec, rand: Rand): boolean {
 function payDebts(g: GameState, c: Club, r: CmFinRec, rand: Rand): boolean {
   const rep = repOf(g, c);
   if (rep < 4750 || plcOf(g, c) || NO_DEBT.has(nationName(g, c.nation))) return false;
-  const bal = balGbp(c), band = wealthBand(bal, rep);
+  const bal = balGbp(g, c), band = wealthBand(bal, rep);
   const k = band === -2 ? 0.25 : band === -1 ? 0.1 : 0.001;
   const ch = chairOf(g, c, r);
   let amount: number;
@@ -318,7 +319,7 @@ function payDebts(g: GameState, c: Club, r: CmFinRec, rand: Rand): boolean {
 
 /** 0x59e940: "New Board take control of X" (type 2) – gælden ryddes, ny formand */
 function takeover(g: GameState, c: Club, r: CmFinRec, rand: Rand): boolean {
-  const rep = repOf(g, c), bal = balGbp(c), band = wealthBand(bal, rep);
+  const rep = repOf(g, c), bal = balGbp(g, c), band = wealthBand(bal, rep);
   const k = band === -2 ? (rep > 4250 ? 0.4 : 0.25) : band === -1 ? (rep > 4250 ? 0.2 : 0.05) : 0.001;
   let q: number;
   const div = g.cmFinRaw?.[c.id]?.[0] ?? -1;

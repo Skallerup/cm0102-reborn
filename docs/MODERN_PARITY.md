@@ -274,3 +274,19 @@ Målt (`scripts/cm-staff-2026.ts`, PL frø 1, Brentford, 1/7-26 → 30/6-27; fø
 ugeløn PL sum €1.533k → €1.093k (median €4.950 → €1.598 = £275), Championship €875k → €437k (median €2.900 → €1.245); Staff Search 0 → 9.984
 (heraf 7.967 øvrige ikke-spillere). Åbent som på 2001: for få genansættelser mod fyringerne (2001: 61/12 mod oraklets 173/151 – ORIGINAL_PARITY).
 2001 bit for bit uændret (02ec66f5a29512d1, measure 3db81ff9f1ae). Kræver et nyt spil.
+
+## Status punkt 4 – økonomien (18/11): originalens klubøkonomi på 2026/27
+
+`cmFinOn(g)` (cmFinance.ts) = cmLogic + ikke draft + spil, hvis spilstart byggede posterne (g.cmFin – cmFinanceNewGame kører nu på cmLogic); for den
+originale database uændret. Dermed kører finance.cpp (init_for_club 0x5961d0, lønsum 0x598370, merchandise/sæsonkort, månedens poster, renter,
+Other, Investments, Ground Maintenance, kampens billet-/tv-penge 0x59a5d0, ligapræmie 0x682e10, tv-rettigheder 0x683010, udbytte 0x59cfa0,
+begivenhederne 0x59ed70), bonusserne 0x4ca6d0 og Transfer Funds 0x598800 (cmRefreshTransferBudgets) på nye 2026/27-spil; spillets weeklyWages/
+monthlyIncome/udbytte/budget er slået fra som i 2001. Pengene: posterne i £, omregnet med klubbens cmGbp-faktor (cmMoney.ts) i stedet for 0,86
+overalt (book, saldoen, bookBlockEur for køb/salg/signing on, Finance-skærmen, nyhederne); spillets egne UEFA-præmier (2026-formatet) bogføres i
+Prize Money (addPrize). Data: world-cm.json får `cmRaw.clubFin` (club.dat saldo/tilskuere/træningsanlæg, £); world.json uændret. Startsaldoen er
+nu originalens (club.dat ± rand) og træningsanlægget databasens. Ligatabellen LEAGUE_MONEY passer (2026-dataenes turnerings-id'er = 3.9.68's).
+Målt (`scripts/cm-finance-2026.ts`, PL frø 1, Brentford, 1/7-26 → 30/6-27, før measure 4b00b0f6a586 → efter 83bb7199b6ff): klubber i minus
+(alle 656) start 0 → 25, slut 97 → 110; PL i minus 0 → 3 af 20 (saldo-median €71,7m → €58,3m), Championship 7 → 1 af 24 (€2,4m → €12,2m);
+PL omsætning €7,42 mia. → €3,77 mia., løn 60 % → 127 %; Championship 97 % → 82 %; tv PL €2,45 mia. → €52m (første sæson: ingen tv-rettigheder
+– FinanceTable findes ikke ved create_table, som i originalen), præmier PL €444m → €771m, udbytte PL 0 → €420m. 2001 bit for bit uændret
+(9e533ca1b89331df, measure 84dd659f8e7f). Kræver et nyt spil.

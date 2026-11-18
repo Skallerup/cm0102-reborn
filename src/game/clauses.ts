@@ -7,7 +7,8 @@ import { hash01 } from './rng';
 import { addNews, gs } from './state';
 import type { Club, ContractClauses, Player } from './types';
 import { econ } from './econ';
-import { bookBlock, K as CMK, GBP as GBP_CM } from './cmFinance';
+import { bookBlock, K as CMK } from './cmFinance';
+import { cmGbp } from './cmMoney';
 
 const pname = (p: Player) => `${p.first} ${p.last}`.trim();
 const round = (v: number, to: number) => Math.round(v / to) * to;
@@ -135,6 +136,7 @@ export function afterAppearance(p: Player, goals: number, cleanSheet = false, cm
       // Beløbene i pund fra kontrakten (cmBonusGbp – originalens heltal); ældre kontrakter uden dem: de viste beløb omregnet.
       const t = c.cmType ?? 2;
       if (t !== 5 && t !== 6) {
+        const GBP_CM = cmGbp(g, club.id);
         const gb = c.cmBonusGbp ?? [Math.round((c.goalBonus ?? 0) * GBP_CM), Math.round((c.cmAssistBonus ?? 0) * GBP_CM), Math.round((c.cleanSheetBonus ?? 0) * GBP_CM)];
         const parts = [gb[0] > 0 ? gb[0] * goals : 0, gb[1] > 0 ? gb[1] * cm.assists : 0, cleanSheet && gb[2] > 0 ? gb[2] * cm.assists : 0];
         for (const gbp of parts) {

@@ -317,7 +317,9 @@ if (ORIGINAL && existsSync(new URL('./national-original.json', import.meta.url))
   w.nations.forEach((n, i) => { if (nt.nations[n.name]) byIdx[i] = nt.nations[n.name]; });
   (w as unknown as { nationalTeams: unknown }).nationalTeams = { nations: byIdx, history: nt.history.filter((h) => h.y <= 2001) };
 }
-// originalens økonomi (saldo, tilskuere, træningsanlæg) bruges kun af den originale database
+// originalens økonomi (saldo, tilskuere, træningsanlæg – club.dat +101/+115/+127): world.json kun for den originale database; 2026/27 (MODERN_PARITY 4,
+// originalens økonomi i ægte tilstand) i world-cm.json som cmRaw.clubFin – world.json uændret
+const clubFin2026 = ORIGINAL ? null : Object.fromEntries(Object.entries(w.clubFinance ?? {}).filter(([k]) => keptClubs.has(Number(k))));
 if (!ORIGINAL) delete w.clubFinance;
 else for (const k of Object.keys(w.clubFinance ?? {})) if (!keptClubs.has(Number(k))) delete w.clubFinance![Number(k)];
 
@@ -417,6 +419,7 @@ if (cmSide && files['nation.dat']) {
   cmSide.nationFr = fr;
 }
 if (cmSide && nationLang2026) cmSide.nationLang = nationLang2026;
+if (cmSide && clubFin2026 && Object.keys(clubFin2026).length) cmSide.clubFin = clubFin2026;
 if (cmSide) delete w.cmRaw;
 // (MODERN_PARITY 5+6) stabens ikke-spillerpost (staff[11] fra parseCM0102 – i world.json kun for den originale database) for den stab, world-filen har
 if (cmSide && staffNp2026.size) cmSide.staffNp = Object.fromEntries([...staffNp2026].sort((a, b) => a[0] - b[0]));

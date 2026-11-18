@@ -1,4 +1,5 @@
-// Originalens klubøkonomi (cm0102.exe 3.9.68, finance.cpp – FinanceTable/Finance) – kun den originale database i ægte tilstand (cmActive).
+// Originalens klubøkonomi (cm0102.exe 3.9.68, finance.cpp – FinanceTable/Finance) – CM-databaser i ægte tilstand (cmFinOn): den originale database
+// og (MODERN_PARITY 4, 18/11) nye 2026/27-spil, hvis spilstart byggede posterne (g.cmFin).
 // Afkodet 12/11-2026; noterne ~/cm0102-engine/notes/finance.md, docs/ENGINE_PORT_PLAN.md "Økonomi".
 //
 // Posten (0x167 bytes pr. klub, FinanceTable::get_club_finance 0x5a0590): +0 saldo (i64), +0xc ugens lønsum, +0x18 sæsonkortholdere,
@@ -17,12 +18,13 @@
 // Ikke porteret: se ENGINE_PORT_PLAN.md (transferbudgettet 0x598800, stadionudvidelserne i 0x59cfa0,
 //   pokal-/Europapræmierne, bonusserne 0x4ca6d0, 2004-stadionflytningerne øverst i 0x59b9c0).
 //
-// Pengene: originalen regner i hele pund; spillet gemmer euro (Club.balance, newgame.ts GBP = 0,86). Posterne regnes i pund som i
-// originalen og bogføres i rec.tm/ty (pund) og Club.balance/Club.finance (euro = pund / 0,86). Saldoen i pund = round(balance · 0,86).
+// Pengene: originalen regner i hele pund; spillet gemmer euro (Club.balance). Posterne regnes i pund som i originalen og bogføres i rec.tm/ty
+// (pund) og Club.balance/Club.finance (euro = pund / k). k = klubbens €→£-faktor cmGbp (cmMoney.ts): den originale database 0,86 (newgame.ts),
+// 2026/27 faktoren pr. liga (databasens lønninger/spillets – pengeprincip B). Saldoen i pund = round(balance · k).
 // Talrækken er spillets egen (cmRand pr. klub og dag) – originalens kald af 0x90cfc0 i samme rækkefølge pr. klub.
 import { NO_CARRY, registerCarry } from './carry';
 import type { Club, Fixture, GameState, Player, Staff } from './types';
-import { cmActive, cmLogic, cmRand, clubRepMem } from './cmPlayerData';
+import { cmLogic, cmRand, clubRepMem } from './cmPlayerData';
 import { cmWeekday } from './cmCalendar';
 import { cmUpdateDay } from './cmSeason';
 import { seasonStartDay } from './cmFitness';
@@ -38,6 +40,7 @@ import { CM_CUP_PRIZES } from './data/cmCupPrizes';
 import { CM_CUP_TABLES } from './data/cmCupTables';
 import { CM_EURO_ROUNDS } from './data/cmEuroTables';
 import { cmLeagueCupStructure } from './cmCups';
+import { cmGbp } from './cmMoney';
 
 export const GBP = 0.86;
 const trunc = Math.trunc;
@@ -76,11 +79,16 @@ export interface CmFinRec {
   tm: number[]; lm: number[]; ty: number[]; ly: number[];
 }
 
-/** økonomien gælder (den originale database i ægte tilstand, ikke draft-ligaen) */
-export const cmFinOn = (g: GameState): boolean => cmActive(g) && !g.draft && !!g.cmFin;
+/** (MODERN_PARITY 4) originalens økonomi gælder: en CM-database i ægte tilstand (cmLogic – for den originale database = cmActive), ikke
+ *  draft-ligaen, og spilstarten byggede posterne (g.cmFin – cmFinanceNewGame). Ældre 2026/27-spil uden posterne beholder spillets økonomi (econ26). */
+export const cmFinOn = (g: GameState): boolean => cmLogic(g) && !g.draft && !!g.cmFin;
+/** klubbens €→£-faktor (cmMoney.ts; den originale database: 0,86) */
+const gbp = (g: GameState, c: Club): number => cmGbp(g, c.id);
+/** club.dat's økonomi ved start [saldo, tilskuere, træningsanlæg] (£): world.json for den originale database, world-cm.json (cmRaw.clubFin) for 2026/27 */
+export const clubFinOf = (world: CMWorld): CMWorld['clubFinance'] => world.clubFinance ?? world.cmRaw?.clubFin;
 
 const blank = () => new Array(N_KEYS).fill(0);
-export const balGbp = (c: Club) => Math.round(c.balance * GBP);
+export const balGbp = (g: GameState, c: Club) => Math.round(c.balance * gbp(g, c));
 const repOf = (g: GameState, c: Club) => (clubRepMem(g, c.id) << 16) >> 16;
 const nationName = (g: GameState, n: number) => g.nations[n]?.name ?? '';
 const nation7e = (g: GameState, c: Club) => g.cmNation7e?.[c.nation] ?? 3;
@@ -133,7 +141,7 @@ export function book(g: GameState, c: Club, key: number, amt: number): void {
   const r = g.cmFin?.[c.id];
   if (!r || !amt) return;
   r.tm[key] += amt; r.ty[key] += amt;
-  const eur = amt / GBP, sign = INCOME.has(key) ? 1 : -1;
+  const eur = amt / gbp(g, c), sign = INCOME.has(key) ? 1 : -1;
   c.balance += sign * eur;
   const ck = CLUB_KEY[key];
   if (ck) c.finance[ck] = (c.finance[ck] ?? 0) + eur;
@@ -147,6 +155,10 @@ export function bookBlock(g: GameState, c: Club | undefined, key: number, amt: n
   const r = c && cmFinOn(g) ? g.cmFin?.[c.id] : undefined;
   if (!r || !amt) return;
   r.tm[key] += amt; r.ty[key] += amt;
+}
+/** bookBlock med beløbet i spillets € (omregnet med klubbens faktor – den originale database: round(€ · 0,86)) */
+export function bookBlockEur(g: GameState, c: Club | undefined, key: number, eur: number): void {
+  if (c) bookBlock(g, c, key, Math.round(eur * gbp(g, c)));
 }
 
 // ------------------------------------------------------------------------------------------------ Finance::get_wealth_band 0x5986b0
@@ -224,14 +236,16 @@ export function cmClubDataFill_829960(g: GameState, world: CMWorld, seed: number
     const stat = g.cmClubStat?.[cid];
     if (stat) { const n = stat.slice() as typeof stat; n[1] = cr[1]; g.cmClubStat![cid] = n; }   // samme felt (+0x77, club.dat 119); kopi – world-filens række deles
     if (cr[2] <= 0) cr[2] = Math.max(Math.trunc(r2 / 1000), 12500) + rand(7500);
-    const c = g.clubs[cid], fac = world.clubFinance?.[cid]?.[2];
+    const c = g.clubs[cid], fac = clubFinOf(world)?.[cid]?.[2];
     if (c && fac !== undefined && !(fac >= 1 && fac <= 20)) c.facilities = Math.min(20, Math.max(1, Math.trunc(rep / 500)));
   }
 }
 
-/** spillets nye spil: posterne og startsaldoen for alle klubber (newgame.ts, efter staben – kun cmActive) */
+/** spillets nye spil: posterne og startsaldoen for alle klubber (newgame.ts, efter staben – CM-database i ægte tilstand: den originale database
+ *  og 2026/27 med world-cm.json's club.dat-økonomi; startsaldoen i £ omregnes med klubbens faktor) */
 export function cmFinanceNewGame(g: GameState, world: CMWorld, seed: number): void {
-  if (!cmActive(g) || g.draft || !world.cmRaw?.fin) return;
+  const cf = clubFinOf(world);
+  if (!cmLogic(g) || g.draft || !world.cmRaw?.fin || !cf) return;
   const raw = world.cmRaw;
   g.cmFinRaw = Object.fromEntries(Object.entries(raw.fin!).map(([k, v]) => [k, v.slice()]));
   g.cmNation85 = (raw.nation85 ?? []).slice();
@@ -240,7 +254,7 @@ export function cmFinanceNewGame(g: GameState, world: CMWorld, seed: number): vo
   // formændene: den manglende del af ikke-spillerposten som originalens spilstart (sub_535a80 – cmStaffInit.ts), puljen = world-filens stab
   const pool: NpTemplate[] = (world.staff ?? []).filter((r) => r[11]).map((r) => npTemplate(npFromWorld(r[7], r[11]!, r[10]?.[7] ?? 0)));
   for (const c of Object.values(g.clubs)) {
-    const fin = world.clubFinance?.[c.id];
+    const fin = cf[c.id];
     const rand = cmRand(seed, c.id, 0x5961d0);
     const { bal, status } = initForClub(g, c, fin?.[0] ?? 0, rand);
     let chair: CmFinRec['chair'] = null;
@@ -256,7 +270,7 @@ export function cmFinanceNewGame(g: GameState, world: CMWorld, seed: number): vo
     const s166 = b6d(c) && band !== 0 ? (band > 0 && band <= 2 ? 5 : 15) : 10;
     g.cmFin[c.id] = { wb: 0, top: 0, st: 0, share: f32(0.1), wk: 3, s165: 0, s166, status, chair, tm: blank(), lm: blank(), ty: blank(), ly: blank() };
     if (!fin) continue;
-    if (world.clubBalance?.[c.id] === undefined) c.balance = bal / GBP;
+    if (world.clubBalance?.[c.id] === undefined) c.balance = bal / gbp(g, c);
     supporterInit(g, c, cmRand(seed, c.id, 0x68f130));
   }
   // ugens lønsum ved start (FinanceTable 0x59a370 → refresh_all_wage_bills 0x59cf50)
@@ -306,6 +320,7 @@ const supporters = (g: GameState, c: Club) => g.cmSup?.[c.id] ?? 5000;
 export type WageIdx = { loanOut: Map<number, Player[]>; staff: Map<number, Staff[]> };
 export function updateWageBill(g: GameState, c: Club, r: CmFinRec, idx?: WageIdx): void {
   let wb = 0, top = 0, n = 0;
+  const k0 = gbp(g, c);
   // kontrakterne i CONTRACT_MANAGER (+0): kun personerne i hukommelsen – i et ikke-indlæst land er resten af truppen ikke med i originalen
   const all = nationLoaded(g, c.nation);
   // kontrakterne er klubbens: en spiller flyttet mellem moderklub og B-hold (0x4cbd20) har stadig kontrakten hos den gamle klub (cmBTeam.ts)
@@ -316,16 +331,16 @@ export function updateWageBill(g: GameState, c: Club, r: CmFinRec, idx?: WageIdx
     if (!p.contract || (!all && !inMemory(g, c, p))) continue;
     n++;
     // 0x5983fa: lejekontrakten trækkes fra (spillets model: lejeklubben betaler andelen `share`)
-    const w = Math.round(p.contract.wage * (p.loan ? p.loan.share ?? 1 : 1) * GBP);
+    const w = Math.round(p.contract.wage * (p.loan ? p.loan.share ?? 1 : 1) * k0);
     if (w > top) top = w;
     wb += w;
   }
   // udlejede spillere: moderklubben betaler resten (spillets lejemodel)
-  for (const p of idx ? idx.loanOut.get(c.id) ?? [] : Object.values(g.players)) if (p.loan?.from === c.id && p.contract && (all || inMemory(g, c, p))) wb += Math.round(p.contract.wage * (1 - (p.loan.share ?? 1)) * GBP);
+  for (const p of idx ? idx.loanOut.get(c.id) ?? [] : Object.values(g.players)) if (p.loan?.from === c.id && p.contract && (all || inMemory(g, c, p))) wb += Math.round(p.contract.wage * (1 - (p.loan.share ?? 1)) * k0);
   // stabens kontrakter (+0x19f/+0x1b3/+0x1cf)
   for (const s of idx ? idx.staff.get(c.id) ?? [] : Object.values(g.staff)) {
     if (s.club !== c.id || !s.wage || (!all && g.cmStaffMem && !s.cmMem)) continue;
-    const w = Math.round(s.wage * GBP);
+    const w = Math.round(s.wage * k0);
     if (w > top) top = w;
     wb += w;
   }
@@ -479,7 +494,7 @@ export function cmFinanceDay(g: GameState): void {
 
 /** 0x59bfef: klubber uden for de indlæste ligaer – saldoen holdes inden for grænser efter status */
 function clampInactive(g: GameState, c: Club, r: CmFinRec, rand: (n: number) => number): void {
-  let b = balGbp(c);
+  let b = balGbp(g, c);
   const st = r.status;
   if (st === 3) { if (b < -10000) b = -10000; else if (b > 2500) b = 2500; }
   else if (st === 2) {
@@ -489,14 +504,14 @@ function clampInactive(g: GameState, c: Club, r: CmFinRec, rand: (n: number) => 
   } else if (b < -2_250_000) b = rand(5) === 0 ? 175000 : -2_250_000;
   else if (b > 2_250_000) b = rand(5) === 0 ? -175000 : 2_250_000;
   else return;
-  c.balance = b / GBP;
+  c.balance = b / gbp(g, c);
 }
 
 /** månedens slutning (0x59c17d–0x59cc78) for én klub */
 function monthEndClub(g: GameState, c: Club, r: CmFinRec, rand: (n: number) => number): void {
   const rep = repOf(g, c);
   // 0x59c212: dyb gæld → nyhed og spillere vil sælges (Media 0x74ae60, STAFF_CONTRACT 0x867700) – ikke porteret; tallene trækkes
-  if (wealthBand(balGbp(c), rep) === -2) { rand(rep); rand(20000); }
+  if (wealthBand(balGbp(g, c), rep) === -2) { rand(rep); rand(20000); }
   // 0x59c3d4: stadionet (+0x4c/+0x4d)
   const [, , h4c, h4d] = rawOf(g, c);
   if (capOf(g, c) >= 0) {
@@ -511,7 +526,7 @@ function monthEndClub(g: GameState, c: Club, r: CmFinRec, rand: (n: number) => n
   // 0x59c4ba: divisionen har ingen tabel → billetindtægt af omdømme · tilskuere
   if (!hasTable(g, c)) book(g, c, K.gate, ftol(rep * avgOf(g, c) * 0.005));
   // 0x59c516: renter
-  const bal = balGbp(c);
+  const bal = balGbp(g, c);
   if (bal > 0) book(g, c, K.interestIn, ftol(bal * 0.0025));
   else {
     const rate = bal > -1000 * rep ? 0.012 : bal > -2500 * rep ? 0.018 : 0.024;
@@ -732,7 +747,7 @@ function tvRights(g: GameState, c: Club, compId: string, amount: number, year: n
   book(g, c, K.tv, amount);
   if (!isHumanClub(c.id)) return;
   const season = CALENDAR_YEAR.has(nationName(g, c.nation)) ? String(year) : `${year}/${String((year + 1) % 100).padStart(2, '0')}`;
-  asOwner(c.id, () => addNews({ cat: 'finance', key: 'cmfe.h.tv', params: { club: c.name, amt: amount / GBP, comp: compId, season, body: 'tv' }, link: { kind: 'club', id: c.id } }));
+  asOwner(c.id, () => addNews({ cat: 'finance', key: 'cmfe.h.tv', params: { club: c.name, amt: amount / gbp(g, c), comp: compId, season, body: 'tv' }, link: { kind: 'club', id: c.id } }));
 }
 /** club +0x5b (sidste sæsons division): klubbens liga lige før sæsonskiftet (cmBeforeRollover) */
 let lastDiv = new Map<number, number>();
@@ -808,7 +823,7 @@ function seasonUpdateDay(g: GameState, c: Club): string {
 
 /** end_season_for_nation 0x59cdd0 for én klub: season_end_club_update (udbyttet) og sæsonens blok → sidste sæson */
 function seasonEndClub(g: GameState, c: Club, r: CmFinRec, rand: (n: number) => number): void {
-  const rep = repOf(g, c), bal = balGbp(c);
+  const rep = repOf(g, c), bal = balGbp(g, c);
   // 0x59db58: udbyttet (stadionarbejderne før det – ikke porteret)
   let D = 0;
   const T0 = Math.max(rep * 8000, 500000);
@@ -826,7 +841,7 @@ function seasonEndClub(g: GameState, c: Club, r: CmFinRec, rand: (n: number) => 
   }
   if (D) {
     book(g, c, K.dividends, D);
-    c.lastDividend = Math.round(D / GBP);
+    c.lastDividend = Math.round(D / gbp(g, c));
   }
   r.ly = r.ty; r.ty = blank();
 }

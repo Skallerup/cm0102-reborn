@@ -103,6 +103,8 @@ export interface CMWorld extends WorldData {
     nationFr?: Record<number, number[]>;
     /** (2026/27, MODERN_PARITY 12) nation +0x77/+0x78/+0x79 (sprogene) pr. nationsindeks – originalens sprogtabel (cmLanguage.ts) */
     nationLang?: number[][];
+    /** (2026/27, MODERN_PARITY 4) originalens økonomi ved start (£) som CMWorld.clubFinance: [saldo (club.dat 101), gns. tilskuere (115), træningsanlæg (127)] */
+    clubFin?: Record<number, [number, number, number]>;
     /** bestyrelse/managerjob (cmBoard.ts): nation +0x75 (u8), +0x85 (s8), +0x88 (i32) pr. nationsindeks */
     nationBoard?: [number, number, number][];
     /** bestyrelse/managerjob: formanden (club.dat +0xbf → staff.dat): [ikke-spillerpost +0x16, +0x1d (Patience), personpost +0x57 (Ambition),
