@@ -32,7 +32,7 @@ while (g.date < until && days++ < 420) {
   for (const n of g.news) { if (n.id < lastNews) break; news[n.key] = (news[n.key] ?? 0) + 1; }
   lastNews = g.nextId.news;
   for (const f of Object.values(g.fixtures)) {
-    if (!f.played || done.has(f.id)) continue;
+    if (!f.result || done.has(f.id)) continue;
     done.add(f.id);
     const c = g.comps[f.comp];
     const kind = f.comp === 'FRIENDLY' || f.comp.startsWith('FR') ? 'venskab' : f.comp === 'RES' ? 'reserve' : c?.type ?? f.comp;
@@ -44,7 +44,7 @@ while (g.date < until && days++ < 420) {
   }
 }
 console.log(`--- slut ${g.date} (${Math.round((performance.now() - t0) / 1000)} s)`);
-console.log(`kampe pr. slags: ${JSON.stringify(fr)}`);
+console.log(`kampe pr. slags: ${JSON.stringify(fr)} · baggrundskampe (fixture −2, cmRes): ${g.cmRes?.played ?? 0}`);
 console.log(`vejr (engelske ligakampe, grov type): ${JSON.stringify(wx)}`);
 if (Object.keys(prec).length) console.log(`  nedbør 0x923010 (0 tørt, 1 vådt, 2 støv, 3 byger, 5 skybrud, 6–9 sne/slud/hagl): ${JSON.stringify(prec)} · temperatur (5 °C-bånd): ${JSON.stringify(temp)}`);
 const aw = g.cmAw?.won ?? [];

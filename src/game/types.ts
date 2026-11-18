@@ -1202,6 +1202,8 @@ export interface GameState {
   cmDisc?: import('./cmDiscipline').CmDiscState;
   /** CM 01/02's priser (cmAwards.ts – original DB i ægte tilstand): månedens karakterer, Comp_Stats, managernes point og vinderne */
   cmAw?: import('./cmAwards').CmAwState;
+  /** (MODERN_PARITY 12) 2026/27: databasens tidligere vindere for prisskærmen (staff_comp_history.dat i world-cm.json) – ellers cmAwards.json */
+  cmAwHist?: Record<number, [number, (string | null)[]][]>;
   /** formændene (world.cmRaw.chair: [np +0x16, np +0x1d Patience, staff +0x57 Ambition, nation]) og nationernes +0x75/+0x85/+0x88 */
   cmChair?: Record<number, [number, number, number, number]>;
   cmNationBoard?: [number, number, number][];

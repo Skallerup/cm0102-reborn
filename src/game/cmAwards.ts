@@ -43,7 +43,7 @@ import { leagueRows } from './competitions';
 import { ageOn, addDays, day, month, weekday } from './dates';
 import { asOwner, isHumanClub } from './humans';
 import { addNews } from './state';
-import { cmActive, clubRepMem, repMemOf } from './cmPlayerData';
+import { cmActive, cmLogic, clubRepMem, repMemOf } from './cmPlayerData';
 import { naturalMask } from './engine/grid/aiTacticChoice';
 import type { Fixture, GameState, MatchReport, Player } from './types';
 
@@ -53,7 +53,7 @@ const HISTORY = AW.history as unknown as Record<string, [number, (string | null)
 const BY_NAME = new Map(AWARDS.map((a) => [a[1], a[0]]));
 export const cmAwardName = (id: number) => AWARDS[id]?.[1] ?? '';
 /** databasens tidligere vindere (staff_comp_history.dat): [år, [1., 2., 3.]] */
-export const cmAwardHistory = (id: number) => HISTORY[String(id)] ?? [];
+export const cmAwardHistory = (id: number, g?: GameState) => (g?.cmAwHist ? g.cmAwHist[id] : HISTORY[String(id)]) ?? [];
 
 export type CmAwKind = 'month' | 'mgrMonth' | 'year' | 'mgrYear' | 'team' | 'week';
 export interface CmAwDef { id: number; kind: CmAwKind; tier: number; age?: number; rep: [number, number] }
@@ -101,8 +101,18 @@ export interface CmAwState {
   wk?: Record<string, [number, number, string][]>;
 }
 
+// (MODERN_PARITY 12) 2026/27 i ægte tilstand: nye spil får prisernes tilstand ved spilstarten (cmAwNewGame) – ældre 2026-spil og udvidet tilstand
+// beholder spillets egne priser (awards.ts)
 export function cmAwOn(g: GameState): boolean {
-  return cmActive(g) && !g.draft;
+  return (cmActive(g) || (cmLogic(g) && !!g.cmAw)) && !g.draft;
+}
+
+/** (2026/27) spilstarten: AWARD_MANAGER 0x413180 for England og databasens tidligere vindere (world-cm.json `awHist`) for prisskærmens priser */
+export function cmAwNewGame(g: GameState, hist: Record<number, [number, (string | null)[]][]> | undefined): void {
+  if (g.draft) return;
+  st(g);
+  const ids = [...ENGLAND_AWARDS.map((d) => d.id), ...INTL_AWARDS].filter((x) => x >= 0);
+  g.cmAwHist = Object.fromEntries(ids.filter((x) => hist?.[x]).map((x) => [x, hist![x]]));
 }
 
 function st(g: GameState): CmAwState {

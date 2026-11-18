@@ -23,6 +23,7 @@ import { friendlyInvite, friendlyInviteFor } from './screens/FriendlyClassic';
 import { authentic } from '../game/rules';
 import { cmActive } from '../game/cmPlayerData';
 import { rebornOn } from './reborn';
+import { cmAwOn } from '../game/cmAwards';
 
 // ---------- pladser (slots) som Shell stiller til rådighed ----------
 
@@ -292,7 +293,7 @@ const HUBS: Partial<Record<ScreenName, Hub>> = {
   },
   history: { title: mgrName, tabs: MGR_TABS, sub: MGR_SUB },
   // ægte tilstand med den originale database: originalens Awards-skærm med sin egen titel ("English Awards", AwardsClassic.tsx)
-  awards: { title: (g, _r, st) => (cmActive(g) ? st : mgrName(g)), tabs: MGR_TABS, sub: MGR_SUB },
+  awards: { title: (g, _r, st) => (cmAwOn(g) ? st : mgrName(g)), tabs: MGR_TABS, sub: MGR_SUB },
   jobs: { title: mgrName, tabs: MGR_TABS, sub: MGR_SUB },
   community: { tabs: MGR_TABS, sub: MGR_SUB },
   managers: { tabs: MGR_TABS, sub: MGR_SUB },

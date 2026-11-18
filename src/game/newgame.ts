@@ -37,6 +37,7 @@ import { cmRand, fillReputation } from './cmPlayerData';
 import { npFromWorld, npTemplate, staffConvert, staffInitRecord, type NpTemplate } from './cmStaffInit';
 import { initialLanguages } from './cmLanguage';
 import { cmActive, cmLogic, cmMediaOn } from './cmPlayerData';
+import { cmAwNewGame } from './cmAwards';
 import { cmGbpMeasure } from './cmMoney';
 import { cmStartDate } from './cmCalendar';
 import { cmMainNation, cmSeasonOn } from './cmSeason';
@@ -202,6 +203,8 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     if (raw.city33) g.cmCity33 = raw.city33.slice();
     // (MODERN_PARITY 12) originalens vejr (cmWeather.ts): opdateringens weather.cfg og byerne – forkørslen 0x5cc850 kører 0x922ee0 fra 1/1
     if (raw.wx) g.cmWxTab = { r: raw.wx.r, c: { ...raw.wx.c } };
+    // (MODERN_PARITY 12) originalens priser (cmAwards.ts) og databasens tidligere vindere
+    cmAwNewGame(g, raw.awHist);
   }
   if (cm?.cmRaw && season < 2020) {
     g.cmClubRep = { ...cm.cmRaw.clubRep }; g.cmNationRep = cm.cmRaw.nationRep.slice();

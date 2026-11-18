@@ -30,7 +30,7 @@ export function AwardsClassic() {
   const [sel, setSel] = useRouteState<number>('awId', defs[0]?.id ?? -1);
   const cur = defs.find((d) => d.id === sel) ?? defs[0];
   const wins = cur ? cmAwardWins(g, cur.id) : [];
-  const past = cur ? cmAwardHistory(cur.id) : [];
+  const past = cur ? cmAwardHistory(cur.id, g) : [];
   const kind = cur?.def?.kind;
   const [teamIdx, setTeamIdx] = useRouteState<number>('awTeam', 0);
   const title = scope === 'intl' ? t('cmaw.title.intl') : t('cmaw.title.nation', { nation: 'English' });

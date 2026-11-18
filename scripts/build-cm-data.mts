@@ -375,6 +375,32 @@ if (cmSide && existsSync(join(dir, 'weather.cfg'))) {
   cmSide.wx = { r, c };
   console.error(`vejret: ${n} områder, ${Object.keys(c).length} klubber med by`);
 }
+// (MODERN_PARITY 12) prisernes tidligere vindere (staff_comp_history.dat, 58 bytes – som scripts/build-cm-awards.py for 2001): [år, [1., 2., 3.]]
+// pr. pris-id, nyeste først; navnene slås op på +0x33 i first/second/common_names.dat (opdateringens id'er peger ofte forkert – vist som originalen)
+if (cmSide && files['staff_comp_history.dat'] && files['staff_comp.dat']) {
+  const names = (f: string) => {
+    const m = new Map<number, string>(), b = files[f], D = new DataView(b), dec = new TextDecoder('latin1');
+    for (let o = 0; o + 60 <= b.byteLength; o += 60) { const u = new Uint8Array(b, o, 51), e = u.indexOf(0); m.set(D.getInt32(o + 0x33, true), dec.decode(u.subarray(0, e < 0 ? 51 : e))); }
+    return m;
+  };
+  const fst = names('first_names.dat'), snd = names('second_names.dat'), com = names('common_names.dat');
+  const nAw = Math.floor(files['staff_comp.dat'].byteLength / 101);
+  const H = new DataView(files['staff_comp_history.dat']), hist: Record<number, [number, (string | null)[]][]> = {};
+  for (let o = 0; o + 58 <= H.byteLength; o += 58) {
+    const aid = H.getInt32(o + 4, true);
+    if (aid < 0 || aid >= nAw) continue;
+    const places: (string | null)[] = [];
+    for (let k = 0; k < 3; k++) {
+      const f = H.getInt32(o + 0xa + 16 * k, true), s2 = H.getInt32(o + 0xe + 16 * k, true), c = H.getInt32(o + 0x12 + 16 * k, true);
+      if (f < 0 && s2 < 0 && c < 0) { places.push(null); continue; }
+      places.push(snd.has(s2) ? [fst.get(f) ?? '', snd.get(s2)!].filter(Boolean).join(' ') : (com.get(c) || fst.get(f) || ''));
+    }
+    while (places.length && places[places.length - 1] === null) places.pop();
+    (hist[aid] ??= []).push([H.getUint16(o + 8, true), places]);
+  }
+  for (const v of Object.values(hist)) v.sort((a, b) => b[0] - a[0]);
+  cmSide.awHist = hist;
+}
 if (cmSide) delete w.cmRaw;
 // (MODERN_PARITY 5+6) stabens ikke-spillerpost (staff[11] fra parseCM0102 – i world.json kun for den originale database) for den stab, world-filen har
 if (cmSide && staffNp2026.size) cmSide.staffNp = Object.fromEntries([...staffNp2026].sort((a, b) => a[0] - b[0]));
