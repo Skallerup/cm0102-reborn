@@ -745,6 +745,7 @@ function resolveTie(comp: Competition, f: Fixture) {
     else if (res.pens) tie.winner = res.pens[0] > res.pens[1] ? f.home : f.away;
     else tie.winner = rng.chance(0.5) ? tie.a : tie.b;
   }
+  if (tie.winner) compHooks.cupTieDone?.(comp, f, tie.winner, tie.winner === tie.a ? tie.b : tie.a);
   tieNews(comp, tie);
   advance(comp, tie.stage);
 }

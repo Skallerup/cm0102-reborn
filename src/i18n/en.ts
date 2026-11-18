@@ -2339,6 +2339,7 @@ export const en: Record<string, string> = {
   "cmfe.h.stand": "Stand closed",
   "cmfe.h.terrace": "Terracing closed due to lack of maintainance",
   "cmfe.h.facilities": "Stadium Facilities reduced",
+  "cmfe.h.tv": "{club} given {amt}",
   "cmfe.b.fundsNow": "The board has injected {amt}.\n\nThere is now {funds} available to buy new players.",
   "cmfe.b.fundsSmall": "The board has injected {amt}.\n\nUnfortunately there is a only a very small amount of money available for new players.",
   "cmfe.b.fundsNone": "The board has injected {amt} into the club accounts.\n\nUnfortunately there is still no money available to buy new players.",
@@ -2357,6 +2358,7 @@ export const en: Record<string, string> = {
   "cmfe.b.seats": "The Health and Safety Inspector has closed part of the west stand, reducing the seating capacity by {n}.",
   "cmfe.b.noSeats": "The Health and Safety Inspector has closed the north stand. There are no longer any seats remaining in the stadium.",
   "cmfe.b.terrace": "The Health and Safety Inspector has closed the part of the east terrace, reducing the stadium capacity to {n}.",
+  "cmfe.b.tv": "{club} have received {amt} for {comp} TV rights for the {season} season.",
   "cmfe.b.heating": "The pitch's undersoil heating has failed and the board have decided that repairing it would be an unnecassary expense.",
   // gamle gemte spil (cmConvert.ts)
   "cxs.conv.old": "Old version",

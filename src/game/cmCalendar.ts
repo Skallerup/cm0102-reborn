@@ -240,6 +240,8 @@ function tvMoves(g: GameState, comp: string, row: CmRound): void {
     }
     if (!best) continue;
     moveFixture(best, D, slot);
+    // 0x685c4a: fixture +0x3b = tv-pladsens art (process_match_income 0x59aab1: tv-pengene; 0x85d618: tilskuerne)
+    best.tv = kind;
     list = list.filter((f) => f !== best);
   }
 }

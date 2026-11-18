@@ -36,6 +36,7 @@ export function origNewsCat(t: number): number {
 /** originalens nyhedstype → vores nyhedsnøgle(r) (NewsItem.key; `board.cm` med params.k) – kun hvor portens kode siger det entydigt */
 export const ORIG_NEWS_KIND: Record<number, string> = {
   0x1e: 'cmint.h.req',                                   // 0x76f1a0 cmIntlSquad.ts
+  0x1f: 'cmfe.h.tv',                                     // 0x48ea40 tv-rettighederne (cmFinance.ts tvRights)
   0x20: 'cmint.wd',                                      // 0x76f7d0/0x76fa40
   0x21: 'cmint.ci',                                      // 0x76fd10/0x76ff40
   0x22: 'cmint.rq',                                      // 0x7701f0/0x7703f0

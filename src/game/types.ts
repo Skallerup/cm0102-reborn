@@ -667,6 +667,8 @@ export interface Fixture {
   result?: MatchResultShort;
   /** (runde 10A) tidspunktet på dagen i originalens kalender: 0 formiddag, 1 eftermiddag, 2 aften (skemaets +4 / tv-pladsen) */
   slot?: number;
+  /** fixture +0x3b: tv-flytningens art (League::move_fixtures_for_tv 0x685640 0x685c4a: tv-pladsens +0xb) – mangler = 0xff (ingen tv) */
+  tv?: number;
   /** (cmWeather.ts) vejret og banen ved kampstarten som originalens engine+0x4756/+1: [vind, nedbør, temperatur, byens vind, banen] */
   wx?: number[];
   /** (kalenderen, runde 10C) originalens fixture-koder fra turneringens rundetabel (Cup-runden +0x07/+0x09/+0x0d/+0x0f/+0x17, skemaet) –
@@ -1225,6 +1227,8 @@ export interface GameState {
   /** (økonomien, cmFinance.ts) originalens Finance-post pr. klub (pund), databasens felter [division, PLC, stadion +0x4c/+0x4d],
    *  nation +0x85, "A Lower Division", tilhængernes tillid (MANAGER_MANAGER +8) og spilstartens år */
   cmFin?: Record<number, import('./cmFinance').CmFinRec>;
+  /** pokalernes præmiepulje cup +0x28 (Cup::pay_round_prize_money 0x522240 trækker fra; sat én gang af konstruktøren i spilstarten) pr. tabel-nøgle */
+  cmCupFund?: Record<string, number>;
   /** CM 01/02: transfersummens resterende månedlige rater (TRANSFER_MANAGER +0x872, 0x8caee0) */
   cmInstalments?: { amount: number; buyer: number; seller: number; left: number; player: number }[];
   cmFinRaw?: Record<number, number[]>;

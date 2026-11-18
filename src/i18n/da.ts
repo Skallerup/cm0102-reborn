@@ -2370,6 +2370,7 @@ export const da: Record<string, string> = {
   "cmfe.h.stand": "Tribune lukket",
   "cmfe.h.terrace": "Ståpladser lukket på grund af manglende vedligeholdelse",
   "cmfe.h.facilities": "Stadionets faciliteter forringet",
+  "cmfe.h.tv": "{club} får {amt}",
   "cmfe.b.fundsNow": "Bestyrelsen har skudt {amt} ind.\n\nDer er nu {funds} til rådighed til køb af nye spillere.",
   "cmfe.b.fundsSmall": "Bestyrelsen har skudt {amt} ind.\n\nDesværre er der kun et meget lille beløb til rådighed til nye spillere.",
   "cmfe.b.fundsNone": "Bestyrelsen har skudt {amt} ind på klubbens konti.\n\nDesværre er der stadig ingen penge til rådighed til køb af nye spillere.",
@@ -2388,6 +2389,7 @@ export const da: Record<string, string> = {
   "cmfe.b.seats": "Sikkerhedsinspektøren har lukket en del af vesttribunen, så antallet af siddepladser er reduceret med {n}.",
   "cmfe.b.noSeats": "Sikkerhedsinspektøren har lukket nordtribunen. Der er ikke længere nogen siddepladser tilbage på stadionet.",
   "cmfe.b.terrace": "Sikkerhedsinspektøren har lukket en del af østtribunens ståpladser, så stadionets kapacitet er reduceret til {n}.",
+  "cmfe.b.tv": "{club} har modtaget {amt} for tv-rettighederne til {comp} for sæsonen {season}.",
   "cmfe.b.heating": "Banens undervarme er brudt sammen, og bestyrelsen har besluttet, at en reparation ville være en unødvendig udgift.",
   // gamle gemte spil (cmConvert.ts)
   "cxs.conv.old": "Gammel version",

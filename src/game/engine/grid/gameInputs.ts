@@ -321,7 +321,7 @@ export function fixtureCodesOf(g: GameState, f: Fixture | undefined, compId: str
   const c = compId ? g.comps[compId] : undefined;
   const id = compId ? CM_COMP_ID(g, compId) : -1;
   const rep = id >= 0 ? g.cmCompRep?.[id] ?? 0 : 0;
-  const base = { w30: 0, w32: 0, b34: 0, b3a: 2, b3b: 0xff, b3c: 0, firstLeg: null as [number, number] | null, flags38: 0, compId: id, compRep: rep, table: null as GameFixtureCodes['table'] };
+  const base = { w30: 0, w32: 0, b34: 0, b3a: 2, b3b: f?.tv ?? 0xff, b3c: 0, firstLeg: null as [number, number] | null, flags38: 0, compId: id, compRep: rep, table: null as GameFixtureCodes['table'] };
   // (forsæsonen) originalens venskabskampe (cmFriendly.ts): fixture +0x14 = NULL, +0x3a = 1 (0x5c6710/0x85cba0 – venskabskamp)
   if (compId === 'FRIENDLY') return { ...base, b3a: 1, compId: -1 };
   if (!c || c.type === 'league') {

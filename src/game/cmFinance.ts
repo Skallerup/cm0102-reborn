@@ -27,12 +27,17 @@ import { cmWeekday } from './cmCalendar';
 import { cmUpdateDay } from './cmSeason';
 import { seasonStartDay } from './cmFitness';
 import { addDays } from './dates';
-import { gs, squad } from './state';
+import { addNews, gs, squad } from './state';
+import { asOwner, isHumanClub } from './humans';
 import { compHooks } from './hooks';
 import { npFromWorld, npTemplate, personalFill_535a80, staffInitRecord, type NpTemplate } from './cmStaffInit';
 import type { CMWorld } from './data/cm0102';
 import { cmFinEvents } from './cmFinEvents';
 import { linkedClub } from './cmBTeam';
+import { CM_CUP_PRIZES } from './data/cmCupPrizes';
+import { CM_CUP_TABLES } from './data/cmCupTables';
+import { CM_EURO_ROUNDS } from './data/cmEuroTables';
+import { cmLeagueCupStructure } from './cmCups';
 
 export const GBP = 0.86;
 const trunc = Math.trunc;
@@ -462,10 +467,13 @@ export function cmFinanceDay(g: GameState): void {
     }
     if (monthEnd) { r.lm = r.tm; r.tm = blank(); }
   }
-  // sæsonopdateringens dag (nøglelandstabellen +0x15, 0x5d5ae0): sæsonens poster → sidste sæson, udbyttet
+  // dagen før sæsonopdateringen (0x5d5ae0 0x5d5e21: i morgen 0x54c5b0(1) = nøglelandstabellens +0x15 → end_season_for_nation 0x59cdd0):
+  // sæsonens poster → sidste sæson, udbyttet. (Før 18/11 på selve dagen – efter sæsonskiftet, så create_table's tv-penge 0x683010 blev
+  // flyttet til sidste sæson.)
+  const tomorrow = addDays(date, 1).slice(5);
   for (const c of Object.values(g.clubs)) {
     const r = g.cmFin![c.id];
-    if (r && active(g, c) && date.slice(5) === seasonUpdateDay(g, c)) seasonEndClub(g, c, r, cmRand(g.seed ?? 0, c.id, dn, 0x59cfa0));
+    if (r && active(g, c) && tomorrow === seasonUpdateDay(g, c)) seasonEndClub(g, c, r, cmRand(g.seed ?? 0, c.id, dn, 0x59cfa0));
   }
 }
 
@@ -703,16 +711,28 @@ export function cmLeagueTv(g: GameState, compId: string, clubs: number[]): void 
   if (!lm) return;
   const comp = g.comps[compId];
   if (comp && comp.nation >= 0 && !nationLoaded(g, comp.nation)) return;
+  const year = typeof comp?.meta?.cmYear === 'number' ? comp.meta.cmYear : g.season;
   for (const cid of clubs) {
     const c = g.clubs[cid];
     if (!c) continue;
-    if (lm.tv) book(g, c, K.tv, lm.tv);
+    if (lm.tv) tvRights(g, c, compId, lm.tv, year);
     else if (lm.tvBy) {
       // club +0x5b = sidste sæsons division (spillets lgHistory: ligaen ved sidste sæsonafslutning)
       const last = lastDivOf(g, c);
-      for (const [div, amt] of lm.tvBy) if (last === div) book(g, c, K.tv, amt);
+      for (const [div, amt] of lm.tvBy) if (last === div) tvRights(g, c, compId, amt, year);
     }
   }
+}
+/** nøglelandstabellens +0x17 = 0 (key_nation_build_table 0x667150: 8 rækker – landene, hvis sæson følger kalenderåret): årstallet 0x669630 "%d" */
+const CALENDAR_YEAR = new Set(['Finland', 'Russia', 'Sweden', 'Norway', 'Japan', 'South Korea', 'United States', 'Brazil']);
+/** 0x683010's ene klub: Finance 0x5987c0 (+0x158 denne måned, +0xb8 sæsonen, saldoen) og nyheden 0x48ea40 – type 0x1f [klub, turnering, beløb,
+ *  turneringens år +0x40], kun når et menneske styrer klubben (0x7875e0 → 0x7861e0). Teksten 0x48eb00: "{club} given {cash}" / "{club} have
+ *  received {cash} for {comp} TV rights for the {år} season." – året 0x669630 (klubbens nøglelandsrække: "2002/03", kalenderårslande "2002"). */
+function tvRights(g: GameState, c: Club, compId: string, amount: number, year: number): void {
+  book(g, c, K.tv, amount);
+  if (!isHumanClub(c.id)) return;
+  const season = CALENDAR_YEAR.has(nationName(g, c.nation)) ? String(year) : `${year}/${String((year + 1) % 100).padStart(2, '0')}`;
+  asOwner(c.id, () => addNews({ cat: 'finance', key: 'cmfe.h.tv', params: { club: c.name, amt: amount / GBP, comp: compId, season, body: 'tv' }, link: { kind: 'club', id: c.id } }));
 }
 /** club +0x5b (sidste sæsons division): klubbens liga lige før sæsonskiftet (cmBeforeRollover) */
 let lastDiv = new Map<number, number>();
@@ -727,6 +747,55 @@ function lastDivOf(_g: GameState, c: Club): number { return lastDiv.get(c.id) ??
 export const hasLeagueMoney = (compId: string) => { const m = /^CM(\d+)$/.exec(compId); return !!m && LEAGUE_MONEY[+m[1]] !== undefined; };
 
 compHooks.leagueDone = (comp, order) => { const g = gs(); if (cmFinOn(g)) cmLeaguePrize(g, comp.id, order); };
+
+// ------------------------------------------------------------------------------------------------ pokalerne: rundens præmie
+
+/** Cup::pay_round_prize_money 0x522240(vinder, taber, runde = fixture +0x34, fixture): rundepostens +0x60/+0x64 (w, l); −1 → puljen cup +0x28 /
+ *  (antal runder +0x3c − runden) / rundens kampe +0x1a, og er taberens også −1: vinderen 3/4, taberen 1/4 (idiv mod nul, 0x5222ae); ellers vinderen
+ *  hele andelen og taberen sin faste præmie. Begge beløb bogføres i Prize (0x5999a0: +0xa8/+0x148, saldoen) og trækkes fra puljen (som aldrig
+ *  fyldes op igen – konstruktøren sætter den i spilstarten 0x830520). Nyheden 0x48e3e0 (0x1a, "awarded … for qualifying for the <runde>", kun
+ *  til et menneske og beløb ≥ omdømme·50) er IKKE porteret – rundenavnet 0x4bfa30 mangler. */
+export function cmRoundPrize(g: GameState, key: string, fund0: number, w: number, l: number, nRounds: number, round: number, ties: number, winner: Club, loser: Club | undefined): void {
+  const fund = (g.cmCupFund ??= {});
+  fund[key] ??= fund0;
+  if (w === -1) {
+    const pot = idiv(idiv(fund[key], nRounds - round), ties);
+    if (l === -1) { w = idiv(pot * 3, 4); l = idiv(pot, 4); } else w = pot;
+  }
+  if (w) { book(g, winner, K.prize, w); fund[key] -= w; }
+  if (l && loser) { book(g, loser, K.prize, l); fund[key] -= l; }
+}
+/** de europæiske klasser (euro.py/gen_euro.py): puljen +0x28 fra konstruktøren (kun UefaCup 0x9023c6: 3.000.000; EuropeanCup, EurSuperCup og
+ *  IntertotoCup sætter den ikke) og spillets trin → rundetabellen (CL: kvalifikationen stage −1, slutspillet stage 12 – samme objekt) */
+const EURO_FUND: Record<string, number> = { UEFA: 3_000_000 };
+const euroTable = (id: string, stage: string | undefined): string | null =>
+  id === 'CL' ? (/^Q\d$/.test(stage ?? '') ? 'CLQ' : stage === 'QF' || stage === 'SF' || stage === 'F' ? 'CLKO' : null) : id in EURO_TABLE_IDS ? id : null;
+const EURO_TABLE_IDS: Record<string, true> = { UEFA: true, ESC: true, UIC: true };
+compHooks.cupTieDone = (comp, f, winner, loser) => {
+  const g = gs();
+  const W = g.clubs[winner];
+  if (!cmFinOn(g) || !f.cm || !W) return;
+  const L = g.clubs[loser], round = f.cm.b34;
+  const key = comp.meta?.cmCup, euro = comp.meta?.cmEuro;
+  if (typeof key === 'string') {
+    const pz = CM_CUP_PRIZES[key], tab = CM_CUP_TABLES[key];
+    if (!pz || !tab) return;
+    const year = typeof comp.meta?.cmYear === 'number' ? comp.meta.cmYear : g.season;
+    const prize = pz.years?.[year] ?? pz.prize, rounds = tab.years?.[year] ?? tab.rounds;
+    const e = prize[round], r = rounds[round];
+    if (!e || !r) return;
+    // +0x1a: rundens kampe (Liga Cup'en: efter antallet i Europa – byes-tabellen)
+    const euros = (comp.meta?.cmEntry as Record<number, number[]> | undefined)?.[3]?.length;
+    const ties = key === 'ENG_LC' && euros !== undefined ? cmLeagueCupStructure(year, euros)?.[round]?.[1] ?? r[11] : r[11];
+    cmRoundPrize(g, key, pz.fund, e[0], e[1], rounds.length, round, ties, W, L);
+  } else if (typeof euro === 'string') {
+    const tk = euroTable(euro, f.stage);
+    const rows = tk ? CM_EURO_ROUNDS[tk] : undefined, r = rows?.[round];
+    // slot, id, idx, b0b, f0d, f0f, f11, venue, b17, teams, ties, new, first, replays, legs, gap, pay, prizeW, prizeL
+    if (!rows || !r) return;
+    cmRoundPrize(g, euro, EURO_FUND[euro] ?? 0, r[17], r[18], rows.length, round, r[10], W, L);
+  }
+};
 
 // ------------------------------------------------------------------------------------------------ sæsonens slutning
 
