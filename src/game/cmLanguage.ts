@@ -74,7 +74,8 @@ export function initialLanguages(g: GameState, p: Player, lg?: number[]): Record
     for (let k = 0; k + 1 < lg.length; k += 2) days.set(lg[k], lg[k + 1]);
     const Lc = g.nations[g.clubs[p.club]?.nation ?? -1]?.lang?.[0];
     if (p.club && Lc && Lc !== nat.lang[0]) {
-      const since = p.cmJoined ? dayNo(ORIGINAL_START) - dayNo(p.cmJoined) : 0;
+      // [0xdd6ec8] = spillets start: England 14/7-2001; (MODERN_PARITY 12) 2026/27 spillets startdato
+      const since = p.cmJoined ? dayNo((g.dbYear ?? 2001) < 2020 ? ORIGINAL_START : g.date) - dayNo(p.cmJoined) : 0;
       const d = (days.get(Lc) ?? 0) > since ? days.get(Lc)! : since;
       days.set(Lc, (d << 16) >> 16);
     }

@@ -210,6 +210,8 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     cmResNewGame(g);
     g.cmBTeams = true;
     // (MODERN_PARITY 12) venskabskampene (cmFriendly.ts): opdateringens nation.dat-felter
+    // (MODERN_PARITY 12) sprogene (nation +0x77/+0x78/+0x79 – cmLanguage.ts: PlayerStats 0x7bfd50, kontraktens +0x4f, indlæringen 0x5d2fb3)
+    if (raw.nationLang) g.nations = g.nations.map((n, i) => ({ ...n, lang: raw.nationLang![i]?.slice() ?? [0, 0, 0] }));
     if (raw.nationFr) g.cmNationFr = Object.fromEntries(Object.entries(raw.nationFr).map(([k, v]) => [k, v.slice()]));
   }
   if (cm?.cmRaw && season < 2020) {
@@ -356,7 +358,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     // CM 01/02: trøjenummeret fra databasen (dubletter og manglende numre ordnes efter, at trupperne er fyldt op)
     if (F.number !== undefined && (r[F.number] as number) > 0) p.number = r[F.number] as number;
     // originalens sprogtabel ved spilstarten (PlayerStats 0x7bfd50 – cmLanguage.ts): kontraktens +0x4f lave nibble regnes af den
-    if (rt && cm!.cmRaw && season < 2020) { const lang = initialLanguages(g, p, rt.lg); if (lang) p.cmLang = lang; }
+    if (rt && cm!.cmRaw && (season < 2020 || cmRawLogic)) { const lang = initialLanguages(g, p, rt.lg); if (lang) p.cmLang = lang; }
     addPlayer(p);
   }
 

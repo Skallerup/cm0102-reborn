@@ -96,6 +96,8 @@ export interface CMWorld extends WorldData {
     /** (2026/27, MODERN_PARITY 12) venskabskampene (Friendly 0x5c4680/0x5c4cb0/0x5c5040): nation.dat [+0x86, +0x84, +0x7e, +0x8e, +0x75, +0x71,
      *  +0x110, +0x114, +0x118] pr. nation-id – som scripts/build-preseason.mts' CM_NATION_FR for 3.9.60 */
     nationFr?: Record<number, number[]>;
+    /** (2026/27, MODERN_PARITY 12) nation +0x77/+0x78/+0x79 (sprogene) pr. nationsindeks – originalens sprogtabel (cmLanguage.ts) */
+    nationLang?: number[][];
     /** bestyrelse/managerjob (cmBoard.ts): nation +0x75 (u8), +0x85 (s8), +0x88 (i32) pr. nationsindeks */
     nationBoard?: [number, number, number][];
     /** bestyrelse/managerjob: formanden (club.dat +0xbf → staff.dat): [ikke-spillerpost +0x16, +0x1d (Patience), personpost +0x57 (Ambition),

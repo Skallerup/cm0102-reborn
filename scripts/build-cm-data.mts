@@ -298,6 +298,8 @@ if (w.cmRaw?.prefs) {
   for (const k of Object.keys(w.cmRaw.clubPrefs ?? {})) if (!keptClubs.has(Number(k))) delete w.cmRaw.clubPrefs![Number(k)];
 }
 // nationernes sprog (nation +0x77/+0x78/+0x79) kun i den originale database (originalens sprogtabel, cmLanguage.ts)
+// (MODERN_PARITY 12) 2026/27: i world-cm.json (cmRaw.nationLang pr. nationsindeks) – world.json uændret
+const nationLang2026 = ORIGINAL ? null : (w.nations as { lang?: number[] }[]).map((n) => n.lang ?? [0, 0, 0]);
 if (!ORIGINAL) for (const n of w.nations as { lang?: number[] }[]) delete n.lang;
 // dommere: kun fra lande med spilbare ligaer (kampene dømmes af hjemmelandets dommere)
 if (w.officials) { const playable = new Set(w.leagues.filter((l) => !l.hidden).map((l) => l.nation)); w.officials = w.officials.filter((o) => playable.has(o[2])); }
@@ -407,6 +409,7 @@ if (cmSide && files['nation.dat']) {
   for (let o = 0; o + 290 <= N.byteLength; o += 290) fr[N.getInt32(o, true)] = [N.getInt16(o + 0x86, true), N.getUint8(o + 0x84), N.getUint8(o + 0x7e), N.getInt16(o + 0x8e, true), N.getUint8(o + 0x75), N.getInt32(o + 0x71, true), N.getInt32(o + 0x110, true), N.getInt32(o + 0x114, true), N.getInt32(o + 0x118, true)];
   cmSide.nationFr = fr;
 }
+if (cmSide && nationLang2026) cmSide.nationLang = nationLang2026;
 if (cmSide) delete w.cmRaw;
 // (MODERN_PARITY 5+6) stabens ikke-spillerpost (staff[11] fra parseCM0102 – i world.json kun for den originale database) for den stab, world-filen har
 if (cmSide && staffNp2026.size) cmSide.staffNp = Object.fromEntries([...staffNp2026].sort((a, b) => a[0] - b[0]));
