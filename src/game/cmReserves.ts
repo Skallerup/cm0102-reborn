@@ -27,7 +27,7 @@
 // originalens profil (gittermotoren for ~100 kampe om dagen koster for meget tid; CM_RES_GRID=1 slår den til), landsholdsophold 0x7757d0
 // (ingen – som cmVirtual.ts), +0x60 (spillets klubber har én division), 0x5acbe0's −2-filter (spillets kampprogram har ingen −2-kampe).
 import type { GameState, Fixture, MatchReport } from './types';
-import { cmActive, cmRand, clubRepMem } from './cmPlayerData';
+import { cmActive, cmLogic, cmRand, clubRepMem } from './cmPlayerData';
 import { fixturesOn, gs, squadIds } from './state';
 import { addDays } from './dates';
 import { cmUpdateDay } from './cmSeason';
@@ -52,7 +52,11 @@ export function setResMatchPlayer(fn: Player_): void { playMatch = fn; }
 
 /** kun til tests, der ikke bruger reservekampene (kalender-/tilmeldingstests): springer de daglige reservekampe over */
 export const RES_SKIP = { on: false };
-export const cmResOn = (g: GameState) => cmActive(g) && !g.draft;
+// (MODERN_PARITY 12) 2026/27 i ægte tilstand: nye spil får tilstanden ved spilstarten (cmResNewGame – grupperne bygges på den første dag som
+// for 2001); ældre 2026-spil og udvidet tilstand beholder spillets egne reservekampe (reserves.ts)
+export const cmResOn = (g: GameState) => (cmActive(g) || (cmLogic(g) && !!g.cmRes)) && !g.draft;
+/** (2026/27) spilstarten: baggrundskampene 0x84b940/0x84be20 slås til */
+export function cmResNewGame(g: GameState): void { if (!g.draft) g.cmRes = { groups: [], built: '', played: 0 }; }
 
 const dn = (iso: string) => Math.round(Date.parse(iso + 'T00:00:00Z') / 86400000);
 /** [0xae2c90]: dag i året (0 = 1. januar) */
@@ -163,7 +167,7 @@ export function cmResPairs(g: GameState, st: CmResState): [number, number][] {
 /** dagligt (sim.ts newDay): grupperne bygges ved behov og på sæsonopdateringen, og dagens baggrundskampe spilles */
 export function cmResDaily(g: GameState = gs()): number {
   if (!cmResOn(g)) return 0;
-  if (!g.cmRes || (seasonUpdate(g) && g.cmRes.built !== g.date)) g.cmRes = cmResBuild(g);
+  if (!g.cmRes || !g.cmRes.built || (seasonUpdate(g) && g.cmRes.built !== g.date)) g.cmRes = cmResBuild(g);
   const pairs = cmResPairs(g, g.cmRes);
   if (!playMatch) return 0;
   let n = 0;

@@ -24,6 +24,7 @@ import { authentic } from '../game/rules';
 import { cmActive } from '../game/cmPlayerData';
 import { rebornOn } from './reborn';
 import { cmAwOn } from '../game/cmAwards';
+import { cmResOn } from '../game/cmReserves';
 
 // ---------- pladser (slots) som Shell stiller til rådighed ----------
 
@@ -351,7 +352,7 @@ function itemsFor(keys: Hub['sub'] | ScreenName[] | undefined, g: GameState, rou
   const out: Item[] = [];
   // ægte CM 01/02: reserveholdets skærme (managermenuens "{klub} Reserves") – Squad/Fixtures/Last Match bliver i reservevisningen, og
   // originalen har ingen reservekampe for klubberne i de spilbare ligaer (0x45cdff / 0x4671e0 – cmReserves.ts)
-  const resCtx = !viewed && cmActive(g) && ((route.name === 'squad' && route.tab === 'reserves') || !!route.state?.res);
+  const resCtx = !viewed && cmResOn(g) && ((route.name === 'squad' && route.tab === 'reserves') || !!route.state?.res);
   for (const k of keys) {
     if (authentic() && AUTH_HIDDEN.has(k as ScreenName)) continue;
     if (resCtx && (k === 'squad' || k === 'fixtures' || k === 'lastMatch')) {

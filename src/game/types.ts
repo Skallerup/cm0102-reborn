@@ -1322,6 +1322,8 @@ export interface GameState {
   resTactic?: Tactic;
   /** originalens baggrundskampe (fixture −2, 0x84b940/0x84be20 – cmReserves.ts): grupperne af klubber uden for de spilbare ligaer */
   cmRes?: import('./cmReserves').CmResState;
+  /** (MODERN_PARITY 12) 2026/27 i ægte tilstand: B-holdene og reserveholdet som originalen (cmBTeam.ts bTeamsOn) */
+  cmBTeams?: true;
   savedTactics: Tactic[];
   reports: Record<number, MatchReport>;
   /** computerklubbernes kampe i den aktuelle sæson (kompakte rapporter, miniReport.ts) – ryddes med kampprogrammet i prune() */

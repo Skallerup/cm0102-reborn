@@ -24,7 +24,7 @@
 //            Hvad +0x9a05 styrer i kampene (0x600a50, 0x6dbb10, 0x7e6f70): reserveholdets kampe (fixture +0x40/+0x41) – originalen har ingen
 //            reservekampe for klubberne i de spilbare ligaer (cmReserves.ts), så valget mærkes ikke i 2001/02-databasen.
 import type { GameState, Player } from './types';
-import { cmActive } from './cmPlayerData';
+import { cmActive, cmLogic } from './cmPlayerData';
 import { moveSquadOnly, setClub, squad } from './state';
 import { msvcQsort } from './engine/grid/loop';
 
@@ -153,8 +153,9 @@ function links(g: GameState): Links {
   return out;
 }
 
-/** gælder kun i ægte CM 01/02 med den originale database (cmActive) */
-export const bTeamsOn = (g: GameState) => cmActive(g) && !g.draft;
+/** gælder i ægte CM 01/02 med den originale database (cmActive) og (MODERN_PARITY 12) nye 2026/27-spil i ægte tilstand (g.cmBTeams – sat ved
+ *  spilstarten: indlæsningens 0x604385 bruger exe'ens faste navneliste også på opdateringens klubber, fx Celta/Real Sociedad B) */
+export const bTeamsOn = (g: GameState) => (cmActive(g) || (cmLogic(g) && !!g.cmBTeams)) && !g.draft;
 
 /** 0x540a50(klub, &ud, 1): partneren og om klubben er førsteholdet (ud = 1) – eller null */
 export function linkedClub(g: GameState, cid: number): { other: number; first: boolean } | null {

@@ -38,6 +38,7 @@ import { npFromWorld, npTemplate, staffConvert, staffInitRecord, type NpTemplate
 import { initialLanguages } from './cmLanguage';
 import { cmActive, cmLogic, cmMediaOn } from './cmPlayerData';
 import { cmAwNewGame } from './cmAwards';
+import { cmResNewGame } from './cmReserves';
 import { cmGbpMeasure } from './cmMoney';
 import { cmStartDate } from './cmCalendar';
 import { cmMainNation, cmSeasonOn } from './cmSeason';
@@ -205,6 +206,9 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     if (raw.wx) g.cmWxTab = { r: raw.wx.r, c: { ...raw.wx.c } };
     // (MODERN_PARITY 12) originalens priser (cmAwards.ts) og databasens tidligere vindere
     cmAwNewGame(g, raw.awHist);
+    // (MODERN_PARITY 12) baggrundskampene 0x84b940/0x84be20 (cmReserves.ts) og B-holdene/reserveholdet 0x540a50/0x542740/0x541e60 (cmBTeam.ts)
+    cmResNewGame(g);
+    g.cmBTeams = true;
   }
   if (cm?.cmRaw && season < 2020) {
     g.cmClubRep = { ...cm.cmRaw.clubRep }; g.cmNationRep = cm.cmRaw.nationRep.slice();
@@ -377,7 +381,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     fillSquad(c, sq, lvl, date, seed);
   }
   // ægte CM 01/02 (create_game 0x541e60): moderklub + B-hold højst 48 spillere tilsammen (cmBTeam.ts)
-  if (cmStartGame) trimLinkedSquads(g);
+  if (cmStartGame || cmRawLogic) trimLinkedSquads(g);
   // trøjenumre: alle i hver trup får et unikt nummer
   for (const c of Object.values(g.clubs)) ensureNumbers(c.id);
   // førstehold og reservehold (CM 01/02): de 25 bedste på førsteholdet, resten i reserverne – ægte CM 01/02: kun klubber med reservehold
