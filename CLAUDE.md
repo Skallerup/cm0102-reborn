@@ -16,6 +16,11 @@ regler, arkitektur og faldgruber.
   præfikset `stg:`, så staging deler databasen uden at røre produktionens data. Brug aldrig `new Redis()` direkte,
   og hverken `pipeline`/`multi`/`eval` (understøttes ikke med præfiks). Staging har sin egen `ADMIN_TOKEN` (Preview);
   login-mails, Discord og den ugentlige mail er kun sat op i produktionen.
+- **Altid som originalen (ejerens regel 18/11):** spillets logik skal ALTID være originalens 1:1 – på ALLE databaser (den originale 2001/02,
+  2026/27 og alle fremtidige) og uanset tilstand. Ny port gates aldrig på 2001/`cmActive` eller på ægte/udvidet tilstand, men på en
+  databaseuafhængig kontakt (spil startet med modulet, som `cmMarketOn`/`cmBoardLogic`); data, databasen mangler, bygges ind via
+  `scripts/build-cm-data.mts` (world-cm.json), beløb via ligafaktoren (`cmMoney`). CM Reborns egne afvigelser hører kun til i Game Options.
+  En port er først færdig, når den er målt på både 2001 (fingeraftryk uændret) og 2026/27. Status: docs/MODERN_PARITY.md.
 - **1:1-reglen:** det klassiske spil skal være 1:1 med CM 01/02 (plan: docs/ORIGINAL_PARITY.md). Eneste undtagelse er menuen
   Game Options: CM Reborns egne tilføjelser (features, konto, fællesskab, senere støtte/køb af pakker) ligger dér, adskilt fra
   originalens punkter – aldrig på originalens skærme.
