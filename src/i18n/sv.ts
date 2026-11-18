@@ -6946,7 +6946,7 @@ Object.assign(sv, {
   "cxs.delete": "Ta bort sparat spel",
   "cxs.network": "Multiplayer online",
   "cxs.hint.db": "Klicka för att välja databas och version",
-  "cxs.hint.network": "Spela mot vänner online i samma värld",
+  "cxs.editor": "Databasredigerare", "cxs.hint.editor": "Redigera spelare, klubbar och personal", "cxs.hint.network": "Spela mot vänner online i samma värld",
   "cxs.hint.settings": "Språk, valuta och utseende",
   "cxs.hint.opts": "Utmaningar, draftliga, databasredigerare och ditt konto",
   "cxs.hint.extras": "Importera ett sparat spel eller gå till förstasidan",

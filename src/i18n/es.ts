@@ -3534,7 +3534,7 @@ Object.assign(es, {
   "cxs.delete": "Borrar partida guardada",
   "cxs.network": "Multijugador en línea",
   "cxs.hint.db": "Pulsa para elegir base de datos y versión",
-  "cxs.hint.network": "Juega en línea con amigos en el mismo mundo",
+  "cxs.editor": "Editor de base de datos", "cxs.hint.editor": "Edita jugadores, clubes y personal", "cxs.hint.network": "Juega en línea con amigos en el mismo mundo",
   "cxs.hint.settings": "Idioma, moneda y aspecto",
   "cxs.hint.opts": "Desafíos, liga de draft, editor de la base de datos y tu cuenta",
   "cxs.hint.extras": "Importa una partida guardada o ve a la página de inicio",

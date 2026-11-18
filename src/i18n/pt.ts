@@ -3534,7 +3534,7 @@ Object.assign(pt, {
   "cxs.delete": "Excluir Jogo Salvo",
   "cxs.network": "Multijogador Online",
   "cxs.hint.db": "Clique para escolher o banco de dados e a versão",
-  "cxs.hint.network": "Jogue online com amigos no mesmo mundo",
+  "cxs.editor": "Editor de banco de dados", "cxs.hint.editor": "Edite jogadores, clubes e equipe técnica", "cxs.hint.network": "Jogue online com amigos no mesmo mundo",
   "cxs.hint.settings": "Idioma, moeda e visual",
   "cxs.hint.opts": "Desafios, liga draft, editor de banco de dados e sua conta",
   "cxs.hint.extras": "Importe um jogo salvo ou vá para a página inicial",

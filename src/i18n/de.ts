@@ -3534,7 +3534,7 @@ Object.assign(de, {
   "cxs.delete": "Gespeichertes Spiel löschen",
   "cxs.network": "Online-Mehrspieler",
   "cxs.hint.db": "Klicken, um Datenbank und Version zu wählen",
-  "cxs.hint.network": "Online mit Freunden in derselben Welt spielen",
+  "cxs.editor": "Datenbank-Editor", "cxs.hint.editor": "Spieler, Vereine und Personal bearbeiten", "cxs.hint.network": "Online mit Freunden in derselben Welt spielen",
   "cxs.hint.settings": "Sprache, Währung und Look",
   "cxs.hint.opts": "Herausforderungen, Draft-Liga, Datenbankeditor und dein Konto",
   "cxs.hint.extras": "Ein gespeichertes Spiel importieren oder zur Startseite gehen",

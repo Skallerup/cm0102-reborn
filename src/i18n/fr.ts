@@ -3534,7 +3534,7 @@ Object.assign(fr, {
   "cxs.delete": "Supprimer une partie sauvegardée",
   "cxs.network": "Multijoueur en ligne",
   "cxs.hint.db": "Cliquez pour choisir la base de données et la version",
-  "cxs.hint.network": "Jouez en ligne contre vos amis dans le même monde",
+  "cxs.editor": "Éditeur de base de données", "cxs.hint.editor": "Modifier joueurs, clubs et staff", "cxs.hint.network": "Jouez en ligne contre vos amis dans le même monde",
   "cxs.hint.settings": "Langue, devise et apparence",
   "cxs.hint.opts": "Défis, ligue de draft, éditeur de base de données et votre compte",
   "cxs.hint.extras": "Importer une partie sauvegardée ou aller à la page d'accueil",

@@ -3534,7 +3534,7 @@ Object.assign(tr, {
   "cxs.delete": "Kayıtlı Oyunu Sil",
   "cxs.network": "Çevrimiçi Çok Oyunculu",
   "cxs.hint.db": "Veritabanı ve sürüm seçmek için tıkla",
-  "cxs.hint.network": "Aynı dünyada arkadaşlarınla çevrimiçi oyna",
+  "cxs.editor": "Veritabanı Editörü", "cxs.hint.editor": "Oyuncuları, kulüpleri ve personeli düzenle", "cxs.hint.network": "Aynı dünyada arkadaşlarınla çevrimiçi oyna",
   "cxs.hint.settings": "Dil, para birimi ve görünüm",
   "cxs.hint.opts": "Meydan okumalar, draft ligi, veritabanı editörü ve hesabın",
   "cxs.hint.extras": "Kayıtlı bir oyunu içe aktar veya ana sayfaya git",

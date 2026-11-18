@@ -3534,7 +3534,7 @@ Object.assign(it, {
   "cxs.delete": "Elimina partita salvata",
   "cxs.network": "Multigiocatore online",
   "cxs.hint.db": "Clicca per scegliere database e versione",
-  "cxs.hint.network": "Gioca online con gli amici nello stesso mondo",
+  "cxs.editor": "Editor del database", "cxs.hint.editor": "Modifica giocatori, club e staff", "cxs.hint.network": "Gioca online con gli amici nello stesso mondo",
   "cxs.hint.settings": "Lingua, valuta e aspetto",
   "cxs.hint.opts": "Sfide, draft league, editor del database e il tuo account",
   "cxs.hint.extras": "Importa una partita salvata o vai alla pagina iniziale",

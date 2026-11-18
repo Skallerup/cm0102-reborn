@@ -6946,7 +6946,7 @@ Object.assign(nb, {
   "cxs.delete": "Slett lagret spill",
   "cxs.network": "Flerspiller på nett",
   "cxs.hint.db": "Klikk for å velge database og versjon",
-  "cxs.hint.network": "Spill mot venner på nett i samme verden",
+  "cxs.editor": "Databaseredigering", "cxs.hint.editor": "Rediger spillere, klubber og støtteapparat", "cxs.hint.network": "Spill mot venner på nett i samme verden",
   "cxs.hint.settings": "Språk, valuta og utseende",
   "cxs.hint.opts": "Utfordringer, draftliga, databaseeditor og kontoen din",
   "cxs.hint.extras": "Importer et lagret spill eller gå til forsiden",
