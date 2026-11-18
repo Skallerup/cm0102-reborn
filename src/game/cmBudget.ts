@@ -15,7 +15,7 @@ import type { GameState, Player } from './types';
 import { buildWantMem, cmTalkStatus, roleCode, type WantMem } from './cmContractGame';
 import { GEN } from './cmGen/index';
 import { ensureImpls } from './cmGen/impls';
-import { cmActive, cmLogic } from './cmPlayerData';
+import { cmActive, cmBoardLogic, cmLogic } from './cmPlayerData';
 import { cmGbp } from './cmMoney';
 import { cmKnowLevel } from './cmKnow';
 import { cmClubEuro } from './cmFitnessGame';
@@ -155,7 +155,8 @@ export function cmKnowledgeLevel(g: GameState, p: Player): number {
   return cmKnowLevel(g, p);
 }
 export function cmBidBudget(g: GameState, p: Player, buyer: number): CmBidBudget | null {
-  if (!cmActive(g) || !g.clubs[buyer] || !p.club) return null;
+  // (MODERN_PARITY 7) også 2026/27 i ægte tilstand med originalens bestyrelse (cmBoardLogic) – beløbet i køberens £ (cmMoney)
+  if (!(cmActive(g) || cmBoardLogic(g)) || !g.clubs[buyer] || !p.club) return null;
   const level = cmKnowledgeLevel(g, p);
   const KOBJ = 0x6a000000, OUTF = 0x6a000100;
   const M = buildWantMem(g, [buyer, p.club], {
@@ -174,7 +175,7 @@ export function cmBidBudget(g: GameState, p: Player, buyer: number): CmBidBudget
   let v: number;
   try { v = GEN[0x598800](M.c, fin, [st, 0, OUTF, 1, 0]) | 0; } finally { m.w32(0xae2a60, old); }
   const limited = m.u32(OUTF) === 1;
-  return { budget: Math.max(0, v) / GBP, level, limited };
+  return { budget: Math.max(0, v) / cmGbp(g, buyer), level, limited };
 }
 
 /** bestyrelseslinjen på budskærmen (0x8ea327–0x8ea3c8): kendskabet vælger teksten, beløbet 0 free-transfer-varianten */

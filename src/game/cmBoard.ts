@@ -91,6 +91,9 @@ export interface CmBoardState {
   nm?: Record<number, number>;
   /** staff +0x28 landsholdsjobbet efter 0x68f130 (0 for databasens landstrænere; 5 når bestyrelsen har udnævnt dem): staff-id → job */
   nj?: Record<number, number>;
+  /** (2026/27 – landsholdene er ikke i bestyrelsen) databasens landstrænere staff +0x24/+0x28 (job 5/12), som 0x68f130 2a efterlader dem:
+   *  staff-id → [nationsindeks, job] */
+  nd?: Record<number, [number, number]>;
 }
 
 export const newRec = (): BoardRec => ({ b0: 0, b1: 0, b2: 0, b3: 0, b4: 0, b5: 0, w6: 0, w8: 0, wa: 0, wc: 0, e: 0, w10: 0, w12: 0, w14: 0, w16: 0,

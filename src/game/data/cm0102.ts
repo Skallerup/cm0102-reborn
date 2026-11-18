@@ -81,6 +81,11 @@ export interface CMWorld extends WorldData {
      *  originalens spilstart cmStaffInit.ts → Staff.cmNp/ca, som træningen 0x8b2880, udviklingen 0x5ce2d0 og fysioterapeuterne i injury.cpp læser.
      *  (Den originale database har posten i staff[11] i world-filen.) */
     staffNp?: Record<number, number[]>;
+    /** (MODERN_PARITY 7, kun 2026/27's world-cm.json) bestyrelse/managerjob pr. person-id: [CMWorld.staff[12], [13] (ankomstdatoen), [14] (landsholdet
+     *  +0x24/+0x28)] – omdømmet, de skjulte egenskaber og landsholdsjobbet, som cmBoard.ts og viljen 0x844780 læser */
+    staffBx?: Record<number, [number[], string, number[]]>;
+    /** (2026/27) landsholdenes klub-id'er: A-holdet = natOff + nationsindeks (nat_club.dat efter club.dat – antallet af klubber i club.dat) */
+    natOff?: number;
     /** viljen 0x844780: nation +0x71 (verdensdelens id) pr. nationsindeks, "Europe"s id ([0x9cfa10]) og byernes +0x33 (s8, city.dat-rækkefølge) */
     nationCont?: number[]; europe?: number; city33?: number[];
     /** bestyrelse/managerjob (cmBoard.ts): nation +0x75 (u8), +0x85 (s8), +0x88 (i32) pr. nationsindeks */

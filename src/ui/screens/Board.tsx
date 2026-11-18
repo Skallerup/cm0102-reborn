@@ -100,7 +100,7 @@ function boardStatement(): string[] {
   const orig = cmBoardScreenText(g);
   if (orig !== null) return orig.split('\n\n');
   // ægte tilstand (original database): aldrig spillets egen udtalelse – uden klub/bestyrelse intet
-  if (cmActive(g)) return [];
+  if (cmActive(g) || cmBoardOn(g)) return [];
   const club = g.clubs[g.userClub];
   const c = boardStatementCodes();
   const out = [t(`cl.ba.conf.${c.lvl}`, { club: club?.name ?? '' })];

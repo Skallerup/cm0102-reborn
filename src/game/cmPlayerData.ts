@@ -43,6 +43,13 @@ export function cmMarketOn(g: GameState): boolean {
   return cmActive(g) || (cmLogic(g) && !g.draft && g.cmPlan !== undefined);
 }
 
+/** (MODERN_PARITY 7) originalens bestyrelse og managerjob – MANAGER_MANAGER (cmBoard.ts/cmBoardGame.ts), viljen 0x844780 og bestyrelsens loft
+ *  0x598800 på budskærmen: 2001-verdenen, eller en CM-database i ægte tilstand fra et spil, hvis spilstart kørte 0x68f130 (g.cmBoard – cmBoardInit).
+ *  Ældre 2026/27-spil uden bestyrelsens poster beholder board.ts' regler. For den originale database = cmActive && g.cmBoard. */
+export function cmBoardLogic(g: GameState): boolean {
+  return cmLogic(g) && !g.draft && !!g.cmBoard;
+}
+
 // ---------------------------------------------------------------- en egen talrække (0x90cfc0's rolle)
 
 function mix(...xs: number[]): number {

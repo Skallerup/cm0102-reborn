@@ -190,3 +190,20 @@ hos den nye klub som i originalen. Ikke porteret: 0x842b00 i handlen 0x8cb9a0 (d
 Målt (`scripts/cm-market-2026.ts`, England, Brentford, frø 1, 1/7-26 → 30/6-27): computer → computer 1.110 → 159, PL-køb 25 for €569M (median
 €18,0M) → 37 for €417M (median €8,1M), Championship 30 for €108M → 63 for €164M; klubber i minus 132 → 109 af 656; klubløse 759 → 3.135 før,
 759 → 816 nu. 2001 bit for bit uændret (02ec66f5a29512d1). Kræver et nyt spil.
+
+## Status punkt 7 (18/11): bestyrelse og managerjob på 2026/27
+
+Ny gate `cmBoardLogic(g)` (cmPlayerData.ts) = cmLogic + spil, hvis spilstart kørte 0x68f130 (g.cmBoard – cmBoardInit kører nu på cmLogic, på 2026/27
+kun med formændene/nationerne fra world-cm.json). `cmBoardOn` = den; for den originale database uændret (cmActive && g.cmBoard). Dermed kører
+MANAGER_MANAGER (0x68f130/0x68f9c0/0x6951e0/0x68aa80, forkørslen), viljen 0x844780, menneskets job (ansøgning, tilbud, fyring, Meet with Board,
+ultimatum) og bestyrelsens loft på budskærmen 0x598800 (cmBidBudget, beløbet i køberens £) på nye 2026/27-spil; board.ts' aiSackings/
+summerManagerChanges/fillVacancies er slået fra som i 2001. Pengene i bestyrelsen (saldo, formuebånd, transferbudget, anmodning 3/4) med
+cmMoney-faktoren for klubben. Data: world-cm.json får `staffBx` (staff[12] omdømmer + skjulte egenskaber, [13] ankomstdatoen, [14] landsholdet)
+og `natOff` (nat_club.dat's første id = 12.868); world.json uændret. Landsholdene er ikke i bestyrelsen på 2026/27 (landskampene følger spillets
+regler – IKKE-overføre-listen): databasens landstrænere (job 5/12) står i `g.cmBoard.nd`, så viljen/0x69f9b8 springer dem over som i originalen.
+Spilstarten sætter også nation +0x71/"Europe"/byernes +0x33 (cmNationCont/cmEurope/cmCity33) – byernes +0x33 læses også af kontraktlaget.
+Målt (`scripts/cm-board-2026.ts`, PL frø 1, Brentford, 1/7-26 → 30/6-27, før → efter): managerafgange blandt computerklubberne 19 (PL 9, Ch 10)
+→ 11 (PL 4, Ch 7), ledige klubdage 431 → 100 (højst 5 → 2 på én dag); menneskets tillid 65 → 54 (forventning mid/16) før, 63 → 27 i februar og
+fyret i foråret efter (forventning øverste halvdel/8); budskærmens loft = transferbudgettet 48,85m før, 0x598800 30,0m (start) → 5,4m (april,
+følger saldoen 66,6m → 42m) efter. Databasen har Nagelsmann/Deschamps/Clarke ledige uden landshold – de ansættes i klubber. 2001 bit for bit
+uændret (02ec66f5a29512d1). Kræver et nyt spil.

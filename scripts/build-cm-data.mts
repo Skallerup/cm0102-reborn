@@ -243,6 +243,9 @@ for (const k of Object.keys(w.clubColors)) if (!keptClubs.has(Number(k))) delete
 if (w.cmRaw) { for (const t of [w.cmRaw.clubRep, w.cmRaw.clubStat ?? {}, w.cmRaw.crowd ?? {}, w.cmRaw.fin ?? {}, w.cmRaw.chair ?? {}, w.cmRaw.chairBoard ?? {}] as Record<number, unknown>[]) for (const k of Object.keys(t)) if (!keptClubs.has(Number(k))) delete t[Number(k)]; }
 /** 2026/27: stabens ikke-spillerpost pr. person-id → world-cm.json (cmRaw.staffNp) */
 const staffNp2026 = new Map<number, number[]>();
+/** (MODERN_PARITY 7) 2026/27: bestyrelse/managerjob – staff[12] (omdømmerne og de skjulte egenskaber), [13] (ankomstdatoen) og [14] (landsholdet
+ *  +0x24/+0x28) pr. person-id → world-cm.json (cmRaw.staffBx) */
+const staffBx2026 = new Map<number, [number[], string, number[]]>();
 // stab: kun i de klubber, der er med (andre klubbers folk bliver ledige, hvis de er gode nok – CA 100+); datoerne skubbes som spillernes
 if (w.staff) {
   const shown = new Set(w.clubs.filter((c) => { const l = w.leagues.find((x) => x.id === c[4]); return l && !l.hidden; }).map((c) => c[0] as number));
@@ -266,7 +269,7 @@ if (w.staff) {
   const free = new Set(w.staff.filter((s) => !s[0]).sort((a, b) => b[7] - a[7]).slice(0, 600));
   for (const s of w.staff) if (!s[0] && !free.has(s)) dropped.push(src.get(s)!);
   w.staff = w.staff.filter((s) => s[0] || free.has(s));
-  if (!ORIGINAL) for (const r of w.staff) { const s11 = src.get(r)?.[11]; if (s11) staffNp2026.set(r[9], s11); }
+  if (!ORIGINAL) for (const r of w.staff) { const x = src.get(r); const s11 = x?.[11]; if (s11) staffNp2026.set(r[9], s11); if (s11 && x?.[12]) staffBx2026.set(r[9], [x[12], x[13] ? shift(x[13]) : '', x[14] ?? [-1, 0]]); }
   // Staff Search (0x7afa70): originalens hukommelse efter 0x524d70 – de øvrige ikke-spillere, der kan være med (altid, eller når et spilbart
   // land vælges), i samme format med [0] = 0, [5] = jobbet +0x3d og [16] = [klub, job]; klubberne uden for spillet får deres navn i clubNames
   if (ORIGINAL && w.staffX) {
@@ -336,6 +339,9 @@ const cmSide = !ORIGINAL && w.cmRaw && cmOut !== out ? w.cmRaw : null;
 if (cmSide) delete w.cmRaw;
 // (MODERN_PARITY 5+6) stabens ikke-spillerpost (staff[11] fra parseCM0102 – i world.json kun for den originale database) for den stab, world-filen har
 if (cmSide && staffNp2026.size) cmSide.staffNp = Object.fromEntries([...staffNp2026].sort((a, b) => a[0] - b[0]));
+if (cmSide && staffBx2026.size) cmSide.staffBx = Object.fromEntries([...staffBx2026].sort((a, b) => a[0] - b[0]));
+// landsholdene (staff +0x24): nat_club.dat's id'er følger club.dat's (A-holdet = antallet af klubber + nationens id)
+if (cmSide && staffBx2026.size && files['nat_club.dat']) cmSide.natOff = new DataView(files['nat_club.dat']).getInt32(0, true);
 writeFileSync(out, JSON.stringify(w));
 const kb = Math.round(statSync(out).size / 1024);
 if (cmSide) {

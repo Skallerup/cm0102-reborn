@@ -1,5 +1,5 @@
 // Originalens bestyrelse og managerjob (cmBoard.ts) i vores spil: spiltilstanden → originalens felter (BoardEnv) og tilbage (manageren skifter,
-// nyhederne til mennesket, Board-skærmens tal). Kun den originale database i ægte tilstand (cmBoardOn) – ellers bruger spillet board.ts' regler.
+// nyhederne til mennesket, Board-skærmens tal). En CM-database i ægte tilstand med spilstartens bestyrelse (cmBoardOn = cmBoardLogic: den originale database og nye 2026/27-spil) – ellers board.ts.
 //
 // Tidspunkterne som i originalen: spilstarten 0x68f130 (på databasens dato 1/1, før forkørslen – vi har ingen forkørsel, så "i dag" er 1/1 og
 // spillets start [0xdd6ec8] = spillets første dag), hver dag 0x68f9c0 efter dagens kampe (sim.ts newDay kalder cmBoardDaily for dagen, der lige er
@@ -16,7 +16,8 @@
 //   - 0x844780 (viljen) – se interestOf
 import type { Club, Fixture, GameState, MatchReport, Staff } from './types';
 import { squad, addNews } from './state';
-import { cmActive, cmRand, clubRepMem, postHooks } from './cmPlayerData';
+import { cmActive, cmBoardLogic, cmLogic, cmRand, clubRepMem, postHooks } from './cmPlayerData';
+import { cmGbp } from './cmMoney';
 import { personalFill_535a80 } from './cmStaffInit';
 import { financeStatus } from './cmSquadPlan';
 import { cmSquadPlanNewManager } from './cmSquadPlanGame';
@@ -45,12 +46,13 @@ import { natClub, natClubId, natOfClub, resetNationalManagers } from './cmVirtua
 import { DEMONYM } from '../ui/demonyms';
 import { natCompHook } from './hooks';
 
-const GBP = 0.86;
+/** € → £ for klubbens penge (cmMoney.ts: den originale database 0,86; 2026/27 ligaens faktor) */
+const gbpOf = (g: GameState, c: number) => cmGbp(g, c);
 const dayNum = (iso: string) => Math.round(Date.parse(iso + 'T00:00:00Z') / 86400000);
 
-/** gælder kun den originale database i ægte tilstand og ikke fællesspil/draft/udfordringer */
+/** en CM-database i ægte tilstand med spilstartens bestyrelse 0x68f130 (cmBoardLogic – den originale database og nye 2026/27-spil), ikke draft */
 export function cmBoardOn(g: GameState): boolean {
-  return cmActive(g) && !g.draft && !!g.cmBoard;
+  return cmBoardLogic(g);
 }
 
 // ---------------------------------------------------------------- personerne
@@ -87,8 +89,8 @@ function staffPerson(g: GameState, s: Staff, today: CmDate): Person {
     id: s.id, human: false, np: true, nation: s.nation ?? -1,
     get club() { return s.club; }, set club(v: number) { s.club = v; },
     get job() { return s.club ? JOB[s.role] ?? 8 : clublessJob(s); }, set job(_v: number) { /* rollen sættes af setManager */ },
-    get nat() { const n = natOfStaff(g, s.id); return n >= 0 ? natClub(n) : 0; },
-    get natJob() { return g.cmBoard?.nj?.[s.id] ?? 0; },
+    get nat() { const d = g.cmBoard?.nd?.[s.id]; if (d) return natClub(d[0]); const n = natOfStaff(g, s.id); return n >= 0 ? natClub(n) : 0; },
+    get natJob() { return g.cmBoard?.nd?.[s.id]?.[1] ?? g.cmBoard?.nj?.[s.id] ?? 0; },
     get joined() { return isoToCm(s.cmJoined || '1990-01-01'); }, set joined(d: CmDate) { s.cmJoined = cmToIso(d); },
     age: s.dob ? ageOn(s.dob, cmToIso(today)) : 45,
     get b59() { return hid[3] ?? 10; }, set b59(v: number) { hid[3] = v; },
@@ -246,9 +248,9 @@ export function boardEnv(g: GameState, todayIso = g.date, startIso?: string, laz
       return r < 0 ? [1, 1] : [CL_SPOTS[r] ?? 1, UEFA_SPOTS[r] ?? 1];
     },
     isAustralia: (c) => nationName(g.clubs[c]?.nation ?? -1) === 'Australia',
-    wealthBand: (c) => natOfClub(c) !== null ? 0 : financeStatus(Math.round((g.clubs[c]?.balance ?? 0) * GBP), clubRepMem(g, c)),
-    transferBudget: (c) => Math.round((g.clubs[c]?.transferBudget ?? 0) * GBP),
-    balance: (c) => Math.round((g.clubs[c]?.balance ?? 0) * GBP),
+    wealthBand: (c) => natOfClub(c) !== null ? 0 : financeStatus(Math.round((g.clubs[c]?.balance ?? 0) * gbpOf(g, c)), clubRepMem(g, c)),
+    transferBudget: (c) => Math.round((g.clubs[c]?.transferBudget ?? 0) * gbpOf(g, c)),
+    balance: (c) => Math.round((g.clubs[c]?.balance ?? 0) * gbpOf(g, c)),
     chair: (c) => { const x = g.cmChair?.[c]; return x ? { b16: x[0], b1d: x[1], amb: x[2], nation: x[3] } : null; },
     manager: (c) => {
       if (tempManager.has(c)) return tempManager.get(c)!;
@@ -345,7 +347,8 @@ function interestEnv(g: GameState, b: BoardEnv): InterestEnv {
     // staff +0x24/+0x28 efter 0x68f130 (landsholdene i bestyrelsen): kun landstrænerne beholder landsholdet, jobbet 0 til en udnævnelse sætter 5;
     // gamle gemte spil uden landshold i bestyrelsen: databasens værdier
     nat: (p) => {
-      if (g.cmBoard?.nm) return { nc: !!p.nat, nj: p.natJob ?? 0 };
+      // (2026/27) landstrænerne fra databasen (nd – landsholdene er ikke i bestyrelsen): som 0x68f130 2a efterlader dem
+      if (g.cmBoard?.nm || g.cmBoard?.nd) return { nc: !!p.nat, nj: p.natJob ?? 0 };
       const x = staffOf(p)?.cmNat; return { nc: !!x && x[0] >= 0, nj: x ? x[1] : 0 };
     },
     rel: (p) => staffOf(p)?.cmRel,
@@ -665,7 +668,7 @@ export function cmBoardRequest(g: GameState, req: 1 | 2 | 3 | 4 | 5): string | n
     if (amt > bal && rand(ch ? s8(business) : 10) !== 0) return reply(2);
     R.d28 = amt;
     // "… will make extra transfer funds available to you immediately" – beløbet lægges til klubbens Transfer Funds (0x598800 læser R +0x28)
-    club.transferBudget = Math.round((club.transferBudget ?? 0) + amt / GBP);
+    club.transferBudget = Math.round((club.transferBudget ?? 0) + amt / gbpOf(g, c));
     return reply(0);
   }
   if (req === 4) {
@@ -673,7 +676,7 @@ export function cmBoardRequest(g: GameState, req: 1 | 2 | 3 | 4 | 5): string | n
     if (!okRep(5000)) return reply(0xb);
     if (R.b5) return reply(6);
     let top = 0;
-    for (const p of squad(c)) top = Math.max(top, (p.contract?.wage ?? 0) * GBP);
+    for (const p of squad(c)) top = Math.max(top, (p.contract?.wage ?? 0) * gbpOf(g, c));
     if (top > 60000) return reply(4);
     let x = ch ? s8(10 - business) : 0;
     const k = env.wealthBand(c);
@@ -743,7 +746,7 @@ export function statementOf(g: GameState, c: number): { lvl: string; fin: string
   const R = g.cmBoard?.rec[c];
   const band = R ? confidenceBand(R.w6) : 3;
   const lvl = band >= 5 ? 'delighted' : band === 4 ? 'positive' : band === 3 ? 'satisfied' : band === 2 ? 'concerned' : 'angry';
-  const wb = financeStatus(Math.round((g.clubs[c]?.balance ?? 0) * GBP), clubRepMem(g, c));
+  const wb = financeStatus(Math.round((g.clubs[c]?.balance ?? 0) * gbpOf(g, c)), clubRepMem(g, c));
   const fin = wb === 2 ? 'extreme' : wb === 1 ? 'healthy' : wb === 0 ? 'secure' : wb === -1 ? 'stretched' : 'debt';
   const f16 = R ? s16(R.w16) : 0;
   const fans = f16 > 250 ? 'rapport' : f16 < -250 ? 'unhappy' : 'ok';
@@ -765,14 +768,27 @@ export function cmInitStaffRep(g: GameState, s: Staff, row: NonNullable<CMWorld[
 }
 
 /** newgame.ts: spilstarten 0x68f130 (på databasens dato 1/1) – efter at klubber, stab og turneringer findes */
-export function cmBoardInit(g: GameState, chair: Record<number, [number, number, number, number]> | undefined, nationBoard: [number, number, number][] | undefined): void {
-  if (!cmActive(g) || g.draft) return;
+export function cmBoardInit(g: GameState, chair: Record<number, [number, number, number, number]> | undefined, nationBoard: [number, number, number][] | undefined,
+  natDb?: Record<number, [number, number]>): void {
+  if (!cmLogic(g) || g.draft) return;
+  // (MODERN_PARITY 7) 2026/27 i ægte tilstand: kun når world-filen har bestyrelsens data (formændene, nationerne – world-cm.json)
+  const world2001 = cmActive(g);
+  if (!world2001 && (!chair || !nationBoard)) return;
   // formandens Ambition (x[2]) som sub_535a80 udfylder den, når databasen har 0 (samme talrække som cmFinance.ts' formand)
   g.cmChair = {};
   for (const [cid, x] of Object.entries(chair ?? {})) g.cmChair[+cid] = [x[0], x[1], personalFill_535a80(x[2], cmRand(g.seed ?? 0, +cid, 0x535f04), 'avg'), x[3]];
   g.cmNationBoard = nationBoard ? nationBoard.map((x) => x.slice() as [number, number, number]) : [];
   g.cmBoardStart = g.date;
-  g.cmBoard = { rec: {}, dep: [], vac: [], ult: [], month: -1, tab: {}, nm: {}, nj: {} };
+  g.cmBoard = world2001 ? { rec: {}, dep: [], vac: [], ult: [], month: -1, tab: {}, nm: {}, nj: {} } : { rec: {}, dep: [], vac: [], ult: [], month: -1, tab: {}, nd: natDb ?? {} };
+  if (world2001) cmBoardNationalInit(g);
+  const db = `${g.date.slice(0, 4)}-01-01`;
+  const env = boardEnv(g, db, g.date);
+  initRecords(env, stateOf(g), rnd(g, dayNum(db), 0x68f130));
+}
+
+/** 0x68f130 2a (den originale database): landstrænerne bliver A-holdenes managere i bestyrelsen */
+function cmBoardNationalInit(g: GameState): void {
+  if (!g.cmBoard?.nm) return;
   // 0x68f130 2a: landstrænerne (staff +0x24 = A-holdet, +0x28 = 5/12) bliver A-holdets manager (den sidste i staff-rækkefølgen); de andre
   // landsholdsjob ryddes, og deres +0x28 sættes til 0 (staffPerson/clublessJob – +0x3d uden klub = landsholdsjobbet)
   const off = natClubId(g, 0, false);
@@ -785,9 +801,6 @@ export function cmBoardInit(g: GameState, chair: Record<number, [number, number,
   // (2a) landstrænerens +0x28 bliver stående (5/12 – `continue`): 0x83fa72 (ønskelisten) og 0x69f9b8 (managerjob) springer ham over
   for (const id of Object.values(g.cmBoard.nm!)) { const x = g.staff[id]?.cmNat; if (x) g.cmBoard.nj![id] = x[1]; }
   resetNationalManagers(g);
-  const db = `${g.date.slice(0, 4)}-01-01`;
-  const env = boardEnv(g, db, g.date);
-  initRecords(env, stateOf(g), rnd(g, dayNum(db), 0x68f130));
 }
 
 const stateOf = (g: GameState) => g.cmBoard as unknown as CmBoardState;
