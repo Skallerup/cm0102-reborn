@@ -9,6 +9,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.31.0',
+    date: '2026-11-19',
+    title: { da: 'Mere af det originale CM 01/02', en: 'More of the original CM 01/02' },
+    items: [
+      { da: "Finances: beløb vises præcist som i originalen (forkortes kun, når de er lange), og underskud og negativ saldo er røde.", en: "Finances: amounts are shown exactly as in the original (abbreviated only when long), and losses and a negative balance are red." },
+    ],
+  },
+  {
     version: '0.30.0',
     date: '2026-11-18',
     title: { da: 'Mere af det originale CM 01/02', en: 'More of the original CM 01/02' },
