@@ -13,7 +13,7 @@ import { DEMONYM } from './demonyms';
 import { Frame, REGION_CODE, REGION_ORDER, type Prog, type Step } from './ClassicStart';
 import { regionOfNation } from './classicOptions';
 
-const adjective = (name: string) => (getLang() === 'en' ? DEMONYM[name] ?? name : natName(name));
+const adjective = (name: string, adj?: string) => (getLang() === 'en' ? DEMONYM[name] ?? adj ?? name : natName(name));
 
 export function ClassicJoin({ code, onBack, onHome, setBusy }: { code: string; onBack: () => void; onHome?: () => void; setBusy: (s: string) => void }) {
   useEffect(() => { if (getTheme() !== 'retro') setTheme('retro'); }, []);
@@ -62,10 +62,9 @@ export function ClassicJoin({ code, onBack, onHome, setBusy }: { code: string; o
       div: l.nation === eng && l.tier >= 1 && l.tier <= 4 ? ['PL', 'D1', 'D2', 'D3'][l.tier - 1] : compAbbr(compName(l.name)),
     }))).sort((a, b) => a.short.localeCompare(b.short));
     // nationaliteten er managerens egen (alle lande som i nyt spil) – den filtrerer ikke klubberne, som altid er rummets
-    const natIds = new Set<number>([...Object.values(state.clubs).map((c) => c.nation), ...Object.values(state.comps).filter((c) => c.type === 'league').map((l) => l.nation)]);
-    const nations = [...natIds].filter((i) => state.nations[i]).map((i) => {
+    const nations = state.nations.map((_, i) => i).filter((i) => state.nations[i]?.name).map((i) => {
       const key = regionOfNation(state.nations[i].name);
-      return { i, label: adjective(state.nations[i].name), region: REGION_CODE[key], regionKey: key };
+      return { i, label: adjective(state.nations[i].name, state.nations[i].adj), region: REGION_CODE[key], regionKey: key };
     }).sort((a, b) => a.label.localeCompare(b.label));
     return { clubs, nations };
   }, [state]);
