@@ -88,6 +88,9 @@ export interface CMWorld extends WorldData {
     natOff?: number;
     /** viljen 0x844780: nation +0x71 (verdensdelens id) pr. nationsindeks, "Europe"s id ([0x9cfa10]) og byernes +0x33 (s8, city.dat-rækkefølge) */
     nationCont?: number[]; europe?: number; city33?: number[];
+    /** (2026/27, MODERN_PARITY 12) originalens vejr (cmWeather.ts): Data-mappens weather.cfg (0x922c40/0x922d20 – [indeks, navn, fire perioder à 18])
+     *  og pr. klub [byen, området, stadionets kapacitet +0x3c, overdækket +0x4c, undersoil heating +0x4d] (0x923010's kæde – build-cm-data.mts) */
+    wx?: { r: [number, string, number[][]][]; c: Record<number, [number, number, number, number, number]> };
     /** bestyrelse/managerjob (cmBoard.ts): nation +0x75 (u8), +0x85 (s8), +0x88 (i32) pr. nationsindeks */
     nationBoard?: [number, number, number][];
     /** bestyrelse/managerjob: formanden (club.dat +0xbf → staff.dat): [ikke-spillerpost +0x16, +0x1d (Patience), personpost +0x57 (Ambition),

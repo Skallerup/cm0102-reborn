@@ -336,6 +336,45 @@ if (existsSync(out)) {
 // appens offline-cache (højst 10 MB); ui/world.ts henter den med world.json og lægger den på som CMWorld.cmRaw
 const cmOut = out.replace(/world([^/]*)\.json$/, 'world$1-cm.json');
 const cmSide = !ORIGINAL && w.cmRaw && cmOut !== out ? w.cmRaw : null;
+// (MODERN_PARITY 12) originalens vejr på 2026/27: opdateringens egen weather.cfg (29 områder – 3.9.68 har 44) og hjemmeholdets by/område/stadion
+// som scripts/build-cm-weather.py for 2001: stadium +0x38 byen, ellers klubbens nation (+0x53) → hovedstaden (+0x7a); området = byens +0x34,
+// hvis 0 ≤ indeks < antal, ellers byens nation (+0x1f) → hovedstadens +0x34, ellers 0 (0x923010)
+if (cmSide && existsSync(join(dir, 'weather.cfg'))) {
+  const lines = readFileSync(join(dir, 'weather.cfg'), 'latin1').split(/\r?\n/).map((l) => l.trim()).filter((l) => l && !l.startsWith('#'));
+  const n = parseInt(lines[0], 10), r: [number, string, number[][]][] = [];
+  for (let i = 1, k = 0; k < n; k++) {
+    const m = /^(-?\d+)\s+(.*)$/.exec(lines[i++])!;
+    const per: number[][] = [];
+    for (let q = 0; q < 4; q++) {
+      const v = lines[i++].replace(/^\w+:\s*/, '').split(',').map((x) => parseInt(x.trim().replace(/^[WPH]/, ''), 10));
+      if (v.length !== 18) throw new Error(`weather.cfg: ${lines[i - 1]}`);
+      per.push(v);
+    }
+    r.push([parseInt(m[1], 10), m[2].trim(), per]);
+  }
+  if (r.some((x, i) => x[0] !== i)) throw new Error('weather.cfg: områderne er ikke 0..n−1');
+  const Ci = new DataView(files['city.dat']), St = new DataView(files['stadium.dat']), Cl = new DataView(files['club.dat']), Na = new DataView(files['nation.dat']);
+  const city = new Map<number, [number, number]>(), capital = new Map<number, number>(), stad = new Map<number, [number, number, number, number]>(), club = new Map<number, [number, number]>();
+  for (let o = 0; o + 56 <= Ci.byteLength; o += 56) city.set(Ci.getInt32(o, true), [Ci.getInt32(o + 0x1f, true), Ci.getInt32(o + 0x34, true)]);
+  for (let o = 0; o + 290 <= Na.byteLength; o += 290) capital.set(Na.getInt32(o, true), Na.getInt32(o + 0x7a, true));
+  for (let o = 0; o + 78 <= St.byteLength; o += 78) stad.set(St.getInt32(o, true), [St.getInt32(o + 0x38, true), St.getInt32(o + 0x3c, true), St.getInt8(o + 0x4c), St.getInt8(o + 0x4d)]);
+  for (let o = 0; o + 581 <= Cl.byteLength; o += 581) club.set(Cl.getInt32(o, true), [Cl.getInt32(o + 0x53, true), Cl.getInt32(o + 0x69, true)]);
+  const ok = (x: number) => x >= 0 && x < n;
+  const c: Record<number, [number, number, number, number, number]> = {};
+  for (const row of w.clubs) {
+    const cl = club.get(row[0] as number);
+    if (!cl) continue;
+    const st = stad.get(cl[1]);
+    let cid = st && city.has(st[0]) ? st[0] : -1;
+    if (cid < 0) cid = city.has(capital.get(cl[0]) ?? -1) ? capital.get(cl[0])! : -1;
+    if (cid < 0) continue;                                                         // ingen by: vindstille, tørt og 2-båndets temperatur
+    let reg = city.get(cid)![1];
+    if (!ok(reg)) { const cap = capital.get(city.get(cid)![0]) ?? -1; reg = city.has(cap) && ok(city.get(cap)![1]) ? city.get(cap)![1] : 0; }
+    c[row[0] as number] = [cid, reg, st ? st[1] : 0, st ? st[2] : 0, st ? st[3] : 0];
+  }
+  cmSide.wx = { r, c };
+  console.error(`vejret: ${n} områder, ${Object.keys(c).length} klubber med by`);
+}
 if (cmSide) delete w.cmRaw;
 // (MODERN_PARITY 5+6) stabens ikke-spillerpost (staff[11] fra parseCM0102 – i world.json kun for den originale database) for den stab, world-filen har
 if (cmSide && staffNp2026.size) cmSide.staffNp = Object.fromEntries([...staffNp2026].sort((a, b) => a[0] - b[0]));

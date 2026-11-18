@@ -200,6 +200,8 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     // (MODERN_PARITY 7) bestyrelse/managerjob – viljen 0x844780: nation +0x71 (verdensdelen), "Europe"s id og byernes +0x33
     if (raw.nationCont) { g.cmNationCont = raw.nationCont.slice(); g.cmEurope = raw.europe ?? -1; }
     if (raw.city33) g.cmCity33 = raw.city33.slice();
+    // (MODERN_PARITY 12) originalens vejr (cmWeather.ts): opdateringens weather.cfg og byerne – forkørslen 0x5cc850 kører 0x922ee0 fra 1/1
+    if (raw.wx) g.cmWxTab = { r: raw.wx.r, c: { ...raw.wx.c } };
   }
   if (cm?.cmRaw && season < 2020) {
     g.cmClubRep = { ...cm.cmRaw.clubRep }; g.cmNationRep = cm.cmRaw.nationRep.slice();

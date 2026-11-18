@@ -1389,6 +1389,9 @@ export interface GameState {
   cmSaveVer?: number;
   /** originalens vejr (cmWeather.ts, Weather 0x922810/0x922ee0): sidste opdaterede dag (dagnummer) og byernes fire bytes pakket (by-id → b0|b1<<8|b2<<16|b3<<24) */
   cmWx?: { d: number; c: Record<number, number> };
+  /** (MODERN_PARITY 12) 2026/27 i ægte tilstand: databasens vejrtabeller (world-cm.json `wx` – weather.cfg's områder og pr. klub [by, område,
+   *  kapacitet, overdækket, undersoil heating]); slår originalens vejr til (cmWxOn) */
+  cmWxTab?: { r: [number, string, number[][]][]; c: Record<number, [number, number, number, number, number]> };
   dbKind?: 'cm0102';
   /** den originale databases udgave ('3.9.60' | '3.9.65' | '3.9.68'); mangler = 3.9.60 (eller 3.9.68 i meget gamle spil) */
   dbVersion?: string;

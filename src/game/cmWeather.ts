@@ -19,7 +19,7 @@
 // engine+0xf638) – kampene spilles altid.
 import WX from './data/cmWeather.json';
 import type { Fixture, GameState } from './types';
-import { cmActive, cmRand } from './cmPlayerData';
+import { cmActive, cmLogic, cmRand } from './cmPlayerData';
 import { registerPrerun } from './cmPrerun';
 
 type Period = number[];   // [startdag, W0..W4, P0..P4, H0..H6]
@@ -29,7 +29,9 @@ const VERSIONS = (WX as unknown as { versions: Record<string, Record<string, [nu
 /** kampens vejr som originalens 4-byte rekord: [vind 0..4, nedbør 0..9, temperatur °C, byens vind 0..2] */
 export type CmWeatherRec = [number, number, number, number];
 
-export const cmWxOn = (g: GameState): boolean => cmActive(g) && !g.draft;
+// (MODERN_PARITY 12) 2026/27 i ægte tilstand: nye spil får opdateringens egne tabeller (g.cmWxTab fra world-cm.json – dens weather.cfg og byerne),
+// som cm0102.exe læser med "October 2026 Data Update" i Data-mappen; ældre 2026-spil (uden tabellen) og udvidet tilstand er uændrede
+export const cmWxOn = (g: GameState): boolean => (cmActive(g) || (cmLogic(g) && !!g.cmWxTab)) && !g.draft;
 
 const dayNum = (iso: string) => Math.round(Date.parse(`${iso}T00:00:00Z`) / 86400000);
 const doyOf = (iso: string) => { const y = +iso.slice(0, 4); return dayNum(iso) - Math.round(Date.UTC(y, 0, 1) / 86400000); };
@@ -37,7 +39,10 @@ const ftolHalf = (x: number) => Math.trunc(x * 0.5);
 const pack = (b: number[]) => (b[0] & 0xff) | ((b[1] & 0xff) << 8) | ((b[2] & 0xff) << 16) | ((b[3] & 0xff) << 24);
 const unpack = (v: number) => [v & 0xff, (v >> 8) & 0xff, (v >> 16) & 0xff, (v >>> 24) & 0xff];
 
-function clubTable(g: GameState) { return VERSIONS[g.dbVersion ?? '3.9.60'] ?? VERSIONS['3.9.60']; }
+function clubTable(g: GameState): Record<string, [number, number, number, number, number]> {
+  return g.cmWxTab?.c ?? VERSIONS[g.dbVersion ?? '3.9.60'] ?? VERSIONS['3.9.60'];
+}
+const regionsOf = (g: GameState) => g.cmWxTab?.r ?? REGIONS;
 /** byerne, spillets klubber spiller i (stigende id – fast rækkefølge for talrækken) */
 function cities(g: GameState): number[] {
   const t = clubTable(g), s = new Set<number>();
@@ -104,7 +109,7 @@ function venue(g: GameState, f: Fixture) { return clubTable(g)[f.home] ?? null; 
 export function cmMatchWeather(g: GameState, f: Fixture): CmWeatherRec {
   const doy = doyOf(f.date), evening = (f.slot ?? 1) === 2;
   const v = venue(g, f);
-  const reg = REGIONS[v ? v[1] : 0][2];
+  const reg = regionsOf(g)[v ? v[1] : 0][2];
   // 0x9230f3–0x923118: perioden (vinter før forårets startdag)
   const s = doy < reg[0][0] ? 3 : doy < reg[1][0] ? 0 : doy < reg[2][0] ? 1 : doy < reg[3][0] ? 2 : 3;
   if (!v) return [0, 0, cmTemperature(2, doy, evening), 0];                                       // 0x92311f: ingen by
