@@ -2359,6 +2359,13 @@ export const en: Record<string, string> = {
   "cmfe.b.heating": "The pitch's undersoil heating has failed and the board have decided that repairing it would be an unnecassary expense.",
   // gamle gemte spil (cmConvert.ts)
   "cxs.conv.old": "Old version",
+  "legacyExt.tag": "Extended (old)",
+  "legacyExt.title": "Extended game",
+  "legacyExt.q.convert": "New games always follow CM 01/02 exactly. This game was started in the old extended mode and keeps running as it is. You can convert a copy to the original's logic (this save is not touched), or continue as before.",
+  "legacyExt.q.new": "New games always follow CM 01/02 exactly. This game was started in the old extended mode and keeps running as it is. You can start a new game with the original's logic, or continue this one as before.",
+  "legacyExt.convert": "Convert a copy",
+  "legacyExt.new": "Start a new game",
+  "legacyExt.keep": "Continue as before",
   "cxs.conv.btn": "Convert to original (copy)",
   "cxs.restart.btn": "Start again in the original",
   "cxs.conv.q": "Convert {club} ({date}) to the original CM 01/02? A copy is made – the old saved game stays as it is.",

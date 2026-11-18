@@ -9,8 +9,9 @@ import { CURRENCIES, LANGS, compName, dateFmt, getCurrency, getLang, natName, se
 import type { Lang } from '../game/types';
 import type { WorldData } from '../game/newgame';
 import { previewClub } from '../game/newgame';
-import { deleteSave, importSave, listSaves, loadGame, readSave, storedSaveKind, storeNewGame, storeSave, type SaveMeta } from '../game/save';
+import { deleteSave, importSave, listSaves, loadGame, readSave, storedLegacyExt, storedSaveKind, storeNewGame, storeSave, type SaveMeta } from '../game/save';
 import type { SaveKind } from '../game/saveKind';
+import { askLegacyNotice, shouldShowLegacyNotice } from './legacyNotice';
 import type { ConvertReport } from '../game/cmConvert';
 import { cloudSaves, deleteCloudSave, downloadCloudSave, type CloudSave } from '../online/account';
 import { notifyNewCareer } from '../online/notify';
@@ -354,7 +355,16 @@ export function ClassicStart({ onLang, onHome, onGo, onLook, online }: { onLang:
     setRows([...m.values()].sort((a, b) => b.saved.localeCompare(a.saved)));
   };
   useEffect(() => { if (step === 'restore' || step === 'delete') void refresh(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [step, acct?.sid]);
+  const [exts, setExts] = useState<Record<string, boolean | null>>({});
   const openSave = async (r: Row) => {
+    // gammelt udvidet spil: besked én gang (docs/ALWAYS_ORIGINAL.md trin 4) – konvertér en kopi / nyt spil / fortsæt som før
+    const ext = r.id in exts ? exts[r.id] : r.local ? await storedLegacyExt(r.local) : null;
+    if (shouldShowLegacyNotice(ext, r.id)) {
+      const k = r.id in kinds ? kinds[r.id] : r.local ? await storedSaveKind(r.local) : null;
+      const a = await askLegacyNotice(r.id, k === 'oldOriginal');
+      if (a === 'convert') { void convertSave(r); return; }
+      if (a === 'new') { startNew(); return; }
+    }
     setProg({ label: t('cxs.loadingSave'), frac: 0.05, auto: true }); setErr('');
     try {
       if (r.cloud && (!r.local || r.cloud.saved > r.local.saved)) {
@@ -375,7 +385,8 @@ export function ClassicStart({ onLang, onHome, onGo, onLook, online }: { onLang:
         if (!ok) return;
         if (r.id in kinds) continue;
         const k = r.local ? await storedSaveKind(r.local) : null;
-        if (ok) setKinds((m) => ({ ...m, [r.id]: k }));
+        const x = r.local ? await storedLegacyExt(r.local) : null;
+        if (ok) { setKinds((m) => ({ ...m, [r.id]: k })); setExts((m) => ({ ...m, [r.id]: x })); }
       }
     })();
     return () => { ok = false; };
@@ -639,7 +650,8 @@ export function ClassicStart({ onLang, onHome, onGo, onLook, online }: { onLang:
           {rows?.map((s) => (
             <div key={s.id} className="cxs-it save" role="button" tabIndex={0} data-kind={kinds[s.id] ?? ''} onClick={() => void (del ? removeSave(s) : openSave(s))}>
               <span className="n">{s.local?.name ?? s.club} <em>– {s.local?.name ? `${s.club}, ` : ""}{s.manager}</em>
-                {(kinds[s.id] === 'oldOriginal' || kinds[s.id] === 'modern') && <i className="cxs-oldver">{t('cxs.conv.old')}</i>}</span>
+                {exts[s.id] ? <i className="cxs-oldver" data-ext>{t('legacyExt.tag')}</i>
+                  : (kinds[s.id] === 'oldOriginal' || kinds[s.id] === 'modern') && <i className="cxs-oldver">{t('cxs.conv.old')}</i>}</span>
               <span className="extra">{dateFmt(s.date)}{s.cloud ? ' ☁' : ''}</span>
               {!del && (kinds[s.id] === 'oldOriginal' || kinds[s.id] === 'modern') && (
                 <button type="button" className="cxs-conv" data-convert={kinds[s.id]} onClick={(e) => { e.stopPropagation(); void convertSave(s); }}>

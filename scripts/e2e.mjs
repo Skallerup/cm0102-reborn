@@ -1968,6 +1968,7 @@ async function run(look) {
     await page.locator('[data-field=restore]').click();
     const row = page.locator('[data-saves] .cxs-it', { hasText: 'E2E Old Save' });
     await row.locator('.cxs-oldver').waitFor({ timeout: 60000 });
+    if (!(await row.locator('.cxs-oldver[data-ext]').count())) throw new Error('det gamle udvidede spil mangler mærket "Udvidet (gammel)"');
     if (await page.locator('[data-saves] .cxs-it[data-kind=current] .cxs-conv').count()) throw new Error('et nyt spil har konverteringsknappen');
     await row.locator('[data-convert=oldOriginal]').click();
     await page.waitForSelector('.cx-confirm, .confirm-box', { timeout: 120000 });

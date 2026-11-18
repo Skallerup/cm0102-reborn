@@ -18,6 +18,13 @@ export function saveKindOf(g: GameState): SaveKind {
   return 'current';
 }
 
+/** Er det gemte spil et gammelt udvidet spil (legacyExtended)? Fællesspil/draft er aldrig; null = kan ikke afgøres. Samme regel som saveKindFromText */
+export function legacyExtendedFromText(s: string): boolean | null {
+  if (!s.startsWith('{')) return null;
+  if (/"humans":\[\{/.test(s) || /"draft":\{/.test(s)) return false;
+  return !s.includes('"mode":"authentic"');
+}
+
 /** Samme vurdering af den udpakkede tekst (listen over gemte spil – uden at bygge hele spillet). null = kan ikke afgøres */
 export function saveKindFromText(s: string): SaveKind | null {
   if (!s.startsWith('{')) return null;

@@ -2390,6 +2390,13 @@ export const da: Record<string, string> = {
   "cmfe.b.heating": "Banens undervarme er brudt sammen, og bestyrelsen har besluttet, at en reparation ville være en unødvendig udgift.",
   // gamle gemte spil (cmConvert.ts)
   "cxs.conv.old": "Gammel version",
+  "legacyExt.tag": "Udvidet (gammel)",
+  "legacyExt.title": "Udvidet spil",
+  "legacyExt.q.convert": "Nye spil følger altid CM 01/02 nøjagtigt. Dette spil blev startet i den gamle udvidede tilstand og kører videre, som det er. Du kan konvertere en kopi til originalens logik (dette gem røres ikke) eller fortsætte som før.",
+  "legacyExt.q.new": "Nye spil følger altid CM 01/02 nøjagtigt. Dette spil blev startet i den gamle udvidede tilstand og kører videre, som det er. Du kan starte et nyt spil med originalens logik eller fortsætte dette som før.",
+  "legacyExt.convert": "Konvertér en kopi",
+  "legacyExt.new": "Start et nyt spil",
+  "legacyExt.keep": "Fortsæt som før",
   "cxs.conv.btn": "Konvertér til originalen (kopi)",
   "cxs.restart.btn": "Start forfra i originalen",
   "cxs.conv.q": "Konvertér {club} ({date}) til det originale CM 01/02? Der laves en kopi – det gamle gemte spil forbliver, som det er.",

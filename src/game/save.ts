@@ -12,7 +12,7 @@ import { cmCupName, cmLeagueRules } from './cmCalendar';
 import { cashRound } from './cmTransferBid';
 import { deserializeState, gunzipText, serializeState } from './snapshot';
 import { rng } from './rng';
-import { saveKindFromText, saveKindOf, type SaveKind } from './saveKind';
+import { legacyExtendedFromText, saveKindFromText, saveKindOf, type SaveKind } from './saveKind';
 import type { GameState, Player } from './types';
 
 export interface SaveMeta {
@@ -25,6 +25,8 @@ export interface SaveMeta {
   name?: string;
   /** hvilken slags spil (saveKind.ts) – 'oldOriginal'/'modern' kan konverteres (Restore Saved Game) */
   kind?: SaveKind;
+  /** gammelt udvidet spil (legacyExtended) – mærkes i listen over gemte spil */
+  ext?: boolean;
 }
 
 /** id'et for et navngivet gemt spil */
@@ -66,6 +68,7 @@ export async function saveGame(opts?: { cloud?: boolean; name?: string }): Promi
     saved: new Date().toISOString(),
     ...(name ? { name } : {}),
     kind: saveKindOf(g),
+    ext: extOf(g),
   };
   await set(`save:${id}`, blob);
   await set(`meta:${id}`, meta);
@@ -73,6 +76,20 @@ export async function saveGame(opts?: { cloud?: boolean; name?: string }): Promi
   rememberLast({ kind: 'local', id });
   cloudHook?.(meta, blob, !!opts?.cloud);
   return meta;
+}
+
+const extOf = (g: GameState): boolean => !g.humans?.length && !g.draft && legacyExtended(g);
+
+/** Er et lokalt gemt spil et gammelt udvidet spil? Metadata uden `ext` (gemt af en ældre version): teksten læses og svaret gemmes. null = ukendt */
+export async function storedLegacyExt(meta: SaveMeta): Promise<boolean | null> {
+  if (meta.ext !== undefined) return meta.ext;
+  try {
+    const blob = await get<Blob>(`save:${meta.id}`);
+    if (!blob) return null;
+    const ext = legacyExtendedFromText(await gunzipText(blob));
+    if (ext !== null) await set(`meta:${meta.id}`, { ...meta, ext });
+    return ext;
+  } catch { return null; }
 }
 
 /** Læg et spil hentet fra skyen i den lokale database (overskriver en ældre lokal kopi) */
@@ -103,7 +120,7 @@ export async function readSave(id: string): Promise<GameState | null> {
 /** Konverteringens resultat gemmes som et NYT gemt spil (eget id) – returnerer id'et */
 export async function storeNewGame(g: GameState): Promise<string> {
   g.id = `save-${Date.now().toString(36)}`;
-  const meta: SaveMeta = { id: g.id, manager: g.manager.name, club: g.clubs[g.userClub]?.name ?? '—', date: g.date, saved: new Date().toISOString(), kind: saveKindOf(g) };
+  const meta: SaveMeta = { id: g.id, manager: g.manager.name, club: g.clubs[g.userClub]?.name ?? '—', date: g.date, saved: new Date().toISOString(), kind: saveKindOf(g), ext: extOf(g) };
   // serializeState skriver den globale talrække i spillet – her er spillet ikke lagt ind, så dets egen bruges
   const keep = rng.state;
   rng.state = g.rng;

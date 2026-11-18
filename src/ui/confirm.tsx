@@ -5,11 +5,11 @@ import { isRetro } from './theme';
 import { gs, hasGame } from '../game/state';
 import { titleColors, useClassicDialog } from './classic';
 
-interface Req { text: string; ok?: string; danger?: boolean; head?: string; notice?: boolean; title?: string; colored?: boolean; input?: string; resolve: (v: boolean, value?: string) => void }
+interface Req { text: string; ok?: string; cancel?: string; danger?: boolean; head?: string; notice?: boolean; title?: string; colored?: boolean; input?: string; resolve: (v: boolean, value?: string) => void }
 let push: ((r: Req) => void) | null = null;
 
 /** Spørg brugeren og vent på svaret (Enter = OK, Esc = Annuller) */
-export function askConfirm(text: string, opts?: { ok?: string; danger?: boolean; head?: string; notice?: boolean; title?: string; colored?: boolean }): Promise<boolean> {
+export function askConfirm(text: string, opts?: { ok?: string; cancel?: string; danger?: boolean; head?: string; notice?: boolean; title?: string; colored?: boolean }): Promise<boolean> {
   return new Promise((resolve) => {
     if (!push) { if (opts?.notice) { window.alert(text); resolve(true); } else resolve(window.confirm(text)); return; }
     push({ text, ...opts, resolve });
@@ -58,7 +58,7 @@ export function ConfirmHost() {
         <div className="cx-subtitle">{req.head ?? t('cl.mt.confirm')}</div>
         <div className="cx-dlg-body center"><p className="cx-ts-intro">{req.text}</p>{req.input !== undefined && <input className="cx-dlg-input" autoFocus value={val} maxLength={40} onChange={(e) => setVal(e.target.value)} />}</div>
         {req.notice ? <div className="cx-ts-buttons cx-dlg-foot single"><button className="primary" autoFocus onClick={() => answer(true)}>{t('common.ok')}</button></div> : <div className="cx-ts-buttons cx-dlg-foot">
-          <button onClick={() => answer(false)}>{req.input !== undefined ? t('common.cancel') : t('common.no')}</button>
+          <button onClick={() => answer(false)}>{req.cancel ?? (req.input !== undefined ? t('common.cancel') : t('common.no'))}</button>
           <button className="primary" autoFocus={req.input === undefined} onClick={() => answer(true)}>{req.ok ?? (req.input !== undefined ? t('common.ok') : t('common.yes'))}</button>
         </div>}
       </div>
@@ -70,7 +70,7 @@ export function ConfirmHost() {
         <p>{req.text}</p>
         {req.input !== undefined && <input autoFocus value={val} maxLength={40} onChange={(e) => setVal(e.target.value)} style={{ width: '100%', marginBottom: 10 }} />}
         <div className="row confirm-btns">
-          {!req.notice && <button onClick={() => answer(false)}>{t('common.cancel')}</button>}
+          {!req.notice && <button onClick={() => answer(false)}>{req.cancel ?? t('common.cancel')}</button>}
           <button className={req.danger ? 'danger primary' : 'primary'} autoFocus onClick={() => answer(true)}>{req.ok ?? t('common.ok')}</button>
         </div>
       </div>

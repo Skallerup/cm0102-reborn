@@ -13,7 +13,8 @@ import { createGameAsync, LANG_NATION, ORIG_LANG_NATION } from './startGame';
 import { NewGameLoader, type NewGameProgress } from './NewGameLoader';
 import { setupBots, type BotScope } from '../game/bots';
 import { enableMultiplayer } from '../game/humans';
-import { deleteSave, importSave, listSaves, loadGame, storeSave, type SaveMeta } from '../game/save';
+import { askLegacyNotice, shouldShowLegacyNotice } from './legacyNotice';
+import { deleteSave, importSave, listSaves, loadGame, storedLegacyExt, storeSave, type SaveMeta } from '../game/save';
 import { cloudSaves, deleteCloudSave, downloadCloudSave, type CloudSave } from '../online/account';
 import { AccountBar, useAccount } from './Login';
 import { gs, notify } from '../game/state';
@@ -106,7 +107,7 @@ export function Start({ onLang, onHome }: { onLang: (l: Lang) => void; onHome?: 
             {err && <div className="bad center">{err}</div>}
           </div>
         )}
-        {view === 'load' && <LoadList onBack={() => setView('menu')} setBusy={setBusy} />}
+        {view === 'load' && <LoadList onBack={() => setView('menu')} setBusy={setBusy} onNew={() => { setChallenge(undefined); setView('new'); }} />}
         {view === 'challenges' && (
           <Panel title={t('start.challenges')} right={<button className="small" onClick={() => setView('menu')}>{t('common.back')}</button>}>
             <div className="col">
@@ -136,7 +137,7 @@ export function Start({ onLang, onHome }: { onLang: (l: Lang) => void; onHome?: 
 
 type Row = { id: string; club: string; manager: string; date: string; saved: string; local?: SaveMeta; cloud?: CloudSave };
 
-function LoadList({ onBack, setBusy }: { onBack: () => void; setBusy: (s: string) => void }) {
+function LoadList({ onBack, setBusy, onNew }: { onBack: () => void; setBusy: (s: string) => void; onNew: () => void }) {
   const acct = useAccount();
   const [rows, setRows] = useState<Row[] | null>(null);
   const [err, setErr] = useState('');
@@ -153,7 +154,28 @@ function LoadList({ onBack, setBusy }: { onBack: () => void; setBusy: (s: string
     setRows([...m.values()].sort((a, b) => b.saved.localeCompare(a.saved)));
   };
   useEffect(() => { void refresh(); }, [acct?.sid]);
+  // gamle udvidede spil mærkes (docs/ALWAYS_ORIGINAL.md trin 4)
+  const [exts, setExts] = useState<Record<string, boolean | null>>({});
+  useEffect(() => {
+    if (!rows) return;
+    let ok = true;
+    void (async () => {
+      for (const r of rows) {
+        if (!ok) return;
+        if (r.id in exts) continue;
+        const x = r.local ? await storedLegacyExt(r.local) : null;
+        if (ok) setExts((m) => ({ ...m, [r.id]: x }));
+      }
+    })();
+    return () => { ok = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows]);
   const open = async (r: Row) => {
+    const ext = r.id in exts ? exts[r.id] : r.local ? await storedLegacyExt(r.local) : null;
+    if (shouldShowLegacyNotice(ext, r.id)) {
+      // konverteringen af en kopi findes i den klassiske start; her tilbydes et nyt spil (originalens logik) eller at fortsætte som før
+      if ((await askLegacyNotice(r.id, false)) === 'new') { onNew(); return; }
+    }
     setBusy(t('start.loading')); setErr('');
     try {
       if (r.cloud && (!r.local || r.cloud.saved > r.local.saved)) {
@@ -181,6 +203,7 @@ function LoadList({ onBack, setBusy }: { onBack: () => void; setBusy: (s: string
           <div key={s.id} className="choice">
             <div className="grow" onClick={() => void open(s)}>
               <b>{s.club}</b> <span className="muted">— {s.manager}</span>
+              {exts[s.id] && <span className="acc-tag" data-ext>{t('legacyExt.tag')}</span>}
               {s.cloud && <span className="acc-tag" title={s.cloud.device ? t('acc.fromDevice', { device: s.cloud.device }) : undefined}>☁ {s.local && s.cloud.saved > s.local.saved ? t('acc.cloudNewer') : t('acc.cloud')}</span>}
               {acct && !s.cloud && <span className="acc-tag dim">{t('acc.localOnly')}</span>}
               <div className="muted">{dateFmt(s.date)} · {t('start.savedAt')} {new Date(s.saved).toLocaleString()}{s.cloud?.device && s.cloud.saved >= (s.local?.saved ?? '') ? ` · ${t('acc.fromDevice', { device: s.cloud.device })}` : ''}</div>

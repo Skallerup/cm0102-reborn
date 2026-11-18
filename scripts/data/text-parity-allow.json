@@ -2,6 +2,10 @@
   "minLetters": 2,
   "prefixes": [
     {
+      "prefix": "legacyExt.",
+      "reason": "Besked/mærke på gamle udvidede gemte spil (listen over gemte spil) – CM Reborn-område, ikke en original skærm"
+    },
+    {
       "prefix": "cl.rb.",
       "reason": "Game Options → Game Settings → CM Reborn: egne visningstilvalg (ikke i originalen) – CM Reborn-område"
     },
