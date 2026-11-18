@@ -2,6 +2,7 @@
 
 Flyttet fra CLAUDE.md 17/11-2026 (så CLAUDE.md er kort i hver session). Nyeste først. Tilføj en linje øverst ved hver udgivelse.
 
+- 2026-11-18 – Skudt live (v0.30.0): 2026-11-17 – Spejderopgaver 1:1 (cmScoutAsg.ts, cmScoutAsgNews.ts): 0x7b3e20/0x7b0050, nyhed 0x138b (0x7b95c0), dækning land/region/ungdom/turnering; K5 245 → 243.
 - 2026-11-17 – Skudt live (v0.29.0): 2026-11-17 – Mål-faldet: ingen skyldig commit (runde 9 målte zonemotoren). Årsag: CA-omfordelingen i 0x5ce2d0 (0x5d393e/0x5d6220/0x5d587a) manglede. PL mål/kamp 2,82 → 2,95 (orakel 2,95). Regen overtager den pensioneredes post (0x7abac0).
 - 2026-11-17 – Skudt live (v0.29.0): 2026-11-17 – MP: join = inGame straks, room.joins anvendes lokalt (loadVersion/refresh), protokolversion 2 (x-mp-proto, 426 → genindlæs); CFTG5 hang pga. gammel kode (oprettet før fixen + SW prompt).
 - 2026-11-17 – Skudt live (v0.29.0): 2026-11-17 – 2026/27: scripts/data/divisions-2026.json retter opdateringens divisionsfelter (ejerens fund: Næstved i 1. div.); dansk 2. division ny; 14 ligaer rettet til virkelighedens holdantal; world.json genbygget (nu i world-builds.json); åbent: MLS (2001-data), Gimcheon Sangmu 3 spillere.

@@ -9,6 +9,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.30.0',
+    date: '2026-11-18',
+    title: { da: 'Mere af det originale CM 01/02', en: 'More of the original CM 01/02' },
+    items: [
+      { da: "Spejderne kan sættes på originalens opgaver (Nation, Region, Youth Players) med originalens nyheder: \"search started\", anbefalingerne og \"search completed\".", en: "Scouts can be given the original assignments (Nation, Region, Youth Players) with the original news: \"search started\", the recommendations and \"search completed\"." },
+    ],
+  },
+  {
     version: '0.29.0',
     date: '2026-11-17',
     title: { da: 'Rettelser i det originale CM 01/02', en: 'Fixes in the original CM 01/02' },
