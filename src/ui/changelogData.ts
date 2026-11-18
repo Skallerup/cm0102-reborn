@@ -13,6 +13,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '2026-11-18',
     title: { da: 'Mere af det originale CM 01/02', en: 'More of the original CM 01/02' },
     items: [
+      { da: "⚠ Kræver et nyt spil: 2026/27 i ægte tilstand: originalens kondition, skader (også startskader og træningsskader), spillerudvikling og træning – kræver et nyt spil.", en: "⚠ Requires a new game: 2026/27 in authentic mode: the original's fitness, injuries (including pre-season and training injuries), player development and training – requires a new game." },
       { da: "⚠ Kræver et nyt spil: 2026/27-databasen i ægte tilstand bruger nu originalens logik: originalens kampmotor (9 på bænken, 5 udskiftninger), spillernes vilje og originalens kontrakter og lønninger, med beløbene omregnet pr. liga.", en: "⚠ Requires a new game: The 2026/27 database in authentic mode now uses the original game's logic: the original match engine (9 on the bench, 5 substitutions), player willingness, and the original contracts and wages, with amounts converted per league." },
       { da: "Spejderne kan sættes på originalens opgaver (Nation, Region, Youth Players) med originalens nyheder: \"search started\", anbefalingerne og \"search completed\".", en: "Scouts can be given the original assignments (Nation, Region, Youth Players) with the original news: \"search started\", the recommendations and \"search completed\"." },
     ],
