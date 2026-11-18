@@ -2,6 +2,7 @@
 
 Flyttet fra CLAUDE.md 17/11-2026 (så CLAUDE.md er kort i hver session). Nyeste først. Tilføj en linje øverst ved hver udgivelse.
 
+- 2026-11-18 – Skudt live (v0.30.0): 2026-11-18 – UI (ejerens ønsker): rød prik Game Options/Hvad er nyt, Feedback og fejl som én formular, Game Settings 2 kolonner, multiplayer Invitér/Spillere i sidebaren, Competitions.tsx uden tom skærm; e2e opdateret.
 - 2026-11-18 – Skudt live (v0.30.0): 2026-11-18 – HOTFIX live-nedbrud 0.30.0: cmExchangeCheck/cmAskingPrice fik ønskelisternes adaptere 0x6e6340 (planScore) og 0x8c7950 (slShared) – før 'kald 0x58d710/0x6e6340 er ikke porteret'; App.tsx lazy AppPage venter efter vite:preloadError (reading 'default', 0.29.0). Regressionstest tests/cmExchangeCheck.test.ts.
 - 2026-11-18 – Skudt live (v0.30.0): 2026-11-18 – Ko-fi: api/kofi.ts (webhook, KOFI_VERIFY_TOKEN i Vercel production, idempotent, EUR-cent pr. måned, is_public=false → Anonym, ingen e-mail; GET s-maxage=60), SupportBox på Landing + Game Options. Ejeren: sæt webhook-URL i Ko-fi.
 - 2026-11-18 – Skudt live (v0.30.0): 2026-11-18 – MODERN_PARITY 9+10+12: cmScoutLogic/cmDiscLogic (kendskab, Scout Player, spejderopgaver, karantæner/appel, Discipline Player), vejr (2026's weather.cfg, 29 klimaområder), priser, reserve-/B-hold, venskabskampe (2026's felter), sprog; world-cm.json 1,16 MB (nation7f, awHist, wx, nationFr, nationLang); newsFilter KEEP_2026 kun landshold/sponsor/UECL/split. 2001-fingeraftryk på main nu 363d15236923ca2c (efter rygte-rettelsen).
