@@ -10,6 +10,7 @@ import { cmBoardWageAllow } from '../src/game/cmBudget';
 import { cmGbp, GBP_2001 } from '../src/game/cmMoney';
 import { makeBid, playerInterest, processOffers, respondToOffer } from '../src/game/transfers';
 import { cmMarketOn } from '../src/game/cmPlayerData';
+import { SL_ON } from '../src/game/cmShortlistGame';
 import { newTerms, stepUp, valueCtx } from '../src/game/cmTransferBid';
 import type { TransferOffer } from '../src/game/types';
 import type { GameState, Player } from '../src/game/types';
@@ -89,7 +90,9 @@ describe('2026/27 i ægte tilstand: originalens vilje og kontrakter', () => {
     const own = Object.values(g.players).filter((p) => p.club === g.userClub && !p.loan).sort((a, b) => b.ca - a.ca)[1];
     const bid: TransferOffer = { id: g.nextId.offer++, player: own.id, buyer: city, seller: g.userClub, fee: own.value, loan: false, status: 'pending', created: g.date, respondBy: g.date };
     g.offers.push(bid);
-    respondToOffer(bid.id, 'reject', undefined, undefined, undefined, { reject: 'indispensable' });
+    // ønskelisterne er slået fra under vitest (SL_ON) – i spillet er de til, og så starter afvisningen ingen jagt (startPursuit)
+    SL_ON.on = true;
+    try { respondToOffer(bid.id, 'reject', undefined, undefined, undefined, { reject: 'indispensable' }); } finally { SL_ON.on = false; }
     expect(bid.status).toBe('rejected');
     expect(own.squadStatus).toBe('key');
     expect(g.pursuits?.some((x) => x.player === own.id) ?? false).toBe(false);
