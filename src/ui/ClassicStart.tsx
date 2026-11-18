@@ -98,8 +98,10 @@ function makePrep(world: WorldData, playable: Set<number>): Prep {
     .filter((c) => playable.has(c[3]) && lg.get(c[4]) && !lg.get(c[4])!.hidden)
     .map((c) => ({ id: c[0], short: c[2], name: c[1], nation: c[3], code: world.nations[c[3]]?.code ?? '', league: c[4], div: divOf(c[4]) }))
     .sort((a, b) => a.short.localeCompare(b.short));
-  // Select Nationality: alle databasens nationer (ikke kun dem med klubber/ligaer – Northern Ireland, Wales …)
-  const nations = world.nations.map((n, i) => ({ n, i })).filter(({ n }) => n && n.name).map(({ n, i }) => {
+  // Select Nationality: nationer med mindst én klub, liga eller spiller (Northern Ireland, Wales …); døde lande uden spillere vises ikke
+  const nk = world.playerFields.indexOf('nation');
+  const natIds = new Set<number>([...world.clubs.map((c) => c[3]), ...world.leagues.map((l) => l.nation), ...world.players.map((p) => p[nk] as number)]);
+  const nations = world.nations.map((n, i) => ({ n, i })).filter(({ n, i }) => n && n.name && natIds.has(i)).map(({ n, i }) => {
     const key = regionOfNation(n.name);
     return { i, label: adjective(n.name, n.adj), region: REGION_CODE[key], regionKey: key };
   }).sort((a, b) => a.label.localeCompare(b.label));

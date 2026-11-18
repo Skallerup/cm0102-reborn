@@ -62,7 +62,8 @@ export function ClassicJoin({ code, onBack, onHome, setBusy }: { code: string; o
       div: l.nation === eng && l.tier >= 1 && l.tier <= 4 ? ['PL', 'D1', 'D2', 'D3'][l.tier - 1] : compAbbr(compName(l.name)),
     }))).sort((a, b) => a.short.localeCompare(b.short));
     // nationaliteten er managerens egen (alle lande som i nyt spil) – den filtrerer ikke klubberne, som altid er rummets
-    const nations = state.nations.map((_, i) => i).filter((i) => state.nations[i]?.name).map((i) => {
+    const natIds = new Set<number>([...Object.values(state.clubs).map((c) => c.nation), ...leagues.map((l) => l.nation), ...Object.values(state.players).map((p) => p.nation)]);
+    const nations = [...natIds].filter((i) => state.nations[i]?.name).map((i) => {
       const key = regionOfNation(state.nations[i].name);
       return { i, label: adjective(state.nations[i].name, state.nations[i].adj), region: REGION_CODE[key], regionKey: key };
     }).sort((a, b) => a.label.localeCompare(b.label));
