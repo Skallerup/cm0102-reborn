@@ -221,7 +221,7 @@ function FilterDialog({ f: initial, defaults, nations, onOk, onClose }: { f: Fil
   const age = AGES.find(([, lo, hi]) => f.minAge === lo && f.maxAge === hi)?.[0] ?? 'custom';
   const nat = f.nation < 0 ? 'any' : f.nation === home ? 'home' : 'other';
   const based = f.league ? 'other' : f.based || 'any';
-  const status = f.onlyListed ? 'listed' : f.onLoan ? 'loan' : 'any';
+  const status = f.onlyListed ? 'listed' : f.forLoan ? 'forLoan' : f.onLoan ? 'loan' : 'any';
   const contract = f.onlyFree ? 'free' : f.expiring ? 'expiring' : 'any';
   const valueRange = f.minValue > 0 || f.maxValue > 0;
   const [rangeOn, setRangeOn] = useState(valueRange);
@@ -268,8 +268,8 @@ function FilterDialog({ f: initial, defaults, nations, onOk, onClose }: { f: Fil
                   <select value={f.maxValue} onChange={(e) => set('maxValue', Number(e.target.value))}><option value={0}>–</option>{VALUES.map((v) => <option key={v} value={v}>{money(v)}</option>)}</select>
                 </span>}
               </>)}
-              {row(t('cl.fl.status'), <Seg value={status} opts={[['any', any], ['listed', t('cl.fl.listed')], ['loan', t('cl.fl.onLoan')]]}
-                onChange={(v) => setF({ ...f, onlyListed: v === 'listed', onLoan: v === 'loan' })} />)}
+              {row(t('cl.fl.status'), <Seg value={status} opts={[['any', any], ['listed', t('cl.fl.listed')], ['forLoan', t('cl.fl.forLoan')], ['loan', t('cl.fl.onLoan')]]}
+                onChange={(v) => setF({ ...f, onlyListed: v === 'listed', forLoan: v === 'forLoan', onLoan: v === 'loan' })} />)}
               {row(t('cl.fl.contract'), <Seg value={contract} opts={[['any', any], ['free', t('cl.fl.expired')], ['expiring', t('cl.fl.expiring')]]}
                 onChange={(v) => setF({ ...f, onlyFree: v === 'free', expiring: v === 'expiring' })} />)}
               {row(t('cl.fl.pos'), <Seg value={f.posGroup || 'any'} opts={[['any', any], ['GK', 'GK'], ['D', t('cl.fl.def')], ['M', t('cl.fl.mid')], ['A', t('cl.fl.att')]]}
@@ -617,7 +617,7 @@ export function ClassicPlayerTable({ players, title, desc, view: viewProp, initi
     if (interestedClubs(p).length) return ['Wnt', !rebornOn('helpTexts') ? '' : t('cl.sq.wanted'), false];
     return null;
   };
-  const based = (p: Player) => basedName(g, p.club, p.nation);
+  const based = (p: Player) => natName(g.nations[g.clubs[p.club]?.nation ?? p.nation]?.name) ?? '';
   const realismOn = showRealism();
   const base: CxCol<Player>[] = [
     // mærket kan klikkes og åbner spillerens side om det (Inj/Sus → Injuries & Bans, Wnt → Transfer) som i originalen
@@ -660,7 +660,7 @@ export function ClassicPlayerTable({ players, title, desc, view: viewProp, initi
     ? [...base, pos, ...SHOW_ATTRS.map(attrCol)]
     : view === 'notes'
     ? [...base, club, pos, { key: 'notes', label: t('cl.tn.notes'), cls: 'c-cyan', render: (p) => p.notes || '-', sort: (p) => (p.notes ? 0 : 1) }]
-    : [...base, club, { key: 'based', label: t('cl.tr.based'), cls: 'c-yel', render: (p) => <span className="link" onClick={() => nav(basedRoute(g, p.club, p.nation))}>{based(p)}</span>, sort: based }, pos, val, ...real];
+    : [...base, club, { key: 'based', label: t('cl.tr.based'), cls: 'c-yel', render: (p) => <span className="link" onClick={() => nav(nationRoute(g.clubs[p.club]?.nation ?? p.nation))}>{based(p)}</span>, sort: based }, pos, val, ...real];
   return (
     <>
       {viewMenu && <div className="cx-tools cx-tools-inline"><ViewMenu view={view} setView={setOwnView} /></div>}

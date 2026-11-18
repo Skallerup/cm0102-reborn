@@ -90,7 +90,7 @@ const DEFAULTS = {
   trait: '', noTrouble: false, rec: -1, interested: false, scouted: false, noInjured: false, notLoaned: false, shortlist: false,
   // klassisk filterdialog: positionsgruppe, side, hvor spilleren spiller, lejet ud, egen trup med
   posGroup: '' as '' | 'GK' | 'D' | 'M' | 'A', side: '' as '' | 'L' | 'C' | 'R', based: '' as '' | 'home' | 'abroad',
-  onLoan: false, includeSquad: false,
+  onLoan: false, forLoan: false, includeSquad: false,
   // klassisk filterdialog, fanen Attributes: minimum pr. egenskab (searchAttrs.ts, "idx:min,idx:min")
   attrMins: '',
 };
@@ -163,6 +163,7 @@ export function Search({ classic, shortlist }: { classic?: boolean; shortlist?: 
       if (f.side && p.side[SIDES.indexOf(f.side)] < 15) continue;
       if (f.based && (!club || (f.based === 'home') !== (club.nation === homeNation))) continue;
       if (f.onLoan && !p.loan) continue;
+      if (f.forLoan && !p.loanListed) continue;
       if (f.foot && p.foot !== f.foot && p.foot !== 'B') continue;
       if (f.minHeight && p.height < f.minHeight) continue;
       if (f.noInjured && p.injury) continue;
