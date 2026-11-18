@@ -47,7 +47,8 @@ import { ensureImpls } from './cmGen/impls';
 import { isHumanClub } from './humans';
 import { ageOn } from './dates';
 import { ATTRS } from './attributes';
-import { workPermitGranted, loanBlocked, englandLoanRefused, englandLoanUntil } from './rules2001';
+import { workPermitGranted, loanBlocked, englandLoanRefused } from './rules2001';
+import { cmLoanPeriod } from './cmLoan';
 import { cmFitRead } from './cmFitnessGame';
 import { aiPickCtx, roleDataOf, playerRecord } from './engine/grid/aiTeam';
 import { planScore, type ManagerBlockIn } from './engine/grid/planScore';
@@ -90,6 +91,8 @@ export interface SlBid {
   max: number;
   /** svartiden 0x8cc5b0 → schedule_offer 0x8c6220: dage til sælgerens svar (0 = samme dag) */
   days: number;
+  /** lejebud (make_loan_offer 0x8bed60 fra 0x842740): lejekontraktens udløb og lønprocent (lejeklubbens andel, 0/50/100) */
+  loanUntil?: string; loanShare?: number;
 }
 export interface SlFree { kind: 'free'; buyer: number; player: number }
 /** add_rumour 0x754740(staff, klub, beløb £, vilje) fra 0x83f3a0 (0x84079d/0x840c4b): mediernes kø (cmRumours.ts) */
@@ -1547,31 +1550,21 @@ export function buildSlMem(g: GameState, opts: { noStale?: boolean } = {}): SlMe
       }
       case 0x8bed60: {
         // make_loan_offer(staff, klub, …, 1, 1): et lejebud
-        const st = a[a.length - 6] >>> 0, club = a[a.length - 5] >>> 0;
+        // make_loan_offer(staff, klub, &slutdato, lønprocent, 1, 1): lejekontrakten 0x85e590 får datoen og procenten (lejeklubbens andel)
+        const st = a[a.length - 6] >>> 0, club = a[a.length - 5] >>> 0, dt = a[a.length - 4] >>> 0;
         const r = 0x5e7f0000;
+        const until = isoOf(m.s16(dt), m.u16(dt + 2)), share = s8(a[a.length - 3] & 0xff);
         for (let i = 0; i < 0x48; i++) m.w8(r + i, 0);
         m.w32(r + 8, m.s32(club)); m.w32(r + 0xc, m.s32(st)); m.w8(r + 0x1f, 1); m.w8(r + 0x11, 0xb);   // (init_loan_offer 0x8e7810)
-        return addBid(S, r, true);
+        return addBid(S, r, true, { until, share });
       }
       case 0x8d0590: {
-        // TRANSFER_MANAGER: lejeperioden (start måned/år, slut måned/år – måned 0..11 som 0x54cfb0) efter køberlandets lejeregel; landenes
-        // regler (+0x8ac, 28 objekter med en virtuel +0x28) er ikke i spillet: fra i dag til sæsonens slutning (juni), højst til kontraktens
-        // udløb (*estimeret*). Argumenterne (thiscall fra 0x842740): køber, sælger, staff, &startmåned, &startår, &slutmåned, &slutår.
+        // TRANSFER_MANAGER::get_loan_period (thiscall fra 0x842740): køber, kontraktklub, staff, &startmåned, &startår, &slutmåned, &slutår –
+        // køberlandets regel og kontraktens udløb som originalen (cmLoan.ts)
         const n = a.length;
-        const mon = (d: number, y: number) => { const lp = leapY(y); let k = 0; for (let i = 1; i < 12; i++) if (d >= m.s16((lp ? 0x9b8460 : 0x9b8448) + 2 * i)) k = i; return k; };
-        const y = m.u16(G.TODAY + 2), d = m.s16(G.TODAY);
-        const cm = mon(d, y);
-        let ey = cm >= 6 ? y + 1 : y, em = 5;
-        const k = getContract(m, a[n - 5] >>> 0);
-        if (k) { const ky = m.u16(k + 0x2f), km = mon(m.s16(k + 0x2d), ky); if (ky < ey || (ky === ey && km < em)) { ey = ky; em = km; } }
-        let sm = cm, sy = y;
-        // engelsk køber: ENGLAND_RULES::get_loan_period 0x579c70 – tre måneder fra næste måned (efter 19/6 for spillere under 24: som før)
-        const bc = g.clubs[m.s32(a[n - 7] >>> 0)], lp = S.byMem.get(m.s32(a[n - 5] >>> 0));
-        if (bc && lp && englandLoanUntil(lp, bc)?.slice(5) !== '06-30') {
-          sm = cm + 1; if (sm > 11) { sm -= 12; sy++; }
-          em = sm + 3; ey = sy; if (em > 11) { em -= 12; ey++; }
-        }
-        m.w8(a[n - 4] >>> 0, sm); m.w16(a[n - 3] >>> 0, sy); m.w8(a[n - 2] >>> 0, em); m.w16(a[n - 1] >>> 0, ey);
+        const bc = m.s32(a[n - 7] >>> 0), lp = S.byMem.get(m.s32(a[n - 5] >>> 0));
+        const r = lp && g.clubs[bc] ? cmLoanPeriod(g, bc, lp) : null;
+        if (r) { m.w8(a[n - 4] >>> 0, r.sm); m.w16(a[n - 3] >>> 0, r.sy); m.w8(a[n - 2] >>> 0, r.em); m.w16(a[n - 1] >>> 0, r.ey); }
         return 0;
       }
       // CONTRACT_MANAGER::offer_contract – sælgerens forsøg på at binde spilleren, når et bud kommer (0x84a99e): ikke i spillet (*estimeret*)
@@ -1732,7 +1725,7 @@ function lazyValues(S: SlMem, cid: number): void {
   }
 }
 
-function addBid(S: SlMem, r: number, loan: boolean): number {
+function addBid(S: SlMem, r: number, loan: boolean, lt?: { until: string; share: number }): number {
   const { m, g } = S;
   const buyer = m.s32(r + 8), p = S.byMem.get(m.s32(r + 0xc));
   if (!p || !g.clubs[buyer]) return -1;
@@ -1744,7 +1737,7 @@ function addBid(S: SlMem, r: number, loan: boolean): number {
   const days = sellerHuman ? 28 : responseDelay(S, r);
   S.events.push({ kind: 'bid', id, buyer, player: p.id, fee: loan ? 0 : eur(m.s32(r + 0x1b)), loan: loan || m.u8(r + 0x1f) === 1,
     months: Math.max(0, s8(m.u8(r + 0x40))), sellOn: Math.max(0, s8(m.u8(r + 0x3f))), lgFee: eur(m.s32(r + 0x35)), lgApps: m.u8(r + 0x39) || 10,
-    intFee: eur(m.s32(r + 0x3a)), intApps: m.u8(r + 0x3e) || 10, pub: m.u8(r + 0x2d), max: maxOf(S, buyer, p), days });
+    intFee: eur(m.s32(r + 0x3a)), intApps: m.u8(r + 0x3e) || 10, pub: m.u8(r + 0x2d), max: maxOf(S, buyer, p), days, ...(lt ? { loanUntil: lt.until, loanShare: lt.share } : {}) });
   return id;
 }
 
@@ -2039,7 +2032,7 @@ export function cmShortlistDaily(g: GameState, planClub: (cid: number) => { drop
   // TRANSFER_MANAGER::daily_update 0x8c5880 → process_due_offer 0x8c63a0: de computer → computer-bud, hvis tid er kommet (også dagens med 0 dage)
   dueHook({
     loanAnswer: (pid, buyer, seller) => loanAnswer_84af00(S, pid, buyer, seller),
-    delay: (pid, buyer, site) => offerDelay(S, pid, buyer, site),
+    delay: (pid, buyer, site, loan) => offerDelay(S, pid, buyer, site, loan),
     interest: (pid, buyer) => moveInterest(S, pid, buyer),
     rand: (pid, buyer) => cmRand(g.seed ?? 0, pid, buyer, dayNum(g.date), 0x4cd230),
   });
@@ -2052,7 +2045,7 @@ export interface SlDueCtx {
   /** shortlist_manager_predict_selling_club_response 0x84af00(sælger, staff, 0, køber, −1, lejebud 1): 0 = sælgeren siger ja til lejen */
   loanAnswer(pid: number, buyer: number, seller: number): number;
   /** 0x8cc5b0 + 0x8c6220 for et nyt bud fra køberen (0x8c0810's nye bud → 0x8be300): dage til svaret */
-  delay(pid: number, buyer: number, site: number): number;
+  delay(pid: number, buyer: number, site: number, loan?: boolean): number;
   /** accept_transfer_bid 0x8c0080: spillerens vilje 0x846920(staff, køber, 0, 0, status 0x849f00(staff, køber, 0), &ud) – under 0,75 siger han nej */
   interest(pid: number, buyer: number): number;
   /** en talrække til spillerens beslutningsdag */
@@ -2061,6 +2054,16 @@ export interface SlDueCtx {
 export function setSlDue(f: (cx: SlDueCtx) => void): void { (globalThis as { __cmSlDue?: (cx: SlDueCtx) => void }).__cmSlDue = f; }
 const dueHook = (cx: SlDueCtx) => (globalThis as { __cmSlDue?: (cx: SlDueCtx) => void }).__cmSlDue?.(cx);
 
+/** menneskets lejebud, når ønskelisterne ikke kører (SL_ON slået fra – fx under vitest): en hukommelse til lejligheden (buildSlMem) for
+ *  sælgerens svar 0x84af00 og svartiden 0x8cc5b0 – de samme funktioner som dagens behandling */
+export function cmLoanAnswerNow(g: GameState, pid: number, buyer: number, seller: number): number {
+  const S = buildSlMem(g);
+  try { return loanAnswer_84af00(S, pid, buyer, seller); } finally { (S.m as SparseMem).release(); }
+}
+export function cmLoanDelayNow(g: GameState, pid: number, buyer: number): number {
+  const S = buildSlMem(g);
+  try { return offerDelay(S, pid, buyer, 0x8be300, true); } finally { (S.m as SparseMem).release(); }
+}
 function loanAnswer_84af00(S: SlMem, pid: number, buyer: number, seller: number): number {
   const id = S.memOf.get(pid), sc = S.clubAdr(seller), bc = S.clubAdr(buyer);
   if (id === undefined || !sc || !bc) return 2;
@@ -2082,12 +2085,13 @@ function moveInterest(S: SlMem, pid: number, buyer: number): number {
   }, S);
 }
 const DELAY_REC = 0x5e7f0200;
-function offerDelay(S: SlMem, pid: number, buyer: number, site: number): number {
+function offerDelay(S: SlMem, pid: number, buyer: number, site: number, loan = false): number {
   const { m } = S;
   const id = S.memOf.get(pid);
   if (id === undefined || !S.clubAdr(buyer)) return 2;
   for (let i = 0; i < 0x48; i++) m.w8(DELAY_REC + i, 0);
   m.w32(DELAY_REC + 8, buyer); m.w32(DELAY_REC + 0xc, id); m.w8(DELAY_REC + 0x11, 0xb);
+  if (loan) m.w8(DELAY_REC + 0x1f, 1);                                           // lejebud (init_loan_offer 0x8e7810)
   S.M.setRand(cmRand(S.g.seed ?? 0, pid, buyer, dayNum(S.g.date), site));
   return shared(() => responseDelay(S, DELAY_REC), S);
 }

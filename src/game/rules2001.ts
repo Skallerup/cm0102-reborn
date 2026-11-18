@@ -83,19 +83,6 @@ export function englandLoanRefused(p: Player, buyer: Club): boolean {
   return mo === 2 && g.date > lastThursdayOfMarch(y);
 }
 
-/** ENGLAND_RULES::get_loan_period 0x579c70: tre måneder fra næste måned; efter 19/6 for spillere under 24 (staff +0x18) TRANSFER_RULES' grundperiode
- *  0x8e8bd0 (*estimeret*: sæsonen ud). Gælder en engelsk køber; ellers null. */
-export function englandLoanUntil(p: Player, buyer: Club): string | null {
-  const g = gs();
-  if (!ENGLAND(g, buyer)) return null;
-  const y = Number(g.date.slice(0, 4)), mo = isoMonth(g.date);
-  const age = y - Number(p.dob.slice(0, 4)) - (g.date.slice(5) < p.dob.slice(5) ? 1 : 0);
-  if (g.date.slice(5) > '06-19' && age < 24) return `${y + 1}-06-30`;
-  // start = næste måned, slut = start + 3 (måned 0..11): lejen løber til den sidste dag før slutmåneden
-  const end = new Date(Date.UTC(y, mo + 4, 0));
-  return end.toISOString().slice(0, 10);
-}
-
 /** Kan klubben hente ham (ingen tilladelse nødvendig, eller den gives)? */
 export const permitOk = (p: Player, club: Club) => !needsWorkPermit(p, club) || workPermitGranted(p);
 

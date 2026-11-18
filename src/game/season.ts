@@ -192,7 +192,7 @@ function endLoanIfDue(p: Player, today: string) {
   }
 }
 
-/** (den originale database i ægte tilstand) lejeaftaler med en slutdato i sæsonen (England: tre måneder – rules2001.ts englandLoanUntil) slutter
+/** (den originale database i ægte tilstand) lejeaftaler med en slutdato i sæsonen (køberlandets lejeperiode 0x8d0590 – cmLoan.ts) slutter
  *  dagen efter (originalen: TRANSFER_MANAGER's art 4 "lejen slut") */
 export function endDueLoansDaily() {
   const g = gs();

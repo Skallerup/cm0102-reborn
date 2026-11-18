@@ -821,6 +821,9 @@ export interface TransferOffer {
    *  sælgeren svarer på respondBy (0x8cc5b0's svartid), countered = køberen vurderer modbuddet (0x8c0810, 2 dage), negotiating = accepteret,
    *  spillerens beslutning (0x4cd230) */
   cmAi?: boolean;
+  /** CM 01/02: menneskets lejebud til en computerklub – 1 = svartiden (0x8be300 → 0x8cc5b0) er ikke regnet endnu, 2 = venter på svaret
+   *  (process_due_offer 0x8c63a0 → 0x84af00) */
+  cmLoan?: 1 | 2;
 }
 
 /** En AI-klub der jagter en spiller (vender tilbage med højere bud) */

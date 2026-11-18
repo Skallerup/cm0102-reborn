@@ -9,7 +9,8 @@ import type { CoachArea, NewsItem, Player, TransferOffer } from '../../game/type
 import { cmStatusRows, statusNum } from '../../game/cmTransferList';
 import { valueTarget } from '../../game/training';
 import type { RejectReason } from '../../game/will';
-import { addDays, ageOn } from '../../game/dates';
+import { ageOn } from '../../game/dates';
+import { cmLoanPeriod, loanDate } from '../../game/cmLoan';
 import { compName, currencySymbol, fromCurExact, getCurrency, money, moneyFull, t } from '../../i18n';
 import { posStr } from '../components';
 import { jobTerms } from '../../game/board';
@@ -241,14 +242,15 @@ export function BidPanel(props: { p: Player; loan: boolean; onClose: () => void;
   return cmMarketOn(g) && !props.loan ? <CmBidPanel {...props} /> : <OldBidPanel {...props} />;
 }
 
-/** CM 01/02 "Loan bid for Olesen": lønnen og bestyrelsens loft, Loan Expiry Date og Wage Contribution med - / +, to oplysninger (ejerens billede 18/11) */
+/** CM 01/02 "Loan bid for Olesen" (0x8f9690 → 0x8f9a20/0x8fac30, ejerens billede 18/11): lønnen og bestyrelsens loft 0x5968d0, Loan Expiry Date
+ *  (standard = lejeperiodens start 0x8d0590, − / + én måned inden for perioden, dagen = min(i dag, 28)) og Wage Contribution (0..100 %, trin 10:
+ *  lejeklubbens andel af lønnen) – cmLoan.ts. "Player can play in cup matches / against <klub>" står som standard til (+0xe/+0xf = 1);
+ *  at slå dem fra (handling 8/9) og reglerne bag er ikke porteret. */
 function LoanBidPanel({ p, onClose, onSent }: { p: Player; loan: boolean; onClose: () => void; onSent: (o: TransferOffer) => void }) {
   const g = useGame()!;
   useClassicDialog();
-  const [today] = useState(g.date);
-  const minD = addDays(today, 7);
-  const maxD = `${Number(today.slice(0, 4)) + (Number(today.slice(5, 7)) >= 7 ? 1 : 0)}-06-30`;
-  const [until, setUntil] = useState(() => { const d = addDays(today, 30); return d > maxD ? maxD : d; });
+  const [per] = useState(() => cmLoanPeriod(g, g.userClub, p));
+  const [cur, setCur] = useState(() => ({ m: per.sm, y: per.sy }));
   const [share, setShare] = useState(0);
   const [err, setErr] = useState('');
   const club = g.clubs[g.userClub];
@@ -256,9 +258,14 @@ function LoanBidPanel({ p, onClose, onSent }: { p: Player; loan: boolean; onClos
   const wage = p.contract?.wage ?? 0;
   const seller = g.clubs[p.club]?.short ?? '';
   const name = `${p.first} ${p.last}`.trim();
+  const until = loanDate(g.date, cur.m, cur.y);
   const d = new Date(`${until}T00:00:00Z`);
   const dn = d.getUTCDate();
   const dateLbl = `${t('cl.locale').startsWith('da') ? `${dn}.` : `${dn}${dn % 100 >= 11 && dn % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][dn % 10] ?? 'th'}`} ${d.toLocaleDateString(t('cl.locale'), { month: 'short', timeZone: 'UTC' })} ${d.getUTCFullYear()}`;
+  // 0x8fa230 / 0x8fa3a5: − grå i startåret ved måneder ≤ startmåneden, + grå i slutåret ved måneder ≥ slutmåneden
+  const minus = !(cur.y === per.sy && cur.m <= per.sm), plus = !(cur.y === per.ey && cur.m >= per.em);
+  const step = (k: number) => setCur(({ m, y }) => { m += k; if (m < 0) { m = 11; y--; } else if (m > 11) { m = 0; y++; } return { m, y }; });
+  const amount = Math.trunc(share * wage / 100);
   const submit = () => {
     setErr('');
     const r = act<TransferOffer | string>({ t: 'bid', pid: p.id, fee: 0, loan: true, loanUntil: until, loanShare: share / 100 });
@@ -270,14 +277,14 @@ function LoanBidPanel({ p, onClose, onSent }: { p: Player; loan: boolean; onClos
       <div className="cx-ts-body">
         <p className="cx-ts-intro">{t('cl.bid.loanWage', { player: name, wage: money(wage), club: seller })} {t('cl.neg.allow', { allow: money(allow) })}</p>
         <div className="cx-bid-row"><span className="cx-bid-label">{t('cl.bid.loanExpiry')}</span>
-          <CxPm disabled={until <= minD} onClick={() => setUntil(addDays(until, -7) < minD ? minD : addDays(until, -7))} aria-label="-">−</CxPm>
+          <CxPm disabled={!minus} onClick={() => step(-1)} aria-label="-">−</CxPm>
           <span className="cx-bid-val">{dateLbl}</span>
-          <CxPm disabled={until >= maxD} onClick={() => setUntil(addDays(until, 7) > maxD ? maxD : addDays(until, 7))} aria-label="+">+</CxPm></div>
+          <CxPm disabled={!plus} onClick={() => step(1)} aria-label="+">+</CxPm></div>
         <div className="cx-bid-row"><span className="cx-bid-label">{t('cl.bid.loanShare')}</span>
-          <CxPm disabled={share <= 0} onClick={() => setShare(Math.max(0, share - 10))} aria-label="-">−</CxPm>
+          <CxPm disabled={share <= 0} onClick={() => setShare(share - 10)} aria-label="-">−</CxPm>
           <span className="cx-bid-val">{share}%</span>
-          <CxPm disabled={share >= 100} onClick={() => setShare(Math.min(100, share + 10))} aria-label="+">+</CxPm></div>
-        <div className="cx-bid-row off"><span /><span /><span className="cx-bid-val cx-loan-amt">({money(Math.round(wage * share / 100))})</span></div>
+          <CxPm disabled={share >= 100} onClick={() => setShare(share + 10)} aria-label="+">+</CxPm></div>
+        <div className="cx-bid-row"><span /><span /><span className={`cx-bid-val cx-loan-amt ${amount > allow ? 'over' : ''}`}>({money(amount)})</span></div>
         <div className="cx-bid-info"><p>{t('cl.bid.loanCup')}</p><p>{t('cl.bid.loanAgainst', { club: seller })}</p></div>
         {err && <div className="cx-bid-err">{err}</div>}
       </div>
