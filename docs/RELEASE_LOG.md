@@ -2,6 +2,7 @@
 
 Flyttet fra CLAUDE.md 17/11-2026 (så CLAUDE.md er kort i hver session). Nyeste først. Tilføj en linje øverst ved hver udgivelse.
 
+- 2026-11-18 – Skudt live (v0.30.0): 2026-11-18 – MODERN_PARITY 3: cmMarketOn(g) (2001 eller 2026 ægte med trupplan), trupplan ved spilstart på alle CM-databaser i ægte tilstand, bud/værdi/saldo via ligafaktor; PL 2026: 1.110 → 159 AI-transfers, klubløse 3.135 → 816; menneskets budskærme følger endnu den gamle kontakt; 2001 uændret 02ec66f5.
 - 2026-11-18 – Skudt live (v0.30.0): 2026-11-18 – MODERN_PARITY 11: cmRetire + regen-kø (0x7a87d0/0x7a65d0/0x7abac0) på 2026 ægte (g.cmRet fra 0x7a58f0), youthIntake/freeAgentDrift fra, regen-løn 0x862720 via ligafaktor; CA top 100 171,94 hele sæsonen; 2001 uændret 02ec66f5.
 - 2026-11-18 – Skudt live (v0.30.0): 2026-11-18 – MODERN_PARITY dev+fitness: cmBodyOn(g) (2001 eller 2026 ægte), sæsontabel 0xb63d60 pr. landenavn, startskader fra 2026's player_setup.cfg (106/141), stab i world-cm.json (791 KB); 2001-fingeraftryk uændret 02ec66f5. CA top 100 stiger efter ungdomsårgangen 15/3 → punkt 11.
 - 2026-11-18 – Skudt live (v0.30.0): 2026-11-18 – MODERN_PARITY 1+2+4: cmLogic(g) (CM-format + ægte tilstand uanset år), world-cm.json (2026's cmRaw, 505 KB), gittermotoren på 2026/27 (bænk 9/5), 0x846920 + kontrakt/løn via cmMoney (faktor pr. liga = DB-løn/moderne løn), dbRepGap kun udvidet. PL 2026: 2,53/2,82 mål/kamp (frø 1/2). Spanien i minus = originalens Signing On Fee (0x85fc50 +8) på 0x4d0c60-værdien – dokumenteret.
