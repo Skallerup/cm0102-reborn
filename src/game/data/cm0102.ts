@@ -123,7 +123,7 @@ export interface CMWorld extends WorldData {
    *  Offside +0x1c, Pressing +0x1f, Tactics +0x21, yndlingsformation +0x43 (1..9)] – originalens computer-taktik (aiPrematch/aiTacticChoice) */
   /** … [11] = ikke-spillerposten til originalens spilstart: [PA +6, de 21 egenskaber +0x0e..+0x22 (rå 1..20, 0 = ikke sat), jobkoden]
    *  (cmStaffInit.ts – kun den originale database) */
-  /** … [12] = bestyrelse/managerjob (cmBoard.ts): [ikke-spillerpost +8, +0xc (rå), personpost +0x56..+0x5d, +0x22]; [13] = personpost +0x3e
+  /** … [12] = bestyrelse/managerjob (cmBoard.ts): [ikke-spillerpost +8, +0xc (rå), personpost +0x56..+0x5d, +0x22, løn +0x4e, kontraktens udløb +0x46 (dag, år)]; [13] = personpost +0x3e
    *  (ankomstdatoen, ISO; '' = mangler); [14] = personpost +0x24 (landsholdet, nations-id i filen; −1 = intet) og +0x28 (jobbet dér) – viljen 0x844780 */
   staff?: [number, string, string, number, string, number, number[], number, number, number, (number[] | null)?, number[]?, number[]?, string?, number[]?, (1 | number[])?, number[]?][];
   /** (kun den originale database, Staff Search) [15] = om originalen har personen i hukommelsen efter 0x524d70 (1 = altid, ellers de nationer, hvis
@@ -606,6 +606,8 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
       bx.push(S.u8(o + 0x22));
       // [11] = databasens ugeløn (staff.dat +78, £; −1/0 = ingen) – stabens startkontrakt 0x85e960 (K8: oraklets stab har databasens løn)
       bx.push(S.i32(o + 78));
+      // [12][12..13] = kontraktens udløb (personpost +0x46: dag, år) – stabens startkontrakt 0x85e960 (0x85ec81/0x85ed8f: +0x2d ← +0x46)
+      bx.push(S.i16(o + 70), S.i16(o + 72));
       const row: NonNullable<CMWorld['staff']>[number] = [core && here ? club : 0, fn, ln, nation, dob, core ? (here ? job : 0) : job, att, ca, S.i16(np + 10), S.i32(o), tac, raw, bx, S.date(o + 62) ?? '', [S.i32(o + 0x24), S.u8(o + 0x28)]];
       // [15] = hukommelsen (0x524d70), [16] = [klubben +0x39 (databasens id, −1 = ingen), jobbet +0x3d] – kun til Staff Search
       if (sMem) { const m = sMem(o); if (m === 0 && !core) continue; row.push(m === 0 ? [] : m, [club, job]); }

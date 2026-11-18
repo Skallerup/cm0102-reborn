@@ -49,6 +49,8 @@ export const toRow = (s: PlanSlot): SlotRow => {
 };
 export const fromRow = (r: SlotRow): PlanSlot => ({ role: r[0], mask: r[1], b24: r[2], f: r[3], s13: r[4], s17: r[5], idx: r[6], day: r[7], year: r[8],
   b3: r[9] ?? 0, b7: r[10] ?? 0, bb: r[11] ?? 0 });
+/** stabens pladser har trupplanens hale 0x83ebfb–0x83f32b (cmStaffMove.ts staffTail): +3/+0xb sat, en indehaver +0x13 eller et mål +0xf */
+export const staffTailed = (slots: PlanSlot[]) => slots.some((s) => s.role !== 0xb && ((s.b3 ?? 0) > 0 || (s.bb ?? 0) > 0 || s.s13 > -1 || s.f > -1));
 export function entryOf(g: GameState, cid: number): PlanEntry {
   const st = g.cmPlan?.[cid];
   if (!st) return newPlanEntry();
@@ -217,6 +219,8 @@ export function cmSquadPlanClub(g: GameState, cid: number, daily: boolean, first
 }
 /** efter en kørsel af trupplanen: (spil, klub, 0x7bca90's T, åbne spillerpladser, første kørsel efter et managerskifte i en computerklub) */
 export const afterPlanHooks: ((g: GameState, cid: number, T: number, openPlayerSlots: number, fire: boolean) => void)[] = [];
+/** efter 0x83b6e0 for klubben (ønskelisterne – pladsernes budget +7 er sat): stabens pladser – cmStaffMove.ts (0x83f3a0's stabsgren i TS) */
+export const afterBudgetHooks: ((g: GameState, cid: number) => void)[] = [];
 
 /** 0x694c80 reset_board_for_new_manager for en computerklub: trupplanens +4 = 2 (0x694cd2) og 0x84abe0 → 0x83cb40(entry, klub, 0, 1) */
 export function cmSquadPlanNewManager(g: GameState, cid: number): void {

@@ -763,7 +763,10 @@ export function cmInitStaffRep(g: GameState, s: Staff, row: NonNullable<CMWorld[
   if (!bx || !s.cmNp) return;
   const clubRep = s.club ? clubRepMem(g, s.club) : null;
   s.cmRep = initStaffRep([bx[0], row[8], bx[1]], clubRep !== null ? [clubRep, g.clubs[s.club]?.nation ?? -1] : null, s.nation);
-  s.cmHid = bx.slice(2, 11);
+  // personpostens skjulte egenskaber +0x56..+0x5d som sub_535a80 (0x535ea4–0x5360xx) udfylder dem uden for 1..20: +0x56 og Loyalty +0x59 den
+  // mindste af to terninger, de andre gennemsnittet (personalFill_535a80; oraklet 14/7-01: Warwick Rimmer 6,9,4,14,14,20,15,11 – databasen
+  // har kun +0x5b = 20). +0x22 (landskampe) som databasen.
+  s.cmHid = bx.slice(2, 11).map((v, k) => (k < 8 ? personalFill_535a80(v, cmRand(g.seed ?? 0, row[9], 0x535ea4 + k), k === 0 || k === 3 ? 'min' : 'avg') : v));
   s.cmJoined = row[13] || '';
 }
 

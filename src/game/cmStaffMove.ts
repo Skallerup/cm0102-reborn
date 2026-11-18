@@ -40,17 +40,19 @@
 // 8. Kontrakten: 0x4cda70 offer_contract(staff, klub, NULL, −1, 1,0, 2) → 0x85fc50 med 0x849f00's job/status (pladsen i køberens plan) og
 //    lønloftet 0x597db0 (cmContractGame.ts cmStaffTerms); uden tilbud personens krav 0x85fc50.
 //
-// *Estimeret* (koden er ikke fulgt hele vejen): antallet n i budgettet
-// (originalen sorterer pladserne efter +0xb og stopper ved den 4. åbne spillerplads), hvornår buddet afgives (her straks ved planen; originalen
-// ugentligt, dagligt for omdømme > 6250), personens svar (beslutningsdagen 0x4cd230 er ikke porteret: viljen 0x844780 for jobbet ≥ 0,75 som
-// spillernes 0x8c0080, svaret efter 1–5 dage), overskriftens variant (personens id mod 4), at budnyheden
-// kun går til den menneskelige sælger (0x8d1130's omdømmeflag for andre mennesker er ikke porteret) og at kun klubber i de valgte lande henter stab (planen kører hos os for alle synlige ligaer;
-// originalens planlægger springer klubber uden kørende liga over, og kun de valgte landes klubber har genereret stab). Ikke porteret:
-// reserveholdets manager (rolle 7 – findes ikke i spillet), 0x690890 for spillets genererede stab (ingen ikke-spillerpost), trupplanen for
-// menneskets klub ved hans egen ansættelse (0x84abe0 – fyrer ikke), arbejdstilladelser for stab (0x84b180).
+// Halen, budgettet og målet (19/11): staffTail (0x83ebfb–0x83f32b: +3/+0xb/+0xf/+0x13 og fyringen), med ønskelisterne budgettet +7 fra den
+// oversatte 0x83b6e0 og målet i TS (findStaffTarget – 0x83fa7c–0x84094e med rækkens tæller ≥ 10, UK/EU-reglen, spejdervidenen (id + klub) % k og
+// gruppe 0xa's grænse rand(2000) + 2750), genudfyldningen 0x843e10 → 0x83f3a0 ved et afslag (staffBidDone) og trupplanens tæller +8 = 100 ved
+// skiftet (0x8ca0ce, cmPlanKick). *Estimeret* (koden er ikke fulgt hele vejen): uden ønskelisterne (CM_SL=0/vitest) 0x83b6e0's første andel
+// B/(k·n), hvornår buddet afgives (her straks ved planen; originalen 0x84a020 ugentligt, dagligt for omdømme > 6250), personens svar
+// (beslutningsdagen 0x4cd230 er ikke porteret: viljen 0x844780 for jobbet ≥ 0,75 som spillernes 0x8c0080, svaret efter 1–5 dage), overskriftens
+// variant (personens id mod 4), at budnyheden kun går til den menneskelige sælger (0x8d1130's omdømmeflag for andre mennesker er ikke porteret)
+// og uden ønskelisterne at kun klubber i de valgte lande henter stab. Ikke porteret: reserveholdets manager (rolle 7 – findes ikke i spillet),
+// 0x690890 for spillets genererede stab (ingen ikke-spillerpost), trupplanen for menneskets klub ved hans egen ansættelse (0x84abe0 – fyrer ikke),
+// arbejdstilladelsens 0x8c7950 for stab med landskampe/landshold (de slipper igennem).
 import type { Club, GameState, Staff, StaffRole } from './types';
 import { addNews } from './state';
-import { cmStaffOn, cmRand, clubRepMem } from './cmPlayerData';
+import { cmStaffOn, cmRand, clubRepMem, cmPlanKick } from './cmPlayerData';
 import { boardEnv, staffJobInterest } from './cmBoardGame';
 import { repFor, scoreStaffForJob, type BoardEnv, type Person } from './cmBoard';
 import { bookBlock, K as CMK, GBP } from './cmFinance';
@@ -59,7 +61,9 @@ import { asOwner, forEachHuman, isHumanClub } from './humans';
 import { careerEnd } from './careers';
 import { cmStaffTerms, cmStaffWill } from './cmContractGame';
 import { transferNewsToMe } from './cmNewsScope';
-import { afterPlanHooks } from './cmSquadPlanGame';
+import { afterPlanHooks, afterBudgetHooks, entryOf, storeEntry, staffTailed } from './cmSquadPlanGame';
+import { cmShortlistOn } from './cmShortlistGame';
+import { NAT7F } from './cmWageGame';
 import { addDays } from './dates';
 import { recordStaffMove } from './staffMoves';
 
@@ -79,16 +83,68 @@ export interface CmStaffMove { s: number; c: number; job: number; from: number; 
   h?: 1;
   id?: number }
 
-/** pladsernes indehavere (0x83ebfb–0x83ecef: assistenten, trænerne, fysioterapeuterne, spejderne – i ansættelsesrækkefølge) */
-function clubStaff(g: GameState, cid: number): Staff[] {
-  const out: Staff[] = [];
-  for (const role of ['assistant', 'coach', 'physio', 'scout'] as StaffRole[])
-    for (const s of Object.values(g.staff)) if (s.club === cid && s.role === role) out.push(s);
-  return out;
+/** 0x83f3a0's spejderviden [esp+0x28] (0x83f3f6–0x83f5d8): 100 (omdømme < 3500: 4·(6025 − omdømme); Belgien/Holland/Sverige/Danmark/Norge 50),
+ *  pr. spejderplads (+0x1b3 ×7) med ikke-spillerpost 30 − 2·0x544410(np, 6) − 0x544410(np, 5) – sic: 6 og 5 er værdierne, ikke felterne, så kun
+ *  spejderens CA tæller –, tom plads +10 (ligaen kører) / +5; /10, mindst 2. (id + klub) % k = 0 springer landets og spejdernes prøve over. */
+const KK50 = new Set(['Belgium', 'Holland', 'Sweden', 'Denmark', 'Norway']);
+function scoutKnow(g: GameState, club: Club): number {
+  const rep = s16(clubRepMem(g, club.id));
+  let k = rep < 0xdac ? (0x1789 - rep) * 4 : KK50.has(g.nations[club.nation]?.name ?? '') ? 0x32 : 0x64;
+  const scouts = Object.values(g.staff).filter((s) => s.club === club.id && s.role === 'scout').slice(0, 7);
+  const shown = (ca: number, b: number) => { const x = (s16(ca) + 2 * b) * 0.05 + 10.0, y = (x * x * 0.1 + x) * 0.3333333333333333 + 0.5; return ftol(y > 1.0 ? (y < 20.0 ? y : 20.0) : 1.0); };
+  for (let i = 0; i < 7; i++) {
+    const s = scouts[i];
+    if (s) { if (s.cmNp) k += 0x1e - 2 * ((shown(s.ca ?? (s.rep ?? 0) * 2, 6) << 24) >> 24) - ((shown(s.ca ?? (s.rep ?? 0) * 2, 5) << 24) >> 24); }
+    else k += club.league && !g.leagues[club.league]?.hidden ? 10 : 5;
+  }
+  k = Math.trunc(s16(k) / 10);
+  return s16(k) < 2 ? 2 : k;
 }
 
-/** 0x5407e0(staff, seer, 1) ≥ rand(2000) + 3250 og landets/verdensdelens spærrer (0x83ff8x–0x840058) */
-function passesScouting(g: GameState, env: BoardEnv, p: Person, s: Staff, club: Club, mgr: Person | null, rand: (n: number) => number): boolean {
+/** EU-borger 0x53d740(staff, 0): landets +0x7f = 2 eller Schweiz ([0x9cf4ac]) – (anden nationalitet +0x1e findes ikke i spillet) */
+const euStaff = (g: GameState, s: Staff) => { const n = g.nations[s.nation]?.name ?? ''; return NAT7F.get(n) === 2 || n === 'Switzerland'; };
+
+/** 0x83f3a0's stabsgren (0x83fa7c–0x840058, som cmShortlistGame.ts staffSlot) og vurderingen 0x840112–0x84094e for én stabsplads: målet eller null */
+function findStaffTarget(g: GameState, env: BoardEnv, club: Club, job: number, budget: number, T: number, youth: boolean, rand: (n: number) => number): Staff | null {
+  const cid = club.id, crep = s16(clubRepMem(g, cid)), mgr = env.manager(cid);
+  const vac = new Set(((g.cmBoard as { vac?: { cand?: number }[] } | undefined)?.vac ?? []).map((v) => v.cand));
+  // parrene (staff, klub) på ønskelisterne: rækkens tæller +0xb (computerklubberne) og klubbens egne (0x83fc56's rj 13/15)
+  const lists = new Map<number, number>(), mine = new Set<number>();
+  for (const m of g.cmStaffMoves ?? []) { if (!isHumanClub(m.c)) lists.set(m.s, (lists.get(m.s) ?? 0) + 1); if (m.c === cid) mine.add(m.s); }
+  const uk = (g.cmNation76?.[club.nation] ?? 0) === 0xe;
+  const kk = scoutKnow(g, club);
+  let best: Staff | null = null, bestV = T;                                        // 0x83f8b3: [esp+0x58] (bedste hidtil) = pladsens grænse T
+  for (const s of Object.values(g.staff)) {
+    if (!s.cmNp || s.cmExtra) continue;                                             // 0x83fbdf: uden ikke-spillerpost
+    if (s.role === 'manager' && s.club) continue;                                   // (klubbens manager – managerjobbet er MANAGER_MANAGER's)
+    const p = env.person(s.id);
+    if (!p || !p.np) continue;
+    // 0x84b180 (permitFails, 0x83fc1c): britisk klub (+0x76 = 0xe) og hverken landets eller EU-borger og uden landshold +0x24/landskampe +0x22
+    if (uk && s.nation !== club.nation && !euStaff(g, s) && !p.nat && !(p.b22 & 0xff)) continue;
+    if (vac.has(s.id)) continue;                                                    // 0x69fc60: kandidat til et managerjob
+    const w = cmStaffRestGbp(g, s, false);
+    if (w >= budget || w > (crep + 500) * 10) continue;                             // 0x83fc56–0x83fcb5
+    if (s.club === cid) continue;                                                   // 0x83fcbb
+    if ((lists.get(s.id) ?? 0) >= 0xa || mine.has(s.id)) continue;                  // rækkens tæller ≥ 10 / allerede på klubbens liste
+    // 0x83fd2x: britisk klub og ikke EU-borger – stabens pladser (gruppe 5) er ikke blandt 2/4/6
+    if (uk && !euStaff(g, s)) continue;
+    if (p.job === 5 || p.natJob === 5) continue;                                    // 0x83fa68/0x83fa72: +0x3d = 5 eller +0x28 = 5 (managere)
+    if (!((s.id + cid) % kk === 0) && !passesScouting(g, env, p, s, club, mgr, youth, rand)) continue;
+    // 0x840112–0x840153: v = 0x69d1b0 ≥ T ([esp+0x68]) og ≥ bedste − 10.000
+    const v = scoreStaffForJob(env, p, cid, job, mgr);
+    if (v < T || v < bestV - 10000) continue;
+    // 0x84060e–0x84063c: v' = ftol((rand(17) + 92) · 0,01 · v) skal slå den bedste
+    const v2 = ftol((rand(17) + 0x5c) * 0.01 * v);
+    if (v2 <= bestV) continue;
+    // 0x840682/0x8407a2: viljen 0x844780(staff, klub, 1, job, NULL) ≥ 3,15 – ellers er han ikke mål
+    if (cmStaffWill(g, s, cid, job, staffJobInterest(g, env, p, cid, job)) < 3.15) continue;
+    bestV = v2; best = s;                                                           // 0x84093f
+  }
+  return best;
+}
+
+/** 0x5407e0(staff, seer, 1) ≥ rand(2000) + 3250 (stabens pladser, gruppe 5 = 0xa: + 2750) og landets/verdensdelens spærrer (0x83ff8x–0x840058) */
+function passesScouting(g: GameState, env: BoardEnv, p: Person, s: Staff, club: Club, mgr: Person | null, youth: boolean, rand: (n: number) => number): boolean {
   const cn = club.nation, crep = s16(clubRepMem(g, club.id));
   const sc = s.club ? g.clubs[s.club] : undefined;
   if (p.nation === cn || (p.b22 & 0xff) > 0 || (sc && sc.nation === cn)) return true;          // 0x840060 → vurdering
@@ -99,102 +155,135 @@ function passesScouting(g: GameState, env: BoardEnv, p: Person, s: Staff, club: 
     if (!same && crep < 0x109a && ((env.nat85(cn) << 24) >> 24) < 12) return false;
   }
   const seen = s16(repFor(env, p, mgr ? { club: club.id, nation: mgr.nation } : { club: club.id, nation: cn }));
-  return seen >= rand(2000) + 0xcb2;
+  return seen >= rand(2000) + (youth ? 0xabe : 0xcb2);
 }
 
-/** halen 0x83ebfb–0x83f32b + 0x83b6e0's stabsdel + 0x83f3a0's stabsgren + 0x84a020: computerklubbens ledige stabspladser og buddene */
-export function cmStaffPlan(g: GameState, cid: number, clubT: number, openPlayerSlots: number, fire = false): void {
-  if (!cmStaffOn(g) || isHumanClub(cid)) return;
-  const club = g.clubs[cid];
-  if (!club) return;
-  if (fire) fireWeakStaff(g, cid, Math.min(Math.trunc(clubT / 5), 5000));
-  // 0x83b86d: kun professionelle klubber (+0x64 = 1) får budget til stab; kun de valgte lande (se filhovedet)
-  if ((g.cmClubStat?.[cid]?.[0] ?? 1) !== 1 || !g.activeNations.includes(club.nation)) return;
+/** pladsens job → spillets rolle; 7 (reserveholdets manager) findes ikke i spillet */
+const isStaffSlot = (r: number) => r === 6 || r === 8 || r === 9 || r === 10;
+
+/** Halen 0x83ebfb–0x83f32b (efter trupplanens kørsel, også menneskets klub i originalen – her kun computerklubberne): listen over klubbens stab
+ *  (assistenten +0xd3, trænerne +0x19f ×5, fysioterapeuterne +0x1cf ×3, spejderne +0x1b3 ×7), der ikke er mål for en af klubbens stabspladser
+ *  (0x849ce0(klub, staff, 1, 0)); T = min(0x7bca90/5, 5000). For hver stabsplads i planens rækkefølge: +0x24 &= ~1, +7 = 0, +0xb = ftol(T·2,5);
+ *  med budmærke (+0x17 ≠ −1) intet mere; ellers +3 = T og den første på listen med pladsens job (6/0xd, 7/0xe, 8/0xf, 9, 0xa) bliver
+ *  indehaver (+0x13): v = 0x69d1b0(staff, klub, manager, rolle) ≥ T → mål (+0xf = ham) og +0xb = 0; ellers første kørsel efter et managerskifte
+ *  ([esp+0x60]) → 0x690890 fyrer ham (+0xf = +0x13 = −1); ellers +0xf = −1 og +0xb = ftol((T − v)·2,5). Han tages af listen (den sidste flyttes
+ *  ind på hans plads). *Estimeret*: spillets genererede stab (uden ikke-spillerpost) vurderes ikke (som v ≥ T); 0x4cc9e0 (et kontrakttilbud fra
+ *  klubben) før fyringen er ikke porteret. */
+function staffTail(g: GameState, cid: number, clubT: number, fire: boolean): void {
+  const e = entryOf(g, cid);
   const T = Math.min(Math.trunc(clubT / 5), 5000);
-  const have = clubStaff(g, cid);
-  const vacant: number[] = [];
-  for (const job of [6, 8, 10, 9]) {
-    const held = have.filter((s) => JOB_OF[s.role] === job).length;
-    for (let k = held; k < SLOTS[job]; k++) vacant.push(job);
-  }
-  // pladser med et bud (+0x17 ≠ −1) springes over af 0x84a020
-  const pending = (g.cmStaffMoves ?? []).filter((m) => m.c === cid);
-  const todo: number[] = [];
-  for (const job of [6, 8, 10, 9]) {
-    const k = vacant.filter((j) => j === job).length - pending.filter((m) => m.job === job).length;
-    for (let i = 0; i < k; i++) todo.push(job);
-  }
-  if (!todo.length) return;
-  const env = boardEnv(g, g.date, undefined, true);
-  const budget = Math.max(0, env.transferBudget(cid));
-  const n = Math.max(1, vacant.length + Math.min(openPlayerSlots, 4));
-  const mgr = env.manager(cid);
-  const crep = s16(clubRepMem(g, cid));
-  const rand = cmRand(g.seed ?? 0, cid, dayNum(g.date), 0x83fa7c);
-  const vac = new Set(((g.cmBoard as { vac?: { cand?: number }[] } | undefined)?.vac ?? []).map((v) => v.cand));
-  const taken = new Set((g.cmStaffMoves ?? []).filter((m) => m.c === cid).map((m) => m.s));
-  for (const job of todo) {
-    const share = Math.trunc(budget / (SHARE[job] * n));
-    // 0x83f8b3: [esp+0x58] (bedste hidtil) = pladsens grænse T
-    let best: Staff | null = null, bestV = T;
+  const list: Staff[] = [];
+  for (const [role, n] of [['assistant', 1], ['coach', 5], ['physio', 3], ['scout', 7]] as [StaffRole, number][]) {
+    let k = 0;
     for (const s of Object.values(g.staff)) {
-      if (!s.cmNp || s.cmExtra || s.club === cid || taken.has(s.id) || vac.has(s.id)) continue;
-      if (s.role === 'manager' && s.club) continue;                                // (klubbens manager – managerjobbet er MANAGER_MANAGER's)
-      const w = cmStaffRestGbp(g, s, false);
-      if (w >= share || w > (crep + 500) * 10) continue;                          // 0x83fc56–0x83fcb5
-      const p = env.person(s.id);
-      if (!p || !p.np) continue;
-      if (p.job === 5 || p.natJob === 5) continue;                                 // 0x83fa68/0x83fa72: +0x3d = 5 eller +0x28 = 5 (managere)
-      if (!passesScouting(g, env, p, s, club, mgr, rand)) continue;
-      // 0x840112–0x840153: v = 0x69d1b0 ≥ T ([esp+0x68]) og ≥ bedste − 10.000
-      const v = scoreStaffForJob(env, p, cid, job, mgr);
-      if (v < T || v < bestV - 10000) continue;
-      // 0x84060e–0x84063c: v' = ftol((rand(17) + 92) · 0,01 · v) skal slå den bedste
-      const v2 = ftol((rand(17) + 0x5c) * 0.01 * v);
-      if (v2 <= bestV) continue;
-      // 0x840682/0x8407a2: viljen 0x844780(staff, klub, 1, job, NULL) ≥ 3,15 – ellers er han ikke mål
-      if (cmStaffWill(g, s, cid, job, staffJobInterest(g, env, p, cid, job)) < 3.15) continue;
-      bestV = v2; best = s;                                                         // 0x84093f
+      if (s.club !== cid || s.role !== role || k >= n) continue;
+      k++;
+      if (!e.slots.some((sl) => sl.role !== 0xb && sl.f === s.id)) list.push(s);
     }
-    if (!best) continue;
-    taken.add(best.id);
+  }
+  let env: BoardEnv | null = null;
+  for (const sl of e.slots) {
+    if (sl.role === 0xb) continue;
+    sl.b24 &= 0xfe; sl.b7 = 0; sl.bb = ftol(T * 2.5);
+    if (sl.s17 !== -1) continue;
+    sl.b3 = T;
+    const k = list.findIndex((s) => JOB_OF[s.role] === sl.role);
+    if (k < 0) continue;
+    const s = list[k];
+    sl.s13 = s.id;
+    let v = T;
+    if (s.cmNp && !s.cmExtra) {
+      env ??= boardEnv(g, g.date, undefined, true);
+      const p = env.person(s.id);
+      if (p && p.np) v = scoreStaffForJob(env, p, cid, sl.role, env.manager(cid));
+    }
+    if (v >= T) { sl.f = s.id; sl.bb = 0; }
+    else if (fire) { sl.f = sl.s13 = -1; fireStaff(g, s, cid, sl.role); }
+    else { sl.f = -1; sl.bb = ftol((T - v) * 2.5); }
+    list[k] = list[list.length - 1]; list.pop();
+  }
+  storeEntry(g, cid, e);
+}
+
+/** 0x690890 remove_staff_from_club (fyringen i halen): kontrakten fjernes, personen er klubløs og beholder jobkoden +0x3d */
+function fireStaff(g: GameState, s: Staff, cid: number, job: number): void {
+  const cur = s.career?.[s.career.length - 1];
+  if (cur && !cur.to && cur.club === cid) careerEnd(s, 'sacked');
+  else (s.career ??= []).push({ club: cid, from: s.cmJoined || g.date, to: g.date, why: 'sacked' });
+  if (s.cmNp && !s.cmExtra) s.cmDbJob = job;
+  recordStaffMove(s, 0);
+  s.club = 0;
+  s.assignment = null;
+  s.coachAreas = undefined;
+  g.cmStaffMoves = (g.cmStaffMoves ?? []).filter((m) => m.c !== cid || m.s !== s.id);
+}
+
+/** 0x83f3a0 for klubbens åbne stabspladser (+0xf = +0x13 = +0x17 = −1) med pladsens budget +7 – med ønskelisterne (SL) det, 0x83b6e0 har givet
+ *  pladsen (cmShortlistGame.ts afterPlan → afterBudgetHooks); uden dem (se filhovedet) 0x83b6e0's første andel B/(k·n) (tabellen 0x83bce0: assistent
+ *  og træner 10, spejder og fysioterapeut 20; n = åbne pladser + højst 4 åbne spillerpladser). `only`: kun den ene plads (0x843e10's genudfyldning). */
+function staffSearch(g: GameState, cid: number, opts: { share?: { budget: number; n: number }; only?: number }): void {
+  const club = g.clubs[cid];
+  if (!club || isHumanClub(cid)) return;
+  const e = entryOf(g, cid);
+  const env = boardEnv(g, g.date, undefined, true);
+  const rand = cmRand(g.seed ?? 0, cid, dayNum(g.date), 0x83fa7c);
+  let changed = false;
+  e.slots.forEach((sl, i) => {
+    if (!isStaffSlot(sl.role) || sl.f !== -1 || sl.s13 !== -1 || sl.s17 !== -1) return;
+    if (opts.only !== undefined && opts.only !== i) return;
+    const budget = opts.share ? Math.trunc(opts.share.budget / (SHARE[sl.role] * opts.share.n)) : sl.b7 ?? 0;
+    const g2 = sl.b24 & 0x1e;
+    const best = findStaffTarget(g, env, club, sl.role, budget, sl.b3 ?? 0, g2 === 0xa || g2 === 0xc, rand);
+    if (!best) return;
+    sl.f = best.id; sl.s17 = 0; changed = true;                                     // målet og (spillets) budmærke: buddet venter på svaret
     const fee = best.club ? cmStaffCompensation(g, best) : 0;
     // 0x8d3090: nyheden "{klub} transfer bid for {navn}" til den menneskelige sælger (flag 2) – kun en besked; personen svarer selv (punkt 5)
     if (best.club && isHumanClub(best.club)) {
-      const seller = g.clubs[best.club], who = best;
+      const seller = g.clubs[best.club], who = best, job = sl.role;
       asOwner(best.club, () => addNews({ cat: 'transfer', key: 'cm.stBid', params: { club: club.name, name: `${who.first} ${who.last}`.trim(), last: who.last, from: seller?.name ?? '', fee, job },
         link: { kind: 'club', id: cid } }));
     }
     const r = cmRand(g.seed ?? 0, best.id, cid, dayNum(g.date), 0x4cd230);
-    (g.cmStaffMoves ??= []).push({ s: best.id, c: cid, job, from: best.club, fee, due: addDays(g.date, 1 + r(5)) });
-  }
+    (g.cmStaffMoves ??= []).push({ s: best.id, c: cid, job: sl.role, from: best.club, fee, due: addDays(g.date, 1 + r(5)) });
+  });
+  if (changed) storeEntry(g, cid, e);
 }
 
-/** 0x83ecf1–0x83f31b, første kørsel efter et managerskifte ([esp+0x60]): pladsernes indehavere (den første med jobbet, i ansættelsesrækkefølge –
- *  assistenten, fem trænere, én fysioterapeut, syv spejdere) vurderes af den nye manager med 0x69d1b0; under grænsen T og uden et
- *  kontrakttilbud til klubben (0x4cc9e0) → remove_staff_from_club 0x690890 (kontrakten fjernes, personen er klubløs). *Estimeret*: spillets
- *  genererede stab (uden ikke-spillerpost) vurderes ikke. */
-function fireWeakStaff(g: GameState, cid: number, T: number): void {
+/** trupplanens hale (efter hver kørsel) og – uden ønskelisterne – målene med det anslåede budget; med ønskelisterne søges efter 0x83b6e0 */
+export function cmStaffPlan(g: GameState, cid: number, clubT: number, openPlayerSlots: number, fire = false): void {
+  if (!cmStaffOn(g) || isHumanClub(cid)) return;
+  const club = g.clubs[cid];
+  if (!club || !g.cmPlan?.[cid]) return;
+  staffTail(g, cid, clubT, fire);
+  if (cmShortlistOn(g)) return;
+  // 0x83b86d: kun professionelle klubber (+0x64 = 1) får den første andel; kun de valgte lande (som ovenfor)
+  if ((g.cmClubStat?.[cid]?.[0] ?? 1) !== 1 || !g.activeNations.includes(club.nation)) return;
+  const e = entryOf(g, cid);
+  const open = e.slots.filter((s) => isStaffSlot(s.role) && s.f === -1 && s.s13 === -1 && s.s17 === -1).length;
+  if (!open) return;
   const env = boardEnv(g, g.date, undefined, true);
-  const mgr = env.manager(cid);
-  const have = clubStaff(g, cid);
-  for (const job of [6, 8, 10, 9]) {
-    const holders = have.filter((s) => JOB_OF[s.role] === job).slice(0, SLOTS[job]);
-    for (const s of holders) {
-      if (!s.cmNp || s.cmExtra) continue;
-      const p = env.person(s.id);
-      if (!p || !p.np) continue;
-      if (scoreStaffForJob(env, p, cid, job, mgr) >= T) continue;
-      const cur = s.career?.[s.career.length - 1];
-      if (cur && !cur.to && cur.club === cid) careerEnd(s, 'sacked');
-      else (s.career ??= []).push({ club: cid, from: s.cmJoined || g.date, to: g.date, why: 'sacked' });
-      if (s.cmNp && !s.cmExtra) s.cmDbJob = job;                               // 0x690890 beholder jobkoden +0x3d
-      recordStaffMove(s, 0);
-      s.club = 0;
-      s.assignment = null;
-      s.coachAreas = undefined;
-      g.cmStaffMoves = (g.cmStaffMoves ?? []).filter((m) => m.c !== cid || m.s !== s.id);
-    }
+  staffSearch(g, cid, { share: { budget: Math.max(0, env.transferBudget(cid)), n: Math.max(1, open + Math.min(openPlayerSlots, 4)) } });
+}
+
+/** (ønskelisterne) 0x83b6e0 har kørt for klubben: dens 0x83f3a0-kald for stabspladserne – kun når 0x83b6e0 kom forbi sine porte (tilstand +4 = 1) */
+function afterBudget(g: GameState, cid: number): void {
+  if (!cmStaffOn(g) || isHumanClub(cid) || g.cmPlan?.[cid]?.st !== 1) return;
+  if (!staffTailed(entryOf(g, cid).slots)) return;
+  staffSearch(g, cid, {});
+}
+
+/** buddet er afgjort: pladsens mål og budmærke væk; et afslag genudfylder pladsen (0x8bf680 → 0x843e10(staff, køber, 1, 1) → 0x83f3a0) */
+function staffBidDone(g: GameState, m: CmStaffMove, refill: boolean): void {
+  const e = g.cmPlan?.[m.c] ? entryOf(g, m.c) : null;
+  if (!e) return;
+  const i = e.slots.findIndex((sl) => sl.role === m.job && sl.f === m.s && sl.s17 !== -1);
+  if (i < 0) return;
+  e.slots[i].f = -1; e.slots[i].s17 = -1;
+  storeEntry(g, m.c, e);
+  if (refill && !isHumanClub(m.c)) {
+    const open = e.slots.filter((s) => isStaffSlot(s.role) && s.f === -1 && s.s13 === -1 && s.s17 === -1).length;
+    const share = cmShortlistOn(g) ? undefined : { budget: Math.max(0, boardEnv(g, g.date, undefined, true).transferBudget(m.c)), n: Math.max(1, open) };
+    staffSearch(g, m.c, { only: i, share });
   }
 }
 
@@ -212,15 +301,16 @@ export function cmStaffMovesDaily(g: GameState): void {
   let env: BoardEnv | null = null;
   for (const m of due) {
     const s = g.staff[m.s], buyer = g.clubs[m.c];
-    if (!s || !buyer || s.club !== m.from || s.club === m.c || isHumanClub(m.c)) continue;
+    if (!s || !buyer || s.club !== m.from || s.club === m.c || isHumanClub(m.c)) { staffBidDone(g, m, true); continue; }
     const role = ROLE_OF[m.job];
-    if (Object.values(g.staff).filter((x) => x.club === m.c && x.role === role).length >= SLOTS[m.job]) continue;
+    if (Object.values(g.staff).filter((x) => x.club === m.c && x.role === role).length >= SLOTS[m.job]) { staffBidDone(g, m, true); continue; }
     env ??= boardEnv(g, g.date, undefined, true);
     const p = env.person(s.id);
-    if (!p || staffJobInterest(g, env, p, m.c, m.job) < 0.75) continue;
+    if (!p || staffJobInterest(g, env, p, m.c, m.job) < 0.75) { staffBidDone(g, m, true); env = null; continue; }
     // kontrakten: originalens tilbud 0x4cda70 → 0x85fc50 (løn og udløb) – før handlen (personens nuværende kontrakt indgår)
     const terms = cmStaffTerms(g, s, m.c, m.job);
-    if (terms?.refuse) continue;
+    if (terms?.refuse) { staffBidDone(g, m, true); env = null; continue; }
+    staffBidDone(g, m, false);
     const seller = m.from ? g.clubs[m.from] : undefined;
     // nyheden FØR kontrakten flyttes (0x8dbef0 kaldes fra try_complete_offer før skiftet)
     forEachHuman(() => staffMoveNews(g, s, buyer, seller, m.job));
@@ -234,6 +324,7 @@ export function cmStaffMovesDaily(g: GameState): void {
     (s.career ??= []).push({ club: m.c, from: g.date });
     s.wage = terms?.wage ?? cmStaffDemand(s, role);
     recordStaffMove(s, m.c, m.fee);
+    cmPlanKick(g, m.c);                                                          // 0x8c9720 (0x8ca0ce): køberens tæller +8 = 100
     s.club = m.c;
     s.role = role;
     s.assignment = null;
@@ -255,3 +346,4 @@ function staffMoveNews(g: GameState, s: Staff, buyer: Club, seller: Club | undef
 
 // trupplanen kalder halen efter hver kørsel (cmSquadPlanGame.ts – ingen cirkulær import)
 afterPlanHooks.push(cmStaffPlan);
+afterBudgetHooks.push(afterBudget);

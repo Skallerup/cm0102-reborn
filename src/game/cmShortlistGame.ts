@@ -33,7 +33,7 @@ import { playerValue_4d0c60, knowsNation_53d980, seenRep_5407e0, knowledge_5408c
 import { contractForClub_4cf5f0, expiryBand_867d30, setToDesiredContract_85fc50, hasActiveReleaseClause_867b50, constructContract_85e410 } from './cmContractWant';
 import { getMaxWage_5968d0 } from './cmMaxWage';
 import { addDays_54c5b0, subDays_54c8e0, listRemove_68d1f0, offerContract_4cda70 } from './cmContract';
-import { entryOf, storeEntry, fromRow } from './cmSquadPlanGame';
+import { entryOf, storeEntry, fromRow, staffTailed, afterBudgetHooks } from './cmSquadPlanGame';
 import { newPlanEntry, type PlanEntry } from './cmSquadPlan';
 import { registerImpl, enter, QSORT_CMP, QSORT_CMP8, SHARED, PC_HOOK, FASTHOST, stackBelow, FAKE_RET, type X86 } from './cmGen/x86';
 import { getClubFinance_5a0590 } from './cmWage';
@@ -427,21 +427,29 @@ function writeSlots(S: SlMem, cid: number, e: PlanEntry, staffHolders: boolean):
   const base = SLOTS0 + 0x5c8 * cid;
   m.w32(ent, base); m.w8(ent + 4, e.state); m.w8(ent + 7, e.form); m.w8(ent + 8, e.counter);
   const mem = (id: number) => (id > -1 ? memOf.get(id) ?? -1 : -1);
-  // stabens pladser (*estimeret*): klubbens nuværende stab efter jobbet (0x83ebfb-listen: assistenten, trænerne, fysioterapeuterne, spejderne)
+  // stabens pladser: trupplanens hale 0x83ebfb–0x83f32b (cmStaffMove.ts staffTail) har sat indehaveren +0x13 og målet +0xf (stabens id'er i
+  // spillet). *Estimeret*: en plads, hvis mål venter på sit svar (cmStaffMoves), står her som åben (personen er ikke nødvendigvis i hukommelsen),
+  // og uden halen (ældre spil, menneskets klub) er klubbens nuværende stab efter jobbet indehaver og mål
   const club = S.clubAdr(cid);
   const staff: number[] = [];
-  if (staffHolders && club) for (const o of STAFF_OFFS) { const st = m.u32(club + o); if (st) staff.push(st); }
+  const staffMemId = (S.M as { staffMemId?: (sid: number) => number | undefined }).staffMemId;
+  const tailed = !!staffMemId && staffTailed(e.slots);
+  if (staffHolders && club && !tailed) for (const o of STAFF_OFFS) { const st = m.u32(club + o); if (st) staff.push(st); }
   e.slots.forEach((s, i) => {
     const a = base + SLOT * i;
     m.w8(a, s.role); m.w16(a + 1, s.mask); m.w32(a + 3, s.b3 ?? 0); m.w32(a + 7, s.b7 ?? 0); m.w32(a + 0xb, s.bb ?? 0);
-    let f = mem(s.f), h = mem(s.s13);
-    if (s.role !== 0xb && staffHolders) {
+    let f = mem(s.f), h = mem(s.s13), b17 = s.s17;
+    if (s.role !== 0xb && tailed) {
+      h = s.s13 > -1 ? staffMemId!(s.s13) ?? -1 : -1;
+      f = s.f > -1 && s.f === s.s13 ? h : -1;
+      b17 = -1;
+    } else if (s.role !== 0xb && staffHolders) {
       const w1 = s.role, w2 = s.role === 6 ? 0xd : s.role === 7 ? 0xe : s.role === 8 ? 0xf : s.role;
       let k = -1;
       for (let x = 0; x < staff.length; x++) { const j = m.u8(staff[x] + 0x3d); if (j === w1 || j === w2) { k = x; break; } }
       if (k >= 0) { h = f = m.s32(staff[k]); staff.splice(k, 1); } else { h = f = -1; }
     }
-    m.w32(a + 0xf, f); m.w32(a + 0x13, h); m.w32(a + 0x17, s.s17);
+    m.w32(a + 0xf, f); m.w32(a + 0x13, h); m.w32(a + 0x17, b17);
     m.w16(a + 0x1b, s.day); m.w16(a + 0x1d, s.year); m.w32(a + 0x1f, leapY(s.year));
     m.w8(a + 0x23, s.idx); m.w8(a + 0x24, s.b24);
   });
@@ -454,12 +462,15 @@ function readSlots(S: SlMem, cid: number): void {
   const e = entryOf(g, cid);
   e.state = m.u8(ent + 4); e.form = m.u8(ent + 7); e.counter = m.u8(ent + 8);
   const gid = (v: number) => (v > -1 ? byMem.get(v)?.id ?? -1 : -1);
+  // stabens pladser efter halen: mål/indehaver/budmærke bliver spillets (stabens id'er, writeSlots) – 0x83b6e0 sorterer pladserne, så efter +0x23
+  const prev = staffTailed(e.slots) ? new Map(e.slots.filter((s) => s.role !== 0xb).map((s) => [s.idx, s])) : null;
   e.slots = Array.from({ length: NSLOT }, (_, i) => {
     const a = base + SLOT * i;
-    const role = m.u8(a);
+    const role = m.u8(a), idx = m.u8(a + 0x23);
+    const was = role !== 0xb ? prev?.get(idx) : undefined;
     return { role, mask: m.u16(a + 1), b3: m.s32(a + 3), b7: m.s32(a + 7), bb: m.s32(a + 0xb),
-      f: role === 0xb ? gid(m.s32(a + 0xf)) : -1, s13: role === 0xb ? gid(m.s32(a + 0x13)) : -1, s17: m.s32(a + 0x17),
-      day: m.s16(a + 0x1b), year: m.u16(a + 0x1d), idx: m.u8(a + 0x23), b24: m.u8(a + 0x24) };
+      f: was ? was.f : role === 0xb ? gid(m.s32(a + 0xf)) : -1, s13: was ? was.s13 : role === 0xb ? gid(m.s32(a + 0x13)) : -1, s17: was ? was.s17 : m.s32(a + 0x17),
+      day: m.s16(a + 0x1b), year: m.u16(a + 0x1d), idx, b24: m.u8(a + 0x24) };
   });
   storeEntry(g, cid, e);
 }
@@ -1797,6 +1808,7 @@ export function afterPlan(S: SlMem, cid: number, dropped: number[]): void {
   S.M.setRand(cmRand(S.g.seed ?? 0, cid, dayNum(S.g.date), 0x83b6e0));
   shared(() => slCall(S.c, 0x83b6e0, S.slm, club), S);
   readSlots(S, cid);
+  for (const h of afterBudgetHooks) h(S.g, cid);
 }
 function onList(S: SlMem, id: number, cid: number): boolean {
   const { m, slm } = S;

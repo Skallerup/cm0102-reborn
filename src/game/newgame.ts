@@ -853,6 +853,16 @@ function addDbStaff(row: NonNullable<CMWorld['staff']>[number], club: number, ro
   if (npInit && club && dbWage > 0) { s.wage = Math.round(dbWage / GBP); dbWaged.add(s); staffDbWage.set(s.id, dbWage); }
   // (MODERN_PARITY 13) 2026/27: databasens ugeløn (staffBx[0][11], £) til startkontrakterne (cmStaffWagePrepare – lønnen sættes dér) og person-id'et
   else if (npLogic?.staff) { const w26 = npLogic.bx?.[row[9]]?.[0]?.[11] ?? 0; if (club && w26 > 0) staffDbWage.set(s.id, w26); s.cmId = row[9]; }
+  // den originale database: kontraktens udløb som spillernes (0x4c7560 → 0x85e960 0x85ec81/0x85ed8f: personpostens +0x46; mangler den,
+  // trukket 0x4c7632–0x4c776d; for tidlig +52 uger – cmContractEnd.ts). Oraklet 14/7-01: Martin Foyle/Port Vale 29/6-2002 (databasen),
+  // Warwick Rimmer/Tranmere 2/6-2002 (trukket). 2026/27: staffBx[0][12..13]. Ældre world-filer uden feltet: spillets egen (makeStaff)
+  const kx = npInit ? row[12] : npLogic?.staff ? npLogic.bx?.[row[9]]?.[0] : undefined;
+  const ey = kx?.[13];
+  if (club && ey !== undefined) {
+    const ed = kx![12] ?? 0;
+    const db = ey > 1900 && ey < 2100 ? new Date(Date.UTC(ey, 0, 1 + Math.max(0, ed))).toISOString().slice(0, 10) : '';
+    s.expires = cmContractEnd(db, date, g.nations[g.leagues[g.clubs[club]?.league]?.nation]?.name, seed, row[9]);
+  }
   // (forholdene) databasens person-id og de skjulte egenskaber +0x56..+0x5d (kun den originale database – cmRelations.ts)
   if (npInit) { s.cmId = row[9]; if (row[12]) s.cmHid = row[12].slice(2, 11); if (row[14]) s.cmNat = [row[14][0], row[14][1]]; }   // [12] = [+8, +0xc, +0x56..+0x5d, +0x22] (cmBoard)
   // den originale database: ikke-spillerposten som i originalens hukommelse efter spilstarten (sub_535a80 – cmStaffInit.ts):

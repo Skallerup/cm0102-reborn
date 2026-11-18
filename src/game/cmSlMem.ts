@@ -333,7 +333,7 @@ function zeroId(m: SparseMem, id: number): void {
 export function buildSlWantMem(g: GameState, clubs: Iterable<number>, opts: { call?: (adr: number, a: number[]) => number | undefined; useLog?: (adr: number) => boolean;
   /** (hastighed) spillere, hvis poster ingen læser, før deres klubs trupplan eller bud kører (cmShortlistGame.ts staleOk): beholder gårsdagens
    *  poster (når id, klub og kontrakt er de samme), indtil `refreshClub(klub)` skriver dem (WantMem.refreshClub) */
-  stale?: (p: Player, cid: number) => boolean }): WantMem & { refreshClub?: (cid: number, pids?: Set<number>) => number[]; deferredPids?: { has(pid: number): boolean }; pidStaff?: (pid: number) => number | undefined } {
+  stale?: (p: Player, cid: number) => boolean }): WantMem & { refreshClub?: (cid: number, pids?: Set<number>) => number[]; deferredPids?: { has(pid: number): boolean }; pidStaff?: (pid: number) => number | undefined; staffMemId?: (sid: number) => number | undefined } {
   let tq = tnow();
   gbpOf = (cid) => cmGbp(g, cid);
   const incr = ENV.CM_SL_INCR !== '0';
@@ -709,6 +709,9 @@ export function buildSlWantMem(g: GameState, clubs: Iterable<number>, opts: { ca
     return out;
   };
   SLMEM_T.c += tnow() - tq;
+  // (stabens pladser, cmShortlistGame.ts writeSlots) stabens id i spillet → personens id i hukommelsen
+  const staffMemIds = new Map<number, number>();
+  for (const ss of staffIds.values()) for (const [s, id] of ss) staffMemIds.set(s.id, id);
   return { W, c: gc, g, env: envOf, setRand: (f) => { rand = f; }, get byStaff() { return byStaffOf(); }, refreshClub, deferredPids,
-    pidStaff: (pid: number) => byPid.get(pid) };
+    pidStaff: (pid: number) => byPid.get(pid), staffMemId: (sid: number) => staffMemIds.get(sid) };
 }

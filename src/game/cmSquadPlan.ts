@@ -202,7 +202,7 @@ export function planSquad(e: PlanEntry, ind: PlanInput, ctx: PlanCtx): PlanResul
       const passed = s.year < ind.today.year || (s.year === ind.today.year && s.day < ind.today.day);
       if (!passed) continue;                                                   // (målets job 0x10 – ingen ønskeliste hos os)
     }
-    if (s.f > -1) res.dropped.push(s.f);
+    if (s.f > -1 && s.role === 0xb) res.dropped.push(s.f);                    // (stabens mål er stabens id'er – cmStaffMove.ts)
     s.f = -1; s.s13 = -1; s.b7 = 0;
     if (s.role !== 0xb) continue;
     const g = slotGroup(s);

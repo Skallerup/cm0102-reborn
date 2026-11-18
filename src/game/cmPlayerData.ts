@@ -825,7 +825,11 @@ function moraleDay(g: GameState, p: Player, rand: (n: number) => number): void {
  *  bl = u8(rand(20 − Adaptability) + rand(20 − Influence +0x2f) + rand(s16(forskel)/max(20·Pressure, 1))), ftol(bl·(1,5 − 0,1·0x7c6830(spiller,
  *  ny klub, klubbens sprog +0x77))) som byte, højst 100, lagt til byten (u8). */
 export function cmStaffStateMove(g: GameState, p: Player, from: number, to: number): void {
-  if (!cmActive(g) || p.regen || g.cmFitStart === undefined || !to) return;
+  if (!cmActive(g) || g.cmFitStart === undefined || !to) return;
+  // 0x8ca0a4–0x8ca0ce: den nye klubs trupplan-tæller +8 = 100 (Shortlist_Manager [+0xdc] + 9·klub), medmindre 0x5444a0 (kontrakten +0x4e & 1 –
+  // en ny kontrakt er ikke transferlistet) – så åbner 0x5cccd0's port (rand(70) + 30 < +8) og klubben planlægger igen inden for få dage
+  cmPlanKick(g, to);
+  if (p.regen) return;
   const world = s16(Math.round((p.cmRepMem ?? p.cmRep ?? [p.rep * 2, p.rep * 2, p.rep * 2])[2] * 50));
   const reps = g.cmClubRep;
   if (reps) {
@@ -848,6 +852,12 @@ export function cmStaffStateMove(g: GameState, p: Player, from: number, to: numb
   let v = Math.trunc(bl * (1.5 - fl * 0.1)) & 0xff;
   if (v > 100) v = 100;
   p.cmStaffState = u8b((p.cmStaffState ?? 0) + v) || undefined;
+}
+
+/** 0x8ca0ce / 0x84418d: trupplanens tæller +8 = 100 for klubben (efter et klubskifte 0x8c9720 og når et mål kommer til klubben 0x843e10) */
+export function cmPlanKick(g: GameState, cid: number): void {
+  const st = g.cmPlan?.[cid];
+  if (st) st.c = 100;
 }
 
 /** STAFF_STATE_OFF: til målinger (grid-stats før/efter) – slår spilstarten og den daglige del fra */
