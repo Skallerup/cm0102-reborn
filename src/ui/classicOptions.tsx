@@ -29,6 +29,7 @@ import { canInstall, installApp, notifyEnabled, notifySupported, onInstallChange
 import { getTheme, modernOn, setTheme, type Theme } from './theme';
 import { authentic } from '../game/rules';
 import { bTeamOf, hasReserveTeam } from '../game/cmBTeam';
+import { cmAwardNations, cmAwOn } from '../game/cmAwards';
 import { matchSound, setMatchSound } from './matchSound';
 
 // ---------- små visningsindstillinger (kun i denne browser) ----------
@@ -338,12 +339,15 @@ export function CompetitionsMenu() {
   const nations: number[] = [];
   for (const id of g.leagueOrder) { const l = g.leagues[id]; if (l && !l.hidden && g.comps[id] && !nations.includes(l.nation)) nations.push(l.nation); }
   nations.sort((a, b) => (a === own ? -1 : b === own ? 1 : 0));
+  // 0x75f891: Awards kun for et land med et NationAwards-objekt (0x414340 – indlæst land med priser); åbner landets første pris
+  const awNats = cmAwOn(g) ? cmAwardNations(g) : null;
   for (const n of nations) {
     const comps = Object.values(g.comps).filter((c) => c.nation === n && !g.leagues[c.id]?.hidden).sort((a, b) => compOrder(a) - compOrder(b));
+    const nm = g.nations[n]?.name ?? '';
     items.push({ key: `n${n}`, label: natName(g.nations[n]?.name), sub: [
       ...comps.map((c) => ({ key: c.id, label: compName(c.name), onClick: () => nav({ name: 'competitions', id: c.id }) })),
       { key: 'sep', sep: true as const },
-      { key: 'aw', label: t('cl.cm.awards'), onClick: () => nav({ name: 'awards', state: { awScope: 'nation' } }) },
+      ...(awNats && !awNats.includes(nm) ? [] : [{ key: 'aw', label: t('cl.cm.awards'), onClick: () => nav({ name: 'awards', state: { awNat: nm } }) }]),
       { key: 'nt', label: t('cl.cm.nationalTeam'), onClick: () => nav({ name: 'international', id: n }) },
     ] });
   }

@@ -742,7 +742,8 @@ export function seasonRollover(sc: Scope | null = null) {
   const summary = seasonAwards(sc);
   // den originale database i ægte tilstand: originalens priser (cmAwards.ts) – ingen gallaaften/Ballon d'Or-nyheder fra spillet
   if (!cmAw) seasonGala(summary);
-  if (!sc || sc.main) cmAwardsRollover(g);
+  // landets sæsonslut: Comp_Stats for dets turneringer og managernes sæsonpoint (Staff_Records::end_season_for_nation 0x86d6e0)
+  cmAwardsRollover(g, sc ? (id) => sc.comps.has(id) : undefined, sc ? sc.club : undefined);
   // historikken: ét afsnit pr. sæson – landene med egen dag lægger deres turneringer i afsnittet for deres sæson
   const prevSum = sc ? g.seasonHistory.find((s) => s.season === summary.season) : undefined;
   if (prevSum) prevSum.comps.push(...summary.comps); else { g.seasonHistory.push(summary); g.seasonHistory.sort((a, b) => a.season - b.season); }

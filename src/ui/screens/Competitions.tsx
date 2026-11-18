@@ -7,6 +7,7 @@ import { CL_SPOTS, CONF_SPOTS, LEAGUE_RULES, UEFA_SPOTS } from '../../game/leagu
 import { isOriginal2001 } from '../../game/rules2001';
 import { refereeFor } from '../../game/weather';
 import { gs, squad } from '../../game/state';
+import { cmAwOn, compHasAwards } from '../../game/cmAwards';
 import type { Club, Competition, Player, TableRow } from '../../game/types';
 import { compName, dateFmt, t, natName } from '../../i18n';
 import { ClubLink, Panel, PlayerLink, Rating, Table, Tabs, type Col } from '../components';
@@ -67,7 +68,8 @@ export function Competitions({ id }: { id?: string }) {
             { key: 'stats', label: t('cl.lg.teamStats'), on: tab === 'stats', onClick: () => setTab('stats') },
             { key: 'scorers', label: t('cl.lg.playerStats'), on: tab === 'scorers', onClick: () => setTab('scorers') },
             { key: 'ref', label: t('cl.lg.refStats'), on: tab === 'refs', onClick: () => setTab('refs') },
-            { key: 'awards', label: t('cl.cm.awards'), arrow: true, onClick: () => nav({ name: 'awards' }) },
+            // 0x490171: turneringens første pris (0x414ac0) – kun når turneringen har en pris i et indlæst land
+            ...(cmAwOn(gs()) && !compHasAwards(gs(), comp.id) ? [] : [{ key: 'awards', label: t('cl.cm.awards'), arrow: true, onClick: () => nav({ name: 'awards', state: { awComp: comp.id } }) }]),
             { key: 'history', label: t('comp.history'), arrow: true, on: tab === 'history', onClick: () => nav({ name: 'competitions', id: comp.id, tab: 'history', state: { tab: 'history' } }) },
           ]} />
         </>

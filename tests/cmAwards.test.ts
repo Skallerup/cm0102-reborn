@@ -2,7 +2,7 @@
 // 0x8afa40 og en spillet august 2001 med Man Utd (den originale database i ægte tilstand).
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { addCandidate, bestRated, cmAwardsDaily, cmAwardHistory, cmAwardName, cmAwardWins, ENGLAND_AWARDS, TEAM_SLOTS, type CmAwState } from '../src/game/cmAwards';
+import { addCandidate, awardsStart, bestRated, cmAwardsDaily, cmAwardHistory, cmAwardName, cmAwardNations, cmAwardWins, ENGLAND_AWARDS, NATION_AWARDS, TEAM_SLOTS, teamSlots, type CmAwState, type YrEntry } from '../src/game/cmAwards';
 import { createGame, type WorldData } from '../src/game/newgame';
 import { runUntil } from '../src/game/sim';
 import { gs } from '../src/game/state';
@@ -15,6 +15,26 @@ describe('priserne – originalens regler', () => {
     expect(cmAwardName(ENGLAND_AWARDS[0].id)).toBe('English Players Player of the Year');
     expect(cmAwardHistory(ENGLAND_AWARDS[0].id)[0]).toEqual([2001, ['Teddy Sheringham']]);
     expect(cmAwardHistory(ENGLAND_AWARDS[1].id)[0]).toEqual([2001, ['Steven Gerrard', 'Joe Cole', 'Wes Brown']]);
+  });
+
+  it('landenes priser (award/*_awards.cpp): 27 lande, Danmark har 10 – ingen månedspriser', () => {
+    expect(Object.keys(NATION_AWARDS)).toHaveLength(27);
+    expect(Object.values(NATION_AWARDS).flat().every((d) => d.id >= 0)).toBe(true);     // alle nøgler findes i databasen
+    const dk = NATION_AWARDS.Denmark;
+    expect(dk.map((d) => cmAwardName(d.id))).toEqual(['Danish Player of the Year', 'Danish Premier Division Team of the Week',
+      'Danish Premier Division Player of the Year', 'Danish Premier Division Young Player of the Year', 'Danish First Division Team of the Week',
+      'Danish First Division Player of the Year', 'Danish First Division Young Player of the Year', 'Danish Second Division Team of the Week',
+      'Danish Second Division Player of the Year', 'Danish Second Division Young Player of Year']);
+    expect(dk.map((d) => d.kind)).toEqual(['year', 'week', 'year', 'year', 'week', 'year', 'year', 'week', 'year', 'year']);
+    expect(dk[0].rep).toEqual([6000, 2500]);
+    expect(dk[3].age).toBe(21);
+    expect(cmAwardHistory(dk[0].id)[0]?.[1]?.length).toBeGreaterThan(0);              // databasens tidligere vindere
+    expect(NATION_AWARDS.England.map((d) => cmAwardName(d.id))).toEqual(ENGLAND_AWARDS.map((d) => cmAwardName(d.id)));
+    // 0x8afdc0: opstilling 2 (Kroatien, Tyskland) har libero og wingbacks
+    expect(teamSlots(2).slice(0, 11)).toEqual([1, 0x808, 0x88, 0x204, 0x204, 2, 0x210, 0x210, 0x240, 0x240, 0x210]);
+    expect(NATION_AWARDS.Germany.find((d) => d.kind === 'week')?.layout).toBe(2);
+    // Finland: månedspriserne maj–oktober (MONTH_AWARD 4..9)
+    expect(NATION_AWARDS.Finland.find((d) => d.kind === 'month')?.months).toEqual([4, 9]);
   });
 
   it('0x768130: < 3 kampe sidst, ellers snittet; den unge pris springer de tre første ældre over', () => {
@@ -77,9 +97,10 @@ describe('priserne i et spil (original DB, ægte tilstand)', { timeout: 600_000 
     // spillets egne månedspriser er slået fra i ægte tilstand
     expect(g.news.some((n) => n.key.startsWith('award.month'))).toBe(false);
 
-    // 6/4 (0x579610 Date(5,3)): PFA-priserne og årets hold af ligaens tal; 31/5: årets manager (her med augusts tal – kravene sænkes −0,1 ad gangen)
+    // 5/4 (0x579610 Date(5,3) – 0x549f70: dag 5 i april): PFA-priserne og årets hold af ligaens tal; Date(30,4) = 30/5: årets manager
+    // (her med augusts tal – kravene sænkes −0,1 ad gangen)
     const date = g.date;
-    g.date = '2002-04-07';
+    g.date = '2002-04-06';
     cmAwardsDaily(g);
     const pfa = cmAwardWins(g, ENGLAND_AWARDS[0].id)[0];
     expect(pfa?.w).toHaveLength(3);
@@ -91,12 +112,46 @@ describe('priserne i et spil (original DB, ægte tilstand)', { timeout: 600_000 
     const toy = cmAwardWins(g, ENGLAND_AWARDS.find((d) => d.kind === 'team' && d.tier === 1)!.id)[0];
     expect(toy?.team?.filter(([pid]) => pid).length).toBe(TEAM_SLOTS.length);
     expect(g.players[toy!.team![0][0]].pos[0]).toBeGreaterThanOrEqual(10);             // plads 1 = målmand (maske 1)
-    expect(g.news.some((n) => n.key.startsWith('cmaw.yh.') && n.date === '2002-04-06')).toBe(true);
-    g.date = '2002-06-01';
+    expect(g.news.some((n) => n.key.startsWith('cmaw.yh.') && n.date === '2002-04-05')).toBe(true);
+    g.date = '2002-05-31';
     cmAwardsDaily(g);
     const moy = cmAwardWins(g, ENGLAND_AWARDS.find((d) => d.kind === 'mgrYear' && d.tier === 1)!.id)[0];
     expect(moy?.w).toHaveLength(3);
     expect(moy.w.every((x) => x.mgr)).toBe(true);
+    g.date = date;
+  });
+});
+
+describe('priserne i en dansk karriere (kun dansk liga indlæst)', { timeout: 600_000 }, () => {
+  it('kun Danmarks priser; Danish Player of the Year (20/12) af YEAR_RATINGS +0xc; skærmen åbner på de danske priser', async () => {
+    const world = JSON.parse(readFileSync('public/data/world-original.json', 'utf8')) as WorldData;
+    const den = world.nations.findIndex((n) => n.name === 'Denmark');
+    const club = world.clubs.find((c) => c[1] === 'Brøndbyernes Idræts Forening')![0];
+    createGame(world, { managerName: 'M S', managerNation: den, clubId: club, activeNations: [den], lang: 'en', masking: true, seed: 3, mode: 'authentic' });
+    const g = gs();
+    expect(cmAwardNations(g)).toEqual(['Denmark']);
+    const start = awardsStart(g, undefined);
+    expect(start.nation).toBe('Denmark');
+    expect(cmAwardName(start.id)).toBe('Danish Player of the Year');
+    expect(awardsStart(g, { awNat: 'England' }).nation).toBe('Denmark');               // England er ikke indlæst
+    await runUntil({ untilDate: '2001-07-31', autoPlay: true });
+    // 0x9315d0: de danske kampe i YEAR_RATINGS +0xc (danske spillere), startopstillingen
+    const yr = g.cmAw!.yr!;
+    expect(yr.s.length).toBeGreaterThan(50);
+    // 0x414b40: i en dansk liga kun danske, franske og svenske spillere
+    const sel = ['Denmark', 'France', 'Sweden'].map((n) => world.nations.findIndex((x) => x.name === n));
+    expect(yr.s.every((e) => sel.includes(e[1]))).toBe(true);
+    expect(yr.s.every((e) => e[5] >= 1)).toBe(true);
+    expect(yr.s.some((e) => e[2] > 0)).toBe(true);
+    expect((g.cmAw?.won ?? []).some((w) => ENGLAND_AWARDS.some((d) => d.id === w.a))).toBe(false);
+    // 20/12: tre vindere sorteret efter mode 0 (højeste først), kun spillere med ≥ 15 kampe i 2001
+    const danes = Object.values(g.players).filter((p) => p.nation === den && p.club && !p.regen).slice(0, 4);
+    yr.s = danes.map((p, i): YrEntry => [p.id, den, 40 * (i + 1), 10, 10, i === 3 ? 10 : 20, 2, 0, 0]);
+    const date = g.date;
+    g.date = '2001-12-21';
+    cmAwardsDaily(g);
+    const w = cmAwardWins(g, NATION_AWARDS.Denmark[0].id)[0];
+    expect(w?.w.map((x) => x.id)).toEqual([danes[2].id, danes[1].id, danes[0].id]);
     g.date = date;
   });
 });
