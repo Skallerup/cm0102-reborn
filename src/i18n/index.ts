@@ -160,6 +160,23 @@ export function moneyFull(eur: number): string {
   return (v < 0 ? '-' : '') + (currency === 'DKK' ? `${num} kr.` : currency === 'SEK' || currency === 'NOK' ? `${num} kr` : currency === 'BRL' ? `R$ ${num}` : `${currencySymbol()}${num}`);
 }
 
+/** CM 01/02 Finances-skærmen (ejerens billede 18/11): præcist beløb uden Cash-afrunding ("85.113.190DKr"), men over 13 tegn forkortet
+ *  til 2 decimaler ("388,08M Dkr", "1,12B Dkr", "1B Dkr"); underskud i parentes "(86,41M Dkr)" */
+export function moneyCx(eur: number): string {
+  const v = Math.round(eur * RATE[currency]);
+  const neg = v < 0, a = Math.abs(v);
+  const dkk = currency === 'DKK' || currency === 'SEK' || currency === 'NOK';
+  const sym = currency === 'DKK' ? 'Kr' : currency === 'SEK' || currency === 'NOK' ? 'kr' : currencySymbol();
+  const loc = LOCALE[lang];
+  const full = a.toLocaleString(loc);
+  const wrap = (x: string) => (neg ? `(${x})` : x);
+  const fullTxt = dkk ? `${full}D${sym}` : currency === 'BRL' ? `R$ ${full}` : `${sym}${full}`;
+  if (wrap(fullTxt).length <= 13) return wrap(fullTxt);
+  const [d, u] = a >= 1e9 ? [1e9, 'B'] : [1e6, 'M'];
+  const n = (a / d).toLocaleString(loc, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  return wrap(dkk ? `${n}${u} D${sym.toLowerCase()}` : currency === 'BRL' ? `R$ ${n}${u}` : `${sym}${n}${u}`);
+}
+
 export function dateFmt(iso: string, long = false): string {
   const d = new Date(iso + 'T00:00:00Z');
   return d.toLocaleDateString(LOCALE[lang], { day: 'numeric', month: long ? 'long' : 'short', year: 'numeric', weekday: long ? 'short' : undefined, timeZone: 'UTC' });

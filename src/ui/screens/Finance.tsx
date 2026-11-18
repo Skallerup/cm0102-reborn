@@ -10,7 +10,7 @@ import { isInternational, u21Squad } from '../../game/international';
 import { CxDrop } from '../classic';
 import { SHIFT_WEEKS, boardMood, type BudgetKind } from '../../game/board';
 import { useState } from 'react';
-import { currencySymbol, dateFmt, getCurrency, money, moneyFull, t, toCur } from '../../i18n';
+import { currencySymbol, dateFmt, getCurrency, money, moneyCx, moneyFull, t, toCur } from '../../i18n';
 import { Bar, Modal, MoneyInput, Panel, Tabs } from '../components';
 import { useGame, useNav, useRouteState } from '../core';
 import { AttendanceTab, FacilitiesTab, FinanceHistoryTab } from './Stadium';
@@ -344,7 +344,7 @@ export function ClassicFinanceBody({ view, clubId }: { view: 'finances' | 'incom
     <table className="cx-fin">
       <thead><tr><th>{t('cl.fin.item')}</th>{PERIODS.map((p) => <th key={p}>{t(`cl.fin.p.${p}`)}</th>)}</tr></thead>
       <tbody>{rows.map(([label, v, cls], i) => label === '' ? <tr key={i} className="gap"><td colSpan={5} /></tr> : (
-        <tr key={i} className={cls}><td>{label}</td>{PERIODS.map((p) => { const x = v(p); return <td key={p}>{cls === 'profit' && x < 0 ? `(${moneyFull(-x)})` : moneyFull(x)}</td>; })}</tr>
+        <tr key={i} className={cls}><td>{label}</td>{PERIODS.map((p) => { const x = v(p); return <td key={p} className={cls === 'profit' && x < 0 ? 'neg' : undefined}>{moneyCx(x)}</td>; })}</tr>
       ))}</tbody>
     </table>
   );
@@ -357,7 +357,7 @@ export function ClassicFinanceBody({ view, clubId }: { view: 'finances' | 'incom
     <>
       {view === 'finances' && <>
         {table([[t('cl.fin.v.income'), (p) => sum(INCOME, p)], [t('cl.fin.v.expenditure'), (p) => sum(EXPENSE, p)], ['', () => 0], [t('cl.fin.profit'), (p) => sum(INCOME, p) - sum(EXPENSE, p), 'profit']])}
-        <div className="cx-fin-bal"><span>{t('cl.fin.balance')}</span><b className={c.balance < 0 ? 'neg' : ''}>{moneyFull(c.balance)}</b><span>{t('cl.fin.funds')}</span><b>{moneyFull(c.transferBudget)}</b></div>
+        <div className="cx-fin-bal"><span>{t('cl.fin.balance')}</span><b className={c.balance < 0 ? 'neg' : ''}>{moneyCx(c.balance)}</b><span>{t('cl.fin.funds')}</span><b className={c.transferBudget < 0 ? 'neg' : ''}>{moneyCx(c.transferBudget)}</b></div>
       </>}
       {view === 'income' && table(line(INCOME, 'in'))}
       {view === 'expenditure' && table(line(EXPENSE, 'out'))}
