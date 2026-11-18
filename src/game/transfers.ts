@@ -31,7 +31,7 @@ import { asOwner, forEachHuman, isHumanClub, isMultiplayer } from './humans';
 import { AGENT_RULES, agentOf } from './agents';
 import { econ } from './econ';
 import { authentic, extended } from './rules';
-import { aiRespond, aiReview, applyRejectReason, clauseOptIn, newTerms, putTerms, termsOf, toGbp, fromGbp, valueCtx, MAX_SWAP, type BidTerms, type RejectKey } from './cmTransferBid';
+import { aiRespond, aiReview, applyRejectReason, clauseOptIn, newTerms, putTerms, termsOf, valueCtx, MAX_SWAP, type BidTerms, type RejectKey } from './cmTransferBid';
 import { bookBlock, K as CMK, GBP as GBP_CM } from './cmFinance';
 import { cmGbp } from './cmMoney';
 
@@ -403,7 +403,7 @@ export function exchangeBaseOk(x: Player, receiver: number, target: number): boo
 export function exchangeList(giver: number, receiver: number, target: number): { ids: number[]; note: 'refused' | 'noPlayers' | null } {
   const g = gs();
   const base = squad(giver).filter((x) => exchangeBaseOk(x, receiver, target));
-  const cm = cmActive(g) ? cmExchangeCheck(g, giver, receiver, base) : null;
+  const cm = cmMarketOn(g) ? cmExchangeCheck(g, giver, receiver, base) : null;
   if (!cm) return { ids: base.filter((x) => exchangeOk(x, receiver, target)).map((x) => x.id), note: null };
   const ids = base.filter((x) => cm.ok.has(x.id)).map((x) => x.id);
   return { ids, note: ids.length ? null : cm.refused > 0 ? 'refused' : cm.tooDear > 0 ? 'noPlayers' : null };
@@ -424,14 +424,14 @@ export function makeBid(pid: number, fee: number, loan = false, extra?: { sellOn
   if (p.club === buyer.id) return 'error';
   // CM 01/02: budskærmen (0x8ec420 Offer → 0x8ef9f0 → add_transfer_offer 0x8be300) har intet loft – beløbet står blot i rødt over bestyrelsens
   // grænse; pengene kontrolleres først ved Confirm Transfer Offer (0x8cfc90: budget × 1,1 → Delay Transfer Offer)
-  if (!loan && fee > buyer.transferBudget && !cmActive(g)) return 'transfer.overBudget';
+  if (!loan && fee > buyer.transferBudget && !cmMarketOn(g)) return 'transfer.overBudget';
   if (loan && loanBlocked(p, buyer)) return 'transfer.loanNonEu';
   if (!permitOk(p, buyer)) return 'transfer.noWorkPermit';
   // Change Transfer Bid (CM 01/02): det ventende bud erstattes af det ændrede (*estimeret*: et nyt bud med ny svartid)
-  if (extra?.change && cmActive(g)) { const old = myPendingBid(pid); if (old) { old.status = 'withdrawn'; old.cmCounter = undefined; } }
+  if (extra?.change && cmMarketOn(g)) { const old = myPendingBid(pid); if (old) { old.status = 'withdrawn'; old.cmCounter = undefined; } }
   if (g.offers.some((o) => o.player === pid && o.buyer === buyer.id && ['pending', 'negotiating', 'countered'].includes(o.status))) return 'transfer.alreadyBidding';
   // add_transfer_offer 0x8be300 (0x8be979–0x8be9ad): menneskets køber får spilleren på sin shortliste (SCOUT_MANAGER::add_to_shortlist 0x7f75f0)
-  if (cmActive(g) && p.club && !g.shortlist.includes(pid)) g.shortlist.push(pid);
+  if (cmMarketOn(g) && p.club && !g.shortlist.includes(pid)) g.shortlist.push(pid);
   const humanSeller = isHumanClub(p.club);
   const o: TransferOffer = {
     id: g.nextId.offer++, player: pid, buyer: buyer.id, seller: p.club, fee: p.club ? fee : 0, loan,
@@ -442,11 +442,11 @@ export function makeBid(pid: number, fee: number, loan = false, extra?: { sellOn
   if (p.club && !loan && extra?.sellOn) o.sellOn = Math.max(0, Math.min(50, Math.round(extra.sellOn)));
   if (p.club && !loan && extra?.addOn) o.addOn = roundValue(Math.max(0, extra.addOn));
   if (p.club && !loan && extra?.swap?.length) {
-    const ok = [...new Set(extra.swap)].filter((id) => { const x = g.players[id]; return x && x.club === buyer.id && x.id !== pid && !x.loan; }).slice(0, cmActive(g) ? MAX_SWAP : 3);
+    const ok = [...new Set(extra.swap)].filter((id) => { const x = g.players[id]; return x && x.club === buyer.id && x.id !== pid && !x.loan; }).slice(0, cmMarketOn(g) ? MAX_SWAP : 3);
     if (ok.length) o.swap = ok;
   }
-  // CM 01/02: hele budskærmens vilkår (rater, klausuler, offentligt) – kun den originale database i ægte tilstand
-  if (p.club && !loan && extra?.terms && cmActive(g)) putTerms(o, { ...extra.terms, fee: o.fee, swap: o.swap ?? [] });
+  // CM 01/02: hele budskærmens vilkår (rater, klausuler, offentligt) – den originale database i ægte tilstand og 2026/27 med originalens marked
+  if (p.club && !loan && extra?.terms && cmMarketOn(g)) putTerms(o, { ...extra.terms, fee: o.fee, swap: o.swap ?? [] });
   g.offers.push(o);
   if (humanSeller) {
     // Bud til en anden menneskelig manager
@@ -490,7 +490,7 @@ export function respondToOffer(id: number, action: 'accept' | 'reject' | 'counte
   const p = g.players[o.player];
   const buyer = g.clubs[o.buyer];
   const myName = g.clubs[g.userClub]?.name ?? '';
-  if (cmActive(g) && p && buyer) return cmRespond(o, p, buyer, action, cm ?? {});
+  if (cmMarketOn(g) && p && buyer) return cmRespond(o, p, buyer, action, cm ?? {});
   if (action === 'reject') {
     o.status = 'rejected';
     if (!isHumanClub(buyer.id) && !o.loan) startPursuit(o);
@@ -611,9 +611,10 @@ function cmReviewHumanCounter(o: TransferOffer): void {
   const t = o.cmCounter;
   o.cmCounter = undefined;
   if (!p || !buyer || !t || p.club !== o.seller) { o.status = 'withdrawn'; return; }
-  const c = valueCtx(g, p);
-  const M = toGbp(o.maxFee ?? Math.min(buyer.transferBudget, Math.round(o.fee * 1.25)));
-  const r = aiReview(t, c, M, (id) => toGbp(g.players[id] ? askingPrice(g.players[id]) : 0), toGbp(buyer.transferBudget));
+  // (MODERN_PARITY 3) pengene i £ med køberens faktor (bytte-spillerne deres klubs – cmMoney.ts; den originale database 0,86)
+  const c = valueCtx(g, p, buyer.id);
+  const M = toK(o.maxFee ?? Math.min(buyer.transferBudget, Math.round(o.fee * 1.25)), buyer.id);
+  const r = aiReview(t, c, M, (id) => (g.players[id] ? toK(askingPrice(g.players[id]), g.players[id].club) : 0), toK(buyer.transferBudget, buyer.id));
   if (r.kind === 'withdraw') {
     o.status = 'withdrawn';
     asOwner(o.seller, () => addNews({ cat: 'transfer', key: 'transfer.aiWithdrew', params: { club: buyer.name, player: pname(p) } }));
@@ -777,8 +778,8 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
     p.loan = { from: p.club, until: cmUntil ?? `${year(g.date) + (month(g.date) >= 7 ? 1 : 0)}-06-30`, ...(o.option ? { option: o.option } : {}) };
     if (cmShortlistOn(g)) noteLoan(buyer.id);
   } else {
-    // (MODERN_PARITY 3) 2026/27: computer → computer som originalen; menneskets handler følger dets budskærme (cmActive)
-    const cm = !!seller && (cmActive(g) || (cmMarketOn(g) && !isHumanClub(seller.id) && !isHumanClub(buyer.id)));
+    // (MODERN_PARITY 3) 2026/27 med originalens marked: alle handler (også menneskets) som originalen – rater, klausuler, videresalg
+    const cm = !!seller && cmMarketOn(g);
     // en tidligere klub kan have krav på en del af fortjenesten (CM 01/02 0x8cb0f0: procent af hele summen + bytte-spillernes værdi, ≥ £1000)
     if (cm) { if (p.sellOn) settleSellOn(p, o.fee + (o.swap ?? []).reduce((s2, id) => s2 + (g.players[id]?.value ?? 0), 0), seller, fromK(1000, buyer.id), buyer); }
     else if (o.fee > 0) settleSellOn(p, o.fee, seller, 0, buyer);
@@ -1037,7 +1038,7 @@ export function processOffers() {
       o.status = 'withdrawn'; // den anden manager svarede ikke
     } else if (o.status === 'pending' && o.buyer === g.userClub && !isHumanClub(o.seller) && g.date >= o.respondBy) {
       aiAnswerBid(o);
-    } else if (o.status === 'countered' && o.cmCounter && cmActive(g) && isHumanClub(o.seller) && !isHumanClub(o.buyer) && g.date >= o.respondBy) {
+    } else if (o.status === 'countered' && o.cmCounter && cmMarketOn(g) && isHumanClub(o.seller) && !isHumanClub(o.buyer) && g.date >= o.respondBy) {
       cmReviewHumanCounter(o);
     } else if ((o.status === 'negotiating' || o.status === 'countered') && g.date > o.respondBy) {
       o.status = 'collapsed';
@@ -1086,7 +1087,7 @@ function aiAnswerBid(o: TransferOffer) {
     addNews({ cat: 'transfer', key: 'transfer.releaseMet', params: { player: pname(p), club: sellerName(o.seller), fee: o.fee }, link: { kind: 'offer', id: o.id } });
     return;
   }
-  if (cmActive(g)) { cmAiAnswer(o, p, buyer); return; }
+  if (cmMarketOn(g)) { cmAiAnswer(o, p, buyer); return; }
   const worth = bidClauseWorth(p, o.fee, o.sellOn, o.addOn) + offerSwapWorth(o);
   let d = sellerDecision(p, o.fee + worth, buyer);
   if (d.answer === 'counter' && d.counter) d.counter = roundValue(Math.max(o.fee, d.counter - worth));
@@ -1117,9 +1118,10 @@ function aiAnswerBid(o: TransferOffer) {
 /** CM 01/02: computerens klub svarer på menneskets bud (TRANSFER_MANAGER::ai_respond_to_bid 0x8c8090, cmTransferBid.ts) */
 function cmAiAnswer(o: TransferOffer, p: Player, buyer: Club) {
   const g = gs();
-  const c = valueCtx(g, p);
+  // (MODERN_PARITY 3) buddets beløb med køberens €→£-faktor, værdien/saldoen sælgerens (cmMoney.ts; den originale database 0,86)
+  const c = valueCtx(g, p, buyer.id);
   // asking price 0x4d1600 er ikke porteret: spillets askingPrice (med 'ikke til salg'-tillægget som ved en forespørgsel), *estimeret*
-  const asking = cmAskingPrice(g, p, buyer.id) ?? toGbp(askingPrice(p) * Math.max(1, notForSaleMult(p, buyer)));
+  const asking = cmAskingPrice(g, p, buyer.id) ?? toK(askingPrice(p) * Math.max(1, notForSaleMult(p, buyer)), p.club);
   const rivals = g.offers.filter((x) => x !== o && x.player === p.id && x.status === 'pending' && !x.loan).map(termsOf);
   const t = termsOf(o);
   const wanted = swapCandidates(o.seller, p.id, o.buyer).map((x) => x.id);
@@ -1192,8 +1194,8 @@ export function acceptCounter(id: number) {
   const o = g.offers.find((x) => x.id === id);
   if (!o || o.status !== 'countered' || !o.counter) return 'error';
   const buyer = g.clubs[o.buyer];
-  if (o.counter > buyer.transferBudget && !cmActive(g)) return 'transfer.overBudget';   // CM 01/02: først ved Confirm Transfer Offer (0x8cfc90)
-  if (o.cmCounter && cmActive(g)) { putTerms(o, o.cmCounter); o.cmCounter = undefined; }
+  if (o.counter > buyer.transferBudget && !cmMarketOn(g)) return 'transfer.overBudget';   // CM 01/02: først ved Confirm Transfer Offer (0x8cfc90)
+  if (o.cmCounter && cmMarketOn(g)) { putTerms(o, o.cmCounter); o.cmCounter = undefined; }
   o.fee = o.counter;
   // CM 01/02: modbuddet accepteret → 0x8c0080 (de to nyheder og Offer Contract)
   const pp = g.players[o.player];
@@ -1727,7 +1729,7 @@ export function loanOut(pid: number, club: number, share: number, fee: number): 
 /** AI-klubber byder på brugerens transferlistede spillere */
 export function aiBidsForListed() {
   const g = gs();
-  if (cmActive(g)) { cmBidsForListed(); return; }
+  if (cmMarketOn(g)) { cmBidsForListed(); return; }
   if (!g.userClub || !windowOpen()) return;
   const m = month(g.date);
   const chance = m === 7 || m === 8 || m === 1 ? 0.2 : 0.1;
@@ -1787,6 +1789,8 @@ function cmBidsForListed() {
       const fee = Math.max(1000, Math.min(club.transferBudget, p.value));
       // vilkårene som originalens build_bid 0x8e5d60 (rater, videresalg, beløb efter N kampe, offentligt) – ellers et kontant bud
       // (værdisætningen er spillerens værdi – build_bid ser selv køberens transferbudget og tager rater, hvis han ikke kan betale det hele)
+      // (MODERN_PARITY 3) buddets beløb: køberens €→£-faktor (cmMoney.ts; den originale database 0,86)
+      const toGbp = (x: number) => toK(x, cid), fromGbp = (x: number) => fromK(x, cid);
       const cl = cmBuildBid(g, p, cid, toGbp(Math.max(fee, p.value)));
       const cash = cl ? (cl.months > 0 ? fromGbp(cl.fee) : Math.min(fromGbp(cl.fee), Math.max(1000, club.transferBudget))) : fee;
       const o: TransferOffer = { id: g.nextId.offer++, player: p.id, buyer: cid, seller: g.userClub, fee: cash, loan: false, status: 'pending', created: g.date, respondBy: addDays(g.date, 5), maxFee: fee,

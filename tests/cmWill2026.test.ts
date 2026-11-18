@@ -8,9 +8,10 @@ import { cmSearchInterested } from '../src/game/cmSearchInterest';
 import { cmMoveInterest, cmTalkDemand } from '../src/game/cmContractGame';
 import { cmBoardWageAllow } from '../src/game/cmBudget';
 import { cmGbp, GBP_2001 } from '../src/game/cmMoney';
-import { playerInterest } from '../src/game/transfers';
+import { makeBid, playerInterest, processOffers, respondToOffer } from '../src/game/transfers';
 import { cmMarketOn } from '../src/game/cmPlayerData';
-import { valueCtx } from '../src/game/cmTransferBid';
+import { newTerms, stepUp, valueCtx } from '../src/game/cmTransferBid';
+import type { TransferOffer } from '../src/game/types';
 import type { GameState, Player } from '../src/game/types';
 
 const world = JSON.parse(readFileSync('public/data/world.json', 'utf8')) as WorldData & { cmRaw?: unknown };
@@ -62,5 +63,35 @@ describe('2026/27 i ægte tilstand: originalens vilje og kontrakter', () => {
     // ældre 2026/27-spil uden trupplanen og udvidet tilstand: spillets eget marked
     expect(cmMarketOn({ ...g, cmPlan: undefined } as GameState)).toBe(false);
     expect(cmMarketOn({ ...g, options: { ...g.options, mode: 'extended' } } as GameState)).toBe(false);
+  });
+
+  it('(MODERN_PARITY 3) menneskets handler følger originalens forløb: budskærmens vilkår, computerens svar 0x8c8090 og afvisningen 0x8f06f0', () => {
+    const me = g.clubs[g.userClub];
+    // et bud over transferbudgettet er tilladt (pengene kontrolleres først ved Confirm Transfer Offer 0x8cfc90), vilkårene gemmes (rater)
+    const target = Object.values(g.players).filter((p) => p.club && p.club !== g.userClub && g.clubs[p.club]?.nation === me.nation && !p.loan && p.contract)
+      .sort((a, b) => b.value - a.value)[0];
+    const fee = Math.max(me.transferBudget * 2, 1000);
+    const t = { ...newTerms(g, target, g.userClub, fee), months: 12 };
+    const o = makeBid(target.id, fee, false, { terms: t }) as TransferOffer;
+    expect(typeof o).toBe('object');
+    expect(o.months).toBe(12);
+    expect(g.shortlist).toContain(target.id);
+    // computerens svar (ai_respond_to_bid 0x8c8090): et modbud har originalens vilkår (cmCounter), en accept går til Offer Contract (cmTalks)
+    o.respondBy = g.date;
+    processOffers();
+    expect(['countered', 'rejected', 'negotiating']).toContain(o.status);
+    if (o.status === 'countered') expect(o.cmCounter).toBeDefined();
+    if (o.status === 'negotiating') expect(o.cmTalks).toBeDefined();
+    // Budskærmens beløb i køberens £ (Cash::step_up 0x43f4e0 med faktoren)
+    const k = cmGbp(g, g.userClub);
+    expect(Math.abs(stepUp(Math.round(1_000_000 / k), k) * k - 1_100_000)).toBeLessThanOrEqual(1);
+    // afvisning med begrundelse på menneskets spiller: trupstatussen sættes (0x8c5800), ingen jagt (ønskelisterne byder igen)
+    const own = Object.values(g.players).filter((p) => p.club === g.userClub && !p.loan).sort((a, b) => b.ca - a.ca)[1];
+    const bid: TransferOffer = { id: g.nextId.offer++, player: own.id, buyer: city, seller: g.userClub, fee: own.value, loan: false, status: 'pending', created: g.date, respondBy: g.date };
+    g.offers.push(bid);
+    respondToOffer(bid.id, 'reject', undefined, undefined, undefined, { reject: 'indispensable' });
+    expect(bid.status).toBe('rejected');
+    expect(own.squadStatus).toBe('key');
+    expect(g.pursuits?.some((x) => x.player === own.id) ?? false).toBe(false);
   });
 });

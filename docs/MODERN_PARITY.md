@@ -177,7 +177,16 @@ Ny gate `cmMarketOn(g)` (cmPlayerData.ts) = cmActive, eller cmLogic + spil, hvis
 kører nu på cmLogic). Den slår trupplanen 0x83cb40, ønskelisterne 0x83b6e0/0x84a020/0x8e5d60, computer → computer-svarene 0x8c63a0/0x8c8090/0x8c0810,
 raterne 0x8caee0 og spilstartens listning til; spillets eget marked (aiClubTurn, jagt, aiFillSquads, freeAgentDrift …) er slået fra som i 2001.
 Pengene: buddenes beløb med køberens €→£-faktor (cmMoney.ts), værdien/saldoen med spillerens/sælgerens (`ValueCtx.k`, `toK/fromK` i transfers.ts).
-Menneskets egne handler (budskærmene, svar på bud, modbud) følger stadig spillets forløb på 2026/27 (UI'et er cmActive) – næste skridt.
+Menneskets egne handler (18/11, fortsat) følger nu også originalens forløb på cmMarketOn: budskærmen 0x8e9760/0x8ec420 (vilkår, rater, klausuler,
+bytte 0x47c180, Withdraw/Change), computerens svar på menneskets bud 0x8c8090, modbuddet og computerkøberens vurdering 0x8c0810, menneskets svar
+0x8f06f0 (Reject med begrundelse/Reject All/Negotiate), Set Transfer Status 0x8f7f08 og transferlisten 0x8f8450, handlen 0x8ca8a0/0x8cb0f0;
+spillets egne bud på menneskets spillere (aiBidsForListed) og Offers/Deals-fanerne er slået fra som i 2001. Budskærmens beløb (Cash 0x43f4e0/
+0x43f580, listen 0x8e981e, grænserne) i køberens £ (cmMoney). Bestyrelsens loft på budskærmen 0x598800 (cmBidBudget) er stadig 2001-verdenens
+(punkt 7) – på 2026/27 står transferbudgettet. 2001 bit for bit uændret.
+Videresalg (Lautaro/Foster købt og solgt igen inden for få dage): originalen har ingen spærre i buddet 0x84a020/0x8e5d60 eller svarene 0x8c8090/
+0x8c63a0 (ingen datokontrol); den eneste er i ønskelisten 0x83b6e0 (0x83bc56: kontraktens start +0x25 skal ligge mere end 30 + rand(100) dage
+tilbage, 0x54c8e0 = dato − n), som er mekanisk porteret og får +0x25 fra Player.joined. Et mål, der kom på listen før købet, kan derfor bydes på
+hos den nye klub som i originalen. Ikke porteret: 0x842b00 i handlen 0x8cb9a0 (de interesserede klubbers tæller +8 = 100 → ny plan).
 Målt (`scripts/cm-market-2026.ts`, England, Brentford, frø 1, 1/7-26 → 30/6-27): computer → computer 1.110 → 159, PL-køb 25 for €569M (median
 €18,0M) → 37 for €417M (median €8,1M), Championship 30 for €108M → 63 for €164M; klubber i minus 132 → 109 af 656; klubløse 759 → 3.135 før,
 759 → 816 nu. 2001 bit for bit uændret (02ec66f5a29512d1). Kræver et nyt spil.

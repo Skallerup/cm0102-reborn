@@ -17,6 +17,7 @@ import { ClassicFoot, ClassicSub, CxDrop, CxPm, nationRoute, type DropItem } fro
 import { REGIONS, Seg, regionOfNation, showRealism } from '../classicOptions';
 import { authentic } from '../../game/rules';
 import { JOB_CODE, cmJobCode, cmScoutRec, cmRecScout, cmActive, cmStaffClub, cmStaffInSearch, cmStaffInf, cmJobKey, cmStaffRep, cmStaffRepRank, cmStaffRepWord } from '../../game/cmStaff';
+import { cmMarketOn } from '../../game/cmPlayerData';
 import { regionOf } from '../../game/leagues';
 import { askConfirm, askText } from '../confirm';
 import { FL_ATTRS, SF_ATTRS, countMins, encodeMins, parseMins, staffAttrValue } from './searchAttrs';
@@ -56,8 +57,8 @@ export function ClassicTransfers({ tab: initial }: { tab?: string }) {
       <ClassicSub items={[
         ...[3, 4, 5, 6, 7].map((n) => ({ key: scoutKey(n), label: t('cl.tr.scoutN', { n }), disabled: !scouts[n - 1], on: tab === scoutKey(n), onClick: () => setTab(scoutKey(n)) })),
         // Offers og Deals findes ikke i CM 01/02 – kun i det udvidede spil
-        // (2026/27-databasen i ægte tilstand har dem også: der er ingen originale skærme for den – bud, accepterede bud og bud på egen trup)
-        ...(authentic() && cmActive(g) ? [] : [
+        // (2026/27 i ægte tilstand med originalens marked – cmMarketOn – går buddene som i originalen gennem nyhederne; ældre 2026/27-spil har dem)
+        ...(authentic() && cmMarketOn(g) ? [] : [
           { key: 'offers', label: `${t('tr.offers')}${pending ? ` (${pending})` : ''}`, on: tab === 'offers', onClick: () => setTab('offers') },
           { key: 'deals', label: t('tr.deals'), on: tab === 'deals' || tab === 'listed', onClick: () => setTab('deals') },
         ]),
@@ -66,8 +67,8 @@ export function ClassicTransfers({ tab: initial }: { tab?: string }) {
       {tab === 'shortlist' && <Search classic shortlist />}
       {tab === 'staff' && <StaffSearch />}
       {scoutTab > 0 && <ScoutTab scout={scouts[scoutTab - 1]} n={scoutTab} onPick={setPicker} />}
-      {tab === 'offers' && !(authentic() && cmActive(g)) && <Offers />}
-      {(tab === 'deals' || tab === 'listed') && !(authentic() && cmActive(g)) && <Deals />}
+      {tab === 'offers' && !(authentic() && cmMarketOn(g)) && <Offers />}
+      {(tab === 'deals' || tab === 'listed') && !(authentic() && cmMarketOn(g)) && <Deals />}
       {/* CM 01/02: søgeskærmen har Cancel/Ok i bundbjælken (begge forlader skærmen) */}
       <ClassicFoot cols="1fr 1fr">
         <button onClick={back}>{t('common.cancel')}</button>
@@ -610,7 +611,7 @@ export function ClassicPlayerTable({ players, title, desc, view: viewProp, initi
     if (p.injury) return ['Inj', t(`injury.${p.injury.key}`), true];
     if (p.banned > 0) return ['Sus', t('tag.ban'), true];
     // Bid: menneskets ventende bud på spilleren (grå mærke som Wnt)
-    if (cmActive(g) && p.club > 0 && myPendingBid(p.id)) return ['Bid', '', false];
+    if (cmMarketOn(g) && p.club > 0 && myPendingBid(p.id)) return ['Bid', '', false];
     if (interestedClubs(p).length) return ['Wnt', authentic() ? '' : t('cl.sq.wanted'), false];
     return null;
   };

@@ -15,10 +15,11 @@ import { posStr } from '../components';
 import { jobTerms } from '../../game/board';
 import { useGame } from '../core';
 import { CxDrop, CxPm, useClassicDialog, ClassicFoot } from '../classic';
-import { cmActive, statusCode } from '../../game/cmPlayerData';
+import { cmMarketOn, statusCode } from '../../game/cmPlayerData';
+import { cmGbp } from '../../game/cmMoney';
 import { isHumanClub } from '../../game/humans';
 import { exchangeList, myPendingBid } from '../../game/transfers';
-import { BID_AMOUNTS_GBP, MAX_SWAP, addSwap, bidAct, clauseAtMin, feeAtMax, feeEquals, fromGbp, toGbp, newTerms, stepDown, stepUp, reasonForStatus, rejectReasonValid, removeSwap, sameTerms, termsOf,
+import { BID_AMOUNTS_GBP, MAX_SWAP, addSwap, bidAct, clauseAtMin as clauseAtMin0, feeAtMax as feeAtMax0, feeEquals, newTerms, stepDown, stepUp, reasonForStatus, rejectReasonValid, removeSwap, sameTerms, termsOf,
   type BidAct, type BidTerms, type RejectKey } from '../../game/cmTransferBid';
 import { ClassicFirstSquad } from './SquadClassic';
 import { authentic } from '../../game/rules';
@@ -36,7 +37,7 @@ const round = (v: number) => Math.max(10_000, Math.round(v / 10_000) * 10_000);
 
 export function TransferStatusPanel({ p, onClose }: { p: Player; onClose: () => void }) {
   const g = useGame()!;
-  if (cmActive(g)) return <CmTransferStatusPanel p={p} onClose={onClose} />;
+  if (cmMarketOn(g)) return <CmTransferStatusPanel p={p} onClose={onClose} />;
   return <OwnTransferStatusPanel p={p} onClose={onClose} />;
 }
 
@@ -53,7 +54,9 @@ function CmTransferStatusPanel({ p, onClose }: { p: Player; onClose: () => void 
   const rows = cmStatusRows(p);
   const [price, setPrice] = useState<number>(p.value);
   // Cash::step_up 0x43f4e0 / step_down 0x43f580 (0x8f7c78 / 0x8f7aca)
-  const step = (dir: 1 | -1) => setPrice(dir > 0 ? stepUp(price) : stepDown(price));
+  // udbudsprisen er klubbens penge: € → £ med klubbens faktor (cmMoney.ts; den originale database 0,86)
+  const k = cmGbp(g, p.club);
+  const step = (dir: 1 | -1) => setPrice(dir > 0 ? stepUp(price, k) : stepDown(price, k));
   const name = `${p.first} ${p.last}`.trim();
   const save = () => {
     act({ t: 'cmTransferStatus', pid: p.id, status: statusNum(status), price: price !== p.value ? price : null, listed, loan, request });
@@ -70,7 +73,7 @@ function CmTransferStatusPanel({ p, onClose }: { p: Player; onClose: () => void 
           <CxDrop className="cx-bid-amt cx-ts-val" label={money(price)} fixed items={PRICE_LIST.map((a) => ({ key: String(a), label: amountLabel(a), checked: false, onClick: () => setPrice(Math.round(fromCurExact(a))) }))} />
           <CxPm onClick={() => step(1)} aria-label="+">+</CxPm>
           {/* originalens knap hedder Auto (ejerens billede 13/11): formelværdien 0x4d0c60 */}
-          <button className="cx-pm auto" onClick={() => setPrice(roundGbp(valueTarget(p)))}>{t('cl.ts.auto')}</button>
+          <button className="cx-pm auto" onClick={() => setPrice(roundGbp(valueTarget(p), k))}>{t('cl.ts.auto')}</button>
         </div>
         <div className="cx-ts-head">{t('cl.ts.squad')}</div>
         {SQUAD_STATUSES.map((s) => {
@@ -90,7 +93,7 @@ function CmTransferStatusPanel({ p, onClose }: { p: Player; onClose: () => void 
     </div>
   );
 }
-const roundGbp = (v: number) => fromGbp(Math.round(toGbp(v) / 1000) * 1000);
+const roundGbp = (v: number, k: number) => Math.round(Math.round(Math.round(v * k) / 1000) * 1000 / k);
 
 /** "Transfer Request" (0x4dcb30/0x4dcd70): "Put X on the transfer list at his own request ?" – Back, No, Yes */
 export function TransferRequestPanel({ news, onClose }: { news: NewsItem; onClose: () => void }) {
@@ -233,7 +236,7 @@ export function DisciplinePanel({ p, onClose, onDone }: { p: Player; onClose: ()
 export function BidPanel(props: { p: Player; loan: boolean; onClose: () => void; onSent: (o: TransferOffer) => void; onAsk?: (asking: boolean) => void; change?: boolean }) {
   const g = useGame()!;
   // den originale database i ægte tilstand: originalens budskærm (cmTransferBid.ts); ellers spillets egen
-  return cmActive(g) && !props.loan ? <CmBidPanel {...props} /> : <OldBidPanel {...props} />;
+  return cmMarketOn(g) && !props.loan ? <CmBidPanel {...props} /> : <OldBidPanel {...props} />;
 }
 
 function OldBidPanel({ p, loan, onClose, onSent }: { p: Player; loan: boolean; onClose: () => void; onSent: (o: TransferOffer) => void }) {
@@ -333,7 +336,7 @@ function OldBidPanel({ p, loan, onClose, onSent }: { p: Player; loan: boolean; o
 /** Svar på et bud på egen spiller (CM 01/02 "Negotiate Arsenal bid for Butt"): Back · Reject · Delay · Accept – et ændret beløb er et modbud */
 export function IncomingBidPanel(props: { offer: TransferOffer; onClose: (msg?: string) => void }) {
   const g = useGame()!;
-  return cmActive(g) && !props.offer.loan ? <CmIncomingBidPanel {...props} /> : <OldIncomingBidPanel {...props} />;
+  return cmMarketOn(g) && !props.offer.loan ? <CmIncomingBidPanel {...props} /> : <OldIncomingBidPanel {...props} />;
 }
 
 function OldIncomingBidPanel({ offer, onClose }: { offer: TransferOffer; onClose: (msg?: string) => void }) {
@@ -483,13 +486,17 @@ export function CoachesPanel({ onClose }: { onClose: () => void }) {
 
 /** Rækkerne på originalens budskærm: Transfer Fee (− ▾ + =), Monthly Installments, Percentage of Next Sale, Fee after N League/International
  *  Apps. (− ▾ +), Make transfer bid public, Exchange/Remove(/Reset), bytte-linjerne og Total Value. Grå etiket = slået fra (klik slår til). */
-function CmBidRows({ terms, set, value, budget, swapValue, onExchange, reset, intro, after }: {
+function CmBidRows({ terms, set, value, budget, swapValue, onExchange, reset, intro, after, k, kv }: {
   terms: BidTerms; set: (t: BidTerms) => void; value: number; budget?: number; swapValue: (id: number) => number;
   onExchange: () => void; reset?: () => void; intro?: ReactNode; after?: ReactNode;
+  /** € → £ for buddets penge (køberens) og spillerens værdi (hans klubs) – cmMoney.ts; den originale database 0,86 */
+  k: number; kv: number;
 }) {
   const g = useGame()!;
   const [removing, setRemoving] = useState(false);
-  const act2 = (a: BidAct) => set(bidAct(terms, a, value));
+  const act2 = (a: BidAct) => set(bidAct(terms, a, value, k, kv));
+  const fromGbp = (gbp: number) => Math.round(gbp / k);
+  const feeAtMax = (eur: number) => feeAtMax0(eur, k), clauseAtMin = (eur: number) => clauseAtMin0(eur, k);
   const amounts = (put: (eur: number) => void) => BID_AMOUNTS_GBP.map((a) => ({ key: String(a), label: money(fromGbp(a)), checked: false, onClick: () => put(fromGbp(a)) }));
   // "Fee after <N> …": N er et link for sig (0xe/0x13: 1 → 10 → … → 50 → 1); resten af etiketten slår klausulen til/fra (0xd/0x12)
   const clauseLabel = (n: number, one: string, many: string, toggle: BidAct, cycle: BidAct) => {
@@ -627,7 +634,7 @@ function CmBidPanel({ p, onClose, onSent, onAsk, change }: { p: Player; loan: bo
     <div className="cx-tstatus cx-bid">
       <div className="cx-subtitle">{t('cl.bid.title', { club: me?.short ?? '', player: p.last })}</div>
       {/* 0x8e9760: beløbene i de to linjer er knapper – 0x26 sætter Transfer Fee til værdien +0x52, 0x25 til bestyrelsens loft (0x8ed4c0/0x8ed552) */}
-      <CmBidRows terms={terms} set={setTerms} value={p.value} budget={budget} swapValue={swapValue} onExchange={() => setExch(true)}
+      <CmBidRows terms={terms} set={setTerms} value={p.value} budget={budget} swapValue={swapValue} onExchange={() => setExch(true)} k={cmGbp(g, g.userClub)} kv={cmGbp(g, p.club)}
         intro={<p className="cx-ts-intro">
           <CxAmountText text={t('cl.bid.valued', { club: seller, player: name, value: '\u0000' })} amount={moneyFull(p.value)} cls="cx-bid-setval" onClick={() => setTerms({ ...terms, fee: p.value })} /><br />
           <CxAmountText text={t(boardKey, { fee: '\u0000' })} amount={moneyFull(budget)} cls="cx-bid-setmax" onClick={() => setTerms({ ...terms, fee: budget })} />
@@ -665,7 +672,7 @@ function CmIncomingBidPanel({ offer, onClose }: { offer: TransferOffer; onClose:
   const [why, setWhy] = useState<RejectKey>('none');
   if (!p || !buyer) return null;
   const swapValue = (id: number) => g.players[id]?.value ?? 0;
-  const changed = !sameTerms(terms, orig());
+  const changed = !sameTerms(terms, orig(), cmGbp(g, buyer.id));
   const others = g.offers.filter((o) => o.player === p.id && o.seller === g.userClub && o.status === 'pending').length;
   const send = (action: 'accept' | 'reject' | 'counter', all = false) => {
     const r = act<string | null>({ t: 'respond', pid: p.id, buyer: buyer.id, action, terms, rejectKey: why, changed, all });
@@ -692,7 +699,7 @@ function CmIncomingBidPanel({ offer, onClose }: { offer: TransferOffer; onClose:
   return (
     <div className="cx-tstatus cx-bid">
       <div className="cx-subtitle">{t('cl.bid.negotiate', { club: buyer.short, player: p.last })}</div>
-      <CmBidRows terms={terms} set={setTerms} value={p.value} swapValue={swapValue} onExchange={() => setExch(true)} reset={changed ? () => setTerms(orig()) : undefined}
+      <CmBidRows terms={terms} set={setTerms} value={p.value} swapValue={swapValue} onExchange={() => setExch(true)} reset={changed ? () => setTerms(orig()) : undefined} k={cmGbp(g, buyer.id)} kv={cmGbp(g, p.club)}
         intro={<p className="cx-ts-intro">{t('cl.bid.valued', { club: me?.short ?? '', player: name, value: moneyFull(p.value) })}</p>} />
       <ClassicFoot cols="3fr 1fr 1fr 1fr" className="cx-bid-answer">
         <button onClick={() => onClose()}>{t('common.back')}</button>

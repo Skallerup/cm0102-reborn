@@ -1,8 +1,9 @@
 // Originalens transferbud (cm0102.exe 3.9.68): budskærmen 0x8e9760/0x8ec420, TRANSFER_OFFER 0x8e78f0/0x8e7a70/0x8e7b50, computerens svar
 // 0x8c8090 (+ klausul-muligheden 0x8c8fd0), computerkøberens vurdering af menneskets modbud 0x8c0810, betalingerne 0x8ca8a0/0x8caee0/0x8cb0f0/
 // 0x8c39f0 og afvisningsbegrundelserne 0x8f06f0/0x8c5800/0x8c5560/0x8ce0e0. Noter: ~/cm0102-engine/notes/transfer-bid.md.
-// Kun den originale database i ægte tilstand (cmActive) – det udvidede spil og 2026/27 bruger transfers.ts' egne regler.
-// Originalen regner i pund (int32); spillet gemmer euro – omregningen sker med spillets faste kurs (£ = € · 0,86, i18n RATE.GBP).
+// Den originale database i ægte tilstand og 2026/27 med originalens marked (cmMarketOn) – det udvidede spil bruger transfers.ts' egne regler.
+// Originalen regner i pund (int32); spillet gemmer euro – omregningen sker med spillets faste kurs (£ = € · 0,86, i18n RATE.GBP), på 2026/27
+// med faktoren for klubben, pengene tilhører (cmMoney.ts: buddet køberens, værdien spillerens klubs).
 // *estimeret* (ikke i koden/ikke porteret): asking price 0x4d1600 (transfers.ts askingPrice), Shortlist_Manager 0x840d80/0x843800 (købers
 // værdisætning = buddets maxFee, sælgerens ønske om bytte-spillere = swapCandidates), bytte-muligheden 0x8c8860, uroen efter et offentligt bud 0x8c1290.
 
@@ -76,19 +77,21 @@ export function cashStep(x: number): number {
 }
 const roundTo = (x: number, t: number) => Math.floor((x + t / 2) / t) * t;
 /** et beløb afrundet som originalens (pund, cashStep-trinnet – £5.25M, £2.7M, £150K – ikke skæve beløb efter valutaomregningen) */
-export function cashRound(eur: number): number { const x = toGbp(eur); return fromGbp(roundTo(x, cashStep(x))); }
-/** Cash::step_up 0x43f4e0(4): afrund til trinnet, læg trinnet over x + 1 til (i pund) */
-export function stepUp(eur: number): number { let x = toGbp(eur); x = roundTo(x, cashStep(x)); return fromGbp(x + cashStep(x + 1)); }
+export function cashRound(eur: number, k = GBP): number { const x = Math.round(eur * k); return Math.round(roundTo(x, cashStep(x)) / k); }
+/** Cash::step_up 0x43f4e0(4): afrund til trinnet, læg trinnet over x + 1 til (i pund). `k` = € → £ for pengenes klub (cmMoney.ts; standard 0,86) */
+export function stepUp(eur: number, k = GBP): number { let x = Math.round(eur * k); x = roundTo(x, cashStep(x)); return Math.round((x + cashStep(x + 1)) / k); }
 /** Cash::step_down 0x43f580(4) */
-export function stepDown(eur: number): number { let x = toGbp(eur); x = roundTo(x, cashStep(x)); return fromGbp(Math.max(0, x - cashStep(x))); }
+export function stepDown(eur: number, k = GBP): number { let x = Math.round(eur * k); x = roundTo(x, cashStep(x)); return Math.round(Math.max(0, x - cashStep(x)) / k); }
+const stepUp0 = stepUp, stepDown0 = stepDown;
 
 /** Beløbslisten bag ▾ (0x8e981e, pund) */
 export const BID_AMOUNTS_GBP = [0, 100_000, 250_000, 500_000, 1_000_000, 2_500_000, 5_000_000, 10_000_000, 15_000_000, 20_000_000];
 /** + er grå ved 100.000.000 (0x8ea5f6, 0x8eb051) */
 export const MAX_FEE_GBP = 100_000_000;
-export const feeAtMax = (eur: number) => toGbp(eur) >= MAX_FEE_GBP;
+export const feeAtMax = (eur: number, k = GBP) => Math.round(eur * k) >= MAX_FEE_GBP;
 /** klausulbeløbets − er grå ved ≤ 1000 (0x8eaeb0) */
-export const clauseAtMin = (eur: number) => toGbp(eur) <= 1000;
+export const clauseAtMin = (eur: number, k = GBP) => Math.round(eur * k) <= 1000;
+const feeAtMax0 = feeAtMax, clauseAtMin0 = clauseAtMin;
 
 // ---------------------------------------------------------------- skærmens handlinger (0x8ec420)
 
@@ -96,10 +99,13 @@ export type BidAct =
   | 'feeUp' | 'feeDown' | 'inst' | 'instUp' | 'instDown' | 'sell' | 'sellUp' | 'sellDown'
   | 'lg' | 'lgN' | 'lgUp' | 'lgDown' | 'int' | 'intN' | 'intUp' | 'intDown' | 'pub';
 
-/** Én knap på budskærmen. `value` = spillerens værdi i € (til 0xd/0x12's startbeløb). */
-export function bidAct(t: BidTerms, a: BidAct, value: number): BidTerms {
+/** Én knap på budskærmen. `value` = spillerens værdi i € (til 0xd/0x12's startbeløb). `k` = € → £ for buddets penge (køberens – cmMoney.ts),
+ *  `kv` for værdien (spillerens klub); standard den faste kurs 0,86 (den originale database). */
+export function bidAct(t: BidTerms, a: BidAct, value: number, k = GBP, kv = k): BidTerms {
   const n = { ...t, swap: [...t.swap] };
-  const clauseStart = () => fromGbp(Math.max(1000, trunc(toGbp(value) * 0.25)));   // 0x8edce5: max(1000, 0,25 · værdi)
+  const clauseStart = () => Math.round(Math.max(1000, trunc(Math.round(value * kv) * 0.25)) / k);   // 0x8edce5: max(1000, 0,25 · værdi)
+  const feeAtMax = (eur: number) => feeAtMax0(eur, k), clauseAtMin = (eur: number) => clauseAtMin0(eur, k);
+  const stepUp = (eur: number) => stepUp0(eur, k), stepDown = (eur: number) => stepDown0(eur, k);
   const cycle = (v: number) => { const x = v === 1 ? 10 : v + 10; return x > 50 ? 1 : x; };   // 0x8edd84
   switch (a) {
     case 'feeUp': if (!feeAtMax(n.fee)) n.fee = stepUp(n.fee); break;                       // 3
@@ -140,8 +146,9 @@ export function removeSwap(t: BidTerms, pid: number, value: number): BidTerms {
 export const MAX_SWAP = 5;
 
 /** TRANSFER_OFFER::has_same_terms 0x8e7f70 (Reset/Negotiate): beløb, klausuler, rater, offentligt og bytte */
-export function sameTerms(a: BidTerms, b: BidTerms): boolean {
+export function sameTerms(a: BidTerms, b: BidTerms, k = GBP): boolean {
   const on = (v: number) => Math.max(0, v);
+  const toGbp = (eur: number) => Math.round(eur * k);
   return toGbp(a.fee) === toGbp(b.fee) && on(a.months) === on(b.months) && on(a.sellOn) === on(b.sellOn) && toGbp(on(a.lgFee)) === toGbp(on(b.lgFee))
     && (a.lgFee <= 0 || a.lgApps === b.lgApps) && toGbp(on(a.intFee)) === toGbp(on(b.intFee)) && (a.intFee <= 0 || a.intApps === b.intApps)
     && (a.pub > 0) === (b.pub > 0) && a.swap.length === b.swap.length && a.swap.every((x) => b.swap.includes(x));

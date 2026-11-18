@@ -5,7 +5,7 @@ import { cmFinePlayer, FINE_REASONS } from './cmFine';
 // Singleplayer: anvendes direkte. Online: anvendes lokalt med det samme (optimistisk) og sendes
 // til serveren, hvor den manager der simulerer næste træk, afspiller dem i rækkefølge.
 import { submitSquadNumbers } from './squadNumbers';
-import { cmActive, setStatusCode } from './cmPlayerData';
+import { cmActive, cmMarketOn, setStatusCode } from './cmPlayerData';
 import { CM_INTENSITIES, CM_SCHED_SLOTS, setPlayerSlot } from './cmTraining';
 import { cmOfferStaff } from './cmStaff';
 import { cmAnswerRequest, cmSetTransferStatus, cmToggleListed } from './cmTransferList';
@@ -202,13 +202,13 @@ export function applyAction(a: Action): unknown {
     case 'trainingAll': for (const p of Object.values(g.players)) if (p.club === g.userClub && g.userClub) p.training = a.key; return 'ok';
     case 'listed':
       if (g.players[a.pid]?.club !== g.userClub) return 'error';
-      if (a.price === undefined && cmActive(g)) cmToggleListed(g, g.players[a.pid]);   // 0x8f8450
+      if (a.price === undefined && cmMarketOn(g)) cmToggleListed(g, g.players[a.pid]);   // 0x8f8450
       else if (a.price === undefined) toggleListed(a.pid);
       else setListPrice(a.pid, a.price);
       return 'ok';
     case 'cmTransferStatus': {
       const p = g.players[a.pid];
-      if (p?.club !== g.userClub || !cmActive(g)) return 'error';
+      if (p?.club !== g.userClub || !cmMarketOn(g)) return 'error';
       cmSetTransferStatus(g, p, a);
       return 'ok';
     }
