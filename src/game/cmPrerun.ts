@@ -42,6 +42,9 @@ export function registerPrerun(stage: PrerunStage, step: PrerunStep): void {
   steps.set(stage, a);
 }
 
+/** (tests/helpers/gameCache.ts) de tilmeldte trin – hvilke moduler der er indlæst, ændrer forkørslen */
+export const prerunSteps = (): string[] => [...steps].map(([k, a]) => `${k}:${a.length}`).sort();
+
 const isoOf = (day: number) => new Date(day * 86400000).toISOString().slice(0, 10);
 const run = (stage: PrerunStage, g: GameState, day: number, iso: string, slot: number) => { for (const f of steps.get(stage) ?? []) f(g, day, iso, slot); };
 

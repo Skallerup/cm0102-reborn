@@ -6,7 +6,8 @@
 // derefter er det kun, når al modultilstand følger med (kontrol: scripts/perf-fingerprint.ts med og uden CM_GAME_CACHE_USE=1, DAILY=1).
 // Nøglen: sha256 af alle filer i src/, world-objektet (JSON), valgene, de registrerede kroge (hvilke moduler testen har indlæst), sproget,
 // gittermotorens fabrik, GRID_UNKNOWN, LEAGUE_RULES, og miljøvariablerne CM_/GRID_/MODE/RECOMP_.
-// Lokalt til, i CI fra (se gameCacheOn). Mappen holdes under CM_GAME_CACHE_MB (standard 4000 MB).
+// Kun med CM_GAME_CACHE=1 (se gameCacheOn). Mappen holdes under CM_GAME_CACHE_MB (standard 4000 MB). Kun et spil, der er det første i processen, gemmes
+// (et senere kunne bære modulhukommelse fra det forrige), og nøglen har også forkørslens trin og carry-modulerne (hvilke moduler testen indlæste).
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -16,7 +17,7 @@ import { serialize, deserialize } from 'node:v8';
 import zlib from 'node:zlib';
 import type { NewGameOptions, WorldData } from '../../src/game/newgame';
 import type { GameState } from '../../src/game/types';
-import { gs, setGame, indexSnapshot, restoreIndexes, packCarry, type IndexSnapshot, signHooks } from '../../src/game/state';
+import { gs, hasGame, setGame, indexSnapshot, restoreIndexes, packCarry, type IndexSnapshot, signHooks } from '../../src/game/state';
 import { rng } from '../../src/game/rng';
 import { compHooks, natCompHook, intlHooks, finHooks } from '../../src/game/hooks';
 import { removeHooks } from '../../src/game/humans';
@@ -27,15 +28,19 @@ import { getGridFactory } from '../../src/game/engine/liveSim';
 import { GRID_UNKNOWN } from '../../src/game/engine/grid/gridMatch';
 import { LEAGUE_RULES } from '../../src/game/leagues';
 import { getLang } from '../../src/i18n';
+import { prerunSteps } from '../../src/game/cmPrerun';
+import { carryNames } from '../../src/game/carry';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const DIR = process.env.CM_GAME_CACHE_DIR || path.join(os.homedir(), '.cache', 'cm-game');
 const sha = (s: string | Buffer) => createHash('sha256').update(s).digest('hex');
 
-// Lokalt til som standard, i CI fra (CM_GAME_CACHE=0 slår den fra, =1 til – også i CI): modulernes tilstand uden for GameState følger med
+// Kun med CM_GAME_CACHE=1 (fra som standard – også lokalt, 18/11): et spil fra cachen kan være bygget i en proces med andre moduler indlæst
+// (fx international.ts' landsholdsophold i forkørslen), og det fanger nøglen ikke helt – i vitest related-sættet gav det snapCarry et andet
+// spil end et nybygget. Modulernes tilstand uden for GameState følger med
 // kopien (src/game/carry.ts, cmCarry), så et spil fra cachen spiller bit for bit som et nyopbygget – målt en hel sæson med
 // scripts/perf-fingerprint.ts (DAILY=1) direkte mod CM_GAME_CACHE_USE=1: samme hash hver dag.
-export const gameCacheOn = (): boolean => (process.env.CM_GAME_CACHE ?? (process.env.CI ? '0' : '1')) === '1';
+export const gameCacheOn = (): boolean => process.env.CM_GAME_CACHE === '1' || process.env.CM_GAME_CACHE_USE === '1';   // _USE: scripts/perf-fingerprint.ts
 
 let codeHash: string | null = null;
 /** sha256 af alle filer i src/ (sti + indhold) – én gang pr. proces */
@@ -62,6 +67,8 @@ function contextKey(): string {
     hooks: [filled(compHooks), filled(natCompHook), filled(intlHooks), filled(finHooks), filled(signHooks), filled(removeHooks), filled(interestHook),
       filled(postHooks), afterPlanHooks.map((f) => sha(String(f)).slice(0, 12)).join(',')],
     relFlag: relFlagHookSet(),
+    prerun: prerunSteps(),
+    carry: carryNames(),
     lang: getLang(),
     grid: gf ? sha(String(gf)) : null,
     unknown: GRID_UNKNOWN,
@@ -84,6 +91,7 @@ function prune(): void {
   }
 }
 
+let created = false;
 export const GAME_CACHE_STATS = { hits: 0, misses: 0, ms: 0 };
 
 /** createGame (`create` = den rigtige) med cachen; uden cachen (CM_GAME_CACHE=0, CI) = create(world, o) */
@@ -103,13 +111,19 @@ export function cachedCreateGame(create: (w: WorldData, o: NewGameOptions) => Ga
       setGame(e.game);
       restoreIndexes(e.idx);
       rng.state = e.rng;
+      created = true;
       GAME_CACHE_STATS.hits++; GAME_CACHE_STATS.ms += performance.now() - t0;
       try { const now = new Date(); fs.utimesSync(file, now, now); } catch { /* skrivebeskyttet */ }
       return gs();
     } catch { /* ødelagt fil – byg igen */ }
   }
+  // kun et spil bygget som det første i processen gemmes: ikke-nulstillet modulhukommelse fra et forrige spil (en lækage) må ikke komme i
+  // cachen og dermed i en anden test, der forventer et nyt spil i en ny proces
+  const first = !created && !hasGame();
+  created = true;
   const g = create(world, o);
   GAME_CACHE_STATS.misses++;
+  if (!first) return g;
   try {
     packCarry(g);   // modulernes tilstand (src/game/carry.ts) – setGame lægger den tilbage
     let out: Buffer;
