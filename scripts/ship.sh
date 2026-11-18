@@ -81,7 +81,15 @@ git commit -q -m "v$VERSION: ændringslog og udgivelseslog
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 if [ "${SHIP_DRY:-0}" = 1 ]; then echo "(SHIP_DRY: ikke pushet)"; exit 0; fi
 git push -q origin main || fail "push"
-echo "✓ live: $(git rev-parse --short HEAD) (v$VERSION)"
+SHA=$(git rev-parse HEAD); echo "✓ pushet: ${SHA:0:8} (v$VERSION)"
+# live = /build.json på cm0102reborn.com viser denne commit (eller en nyere, der indeholder den); Vercel kan være op til ~30 min om at bygge
+LIVE=0
+for i in $(seq 1 ${SHIP_LIVE_TRIES:-60}); do
+  L=$(curl -s --max-time 10 https://cm0102reborn.com/build.json | sed -n 's/.*"sha":"\([0-9a-f]*\)".*/\1/p')
+  if [ -n "$L" ] && git merge-base --is-ancestor "$SHA" "$L" 2>/dev/null; then LIVE=1; break; fi
+  sleep 30
+done
+[ $LIVE = 1 ] && echo "✓ live: ${SHA:0:8} (v$VERSION)" || echo "⚠ pushet, men endnu ikke live efter $(( ${SHIP_LIVE_TRIES:-60} / 2 )) min (Vercel bygger stadig?)"
 
 # 6) ryd worktree'en for grenen
 if git show-ref -q --verify "refs/heads/$REF"; then
