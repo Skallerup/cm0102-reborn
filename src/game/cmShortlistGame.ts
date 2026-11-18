@@ -1481,6 +1481,25 @@ export function memDiff(a: SparseMem, b: SparseMem): [string, string][] & { page
   return out;
 }
 
+/** Adapterne, som også de små hukommelser (cmAskingPrice, cmExchangeCheck – menneskets bytte-skærm) skal have: 0x6e6340 (planScore.ts) og
+ *  arbejdstilladelsen 0x8c7950. Uden dem nåede 0x843800 → 0x840d80 → 0x6e6340 og 0x843800 → 0x84b180 → 0x8c7950 → 0x58d710 cmWageGame's
+ *  "ikke porteret" (nedbruddet 18/11, 0.30.0). */
+function slShared(S: SlMem, adr: number, a: number[]): number | undefined {
+  switch (adr) {
+    case 0x6e6340: return planValue(S, a[0] >>> 0, a[1], a[2], a[3] >>> 0, a[4]);
+    case 0x8c7950: {
+      // TRANSFER_MANAGER::is_work_permit_granted(staff, land, 0, 0, 0) – 0x84b180 har afgjort, at han skal have en (*estimeret*: rules2001.ts)
+      const p = S.byMem.get(S.m.s32(a[a.length - 5] >>> 0));
+      return p ? (workPermitGranted(p) ? 1 : 0) : 1;
+    }
+  }
+  return undefined;
+}
+/** buildWantMem med slShared – S sættes, når hukommelsen er bygget */
+function smallWantMem(g: GameState, clubs: number[], hold: { S?: SlMem }): WantMem {
+  return buildWantMem(g, clubs, { call: (adr, a) => (hold.S ? slShared(hold.S, adr, a) : undefined), useLog: (adr) => adr === 0x600a50 || adr === 0x849f00 || adr === 0x6e6340 || adr === 0x8c7950 });
+}
+
 /** Bygger dagens hukommelse (alle klubber, de klubløse, pladserne, parrene, buddene, positionslisterne) */
 export function buildSlMem(g: GameState, opts: { noStale?: boolean } = {}): SlMem {
   ensureCmp();
@@ -1492,7 +1511,7 @@ export function buildSlMem(g: GameState, opts: { noStale?: boolean } = {}): SlMe
     switch (adr) {
       case 0x600a50: return humanClub_600a50(S.M.c, a[0] >>> 0) ? 1 : 0;
       case 0x4d0c60: return undefined;
-      case 0x6e6340: return planValue(S, a[0] >>> 0, a[1], a[2], a[3] >>> 0, a[4]);
+      case 0x6e6340: case 0x8c7950: return slShared(S, adr, a);
       case 0x849f00: { const withThis = a.length === 4; return withThis ? slCall(S.M.c, adr, a[0], ...a.slice(1)) : slCall(S.M.c, adr, m.u32(m.u32(0xde1f54) + 0x856), ...a); }
       case 0x62ed70: {
         // Injury::get_player_injury: skadeposten (+0x28 sværhed, +0x2c dage) eller 0 – konditionsmodulet (cmFitnessGame.ts)
@@ -1503,11 +1522,6 @@ export function buildSlMem(g: GameState, opts: { noStale?: boolean } = {}): SlMe
         for (let i = 0; i < 0x40; i++) m.w8(r + i, 0);
         m.w16(r + 0x28, inj.w28); m.w16(r + 0x2c, inj.w2c);
         return r;
-      }
-      case 0x8c7950: {
-        // TRANSFER_MANAGER::is_work_permit_granted(staff, land, 0, 0, 0) – 0x84b180 har afgjort, at han skal have en (*estimeret*: rules2001.ts)
-        const p = S.byMem.get(m.s32(a[a.length - 5] >>> 0));
-        return p ? (workPermitGranted(p) ? 1 : 0) : 1;
       }
       case 0x8d0040: {
         // TRANSFER_MANAGER::can_loan_player (*estimeret*: rules2001.ts' lejeregel); 1 = må
@@ -1885,7 +1899,8 @@ export function cmInterestedClubs(g: GameState, p: Player): number[] {
 export function cmAskingPrice(g: GameState, p: Player, buyer?: number): number | null {
   if (!cmShortlistOn(g) || !p.club) return null;
   const home = p.loan?.from ?? p.club;
-  const M = buildWantMem(g, buyer && buyer !== home ? [home, buyer] : [home]);
+  const hold: { S?: SlMem } = {};
+  const M = smallWantMem(g, buyer && buyer !== home ? [home, buyer] : [home], hold);
   const st = M.W.staffOf(p), club = M.W.clubOf(home), b = buyer ? M.W.clubOf(buyer) : 0;
   if (!st || !club) return null;
   M.setRand(cmRand(g.seed ?? 0, p.id, dayNum(g.date), 0x4d1600));
@@ -1893,7 +1908,7 @@ export function cmAskingPrice(g: GameState, p: Player, buyer?: number): number |
   // sælgerens (og køberens) pladser: 0x849ce0 ser, om spilleren er indehaver af en af sælgerens pladser (+0x13), og 0x4d28eb bruger pladsen
   const memOf = new Map<number, number>(), byMem = new Map<number, Player>();
   for (const [q, a] of M.W.players) { const id = m.s32(a); memOf.set(q.id, id); byMem.set(id, q); }
-  const S: SlMem = { M, m, c: M.c, g, slm: m.u32(m.u32(0xde1f54) + 0x856), memOf, byMem, clubAdr: (cid) => M.W.clubOf(cid), events: [], slotted: new Set() };
+  const S: SlMem = hold.S = { M, m, c: M.c, g, slm: m.u32(m.u32(0xde1f54) + 0x856), memOf, byMem, clubAdr: (cid) => M.W.clubOf(cid), events: [], slotted: new Set() };
   for (const cid of buyer && buyer !== home ? [home, buyer] : [home]) if (g.cmPlan?.[cid]) writeSlots(S, cid, entryOf(g, cid), true);
   {
     const k = getContract(m, st), cl = k ? clubAt(m, m.s32(k + 4)) : 0;
@@ -1914,14 +1929,15 @@ export function cmAskingPrice(g: GameState, p: Player, buyer?: number): number |
  *  "No {giver} players are interested in moving to {modtager}." (0x9913c8). Null uden for ønskelisterne. */
 export function cmExchangeCheck(g: GameState, giver: number, receiver: number, cands: Player[]): { ok: Set<number>; refused: number; tooDear: number } | null {
   if (!cmShortlistOn(g) || !g.clubs[receiver] || !g.clubs[giver]) return null;
-  const M = buildWantMem(g, [receiver, giver]);
+  const hold: { S?: SlMem } = {};
+  const M = smallWantMem(g, [receiver, giver], hold);
   const club = M.W.clubOf(receiver), fin = M.W.finOf(receiver);
   if (!club || !fin) return null;
   M.setRand(cmRand(g.seed ?? 0, receiver, giver, dayNum(g.date), 0x47c180));
   const m = M.c.m;
   const memOf = new Map<number, number>(), byMem = new Map<number, Player>();
   for (const [q, a] of M.W.players) { const id = m.s32(a); memOf.set(q.id, id); byMem.set(id, q); }
-  const S: SlMem = { M, m, c: M.c, g, slm: m.u32(m.u32(0xde1f54) + 0x856), memOf, byMem, clubAdr: (cid) => M.W.clubOf(cid), events: [], slotted: new Set() };
+  const S: SlMem = hold.S = { M, m, c: M.c, g, slm: m.u32(m.u32(0xde1f54) + 0x856), memOf, byMem, clubAdr: (cid) => M.W.clubOf(cid), events: [], slotted: new Set() };
   if (g.cmPlan?.[receiver]) writeSlots(S, receiver, entryOf(g, receiver), true);
   const human = humanClub_600a50(M.c, club);
   const LOCAL_K = 0x5f0f3000;

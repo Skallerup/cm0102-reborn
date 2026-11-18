@@ -11,7 +11,9 @@ import { trackPage } from '../analytics';
 // Forsiden for nye besøgende tegnes med det samme fra en lille bundle; selve spillet (motoren, alle skærme, draft,
 // admin og fællesskabet – ui/AppPage.tsx) hentes først, når der trykkes Spil, eller når der er noget at genoptage.
 // Det holder forsidens Core Web Vitals (LCP/INP) nede – den er sidens vigtigste indgang fra søgemaskinerne.
-const AppPage = lazy(() => import('./AppPage'));
+// Fejler hentningen efter en ny udgivelse, genindlæser online/errors.ts siden (vite:preloadError + preventDefault) – så giver import() undefined;
+// vent da på genindlæsningen i stedet for at lade React læse undefined.default (fejlen "reading 'default'", 0.29.0)
+const AppPage = lazy(() => import('./AppPage').then((m) => m ?? new Promise<never>(() => {})));
 const loadAppPage = () => import('./AppPage');
 
 /** Kan forsiden vises uden spillet? Ikke ved links med parametre (?room, ?login, ?draft, ?community …), et spil der skal genoptages, eller efter tryk på Spil i denne fane */
