@@ -17,7 +17,7 @@
 // *estimeret*: [0x9cf6f8] = Intertoto (cmClubEuro 330), bsearch-startpladsen i 0x5c4cb0 (første med niveauet), turnéens ledighed (0x5c6b70
 // for begge klubber). Modstanderens trup: originalen fylder trupper med for få spillere op med genererede spillere før kampen (cmVirtual.ts).
 import type { GameState } from './types';
-import { cmActive, cmRand, clubRepMem } from './cmPlayerData';
+import { cmActive, cmLogic, cmRand, clubRepMem } from './cmPlayerData';
 import { dayNum, seasonRow } from './cmFitness';
 import { cmClubEuro } from './cmFitnessGame';
 import { CM_NATION_FR } from './data/cmPreseason';
@@ -28,7 +28,11 @@ import { FRIENDLY_COMP, cmFrAddMatch, cmFrDateStatus, cmFrSend, cmFrUpdate, setF
 
 export { FRIENDLY_COMP };
 export const isCmFriendly = (comp: string | undefined) => comp === FRIENDLY_COMP;
-export const cmFriendlyOn = (g: GameState) => cmActive(g) && !g.draft;
+// (MODERN_PARITY 12) 2026/27 i ægte tilstand: nye spil får opdateringens nation.dat-felter (g.cmNationFr fra world-cm.json) – planlægningen
+// kører i forkørslen fra 1/1 (dag 174 = 24/6) som i 2001; ældre 2026-spil og udvidet tilstand beholder spillets egne venskabskampe
+export const cmFriendlyOn = (g: GameState) => (cmActive(g) || (cmLogic(g) && !!g.cmNationFr)) && !g.draft;
+/** nation.dat-felterne pr. nation-id (= nationsindeks): databasens egne (2026/27) eller 3.9.60's */
+export const cmNationFrOf = (g: GameState): Record<number, readonly number[]> => g.cmNationFr ?? CM_NATION_FR;
 
 const isoOf = (dn: number) => new Date(dn * 86400000).toISOString().slice(0, 10);
 const yearOf = (dn: number) => new Date(dn * 86400000).getUTCFullYear();
@@ -39,7 +43,8 @@ const ftol = Math.trunc;
 /** klubbens post (0x16 bytes): +0 klub, +4 kampe, +5 niveau (omdømme/1000), +6 land, +0xa modstandere, +0xe/+0x10 vinduet, +0x12 optagne datoer */
 interface Rec { club: number; cnt: number; lvl: number; nation: number; opps: number[]; e: number; f: number; busy: number[] | null; league: string; rep: number }
 
-const nf = (n: number) => CM_NATION_FR[n];
+let NF: Record<number, readonly number[]> = CM_NATION_FR;
+const nf = (n: number) => NF[n];
 const neighbours = (a: number, b: number) => { const x = nf(a), y = nf(b); return !!x && !!y && (x.slice(6, 9).includes(b) || y.slice(6, 9).includes(a)); };
 const rivals = (g: GameState, a: number, b: number) => {
   const ra = g.cmCrowd?.[a], rb = g.cmCrowd?.[b];
@@ -80,6 +85,7 @@ function tourMatch(g: GameState, club: number, opp: number, d: number): boolean 
 /** Friendly::plan_all 0x5c27a0 på dagen `today` */
 export function cmFriendlyPlan(g: GameState, today: number): void {
   const rand = cmRand(g.seed ?? 0, today, 0x5c27a0);
+  NF = cmNationFrOf(g);
   const recs: Rec[] = [];
   for (const c of Object.values(g.clubs)) {
     if (c.nation === undefined || c.nation < 0) continue;

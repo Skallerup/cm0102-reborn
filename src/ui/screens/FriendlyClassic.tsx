@@ -7,8 +7,7 @@
 import { useState } from 'react';
 import type { GameState, NewsItem } from '../../game/types';
 import { act } from '../../game/actions';
-import { cmFriendlyOn } from '../../game/cmFriendly';
-import { CM_NATION_FR } from '../../game/data/cmPreseason';
+import { cmFriendlyOn, cmNationFrOf } from '../../game/cmFriendly';
 import {
   FRIENDLY_COMP, cmFrDateStatus, cmFrInviteCheck, cmFrInviteKind, cmFrProposalOpen, cmFrTourNations, frDn, frIso, invitedOf,
 } from '../../game/cmFriendlyOffers';
@@ -124,7 +123,7 @@ export function FriendlyDates({ kind, nation, onBack, onDone }: { kind: 'home' |
 export function FriendlyTourNations({ onBack, onPick }: { onBack: () => void; onPick: (nation: number) => void }) {
   const g = useGame()!;
   const [only, setOnly] = useState(true);
-  const list = cmFrTourNations(g, (n) => CM_NATION_FR[n]).filter((x) => !only || x.ok);
+  const list = cmFrTourNations(g, (n) => cmNationFrOf(g)[n]).filter((x) => !only || x.ok);
   const half = Math.ceil(list.length / 2);
   const col = (l: typeof list) => <div className="cx-nc-col">{l.map((x) => (
     <div key={x.nation} className="cx-nc-row">{x.ok ? <span className="cx-link" role="link" onClick={() => onPick(x.nation)}>{natName(g.nations[x.nation]?.name)}</span> : <span className="cx-muted">{natName(g.nations[x.nation]?.name)}</span>}<span className="code">{g.nations[x.nation]?.code}</span></div>

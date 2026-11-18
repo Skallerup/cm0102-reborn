@@ -209,6 +209,8 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     // (MODERN_PARITY 12) baggrundskampene 0x84b940/0x84be20 (cmReserves.ts) og B-holdene/reserveholdet 0x540a50/0x542740/0x541e60 (cmBTeam.ts)
     cmResNewGame(g);
     g.cmBTeams = true;
+    // (MODERN_PARITY 12) venskabskampene (cmFriendly.ts): opdateringens nation.dat-felter
+    if (raw.nationFr) g.cmNationFr = Object.fromEntries(Object.entries(raw.nationFr).map(([k, v]) => [k, v.slice()]));
   }
   if (cm?.cmRaw && season < 2020) {
     g.cmClubRep = { ...cm.cmRaw.clubRep }; g.cmNationRep = cm.cmRaw.nationRep.slice();

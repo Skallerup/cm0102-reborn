@@ -401,6 +401,12 @@ if (cmSide && files['staff_comp_history.dat'] && files['staff_comp.dat']) {
   for (const v of Object.values(hist)) v.sort((a, b) => b[0] - a[0]);
   cmSide.awHist = hist;
 }
+// (MODERN_PARITY 12) venskabskampenes nation.dat-felter (Friendly 0x5c4680/0x5c4cb0/0x5c5040 – som build-preseason.mts' CM_NATION_FR for 3.9.60)
+if (cmSide && files['nation.dat']) {
+  const N = new DataView(files['nation.dat']), fr: Record<number, number[]> = {};
+  for (let o = 0; o + 290 <= N.byteLength; o += 290) fr[N.getInt32(o, true)] = [N.getInt16(o + 0x86, true), N.getUint8(o + 0x84), N.getUint8(o + 0x7e), N.getInt16(o + 0x8e, true), N.getUint8(o + 0x75), N.getInt32(o + 0x71, true), N.getInt32(o + 0x110, true), N.getInt32(o + 0x114, true), N.getInt32(o + 0x118, true)];
+  cmSide.nationFr = fr;
+}
 if (cmSide) delete w.cmRaw;
 // (MODERN_PARITY 5+6) stabens ikke-spillerpost (staff[11] fra parseCM0102 – i world.json kun for den originale database) for den stab, world-filen har
 if (cmSide && staffNp2026.size) cmSide.staffNp = Object.fromEntries([...staffNp2026].sort((a, b) => a[0] - b[0]));

@@ -1324,6 +1324,8 @@ export interface GameState {
   cmRes?: import('./cmReserves').CmResState;
   /** (MODERN_PARITY 12) 2026/27 i ægte tilstand: B-holdene og reserveholdet som originalen (cmBTeam.ts bTeamsOn) */
   cmBTeams?: true;
+  /** (MODERN_PARITY 12) 2026/27: nation.dat-felterne, venskabskampene læser (cmFriendly.ts) pr. nation-id – slår originalens venskabskampe til */
+  cmNationFr?: Record<number, number[]>;
   savedTactics: Tactic[];
   reports: Record<number, MatchReport>;
   /** computerklubbernes kampe i den aktuelle sæson (kompakte rapporter, miniReport.ts) – ryddes med kampprogrammet i prune() */
