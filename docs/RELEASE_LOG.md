@@ -2,6 +2,7 @@
 
 Flyttet fra CLAUDE.md 17/11-2026 (så CLAUDE.md er kort i hver session). Nyeste først. Tilføj en linje øverst ved hver udgivelse.
 
+- 2026-11-18 – Skudt live (v0.30.0): 2026-11-18 – Spillersøgning (ejerens billede): status-filter Listed/For Loan/On Loan som exe-strengene (cl.fl.forLoan = loanListed), Land/Based = klubbens nation (basedName gav ligaens navn for aktive lande).
 - 2026-11-18 – Skudt live (v0.30.0): 2026-11-18 – Økonomi (ORIGINAL_PARITY 7–8): sæsonposter flyttes dagen før (0x5d5ae0 → 0x59cdd0) så tv-rettigheder 12M £ bliver i den nye sæson + nyhed 0x48ea40/0x48eb00; Fixture.tv → +0x3b (0x685c4a) = 125K i 0x59aab1 + tilskuereffekt; Cup::pay_round_prize_money 0x522240 (cmCupPrizes.ts, puljer 0x830520), CL-gruppepenge 0x585290/0x585ab0/0x583b10. Tv-flytninger 0x685640 korrekte; UEFA-torsdag → søndag (0x5ad780) mangler. Kun 2001-databasen (cmFinance kører ikke på 2026).
 - 2026-11-18 – Skudt live (v0.30.0): 2026-11-18 – Leje 1:1 (ejerens Brøndby/Olesen-billeder): svar 0x8cc5b0/0x84af00 (afslag-nyhed), cmLoan.ts (periode 0x8d0590 pr. land, udløb månedsvis, lønandel 0–100 % i 10'er = lejeklubbens), computerens lejebud med dato/lønandel, Loa bliver under lejen, mærker i rækkefølge 0x4849f0, Tir < 65 %, grå = fyldspillere, Division grå for ikke-aktive lande. Fingeraftryk 2001 → 6cc746b1e57d7849 (før stab).
 - 2026-11-18 – Skudt live (v0.30.0): 2026-11-18 – carry.ts (registerCarry → g.cmCarry) + cmDevelop.caRank + international.duty (cache pr. spil+dato); gemformat uden afrunding; createGame-cachen fra som standard (dødvande i vi.mock rettet).
