@@ -29,7 +29,7 @@ export function unlock(id: AchId) {
   if (a[id]) return;
   a[id] = g.date;
   // ægte CM 01/02: præstationerne findes ikke i originalen – ingen nyhed (de vises stadig på managerprofilen)
-  if (origLogic(g)) return;
+  if (origLogic(g) && !g.options.reborn?.achievements) return;
   addNews({ cat: 'award', key: 'ach.unlocked', params: { name: t(`ach.${id}`), icon: ACHIEVEMENTS.find((x) => x.id === id)?.icon ?? '🏅' } });
 }
 

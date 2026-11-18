@@ -44,6 +44,7 @@ import {
 } from './PlayerScreen';
 import { IncomingOffersFor } from './Transfers';
 import { BidPanel, DisciplinePanel, TransferStatusPanel } from './TransferStatusClassic';
+import { rebornOn } from '../reborn';
 
 type Tab = 'profile' | 'injuries' | 'contract' | 'transfer' | 'history';
 type ActionItem = DropItem;
@@ -429,7 +430,7 @@ function ClassicCareer({ p }: { p: Player }) {
           </tbody>
         </table></div>
       )}
-      {!g.draft && real && real.length > 0 && !authentic() && <div className="cx-fl-hint">{t(g.dbKind === 'cm0102' ? 'career.sourceCm' : 'career.source')}</div>}
+      {!g.draft && real && real.length > 0 && rebornOn('helpTexts') && <div className="cx-fl-hint">{t(g.dbKind === 'cm0102' ? 'career.sourceCm' : 'career.source')}</div>}
     </div>
   );
 }

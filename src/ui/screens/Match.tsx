@@ -39,9 +39,10 @@ import { stageLabel } from './Fixtures';
 import { useHotkeys } from '../hotkeys';
 import { TeamTalk } from '../teamtalk';
 import { talkDone } from '../../game/teamtalk';
-import { authentic, extended } from '../../game/rules';
+import { extended } from '../../game/rules';
 import { isOriginal2001 } from '../../game/rules2001';
 import { realCompName } from '../../i18n/comps';
+import { rebornOn } from '../reborn';
 
 // Den igangværende kamp overlever navigation mellem skærme
 /** Holdfarver (scoreboard, 2D, kommentar): begge hold i deres egne klubfarver – ligner de hinanden, spiller
@@ -1264,7 +1265,7 @@ export function StatsPanel({ stats, home, away, colors }: { stats: [MatchReport[
   const rows: [string, number, number, boolean?][] = [
     // besiddelse i procent (under kampen tælles der i øjeblikke) – altid 100 % i alt
     ['possession', pct0, 100 - pct0],
-    ...(extended() ? [['xg', stats[0].xg, stats[1].xg, true] as [string, number, number, boolean]] : []),
+    ...(rebornOn('matchExtras') ? [['xg', stats[0].xg, stats[1].xg, true] as [string, number, number, boolean]] : []),
     ['shots', stats[0].shots, stats[1].shots],
     ['onTarget', stats[0].onTarget, stats[1].onTarget],
     ['corners', stats[0].corners, stats[1].corners],
@@ -1536,7 +1537,7 @@ function OppTactics({ sim, side, club, cid, editable, onSub, draft, setDraft, la
         <CxDrop className="cx-green" label={t('cl.sq.view')} fixed
           items={[{ key: 'cond', label: t('cl.mt.condRating'), checked: view === 'cond', onClick: () => setView('cond') }, ...VIEW_COLS.map((c) => ({ key: c.k, label: t(`pi.${c.k}`), checked: view === c.k, onClick: () => setView(c.k) }))]} />
         <span className="cx-mt-gap" />
-        <button className="cx-mt-tbtn" disabled={!editable || !g.lastMatchTactic} title={authentic() ? undefined : t('cl.mt.lastHint')} onClick={() => onLastMatch?.()}>{t('cl.mt.lastMatch')}</button>
+        <button className="cx-mt-tbtn" disabled={!editable || !g.lastMatchTactic} title={!rebornOn('helpTexts') ? undefined : t('cl.mt.lastHint')} onClick={() => onLastMatch?.()}>{t('cl.mt.lastMatch')}</button>
         <CxDrop className="cx-green" label={t('cl.mt.edit')} fixed align="right" items={editMenu} />
       </div>
       {pane === 'ti' && <TeamInstrDialog tac={tac} on={on.map((x) => x.id)} editable={!!editable} onClose={() => setPane('list')} onOk={(f) => { edit(f); setPane('list'); }} />}

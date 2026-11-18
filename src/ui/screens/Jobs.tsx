@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { authentic } from '../../game/rules';
 import { askConfirm } from '../confirm';
 import { act } from '../../game/actions';
 import { jobTerms, managerRegion, openVacancies } from '../../game/board';
@@ -8,6 +7,7 @@ import { compName, dateFmt, money, t } from '../../i18n';
 import { ClubLink, Panel } from '../components';
 import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
+import { rebornOn } from '../reborn';
 
 export function Jobs() {
   const g = useGame()!;
@@ -56,7 +56,7 @@ export function Jobs() {
         </Panel>
       </div>
       {/* CM 01/02 har ingen forklaring om omdømmet her */}
-      {!authentic() && <p className="muted">{t('jobs.explain', { rep: Math.round(g.manager.rep) })}</p>}
+      {rebornOn('helpTexts') && <p className="muted">{t('jobs.explain', { rep: Math.round(g.manager.rep) })}</p>}
     </div>
   );
 }

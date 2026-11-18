@@ -8,7 +8,7 @@ import { ClassicSub, CxDrop, type Item } from '../classic';
 import { Tabs } from '../components';
 import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
-import { authentic } from '../../game/rules';
+import { rebornOn } from '../reborn';
 
 export type TourKey = IntlName | 'olympic';
 export const TOUR_KEYS: TourKey[] = ['wc', 'euro', 'olympic', 'copa', 'afcon', 'asian'];
@@ -120,7 +120,7 @@ export function ClassicTournament({ k }: { k: TourKey }) {
           : (tour?.ko ?? []).filter((x) => x.hg === undefined).map((x, i) => (
             <tr key={i}><td className="btn-col"><span className="cx-rowbtn">{t(`stage.${x.stage}`)}</span></td><td style={{ textAlign: 'right' }}>{N(x.a)}</td><td className="c-val">v</td><td>{N(x.b)}</td></tr>));
         return rows.length ? <div className="cx-tbl-wrap cx-listpanel"><table className="cx-tbl"><tbody>{rows}</tbody></table></div>
-          : <div className="cx-empty">{authentic() ? '' : t(tab === 'results' ? 'intl.noResults' : 'cl.it.noFixtures')}</div>;
+          : <div className="cx-empty">{!rebornOn('helpTexts') ? '' : t(tab === 'results' ? 'intl.noResults' : 'cl.it.noFixtures')}</div>;
       })()}
       {tab === 'schedule' && (
         tour ? (

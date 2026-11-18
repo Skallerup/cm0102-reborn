@@ -6,7 +6,7 @@
 import { useRef, useState, type ReactNode } from 'react';
 import { act } from '../../game/actions';
 import { A, naturalRole, roleScore, slotFit, slotRole } from '../../game/attributes';
-import { authentic, benchSize } from '../../game/rules';
+import { benchSize } from '../../game/rules';
 import { gs, squad } from '../../game/state';
 import { SlotGuides, coarse, holdDrag } from './runs';
 import { FORMATIONS, autoSelect, available, changeFormation, neutralPlayerInstructions, newTactic, runTarget, slotTaken, snapFreeSlot } from '../../game/tactics';
@@ -24,6 +24,7 @@ import { LastMatchView, TeamInstrDialog } from './Match';
 import { ZonePitch, type Zone } from './ZonePitch';
 import { mirrorPositions, movePost, slotMoved } from '../../game/engine/grid/tacticPositions';
 import { cmLoadPreset, positionsValid } from '../../game/engine/grid/tacticTable';
+import { rebornOn } from '../reborn';
 
 const left = (s: Slot) => s.y;
 const top = (s: Slot) => 97 - s.x * 0.92;
@@ -157,7 +158,7 @@ export function ClassicTactics() {
       onDragStart={(e) => { e.dataTransfer.setData('text/plain', String(p.id)); setTimeout(() => setDrag(p.id), 0); }} onDragEnd={() => setTimeout(() => setDrag(null), 0)} onClick={() => clickRow(p)}
       onDragOver={(e) => { if (dragCapt ? tac.lineup.includes(p.id) : drag !== null && drag !== p.id) e.preventDefault(); }}
       onDrop={(e) => { e.preventDefault(); if (dragCapt) giveCaptain(p.id); else if (drag !== null) swapPlayers(drag, p.id); setDrag(null); }}>
-      <button className="cx-tac-num" title={kind === 'xi' || authentic() ? undefined : t(kind === 'bench' ? 'cl.tac.fromBench' : 'cl.tac.toBench')}
+      <button className="cx-tac-num" title={kind === 'xi' || !rebornOn('helpTexts') ? undefined : t(kind === 'bench' ? 'cl.tac.fromBench' : 'cl.tac.toBench')}
         onClick={(e) => { e.stopPropagation(); toggleBench(p.id); }}>{label}</button>
       <span className="cx-tac-name" onDoubleClick={(e) => { e.stopPropagation(); nav({ name: 'player', id: p.id }); }}>{p.first ? `${p.first} ` : ''}{p.last}</span>
       {/* CM 01/02: kun "capt" i denne visning (frispark/hjørner/straffe står i deres egne menuer) */}

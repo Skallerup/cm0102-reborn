@@ -649,6 +649,17 @@ async function run(look) {
       await page.waitForTimeout(150);
     }
   });
+  // Game Options → Game Settings → CM Reborn: sektionen findes, valgene er fra i et nyt klassisk spil, og Awards/Help er væk fra Game Options
+  if (look === 'klassisk') await step('Game Settings: CM Reborn-sektion', async () => {
+    await go({ name: 'inbox' });
+    await page.locator('.cx-side .cx-drop-btn', { hasText: 'Game Options' }).first().click();
+    if (await page.locator('.cx-drop-pop button', { hasText: /^(Awards|Help)$/ }).count()) throw new Error('Awards/Help skal være væk fra Game Options som standard');
+    await page.locator('.cx-drop-pop button', { hasText: 'Game Settings' }).first().click();
+    await page.waitForSelector('.cx-settings .cx-set-sec');
+    const on = await page.locator('.cx-settings .cx-set-sec ~ .cx-set-grid .cx-set-seg button.on', { hasText: /^On$/ }).count();
+    if (on) throw new Error(`CM Reborn-valgene skal være fra som standard (${on} til)`);
+    await page.locator('.cx-settings .modal-foot button', { hasText: 'Cancel' }).click();
+  });
   // Game Options → Save Game (CM 01/02 "Enter File Name"): navngivet gemt spil
   if (look === 'klassisk') await step('Save Game med filnavn', async () => {
     await go({ name: 'inbox' });

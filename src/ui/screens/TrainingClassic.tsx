@@ -17,6 +17,7 @@ import { CxTable, type CxCol } from './CxTable';
 import { posGroup } from './Training';
 import { cmBodyOn } from '../../game/cmPlayerData';
 import { CmTraining } from './TrainingCm';
+import { rebornOn } from '../reborn';
 
 const TOP = ['rest', 'general', 'fitness', 'shooting'];
 const BOTTOM = ['ballcontrol', 'attacking', 'defending', 'setpieces', 'goalkeeping'];
@@ -82,7 +83,7 @@ function OwnTraining() {
       </Head>
       <Tabs tabs={[['overview', t('cl.tn.overview')], ...TOP.map((k) => [k, lbl(k)] as [string, string])]} value={tab} onChange={onTab} onDropTab={onDropTab} />
       <ClassicSub items={BOTTOM.map((k) => ({ key: k, label: lbl(k), on: tab === k, onClick: () => onTab(k), onDrop: (d: string) => onDropTab(k, d) }))} />
-      {sel.length > 0 && !authentic() && <div className="cx-tn-hint">{t('cl.tn.moveHint', { n: sel.length })}</div>}
+      {sel.length > 0 && rebornOn('helpTexts') && <div className="cx-tn-hint">{t('cl.tn.moveHint', { n: sel.length })}</div>}
       <CxTable rows={players} cols={cols} rowKey={(p) => p.id} initialSort="pos"
         rowAttrs={(p) => ({ draggable: true, className: sel.includes(p.id) ? 'cx-tn-sel' : undefined,
           // dragstart ændrer ikke DOM'en (Chrome afbryder ellers trækket) – kun dataene

@@ -2,13 +2,13 @@
 // alfabetisk liste med sider. Et klik åbner nationens liga, klubbens side, stabspersonens ansættelse eller
 // spillerens profil.
 import { nameQuery } from '../search';
-import { authentic } from '../../game/rules';
 import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { compName, natName, t } from '../../i18n';
 import { Tabs } from '../components';
 import { useGame, useNav, useRouteState, type Route } from '../core';
 import { Head } from './common';
 import { Pager } from './TransfersClassic';
+import { rebornOn } from '../reborn';
 
 const PAGE = 16;
 export const FIND_TABS = ['nation', 'club', 'staff', 'player'] as const;
@@ -70,7 +70,7 @@ export function ClassicFind({ tab: initial }: { tab?: string }) {
             <span className="cx-find-name">{r.name}</span><span className="cx-find-a">{r.a}</span><span className="cx-find-b">{r.b}</span>
           </div>
         ))}
-        {!shown.length && <div className="cx-empty">{authentic() ? '' : t('cl.fd.none')}</div>}
+        {!shown.length && <div className="cx-empty">{!rebornOn('helpTexts') ? '' : t('cl.fd.none')}</div>}
       </div>
       <div className="cx-found">{t('cl.fd.found', { n: list.length.toLocaleString(t('cl.locale')) })}</div>
     </div>

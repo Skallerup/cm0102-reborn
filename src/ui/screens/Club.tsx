@@ -26,6 +26,7 @@ import { ClassicFixtures } from './Fixtures';
 import { ClassicFinanceBody } from './Finance';
 import { authentic } from '../../game/rules';
 import { LEGEND_APPS, LEGEND_GOALS } from '../../game/records';
+import { rebornOn } from '../reborn';
 
 export function ClubScreen({ id }: { id?: number }) {
   return isRetro() ? <ClassicClub id={id} /> : <ModernClub id={id} />;
@@ -203,7 +204,7 @@ function ClubNextMatch({ cid }: { cid: number }) {
   const list = Object.values(g.fixtures).filter((f) => f.home === cid || f.away === cid).sort((a, b) => a.date.localeCompare(b.date));
   const next = list.find((f) => !f.result);
   const recent = list.filter((f) => f.result).slice(-5).reverse();
-  if (!next) return <div className="cx-empty">{authentic() ? '' : t('cl.cn.none')}</div>;
+  if (!next) return <div className="cx-empty">{!rebornOn('helpTexts') ? '' : t('cl.cn.none')}</div>;
   const home = next.home === cid, opp = home ? next.away : next.home;
   const form = recent.map((f) => { const h = f.home === cid, r = f.result!; const my = h ? r.hg : r.ag, th = h ? r.ag : r.hg; return my > th ? t('cl.cn.w') : my < th ? t('cl.cn.l') : t('cl.cn.d'); }).join(' ');
   return (

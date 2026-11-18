@@ -24,6 +24,7 @@ import { BID_AMOUNTS_GBP, MAX_SWAP, addSwap, bidAct, clauseAtMin as clauseAtMin0
 import { ClassicFirstSquad } from './SquadClassic';
 import { authentic } from '../../game/rules';
 import { cmBidBudget, cmBoardLine } from '../../game/cmBudget';
+import { rebornOn } from '../reborn';
 
 /** "£0", "£100K", "£2.5M" (originalens beløbsliste, i spillerens valuta) */
 const amountLabel = (a: number) => {
@@ -309,7 +310,7 @@ function OldBidPanel({ p, loan, onClose, onSent }: { p: Player; loan: boolean; o
             <CxPm onClick={() => setFee(round(Math.max(0, fee - step)))} aria-label="-">−</CxPm>
             <CxDrop className="cx-bid-amt" label={money(fee)} fixed items={AMOUNTS.map((a) => { const v = Math.round(fromCurExact(a)); return { key: String(a), label: amountLabel(a), checked: false, onClick: () => setFee(v) }; })} />
             <CxPm onClick={() => setFee(round(fee + step))} aria-label="+">+</CxPm>
-            <button className="cx-pm" onClick={() => setFee(round(known?.fee ?? p.value))} title={authentic() ? undefined : t('cl.bid.feeEq')}>=</button>
+            <button className="cx-pm" onClick={() => setFee(round(known?.fee ?? p.value))} title={!rebornOn('helpTexts') ? undefined : t('cl.bid.feeEq')}>=</button>
           </div>
           {row(t('cl.bid.install'), '-')}
           {row(t('cl.bid.sellOn'), sellOn ? `${sellOn}%` : '-', sellOn > 0 ? () => setSellOn(sellOn - 5) : undefined, sellOn < 50 ? () => setSellOn(sellOn + 5) : undefined)}
@@ -390,7 +391,7 @@ function OldIncomingBidPanel({ offer, onClose }: { offer: TransferOffer; onClose
         <p className="cx-ts-intro">{t('cl.bid.valued', { club: me?.short ?? '', player: `${p.first} ${p.last}`.trim(), value: moneyFull(p.value) })}</p>
         {offer.loan ? <p className="cx-ts-intro">{t('cl.bid.loanAsk')}</p> : <>
           {row(t('cl.bid.fee'), money(fee), () => setFee(round(Math.max(0, fee - step))), () => setFee(round(fee + step)),
-            <button className="cx-pm" onClick={() => setFee(round(p.value))} title={authentic() ? undefined : t('cl.bid.feeEq')}>=</button>)}
+            <button className="cx-pm" onClick={() => setFee(round(p.value))} title={!rebornOn('helpTexts') ? undefined : t('cl.bid.feeEq')}>=</button>)}
           {row(t('cl.bid.install'), '-')}
           {row(t('cl.bid.sellOn'), offer.sellOn ? `${offer.sellOn}%` : '-')}
           {row(t('cl.bid.addOn', { n: ADDON_APPS }), offer.addOn ? money(offer.addOn) : '-')}
@@ -521,7 +522,7 @@ function CmBidRows({ terms, set, value, budget, swapValue, onExchange, reset, in
     {row(true, <span className="cx-bid-label">{t('cl.bid.fee')}</span>, 'feeDown',
       <CxDrop className={`cx-bid-amt ${over ? 'over' : ''}`} label={money(terms.fee)} fixed items={amounts((v) => set({ ...terms, fee: v }))} />,
       'feeUp', terms.fee <= 0, feeAtMax(terms.fee),
-      <button className="cx-pm" onClick={() => set({ ...terms, fee: feeEquals(value, terms.swap.map(swapValue), budget) })} title={authentic() ? undefined : t('cl.bid.feeEq')}>=</button>)}
+      <button className="cx-pm" onClick={() => set({ ...terms, fee: feeEquals(value, terms.swap.map(swapValue), budget) })} title={!rebornOn('helpTexts') ? undefined : t('cl.bid.feeEq')}>=</button>)}
     {row(terms.months > 0, <button className="cx-bid-label cx-bid-tog" onClick={() => act2('inst')}>{t('cl.bid.install')}</button>, 'instDown',
       <span className="cx-bid-val">{terms.months > 0 ? t('cl.bid.months', { n: terms.months }) : '-'}</span>, 'instUp', terms.months === 6, terms.months >= 24)}
     {row(terms.sellOn > 0, <button className="cx-bid-label cx-bid-tog" onClick={() => act2('sell')}>{t('cl.bid.sellOn')}</button>, 'sellDown',
@@ -569,7 +570,7 @@ function CmExchange({ giver, receiver, p, onPick, onBack, taken }: { giver: numb
     <div className="cx-tstatus cx-bid cx-exch">
       <div className="cx-exch-top">
         <div className="cx-subtitle cx-orig-band">{t('cl.bid.addTitle', { player: p.last })}</div>
-        <button className={`cx-exch-btn ${armed ? 'on' : ''}`} onClick={() => setArmed(!armed)} title={authentic() ? undefined : t('cl.bid.exPick')}>{t('cl.bid.exchange')}</button>
+        <button className={`cx-exch-btn ${armed ? 'on' : ''}`} onClick={() => setArmed(!armed)} title={!rebornOn('helpTexts') ? undefined : t('cl.bid.exPick')}>{t('cl.bid.exchange')}</button>
       </div>
       <ClassicFirstSquad key={`ex${giver}`} cid={giver} pick={{ armed, ok: (x) => ids.has(x.id), onPick, only: true, empty }} />
       <ClassicFoot cols="3fr 1fr">

@@ -4,7 +4,6 @@ import { useEffect } from 'react';
 import type { Fixture, GameState } from '../../game/types';
 import { compName, natName, t } from '../../i18n';
 import { intlDayResults } from '../../game/international';
-import { authentic } from '../../game/rules';
 import { useGame, useNav, useRouteState } from '../core';
 import { CxLink, clubRoute, compAbbr } from '../classic';
 import { Head } from './common';
@@ -14,6 +13,7 @@ import { CxMatchStats } from './Match';
 import { stageLabel } from './Fixtures';
 import { ordinal } from './Competitions';
 import { leagueRows, sortTable } from '../../game/competitions';
+import { rebornOn } from '../reborn';
 
 /** Dagens turneringer på kampdagsskærmen: kun ens eget lands, de europæiske og dem, klubben er med i (ens egen først) */
 export function matchDayComps(g: GameState, id: number): { comps: string[]; today: Fixture[]; mine?: Fixture } {
@@ -102,7 +102,7 @@ export function MatchDay({ id }: { id: number }) {
           ))}
         </div>
       ))}</div>
-      {g.pendingFixture && !played && !authentic() && <div className="cx-md-hint">{t('cl.md.hint')}</div>}
+      {g.pendingFixture && !played && rebornOn('helpTexts') && <div className="cx-md-hint">{t('cl.md.hint')}</div>}
     </div>
   );
 }

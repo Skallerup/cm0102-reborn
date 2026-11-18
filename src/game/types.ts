@@ -1134,12 +1134,16 @@ export interface Options {
   rules?: 'modern' | 'classic';
   /** spiltilstand: 'authentic' = så tæt på CM 01/02 som muligt (kun originalens funktioner), 'extended' (standard) = alt */
   mode?: 'authentic' | 'extended';
+  /** CM Reborns egne visnings-tilvalg (Game Options → CM Reborn; kun visning, ingen logik). Mangler et valg: fra i klassisk udseende, ellers til */
+  reborn?: Partial<Record<RebornKey, boolean>>;
   /** AI-skrevne tekster (pressemøder, samtaler, artikler) – standard: til */
   ai?: boolean;
   /** Kampmotor: 'zone' (standard, vores egen) eller 'original' (porten af originalens motor – kun original database i ægte
    * tilstand, se gridEngineOn i sim.ts). Gamle gemte spil = 'zone'. */
   engine?: 'zone' | 'original';
 }
+
+export type RebornKey = 'achievements' | 'matchExtras' | 'firstDay' | 'articles' | 'menus' | 'searchPresets' | 'helpTexts';
 
 export type BotStyle = 'ambitious' | 'developer' | 'trader' | 'pragmatic';
 

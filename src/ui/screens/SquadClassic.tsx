@@ -24,6 +24,7 @@ import { Head } from './common';
 import { Cliques, SquadTable } from './Squad';
 import { ClassicSquadNumbers } from './SquadNumbers';
 import { PenaltyTakers } from './TacticsClassic';
+import { rebornOn } from '../reborn';
 
 type Place = { kind: 'xi' | 'bench'; i: number } | null;
 
@@ -142,13 +143,13 @@ function tagOf(p: Player, g: GameState, clubId = g.userClub): { k: string; title
   if (p.banned > 0) return { k: 'Sus', title: `${t('tag.ban')} ${p.banned}` };
   if (p.reserves) return { k: 'Res', title: t('cl.pl.inReserves') };
   // CM 01/02 "Yel": ét gult kort fra karantæne
-  if (p.yellowCount === 4) return { k: 'Yel', title: authentic() ? '' : t('cl.tag.yelTitle') };
+  if (p.yellowCount === 4) return { k: 'Yel', title: !rebornOn('helpTexts') ? '' : t('cl.tag.yelTitle') };
   if (isInternational(p)) return { k: 'Int', title: t('cl.tag.intTitle', { nation: natName(g.nations[p.nation]?.name) ?? '' }) };
   if (p.contract?.futureClub) return { k: 'Fut', title: t('tag.leaving') };
   if (p.listed) return { k: 'Lst', title: t('tag.listed') };
   if (p.loan) return { k: 'Lon', title: t('tag.loan') };
   if ((p.unhappy ?? 0) > 60 || p.wantsAway) return { k: 'Unh', title: t('tag.unhappy') };
-  if (clubId === g.userClub && interestedClubs(p).length) return { k: 'Wnt', title: authentic() ? '' : t('cl.sq.wanted') };
+  if (clubId === g.userClub && interestedClubs(p).length) return { k: 'Wnt', title: !rebornOn('helpTexts') ? '' : t('cl.sq.wanted') };
   if (p.nation !== g.clubs[clubId]?.nation) return { k: 'Fgn', title: natName(g.nations[p.nation]?.name) ?? '' };
   return null;
 }
@@ -157,13 +158,13 @@ function tagOf(p: Player, g: GameState, clubId = g.userClub): { k: string; title
 export function originalTag(p: Player): { k: string; title: string } | null {
   if (p.injury) return { k: 'Inj', title: `${t(`injury.${p.injury.key}`)} (${p.injury.days} ${t('common.days')})` };
   if (p.banned > 0) return { k: 'Sus', title: `${t('tag.ban')} ${p.banned}` };
-  if (p.yellowCount === 4) return { k: 'Yel', title: authentic() ? '' : t('cl.tag.yelTitle') };
+  if (p.yellowCount === 4) return { k: 'Yel', title: !rebornOn('helpTexts') ? '' : t('cl.tag.yelTitle') };
   if (p.contract?.futureClub) return { k: 'Fut', title: t('tag.leaving') };
   if (p.listed) return { k: 'Lst', title: t('tag.listed') };
   if (p.loan) return { k: 'Lon', title: t('tag.loan') };
   if ((p.unhappy ?? 0) > 60 || p.wantsAway) return { k: 'Unh', title: t('tag.unhappy') };
   // Wnt: en anden klub er interesseret (originalens Interested-række, 0x842180)
-  if (interestedClubs(p).length) return { k: 'Wnt', title: authentic() ? '' : t('cl.sq.wanted') };
+  if (interestedClubs(p).length) return { k: 'Wnt', title: !rebornOn('helpTexts') ? '' : t('cl.sq.wanted') };
   return null;
 }
 
@@ -257,7 +258,7 @@ function ClassicReserves() {
   return (
     <div>
       <Head title={g.clubs[g.userClub]?.name ?? ''} />
-      {res.length ? <ClassicClubSquad cid={g.userClub} players={res} /> : <div className="cx-empty">{authentic() ? '' : t('cl.res.none')}</div>}
+      {res.length ? <ClassicClubSquad cid={g.userClub} players={res} /> : <div className="cx-empty">{!rebornOn('helpTexts') ? '' : t('cl.res.none')}</div>}
     </div>
   );
 }
@@ -555,7 +556,7 @@ export function ClassicFirstSquad({ reserves = false, cid, pick }: { reserves?: 
               const p = x.pid ? byId.get(x.pid) : undefined;
               return (
                 <div key={x.id} className={`cx-slot ${x.place.kind} ${p ? 'filled' : ''} ${x.off ? 'off' : ''} ${armed === x.id ? 'armed' : ''} ${over === x.id ? 'over' : ''}`}
-                  title={x.off ? undefined : p ? `${p.first} ${p.last}` : authentic() ? undefined : t('cl.sq.empty')} onClick={() => stripClick(x)}
+                  title={x.off ? undefined : p ? `${p.first} ${p.last}` : !rebornOn('helpTexts') ? undefined : t('cl.sq.empty')} onClick={() => stripClick(x)}
                   draggable={!x.off && !ro} onDragStart={!x.off && !ro ? slotDragStart(x, benchPlace(x.place)) : undefined} onDragEnd={dragEnd}
                   {...(x.off ? {} : dropOn(x.id, benchPlace(x.place)))}>
                   {x.label}
@@ -564,7 +565,7 @@ export function ClassicFirstSquad({ reserves = false, cid, pick }: { reserves?: 
             })}
           </div>
           {armedTarget && !orig && <div className="cx-sq-filtered">{t('cl.sq.pickSlot', { slot: armedTarget.label })}</div>}
-          {reserves && !list.length && <div className="cx-sq-filtered">{authentic() ? '' : t('cl.res.none')}</div>}
+          {reserves && !list.length && <div className="cx-sq-filtered">{!rebornOn('helpTexts') ? '' : t('cl.res.none')}</div>}
           {pick?.empty && !list.length && <div className="cx-exch-none">{pick.empty}</div>}
           {!orig && fil[0] !== 'all' && <div className="cx-sq-filtered">{t('cl.sq.filtered', { filter: t(`cl.sq.f.${fil[0]}`), n: list.length, total: players.length })}</div>}
           {!trad && (
@@ -583,7 +584,7 @@ export function ClassicFirstSquad({ reserves = false, cid, pick }: { reserves?: 
           {/* "The dressing room" findes ikke i CM 01/02 – kun i det udvidede spil */}
           {!g.draft && !orig && <Cliques />}
           <div className="cx-sq-drop-out" {...dropOn('out', null)} hidden={drag === null || !placeOf(tac, drag)}>
-            {authentic() ? '' : t('cl.sq.dropOut')}
+            {!rebornOn('helpTexts') ? '' : t('cl.sq.dropOut')}
           </div>
         </div>
       )}

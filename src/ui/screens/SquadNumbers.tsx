@@ -1,6 +1,5 @@
 // Squad Numbers (som i CM 01/02): hver spiller har et fast trøjenummer i klubben. Vælg et nyt nummer – har en
 // holdkammerat det i forvejen, bytter de to numre.
-import { authentic } from '../../game/rules';
 import { ClassicFoot } from '../classic';
 import { useState } from 'react';
 import { act } from '../../game/actions';
@@ -11,6 +10,7 @@ import { PlayerLink, posStr } from '../components';
 import { askConfirm } from '../confirm';
 import { useGame, useNav } from '../core';
 import { coarse } from './runs';
+import { rebornOn } from '../reborn';
 
 /** Primær position (GK først … angribere sidst), som truppens sortering */
 const POS_ORDER = (p: Player) => {
@@ -135,7 +135,7 @@ export function ClassicSquadNumbers({ onClose, missing = false }: { onClose?: ()
       </div>
       {strip(26)}
       {/* CM 01/02 har ingen hjælpetekst under talrækkerne */}
-      {!authentic() && <p className="cx-sqn-hint">{t('sqn.dragHint')}</p>}
+      {rebornOn('helpTexts') && <p className="cx-sqn-hint">{t('sqn.dragHint')}</p>}
       <ClassicFoot cols="3fr 1fr">
         <button onClick={() => (onClose ? onClose() : (setNums(initial()), setPicked(null)))}>{t('common.back')}</button>
         <button className="primary" onClick={() => void submit()}>{t('sqn.submit')}</button>

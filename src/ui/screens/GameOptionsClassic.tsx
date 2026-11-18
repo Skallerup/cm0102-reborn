@@ -13,6 +13,7 @@ import { CxDrop, CxLink, clubRoute } from '../classic';
 import { useGame } from '../core';
 import { gs } from '../../game/state';
 import { Head } from './common';
+import { rebornOn } from '../reborn';
 
 export function ClassicManagerStatus() {
   const g = useGame()! as GameState;
@@ -62,7 +63,7 @@ export function ClassicSelectedLeagues() {
         );
       })}</div>
       {/* ægte CM 01/02 har ingen forklaringstekst på Selected League(s) */}
-      {(!authentic() || !!g.humans?.length) && <div className="cx-tac-hint">{t(g.humans?.length ? 'lg.mpOff' : 'cl.sl.hint')}</div>}
+      {(rebornOn('helpTexts') || !!g.humans?.length) && <div className="cx-tac-hint">{t(g.humans?.length ? 'lg.mpOff' : 'cl.sl.hint')}</div>}
     </div>
   );
 }

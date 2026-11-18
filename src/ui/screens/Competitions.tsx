@@ -18,6 +18,7 @@ import { resultStr, stageLabel } from './Fixtures';
 import { ClassicCup } from './CupClassic';
 import { ClassicCompHistory } from './CompHistoryClassic';
 import { ClassicSub, CxDrop, cxShortDate } from '../classic';
+import { rebornOn } from '../reborn';
 
 export function Competitions({ id }: { id?: string }) {
   const g = useGame()!;
@@ -274,7 +275,7 @@ function CompFixtures({ comp, mode }: { comp: Competition; mode?: 'results' | 'f
   const next = mode === 'results' ? dates[dates.length - 1] : dates.find((d) => d >= g.date) ?? dates[dates.length - 1];
   const [date0, setDate] = useRouteState(`date:${comp.id}`, next);
   const date = dates.includes(date0) ? date0 : next;
-  if (!dates.length) return <div className="cx-empty">{mode === 'results' && authentic() ? '' : t(mode === 'results' ? 'cl.lg.noResults' : 'cl.lg.noFixtures')}</div>;
+  if (!dates.length) return <div className="cx-empty">{mode === 'results' && !rebornOn('helpTexts') ? '' : t(mode === 'results' ? 'cl.lg.noResults' : 'cl.lg.noFixtures')}</div>;
   const shown = list.filter((f) => f.date === date);
   const idx = dates.indexOf(date);
   return (

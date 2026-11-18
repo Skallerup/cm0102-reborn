@@ -30,6 +30,7 @@ import { Deals, Offers, Search, type Filters } from './Transfers';
 import { ClassicNations } from './NationsClassic';
 import { cmAsgOf, cmAsgOn } from '../../game/cmScoutAsg';
 import { cmRegionName } from '../cmScoutAsgNews';
+import { rebornOn } from '../reborn';
 
 const PAGE = 16;
 
@@ -163,7 +164,7 @@ export function ClassicSearch({ f, setF, defaults, results, total, active, natio
   const same = (p: Preset) => (Object.keys(defaults) as (keyof Filters)[]).every((k) => (k in p.set ? p.set[k] : defaults[k]) === f[k]);
   const preset = PRESETS.find(same);
   // ægte CM 01/02: Load Settings viser kun de gemte søgninger (ingen faste)
-  const presets = (authentic() ? [] : PRESETS.filter((p) => p.key !== 'realistic' || (g.userClub > 0 && realism))).map((p) => ({ key: p.key, label: t(`cl.tr.p.${p.key}`), set: p.set }));
+  const presets = (!rebornOn('searchPresets') ? [] : PRESETS.filter((p) => p.key !== 'realistic' || (g.userClub > 0 && realism))).map((p) => ({ key: p.key, label: t(`cl.tr.p.${p.key}`), set: p.set }));
   const items = useSearchMenu<Filters>({ kind: 'player', f, defaults, presets, apply: setF, named, setNamed, active });
   return (
     <div>
@@ -465,7 +466,7 @@ function StaffSearch() {
     : view === 'notes'
     ? [infCol, nameCol, clubCol, jobCol, { key: 'notes', label: t('cl.tn.notes'), cls: 'c-cyan', render: () => '-' }]
     : [infCol, nameCol, clubCol, basedCol, jobCol, repCol];
-  const presets = (authentic() ? [] : STAFF_PRESETS).map((p) => ({ key: p.key, label: t(`cl.st.p.${p.key}`), set: p.set }));
+  const presets = (!rebornOn('searchPresets') ? [] : STAFF_PRESETS).map((p) => ({ key: p.key, label: t(`cl.st.p.${p.key}`), set: p.set }));
   const preset = STAFF_PRESETS.find((p) => JSON.stringify({ ...SF_DEFAULT, ...p.set }) === JSON.stringify(sf));
   const items = useSearchMenu<StaffFilters>({ kind: 'staff', f: sf, defaults: SF_DEFAULT, presets, apply: setSf, named, setNamed, active });
   return (
@@ -497,7 +498,7 @@ function ScoutTab({ scout, n, onPick }: { scout?: Staff; n: number; onPick?: (f:
   const g = useGame()!;
   const [named, setNamed] = useRouteState('scname', '');
   const [view, setView] = useRouteState('tview', 'general');
-  if (!scout) return <div className="cx-empty">{authentic() ? '' : t('cl.sc.none', { n })}</div>;
+  if (!scout) return <div className="cx-empty">{!rebornOn('helpTexts') ? '' : t('cl.sc.none', { n })}</div>;
   // den originale database i ægte tilstand (search_screens.cpp 0x80b479/0x80b4bf): "Scout Les Kershaw not assigned" / "Scout L.Kershaw
   // assigned to Bradford", Assign Scout → Club åbner Nations & Clubs, og en tildelt spejder har Recall Scout i stedet for Assign Scout
   const cm = cmActive(g);
@@ -612,7 +613,7 @@ export function ClassicPlayerTable({ players, title, desc, view: viewProp, initi
     if (p.banned > 0) return ['Sus', t('tag.ban'), true];
     // Bid: menneskets ventende bud på spilleren (grå mærke som Wnt)
     if (cmMarketOn(g) && p.club > 0 && myPendingBid(p.id)) return ['Bid', '', false];
-    if (interestedClubs(p).length) return ['Wnt', authentic() ? '' : t('cl.sq.wanted'), false];
+    if (interestedClubs(p).length) return ['Wnt', !rebornOn('helpTexts') ? '' : t('cl.sq.wanted'), false];
     return null;
   };
   const based = (p: Player) => basedName(g, p.club, p.nation);

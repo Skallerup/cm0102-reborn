@@ -1,6 +1,6 @@
 // Klassisk tema: "Game Options"-menuen i venstre kolonne og dialogen "Game Settings" (som i originalen).
 import { AccountBar } from './Login';
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { act } from '../game/actions';
 import { regionOf } from '../game/leagues';
 import { notify } from '../game/state';
@@ -23,6 +23,8 @@ import { session } from '../online/client';
 import { getAccount } from '../online/account';
 import { saveGame } from '../game/save';
 import { useGame, useNav } from './core';
+import { REBORN_KEYS, rebornOn } from './reborn';
+import type { RebornKey } from '../game/types';
 import { canInstall, installApp, notifyEnabled, notifySupported, onInstallChange, setNotify } from './notify';
 import { getTheme, modernOn, setTheme, type Theme } from './theme';
 import { authentic } from '../game/rules';
@@ -115,9 +117,9 @@ export function GameOptionsMenu({ onSave, onQuit, online, allowed }: { onSave: (
   items.push({ key: 'info', label: t('info.title'), onClick: () => setShow('info') });
   add('ranking', t('cl.go.hall'));
   // ægte CM 01/02 har hverken Awards eller Help i Game Options (Awards ligger under Manager Stats/History)
-  if (!authentic()) add('awards', t('nav.awards'));
+  if (rebornOn('menus')) add('awards', t('nav.awards'));
   add('community', t('cl.go.credits'));
-  if (!authentic()) add('help', t('nav.help'));
+  if (rebornOn('menus')) add('help', t('nav.help'));
   // som i det moderne tema: hvad er nyt, fejlrapport og feedback (sendes til fællesskabets forslag)
   items.push({ key: 'sep0', sep: true }, { key: 'news', label: t('cl.go.whatsNew', { v: APP_VERSION }), onClick: () => { try { localStorage.setItem('cm0102.seenVersion', APP_VERSION); } catch { /* ignorer */ } setShow('changelog'); } });
   if (communityAvailable()) items.push({ key: 'bug', label: t('cm.reportBug'), onClick: () => setShow('bug') }, { key: 'idea', label: t('cl.go.feedback'), onClick: () => setShow('suggest') });
@@ -145,7 +147,7 @@ export function GameOptionsMenu({ onSave, onQuit, online, allowed }: { onSave: (
 
 // ---------- Game Settings ----------
 
-type Draft = { lang: Lang; cur: Currency; theme: Theme; bg: boolean; flash: boolean; goalFlash: number; pixel: PixelLevel; font: CxFont; logo: boolean; stadium: boolean; sound: boolean; bgset: BgSet; realism: boolean; save: string; notif: boolean };
+type Draft = { lang: Lang; cur: Currency; theme: Theme; bg: boolean; flash: boolean; goalFlash: number; pixel: PixelLevel; font: CxFont; logo: boolean; stadium: boolean; sound: boolean; bgset: BgSet; realism: boolean; save: string; notif: boolean; reborn: Record<RebornKey, boolean> };
 
 export function Seg<T extends string | boolean | number>({ value, opts, onChange }: { value: T; opts: [T, string][]; onChange: (v: T) => void }) {
   return <div className="cx-set-seg">{opts.map(([v, l]) => <button key={String(v)} className={v === value ? 'on' : ''} onClick={() => onChange(v)}>{l}</button>)}</div>;
@@ -158,6 +160,7 @@ function GameSettings({ onClose }: { onClose: () => void }) {
   const initial: Draft = {
     lang: getLang(), cur: getCurrency(), theme: getTheme(), bg: bgChanges(), flash: flashingText(), goalFlash: goalFlashMs(), pixel: pixelLook(), font: classicFont(), logo: titleLogo(), stadium: stadiumBackgrounds(), sound: matchSound(), bgset: bgSet(), realism: showRealism(),
     save: g.options.autosaveMode ?? (g.options.autosave === false ? 'off' : 'changes'), notif: notifyEnabled(),
+    reborn: Object.fromEntries(REBORN_KEYS.map((k) => [k, rebornOn(k)])) as Record<RebornKey, boolean>,
   };
   const [d, setD] = useState<Draft>(initial);
   const up = (x: Partial<Draft>) => setD({ ...d, ...x });
@@ -167,6 +170,7 @@ function GameSettings({ onClose }: { onClose: () => void }) {
     if (d.cur !== initial.cur) setCurrency(d.cur);
     if (d.save !== initial.save) { g.options.autosaveMode = d.save as 'changes'; g.options.autosave = d.save !== 'off'; }
     write(PREF.bg, d.bg); write(PREF.flash, d.flash); try { localStorage.setItem(PREF.goalFlash, String(d.goalFlash)); } catch { /* ignorér */ } try { localStorage.setItem(PREF.pixel, d.pixel); } catch { /* ignorér */ } try { localStorage.setItem(PREF.fontKind, d.font); } catch { /* ignorér */ } write(PREF.logo, d.logo); write(PREF.stadium, d.stadium); if (d.realism !== initial.realism) write(PREF.realism, d.realism); setMatchSound(d.sound); setBgSet(d.bgset); applyFlash();
+    if (REBORN_KEYS.some((k) => d.reborn[k] !== initial.reborn[k])) g.options.reborn = { ...g.options.reborn, ...d.reborn }; // CM Reborn-tilvalg (kun visning)
     if (d.notif !== initial.notif) await setNotify(d.notif);
     notify();
     if (d.theme !== initial.theme) setTheme(d.theme); // kun udseendet – logikken er altid originalens (docs/ALWAYS_ORIGINAL.md)
@@ -181,7 +185,7 @@ function GameSettings({ onClose }: { onClose: () => void }) {
           <AccountBar />
           <div className="cx-set-top">
             <span>{t('cl.set.version', { v: APP_VERSION })}</span>
-            <button className="cx-greybtn" onClick={() => setD({ ...initial, bg: true, flash: true, goalFlash: 5500, pixel: 'light', font: 'futuristic', logo: true, stadium: true, sound: true, bgset: 'original', realism: !authentic() })}>{t('cl.set.reset')}</button>
+            <button className="cx-greybtn" onClick={() => setD({ ...initial, bg: true, flash: true, goalFlash: 5500, pixel: 'light', font: 'futuristic', logo: true, stadium: true, sound: true, bgset: 'original', realism: !authentic(), reborn: Object.fromEntries(REBORN_KEYS.map((k) => [k, !authentic()])) as Record<RebornKey, boolean> })}>{t('cl.set.reset')}</button>
           </div>
           <div className="cx-set-grid">
             {row(t('opt.language'), <Seg value={d.lang} opts={LANGS.map(([k, , full]) => [k, full] as [Lang, string])} onChange={(v) => up({ lang: v })} />)}
@@ -192,7 +196,6 @@ function GameSettings({ onClose }: { onClose: () => void }) {
             {row(t('cl.set.stadium'), onOff(d.stadium, (v) => up({ stadium: v })))}
             {row(t('cl.set.sound'), onOff(d.sound, (v) => up({ sound: v })))}
             {row(t('cl.set.bgset'), <Seg value={d.bgset} opts={[['original', t('cl.set.bgset.original')], ['screens', t('cl.set.bgset.screens')], ['sunday', t('cl.set.bgset.sunday')]]} onChange={(v) => up({ bgset: v })} />)}
-            {row(t('cl.set.realism'), onOff(d.realism, (v) => up({ realism: v })))}
             {row(t('cl.set.pixel'), <Seg value={d.pixel} opts={[['off', t('cl.set.off')], ['light', t('cl.set.light')], ['strong', t('cl.set.strong')]]} onChange={(v) => up({ pixel: v })} />)}
             {row(t('cl.set.bg'), onOff(d.bg, (v) => up({ bg: v })))}
             {row(t('hub.skins.setting'), <div className="cx-set-seg">
@@ -204,6 +207,12 @@ function GameSettings({ onClose }: { onClose: () => void }) {
             {row(t('cl.set.goalFlash'), <Seg value={d.goalFlash} opts={GOAL_FLASH_MS.map((ms) => [ms, `${ms / 1000} s`.replace('.5', '½')] as [number, string])} onChange={(v) => up({ goalFlash: v })} />)}
             {row(t('opt.autosave'), <Seg value={d.save} opts={(['changes', 'daily', 'weekly', 'monthly', 'off'] as const).map((m) => [m, t(`cl.set.save.${m}`)] as [string, string])} onChange={(v) => up({ save: v })} />)}
             {notifySupported() && row(t('opt.notify'), onOff(d.notif, (v) => up({ notif: v })))}
+          </div>
+          {/* CM Reborns egne tilvalg (findes ikke i originalen; kun visning – spillets logik er altid originalens). Fra som standard i nye spil. */}
+          <div className="cx-set-sec">{t('cl.rb.title')}</div>
+          <div className="cx-set-grid">
+            {row(t('cl.set.realism'), onOff(d.realism, (v) => up({ realism: v })))}
+            {REBORN_KEYS.map((k) => <Fragment key={k}>{row(t(`cl.rb.${k}`), onOff(d.reborn[k], (v) => up({ reborn: { ...d.reborn, [k]: v } })))}</Fragment>)}
           </div>
         </div>
         <div className="modal-foot cx-set-foot">
@@ -322,7 +331,7 @@ export function CompetitionsMenu() {
     ...euro.map((c) => { const n = compName(c.name) ?? c.name; return { key: c.id, label: /^UEFA\b/i.test(n) ? n : `UEFA ${n}`, onClick: () => nav({ name: 'competitions', id: c.id }) }; }),
     sep('s3'), awards,
     // UEFA-koefficienterne findes ikke som skærm i originalen (ingen tekst i exe'en) – kun i det udvidede spil
-    ...(authentic() ? [] : [{ key: 'coef', label: t('cl.cm.coeff'), onClick: () => nav({ name: 'coefficients' }) }]),
+    ...(!rebornOn('menus') ? [] : [{ key: 'coef', label: t('cl.cm.coeff'), onClick: () => nav({ name: 'coefficients' }) }]),
   ] });
   // nationerne: ens egen først, så i ligaernes rækkefølge
   const own = g.clubs[g.userClub]?.nation;

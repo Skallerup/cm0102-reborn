@@ -6,10 +6,12 @@ import { money, t } from '../i18n';
 import { askingPrice } from '../game/transfers';
 import { Panel, PlayerLink } from './components';
 import { useGame } from './core';
-import { authentic } from '../game/rules';
+import { rebornOn } from './reborn';
 
 export function FirstDay() {
-  if (authentic()) return null; // ægte CM 01/02: ikke i originalen
+  return rebornOn('firstDay') ? <FirstDayBody /> : null; // ægte CM 01/02: ikke i originalen (Game Options → CM Reborn)
+}
+function FirstDayBody() {
   const g = useGame()!;
   const ob = g.manager.onboard;
   const needs = squadNeeds(g.userClub);

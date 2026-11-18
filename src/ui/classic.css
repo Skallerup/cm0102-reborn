@@ -408,6 +408,7 @@
 :root[data-skin='retro'] .modal.cx-settings { max-width: 720px; background: linear-gradient(180deg, rgba(20, 70, 24, 0.96), rgba(12, 46, 16, 0.96)); border: 2px solid; border-color: #6cc26a #0c300c #0c300c #6cc26a; }
 .cx-set-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; color: #e8f0e8; font-size: 12.5px; }
 .cx-set-grid { display: grid; grid-template-columns: minmax(150px, 230px) 1fr; gap: 6px 16px; align-items: center; padding: 8px 10px; border: 1px solid rgba(255, 255, 255, 0.25); background: rgba(0, 0, 0, 0.18); }
+.cx-set-sec { margin: 12px 0 4px; color: #ffe600; font-size: 17px; font-weight: 800; text-shadow: 1px 1px 0 #000; }
 .cx-set-grid > span { color: #fff; font-size: 17px; font-weight: 700; text-shadow: 1px 1px 0 #000; }
 .cx-set-seg { display: flex; flex-wrap: wrap; gap: 4px; }
 :root[data-skin='retro'] .cx-set-seg button { min-width: 82px; height: 24px; padding: 0 10px; background: transparent; border: 1px solid transparent; color: #7fe07a; font-size: 13px; font-weight: 700; text-shadow: none; }
