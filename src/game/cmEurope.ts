@@ -31,6 +31,7 @@
 // tabel/omdømmet (databasens sidste placering findes ikke i world-filen).
 import type { Competition, Fixture, GameState, Tie } from './types';
 import { addDays } from './dates';
+import { compHooks } from './hooks';
 import { rng } from './rng';
 import { addNews, gs, indexFixture, unindexFixture } from './state';
 import { asOwner } from './humans';
@@ -479,7 +480,8 @@ function drawStep(g: GameState, c: Competition, key: string, table: string, idx:
     const pots = [0, 1, 2, 3].map((p) => sorted.slice(p * 8, p * 8 + 8));
     const groups = drawGroups(pots, 8, (cl, grp) => grp.some((o) => nationOf(g, o) === nationOf(g, cl)));
     const days = dates(m.year, 'CLG1');
-    groups.forEach((grp, gi) => { createGroup(g, c, G1[gi], gi, grp, days[gi], 1085); for (const x of grp) cmEuroAddPoints(g, x, 1); });
+    // 0x585290 (0x5857f8–0x585810): hvert hold i 1. gruppespil får 1.800.000 (Prize) og et koefficientpoint
+    groups.forEach((grp, gi) => { createGroup(g, c, G1[gi], gi, grp, days[gi], 1085); for (const x of grp) { cmEuroAddPoints(g, x, 1); compHooks.prize?.(x, 1_800_000); } });
     c.stage = 'G';
     return;
   }
@@ -499,7 +501,8 @@ function drawStep(g: GameState, c: Competition, key: string, table: string, idx:
       }
     }
     const days = dates(m.year, 'CLG2');
-    groups.forEach((grp, gi) => { createGroup(g, c, G2[gi], gi, grp, days[gi], 1093); for (const x of grp) cmEuroAddPoints(g, x, 1); });
+    // 0x585ab0 (0x58605a–0x586072): 2. gruppespil 1.200.000 pr. hold
+    groups.forEach((grp, gi) => { createGroup(g, c, G2[gi], gi, grp, days[gi], 1093); for (const x of grp) { cmEuroAddPoints(g, x, 1); compHooks.prize?.(x, 1_200_000); } });
     c.stage = 'G2';
     return;
   }
@@ -533,6 +536,11 @@ export function cmEuroResult(f: Fixture): void {
   if (res.hg > res.ag) cmEuroAddPoints(g, f.home, 2);
   else if (res.ag > res.hg) cmEuroAddPoints(g, f.away, 2);
   else { cmEuroAddPoints(g, f.home, 1); cmEuroAddPoints(g, f.away, 1); }
+  // 0x583b8d–0x583bfe: gruppekampene (fixture +0x42 = gruppen 0–11) i Champions League – sejr 200.000 til vinderen, uafgjort 100.000 til hver
+  if (f.comp === 'CL' && f.stage?.startsWith('G')) {
+    if (res.hg === res.ag) { compHooks.prize?.(f.home, 100_000); compHooks.prize?.(f.away, 100_000); }
+    else compHooks.prize?.(res.hg > res.ag ? f.home : f.away, 200_000);
+  }
 }
 
 /** finalen er spillet: titelforsvarerne til næste sæson */

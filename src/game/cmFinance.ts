@@ -771,6 +771,7 @@ const EURO_FUND: Record<string, number> = { UEFA: 3_000_000 };
 const euroTable = (id: string, stage: string | undefined): string | null =>
   id === 'CL' ? (/^Q\d$/.test(stage ?? '') ? 'CLQ' : stage === 'QF' || stage === 'SF' || stage === 'F' ? 'CLKO' : null) : id in EURO_TABLE_IDS ? id : null;
 const EURO_TABLE_IDS: Record<string, true> = { UEFA: true, ESC: true, UIC: true };
+compHooks.prize = (club, amount) => { const g = gs(), c = g.clubs[club]; if (c && cmFinOn(g)) book(g, c, K.prize, amount); };
 compHooks.cupTieDone = (comp, f, winner, loser) => {
   const g = gs();
   const W = g.clubs[winner];

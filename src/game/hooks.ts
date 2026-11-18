@@ -14,6 +14,8 @@ export const compHooks: {
   playOverdue?: (compIds: string[], before: string | null) => void;
   /** (økonomien, cmFinance.ts) en pokalrunde er afgjort for et par: Cup::process_fixture 0x51a150 → pay_round_prize_money 0x522240 */
   cupTieDone?: (comp: Competition, decider: import('./types').Fixture, winner: number, loser: number) => void;
+  /** (økonomien, cmFinance.ts) en præmie i pund til klubben (Finance 0x5999a0 – Prize): Champions Leagues gruppepenge (cmEurope.ts) */
+  prize?: (club: number, amount: number) => void;
 } = {};
 
 /** (landsholdene, cmIntl.ts) originalens landskampkalender i ægte tilstand – international.ts kalder dem */
