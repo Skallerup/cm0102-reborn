@@ -2,6 +2,7 @@
 
 Flyttet fra CLAUDE.md 17/11-2026 (så CLAUDE.md er kort i hver session). Nyeste først. Tilføj en linje øverst ved hver udgivelse.
 
+- 2026-11-18 – Skudt live (v0.30.0): 2026-11-18 – MODERN_PARITY 7: cmBoardLogic (MANAGER_MANAGER 0x68f130…, viljen 0x844780, menneskets job, loft 0x598800 i køberens £); world-cm.json + staffBx/natOff (1070 KB); PL Brentford: forventning 8 = DB-placering 9 − formuebånd 2 + ny manager 1 (0x6a3770), fyret 25/4 på 18.-19. plads – originalens regler; managerafgange 19 → 11; 2001 uændret 02ec66f5.
 - 2026-11-18 – Skudt live (v0.30.0): 2026-11-18 – MODERN_PARITY 3b: menneskets bud/svar/modbud/Set Transfer Status bag cmMarketOn; budskærmens beløb med køberens ligafaktor (standard 0,86 = 2001 uændret); spillets egne bud på dine spillere fra som i 2001; bestyrelsens loft → punkt 7; 2001 uændret 02ec66f5.
 - 2026-11-18 – Skudt live (v0.30.0): 2026-11-18 – MODERN_PARITY 3: cmMarketOn(g) (2001 eller 2026 ægte med trupplan), trupplan ved spilstart på alle CM-databaser i ægte tilstand, bud/værdi/saldo via ligafaktor; PL 2026: 1.110 → 159 AI-transfers, klubløse 3.135 → 816; menneskets budskærme følger endnu den gamle kontakt; 2001 uændret 02ec66f5.
 - 2026-11-18 – Skudt live (v0.30.0): 2026-11-18 – MODERN_PARITY 11: cmRetire + regen-kø (0x7a87d0/0x7a65d0/0x7abac0) på 2026 ægte (g.cmRet fra 0x7a58f0), youthIntake/freeAgentDrift fra, regen-løn 0x862720 via ligafaktor; CA top 100 171,94 hele sæsonen; 2001 uændret 02ec66f5.
