@@ -1,5 +1,5 @@
 // Version og changelog: lille knap nederst i menuen, der viser hvad der er nyt.
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { dateFmt, getLang, t } from '../i18n';
 import { APP_VERSION, CHANGELOG } from './changelogData';
@@ -11,14 +11,29 @@ export function seenVersion(): string {
   try { return localStorage.getItem(SEEN) ?? ''; } catch { return ''; }
 }
 
+const SEEN_EVENT = 'cm0102:seenVersion';
+/** Ændringsloggen er set: gem versionen og giv besked til alle røde prikker (Game Options-knappen og punktet "Hvad er nyt") */
+export function markChangelogSeen() {
+  try { localStorage.setItem(SEEN, APP_VERSION); } catch { /* ignorer */ }
+  try { window.dispatchEvent(new Event(SEEN_EVENT)); } catch { /* ignorer */ }
+}
+/** Er der en nyere version i ændringsloggen, end spilleren har set? (opdateres, når loggen åbnes) */
+export function useChangelogFresh(): boolean {
+  const [seen, setSeen] = useState(seenVersion);
+  useEffect(() => {
+    const f = () => setSeen(seenVersion());
+    window.addEventListener(SEEN_EVENT, f);
+    return () => window.removeEventListener(SEEN_EVENT, f);
+  }, []);
+  return seen !== APP_VERSION;
+}
+
 export function VersionButton() {
   const [open, setOpen] = useState(false);
-  const [seen, setSeen] = useState(seenVersion);
-  const fresh = seen !== APP_VERSION;
+  const fresh = useChangelogFresh();
   const show = () => {
     setOpen(true);
-    try { localStorage.setItem(SEEN, APP_VERSION); } catch { /* ignorer */ }
-    setSeen(APP_VERSION);
+    markChangelogSeen();
   };
   return (
     <>

@@ -1,15 +1,16 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { askConfirm } from './confirm';
 import { t } from '../i18n';
 import { activePlayers, session } from '../online/client';
-import { Panel } from './components';
+import { Modal } from './components';
 import { gs, hasGame } from '../game/state';
 
 /**
- * Multiplayer-sektionen i Game Options (Alle indstillinger): invitationskode og -link, spillerne med status og værtens kontrolpanel
- * (fjern spillere, tving trækket igennem). Her og kun her ligger fællesspillets punkter – ikke i rullemenuen eller topbjælken.
+ * Fællesspillets egne sidebjælke-punkter (kun i et multiplayer-spil, ejerens ønske 18/11): "Invitér" (kode og link) og "Spillere" (spillerne
+ * med status og værtens kontrolpanel: fjern spillere, tving trækket igennem). Hver åbner sit eget vindue.
  */
-export function MultiplayerPanel() {
+export function MultiplayerPanel({ part, onClose }: { part: 'invite' | 'players'; onClose: () => void }) {
   const s = session();
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -23,9 +24,9 @@ export function MultiplayerPanel() {
   const host = s.isHost && room.players.length > 1;
   const run = async (f: () => Promise<void>) => { setBusy(true); setErr(''); try { await f(); } catch (e) { setErr(String((e as Error).message)); } setBusy(false); };
   return (
-    <Panel title={t('mp.title')}>
+    <Modal title={part === 'invite' ? t('mp.inviteTitle') : t('mp.players')} onClose={onClose}>
       <div className="col" data-testid="mp-section">
-        {!room.draft && <>
+        {part === 'invite' && !room.draft && <>
           <div className="muted">{t('mp.inviteText')}</div>
           <div className="invite-code" data-testid="mp-code">{s.creds.code}</div>
           <input readOnly value={link} onFocus={(e) => e.target.select()} style={{ width: '100%' }} />
@@ -34,8 +35,7 @@ export function MultiplayerPanel() {
             <button className="primary" onClick={async () => { try { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { prompt(t('mp.inviteLink'), link); } }}>{copied ? t('mp.copied') : t('mp.copyLink')}</button>
           </div>
         </>}
-        <h4 className="accent">{t('mp.players')}</h4>
-        <table className="grid" data-testid="mp-players">
+        {part === 'players' && <table className="grid" data-testid="mp-players">
           <tbody>
             {room.players.map((p) => (
               <tr key={p.pid} className={p.pid === s.creds.pid ? 'me' : ''}>
@@ -46,8 +46,8 @@ export function MultiplayerPanel() {
               </tr>
             ))}
           </tbody>
-        </table>
-        {host && <>
+        </table>}
+        {part === 'players' && host && <>
           <h4 className="accent">{t('mp.hostTitle')}</h4>
           <div className="muted">{t('mp.kickHint')}</div>
           <div className="row">
@@ -56,6 +56,21 @@ export function MultiplayerPanel() {
         </>}
         {err && <div className="insight bad">{err}</div>}
       </div>
-    </Panel>
+    </Modal>
+  );
+}
+
+/** Sidebjælkens to fællesspilspunkter: kun når der er et rum, og kun "Invitér" når spillet ikke er en draft */
+export function MultiplayerSideButtons({ cx }: { cx?: boolean }) {
+  const s = session();
+  const [open, setOpen] = useState<'invite' | 'players' | null>(null);
+  if (!s?.room) return null;
+  const cls = cx ? 'cx-sbtn' : '';
+  return (
+    <>
+      {!s.room.draft && <button className={cls} data-testid="mp-invite-btn" onClick={() => setOpen('invite')}>{t('mp.invite')}</button>}
+      <button className={cls} data-testid="mp-players-btn" onClick={() => setOpen('players')}>{t('mp.players')}</button>
+      {open && createPortal(<MultiplayerPanel part={open} onClose={() => setOpen(null)} />, document.body)}
+    </>
   );
 }

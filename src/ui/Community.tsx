@@ -197,7 +197,8 @@ function SuggestionModal({ id, onClose }: { id: number; onClose: () => void }) {
 }
 
 /** Skriv et nyt forslag eller en fejlrapport – med dubletkontrol og evt. skærmbillede */
-export function WriteModal({ kind, onClose, meta }: { kind: 'suggest' | 'bug'; onClose: (id?: number) => void; meta?: string }) {
+export function WriteModal({ kind: kind0, onClose, meta, pick }: { kind: 'suggest' | 'bug'; onClose: (id?: number) => void; meta?: string; /** én formular til både feedback og fejl: type vælges øverst (api-kaldene er de samme) */ pick?: boolean }) {
+  const [kind, setKind] = useState<'suggest' | 'bug'>(kind0);
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [cat, setCat] = useState('gameplay');
@@ -219,8 +220,10 @@ export function WriteModal({ kind, onClose, meta }: { kind: 'suggest' | 'bug'; o
     if ('error' in r) setErr(errText(r.error)); else onClose(r.id);
   };
   return (
-    <Modal title={kind === 'bug' ? `🐞 ${t('cm.reportBug')}` : t('cm.suggest')} onClose={() => onClose()} wide>
+    <Modal title={pick ? t('cm.feedbackBug') : kind === 'bug' ? `🐞 ${t('cm.reportBug')}` : t('cm.suggest')} onClose={() => onClose()} wide>
       <div className="col">
+        {pick && <div className="row" data-testid="fb-type"><span>{t('cm.feedbackType')}</span>
+          <div className="cx-set-seg">{([['suggest', t('cl.go.feedback')], ['bug', t('cm.reportBug')]] as const).map(([k, l]) => <button key={k} className={k === kind ? 'on' : ''} onClick={() => setKind(k)}>{l}</button>)}</div></div>}
         <div className="muted" style={{ fontSize: 12.5 }}>{t(kind === 'bug' ? 'cm.bugHint' : 'cm.writeHint')}</div>
         <label className="prof-field">{t('cm.titleLabel')}<input value={title} maxLength={90} onChange={(e) => setTitle(e.target.value)} placeholder={t(kind === 'bug' ? 'cm.bugTitlePh' : 'cm.titlePh')} /></label>
         {dupes.length > 0 && (
@@ -262,10 +265,10 @@ export function BugReportButton({ screen }: { screen: string; version?: string; 
   if (!communityAvailable()) return null;
   return (
     <>
-      <button className="small bug-btn" onClick={() => setOpen(true)} title={t('cm.reportBug')}>🐞 {t('cm.reportBug')}</button>
+      <button className="small bug-btn" onClick={() => setOpen(true)} title={t('cm.feedbackBug')}>🐞 {t('cm.feedbackBug')}</button>
       {/* tegnes på body: knappen sidder i sidemenuen, hvis knapstil (hvid tekst) ellers smitter af på vinduet */}
-      {open && createPortal(prof ? <WriteModal kind="bug" meta={gameInfoMeta(screen)} onClose={() => setOpen(false)} /> : (
-        <Modal title={t('cm.reportBug')} onClose={() => setOpen(false)}><ProfileGate onDone={() => setOpen(false)} /></Modal>
+      {open && createPortal(prof ? <WriteModal kind="suggest" pick meta={gameInfoMeta(screen)} onClose={() => setOpen(false)} /> : (
+        <Modal title={t('cm.feedbackBug')} onClose={() => setOpen(false)}><ProfileGate onDone={() => setOpen(false)} /></Modal>
       ), document.body)}
     </>
   );

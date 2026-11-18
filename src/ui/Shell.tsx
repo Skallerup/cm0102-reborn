@@ -73,6 +73,7 @@ import { VersionButton } from './Changelog';
 import { prefetchArticles } from './aiArticle';
 import { applyTheme, isRetro, setThemeClub } from './theme';
 import { backgroundUrl, bgPack, clubBgUrl, clubPackUrl, loadClubPacks, compBgUrl, eveningFixture, genericMatchdayUrl, loadScreenBgs, loadStadiumBgs, matchdayBgUrl, miscBgUrl, nationBgUrl, sundayLeague, bgSet, loadOriginalBgs, originalBgUrl, originalBgsReady } from './backgrounds';
+import { MultiplayerSideButtons } from './MultiplayerPanel';
 import { CompetitionsMenu, NationsClubsMenu, FindMenu, GameOptionsMenu, ManagerMenu, bgChanges, modernBackgrounds, stadiumBackgrounds } from './classicOptions';
 import { ClassicFind } from './screens/FindClassic';
 import { ClassicNation } from './screens/NationClassic';
@@ -518,6 +519,8 @@ export function Shell() {
             <CompetitionsMenu />
             <NationsClubsMenu />
             <FindMenu />
+            {/* fællesspil: invitation/del link og spillerstyring som egne punkter (ikke under Game Options) */}
+            {online && <MultiplayerSideButtons cx />}
             <GameOptionsMenu online={!!online} allowed={(k) => allowed(k as ScreenName)} onQuit={quit}
               onSave={() => setSaveOpen(true)} />
             <div className="cx-side-grow" />
@@ -537,6 +540,7 @@ export function Shell() {
           return (
             <>
               {item('inbox')}
+              {online && <MultiplayerSideButtons />}
               {g.humans && g.humans.length > 1 && (
                 <button className={route.name === 'managers' ? 'on' : ''} onClick={() => nav({ name: 'managers' })}>
                   <Icon name="managers" />{t('nav.managers')}

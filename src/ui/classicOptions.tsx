@@ -7,7 +7,7 @@ import { notify } from '../game/state';
 import type { GameState, Lang } from '../game/types';
 import { LANGS, CURRENCIES, compName, getCurrency, getLang, natName, setCurrency, setLang, t, type Currency } from '../i18n';
 import { APP_VERSION } from './changelogData';
-import { ChangelogModal } from './Changelog';
+import { ChangelogModal, markChangelogSeen, useChangelogFresh } from './Changelog';
 import { ProfileGate, WriteModal } from './Community';
 import { GameInfoTable } from './GameInfoPanel';
 import { gameInfoMeta } from './gameInfo';
@@ -20,7 +20,6 @@ import { CxDrop, type DropItem } from './classic';
 import { bgPack, bgSet, setBgPack, setBgSet, type BgSet } from './backgrounds';
 import { askConfirm, askNotice } from './confirm';
 import { LoginModal } from './Login';
-import { session } from '../online/client';
 import { getAccount } from '../online/account';
 import { saveGame } from '../game/save';
 import { useGame, useNav } from './core';
@@ -95,12 +94,12 @@ applyFlash();
 export function GameOptionsMenu({ onSave, onQuit, online, allowed }: { onSave: () => void; onQuit: () => void; online: boolean; allowed: (k: string) => boolean }) {
   const { nav, route } = useNav();
   const [settings, setSettings] = useState(false);
-  const [show, setShow] = useState<'changelog' | 'bug' | 'suggest' | 'info' | 'support' | null>(null);
+  const [show, setShow] = useState<'changelog' | 'feedback' | 'info' | 'support' | null>(null);
+  const fresh = useChangelogFresh();
   const go = (k: string) => () => nav({ name: k as never });
   const [, setInst] = useState(0);
   useEffect(() => onInstallChange(() => setInst((x) => x + 1)), []);
   const [login, setLogin] = useState(false);
-  const os = online ? session() : null;
   const standalone = (() => { try { return window.matchMedia('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true; } catch { return false; } })();
   const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   const cloudSave = async () => {
@@ -122,28 +121,26 @@ export function GameOptionsMenu({ onSave, onQuit, online, allowed }: { onSave: (
   add('community', t('cl.go.credits'));
   if (rebornOn('menus')) add('help', t('nav.help'));
   // som i det moderne tema: hvad er nyt, fejlrapport og feedback (sendes til fællesskabets forslag)
-  items.push({ key: 'sep0', sep: true }, { key: 'news', label: t('cl.go.whatsNew', { v: APP_VERSION }), onClick: () => { try { localStorage.setItem('cm0102.seenVersion', APP_VERSION); } catch { /* ignorer */ } setShow('changelog'); } });
-  if (communityAvailable()) items.push({ key: 'bug', label: t('cm.reportBug'), onClick: () => setShow('bug') }, { key: 'idea', label: t('cl.go.feedback'), onClick: () => setShow('suggest') });
+  items.push({ key: 'sep0', sep: true }, { key: 'news', label: <>{t('cl.go.whatsNew', { v: APP_VERSION })}{fresh && <i className="cx-dot" data-testid="cx-news-dot" />}</>, onClick: () => { markChangelogSeen(); setShow('changelog'); } });
+  if (communityAvailable()) items.push({ key: 'feedback', label: t('cm.feedbackBug'), onClick: () => setShow('feedback') }); // feedback og fejl i én formular
   // CM Reborns egne punkter (ikke i originalen): installér som app, gem i skyen (ikke i fællesspil – det gemmes allerede online)
   const canInst = !standalone && (canInstall() || ios);
   items.push({ key: 'sepR', sep: true });
-  // fællesspil: ét punkt til Multiplayer-sektionen i Alle indstillinger (invitation, spillere, værtens kontrolpanel)
-  if (os) items.push({ key: 'mp', label: t('mp.title'), onClick: () => nav({ name: 'options' }) });
   if (canInst) items.push({ key: 'install', label: t('cl.go.install'), onClick: () => { if (canInstall()) void installApp(); else void askNotice(t('cl.go.installIos'), { head: t('cl.go.install') }); } });
   items.push({ key: 'support', label: t('sb.menu'), onClick: () => setShow('support') });
   if (!online) items.push({ key: 'cloud', label: t('cl.go.cloud'), onClick: () => { if (getAccount()) void cloudSave(); else setLogin(true); } });
   items.push({ key: 'sep', sep: true }, { key: 'restart', label: t('cl.go.restart'), onClick: onQuit }, { key: 'quit', label: t('cl.go.exit'), onClick: onQuit });
   return (
     <>
-      <CxDrop className="cx-gameopt" fixed caret={false} label={t('cl.options')} items={items} btn={{ className: 'cx-sbtn cx-gopt' }} />
+      <CxDrop className="cx-gameopt" fixed caret={false} label={<>{t('cl.options')}{fresh && <i className="cx-dot" data-testid="cx-opt-dot" />}</>} items={items} btn={{ className: 'cx-sbtn cx-gopt' }} />
       {settings && <GameSettings onClose={() => setSettings(false)} />}
       {login && createPortal(<LoginModal onClose={() => setLogin(false)} onDone={() => { setLogin(false); void cloudSave(); }} />, document.body)}
       {show === 'changelog' && createPortal(<ChangelogModal onClose={() => setShow(null)} />, document.body)}
       {show === 'support' && createPortal(<Modal title={t('sb.menu')} onClose={() => setShow(null)}><SupportBox full /></Modal>, document.body)}
       {show === 'info' && createPortal(<Modal title={t('info.title')} onClose={() => setShow(null)}><GameInfoTable route={route.name} /></Modal>, document.body)}
-      {(show === 'bug' || show === 'suggest') && createPortal(getProfile()
-        ? <WriteModal kind={show} meta={gameInfoMeta(route.name)} onClose={() => setShow(null)} />
-        : <Modal title={t(show === 'bug' ? 'cm.reportBug' : 'cl.go.feedback')} onClose={() => setShow(null)}><ProfileGate onDone={() => setShow(null)} /></Modal>, document.body)}
+      {show === 'feedback' && createPortal(getProfile()
+        ? <WriteModal kind="suggest" pick meta={gameInfoMeta(route.name)} onClose={() => setShow(null)} />
+        : <Modal title={t('cm.feedbackBug')} onClose={() => setShow(null)}><ProfileGate onDone={() => setShow(null)} /></Modal>, document.body)}
     </>
   );
 }

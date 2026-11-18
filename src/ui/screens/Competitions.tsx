@@ -30,7 +30,10 @@ export function Competitions({ id }: { id?: string }) {
   // åbnes skærmen med en ny turnering (link/menu), skifter den dertil – men valget i listen gælder bagefter
   const lastId = useRef(id);
   useEffect(() => { if (id && id !== lastId.current) { lastId.current = id; setCid(id); } }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
-  const comp = g.comps[cid] ?? (id ? g.comps[id] : undefined);
+  // ligaen kan mangle (klub uden for spillets aktive nationer, fx en deltager i fællesspil): vis så den første turnering i klubbens land / Europa i stedet for en tom skærm
+  const own = g.clubs[g.userClub];
+  const fallback = () => comps.filter((c) => !g.leagues[c.id]?.hidden).sort((a, b) => (a.nation === own?.nation ? 0 : 1) - (b.nation === own?.nation ? 0 : 1) || order(a) - order(b))[0];
+  const comp = g.comps[cid] ?? (id ? g.comps[id] : undefined) ?? fallback();
   const [cupTab] = useRouteState(`cup:${comp?.id}`, 'rounds');
   const [tblView, setTblView] = useRouteState('tblView', 'overall');
   // klassisk History (liga og pokal) er en hel skærm for sig – "FA Premier League History"

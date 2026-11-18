@@ -34,6 +34,10 @@
       "reason": "Fællesspil/chat – CM Reborn"
     },
     {
+      "prefix": "cm.feedback",
+      "reason": "Game Options: samlet feedback- og fejlformular – CM Reborn"
+    },
+    {
       "prefix": "mp.",
       "reason": "Multiplayer/Network Play – CM Reborn"
     },

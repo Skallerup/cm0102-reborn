@@ -5,7 +5,6 @@ import { notify } from '../../game/state';
 import { act } from '../../game/actions';
 import { legacyExtended } from '../../game/rules';
 import { session } from '../../online/client';
-import { MultiplayerPanel } from '../MultiplayerPanel';
 import type { Lang } from '../../game/types';
 import { LANGS, CURRENCIES, getCurrency, getLang, natName, setCurrency, setLang, t, type Currency } from '../../i18n';
 import { Panel } from '../components';
@@ -34,7 +33,6 @@ export function Options() {
     <div>
       <Head title={t('nav.options')} />
       <div className="cols">
-        {session()?.room && <MultiplayerPanel />}
         <Panel title={t('opt.general')}>
           <div className="col">
             <label className="row">{t('opt.language')}

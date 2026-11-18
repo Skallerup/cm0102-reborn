@@ -660,6 +660,18 @@ async function run(look) {
     if (on) throw new Error(`CM Reborn-valgene skal være fra som standard (${on} til)`);
     await page.locator('.cx-settings .modal-foot button', { hasText: 'Cancel' }).click();
   });
+  // Game Options: rød prik ved ny ændringslog (forsvinder, når loggen er åbnet) og én samlet feedback/fejl-knap med typevalg
+  if (look === 'klassisk') await step('Game Options: ændringslog-prik og samlet feedback', async () => {
+    await go({ name: 'inbox' });
+    await page.evaluate(() => { try { localStorage.removeItem('cm0102.seenVersion'); window.dispatchEvent(new Event('cm0102:seenVersion')); } catch { /* ignorer */ } });
+    if (!(await page.locator('.cx-side [data-testid="cx-opt-dot"]').count())) throw new Error('Game Options mangler den røde prik ved ny ændringslog');
+    await page.locator('.cx-side .cx-drop-btn', { hasText: 'Game Options' }).first().click();
+    if (!(await page.locator('.cx-drop-pop [data-testid="cx-news-dot"]').count())) throw new Error('Hvad er nyt mangler den røde prik');
+    if (await page.locator('.cx-drop-pop button', { hasText: /^(Report a bug|Send feedback)$/ }).count()) throw new Error('Feedback og fejl skal være slået sammen til én knap');
+    await page.locator('.cx-drop-pop button', { hasText: /What.s new/ }).first().click();
+    await page.locator('.modal-head .x').first().click();
+    if (await page.locator('.cx-side [data-testid="cx-opt-dot"]').count()) throw new Error('Prikken skal forsvinde, når ændringsloggen er åbnet');
+  });
   // Game Options → Save Game (CM 01/02 "Enter File Name"): navngivet gemt spil
   if (look === 'klassisk') await step('Save Game med filnavn', async () => {
     await go({ name: 'inbox' });

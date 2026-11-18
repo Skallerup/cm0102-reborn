@@ -2009,3 +2009,13 @@ button.cx-bid-swap.removing { cursor: pointer; color: #fff21f; }
 /* tilmelding til fællesspil: klubber, der allerede er taget (Select Team) */
 .cxs-it.taken { opacity: 0.45; cursor: default; pointer-events: none; }
 .cxs-it .cxs-taken { margin-left: 10px; padding: 1px 6px; font-size: 12px; background: #1a1480; border: 1px solid #5a58c0; }
+
+/* rød notifikationsprik (ny ændringslog): på Game Options-knappen og ved punktet "Hvad er nyt" */
+.cx-dot { display: inline-block; width: 9px; height: 9px; margin-left: 7px; border-radius: 50%; background: #ff2a2a; box-shadow: 0 0 0 1px #000, 0 0 5px #ff2a2a; vertical-align: middle; }
+/* Game Settings: større vindue og to kolonner af indstillinger, så alt kan ses uden meget rulning (mobil: som før, én kolonne) */
+:root[data-skin='retro'] .modal.cx-settings:not(.cx-filters) { width: min(1180px, 96vw); max-width: 1180px; }
+.cx-settings:not(.cx-filters) .modal-body { max-height: min(86vh, 900px); }
+@media (min-width: 1000px) {
+  .cx-settings:not(.cx-filters) .cx-set-grid { grid-template-columns: minmax(120px, 190px) 1fr minmax(120px, 190px) 1fr; gap: 6px 14px; }
+  .cx-settings:not(.cx-filters) .cx-set-grid > span { font-size: 15.5px; }
+}
