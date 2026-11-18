@@ -45,7 +45,7 @@ import { squadIds } from './state';
 import { boardEnv, staffJobInterest } from './cmBoardGame';
 import { leagueClash } from './cmBoardInterest';
 import type { BoardEnv } from './cmBoard';
-import { registerStaffOfferCheck } from './cmStaff';
+import { registerStaffContractAnswer, registerStaffOfferCheck } from './cmStaff';
 
 /** € → £: 0,86 for den originale database, 2026/27's faktor pr. liga (cmMoney.ts) – beløbene tilhører den købende/tilbydende klub */
 import { cmGbp } from './cmMoney';
@@ -680,3 +680,54 @@ export function cmStaffOfferCheck(g: GameState, s: import('./types').Staff, club
   return { interested: ok, key, wage: Math.round(wage / cmGbp(g, clubId)), will: f, allow: Math.round(allow / cmGbp(g, clubId)) };
 }
 registerStaffOfferCheck(cmStaffOfferCheck);
+
+/** Svaret på menneskets kontrakttilbud til en ikke-spiller: CONTRACT_MANAGER::resolve_contract_offers 0x4ce4e0 for tilbuddet (Offer →
+ *  add_contract_offer 0x4cc490; "no interest"-teksten i 0x4e06e0 er kun tekst – rækkerne og Offer er der altid, grenene mødes i 0x4e11b5).
+ *  Tilbuddets trupstatus er skærmens 0xff (nibblen 0xf i +0x4f), jobbet +0x61 = jobbet (6/8/9/10, ≠ 0xb):
+ *  - point = 0x866830(tilbud)/0x866830(krav 0x85fc50(staff, klub, −1, 0xf, job)) − (+0x5b − +0x57 + +0x59 − 9)/300; under 0,6 → 0.
+ *  - ikke-spillerposten +0x69 ≠ 0 og job ≠ 0xb: x = 0x844780(staff, klub, 0, job, 0) (et spillende job 0x53b620 – 0xb/0xc/0xd/0xf – tager
+ *    gennemsnittet med 0x846920; ikke stabens jobs). Han er ikke klubbens egen (isOwn = 0).
+ *  - 0x4ceae2: point > 0,5, arbejdstilladelse 0x8c7560 og kontraktens udløb +0x2d under 90 dage væk → 0 (kan ikke ske her: udløbet er mindst
+ *    30/6 næste år).
+ *  - point ≥ 0,9: f = max(x, 3,15); 0,8–0,9 og x > 3,15: x; 0,7–0,8 og x > 3,5: x; ellers intet. Ja, når f·point > 2,75 (`best`'s start).
+ *  - 0x4cec5a: +0x69 ≠ 0 og kandidat til et managerjob (0x69fc60 på MANAGER_MANAGER – cmBoard vac.cand) → intet tilbud vælges.
+ *  Kun menneskets tilbud vurderes (computerklubbernes samtidige tilbud til samme person indgår ikke – som cmContractAnswer). Null uden for cmStaffOn. */
+export function cmStaffContractAnswer(g: GameState, s: import('./types').Staff, clubId: number, job: number, o: { wage: number; signOn: number; expires: string }):
+  { score: number; x: number; t: number; accept: boolean } | null {
+  if (!cmStaffOn(g) || g.draft || !g.clubs[clubId]) return null;
+  const X = staffMem(g, s, clubId, job, 0xf);
+  if (!X) return null;
+  const { M, st, club } = X, c = M.c, m = c.m;
+  const [d] = isoDay(g.date);
+  M.setRand(cmRand(g.seed ?? 0, s.id, clubId, d, 0x4ce4e0));
+  constructContract_85e410(m, LOCAL);
+  setToDesiredContract_85fc50(c, LOCAL, st, club, -1, 0xf, job, 0, 0);
+  // tilbuddet = kravet med menneskets løn, signing-on og udløb (skærmen starter fra kravet; stabens skærm har ingen bonusser/klausuler)
+  for (let i = 0; i < 0x50; i++) m.w8(OUT + i, m.u8(LOCAL + i));
+  const gbp = (eur: number) => Math.round(eur * cmGbp(g, clubId));
+  m.w32(OUT + 0xc, gbp(o.wage));
+  m.w32(OUT + 8, gbp(o.signOn));
+  const [ed, ey] = isoDay(o.expires); m.w16(OUT + 0x2d, ed); m.w16(OUT + 0x2f, ey); m.w32(OUT + 0x31, leap(ey));
+  m.w8(OUT + 0x35, m.u8(OUT + 0x35) & 0x7f);
+  const s8 = (v: number) => (v << 24) >> 24;
+  const loyAdj = (s8(m.u8(st + 0x5b)) - s8(m.u8(st + 0x57)) + s8(m.u8(st + 0x59)) - 9) * 0.0033333333333333335;
+  const a = calcContractValue_866830(c, LOCAL, st, LOCAL) | 0;
+  if (!(a > 0)) return { score: 0, x: 0, t: 0, accept: false };
+  const bv = calcContractValue_866830(c, OUT, st, LOCAL) | 0;
+  let score = bv / a - loyAdj;
+  const np = m.u32(st + 0x69) !== 0;
+  let x: number;
+  if (np) {
+    x = Math.fround(c.call(0x844780, st, club, 0, job, 0));
+    if (job === 0xb || job === 0xc || job === 0xd || job === 0xf) x = Math.fround((slCall(c, 0x846920, slmOf(m), st, club, 0, 0, 0xf, 0) + x) * 0.5);
+  } else x = Math.fround(slCall(c, 0x846920, slmOf(m), st, club, 0, 0, 0xf, 0));
+  if (score < 0.6) score = 0;
+  let f = 0;
+  if (score >= 0.9) f = x > 3.15 ? x : 3.15;
+  else if (score > 0.8 && x > 3.15) f = x;
+  else if (score > 0.7 && x > 3.5) f = x;
+  const t = f * score;
+  const cand = np && ((g.cmBoard as { vac?: { cand?: number }[] } | undefined)?.vac ?? []).some((v) => v.cand === s.id);
+  return { score, x, t, accept: t > 2.75 && !cand };
+}
+registerStaffContractAnswer(cmStaffContractAnswer);

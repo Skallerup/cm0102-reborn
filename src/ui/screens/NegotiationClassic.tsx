@@ -5,7 +5,8 @@ import { act } from '../../game/actions';
 import { gs } from '../../game/state';
 import { preferredYears, renewalDemand, signOnDemand, wageDemand } from '../../game/transfers';
 import type { ContractClauses, StaffRole, TransferOffer } from '../../game/types';
-import { cmStaffCompensation, cmStaffDemand, cmStaffInterestedIn } from '../../game/cmStaff';
+import { cmRolesFor, cmStaffCompensation, cmStaffDemand, cmStaffInterestedIn, JOB_CODE } from '../../game/cmStaff';
+import { cmStaffOfferCheck } from '../../game/cmContractGame';
 import { cmStaffOn } from '../../game/cmPlayerData';
 import { cmBoardStaffWageAllow, cmBoardWageAllow } from '../../game/cmBudget';
 import { poachFee } from '../../game/staff';
@@ -51,25 +52,30 @@ export function ClassicStaffNegotiation({ staffId, role, onClose }: { staffId: n
   const g = gs();
   const s = g.staff[staffId];
   const club = g.clubs[g.userClub];
-  const demand = r50(cmStaffDemand(s, role));
-  const [wage, setWage] = useState(demand);
+  // originalens krav 0x85fc50 (0x4deac0, cmStaffOfferCheck) i ægte tilstand; ellers spillets eget
+  const [chk] = useState(() => (cmRolesFor(s, g.date).includes(role) ? cmStaffOfferCheck(g, s, g.userClub, JOB_CODE[role]) : null));
+  const demand = r50(chk?.wage ?? cmStaffDemand(s, role));
   const [years, setYears] = useState(2);
   const [signOn, setSignOn] = useState(0);
   const [pub, setPub] = useState(false);
   const [ask, setAsk] = useState(false);
   const name = `${s.first} ${s.last}`.trim();
-  // 0x4e06e0: uden interesse kun teksten og loftet – ingen kontraktrækker og intet tilbud (samme gren 0x4e0d97 som for spillerne)
-  const [interested] = useState(() => cmStaffInterestedIn(g, s, role));
+  // 0x4e06e0: uden interesse står "no interest"-teksten i stedet for kravet; loftet, rækkerne og Offer er der altid (grenene mødes i 0x4e11b5) –
+  // svaret afgøres af 0x4ce4e0 (cmStaffContractAnswer), så en god løn kan vende det
+  const interested = chk ? chk.interested : cmStaffInterestedIn(g, s, role);
   const bill = Object.values(g.players).filter((x) => x.club === club.id).reduce((a, x) => a + (x.contract?.wage ?? 0), 0);
   // CM 01/02 (ægte tilstand, original DB): bestyrelsens loft for jobbet 0x597db0 (cmBudget.ts); ellers lønbudgettet minus truppens lønsum
   const [cmAllow] = useState(() => cmBoardStaffWageAllow(g, s, role, club.id));
   const allow = cmAllow ?? Math.max(0, club.wageBudget - bill);
+  // 0x4e1329: lønnen klemmes til loftet – tilbuddet starter på min(kravet, loftet), og listen går ikke over loftet
+  const cap = (v: number) => (cmAllow !== null && v > cmAllow ? Math.floor(cmAllow / 50) * 50 : v);
+  const [wage, setWage] = useState(() => cap(demand));
   const end = (y: number) => `${t('cl.neg.jun')} ${g.season + y}`;
   const from = s.club ? g.clubs[s.club] : undefined;
   // 0x4e4b55: kompensationen 0x8d0780 – vises kun, når den er over 0
   const comp = from ? (cmStaffOn(g) ? cmStaffCompensation(g, s) : poachFee(s)) : 0;
   const col = titleColors(s.club || undefined);
-  const wageOpts = [...new Set([0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 1, 1.05, 1.1, 1.2, 1.3, 1.5, 1.75, 2].map((f) => r50(demand * f)))];
+  const wageOpts = [...new Set([0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 1, 1.05, 1.1, 1.2, 1.3, 1.5, 1.75, 2].map((f) => cap(r50(demand * f))))];
   const send = () => { act({ t: 'cmStaffOffer', id: s.id, role, wage, years, signOn }); onClose(true); };
   return (
     <div className="cx-dlg cx-staff-neg">
@@ -82,7 +88,7 @@ export function ClassicStaffNegotiation({ staffId, role, onClose }: { staffId: n
         <div className="cx-dlg-body">
           <p className="cx-ts-intro">{interested ? t('cl.neg.wants', { player: name, wage: money(demand), until: end(2), fee: '' }) : t('cm.neg.noInterest', { name })}</p>
           <p className="cx-ts-intro">{t('cl.neg.allow', { allow: money(allow) })}</p>
-          {interested && <>
+          {<>
           <Row label={t('cl.neg.wage')} value={wage} show={money} options={wageOpts.includes(wage) ? wageOpts : [...wageOpts, wage].sort((a, b) => a - b)} onSet={setWage} reset={demand} />
           <Row label={t('cl.neg.signOn')} value={signOn} show={money} options={[0, 5000, 10000, 25000, 50000, 100000, 250000]} onSet={setSignOn} reset={0} />
           <Row label={t('cl.neg.expires')} value={years} show={end} options={[1, 2, 3, 4, 5]} onSet={setYears} reset={2} />
@@ -94,7 +100,7 @@ export function ClassicStaffNegotiation({ staffId, role, onClose }: { staffId: n
       )}
       <div className="cx-ts-buttons cx-dlg-foot">
         {ask ? <><button onClick={() => setAsk(false)}>{t('common.no')}</button><button className="primary" onClick={send}>{t('common.yes')}</button></>
-          : <><button onClick={() => onClose(false)}>{t('common.cancel')}</button><button className="primary" disabled={!interested} onClick={() => setAsk(true)}>{t('cl.neg.offer')}</button></>}
+          : <><button onClick={() => onClose(false)}>{t('common.cancel')}</button><button className="primary" onClick={() => setAsk(true)}>{t('cl.neg.offer')}</button></>}
       </div>
     </div>
   );
@@ -240,15 +246,12 @@ function NegotiationBody({ offer, renewPid, onClose }: { offer?: TransferOffer; 
           </div>
           <div className="cx-dlg-body">
             {msg && <p className="cx-ts-intro cx-neg-msg">{msg}</p>}
-            {tab === 'basic' && noInt && (
+            {/* 0x4e06e0: "no interest" er kun teksten i stedet for kravet – grenene mødes i 0x4e11b5, så loftet, rækkerne og Offer er der altid;
+                svaret afgøres af 0x4ce4e0 (cmContractAnswer) */}
+            {tab === 'basic' && (
               <>
-                <p className="cx-ts-intro">{t(noInt.key, { player: name, reasons: noInt.reasons })}</p>
-                <p className="cx-ts-intro">{t('cl.neg.allow', { allow: money(allow) })}</p>
-              </>
-            )}
-            {tab === 'basic' && !noInt && (
-              <>
-                <p className="cx-ts-intro">{t(signReq ? 'cl.neg.wantsSign' : 'cl.neg.wants', { player: name, wage: money(demand), until: end(wantYears), fee: money(signReq) })}</p>
+                <p className="cx-ts-intro">{noInt ? t(noInt.key, { player: name, reasons: noInt.reasons })
+                  : t(signReq ? 'cl.neg.wantsSign' : 'cl.neg.wants', { player: name, wage: money(demand), until: end(wantYears), fee: money(signReq) })}</p>
                 <p className="cx-ts-intro">{t('cl.neg.allow', { allow: money(allow) })}</p>
                 <Row label={t('cl.neg.wage')} value={wage} show={money} options={wageOpts.includes(wage) ? wageOpts : [...wageOpts, wage].sort((a, b) => a - b)} onSet={setWage} reset={demand} />
                 <Row label={t('cl.neg.signOn')} value={cl.signOn ?? 0} show={money} options={[...new Set([0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 2].map((f) => Math.round(Math.max(signReq, demand * 10) * f / 5000) * 5000))]} onSet={(v) => set('signOn', v)} reset={signReq} />
@@ -285,7 +288,7 @@ function NegotiationBody({ offer, renewPid, onClose }: { offer?: TransferOffer; 
       )}
       <div className="cx-ts-buttons cx-dlg-foot">
         {ask ? <><button onClick={() => setAsk(false)}>{t('common.no')}</button><button className="primary" onClick={submit}>{t('common.yes')}</button></>
-          : <><button onClick={onClose}>{t('common.cancel')}</button><button className="primary" disabled={!!noInt || (!!offer?.cmTalks && wage > allow)} onClick={() => setAsk(true)}>{t('cl.neg.offer')}</button></>}
+          : <><button onClick={onClose}>{t('common.cancel')}</button><button className="primary" disabled={noInt?.key === 'cm.neg.noRenewNow' || (!!offer?.cmTalks && wage > allow)} onClick={() => setAsk(true)}>{t('cl.neg.offer')}</button></>}
       </div>
     </div>
   );

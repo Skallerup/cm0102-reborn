@@ -243,6 +243,9 @@ export function cmStaffInterestedIn(g: GameState, s: Staff, role: StaffRole): bo
 /** cmContractGame.ts registrerer cmStaffOfferCheck (en direkte import gav en importcyklus scouting → cmStaff → cmContractGame → transfers) */
 let offerCheck: ((g: GameState, s: Staff, clubId: number, job: number) => { interested: boolean } | null) | null = null;
 export function registerStaffOfferCheck(f: typeof offerCheck): void { offerCheck = f; }
+/** cmContractGame.ts registrerer cmStaffContractAnswer (svaret 0x4ce4e0 på menneskets tilbud) */
+let contractAnswer: ((g: GameState, s: Staff, clubId: number, job: number, o: { wage: number; signOn: number; expires: string }) => { accept: boolean } | null) | null = null;
+export function registerStaffContractAnswer(f: typeof contractAnswer): void { contractAnswer = f; }
 
 /** lønkravet *estimeret* (som spillets staffDemand: lønnen, +10 % for at forlade en klub). En person uden løn i spillet (databasens ekstra
  *  personer og ledige, cmExtra – løn 0) kræver jobbets løn efter spillets stabsformel (data/generate.ts makeStaff: grundløn for jobbet ·
@@ -289,12 +292,15 @@ export function cmStaffOffersDaily(g: GameState): void {
     if (!s || !club || s.club === o.club) continue;
     const name = `${s.first} ${s.last}`.trim();
     const from = s.club ? g.clubs[s.club] : undefined;
-    // *estimeret*: interesseret i jobbet, lønnen mindst 95 % af kravet, plads i staben og penge til kompensationen
-    // kompensationen 0x8d0780 (som originalens "X will be due £Y in compensation." 0x4e4bf2)
+    // svaret = resolve_contract_offers 0x4ce4e0 (cmContractGame.ts cmStaffContractAnswer) – også fra en, der "has no interest in negotiating
+    // terms" (0x4e06e0 er kun tekst): et tilbud over hans krav kan vende det. Penge til kompensationen 0x8d0780 (som originalens "X will be
+    // due £Y in compensation." 0x4e4bf2)
     const fee = s.club ? cmStaffCompensation(g, s) : 0;
     const roomOk = staffCountFor(g, o.club, o.role) < STAFF_LIMITS[o.role];
-    const willing = cmStaffInterestedIn(g, s, o.role) && o.wage >= cmStaffDemand(s, o.role) * 0.95 && club.balance >= fee
-      && hash01(g.seed, o.staff, o.club, g.date.length) < 0.98;
+    const ans = cmRolesFor(s, g.date).includes(o.role)
+      ? contractAnswer?.(g, s, o.club, JOB_CODE[o.role], { wage: o.wage, signOn: o.signOn, expires: `${Number(g.date.slice(0, 4)) + o.years}-06-30` }) ?? null
+      : null;
+    const willing = !!ans?.accept && club.balance >= fee;
     // CM 01/02 (0x…, strengen "… do not currently have enough spaces at their club for this transfer to go through. Delay the transfer for a
     // week ?"): han vil gerne, men staben er fuld – mennesket svarer med Back · Cancel · Delay
     // Først "X accepts {Club} offer" (strengen "<Staff Name> accepts {Club} offer"), så Delay-spørgsmålet – før kom Delay alene, og det lignede et
