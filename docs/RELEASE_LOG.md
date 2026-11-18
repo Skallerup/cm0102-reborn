@@ -2,6 +2,7 @@
 
 Flyttet fra CLAUDE.md 17/11-2026 (så CLAUDE.md er kort i hver session). Nyeste først. Tilføj en linje øverst ved hver udgivelse.
 
+- 2026-11-18 – Skudt live (v0.30.0): 2026-11-18 – Multiplayer klassisk: Match.tsx sprang kun optakten over ved !g.humans (32152dc8) → nu også i fællesspil (undtagen h2h); fxComp/fxTitle for 'FRIENDLY' (ingen post i g.comps → undefined). Multiplayer kører ægte tilstand; rygtet 'X fører jagten på Y' er cmRumours (0x754a30) – originalt.
 - 2026-11-18 – Skudt live (v0.30.0): 2026-11-18 – MODERN_PARITY 8: cmMediaOn (g.cmMedia): forhold 0x5d6d10, rygter 0x754a30, nyhedsomfang 0x8dbef0/0x8d1130 (beløb via ligafaktor), daglig kontraktdel 0x5ce2d0 + holdmoral 0x5ce0b0 + efter-kamp-vejen på 2026; nyhedsfilteret også 2026. PL Brentford: nyheder 428 → 232, rygter 0 → 14, moral 10,1 → 8,8 i juni (2001: 10,4); 2001 uændret 02ec66f5.
 - 2026-11-18 – Skudt live (v0.30.0): 2026-11-18 – MODERN_PARITY 7: cmBoardLogic (MANAGER_MANAGER 0x68f130…, viljen 0x844780, menneskets job, loft 0x598800 i køberens £); world-cm.json + staffBx/natOff (1070 KB); PL Brentford: forventning 8 = DB-placering 9 − formuebånd 2 + ny manager 1 (0x6a3770), fyret 25/4 på 18.-19. plads – originalens regler; managerafgange 19 → 11; 2001 uændret 02ec66f5.
 - 2026-11-18 – Skudt live (v0.30.0): 2026-11-18 – MODERN_PARITY 3b: menneskets bud/svar/modbud/Set Transfer Status bag cmMarketOn; budskærmens beløb med køberens ligafaktor (standard 0,86 = 2001 uændret); spillets egne bud på dine spillere fra som i 2001; bestyrelsens loft → punkt 7; 2001 uændret 02ec66f5.
