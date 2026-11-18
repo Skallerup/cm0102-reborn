@@ -2089,7 +2089,7 @@ export const sv: Record<string, string> = {
   "cl.fl.range": "Intervall",
   "cl.fl.status": "Status",
   "cl.fl.listed": "Till salu",
-  "cl.fl.onLoan": "Utlånad",
+  "cl.fl.forLoan": "Till utlåning", "cl.fl.onLoan": "Utlånad",
   "cl.fl.contract": "Kontrakt",
   "cl.fl.expired": "Utgånget",
   "cl.fl.expiring": "Går ut",
