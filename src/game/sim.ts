@@ -203,6 +203,7 @@ export function prepareMatch(f: Fixture, userAuto = false): { home: EngineTeam; 
   if (cmFitOn(gs())) { setMatchSquad(f.home, [...ht.lineup, ...ht.bench].filter(Boolean)); setMatchSquad(f.away, [...at.lineup, ...at.bench].filter(Boolean)); }
   // MATCH_PLAYER::setup (0x6eb045): træningen 0x8b1750 for begge kamptrupper (cmTraining.ts; kun den originale database i ægte tilstand)
   cmTrainSquads(gs(), [...ht.lineup, ...ht.bench, ...at.lineup, ...at.bench].filter(Boolean) as number[], f.id);
+  labHooks.preMatch?.(f);
   return {
     home: engineTeam(f.home, ht, euroOnly(f.home, f.comp)),
     away: engineTeam(f.away, at, euroOnly(f.away, f.comp)),
@@ -371,7 +372,7 @@ setResMatchPlayer(playResMatch);
 // ---------- resultatbehandling ----------
 
 /** Målekrog til scripts (original-lab.ts): kaldes med hver kamps rapport. Påvirker intet i spillet. */
-export const labHooks: { report?: (f: Fixture, rep: MatchReport) => void } = {};
+export const labHooks: { report?: (f: Fixture, rep: MatchReport) => void; preMatch?: (f: Fixture) => void } = {};
 
 /** original DB i ægte tilstand: tilskuerne sub_85cba0 (crowd.ts) og kampens økonomi FinanceTable::process_match_income 0x59a5d0 (cmFinance.ts) */
 function cmGate(f: Fixture, rep?: MatchReport): { att: number; income: number } {
@@ -400,6 +401,8 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
   const isLeague = comp?.type === 'league';
   const played = new Set<number>();
   const cm = cmActive(g) && !g.draft;
+  // konditionsmodulet (cmFitnessGame.ts): 2001-verdenen og 2026/27-spil i ægte tilstand (cmBodyOn) – karantænerne/bonusserne ovenfor følger cmActive
+  const fit = cmFitOn(g);
   for (const line of rep.players) {
     const p = g.players[line.id];
     if (!p) continue;
@@ -419,7 +422,7 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
     if (p.cmApps && comp) cmAppsAfterMatch(p, 'lg');
     // draft-liga: ingen træthed eller moral, der hænger ved – mange kampe kan spilles samme dag
     // (konditionsmodulet sætter konditionen og skaderne efter kampen i ægte tilstand med den originale database – cmFitAfterMatch nedenfor)
-    if (!cm) p.condition = g.draft ? 100 : Math.max(20, Math.min(100, line.cond));
+    if (!fit) p.condition = g.draft ? 100 : Math.max(20, Math.min(100, line.cond));
     const bannedBefore = p.banned;
     // den originale database i ægte tilstand: karantænerne efter originalens organer (cmDiscipline.ts, efter løkken)
     if (cm) { if (line.yellow) s.yellows++; if (line.red) { s.reds++; p.lastRed = g.date; } }
@@ -447,7 +450,7 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
         asOwner(p.club, () => addNews({ cat: 'youth', key: 'youth.debut', params: { player: pname(p), age }, link: { kind: 'player', id: p.id } }));
       else if (age <= 20 && line.rating >= 8.5) asOwner(p.club, () => addNews({ cat: 'general', key: 'media.youngsterPraised', params: { player: pname(p), age, rating: line.rating.toFixed(1) }, link: { kind: 'player', id: p.id } }));
     }
-    if (line.injured && !cm) injure(p);
+    if (line.injured && !fit) injure(p);
     const res = line.team === 0 ? Math.sign(hs.goals - as.goals) : Math.sign(as.goals - hs.goals);
     if (!g.draft) p.morale = Math.max(1, Math.min(20, p.morale + res * 0.8 + (line.rating >= 7.5 ? 0.6 : line.rating < 5.8 ? -0.5 : 0)));
   }
@@ -461,7 +464,7 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
   // 0x8c39f0: arbejdstilladelsens historik (kampe spillet/ikke spillet – cmPermit.ts)
   cmPermitAfterMatch(g, f, rep, (p) => !!p.injury || p.banned > 0);
   // 0x62c080: kampkonditionen, trætheden og kampens skader (konditionsmodulet, cmFitness.ts)
-  if (cm) cmFitAfterMatch(g, f, rep);
+  if (fit) cmFitAfterMatch(g, f, rep);
   // 0x6951e0: bestyrelsen efter kampen (efter tabellen) – begge hold (cmBoardGame.ts)
   cmBoardAfterMatch(g, f, rep);
   // 0x7f8c00 (0x6b6195): menneskenes spejdere ser kampen, når en anmodet spiller er med (cmScout.ts)
@@ -545,7 +548,7 @@ function userMatchResult(f: Fixture, rep: MatchReport) {
     if (!cmActive(g)) addNews({ cat: 'match', key, params: { opp: g.clubs[opp].name, score: `${scored}-${conceded}`, comp: comp?.name ?? '', club: g.clubs[g.userClub]?.short ?? '', ha: userHome ? 'h' : 'a' }, link: { kind: 'fixture', id: f.id } });
     for (const line of rep.players) {
       // den originale database i ægte tilstand: konditionsmodulet sender originalens ene skadenyhed (cmFitnessGame.ts) – ikke også denne
-      if (line.injured && g.players[line.id]?.club === g.userClub && !cmActive(g)) {
+      if (line.injured && g.players[line.id]?.club === g.userClub && !cmFitOn(g)) {
         const p = g.players[line.id];
         addNews({ cat: 'injury', key: 'news.injury', params: { player: pname(p), injury: p.injury?.key ?? 'bruise', days: p.injury?.days ?? 0, club: g.clubs[g.userClub]?.short ?? '', opp: g.clubs[opp].name, score: `${scored}-${conceded}`, comp: comp?.name ?? '', res: key.slice(6) }, link: { kind: 'player', id: p.id } });
       }
@@ -627,7 +630,8 @@ function newDay() {
   if (day(d) === 2 && (month(d) === 9 || month(d) === 2)) freeAgentDrift();
   // daglige ting – i ægte tilstand med den originale database styrer originalens konditionsmodul kondition og skader (cmFitness.ts; AWOL er spillets egen)
   const cmFit = cmFitOn(g);
-  const cmMorale = cmFit && !MORALE_OFF;
+  // originalens daglige moral (cmPlayerData.ts moraleDay) er 2001-verdenens – på 2026/27 glider moralen som før
+  const cmMorale = cmFit && cmActive(g) && !MORALE_OFF;
   // 0x5cccd0's planlægger (efter datoskiftet, før dagens konditionsmodul): computerens trupplan 0x83cb40 (cmSquadPlanGame.ts)
   cmSquadPlanDaily(g);
   // League::update_for_date 0x6847c0: tv-flytningerne 4 uger frem (cmCalendar.ts – originalens skema for de engelske ligaer)

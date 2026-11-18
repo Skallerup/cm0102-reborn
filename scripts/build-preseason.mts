@@ -16,6 +16,9 @@ const DBS: Record<string, string> = {
   '3.9.65': `${ROOT}/Original-3.9.65-Database-Swedish_fixed`,
   '3.9.68': `${ROOT}/Original-3.9.68-Database`,
 };
+// (MODERN_PARITY 6) 2026/27: "October 2026 Data Update" har sin egen player_setup.cfg (141 INJURY-linjer) – kun INJURY (startskaderne); LOAN-linjerne
+// (8.490, datoer i 2001/02-uret) hører til lejeaftalerne og er ikke med her. Nøglen er databasens år (cmFitnessGame.ts cmSetupInjuries).
+const DB2026 = '/Users/martinskallerup/cm0102/.data-update/October 2026 Data Update';
 const dec = new TextDecoder('windows-1252');
 const buf = (f: string) => { const b = readFileSync(f); return new DataView(b.buffer, b.byteOffset, b.byteLength); };
 const str = (v: DataView, o: number, n: number) => { const a = new Uint8Array(v.buffer, v.byteOffset + o, n); const e = a.indexOf(0); return dec.decode(a.subarray(0, e < 0 ? n : e)); };
@@ -45,9 +48,9 @@ function injuryType(s: string): number {
 }
 
 /** cfg-linjen: "TYPE" "First" "Common" "Last" "Club" "Extra" [tal] */
-function parseCfg(kind = 'INJURY'): { first: string; common: string; last: string; club: string; extra: string; num: number | null; rest: string }[] {
+function parseCfg(kind = 'INJURY', file = CFG): { first: string; common: string; last: string; club: string; extra: string; num: number | null; rest: string }[] {
   const out = [];
-  for (const line of dec.decode(readFileSync(CFG)).split(/\r?\n/)) {
+  for (const line of dec.decode(readFileSync(file)).split(/\r?\n/)) {
     if (!line.startsWith(`"${kind}"`)) continue;
     const q = line.split('"');
     // [ '', INJURY, ' ', first, ' ', common, ' ', last, ' ', club, ' ', extra, rest ]
@@ -90,13 +93,11 @@ const loanCfg = parseCfg('LOAN');
 const out: Record<string, [number, number, number, number][]> = {};
 const loans: Record<string, [number, number, string, string][]> = {};
 let nationsOut: Record<number, number[]> = {};
-for (const [ver, dir] of Object.entries(DBS)) {
-  const db = readDb(dir);
-  if (ver === '3.9.60') nationsOut = db.nations;
-  const players = new Set((JSON.parse(readFileSync(`public/data/${ver === '3.9.60' ? 'world-original' : `world-original-${ver.replace(/\./g, '')}`}.json`, 'utf8')).players as number[][]).map((p) => p[0]));
+/** INJURY-linjerne (0x7a50f0 + 0x7a32e0) for én database */
+function injuries(db: ReturnType<typeof readDb>, players: Set<number>, lines: ReturnType<typeof parseCfg>): { list: [number, number, number, number][]; miss: number } {
   const list: [number, number, number, number][] = [];
   let miss = 0;
-  for (const e of cfg) {
+  for (const e of lines) {
     let hit: (typeof db.staff)[number] | undefined;
     if (e.club) {
       const club = db.clubs.find((c) => strncmpEq(c.name, e.club, 0x33));
@@ -108,6 +109,13 @@ for (const [ver, dir] of Object.entries(DBS)) {
     const t = injuryType(fut ? e.extra.slice(17) : perm ? e.extra.slice(e.extra.indexOf('PERMANENT_') + 10) : e.extra);
     list.push([hit.id, t, fut || perm ? (e.num ?? 0) : 0, fut ? 1 : 0]);
   }
+  return { list, miss };
+}
+for (const [ver, dir] of Object.entries(DBS)) {
+  const db = readDb(dir);
+  if (ver === '3.9.60') nationsOut = db.nations;
+  const players = new Set((JSON.parse(readFileSync(`public/data/${ver === '3.9.60' ? 'world-original' : `world-original-${ver.replace(/\./g, '')}`}.json`, 'utf8')).players as number[][]).map((p) => p[0]));
+  const { list, miss } = injuries(db, players, cfg);
   out[ver] = list;
   console.log(ver, `${list.length} fundet, ${miss} ikke fundet`);
   // LOAN (0x7a4d24–0x7a5011): staff = 0x7a50f0(fornavn, kælenavn, efternavn, moderklub, 1); lejeklubben = den første klub i klubtabellen med
@@ -137,8 +145,15 @@ for (const [ver, dir] of Object.entries(DBS)) {
   loans[ver] = ll;
   console.log(ver, `LOAN: ${ll.length} fundet, ${lmiss} ikke fundet`);
 }
+{
+  const db = readDb(DB2026);
+  const players = new Set((JSON.parse(readFileSync('public/data/world.json', 'utf8')).players as number[][]).map((p) => p[0]));
+  const { list, miss } = injuries(db, players, parseCfg('INJURY', `${DB2026}/player_setup.cfg`));
+  out['2026'] = list;
+  console.log('2026', `${list.length} fundet, ${miss} ikke fundet`);
+}
 const ts = `// Genereret af scripts/build-preseason.mts – ret ikke i hånden.
-// Originalens player_setup.cfg (INJURY-linjerne, appens Data/ – også brugt med 3.9.60/3.9.65) fundet i databasen som 0x7a50f0:
+// Originalens player_setup.cfg (INJURY-linjerne, appens Data/ – også brugt med 3.9.60/3.9.65; '2026' = opdateringens egen fil) fundet i databasen som 0x7a50f0:
 // [spiller-id, skadetype (0x7a32e0), PERMANENT-niveau (0 = ingen), FUTURE (1 = kun tilbagevendende, ingen skade nu)]
 export const CM_SETUP_INJURIES: Record<string, readonly (readonly [number, number, number, number])[]> = ${JSON.stringify(out)};
 // LOAN-linjerne (0x7a4d24): [spiller-id, lejeklubbens id, startdato, slutdato] – lejen sættes i spillet af cmSetupLoans (0x8bf400)

@@ -20,7 +20,7 @@
 import type { GameState, Player, Staff } from './types';
 import { ATTRS } from './attributes';
 import { ageOn } from './dates';
-import { cmActive, cmRand, clubRepMem, statAvg } from './cmPlayerData';
+import { cmBodyOn, cmRand, clubRepMem, statAvg } from './cmPlayerData';
 import { isHumanClub } from './humans';
 import { displayFromX, intrinsicOf } from './playerInit';
 import { type CmRec, type CmTrainEntry, nibble, normaliseRec, recInto, recOf, cmIntSync, cmTrainWeekTick } from './cmTraining';
@@ -380,7 +380,7 @@ const REC_NAME = new Map<number, string>([[0x1e, 'anticipation'], [0x23, 'crossi
 
 /** 0x5ce2d0's udviklingsblok for alle spillere på deres dage (sim.ts newDay, efter kontraktdelen), og ugetælleren 0x8b1730 bagefter */
 export function cmDevDaily(g: GameState): void {
-  if (!cmActive(g) || g.draft) return;
+  if (!cmBodyOn(g) || g.draft) return;
   const d = new Date(`${g.date}T00:00:00Z`), y = d.getUTCFullYear();
   const doy = Math.round((d.getTime() - Date.UTC(y, 0, 1)) / 86400000);
   const day = dayNum(g.date);

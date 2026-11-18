@@ -77,6 +77,10 @@ export interface CMWorld extends WorldData {
     chair?: Record<number, number[]>;
     /** (økonomien) turnerings-id'et for "A Lower Division" (nøgle-id'et [0x9cf764]; −1 = findes ikke) */
     lowerDiv?: number
+    /** (MODERN_PARITY 5+6, kun 2026/27's world-cm.json – byggescriptet) stabens hele ikke-spillerpost (CMWorld.staff[11]) pr. person-id (staff[9]):
+     *  originalens spilstart cmStaffInit.ts → Staff.cmNp/ca, som træningen 0x8b2880, udviklingen 0x5ce2d0 og fysioterapeuterne i injury.cpp læser.
+     *  (Den originale database har posten i staff[11] i world-filen.) */
+    staffNp?: Record<number, number[]>;
     /** viljen 0x844780: nation +0x71 (verdensdelens id) pr. nationsindeks, "Europe"s id ([0x9cfa10]) og byernes +0x33 (s8, city.dat-rækkefølge) */
     nationCont?: number[]; europe?: number; city33?: number[];
     /** bestyrelse/managerjob (cmBoard.ts): nation +0x75 (u8), +0x85 (s8), +0x88 (i32) pr. nationsindeks */

@@ -2,7 +2,7 @@
 // Kun den originale database i ægte tilstand (cmActive); ellers gør intet her noget, og spillets egen model (sim.ts) gælder.
 
 import type { Fixture, GameState, MatchReport, Player } from './types';
-import { cmActive, cmStaffStateInit, setCmPlayerCtx } from './cmPlayerData';
+import { cmActive, cmBodyOn, cmLogic, cmStaffStateInit, setCmPlayerCtx } from './cmPlayerData';
 import {
   applyMatchEffects, clearKnocks, clubSeason, condition, currentInjury, dayNum, fatigue, fitIso, fitRand, hasSeasonRow, initRecords, initSquadFitness, injuryDaily, injuryStatus,
   newFit, recordKnock, recoverFatigue, setKnockHook, syncPlayer, trainingLoad, updateFitness, type CmInjury, type FitCtx, type MatchEntry,
@@ -20,8 +20,8 @@ import { cmPermitMove } from './cmPermit';
 import { addInjury } from './cmFitness';
 
 const pname = (p: Player) => `${p.first} ${p.last}`.trim();
-/** modulet gælder: original DB i ægte tilstand, ikke draft-ligaen */
-export const cmFitOn = (g: GameState) => cmActive(g) && !g.draft;
+/** modulet gælder: en CM-database i ægte tilstand (cmBodyOn – 2001 og fra 18/11 2026/27-spil startet med modulet), ikke draft-ligaen */
+export const cmFitOn = (g: GameState) => cmBodyOn(g) && !g.draft;
 
 /** formålene for talrækken (en pr. kaldested, så rækkefølgen inden for et formål er originalens) */
 const SALT = { daily: 1, recover: 2, match: 3, read: 4, init: 5, prerun: 6, setup: 7 } as const;
@@ -139,7 +139,8 @@ function realPlayers(g: GameState): Player[] {
 /** Nyt spil: Injury::Injury (0x62cf70) på databasens dato (1/1), dagene frem til spillets start (0x5cc850 kører 0x62b7b0 hver dag – uden
  *  kampe og uden 0x5ce2d0), så 0x62a920 på startdagen. */
 export function cmFitNewGame(g: GameState): void {
-  if (!cmFitOn(g)) return;
+  // (MODERN_PARITY 6) en CM-database i ægte tilstand – 2026/27 med: g.cmFitStart nedenfor slår modulet til (cmBodyOn)
+  if (!cmLogic(g) || g.draft) return;
   linkPlayerCtx(g);
   g.cmFitStart = g.date;
   const ps = realPlayers(g);
@@ -178,7 +179,8 @@ export function cmFitConvert(g: GameState): void {
  *  future) på startdagen (0x7a44c4/0x7a44fa). Linjerne er fundet i databasen af scripts/build-preseason.mts (0x7a50f0 – data/cmPreseason.ts).
  *  Nyheden 0x62dca0 til mennesket sendes ikke (*estimeret* – spillet er ikke begyndt). LOAN/INT_RETIREMENT/MISCONDUCT er ikke porteret. */
 export function cmSetupInjuries(g: GameState, start: number): void {
-  const list = CM_SETUP_INJURIES[g.dbVersion ?? '3.9.60'] ?? [];
+  // 2026/27 (dbVersion findes kun for 2001-databaserne): opdateringens egen player_setup.cfg under databasens år (scripts/build-preseason.mts)
+  const list = CM_SETUP_INJURIES[g.dbVersion ?? ((g.dbYear ?? 0) >= 2020 ? String(g.dbYear) : '3.9.60')] ?? [];
   const c = { ...fitCtx(g, SALT.setup, start), news: undefined };
   for (const [id, t, perm, future] of list) {
     const p = g.players[id];
@@ -196,7 +198,8 @@ export function cmSetupInjuries(g: GameState, start: number): void {
  *  Ingen klubskifte-følger (0x8c9720 kaldes ikke: indkøringsbyten og klubbernes omdømme uændrede). Bagefter 0x62a920 for de lejede (lejeklubbens
  *  sæson). Ikke porteret: 0x5563f0 (Discipline), 0x540980(staff, 1) (+0x5e), staff +0x6d 2 → 0x10. */
 export function cmSetupLoans(g: GameState): number {
-  if (!cmFitOn(g)) return 0;
+  // 2001-verdenen: 2026/27-filens LOAN-linjer (8.490, datoer i 2001/02) er ikke fundet i databasen endnu (scripts/build-preseason.mts)
+  if (!cmActive(g) || g.draft) return 0;
   const list = CM_SETUP_LOANS[g.dbVersion ?? '3.9.60'] ?? [];
   const moved: Player[] = [];
   for (const [id, to, start, end] of list) {

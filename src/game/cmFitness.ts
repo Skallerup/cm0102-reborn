@@ -18,9 +18,10 @@
 import type { Club, GameState, Player, Staff } from './types';
 import { ATTRS } from './attributes';
 import { ageOn, addDays } from './dates';
-import { cmActive, cmRand, STAFF_STATE_OFF } from './cmPlayerData';
+import { cmBodyOn, cmRand, STAFF_STATE_OFF } from './cmPlayerData';
 import { staffIntrinsic, staffShown } from './engine/grid/roleScore';
 import { npShown } from './cmStaffInit';
+import { gs, hasGame } from './state';
 
 // ---------------------------------------------------------------- posten
 
@@ -117,15 +118,29 @@ const SEASON: Record<number, [number, number]> = {
   73: [208, 145], 75: [229, 140], 83: [229, 157], 92: [209, 139], 94: [237, 158], 97: [67, 331], 128: [222, 127], 138: [103, 303], 148: [194, 155],
   149: [237, 158], 154: [81, 313], 160: [215, 143], 170: [82, 328], 171: [244, 164], 179: [96, 298], 192: [216, 140], 196: [81, 5], 207: [229, 125],
 };
+/** nøglelandenes nation.dat-navne (rækkerne 8–34 i 0xb63d60 er de 27 nøglelande alfabetisk – cmContractGame.ts SEASON_ROWS) for SEASON's
+ *  id'er i den originale database. (MODERN_PARITY 6) 2026/27-opdateringen har andre nation-id'er (England 61, ikke 60): rækken findes på navnet. */
+const SEASON_NAMES: Record<number, string> = {
+  8: 'Argentina', 11: 'Australia', 19: 'Belgium', 27: 'Brazil', 47: 'Croatia', 52: 'Denmark', 60: 'England', 68: 'Finland', 69: 'France', 73: 'Germany',
+  75: 'Greece', 83: 'Holland', 92: 'Republic of Ireland', 94: 'Italy', 97: 'Japan', 128: 'Northern Ireland', 138: 'Norway', 148: 'Poland', 149: 'Portugal',
+  154: 'Russia', 160: 'Scotland', 170: 'South Korea', 171: 'Spain', 179: 'Sweden', 192: 'Turkey', 196: 'United States', 207: 'Wales',
+};
+const SEASON_BY_NAME: Record<string, [number, number]> = Object.fromEntries(Object.entries(SEASON_NAMES).map(([id, nm]) => [nm, SEASON[+id]]));
+/** landets række: på navnet i det indlæste spil (samme som id'et i den originale database); uden spil id'et */
+function rowOf(nation: number | undefined): [number, number] | undefined {
+  if (nation === undefined) return undefined;
+  const nm = hasGame() ? gs().nations[nation]?.name : undefined;
+  return nm !== undefined ? SEASON_BY_NAME[nm] : SEASON[nation];
+}
 /** landet har en række i sæsontabellen (0x669340 finder den; ellers række 4 med start = slut = dag 180) */
 /** 0xb63d60 +0x2a: landets sæsonstart (dag i året) – spilstartens dato 0x830520 (cmCalendar.ts) */
-export const seasonStartDay = (nation: number | undefined): number | undefined => (nation !== undefined ? SEASON[nation]?.[0] : undefined);
-export const hasSeasonRow = (nation: number | undefined) => nation !== undefined && !!SEASON[nation];
+export const seasonStartDay = (nation: number | undefined): number | undefined => rowOf(nation)?.[0];
+export const hasSeasonRow = (nation: number | undefined) => !!rowOf(nation);
 /** rækken i 0xb63d60 for landet: [+0x2a startdag, +0x39 slutdag] (dag i året) – undefined uden række */
-export const seasonRow = (nation: number | undefined): readonly [number, number] | undefined => (nation !== undefined ? SEASON[nation] : undefined);
+export const seasonRow = (nation: number | undefined): readonly [number, number] | undefined => rowOf(nation);
 /** 0x669bd0: [i sæson, start (arg2), slut (arg3)] som dagnumre */
 export function clubSeason(nation: number | undefined, today: number): [boolean, number, number] {
-  const [A, B] = (nation !== undefined && SEASON[nation]) || [173, 40];
+  const [A, B] = rowOf(nation) || [173, 40];
   const T = doyOf(today), y = yearOf(today);
   if (A > B) {
     if (T > A) return [true, dateOf(A, y), dateOf(B, y + 1)];
@@ -712,5 +727,5 @@ export function trainingLoad(p: Player, human: boolean, levels?: readonly number
 }
 
 /** at gemme/indlæse: et spil uden poster får dem ved første dag (som 0x62cf70 uden skaderne) */
-export function fitActive(g: GameState): boolean { return cmActive(g); }
+export function fitActive(g: GameState): boolean { return cmBodyOn(g); }
 export { isoOf as fitIso, addDays as fitAddDays };

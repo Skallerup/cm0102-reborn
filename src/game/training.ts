@@ -12,7 +12,7 @@ import { ROLE_WEIGHTS, naturalRole } from './attributes';
 import { isHumanClub } from './humans';
 import { squad } from './state';
 import { cmIntSync } from './cmTraining';
-import { cmActive } from './cmPlayerData';
+import { cmActive, cmBodyOn } from './cmPlayerData';
 
 export interface Schedule {
   key: string;
@@ -79,7 +79,7 @@ export function weeklyDevelopment() {
   for (const s of Object.values(g.staff)) if (s.club) (byClub.get(s.club) ?? byClub.set(s.club, []).get(s.club)!).push(s);
   // CM 01/02 Coaches: har klubben fordelt trænerne på områder, tæller kun dem, der står for spillerens program
   const areaCache = new Map<string, CoachingInfo>();
-  const cmDev = cmActive(g) && !g.draft;
+  const cmDev = cmBodyOn(g) && !g.draft;
   for (const p of Object.values(g.players)) {
     if (!cq.has(p.club)) cq.set(p.club, p.club ? coachQuality(p.club, byClub.get(p.club) ?? []) : none);
     let ci = cq.get(p.club)!;

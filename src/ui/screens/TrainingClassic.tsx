@@ -15,7 +15,7 @@ import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
 import { CxTable, type CxCol } from './CxTable';
 import { posGroup } from './Training';
-import { cmActive } from '../../game/cmPlayerData';
+import { cmBodyOn } from '../../game/cmPlayerData';
 import { CmTraining } from './TrainingCm';
 
 const TOP = ['rest', 'general', 'fitness', 'shooting'];
@@ -25,8 +25,8 @@ const formAvg = (p: Player) => (p.form.length ? p.form.slice(-5).reduce((s, x) =
 
 export function ClassicTraining() {
   const g = useGame()!;
-  // den originale database i ægte tilstand: originalens skærm (training_screens.cpp) med menneskets skemaer (cmTraining.ts)
-  return cmActive(g) && g.clubs[g.userClub] ? <CmTraining /> : <OwnTraining />;
+  // en CM-database i ægte tilstand (cmBodyOn – 2001 og nye 2026/27-spil): originalens skærm (training_screens.cpp) med menneskets skemaer (cmTraining.ts)
+  return cmBodyOn(g) && g.clubs[g.userClub] ? <CmTraining /> : <OwnTraining />;
 }
 
 function OwnTraining() {

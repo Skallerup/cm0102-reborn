@@ -24,7 +24,7 @@ import { assignSquad, benchSlots, pickFlags, setPieceTakers, type Rand } from '.
 import { gs, hasGame } from '../../state';
 import { benchSize } from '../../rules';
 import { cmActive, cmLogic, cmContractOf, cmFormRatings, leagueAverage, statAvg, statusCode } from '../../cmPlayerData';
-import { cmFitRead, setMatchSquad } from '../../cmFitnessGame';
+import { cmFitOn, cmFitRead, setMatchSquad } from '../../cmFitnessGame';
 import { cmPermitHistory } from '../../cmPermit';
 import { newTacticStats, recordTacticResult } from './aiTacticChoice';
 import { chooseCaptain, judgeAbility, recentForm, roleScore, staffIntrinsic, staffShown, type CaptainInput, type Day, type RoleData, type RoleInput } from './roleScore';
@@ -165,6 +165,8 @@ export interface AiPickCtx {
   leagueAvg?: number;
   /** spillerdataene fra spiltilstanden (cmPlayerData.ts) – kun den originale database i ægte tilstand */
   cm?: boolean;
+  /** konditionsmodulet (cmFitness.ts, cmFitOn): 0x62c590/0x62c3d0/0x62ed70 og kamptruppen til 0x62c080 – 2001 og 2026/27 i ægte tilstand */
+  fit?: boolean;
   /** managerens taktiske egenskaber (team+0x1f, Staff.tac) – omrokeringens taktikvalg 0x6e1aa0 → 0x6e0230/0x6ddab0 */
   manager?: { id: number; ca: number; tac: number[] } | null;
 }
@@ -205,7 +207,7 @@ export function roleDataOf(p: Player, ctx: AiPickCtx, age: number): RoleData {
   const st = p.stats, last = p.history?.[p.history.length - 1];
   const c = ctx.cm && p.contract ? cmContractOf(p) : null;
   // konditionsmodulet (cmFitness.ts): 0x62c590 (konditionen efter dagens opdatering 0x62c680), 0x62c3d0 (trætheden), 0x62ed70 (skaden)
-  const fit = ctx.cm && hasGame() ? cmFitRead(gs()) : null;
+  const fit = (ctx.cm || ctx.fit) && hasGame() ? cmFitRead(gs()) : null;
   return {
     contract: p.contract ? { b3e: c?.b3e ?? 0, b3f: c?.b3f ?? 0, b44: c?.b44 ?? 0, b45: c?.b45 ?? 0, b4f: (statusCode(p) << 4) | (c?.b4f !== undefined ? c.b4f & 0xf : 10) } : null,
     condition: fit ? fit.condition(p) : Math.round((p.condition ?? 100) * 100),
@@ -285,7 +287,7 @@ export function aiTeamSetup(o: AiTeamInput): AiTeamResult {
   const c2 = chooseCaptain(xi.map((i) => (i === null ? null : capIn[i])), judgeJa);
   capIdx = c2 >= 0 ? xi[c2] ?? -1 : -1;
   // kamptruppen (de 11 + bænken) til konditionsmodulets 0x62c080 efter kampen (de ubrugte udskiftere får også træthed)
-  if (ctx.cm && ctx.clubId !== undefined) setMatchSquad(ctx.clubId, out.filter((i): i is number => i !== null).map((i) => ps[i].id));
+  if ((ctx.cm || ctx.fit) && ctx.clubId !== undefined) setMatchSquad(ctx.clubId, out.filter((i): i is number => i !== null).map((i) => ps[i].id));
   return {
     index, entry, presetIndex: entry.preset, flags,
     lineup: xi.map((i) => (i === null ? null : ps[i].id)),
@@ -349,6 +351,8 @@ export function aiPickCtx(clubId: number, aiControlled = false): AiPickCtx | nul
     // taktiklistens statistik 0x896290 (ren kampmotor – også 2026/27 i ægte tilstand, cmLogic); PlayerStats/karaktersnittet kun 2001-verdenen
     ...(cmLogic(g) ? { tacticStats: (g.aiTacticStats ??= newTacticStats()) } : {}),
     ...(cm ? { cm, leagueAvg: leagueAverage(g) } : {}),
+    // (MODERN_PARITY 6) 2026/27 i ægte tilstand: kun konditionsmodulets aflæsninger (PlayerStats/kontrakten forbliver 2001-verdenens)
+    ...(!cm && cmFitOn(g) ? { fit: true } : {}),
   };
 }
 

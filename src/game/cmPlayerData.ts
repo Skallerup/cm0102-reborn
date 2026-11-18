@@ -29,6 +29,12 @@ export function cmActive(g: GameState): boolean {
 export function cmLogic(g: GameState): boolean {
   return g.dbKind === 'cm0102' && g.options.mode === 'authentic';
 }
+/** (MODERN_PARITY 5+6) originalens kondition/skader (injury.cpp), udvikling 0x5ce2d0 og træning TRAINING_MANAGER: 2001-verdenen, eller en CM-database
+ *  i ægte tilstand fra et spil, der er startet med modulerne (Injury::Injury ved spilstarten sætter g.cmFitStart – cmFitnessGame.ts). Ældre
+ *  2026/27-spil uden spilstartens poster beholder spillets egen model. For den originale database = cmActive. */
+export function cmBodyOn(g: GameState): boolean {
+  return cmActive(g) || (cmLogic(g) && !g.draft && g.cmFitStart !== undefined);
+}
 
 // ---------------------------------------------------------------- en egen talrække (0x90cfc0's rolle)
 
@@ -825,7 +831,8 @@ export function staffStateInitValue(i: { player: boolean; club: boolean; days: n
 /** spilstarten (newgame → cmFitNewGame): alle spillere i databasen på DATABASENS dato (1/1 i startåret – før dagene frem til spillets start, hvor
  *  ferien 0x62c680 løfter byten; målt mod oraklet: nyankomne fra efteråret 2000 har formlens værdi + feriedagene, dvs. dagene regnes til 1/1) */
 export function cmStaffStateInit(g: GameState, today = g.date): void {
-  if (!cmActive(g) || STAFF_STATE_OFF) return;
+  // (MODERN_PARITY 6) også 2026/27 i ægte tilstand: konditionsmodulet løfter byten (ferie-/skadedagene) og trækker sine tal efter den
+  if (!cmLogic(g) || STAFF_STATE_OFF) return;
   for (const p of Object.values(g.players)) {
     if (p.regen) continue;
     let jd = p.joined ?? p.cmJoined ?? today;

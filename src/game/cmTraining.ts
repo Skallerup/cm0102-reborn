@@ -15,7 +15,7 @@ import type { CmSchedule, CoachArea, GameState, Player, Staff } from './types';
 import { staffShown } from './engine/grid/roleScore';
 import { ATTRS } from './attributes';
 import { shownFromInternal, CM_INT_OFFSETS, normaliseInternals } from './playerInit';
-import { cmActive, cmLogic } from './cmPlayerData';
+import { cmBodyOn, cmLogic } from './cmPlayerData';
 
 /** De 18 viste af Player.cmInt og CA (originalens invariant); intet uden cmInt eller uden for en CM-database i ægte tilstand (cmLogic – på 2026/27
  *  følger de viste CA'en fra vores udvikling, som på den originale database før 0x5ce2d0 blev porteret). */
@@ -278,7 +278,7 @@ export function setTrainCtx(c: TrainCtx): void { tctx = c; }
 
 export function cmTrainOn(g: GameState, p: Player): boolean {
   // fyldspillerne (cmVirtual.ts) har ingen TRAINING_MANAGER-post – de laves på ny til hver kamp (*estimeret*)
-  return !!p.cmInt && !p.regen && !p.virtual && cmActive(g);
+  return !!p.cmInt && !p.regen && !p.virtual && cmBodyOn(g);
 }
 /** træningsbelastningen (0x8b1bb1: 0x8b4f60 af pladsens skema): menneskets spiller → niveauerne (null = computerens) */
 export function humanLevels(g: GameState, p: Player): number[] | null {
@@ -305,7 +305,7 @@ export function cmTrainPlayer(g: GameState, p: Player, salt: number): void {
 }
 /** MATCH_PLAYER::setup (0x6eb045): begge kamptrupper */
 export function cmTrainSquads(g: GameState, ids: number[], fixture: number): void {
-  if (!cmActive(g)) return;
+  if (!cmBodyOn(g)) return;
   for (const id of ids) { const p = g.players[id]; if (p) cmTrainPlayer(g, p, 0x6eb045 ^ fixture); }
 }
 /** 0x8b1730 (efter 0x5ce2d0, 0x5cda8a): ugetælleren TM+0x688d tælles op på dage med dag-i-året % 7 = 0 */
