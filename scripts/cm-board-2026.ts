@@ -6,6 +6,7 @@ import { createGame, type WorldData } from '../src/game/newgame';
 import { continueGame, quickPlayUserMatch } from '../src/game/sim';
 import { gs } from '../src/game/state';
 import { cmBidBudget } from '../src/game/cmBudget';
+import { leagueRows } from '../src/game/competitions';
 
 const until = process.argv[2] ?? '2027-06-30';
 const w = JSON.parse(readFileSync('public/data/world.json', 'utf8')) as WorldData & { cmRaw?: unknown };
@@ -35,10 +36,13 @@ function budgetLine(label: string) {
     .sort((a, b) => b.value - a.value);
   const picks = [others[0], others[Math.floor(others.length * 0.1)], others[Math.floor(others.length * 0.5)]].filter(Boolean);
   const parts = picks.map((p) => { const b = cmBidBudget(g, p, g.userClub); return `${p.last} (værdi ${m(p.value)}) loft ${b ? `${m(b.budget)} niv ${b.level}${b.limited ? ' begr' : ''}` : `– (${m(club.transferBudget ?? 0)})`}`; });
-  console.log(`${label} ${g.date}: tillid ${g.board.confidence} forv ${g.board.expectation}/${g.board.expectedPos} · saldo ${m(club.balance)} · transferbudget ${m(club.transferBudget ?? 0)} · ${parts.join(' · ')}`);
+  const lr = g.comps[club.league] ? leagueRows(g.comps[club.league]) : [];
+  const pos = lr.findIndex((r) => r.club === club.id) + 1, row = lr[pos - 1];
+  console.log(`${label} ${g.date}: plads ${pos} (${row ? `${row.p} k, ${row.pts} p` : ''}) · tillid ${g.board.confidence} forv ${g.board.expectation}/${g.board.expectedPos} · saldo ${m(club.balance)} · transferbudget ${m(club.transferBudget ?? 0)} · ${parts.join(' · ')}`);
 }
 budgetLine('start');
 let days = 0;
+let sackedAt = '';
 while (g.date < until && days++ < 420) {
   const r = continueGame();
   if (r.match !== undefined) quickPlayUserMatch();
@@ -56,7 +60,8 @@ while (g.date < until && days++ < 420) {
   }
   vacDays += vac; maxVac = Math.max(maxVac, vac);
   prev = new Map(now.map((c) => [c.id, c.manager]));
-  if (g.date.endsWith('-01') && ['08', '10', '12', '02', '04', '06'].includes(g.date.slice(5, 7))) budgetLine('måned');
+  if (!g.userClub && !sackedAt) { sackedAt = g.date; console.log(`mennesket fyret ${g.date}`); }
+  if (g.date.endsWith('-01') && g.userClub) budgetLine('måned');
 }
 console.log(`--- slut ${g.date} (${Math.round((performance.now() - t0) / 1000)} s)`);
 const sum = (o: Record<number, number>) => Object.values(o).reduce((a, b) => a + b, 0);

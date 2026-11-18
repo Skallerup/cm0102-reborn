@@ -207,3 +207,8 @@ Målt (`scripts/cm-board-2026.ts`, PL frø 1, Brentford, 1/7-26 → 30/6-27, fø
 fyret i foråret efter (forventning øverste halvdel/8); budskærmens loft = transferbudgettet 48,85m før, 0x598800 30,0m (start) → 5,4m (april,
 følger saldoen 66,6m → 42m) efter. Databasen har Nagelsmann/Deschamps/Clarke ledige uden landshold – de ansættes i klubber. 2001 bit for bit
 uændret (02ec66f5a29512d1). Kræver et nyt spil.
+Kontrol af forventningen/fyringen (measure fb7e818da43c): 0x6a3770 regner ikke ud fra omdømmerangen, men fra sidste sæsons placering (club.dat
++0x5f, Brentford 9 i opdateringen) − formuebåndet (bånd 1: −2) + 1 (manageren under et år) = 8 → 0x40 "øverste halvdel" (8 ≤ 20/2). Båndet
+1 gælder både spillets saldo i £ (€66,6m × 0,1721 = £11,5m) og databasens club.dat-saldo (£15m) – grænsen er 1000 · 6500 + 3,5m = £10m.
+Brentford lå 17. (dec.), 19. (jan.–mar.) og 18. (april) i kørslen – formen (tabsserier) og placeringen mod forventningen (0x699950) tog tilliden
+63 → 27, og fyringen 25/4 følger originalens regler. Ingen fejl i data eller port.
