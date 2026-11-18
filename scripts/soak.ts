@@ -18,7 +18,7 @@ const clubName = process.argv[4];
 const world = JSON.parse(readFileSync(file, 'utf8')) as WorldData;
 const eng = world.nations.findIndex((x) => x.name === 'England');
 const user = (clubName && world.clubs.find((c) => c[1] === clubName)?.[0]) || world.clubs.find((c) => c[3] === eng)![0];
-createGame(world, { managerName: 'Soak', managerNation: eng, clubId: user, activeNations: [eng, ...(process.env.NATIONS ?? '').split(',').filter(Boolean).map((nm) => world.nations.findIndex((x) => x.name === nm)).filter((i) => i >= 0 && i !== eng)], lang: 'en', masking: true, seed: 11, mode: process.env.MODE === 'authentic' ? 'authentic' : undefined });
+createGame(world, { managerName: 'Soak', managerNation: eng, clubId: user, activeNations: [eng, ...(process.env.NATIONS ?? '').split(',').filter(Boolean).map((nm) => world.nations.findIndex((x) => x.name === nm)).filter((i) => i >= 0 && i !== eng)], lang: 'en', masking: true, seed: 11, mode: process.env.MODE === 'authentic' ? 'authentic' : 'extended' });
 const g = gs();
 if (process.env.ENGINE === 'original') g.options.engine = 'original';   // gittermotoren (kræver MODE=authentic og den originale database)
 const errors: string[] = [], warns: string[] = [];

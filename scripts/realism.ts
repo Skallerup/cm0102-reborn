@@ -6,7 +6,7 @@ import { gs, squad } from '../src/game/state';
 import { transferRealism, playerInterest, askingPrice, wageDemand } from '../src/game/transfers';
 const world = JSON.parse(readFileSync('public/data/world.json', 'utf8')) as WorldData;
 const ni = (n: string) => world.nations.findIndex((x) => x.name === n);
-createGame(world, { managerName: 'T', managerNation: ni('Denmark'), clubId: world.clubs.find((c) => c[2] === 'Vejle Boldklub')![0], activeNations: ['Denmark', 'England', 'Spain', 'Germany', 'Italy'].map(ni), lang: 'da', masking: true, seed: 12 });
+createGame(world, { managerName: 'T', managerNation: ni('Denmark'), clubId: world.clubs.find((c) => c[2] === 'Vejle Boldklub')![0], activeNations: ['Denmark', 'England', 'Spain', 'Germany', 'Italy'].map(ni), lang: 'da', masking: true, mode: 'extended', seed: 12 });
 const g = gs();
 const c = g.clubs[g.userClub];
 c.transferBudget = 3_000_000;

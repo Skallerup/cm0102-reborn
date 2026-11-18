@@ -12,7 +12,7 @@ const nat = (n: string) => world.nations.findIndex((x) => x.name === n);
 const clubId = (n: string) => world.clubs.find((c) => c[1] === n || c[2] === n)![0];
 
 describe('playerInterest – 2026/27-databasens omdømme', () => {
-  createGame(world, { managerName: 'T', managerNation: nat('Denmark'), clubId: clubId('Vejle'), activeNations: ['Denmark', 'Spain', 'England', 'Germany'].map(nat), lang: 'da', masking: true, seed: 1 });
+  createGame(world, { managerName: 'T', managerNation: nat('Denmark'), clubId: clubId('Vejle'), activeNations: ['Denmark', 'Spain', 'England', 'Germany'].map(nat), lang: 'da', masking: true, mode: 'extended', seed: 1 });
   const g = gs();
   const find = (first: string, last: string) => Object.values(g.players).find((p) => p.first === first && p.last === last) as Player;
   const stars = [find('Javi', 'Guerra'), find('Kobbie', 'Mainoo'), find('Sacha', 'Boey'), find('Jon', 'Martín')];

@@ -8,7 +8,7 @@ import { squadStrength } from '../src/game/board';
 import { Rng } from '../src/game/rng';
 const world = JSON.parse(readFileSync('public/data/world.json', 'utf8')) as WorldData;
 const ni = (n: string) => world.nations.findIndex((x) => x.name === n);
-createGame(world, { managerName: 'T', managerNation: ni('Denmark'), clubId: 443, activeNations: ['Denmark', 'England'].map(ni), lang: 'da', masking: true, seed: 1 });
+createGame(world, { managerName: 'T', managerNation: ni('Denmark'), clubId: 443, activeNations: ['Denmark', 'England'].map(ni), lang: 'da', masking: true, mode: 'extended', seed: 1 });
 const g = gs();
 const r = new Rng(3);
 const bins = new Map<number, [number, number, number]>();

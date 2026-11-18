@@ -8196,4 +8196,5 @@ Object.assign(sv, {
   "cmsn.regA.SouthernEurope": "sydeuropeiska",
   "cmsn.reg.UK": "Storbritannien och Irland",
   "cmsn.regA.UK": "brittiska och irländska",
+  'mode.legacy': "Det här spelet startades i det gamla utökade läget och behåller sina regler. Nya spel följer alltid CM 01/02:s egen logik.",
 });

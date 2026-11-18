@@ -10,7 +10,7 @@ describe('trænere og trøjeleverandører 2026/27', () => {
     const w = JSON.parse(readFileSync('public/data/world.json', 'utf8')) as WorldData;
     const eng = w.nations.findIndex((n) => n.name === 'England');
     const chelsea = w.clubs.find((c) => c[1] === 'Chelsea')![0];
-    createGame(w, { managerName: 'T', managerNation: eng, clubId: chelsea, activeNations: [eng], lang: 'en', masking: true, seed: 3 });
+    createGame(w, { managerName: 'T', managerNation: eng, clubId: chelsea, activeNations: [eng], lang: 'en', masking: true, mode: 'extended', seed: 3 });
     const g = gs();
     const mgr = (name: string) => { const c = Object.values(g.clubs).find((x) => x.name === name)!; const s = g.staff[c.manager]; return `${s.first} ${s.last}`.trim(); };
     expect(mgr('Arsenal')).toBe('Mikel Arteta');

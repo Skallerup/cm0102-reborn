@@ -16,7 +16,7 @@ let t0 = performance.now();
 createGame(world, {
   managerName: 'Test Manager', managerNation: nationIdx('Denmark'), clubId,
   activeNations: ['Denmark', 'England', 'Germany', 'Spain', 'Italy'].map(nationIdx),
-  lang: 'da', masking: true, seed: 12345,
+  lang: 'da', masking: true, mode: 'extended', seed: 12345,
 });
 const g = gs();
 console.log(`Nyt spil: ${Object.keys(g.players).length} spillere, ${Object.keys(g.clubs).length} klubber, ${Object.keys(g.fixtures).length} kampe — ${(performance.now() - t0).toFixed(0)} ms`);

@@ -28,7 +28,7 @@ let world: WorldData;
 beforeAll(() => {
   world = JSON.parse(readFileSync('public/data/world-modern.json', 'utf8')) as WorldData;
   const ni = (n: string) => world.nations.findIndex((x) => x.name === n);
-  createGame(world, { managerName: 'Test', managerNation: ni('Denmark'), clubId: 190, activeNations: [ni('Denmark'), ni('England')], lang: 'da', masking: true, seed: 5 });
+  createGame(world, { managerName: 'Test', managerNation: ni('Denmark'), clubId: 190, activeNations: [ni('Denmark'), ni('England')], lang: 'da', masking: true, mode: 'extended', seed: 5 });
 });
 
 describe('fritekst uden AI', () => {

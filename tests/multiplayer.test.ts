@@ -12,7 +12,7 @@ const ni = (n: string) => world.nations.findIndex((x) => x.name === n);
 
 describe('online multiplayer (motor)', () => {
   it('to managere kan spille en hel sæson side om side', () => {
-    createGame(world, { managerName: 'Anna', managerNation: ni('Denmark'), clubId: 190, activeNations: [ni('Denmark')], lang: 'da', masking: true, seed: 3 });
+    createGame(world, { managerName: 'Anna', managerNation: ni('Denmark'), clubId: 190, activeNations: [ni('Denmark')], lang: 'da', masking: true, mode: 'extended', seed: 3 });
     enableMultiplayer('p1', 'Anna');
     expect(applyActionAs('p2', { t: 'join', name: 'Bo', club: 206, nation: ni('Denmark') })).toBe('ok');
     const g = gs();

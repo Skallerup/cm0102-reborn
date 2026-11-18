@@ -11,7 +11,7 @@ import type { Player } from '../src/game/types';
 const N = Number(process.argv[2] ?? 3000);
 const world = JSON.parse(readFileSync('public/data/world.json', 'utf8')) as WorldData;
 const ni = (n: string) => world.nations.findIndex((x) => x.name === n);
-createGame(world, { managerName: 'Lab', managerNation: ni('England'), clubId: world.clubs[0][0], activeNations: ['England', 'Spain', 'Germany', 'Italy'].map(ni), lang: 'da', masking: true, seed: 9 });
+createGame(world, { managerName: 'Lab', managerNation: ni('England'), clubId: world.clubs[0][0], activeNations: ['England', 'Spain', 'Germany', 'Italy'].map(ni), lang: 'da', masking: true, mode: 'extended', seed: 9 });
 const g = gs();
 const leagues = Object.values(g.comps).filter((c) => c.type === 'league' && c.tier === 1);
 const fresh = (id: number) => squad(id).map((p) => ({ ...p, attrs: p.attrs.slice(), condition: 100, injury: null, banned: 0 }) as Player);

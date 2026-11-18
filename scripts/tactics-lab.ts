@@ -17,7 +17,7 @@ const ONLY = process.argv[3]?.split(',');
 const on = (k: string) => !ONLY || ONLY.includes(k);
 const world = JSON.parse(readFileSync('public/data/world.json', 'utf8')) as WorldData;
 const ni = (n: string) => world.nations.findIndex((x) => x.name === n);
-createGame(world, { managerName: 'Lab', managerNation: ni('England'), clubId: world.clubs.find((c) => c[2] === 'Brøndby')?.[0] ?? world.clubs[0][0], activeNations: [ni('England'), ni('Denmark')], lang: 'da', masking: true, seed: 5 });
+createGame(world, { managerName: 'Lab', managerNation: ni('England'), clubId: world.clubs.find((c) => c[2] === 'Brøndby')?.[0] ?? world.clubs[0][0], activeNations: [ni('England'), ni('Denmark')], lang: 'da', masking: true, mode: 'extended', seed: 5 });
 const g = gs();
 const epl = Object.values(g.comps).find((c) => c.type === 'league' && c.tier === 1 && world.nations[c.nation]?.name === 'England')!;
 const ranked = epl.clubs.slice().sort((a, b) => squadStrength(b) - squadStrength(a));

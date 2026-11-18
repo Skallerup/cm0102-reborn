@@ -8,7 +8,7 @@ import { MatchSim } from '../src/game/engine/match';
 import { Rng } from '../src/game/rng';
 const world = JSON.parse(readFileSync('public/data/world.json', 'utf8')) as WorldData;
 const ni = (n: string) => world.nations.findIndex((x) => x.name === n);
-createGame(world, { managerName: 'T', managerNation: ni('Denmark'), clubId: world.clubs.find((c) => c[2] === 'FC København')![0], activeNations: ['Denmark'].map(ni), lang: 'da', masking: true, seed: 9 });
+createGame(world, { managerName: 'T', managerNation: ni('Denmark'), clubId: world.clubs.find((c) => c[2] === 'FC København')![0], activeNations: ['Denmark'].map(ni), lang: 'da', masking: true, mode: 'extended', seed: 9 });
 const g = gs();
 const lg = Object.values(g.comps).find((c) => c.type === 'league' && c.name.includes('Superliga'))!;
 const clubs = lg.clubs;

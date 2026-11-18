@@ -15,7 +15,7 @@ const world = JSON.parse(readFileSync(process.argv[3] ?? 'public/data/world.json
 const ni = (n: string) => world.nations.findIndex((x) => x.name === n);
 const NATIONS = ['England', 'Spain', 'Germany', 'Italy', 'France', 'Denmark'];
 const user = world.clubs.find((c) => c[2] === 'Brøndby')?.[0] ?? world.clubs[0][0];
-createGame(world, { managerName: 'Bench', managerNation: ni('Denmark'), clubId: user, activeNations: NATIONS.map(ni).filter((i) => i >= 0), lang: 'da', masking: true, seed: 2026 });
+createGame(world, { managerName: 'Bench', managerNation: ni('Denmark'), clubId: user, activeNations: NATIONS.map(ni).filter((i) => i >= 0), lang: 'da', masking: true, mode: 'extended', seed: 2026 });
 const g = gs();
 
 type Agg = { n: number; goals: number; hw: number; dr: number; scores: Record<string, number>; big: number; nil: number };

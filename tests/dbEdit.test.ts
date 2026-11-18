@@ -28,7 +28,7 @@ describe('database-editor', () => {
   it('slår igennem i et nyt spil', () => {
     const w = applyDb(base, db);
     const eng = w.nations.findIndex((n) => n.name === 'England');
-    createGame(w, { managerName: 'T', managerNation: eng, clubId: millwall, activeNations: [eng], lang: 'da', masking: true, seed: 2 });
+    createGame(w, { managerName: 'T', managerNation: eng, clubId: millwall, activeNations: [eng], lang: 'da', masking: true, mode: 'extended', seed: 2 });
     const g = gs();
     const p = g.players[ts];
     expect(p.club).toBe(millwall);

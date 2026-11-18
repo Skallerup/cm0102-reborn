@@ -12,7 +12,7 @@ describe('tilføj et land undervejs', () => {
     const w = JSON.parse(readFileSync('public/data/world-original.json', 'utf8')) as WorldData;
     const den = w.nations.findIndex((n) => n.name === 'Denmark');
     const eng = w.nations.findIndex((n) => n.name === 'England');
-    createGame(w, { managerName: 'T', managerNation: den, clubId: w.clubs.find((c) => /Br.ndby/.test(c[1]))![0], activeNations: [den], lang: 'en', masking: true, seed: 4 });
+    createGame(w, { managerName: 'T', managerNation: den, clubId: w.clubs.find((c) => /Br.ndby/.test(c[1]))![0], activeNations: [den], lang: 'en', masking: true, mode: 'extended', seed: 4 });
     const g = gs();
     for (let i = 0; i < 70; i++) { const r = continueGame(); if (r.match !== undefined) quickPlayUserMatch(); }
     expect(addableNations()).toContain(eng);
@@ -38,7 +38,7 @@ describe('tilføj et land undervejs', () => {
     const w = JSON.parse(readFileSync('public/data/world-original.json', 'utf8')) as WorldData;
     const eng = w.nations.findIndex((n) => n.name === 'England');
     const sco = w.nations.findIndex((n) => n.name === 'Scotland');
-    createGame(w, { managerName: 'T', managerNation: eng, clubId: w.clubs.find((c) => c[1] === 'Arsenal')![0], activeNations: [eng], lang: 'en', masking: true, seed: 5 });
+    createGame(w, { managerName: 'T', managerNation: eng, clubId: w.clubs.find((c) => c[1] === 'Arsenal')![0], activeNations: [eng], lang: 'en', masking: true, mode: 'extended', seed: 5 });
     const g = gs();
     g.date = '2002-02-06';
     activateNation(sco);

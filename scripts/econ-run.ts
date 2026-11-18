@@ -18,7 +18,7 @@ const natNames = (process.env.NATIONS ?? 'England').split(',').map((s) => s.trim
 const nats = natNames.map((n) => world.nations.findIndex((x) => x.name === n)).filter((i) => i >= 0);
 const eng = nats[0];
 const user = world.clubs.find((c) => c[1] === 'Brøndby IF')?.[0] ?? world.clubs.at(-1)![0];
-createGame(world, { managerName: 'E', managerNation: eng, clubId: user, activeNations: nats, lang: 'da', masking: true, seed: 3 });
+createGame(world, { managerName: 'E', managerNation: eng, clubId: user, activeNations: nats, lang: 'da', masking: true, mode: 'extended', seed: 3 });
 const g = gs();
 const m = (v: number) => `${(v / 1e6).toFixed(1)}m`;
 const med = (xs: number[]) => { const s = xs.slice().sort((a, b) => a - b); return s[Math.floor(s.length / 2)] ?? 0; };

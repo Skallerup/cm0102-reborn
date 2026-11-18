@@ -9,7 +9,7 @@ describe('trøjenumre', () => {
   const world = JSON.parse(readFileSync('public/data/world-original.json', 'utf8')) as WorldData;
   const eng = world.nations.findIndex((x) => x.name === 'England');
   const mu = world.clubs.find((c) => c[1] === 'Manchester United')![0];
-  createGame(world, { managerName: 'T', managerNation: eng, clubId: mu, activeNations: [eng], lang: 'da', masking: true, seed: 1 });
+  createGame(world, { managerName: 'T', managerNation: eng, clubId: mu, activeNations: [eng], lang: 'da', masking: true, mode: 'extended', seed: 1 });
   const g = gs();
   const by = (last: string, club = mu) => squad(club).find((p) => p.last === last)!;
 

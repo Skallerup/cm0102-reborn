@@ -10,7 +10,7 @@ describe('nyheder gennem en sæson', () => {
   it('nye CM 01/02-nyhedstyper dukker op, og alle nyheder har en engelsk tekst', () => {
     const w = JSON.parse(readFileSync('public/data/world-original.json', 'utf8')) as WorldData;
     const eng = w.nations.findIndex((n) => n.name === 'England');
-    createGame(w, { managerName: 'T', managerNation: eng, clubId: w.clubs.find((c) => c[1] === 'Leeds United')![0], activeNations: [eng], lang: 'en', masking: true, seed: 6 });
+    createGame(w, { managerName: 'T', managerNation: eng, clubId: w.clubs.find((c) => c[1] === 'Leeds United')![0], activeNations: [eng], lang: 'en', masking: true, mode: 'extended', seed: 6 });
     const g = gs();
     const keys = new Set<string>();
     for (let i = 0; i < 330; i++) {

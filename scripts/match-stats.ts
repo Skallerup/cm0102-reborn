@@ -20,7 +20,7 @@ if (corners) ORIGINAL.corners = Number(corners);
 if (blocked) ORIGINAL.countBlocked = blocked !== 'no';
 const world = JSON.parse(readFileSync(process.argv[3] ?? 'public/data/world.json', 'utf8')) as WorldData;
 const ni = (n: string) => world.nations.findIndex((x) => x.name === n);
-createGame(world, { managerName: 'Lab', managerNation: ni('England'), clubId: world.clubs[0][0], activeNations: [ni('England')], lang: 'da', masking: true, seed: 9 });
+createGame(world, { managerName: 'Lab', managerNation: ni('England'), clubId: world.clubs[0][0], activeNations: [ni('England')], lang: 'da', masking: true, mode: 'extended', seed: 9 });
 const g = gs();
 const epl = Object.values(g.comps).find((c) => c.type === 'league' && c.tier === 1 && world.nations[c.nation]?.name === 'England')!;
 const fresh = (id: number) => squad(id).map((p) => ({ ...p, attrs: p.attrs.slice(), condition: 100, injury: null, banned: 0 }) as Player);

@@ -11,7 +11,7 @@ const seasons = Number(process.argv[2] ?? 3);
 const world = JSON.parse(readFileSync(process.argv[3] ?? 'public/data/world-original.json', 'utf8')) as WorldData;
 const eng = world.nations.findIndex((x) => x.name === 'England');
 const user = world.clubs.find((c) => c[3] === eng)![0];
-createGame(world, { managerName: 'R', managerNation: eng, clubId: user, activeNations: [eng], lang: 'en', masking: true, seed: 11, mode: process.env.MODE === 'authentic' ? 'authentic' : undefined });
+createGame(world, { managerName: 'R', managerNation: eng, clubId: user, activeNations: [eng], lang: 'en', masking: true, seed: 11, mode: process.env.MODE === 'authentic' ? 'authentic' : 'extended' });
 const g = gs();
 if (process.env.ENGINE === 'original') g.options.engine = 'original';
 const PHYS = ['acceleration', 'agility', 'balance', 'jumping', 'naturalFitness', 'pace', 'stamina', 'strength'] as const;

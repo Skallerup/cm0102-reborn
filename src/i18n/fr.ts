@@ -4770,4 +4770,5 @@ Object.assign(fr, {
   "cmsn.regA.SouthernEurope": "d'Europe du Sud",
   "cmsn.reg.UK": "Royaume-Uni et Irlande",
   "cmsn.regA.UK": "britanniques et irlandais",
+  'mode.legacy': "Cette partie a été lancée dans l'ancien mode étendu et garde ses règles. Les nouvelles parties suivent toujours la logique de CM 01/02.",
 });

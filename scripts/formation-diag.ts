@@ -12,7 +12,7 @@ import type { Player } from '../src/game/types';
 const [FA, FB, NS] = [process.argv[2] ?? '4-4-2 Diamond', process.argv[3] ?? '4-4-2', process.argv[4] ?? '2000'];
 const world = JSON.parse(readFileSync('public/data/world.json', 'utf8')) as WorldData;
 const ni = (n: string) => world.nations.findIndex((x) => x.name === n);
-createGame(world, { managerName: 'Lab', managerNation: ni('England'), clubId: world.clubs[0][0], activeNations: [ni('England')], lang: 'da', masking: true, seed: 5 });
+createGame(world, { managerName: 'Lab', managerNation: ni('England'), clubId: world.clubs[0][0], activeNations: [ni('England')], lang: 'da', masking: true, mode: 'extended', seed: 5 });
 const g = gs();
 const epl = Object.values(g.comps).find((c) => c.type === 'league' && c.tier === 1 && world.nations[c.nation]?.name === 'England')!;
 const [H, O] = epl.clubs.slice().sort((a, b) => squadStrength(b) - squadStrength(a)).slice(9, 11);

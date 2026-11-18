@@ -6,7 +6,7 @@ import { valueFromCA } from '../src/game/data/generate';
 import { ageOn } from '../src/game/dates';
 const world = JSON.parse(readFileSync('public/data/world.json', 'utf8')) as WorldData;
 const nats = ['England', 'Spain', 'Germany', 'Italy', 'France', 'Holland', 'Portugal', 'Denmark'].map((n) => world.nations.findIndex((x) => x.name === n));
-createGame(world, { managerName: 'E', managerNation: nats[0], clubId: world.clubs[0][0], activeNations: nats, lang: 'da', masking: true, seed: 3 });
+createGame(world, { managerName: 'E', managerNation: nats[0], clubId: world.clubs[0][0], activeNations: nats, lang: 'da', masking: true, mode: 'extended', seed: 3 });
 const g = gs();
 const med = (xs: number[]) => { const s = xs.slice().sort((a, b) => a - b); return s[Math.floor(s.length / 2)] ?? 0; };
 const rows: Record<string, number[][]> = {};

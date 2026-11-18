@@ -9,7 +9,7 @@ import { playerInterest } from '../src/game/transfers';
 const start = (f: string, club: string) => {
   const w = JSON.parse(readFileSync(`public/data/${f}`, 'utf8')) as WorldData;
   const eng = w.nations.findIndex((n) => n.name === 'England');
-  createGame(w, { managerName: 'T', managerNation: eng, clubId: w.clubs.find((c) => c[1] === club)![0], activeNations: [eng], lang: 'en', masking: true, seed: 3 });
+  createGame(w, { managerName: 'T', managerNation: eng, clubId: w.clubs.find((c) => c[1] === club)![0], activeNations: [eng], lang: 'en', masking: true, mode: 'extended', seed: 3 });
   return gs();
 };
 

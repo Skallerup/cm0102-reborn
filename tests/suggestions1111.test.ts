@@ -24,7 +24,7 @@ describe('brugerønsker 11/11', () => {
   it('#12: klubber, der skæres fra en europæisk turnering, ryger et trin ned (Røde Stjerne i Europa League 2026/27)', () => {
     const w = JSON.parse(readFileSync('public/data/world.json', 'utf8')) as WorldData;
     const eng = w.nations.findIndex((n) => n.name === 'England');
-    createGame(w, { managerName: 'T', managerNation: eng, clubId: w.clubs.find((c) => c[3] === eng)![0], activeNations: [eng], lang: 'en', masking: true, seed: 1 });
+    createGame(w, { managerName: 'T', managerNation: eng, clubId: w.clubs.find((c) => c[3] === eng)![0], activeNations: [eng], lang: 'en', masking: true, mode: 'extended', seed: 1 });
     const g = gs();
     const rs = w.clubs.find((c) => c[1] === 'Red Star Belgrade')![0];
     expect(['CL', 'UEFA'].some((k) => g.comps[k]?.clubs.includes(rs))).toBe(true);

@@ -126,7 +126,7 @@ export function loadOrCreate(o: SnapOpts): GameState {
   const eng = o.world.nations.findIndex((x) => x.name === 'England');
   const create = () => {
     const nat = [eng, ...(o.nations ?? []).map((nm) => o.world.nations.findIndex((x) => x.name === nm)).filter((i) => i >= 0 && i !== eng)];
-    createGame(o.world, { managerName: 'Lab', managerNation: eng, clubId: resolveClub(o), activeNations: nat, lang: 'en', masking: true, seed: o.seed ?? 1, mode: o.mode });
+    createGame(o.world, { managerName: 'Lab', managerNation: eng, clubId: resolveClub(o), activeNations: nat, lang: 'en', masking: true, seed: o.seed ?? 1, mode: o.mode ?? 'extended' });
     const g = gs();
     if (o.engine) g.options.engine = o.engine;
     return g;

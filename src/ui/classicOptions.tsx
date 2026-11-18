@@ -169,7 +169,7 @@ function GameSettings({ onClose }: { onClose: () => void }) {
     write(PREF.bg, d.bg); write(PREF.flash, d.flash); try { localStorage.setItem(PREF.goalFlash, String(d.goalFlash)); } catch { /* ignorér */ } try { localStorage.setItem(PREF.pixel, d.pixel); } catch { /* ignorér */ } try { localStorage.setItem(PREF.fontKind, d.font); } catch { /* ignorér */ } write(PREF.logo, d.logo); write(PREF.stadium, d.stadium); if (d.realism !== initial.realism) write(PREF.realism, d.realism); setMatchSound(d.sound); setBgSet(d.bgset); applyFlash();
     if (d.notif !== initial.notif) await setNotify(d.notif);
     notify();
-    if (d.theme !== initial.theme) { setTheme(d.theme); const m = d.theme === 'retro' ? 'authentic' : 'extended'; if ((g.options.mode ?? 'extended') !== m) act({ t: 'setMode', mode: m }); }
+    if (d.theme !== initial.theme) setTheme(d.theme); // kun udseendet – logikken er altid originalens (docs/ALWAYS_ORIGINAL.md)
     onClose();
   };
   const row = (label: string, ctl: React.ReactNode) => <><span>{label}</span><div>{ctl}</div></>;

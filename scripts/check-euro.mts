@@ -11,7 +11,7 @@ const clubId = Number(process.argv[2] ?? 7023); // Man Utd i CM-data
 createGame(world, {
   managerName: 'Test', managerNation: ni('England'), clubId,
   activeNations: ['England', 'Spain', 'Italy', 'Germany', 'France', 'Holland', 'Portugal'].map(ni),
-  lang: 'da', masking: true, seed: 42,
+  lang: 'da', masking: true, mode: 'extended', seed: 42,
 });
 const g = gs();
 

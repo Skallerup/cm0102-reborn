@@ -4770,4 +4770,5 @@ Object.assign(tr, {
   "cmsn.regA.SouthernEurope": "Güney Avrupalı",
   "cmsn.reg.UK": "Birleşik Krallık ve İrlanda",
   "cmsn.regA.UK": "İngiliz ve İrlandalı",
+  'mode.legacy': "Bu oyun eski genişletilmiş modda başlatıldı ve kurallarını korur. Yeni oyunlar her zaman CM 01/02'nin mantığını izler.",
 });

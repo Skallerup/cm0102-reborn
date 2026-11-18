@@ -13,7 +13,7 @@ const ni = (n: string) => world.nations.findIndex((x) => x.name === n);
 
 describe('multiplayer: rivalisering, budrunder og autopilot', () => {
   it('indbyrdes regnskab, lukket budrunde og assistent ved udløbet frist', () => {
-    createGame(world, { managerName: 'Anna', managerNation: ni('Denmark'), clubId: 190, activeNations: [ni('Denmark')], lang: 'da', masking: true, seed: 5 });
+    createGame(world, { managerName: 'Anna', managerNation: ni('Denmark'), clubId: 190, activeNations: [ni('Denmark')], lang: 'da', masking: true, mode: 'extended', seed: 5 });
     enableMultiplayer('p1', 'Anna');
     applyActionAs('p2', { t: 'join', name: 'Bo', club: 206, nation: ni('Denmark') });
     const g = gs();

@@ -9,7 +9,7 @@ import { econ } from '../src/game/econ';
 const start = (file: string) => {
   const world = JSON.parse(readFileSync(`public/data/${file}`, 'utf8')) as WorldData;
   const eng = world.nations.findIndex((x) => x.name === 'England');
-  createGame(world, { managerName: 'T', managerNation: eng, clubId: world.clubs.find((c) => c[1] === 'Manchester United')![0], activeNations: [eng], lang: 'da', masking: true, seed: 2 });
+  createGame(world, { managerName: 'T', managerNation: eng, clubId: world.clubs.find((c) => c[1] === 'Manchester United')![0], activeNations: [eng], lang: 'da', masking: true, mode: 'extended', seed: 2 });
   return gs();
 };
 

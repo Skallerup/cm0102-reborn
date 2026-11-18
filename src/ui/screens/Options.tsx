@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { exportSave, saveGame } from '../../game/save';
 import { notify } from '../../game/state';
 import { act } from '../../game/actions';
+import { legacyExtended } from '../../game/rules';
 import { session } from '../../online/client';
 import { MultiplayerPanel } from '../MultiplayerPanel';
 import type { Lang } from '../../game/types';
@@ -52,7 +53,7 @@ export function Options() {
             </label>
             <div className="muted">{t(`opt.save.${g.options.autosaveMode ?? 'changes'}.hint`)}</div>
             <label className="row">{t('opt.theme')}
-              <select value={theme} onChange={(e) => { const th = e.target.value as Theme; setThemeState(th); setTheme(th); const m = th === 'retro' ? 'authentic' : 'extended'; if ((g.options.mode ?? 'extended') !== m) act({ t: 'setMode', mode: m }); }}>
+              <select value={theme} onChange={(e) => { const th = e.target.value as Theme; setThemeState(th); setTheme(th); }}>
                 {(['club', 'clubDark', 'light', 'dark', 'retro'] as const).map((m) => <option key={m} value={m}>{t(`opt.theme.${m}`)}</option>)}
                 {(['gold'] as const).map((m) => <option key={m} value={m}>{t(`opt.theme.${m}`)}</option>)}
               </select>
@@ -73,7 +74,8 @@ export function Options() {
                 </select>
               </label>
             )}
-            {!g.draft && <>
+            {/* (docs/ALWAYS_ORIGINAL.md) reglerne og vinduerne er logik: kun i gamle udvidede spil – originale spil får dem fra spilstarten */}
+            {!g.draft && legacyExtended(g) && <>
             <label className="row">{t('opt.rules')}
               <select value={g.options.rules ?? 'modern'} disabled={!!g.humans && !session()?.isHost} title={g.humans && !session()?.isHost ? t('opt.hostOnly') : undefined}
                 onChange={(e) => act({ t: 'setRules', rules: e.target.value as 'modern' | 'classic' })}>
@@ -81,8 +83,7 @@ export function Options() {
               </select>
             </label>
             <div className="muted">{t('opt.rules.hint')}</div>
-            {/* spiltilstanden følger udseendet: klassisk = ægte CM 01/02, moderne = udvidet */}
-            <div className="muted">{t(g.options.mode === 'authentic' ? 'mode.authenticHint' : 'mode.extendedHint')}</div>
+            <div className="muted">{t('mode.legacy')} {t('mode.extendedHint')}</div>
             <label className="row">{t('opt.windows')}
               <select value={g.options.transferWindows ?? 'real'} disabled={!!g.humans && !session()?.isHost} title={g.humans && !session()?.isHost ? t('opt.hostOnly') : undefined}
                 onChange={(e) => { act({ t: 'setWindows', mode: e.target.value as 'real' | 'classic' }); }}>

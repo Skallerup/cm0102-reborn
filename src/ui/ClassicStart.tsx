@@ -281,7 +281,7 @@ export function ClassicStart({ onLang, onHome, onGo, onLook, online }: { onLang:
       const ctl = new AbortController();
       build.current = { sig, ctl };
       setBp({ sig, frac: 0.02, done: false });
-      const opts = { managerName: 'Manager', managerNation: selected[0], clubId: p.clubs[0].id, activeNations: [...selected, ...background], lang: getLang(), masking, seed: seed.current, mode: 'authentic' as const, preview: true };
+      const opts = { managerName: 'Manager', managerNation: selected[0], clubId: p.clubs[0].id, activeNations: [...selected, ...background], lang: getLang(), masking, seed: seed.current, preview: true };
       createGameAsync(w, opts, (pr) => setBp((cur) => (cur && cur.sig === sig ? { ...cur, frac: pr.frac } : cur)), ctl.signal).then(() => {
         if (build.current?.ctl !== ctl || ctl.signal.aborted) return;
         setBp({ sig, frac: 1, done: true });
@@ -319,7 +319,7 @@ export function ClassicStart({ onLang, onHome, onGo, onLook, online }: { onLang:
     if (!world || !club) return;
     setErr('');
     setProg({ label: t('cxs.initGame'), frac: 0.02 });
-    const opts = { managerName, managerNation: nat >= 0 ? nat : club.nation, clubId: club.id, activeNations: [...sel, ...bgn], lang: getLang(), masking, seed: seed.current, mode: 'authentic' as const };
+    const opts = { managerName, managerNation: nat >= 0 ? nat : club.nation, clubId: club.id, activeNations: [...sel, ...bgn], lang: getLang(), masking, seed: seed.current };
     // nyt spil: nulstil sidemenuen, så "Holdet" er foldet ud fra start (resten huskes derefter)
     try { localStorage.setItem(GROUP_KEY, JSON.stringify(NAV_CLOSED_DEFAULT)); } catch { /* ignorer */ }
     track('start_game', { mode: online ? 'online' : 'single', db: db.startsWith('custom:') ? 'custom' : db, challenge: false, lang: opts.lang, flow: 'classic' });

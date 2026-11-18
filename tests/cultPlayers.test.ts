@@ -27,7 +27,7 @@ describe('kultspillere i den originale database', () => {
     expect(hidden.length).toBeGreaterThan(50);
     const eng = w.nations.findIndex((n) => n.name === 'England');
     expect(hidden.some((l) => l.nation === eng)).toBe(true); // fx Bishop Auckland
-    createGame(w, { managerName: 'T', managerNation: eng, clubId: w.clubs.find((c) => c[1] === 'Millwall')![0], activeNations: [eng], lang: 'da', masking: true, seed: 1 });
+    createGame(w, { managerName: 'T', managerNation: eng, clubId: w.clubs.find((c) => c[1] === 'Millwall')![0], activeNations: [eng], lang: 'da', masking: true, mode: 'extended', seed: 1 });
     const g = gs();
     for (const l of hidden) expect(g.comps[l.id]).toBeUndefined();
     expect(Object.values(g.comps).filter((c) => c.type === 'league').length).toBe(4);

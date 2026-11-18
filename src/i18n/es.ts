@@ -4770,4 +4770,5 @@ Object.assign(es, {
   "cmsn.regA.SouthernEurope": "sureuropeos",
   "cmsn.reg.UK": "Reino Unido e Irlanda",
   "cmsn.regA.UK": "británicos e irlandeses",
+  'mode.legacy': "Esta partida se empezó en el antiguo modo ampliado y mantiene sus reglas. Las partidas nuevas siguen siempre la lógica de CM 01/02.",
 });

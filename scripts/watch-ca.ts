@@ -7,7 +7,7 @@ const name = process.argv[2] ?? 'Haaland';
 const seasons = Number(process.argv[3] ?? 2);
 const world = JSON.parse(readFileSync('public/data/world.json', 'utf8')) as WorldData;
 const eng = world.nations.findIndex((x) => x.name === 'England');
-createGame(world, { managerName: 'E', managerNation: eng, clubId: world.clubs.find((c) => c[1] === 'Brøndby IF')![0], activeNations: [eng], lang: 'da', masking: true, seed: 3 });
+createGame(world, { managerName: 'E', managerNation: eng, clubId: world.clubs.find((c) => c[1] === 'Brøndby IF')![0], activeNations: [eng], lang: 'da', masking: true, mode: 'extended', seed: 3 });
 const g = gs();
 const p = Object.values(g.players).find((x) => x.last === name)!;
 let last = p.ca;

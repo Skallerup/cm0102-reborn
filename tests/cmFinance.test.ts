@@ -10,7 +10,7 @@ import { afterAppearance } from '../src/game/clauses';
 import type { TransferOffer } from '../src/game/types';
 
 const load = (f: string) => JSON.parse(readFileSync(`public/data/${f}`, 'utf8')) as WorldData;
-const start = (w: WorldData, club: string, mode?: 'authentic') => {
+const start = (w: WorldData, club: string, mode: 'authentic' | 'extended' = 'extended') => {
   const eng = w.nations.findIndex((n) => n.name === 'England');
   createGame(w, { managerName: 'T', managerNation: eng, clubId: w.clubs.find((c) => c[1] === club)![0], activeNations: [eng], lang: 'en', masking: true, seed: 1, mode });
   return gs();

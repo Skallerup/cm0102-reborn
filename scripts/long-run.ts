@@ -9,7 +9,7 @@ import { ageOn } from '../src/game/dates';
 const seasons = Number(process.argv[2] ?? 5);
 const world = JSON.parse(readFileSync('public/data/world.json', 'utf8')) as WorldData;
 const ni = (n: string) => world.nations.findIndex((x) => x.name === n);
-createGame(world, { managerName: 'T', managerNation: ni('Denmark'), clubId: 190, activeNations: ['Denmark', 'England'].map(ni), lang: 'da', masking: true, seed: 11 });
+createGame(world, { managerName: 'T', managerNation: ni('Denmark'), clubId: 190, activeNations: ['Denmark', 'England'].map(ni), lang: 'da', masking: true, mode: 'extended', seed: 11 });
 const g = gs();
 const t0 = performance.now();
 

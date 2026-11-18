@@ -11,7 +11,7 @@ describe('fulgte kampdage (klassisk Continue Game)', () => {
   it('stopper før og efter en ligadag uden egen kamp', async () => {
     const w = JSON.parse(readFileSync('public/data/world.json', 'utf8')) as WorldData;
     const eng = w.nations.findIndex((n) => n.name === 'England');
-    createGame(w, { managerName: 'T', managerNation: eng, clubId: w.clubs.find((c) => c[1] === 'Brentford FC')![0], activeNations: [eng], lang: 'en', masking: true, seed: 5 });
+    createGame(w, { managerName: 'T', managerNation: eng, clubId: w.clubs.find((c) => c[1] === 'Brentford FC')![0], activeNations: [eng], lang: 'en', masking: true, mode: 'extended', seed: 5 });
     const g = gs();
     const lg = g.clubs[g.userClub].league;
     // en ligakamp uden os på en dag, hvor vi ikke spiller: flyt den til en dag helt for sig selv
@@ -39,7 +39,7 @@ describe('fulgte kampdage (klassisk Continue Game)', () => {
   it('stopper på en slutrundedag (VM) med dagens resultater', async () => {
     const w = JSON.parse(readFileSync('public/data/world.json', 'utf8')) as WorldData;
     const eng = w.nations.findIndex((n) => n.name === 'England');
-    createGame(w, { managerName: 'T', managerNation: eng, clubId: w.clubs.find((c) => c[1] === 'Brentford FC')![0], activeNations: [eng], lang: 'en', masking: true, seed: 6 });
+    createGame(w, { managerName: 'T', managerNation: eng, clubId: w.clubs.find((c) => c[1] === 'Brentford FC')![0], activeNations: [eng], lang: 'en', masking: true, mode: 'extended', seed: 6 });
     const g = gs();
     const day = addDays(g.date, 2);
     for (const id of fixturesOn(day)) g.fixtures[id].date = addDays(day, 1);

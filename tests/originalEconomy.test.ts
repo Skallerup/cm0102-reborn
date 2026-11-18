@@ -8,7 +8,7 @@ import { gs } from '../src/game/state';
 const load = (f: string) => JSON.parse(readFileSync(`public/data/${f}`, 'utf8')) as WorldData;
 const start = (w: WorldData, club: string) => {
   const eng = w.nations.findIndex((n) => n.name === 'England');
-  createGame(w, { managerName: 'T', managerNation: eng, clubId: w.clubs.find((c) => c[1] === club)![0], activeNations: [eng], lang: 'da', masking: true, seed: 4 });
+  createGame(w, { managerName: 'T', managerNation: eng, clubId: w.clubs.find((c) => c[1] === club)![0], activeNations: [eng], lang: 'da', masking: true, mode: 'extended', seed: 4 });
   return gs();
 };
 const eur = (gbp: number) => gbp / 0.86;

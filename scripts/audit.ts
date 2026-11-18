@@ -17,7 +17,7 @@ import type { Fixture, MatchResultShort } from '../src/game/types';
 const seasons = Number(process.argv[2] ?? 3);
 const world = JSON.parse(readFileSync('public/data/world.json', 'utf8')) as WorldData;
 const ni = (n: string) => world.nations.findIndex((x) => x.name === n);
-createGame(world, { managerName: 'Audit', managerNation: ni('Denmark'), clubId: 190, activeNations: ['Denmark', 'England', 'Spain'].map(ni), lang: 'da', masking: true, seed: 77 });
+createGame(world, { managerName: 'Audit', managerNation: ni('Denmark'), clubId: 190, activeNations: ['Denmark', 'England', 'Spain'].map(ni), lang: 'da', masking: true, mode: 'extended', seed: 77 });
 const g = gs();
 const issues: string[] = [];
 const issue = (s: string) => { if (issues.length < 200) issues.push(`${g.date}: ${s}`); };

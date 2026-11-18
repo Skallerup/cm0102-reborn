@@ -89,7 +89,8 @@ export interface NewGameOptions {
   masking: boolean;
   seed: number;
   challenge?: string;
-  /** spiltilstand (se GameState.options.mode) */
+  /** (docs/ALWAYS_ORIGINAL.md) nye spil er altid originale – 'extended' (den arvede udvidede tilstand) bruges kun af tests/scripts, der afprøver
+   *  den gamle model, og udviklerserverens e2e-krog (Start.tsx). Standard: 'authentic' */
   mode?: 'authentic' | 'extended';
   /** Online: frist pr. træk i timer (0 = ingen) */
   deadlineHours?: number;
@@ -125,10 +126,11 @@ const progress = (step: string, frac: number) => progressCb?.(step, frac);
 
 export function createGame(world: WorldData, o: NewGameOptions): GameState {
   progress('clubs', 0.02);
+  const mode = o.mode ?? 'authentic';
   const season = world.season;
   // (runde 10A) den originale database i ægte tilstand: originalens spilstart 0x830520 − 4 uger for det først valgte land (England 14/7-2001;
   // cmCalendar.ts) – før 1/7 (Danmark, Polen, Kroatien og forårsligaerne) beholdes spillets 1/7, da sæsonskiftet ligger 1/7
-  const cmStart = (world as Partial<CMWorld>).kind === 'cm0102' && season < 2020 && o.mode === 'authentic' ? cmStartDate(o.activeNations[0], season) : null;
+  const cmStart = (world as Partial<CMWorld>).kind === 'cm0102' && season < 2020 && mode === 'authentic' ? cmStartDate(o.activeNations[0], season) : null;
   const date = cmStart && cmStart > START_DATE(season) ? cmStart : START_DATE(season);
   const seed = o.seed >>> 0;
   rng.state = seed || 1;
@@ -146,7 +148,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     userClub: o.clubId,
     manager: { name: o.managerName, nation: o.managerNation, rep: 40, history: [], trophies: [], sacked: 0 },
     board: { confidence: 60, expectation: 'mid', expectedPos: 10, warnings: 0 },
-    options: { masking: o.masking, autosave: true, matchSpeed: 650, fullCommentary: true, rules: o.mode === 'authentic' || world.source.startsWith('Championship Manager 01/02') ? 'classic' : 'modern', mode: o.mode ?? 'extended' },
+    options: { masking: o.masking, autosave: true, matchSpeed: 650, fullCommentary: true, rules: mode === 'authentic' || world.source.startsWith('Championship Manager 01/02') ? 'classic' : 'modern', mode },
     activeNations: o.activeNations.slice(),
     nations: world.nations,
     leagueOrder: world.leagues.map((l) => l.id),
@@ -180,7 +182,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   // originalens rå omdømme (club +0x80, nation +0x8e) – computerens holdudtagelse i gittermotoren (cmPlayerData.ts)
   // (17/11, MODERN_PARITY) 2026/27 i ægte tilstand (cmLogic): kampmotorens inddata fra databasen (world-cm.json) – omdømmerne, turneringernes
   // omdømme, tilskuerposterne og byerne; resten (økonomi, trupplan, sprog …) hører til 2001-verdenens moduler (cmActive)
-  const cmRawLogic = !!cm?.cmRaw && season >= 2020 && o.mode === 'authentic';
+  const cmRawLogic = !!cm?.cmRaw && season >= 2020 && mode === 'authentic';
   if (cmRawLogic) {
     const raw = cm!.cmRaw!;
     g.cmClubRep = { ...raw.clubRep }; g.cmNationRep = raw.nationRep.slice();
@@ -241,7 +243,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   const dbWage = new Map<number, number>(), dbWageGbp = new Map<number, number>();
   // (2026/27 i ægte tilstand: kun som originalens staff +0x4e og til pengefaktoren cmGbp – spillets lønninger forbliver de moderne)
   if ((g.econ || cmRawLogic) && F.wage !== undefined) for (const r of world.players) if ((r[F.wage] as number) > 0) { if (g.econ) dbWage.set(r[F.id] as number, Math.round((r[F.wage] as number) / GBP)); dbWageGbp.set(r[F.id] as number, r[F.wage] as number); }
-  const cmStartGame = !!cm && season < 2020 && o.mode === 'authentic';
+  const cmStartGame = !!cm && season < 2020 && mode === 'authentic';
   const initRng = new Rng(1);
   let initPool: ReturnType<typeof makePool> | undefined;
   // (den originale database i ægte tilstand) 0x524d70's reserveposter 0x52638a: trunc(1 % (Maximum; størrelse 2: 2 %) af de beholdte personer) klubløse, født 1982, med

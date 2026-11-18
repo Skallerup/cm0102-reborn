@@ -100,7 +100,7 @@ export function restartOptions(old: GameState, world: CMWorld, clubId: number, l
   const others = old.activeNations.map((n) => mapNation(old.nations[n]?.name, world)).filter((n): n is number => n !== null && playable.has(n) && n !== club[3]);
   return {
     managerName: old.manager.name, managerNation: mapNation(old.nations[old.manager.nation]?.name, world) ?? club[3], clubId,
-    activeNations: [club[3], ...new Set(others)], lang, masking: old.options.masking, seed: old.seed || 1, mode: 'authentic',
+    activeNations: [club[3], ...new Set(others)], lang, masking: old.options.masking, seed: old.seed || 1,
   };
 }
 
@@ -109,7 +109,7 @@ export function convertOptions(old: GameState, world: CMWorld, lang: NewGameOpti
   const own = world.clubs.find((c) => c[0] === old.userClub && c[1] === old.clubs[old.userClub]?.name);
   const active = old.activeNations.filter((n) => world.leagues.some((l) => l.nation === n && !l.hidden));
   const clubId = own ? own[0] : world.clubs.find((c) => active.includes(c[3]))?.[0] ?? world.clubs[0][0];
-  return { managerName: old.manager.name, managerNation: old.manager.nation, clubId, activeNations: active.length ? active : [world.clubs.find((c) => c[0] === clubId)![3]], lang, masking: old.options.masking, seed: old.seed || 1, mode: 'authentic' };
+  return { managerName: old.manager.name, managerNation: old.manager.nation, clubId, activeNations: active.length ? active : [world.clubs.find((c) => c[0] === clubId)![3]], lang, masking: old.options.masking, seed: old.seed || 1 };
 }
 
 /** Er spillet med den udgave af databasen (de fleste af ens spillere har samme id og efternavn)? 0..1 */

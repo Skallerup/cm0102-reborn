@@ -1,5 +1,5 @@
 import { LookPicker, initialLook } from './LookPicker';
-import { setTheme, getTheme, modernOn } from './theme';
+import { setTheme, modernOn } from './theme';
 import { useLegacyBg } from './legacyBg';
 import { LangMenu } from './LangMenu';
 import { track } from '../analytics';
@@ -35,6 +35,9 @@ type View = 'menu' | 'new' | 'load' | 'challenges' | 'online' | 'newOnline' | 'n
 
 /** AI-managere (bots) i almindelige spil er midlertidigt slået fra (ejerens ønske 2026-11-07) – draft-ligaen har sine egne */
 const BOTS_ENABLED = false;
+
+/** kun udviklerserveren (import.meta.env.DEV): e2e-testens gamle model */
+const e2eExtended = () => { if (!import.meta.env.DEV) return false; try { return localStorage.getItem('cm0102.mode') === 'extended'; } catch { return false; } };
 
 export function Start({ onLang, onHome }: { onLang: (l: Lang) => void; onHome?: () => void }) {
   useLegacyBg();
@@ -222,8 +225,6 @@ function NewGame({ challenge, onBack, setBusy, setProg, online, onDraft, initial
   const [mine, setMine] = useState<CustomDb[]>([]);
   // nyt spil starter øverst ved databasevalget (før scrollede autofokus på navnefeltet forbi det – ejerens fejl 9/11)
   useEffect(() => { if (!ch) window.scrollTo(0, 0); }, []);
-  const [, setModeRaw] = useState<'authentic' | 'extended'>(() => { try { return localStorage.getItem('cm0102.mode') === 'extended' ? 'extended' : 'authentic'; } catch { return 'authentic'; } });
-  const setModeState = (m: 'authentic' | 'extended') => { setModeRaw(m); try { localStorage.setItem('cm0102.mode', m); } catch { /* ignorer */ } };
   useEffect(() => { if (!ch) void listDbs().then(setMine); }, [ch]);
   const customId = db.startsWith('custom:') ? db.slice(7) : '';
   const dbKind = customId ? 'custom' : db;
@@ -293,27 +294,9 @@ function NewGame({ challenge, onBack, setBusy, setProg, online, onDraft, initial
   );
   // standard: klassisk udseende + ægte CM 01/02 (isRetro() kræver et kørende spil – derfor temaet direkte)
   const [look, setLook] = useState<'modern' | 'classic'>(initialLook);
-  const retro = look === 'classic';
   const lookPicker = modernOn() ? <LookPicker value={look} onPick={setLook} /> : null;
-  // spiltilstand: ægte CM 01/02 (kun originalens funktioner) eller udvidet (alt det ekstra) – uafhængigt af databasen
-  // Ægte CM 01/02 findes kun i det klassiske tema (vises altid, men er grå med det moderne udseende)
-  const modePicker = !ch && modernOn() && (
-    <Panel title={t('mode.title')}>
-      <div className="db-choice">
-        {/* ægte CM 01/02 kræver det klassiske udseende – valget skifter udseendet med */}
-        {/* spiltilstanden følger udseendet: klassisk = ægte CM 01/02, moderne = udvidet (ejerens regel 2026-11-10: ingen udvidet i klassisk) */}
-        <div role="button" tabIndex={0} className={`db-opt ${retro ? 'on' : ''}`} onClick={() => { setModeState('authentic'); if (!retro) { setTheme('retro'); setLook('classic'); } }}>
-          {/* ingen skærmbilleder her: de viste udseendet (klassisk/moderne), men valget gælder kun funktionerne – ejerens fejlmelding 2026-11-10 */}
-          <b>{t('mode.authentic')}</b><span>{t('mode.authenticHint')}</span>
-        </div>
-        <div role="button" tabIndex={0} className={`db-opt ${!retro ? 'on' : ''}`} onClick={() => { setModeState('extended'); if (retro) { setTheme(getTheme() === 'retro' ? 'club' : getTheme()); setLook('modern'); } }}>
-          <b>{t('mode.extended')}</b><span>{t('mode.extendedHint')} {t('mode.extendedModernOnly')}</span>
-        </div>
-      </div>
-    </Panel>
-  );
   if (err) return <Panel title={t('start.new')}><div className="bad">{err}</div></Panel>;
-  if (!world) return <div>{dbPicker}{lookPicker}{modePicker}<Panel title={t('start.new')}><div className="muted">{t('start.loadingDb')}</div></Panel></div>;
+  if (!world) return <div>{dbPicker}{lookPicker}<Panel title={t('start.new')}><div className="muted">{t('start.loadingDb')}</div></Panel></div>;
 
   const leagues = world.leagues.filter((l) => active.has(l.nation) && !l.hidden);
   // den valgte liga skal høre til et valgt land – ellers vises det første valgte lands liga
@@ -326,7 +309,10 @@ function NewGame({ challenge, onBack, setBusy, setProg, online, onDraft, initial
     setBusy(online ? t('mp.creating') : t('start.creating'));
     const opts = {
       managerName: name.trim(), managerNation: clubNation ?? 0, clubId: club, activeNations: [...active],
-      lang: getLang(), masking, seed, challenge, mode: (retro || !modernOn() ? 'authentic' : 'extended') as 'authentic' | 'extended', // uden det moderne er alt det originale (ejeren 16/11)
+      lang: getLang(), masking, seed, challenge,
+      // nye spil er altid originale (docs/ALWAYS_ORIGINAL.md) – udseendet er kun et visningsvalg. Kun udviklerserverens e2e (scripts/e2e.mjs) kan
+      // stadig starte den arvede udvidede tilstand i det moderne udseende via localStorage cm0102.mode = 'extended' (som før)
+      ...(look !== 'classic' && modernOn() && e2eExtended() ? { mode: 'extended' as const } : {}),
     };
     // nyt spil: nulstil sidemenuen, så "Holdet" er foldet ud fra start (resten huskes derefter)
     try { localStorage.setItem(GROUP_KEY, JSON.stringify(NAV_CLOSED_DEFAULT)); } catch { /* ignorer */ }
@@ -356,7 +342,7 @@ function NewGame({ challenge, onBack, setBusy, setProg, online, onDraft, initial
 
   return (
     <div>
-      {dbPicker}{lookPicker}{modePicker}
+      {dbPicker}{lookPicker}
       <Panel title={ch ? t(`challenge.${ch.id}.title`) : online ? t('mp.create') : t('start.new')} right={<button className="small" onClick={onBack}>{t('common.back')}</button>}>
         <div className="col">
           {ch && <div className="insight good">{t(`challenge.${ch.id}.desc`)}</div>}

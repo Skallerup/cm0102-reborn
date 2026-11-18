@@ -11,7 +11,7 @@ describe('spejdere', () => {
   it('alle opgavetyper giver nyheder, og rapporterne har tekst', () => {
     const w = JSON.parse(readFileSync('public/data/world.json', 'utf8')) as WorldData;
     const eng = w.nations.findIndex((n) => n.name === 'England');
-    createGame(w, { managerName: 'T', managerNation: eng, clubId: w.clubs.find((c) => c[1] === 'Brentford FC')![0], activeNations: [eng], lang: 'en', masking: true, seed: 8 });
+    createGame(w, { managerName: 'T', managerNation: eng, clubId: w.clubs.find((c) => c[1] === 'Brentford FC')![0], activeNations: [eng], lang: 'en', masking: true, mode: 'extended', seed: 8 });
     const g = gs();
     // fem spejdere til fem opgaver
     const free = Object.values(g.staff).filter((s) => !s.club && s.role === 'scout').slice(0, 6);

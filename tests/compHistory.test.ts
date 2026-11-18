@@ -10,7 +10,7 @@ describe('turneringens historik', () => {
   it('regner rekorder af kampene og gemmer sæsonen', async () => {
     const w = JSON.parse(readFileSync('public/data/world.json', 'utf8')) as WorldData;
     const eng = w.nations.findIndex((n) => n.name === 'England');
-    createGame(w, { managerName: 'T', managerNation: eng, clubId: w.clubs.find((c) => c[1] === 'Brentford FC')![0], activeNations: [eng], lang: 'en', masking: true, seed: 5 });
+    createGame(w, { managerName: 'T', managerNation: eng, clubId: w.clubs.find((c) => c[1] === 'Brentford FC')![0], activeNations: [eng], lang: 'en', masking: true, mode: 'extended', seed: 5 });
     const g = gs();
     for (let i = 0; i < 40; i++) {
       const r = await runUntil({ untilMatch: true, maxDays: 14 });

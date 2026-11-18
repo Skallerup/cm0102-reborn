@@ -7,7 +7,7 @@ import { gs, squad } from '../src/game/state';
 import { ageOn } from '../src/game/dates';
 const world = JSON.parse(readFileSync('public/data/world.json', 'utf8')) as WorldData;
 const ni = (n: string) => world.nations.findIndex((x) => x.name === n);
-createGame(world, { managerName: 'T', managerNation: ni('Denmark'), clubId: world.clubs.find((c) => c[2] === 'Vejle Boldklub')![0], activeNations: ['Denmark', 'England', 'Spain'].map(ni), lang: 'da', masking: true, seed: 21 });
+createGame(world, { managerName: 'T', managerNation: ni('Denmark'), clubId: world.clubs.find((c) => c[2] === 'Vejle Boldklub')![0], activeNations: ['Denmark', 'England', 'Spain'].map(ni), lang: 'da', masking: true, mode: 'extended', seed: 21 });
 const g = gs();
 const top14 = (cid: number) => { const s = squad(cid).map((p) => p.ca).sort((a, b) => b - a).slice(0, 14); return s.reduce((x, y) => x + y, 0) / Math.max(1, s.length); };
 const lg = (name: string) => Object.values(g.comps).find((c) => c.type === 'league' && c.name.includes(name));

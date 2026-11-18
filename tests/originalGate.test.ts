@@ -8,6 +8,7 @@ import { cmLogic } from '../src/game/cmPlayerData';
 import { gridEngineOn } from '../src/game/sim';
 import { authentic, legacyExtended, origLogic } from '../src/game/rules';
 import { gs } from '../src/game/state';
+import { act } from '../src/game/actions';
 
 const files = (d: string): string[] =>
   readdirSync(d).flatMap((f) => { const p = join(d, f); return statSync(p).isDirectory() ? files(p) : /\.tsx?$/.test(f) ? [p] : []; });
@@ -29,11 +30,17 @@ describe('originalens logik uafhængig af udseendet', () => {
   const doc = (globalThis as { document?: unknown });
   afterEach(() => { delete doc.document; });
 
-  it('et ægte spil i det moderne udseende kører stadig originalens logik og kampmotor', () => {
+  it('et nyt spil i det moderne udseende kører stadig originalens logik og kampmotor', () => {
     const w = JSON.parse(readFileSync('public/data/world-original.json', 'utf8')) as WorldData;
     const eng = w.nations.findIndex((n) => n.name === 'England');
-    createGame(w, { managerName: 'T', managerNation: eng, clubId: w.clubs.find((c) => c[1] === 'Arsenal')![0], activeNations: [eng], lang: 'en', masking: true, seed: 3, mode: 'authentic' });
+    createGame(w, { managerName: 'T', managerNation: eng, clubId: w.clubs.find((c) => c[1] === 'Arsenal')![0], activeNations: [eng], lang: 'en', masking: true, seed: 3 });
     const g = gs();
+    // trin 2: nye spil er altid originale (createGame uden mode) og reglerne/vinduerne kan ikke ændres
+    expect(g.options.mode).toBe('authentic');
+    expect(g.options.rules).toBe('classic');
+    expect(act({ t: 'setRules', rules: 'modern' })).toBe('authentic');
+    expect(act({ t: 'setWindows', mode: 'classic' })).toBe('authentic');
+    expect(g.options.rules).toBe('classic');
     const before = { o: origLogic(g), c: cmLogic(g), e: gridEngineOn(g) };
     doc.document = { documentElement: { dataset: { skin: 'modern' } } };
     expect(authentic()).toBe(false); // UI: ikke originalens skærme

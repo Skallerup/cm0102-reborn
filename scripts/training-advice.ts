@@ -7,7 +7,7 @@ import { trainingAdvice } from '../src/game/training';
 import { naturalRole } from '../src/game/attributes';
 const world = JSON.parse(readFileSync('public/data/world.json', 'utf8')) as WorldData;
 const ni = (n: string) => world.nations.findIndex((x) => x.name === n);
-createGame(world, { managerName: 'T', managerNation: ni('Denmark'), clubId: world.clubs.find((c) => c[2] === 'FC København')![0], activeNations: ['Denmark', 'England'].map(ni), lang: 'da', masking: true, seed: 4 });
+createGame(world, { managerName: 'T', managerNation: ni('Denmark'), clubId: world.clubs.find((c) => c[2] === 'FC København')![0], activeNations: ['Denmark', 'England'].map(ni), lang: 'da', masking: true, mode: 'extended', seed: 4 });
 const g = gs();
 const tab: Record<string, Record<string, number>> = {};
 for (const p of Object.values(g.players)) {

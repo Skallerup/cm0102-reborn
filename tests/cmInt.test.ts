@@ -31,7 +31,7 @@ describe('Player.cmInt', () => {
   }, 60_000);
   it('den moderne database får ingen cmInt', () => {
     const w = JSON.parse(readFileSync('public/data/world.json', 'utf8')) as WorldData;
-    createGame(w, { managerName: 'T', managerNation: 0, clubId: w.clubs[0][0], activeNations: [w.clubs[0][3]], lang: 'en', masking: true, seed: 3 });
+    createGame(w, { managerName: 'T', managerNation: 0, clubId: w.clubs[0][0], activeNations: [w.clubs[0][3]], lang: 'en', masking: true, mode: 'extended', seed: 3 });
     expect(Object.values(gs().players).some((p) => p.cmInt)).toBe(false);
   }, 60_000);
 });

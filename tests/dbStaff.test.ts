@@ -9,7 +9,7 @@ describe('stab fra databasen', () => {
     const w = JSON.parse(readFileSync('public/data/world-original.json', 'utf8')) as WorldData;
     const eng = w.nations.findIndex((n) => n.name === 'England');
     const mu = w.clubs.find((c) => c[1] === 'Manchester United')![0];
-    createGame(w, { managerName: 'T', managerNation: eng, clubId: w.clubs.find((c) => c[1] === 'Arsenal')![0], activeNations: [eng], lang: 'en', masking: true, seed: 3 });
+    createGame(w, { managerName: 'T', managerNation: eng, clubId: w.clubs.find((c) => c[1] === 'Arsenal')![0], activeNations: [eng], lang: 'en', masking: true, mode: 'extended', seed: 3 });
     const g = gs();
     const st = Object.values(g.staff).filter((s) => s.club === mu);
     const by = (last: string) => st.find((s) => s.last === last || s.last.endsWith(last))!;

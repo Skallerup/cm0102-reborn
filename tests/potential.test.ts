@@ -11,7 +11,7 @@ describe('tilfældigt potentiale (PA -1/-2)', () => {
   const world = JSON.parse(readFileSync('public/data/world-original.json', 'utf8')) as WorldData;
   const eng = world.nations.findIndex((x) => x.name === 'England');
   const samba = (seed: number) => {
-    createGame(world, { managerName: 'T', managerNation: eng, clubId: world.clubs[0][0], activeNations: [eng], lang: 'da', masking: true, seed });
+    createGame(world, { managerName: 'T', managerNation: eng, clubId: world.clubs[0][0], activeNations: [eng], lang: 'da', masking: true, mode: 'extended', seed });
     return Object.values(gs().players).find((p) => p.first === 'Cherno' && p.last === 'Samba')!.pa;
   };
   it('Cherno Samba (PA -2) får en ny PA i hvert spil', () => {

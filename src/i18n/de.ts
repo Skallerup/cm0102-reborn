@@ -4770,4 +4770,5 @@ Object.assign(de, {
   "cmsn.regA.SouthernEurope": "südeuropäische",
   "cmsn.reg.UK": "Großbritannien und Irland",
   "cmsn.regA.UK": "britische und irische",
+  'mode.legacy': "Dieses Spiel wurde im alten erweiterten Modus gestartet und behält seine Regeln. Neue Spiele folgen immer der Logik von CM 01/02.",
 });

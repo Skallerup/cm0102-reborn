@@ -28,7 +28,7 @@ describe('rækkerne 2026/27', () => {
   it('kampprogrammet for 12-klubbers ligaerne: 33 runder, alle møder alle tre gange', () => {
     const dk = world.nations.findIndex((n) => n.name === 'Denmark');
     const club = world.clubs.find((c) => c[1] === 'Næstved Boldklub')![0] as number;
-    createGame(world, { managerName: 'T', managerNation: dk, clubId: club, activeNations: [dk], lang: 'da', masking: true, seed: 1 });
+    createGame(world, { managerName: 'T', managerNation: dk, clubId: club, activeNations: [dk], lang: 'da', masking: true, mode: 'extended', seed: 1 });
     const g = gs();
     for (const name of ['Danish First Division', 'Danish Second Division']) {
       const id = league(name).id;

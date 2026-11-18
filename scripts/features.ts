@@ -17,7 +17,7 @@ const file = process.argv[2] ?? 'public/data/world.json';
 const clubName = process.argv[3] ?? 'Brentford FC';
 const world = JSON.parse(readFileSync(file, 'utf8')) as WorldData;
 const eng = world.nations.findIndex((x) => x.name === 'England');
-createGame(world, { managerName: 'Feature', managerNation: eng, clubId: world.clubs.find((c) => c[1] === clubName)![0], activeNations: [eng], lang: 'en', masking: true, seed: 21 });
+createGame(world, { managerName: 'Feature', managerNation: eng, clubId: world.clubs.find((c) => c[1] === clubName)![0], activeNations: [eng], lang: 'en', masking: true, mode: 'extended', seed: 21 });
 const g = gs();
 const me = () => g.clubs[g.userClub];
 const days = (n: number) => { for (let i = 0; i < n; i++) { const r = continueGame(); if (r.match !== undefined) quickPlayUserMatch(); } };

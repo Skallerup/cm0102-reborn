@@ -123,7 +123,7 @@ export function buildDb(conf: DbConf): DbOut {
   const playable = [...new Set(world.leagues.filter((l) => !l.hidden).map((l) => l.nation))];
   const eng = world.nations.findIndex((x) => x.name === 'England');
   const anyClub = world.clubs.find((c) => world.leagues.some((l) => l.id === c[4] && !l.hidden))![0] as number;
-  createGame(world, { managerName: 'SEO', managerNation: eng, clubId: anyClub, activeNations: playable, lang: 'en', masking: false, seed: 1 });
+  createGame(world, { managerName: 'SEO', managerNation: eng, clubId: anyClub, activeNations: playable, lang: 'en', masking: false, mode: 'extended', seed: 1 });
   const g = gs();
   const P = conf.prefix;
   const start = `${world.season}-07-01`;

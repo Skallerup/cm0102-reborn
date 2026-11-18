@@ -4770,4 +4770,5 @@ Object.assign(pt, {
   "cmsn.regA.SouthernEurope": "do Sul da Europa",
   "cmsn.reg.UK": "Reino Unido e Irlanda",
   "cmsn.regA.UK": "britânicos e irlandeses",
+  'mode.legacy': "Este jogo foi iniciado no antigo modo alargado e mantém as suas regras. Os jogos novos seguem sempre a lógica do CM 01/02.",
 });

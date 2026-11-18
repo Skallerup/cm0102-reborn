@@ -7,7 +7,7 @@ import { gs } from '../src/game/state';
 import { finalOrder } from '../src/game/competitions';
 const world = JSON.parse(readFileSync('public/data/world.json', 'utf8')) as WorldData;
 const ni = (n: string) => world.nations.findIndex((x) => x.name === n);
-createGame(world, { managerName: 'T', managerNation: ni('Denmark'), clubId: world.clubs.find((c) => c[2] === 'Vejle Boldklub')![0], activeNations: ['Denmark', 'England', 'Spain'].map(ni), lang: 'da', masking: true, seed: 12 });
+createGame(world, { managerName: 'T', managerNation: ni('Denmark'), clubId: world.clubs.find((c) => c[2] === 'Vejle Boldklub')![0], activeNations: ['Denmark', 'England', 'Spain'].map(ni), lang: 'da', masking: true, mode: 'extended', seed: 12 });
 const g = gs();
 const avgRep = (lg: string) => { const cs = Object.values(g.clubs).filter((c) => c.league === lg); return (cs.reduce((s, c) => s + c.rep, 0) / cs.length).toFixed(1); };
 console.log('start', 'DK1', avgRep('DK1'), 'EPL', avgRep(Object.keys(g.comps).find((k) => g.comps[k].name.includes('Premier'))!));

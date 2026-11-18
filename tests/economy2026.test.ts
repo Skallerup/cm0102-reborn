@@ -21,7 +21,7 @@ const nat = (n: string) => world.nations.findIndex((x) => x.name === n);
 
 describe('moderne økonomi 2026', () => {
   const eng = nat('England');
-  createGame(world, { managerName: 'T', managerNation: eng, clubId: world.clubs.find((c) => c[1] === 'Brøndby IF')![0], activeNations: NATIONS.map(nat), lang: 'da', masking: true, seed: 3 });
+  createGame(world, { managerName: 'T', managerNation: eng, clubId: world.clubs.find((c) => c[1] === 'Brøndby IF')![0], activeNations: NATIONS.map(nat), lang: 'da', masking: true, mode: 'extended', seed: 3 });
   const g = gs();
   const top = () => Object.values(g.comps).filter((c) => c.type === 'league' && c.tier === 1 && NATIONS.includes(g.nations[c.nation]?.name));
 

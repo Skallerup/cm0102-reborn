@@ -28,7 +28,7 @@ const world = JSON.parse(readFileSync('public/data/world-original.json', 'utf8')
 const eng = world.nations.findIndex((x) => x.name === 'England');
 // brugerens klub: en lille klub uden for de fire ligaer påvirker ikke Premier League
 const user = world.clubs.find((c) => world.nations[c[1] as number] && c[2] === 'Brøndby')?.[0] ?? world.clubs.at(-1)![0];
-createGame(world, { managerName: 'Lab', managerNation: eng, clubId: user, activeNations: [eng, world.nations.findIndex((x) => x.name === 'Denmark')], lang: 'da', masking: true, seed });
+createGame(world, { managerName: 'Lab', managerNation: eng, clubId: user, activeNations: [eng, world.nations.findIndex((x) => x.name === 'Denmark')], lang: 'da', masking: true, mode: 'extended', seed });
 const g = gs();
 // sæsonskiftet laver nye turneringsobjekter – find Premier League igen hver dag
 const findPl = () => Object.values(g.comps).find((c) => c.type === 'league' && c.tier === 1 && c.nation === eng)!;

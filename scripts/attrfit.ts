@@ -10,7 +10,7 @@ import type { Player } from '../src/game/types';
 const seasons = Number(process.argv[2] ?? 3);
 const world = JSON.parse(readFileSync('public/data/world.json', 'utf8')) as WorldData;
 const ni = (n: string) => world.nations.findIndex((x) => x.name === n);
-createGame(world, { managerName: 'T', managerNation: ni('Denmark'), clubId: 443, activeNations: ['Denmark', 'England'].map(ni), lang: 'da', masking: true, seed: 3 });
+createGame(world, { managerName: 'T', managerNation: ni('Denmark'), clubId: 443, activeNations: ['Denmark', 'England'].map(ni), lang: 'da', masking: true, mode: 'extended', seed: 3 });
 const g = gs();
 const start = new Set(Object.keys(g.players).map(Number));
 const startCa = new Map(Object.values(g.players).map((p) => [p.id, p.ca]));

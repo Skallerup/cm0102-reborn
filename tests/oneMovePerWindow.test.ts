@@ -10,7 +10,7 @@ describe('højst ét klubskifte pr. transfervindue', () => {
   it('ingen spiller skifter to gange i sommervinduet', () => {
     const w = JSON.parse(readFileSync('public/data/world.json', 'utf8')) as WorldData;
     const nat = (n: string) => w.nations.findIndex((x) => x.name === n);
-    createGame(w, { managerName: 'T', managerNation: nat('England'), clubId: w.clubs.find((c) => c[1] === 'Chelsea')![0], activeNations: [nat('England'), nat('Spain'), nat('Italy')], lang: 'en', masking: true, seed: 5 });
+    createGame(w, { managerName: 'T', managerNation: nat('England'), clubId: w.clubs.find((c) => c[1] === 'Chelsea')![0], activeNations: [nat('England'), nat('Spain'), nat('Italy')], lang: 'en', masking: true, mode: 'extended', seed: 5 });
     const g = gs();
     while (g.date < '2026-09-05') { const r = continueGame(); if (r.match !== undefined) quickPlayUserMatch(); }
     const moved = Object.values(g.players).map((p) => (p.moves ?? []).filter((m) => m.date >= '2026-06-01' && m.fee >= 0).length);

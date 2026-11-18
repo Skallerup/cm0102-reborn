@@ -12,7 +12,7 @@ describe('landshold', () => {
   it('landskampe tæller, og VM 2002 bliver spillet færdigt med en vinder', () => {
     const w = JSON.parse(readFileSync('public/data/world-original.json', 'utf8')) as WorldData;
     const eng = w.nations.findIndex((n) => n.name === 'England');
-    createGame(w, { managerName: 'T', managerNation: eng, clubId: w.clubs.find((c) => c[1] === 'Leeds United')![0], activeNations: [eng], lang: 'en', masking: true, seed: 2 });
+    createGame(w, { managerName: 'T', managerNation: eng, clubId: w.clubs.find((c) => c[1] === 'Leeds United')![0], activeNations: [eng], lang: 'en', masking: true, mode: 'extended', seed: 2 });
     const g = gs();
     // landskampe for Englands spillere i alt (hvem der starter, afhænger af formen – Beckham kan sidde på bænken)
     const caps0 = new Map(Object.values(g.players).filter((p) => p.nation === eng).map((p) => [p.id, p.caps]));
