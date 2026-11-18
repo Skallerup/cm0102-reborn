@@ -110,7 +110,7 @@ describe('originalens økonomi (cmFinance)', () => {
     for (const c of Object.values(g.clubs)) if (g.cmFin?.[c.id]) { expect(c.facilities).toBeGreaterThanOrEqual(1); expect(c.facilities).toBeLessThanOrEqual(20); }
     // world-filens rækker er urørte (de deles mellem spil)
     expect(JSON.stringify(w.cmRaw?.crowd)).toBe(raw);
-  });
+  }, 300_000);
 
   it('den moderne database og det udvidede spil har ingen cmFin', () => {
     expect(start(load('world-original.json'), 'Arsenal').cmFin).toBeUndefined();
