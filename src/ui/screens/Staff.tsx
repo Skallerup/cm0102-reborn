@@ -17,7 +17,7 @@ import { ClubLink, Modal, Panel, Tabs } from '../components';
 import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
 import { ClassicStaffProfile } from './StaffClassic';
-import { cmActive } from '../../game/cmPlayerData';
+import { cmStaffOn } from '../../game/cmPlayerData';
 
 const ATTRS: (keyof Staff['attrs'])[] = ['coaching', 'judgingAbility', 'judgingPotential', 'physio', 'motivating', 'discipline', 'tactics'];
 const ROLES: StaffRole[] = ['assistant', 'coach', 'physio', 'scout'];
@@ -26,9 +26,9 @@ const KEY_ATTR: Record<StaffRole, keyof Staff['attrs']> = { manager: 'tactics', 
 export function StaffScreen() {
   const { route } = useNav();
   // klassisk udseende med den originale database i ægte tilstand: originalens stabsprofil (StaffClassic.tsx)
-  if (route.id !== undefined && gs().staff[Number(route.id)]) return isRetro() && cmActive(gs()) ? <ClassicStaffProfile id={Number(route.id)} /> : <StaffProfile id={Number(route.id)} />;
+  if (route.id !== undefined && gs().staff[Number(route.id)]) return isRetro() && cmStaffOn(gs()) ? <ClassicStaffProfile id={Number(route.id)} /> : <StaffProfile id={Number(route.id)} />;
   // CM 01/02 har ingen samlet stabsliste – klubbens General Info (Non-Playing Staff) er stedet
-  if (isRetro() && cmActive(gs())) return <ClubScreen id={gs().userClub} />;
+  if (isRetro() && cmStaffOn(gs())) return <ClubScreen id={gs().userClub} />;
   return <StaffList />;
 }
 

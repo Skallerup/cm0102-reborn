@@ -65,7 +65,8 @@ if (Object.keys(DIV_FIXES).length) {
 }
 
 // moderne: tre rækker læses, så Danmarks 2. division kan komme med (TIERS nedenfor bestemmer, hvad der beholdes)
-const w = parseCM0102(files, ORIGINAL ? { maxTiers: 4, allClubs: true, cmMem: true } : { maxTiers: 3 });
+// 2026/27 (MODERN_PARITY 13): stabens hukommelse 0x524d70 (staffMem – Staff Search); world.json er uændret (kun world-cm*.json får den)
+const w = parseCM0102(files, ORIGINAL ? { maxTiers: 4, allClubs: true, cmMem: true } : { maxTiers: 3, staffMem: true });
 
 // skub en ISO-dato (yyyy-mm-dd) frem med SHIFT år
 const shift = (iso: string) => {
@@ -246,15 +247,19 @@ const staffNp2026 = new Map<number, number[]>();
 /** (MODERN_PARITY 7) 2026/27: bestyrelse/managerjob – staff[12] (omdømmerne og de skjulte egenskaber), [13] (ankomstdatoen) og [14] (landsholdet
  *  +0x24/+0x28) pr. person-id → world-cm.json (cmRaw.staffBx) */
 const staffBx2026 = new Map<number, [number[], string, number[]]>();
+/** (MODERN_PARITY 13) 2026/27: stabens hukommelse [15] (0x524d70 – Staff Search) pr. person-id → world-cm.json (cmRaw.staffMem); de øvrige ikke-spillere
+ *  (staffX i originalens format med [11]..[16]) og deres klubbers navne → world-cm-staff.json */
+const staffMem2026 = new Map<number, 1 | number[]>();
+let staffX2026: NonNullable<typeof w.staff> | null = null, clubNames2026: Record<number, [string, number]> | null = null;
 // stab: kun i de klubber, der er med (andre klubbers folk bliver ledige, hvis de er gode nok – CA 100+); datoerne skubbes som spillernes
 if (w.staff) {
   const shown = new Set(w.clubs.filter((c) => { const l = w.leagues.find((x) => x.id === c[4]); return l && !l.hidden; }).map((c) => c[0] as number));
   const dropped: NonNullable<typeof w.staff> = [];
   const src = new Map<NonNullable<typeof w.staff>[number], NonNullable<typeof w.staff>[number]>();
-  const out = (s: NonNullable<typeof w.staff>[number]) => {
-    const np = ORIGINAL && s[11] ? [s[11]] : [];
+  const out = (s: NonNullable<typeof w.staff>[number], full = ORIGINAL) => {
+    const np = full && s[11] ? [s[11]] : [];
     // [14] = landsholdet +0x24/+0x28 (kun den originale database: viljen 0x844780); [15]/[16] = hukommelsen og klub/job (Staff Search)
-    const bx = ORIGINAL && s[11] && s[12] ? [s[12], s[13] ? shift(s[13]) : '', s[14] ?? [-1, 0], ...(s[15] !== undefined ? [s[15], s[16] ?? [-1, 0]] : [])] : [];
+    const bx = full && s[11] && s[12] ? [s[12], s[13] ? shift(s[13]) : '', s[14] ?? [-1, 0], ...(s[15] !== undefined ? [s[15], s[16] ?? [-1, 0]] : [])] : [];
     return [s[0], s[1], s[2], s[3], shift(s[4]), s[5], s[6], s[7], s[8], s[9], ...(s[5] === 5 && s[10] ? [s[10]] : np.length ? [null] : []), ...np, ...bx] as typeof s;
   };
   w.staff = w.staff.flatMap((s) => {
@@ -269,15 +274,15 @@ if (w.staff) {
   const free = new Set(w.staff.filter((s) => !s[0]).sort((a, b) => b[7] - a[7]).slice(0, 600));
   for (const s of w.staff) if (!s[0] && !free.has(s)) dropped.push(src.get(s)!);
   w.staff = w.staff.filter((s) => s[0] || free.has(s));
-  if (!ORIGINAL) for (const r of w.staff) { const x = src.get(r); const s11 = x?.[11]; if (s11) staffNp2026.set(r[9], s11); if (s11 && x?.[12]) staffBx2026.set(r[9], [x[12], x[13] ? shift(x[13]) : '', x[14] ?? [-1, 0]]); }
+  if (!ORIGINAL) for (const r of w.staff) { const x = src.get(r); const s11 = x?.[11]; if (s11) staffNp2026.set(r[9], s11); if (s11 && x?.[12]) staffBx2026.set(r[9], [x[12], x[13] ? shift(x[13]) : '', x[14] ?? [-1, 0]]); if (x?.[15] !== undefined) staffMem2026.set(r[9], x[15]); }
   // Staff Search (0x7afa70): originalens hukommelse efter 0x524d70 – de øvrige ikke-spillere, der kan være med (altid, eller når et spilbart
   // land vælges), i samme format med [0] = 0, [5] = jobbet +0x3d og [16] = [klub, job]; klubberne uden for spillet får deres navn i clubNames
-  if (ORIGINAL && w.staffX) {
+  if (w.staffX) {
     const playable = new Set(w.leagues.filter((l) => !l.hidden).map((l) => l.nation));
     const inMem = (s: NonNullable<typeof w.staff>[number]) => s[15] === 1 || (Array.isArray(s[15]) && s[15].some((n) => playable.has(n)));
     const xs = [...w.staffX, ...dropped.map((s) => { const r = s.slice() as typeof s; r[0] = 0; r[5] = s[16]?.[1] ?? 0; return r; })].filter(inMem);
     const before = xs.length;
-    w.staffX = xs.map((s) => { const r = out(s); r[10] = s[5] === 5 ? r[10] : null; return r; });
+    w.staffX = xs.map((s) => { const r = out(s, true); r[10] = s[5] === 5 ? r[10] : null; return r; });
     const known = new Set(w.clubs.map((c) => c[0] as number));
     const names: Record<number, [string, number]> = {};
     for (const s of w.staffX) { const c = s[16]?.[0] ?? -1; if (c >= 0 && !known.has(c) && w.clubNames?.[c]) names[c] = w.clubNames[c]; }
@@ -289,6 +294,8 @@ if (w.staff) {
     }
     w.clubNames = names;
     console.log(`Staff Search: ${w.staff.length} i spillets stab + ${before} andre ikke-spillere (${Object.keys(names).length} klubber uden for spillet)`);
+    // 2026/27: ikke i world.json (world-cm-staff.json, se nederst)
+    if (!ORIGINAL) { staffX2026 = w.staffX; clubNames2026 = names; delete w.staffX; delete w.clubNames; }
   } else { delete w.staffX; delete w.clubNames; }
 }
 // (forholdene) præferencerne kun for de personer og klubber, der er med (cmRelations.ts – id'er uden for spillet bliver 0 ved nyt spil)
@@ -414,6 +421,7 @@ if (cmSide) delete w.cmRaw;
 // (MODERN_PARITY 5+6) stabens ikke-spillerpost (staff[11] fra parseCM0102 – i world.json kun for den originale database) for den stab, world-filen har
 if (cmSide && staffNp2026.size) cmSide.staffNp = Object.fromEntries([...staffNp2026].sort((a, b) => a[0] - b[0]));
 if (cmSide && staffBx2026.size) cmSide.staffBx = Object.fromEntries([...staffBx2026].sort((a, b) => a[0] - b[0]));
+if (cmSide && staffMem2026.size) cmSide.staffMem = Object.fromEntries([...staffMem2026].sort((a, b) => a[0] - b[0]));
 // landsholdene (staff +0x24): nat_club.dat's id'er følger club.dat's (A-holdet = antallet af klubber + nationens id)
 if (cmSide && staffBx2026.size && files['nat_club.dat']) cmSide.natOff = new DataView(files['nat_club.dat']).getInt32(0, true);
 writeFileSync(out, JSON.stringify(w));
@@ -421,6 +429,13 @@ const kb = Math.round(statSync(out).size / 1024);
 if (cmSide) {
   writeFileSync(cmOut, JSON.stringify({ source: w.source, cmRaw: cmSide }));
   console.error(`cmRaw (originalens logik i ægte tilstand) -> ${cmOut} (${Math.round(statSync(cmOut).size / 1024)} KB)`);
+}
+// (MODERN_PARITY 13) Staff Search's øvrige ikke-spillere (0x7afa70 – originalens hukommelse efter 0x524d70) i en egen fil, som kun hentes ved et nyt
+// spil (ikke i appens offline-cache): staffX i originalens format og navnene på deres klubber uden for spillet
+const staffOut = cmOut.replace(/-cm\.json$/, '-cm-staff.json');
+if (cmSide && staffX2026 && staffOut !== cmOut) {
+  writeFileSync(staffOut, JSON.stringify({ source: w.source, staffX: staffX2026, clubNames: clubNames2026 ?? {} }));
+  console.error(`Staff Search (${staffX2026.length} ikke-spillere) -> ${staffOut} (${Math.round(statSync(staffOut).size / 1024)} KB)`);
 }
 
 // ---- Spillerkarrierer (staff_history.dat) → en separat fil, der først hentes, når en profil åbnes.
@@ -478,7 +493,8 @@ if (resolve(dirname(out)) === resolve('public/data')) {
   const src = dir.includes('.orig-db/') ? dir.slice(dir.indexOf('.orig-db/')) : dir;
   log[basename(out)] = { source: src.replace(/\/+$/, ''), season: SEASON, ...(process.env.NO_LEGACY ? { noLegacy: true } : {}), sha256: sha(out),
     ...(existsSync(careersOut) && careersOut !== out ? { careers: basename(careersOut), careersSha256: sha(careersOut) } : {}),
-    ...(cmSide ? { cm: basename(cmOut), cmSha256: sha(cmOut) } : {}), reproducible: true };
+    ...(cmSide ? { cm: basename(cmOut), cmSha256: sha(cmOut) } : {}),
+    ...(cmSide && staffX2026 && existsSync(staffOut) ? { cmStaff: basename(staffOut), cmStaffSha256: sha(staffOut) } : {}), reproducible: true };
   writeFileSync(logFile, JSON.stringify(Object.fromEntries(Object.entries(log).sort(([a], [b]) => a.localeCompare(b))), null, 2) + '\n');
   console.error(`byggeloggen: ${logFile} (${basename(out)})`);
 }

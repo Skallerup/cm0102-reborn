@@ -533,6 +533,12 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     ? { pool: cm!.staff!.filter((r) => sNp[r[9]]).map((r) => npTemplate(npFromWorld(r[7], sNp[r[9]], r[10]?.[7] ?? 0))), nations: world.nations.map((n) => n.name), seed, np: sNp,
       bx: cm!.cmRaw!.staffBx, natOff: cm!.cmRaw!.natOff }
     : null;
+  // (MODERN_PARITY 13) stabens modul på 2026/27: hukommelsen 0x524d70 (world-cm.json staffMem – Staff Search 0x7afa70), person-id'erne, databasens
+  // løn (startkontrakterne 0x4c7560/0x83a1b0) og stabsskifterne (cmStaffOn); kræver bestyrelsens poster (staffBx – omdømmerne, viljen 0x844780)
+  const staffLogic = !!npLogic?.bx && !!cm!.cmRaw!.staffMem;
+  memSel = npInit?.sel ?? (staffLogic ? new Set(o.activeNations) : null);
+  memFlags = staffLogic ? cm!.cmRaw!.staffMem! : null;
+  if (npLogic && staffLogic) npLogic.staff = true;
   natDb = {};
   staffDbWage.clear();
   for (const c of Object.values(g.clubs)) createClubStaff(c, world, seed, date, dbStaff.get(c.id) ?? []);
@@ -549,7 +555,8 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   // Staff Search (0x7afa70 tager alle personer med ikke-spillerpost i hukommelsen): de øvrige ikke-spillere, som originalens 0x524d70 beholder
   // med de valgte lande – formænd, direktører, stab i klubber uden for spillet, ledige … Kun til søgningen og profilen (cmExtra): de er ikke en
   // del af spillets stab (club = 0, ingen løn i klubberne); jobbet og klubben står i cmJob/cmClub.
-  if (npInit?.sel && cm?.staffX) {
+  if (staffLogic) g.cmStaffMem = true;
+  if (memSel && cm?.staffX) {
     g.cmStaffMem = true;
     g.cmClubNames = {};
     const ROLE: Record<number, StaffRole> = { 5: 'manager', 12: 'manager', 6: 'assistant', 13: 'assistant', 7: 'coach', 8: 'coach', 14: 'coach', 15: 'coach', 9: 'scout', 10: 'physio' };
@@ -570,7 +577,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
       }
     }
   }
-  npInit = null; npLogic = null;
+  npInit = null; npLogic = null; memSel = null; memFlags = null;
   const natDbGame = natDb; natDb = null;
   // (den originale database) turneringernes tidligere vindere fra club_comp_history.dat – "<turnering> History" → Winners
   if (cm?.compHist && season < 2020) {
@@ -811,11 +818,17 @@ export function takeOverClub(club: Club, viaJob = false) {
 /** originalens spilstart for ikke-spillerposten (sat i createGame, mens databasens stab oprettes) */
 let npInit: { pool: NpTemplate[]; nations: string[]; seed: number; sel: Set<number> | null } | null = null;
 /** 2026/27 i ægte tilstand: ikke-spillerpostens spilstart af cmRaw.staffNp (pr. person-id) */
-let npLogic: { pool: NpTemplate[]; nations: string[]; seed: number; np: Record<number, number[]>; bx?: Record<number, [number[], string, number[]]>; natOff?: number } | null = null;
+let npLogic: { pool: NpTemplate[]; nations: string[]; seed: number; np: Record<number, number[]>; bx?: Record<number, [number[], string, number[]]>; natOff?: number;
+  /** (MODERN_PARITY 13) stabens modul: person-id, databasens løn og hukommelsen som den originale database */
+  staff?: boolean } | null = null;
+/** 0x524d70: de valgte lande (den originale database med staffX, eller 2026/27 med stabens modul) og (2026/27) hukommelsen pr. person-id */
+let memSel: Set<number> | null = null;
+let memFlags: Record<number, 1 | number[]> | null = null;
 /** (MODERN_PARITY 7) 2026/27: databasens landstrænere (staff +0x24/+0x28 med job 5/12) → bestyrelsens nd (cmBoardInit) */
 let natDb: Record<number, [number, number]> | null = null;
 /** 0x524d70: har originalen personen i hukommelsen med de valgte lande (world-rækkens [15]: 1 = altid, ellers nationerne) */
-const memOf = (row: NonNullable<CMWorld['staff']>[number]): boolean => !!npInit?.sel && (row[15] === 1 || (Array.isArray(row[15]) && row[15].some((n) => npInit!.sel!.has(n))));
+const memFlag = (row: NonNullable<CMWorld['staff']>[number]) => row[15] ?? memFlags?.[row[9]];
+const memOf = (row: NonNullable<CMWorld['staff']>[number]): boolean => { const f = memFlag(row); return !!memSel && (f === 1 || (Array.isArray(f) && f.some((n) => memSel!.has(n)))); };
 
 /** Stab fra databasen: navn, nation, alder og de egenskaber, databasen har (resten som en genereret på samme niveau) */
 /** stab med databasens egen løn (K8): røres ikke af lønloftet i createClubStaff */
@@ -838,12 +851,16 @@ function addDbStaff(row: NonNullable<CMWorld['staff']>[number], club: number, ro
   // originalens standardløn 0x864550 (cmWage.ts – endnu ikke koblet til stab), her spillets egen
   const dbWage = row[12]?.[11] ?? 0;
   if (npInit && club && dbWage > 0) { s.wage = Math.round(dbWage / GBP); dbWaged.add(s); staffDbWage.set(s.id, dbWage); }
+  // (MODERN_PARITY 13) 2026/27: databasens ugeløn (staffBx[0][11], £) til startkontrakterne (cmStaffWagePrepare – lønnen sættes dér) og person-id'et
+  else if (npLogic?.staff) { const w26 = npLogic.bx?.[row[9]]?.[0]?.[11] ?? 0; if (club && w26 > 0) staffDbWage.set(s.id, w26); s.cmId = row[9]; }
   // (forholdene) databasens person-id og de skjulte egenskaber +0x56..+0x5d (kun den originale database – cmRelations.ts)
   if (npInit) { s.cmId = row[9]; if (row[12]) s.cmHid = row[12].slice(2, 11); if (row[14]) s.cmNat = [row[14][0], row[14][1]]; }   // [12] = [+8, +0xc, +0x56..+0x5d, +0x22] (cmBoard)
   // den originale database: ikke-spillerposten som i originalens hukommelse efter spilstarten (sub_535a80 – cmStaffInit.ts):
   // CA/PA, de manglende egenskaber (skabelonen, egen talrække pr. staff-id), navnelisten/+0x43, de 8 interne og afbalanceringen 0x539490
   const raw = row[11];
-  const npSrc = npInit && raw ? { ...npInit, raw } : !npInit && npLogic?.np[row[9]] ? { ...npLogic, raw: npLogic.np[row[9]] } : null;
+  // (2026/27: world-cm.json's staffNp; Staff Search's øvrige ikke-spillere fra world-cm-staff.json har posten i [11] som den originale database)
+  const npRaw = !npInit && npLogic ? npLogic.np[row[9]] ?? (npLogic.staff ? raw : undefined) : undefined;
+  const npSrc = npInit && raw ? { ...npInit, raw } : npRaw ? { ...npLogic!, raw: npRaw } : null;
   if (npSrc) {
     const np = npFromWorld(ca, npSrc.raw, tac?.[7] ?? 0);
     const rand = cmRand(npSrc.seed, row[9], 537);
@@ -863,7 +880,7 @@ function addDbStaff(row: NonNullable<CMWorld['staff']>[number], club: number, ro
     const n = nat[0] - (npLogic.natOff ?? Infinity);
     if ((nat[1] === 5 || nat[1] === 12) && n >= 0 && n < g.nations.length && natDb) natDb[s.id] = [n, nat[1]];
   }
-  if (npInit?.sel && row[15] !== undefined) s.cmMem = memOf(row);
+  if (memSel && memFlag(row) !== undefined) s.cmMem = memOf(row);
   g.staff[s.id] = s;
   return s;
 }
@@ -890,7 +907,7 @@ function createClubStaff(c: Club, world: WorldData, seed: number, date: string, 
     const s = makeStaff({ id: g.nextId.staff++, first, last, nation, club: c.id, role, level, date, seed });
     // 0x527240 (database_generate_extra_non_playing_staff): de genererede trænere/spejdere/fysioterapeuter/managere i klubberne i de valgte
     // lande er i originalens hukommelse og dermed i Staff Search (antallet er spillets eget, ikke 0x527240's – *estimeret*)
-    if (npInit?.sel?.has(c.nation)) s.cmMem = true;
+    if (memSel?.has(c.nation)) s.cmMem = true;
     g.staff[s.id] = s;
     return s;
   };

@@ -25,7 +25,7 @@ import { getMaxWage_5968d0, recalcWages_598370 } from './cmMaxWage';
 import { clubInSeason_669bd0, linkedClub_540a50 } from './cmClubLinks';
 import { defaultStaffContract_864550, defaultWageUnset_862720 } from './cmWage';
 import { fillUnsetWage_83a1b0 } from './cmWageFill';
-import { cmActive, cmLogic, clubRepMem } from './cmPlayerData';
+import { cmLogic, cmStaffOn, clubRepMem } from './cmPlayerData';
 import { ageOn } from './dates';
 import { ATTRS } from './attributes';
 import { squad } from './state';
@@ -390,7 +390,7 @@ export function cmWageFillNewGame(g: GameState, unset: Set<number>): { n: number
  *  og ≤ 15 · ikke-spillerpostens omdømme +0xa (0x85eb59–0x85eb91), ellers −1 (£) – også under trupplanen 0x83cb40 (stabens mål 0x83f3a0 ser
  *  lønnen −1, som originalen). `dbWage`: Staff-id → databasens ugeløn (£). */
 export function cmStaffWagePrepare(g: GameState, dbWage: Map<number, number>): void {
-  if (!cmActive(g) || g.draft) return;
+  if (!cmStaffOn(g) || g.draft) return;
   for (const s of Object.values(g.staff)) {
     if (!s.club || s.cmExtra || !g.clubs[s.club]) continue;
     if (s.role === 'manager') { s.wage = 0; continue; }
@@ -402,7 +402,7 @@ export function cmStaffWagePrepare(g: GameState, dbWage: Map<number, number>): v
 /** Del 2 (efter cmWageFillNewGame): 0x83a1b0 fylder lønnen −1 ud med 0x862720(staff, klub, 1, 2, 0xb, 0) og udlændingeloftet
  *  (fillUnsetWage_83a1b0); klubbernes lønsum regnes igen */
 export function cmStaffWageNewGame(g: GameState): { n: number } {
-  if (!cmActive(g) || g.draft) return { n: 0 };
+  if (!cmStaffOn(g) || g.draft) return { n: 0 };
   const unset = Object.values(g.staff).filter((s) => s.club && !s.cmExtra && g.clubs[s.club] && Math.round(s.wage * cmGbp(g, s.club)) === -1).sort((a, b) => a.id - b.id);
   if (!unset.length) return { n: 0 };
   const clubs = new Set(unset.map((s) => s.club));

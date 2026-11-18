@@ -5,7 +5,7 @@ import { cmFinePlayer, FINE_REASONS } from './cmFine';
 // Singleplayer: anvendes direkte. Online: anvendes lokalt med det samme (optimistisk) og sendes
 // til serveren, hvor den manager der simulerer næste træk, afspiller dem i rækkefølge.
 import { submitSquadNumbers } from './squadNumbers';
-import { cmActive, cmDiscLogic, cmMarketOn, cmMediaOn, setStatusCode } from './cmPlayerData';
+import { cmDiscLogic, cmMarketOn, cmMediaOn, cmStaffOn, setStatusCode } from './cmPlayerData';
 import { CM_INTENSITIES, CM_SCHED_SLOTS, setPlayerSlot } from './cmTraining';
 import { cmOfferStaff } from './cmStaff';
 import { cmAnswerRequest, cmSetTransferStatus, cmToggleListed } from './cmTransferList';
@@ -213,7 +213,7 @@ export function applyAction(a: Action): unknown {
     }
     case 'cmRequest': return cmMediaOn(g) ? cmAnswerRequest(g, a.news, a.grant) : 'error';
     case 'cmRumour': return cmMediaOn(g) ? cmRumourAnswer(g, a.news, a.answer) : 'error';
-    case 'cmStaffOffer': return cmActive(g) ? cmOfferStaff(g, { staff: a.id, role: a.role, wage: a.wage, years: a.years, signOn: a.signOn }) : 'error';
+    case 'cmStaffOffer': return cmStaffOn(g) ? cmOfferStaff(g, { staff: a.id, role: a.role, wage: a.wage, years: a.years, signOn: a.signOn }) : 'error';
     case 'staffNote': {
       const s = g.staff[a.id];
       if (!s) return 'error';

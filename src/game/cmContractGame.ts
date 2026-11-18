@@ -31,7 +31,7 @@ import { getClubFinance_5a0590, defaultStaffContract_864550 } from './cmWage';
 import { maxStaffWage_597db0 } from './cmMaxWage';
 import { genCtx } from './cmGen/impls';
 import { slCall, slmOf } from './cmShortlist';
-import { cmActive, cmLogic, cmRand } from './cmPlayerData';
+import { cmLogic, cmRand, cmStaffOn } from './cmPlayerData';
 import type { SquadStatus } from './squadStatus';
 import { leagueOf } from './cmContractInit';
 import { formulaValueGbp } from './originalValue';
@@ -610,9 +610,9 @@ export function cmStaffWill(g: GameState, s: import('./types').Staff, clubId: nu
  *  trupplan med jobbet – gruppen +0x24 >> 1) og lønloftet 0x597db0(job). Uden tilbud: personens krav 0x85fc50(staff, klub, −1, status, job).
  *  Posterne: stabens ikke-spillerpost (omdømme +8/+0xa/+0xc, CA +4, PA +6, egenskaberne +0x0e..), personpostens alder/nationalitet/fødselsdato/
  *  skjulte egenskaber +0x56..+0x5d og den nuværende kontrakt (løn, udløb); viljen 0x844780 af spillets data. `refuse`: kravet er originalens
- *  250.000-loft (han skriver ikke under – *estimeret*: beslutningen 0x4ce4e0 er ikke porteret). Null uden for cmActive. */
+ *  250.000-loft (han skriver ikke under – *estimeret*: beslutningen 0x4ce4e0 er ikke porteret). Null uden for cmStaffOn. */
 export function cmStaffTerms(g: GameState, s: import('./types').Staff, clubId: number, job: number): { wage: number; expires: string; offered: boolean; refuse: boolean } | null {
-  if (!cmActive(g) || g.draft || !g.clubs[clubId]) return null;
+  if (!cmStaffOn(g) || g.draft || !g.clubs[clubId]) return null;
   const row = g.cmPlan?.[clubId]?.s.find((r) => r[0] === job);
   const status = row ? (row[2] >> 1) & 0xf : 5;
   const X = staffMem(g, s, clubId, job, status);
@@ -646,10 +646,10 @@ export function cmStaffTerms(g: GameState, s: import('./types').Staff, clubId: n
  *    status 0xf (0x85fc50 skriver 0xff's nibble), så bx = 0). Ellers 0x4e0d97: klubbens egen → 0x4e0de1 (+0x45 = 0 hos os → 0x9b0964
  *    "does not wish to negotiate a new contract at the current time"); andre → trupstatussens switch 0x4e0ff9, hvis standardgren 0x4e118d
  *    skriver 0x9b0450 "… has no interest in negotiating terms for this position." (+0x69 ≠ 0). Skærmparameter 0x16 = 0, så grenen 0x4e0f1f
- *    (0x16 > 1,5 · loftet) kommer aldrig. Gælder både ledige og ansatte. Null uden for cmActive. */
+ *    (0x16 > 1,5 · loftet) kommer aldrig. Gælder både ledige og ansatte. Null uden for cmStaffOn. */
 export function cmStaffOfferCheck(g: GameState, s: import('./types').Staff, clubId: number, job: number):
   { interested: boolean; key: 'cm.neg.noInterest' | 'cm.neg.noRenewNow' | null; wage: number; will: number; allow: number } | null {
-  if (!cmActive(g) || g.draft || !g.clubs[clubId]) return null;
+  if (!cmStaffOn(g) || g.draft || !g.clubs[clubId]) return null;
   const X = staffMem(g, s, clubId, job, 0xff);
   if (!X) return null;
   const { M, st, club, k } = X, m = M.c.m;

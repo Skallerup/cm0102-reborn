@@ -19,7 +19,7 @@ import { cmStaffDelayOpen } from '../../game/cmStaff';
 import { ultimatumConfirm } from '../../game/cmBoardText';
 import { askConfirm } from '../confirm';
 import { useGame, useNav, useRouteState } from '../core';
-import { cmActive, cmRejectStaff } from '../../game/cmStaff';
+import { cmActive, cmStaffOn, cmRejectStaff } from '../../game/cmStaff';
 import { authentic } from '../../game/rules';
 import { ClassicNegotiation } from './NegotiationClassic';
 import { Head, NewsBody, NewsDeals, NewsTitle, newsBody, newsTitle, useOpenLink } from './common';
@@ -122,8 +122,8 @@ export function Inbox() {
   // bestyrelsens svar på en anmodning (originalens nyhed 0x1786): knappen Ultimatum
   const ultReq = item ? cmUltimatumReq(g, item) : null;
   // afviste kontrakttilbud (CM 01/02: Negotiate)
-  const rejStaff = item && cmActive(g) ? cmRejectStaff(g, item) : null;
-  const delayOpen = item && cmActive(g) && cmStaffDelayOpen(g, item);
+  const rejStaff = item && cmStaffOn(g) ? cmRejectStaff(g, item) : null;
+  const delayOpen = item && cmStaffOn(g) && cmStaffDelayOpen(g, item);
   // CM 01/02 "Offer contract to X" (0x8f1950: Offer Contract) og "X rejects Y" efter et afvist tilbud (Negotiate) – tilbuddet er stadig åbent
   const talk = item && (item.key === 'transfer.cmTalks' || item.key === 'transfer.cmRejects') && item.link?.kind === 'offer'
     ? g.offers.find((o) => o.id === Number(item.link!.id)) : undefined;

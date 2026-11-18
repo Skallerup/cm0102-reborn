@@ -1,4 +1,4 @@
-// Stabsprofilen som i CM 01/02 (klassisk udseende, original DB i ægte tilstand – cmActive): fanerne Profile · Injuries & Bans (grå) ·
+// Stabsprofilen som i CM 01/02 (klassisk udseende, en CM-database i ægte tilstand med stabens modul – cmStaffOn): fanerne Profile · Injuries & Bans (grå) ·
 // Contract · Transfer · History, fødselslinjen "Born 12.3.67 (Age 34). Finnish (7 caps/1 goal).", egenskaberne i to kolonner med
 // Coaching Style, Preferred Formation/Style/Other, jobbet i bunden – og Action ▾ Approach To Sign · Set Nickname · — · Create Manager Note.
 // Approach To Sign → Set Role At Club (job efter 0x4cb990) → Offer Contract (ClassicStaffNegotiation). Reglerne: game/cmStaff.ts.

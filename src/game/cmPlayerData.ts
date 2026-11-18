@@ -70,6 +70,13 @@ export function cmScoutLogic(g: GameState): boolean {
 export function cmDiscLogic(g: GameState): boolean {
   return cmActive(g) || (cmLogic(g) && !g.draft && g.cmDiscStart !== undefined);
 }
+/** (MODERN_PARITY 13) originalens stab – Staff Search 0x7afa70 (hukommelsen 0x524d70), stabsprofilen, menneskets kontrakttilbud 0x4e06e0,
+ *  startkontrakterne 0x4c7560/0x83a1b0 og computerens stabsskifter (trupplanens hale 0x83ebfb, målet 0x83f3a0, buddet 0x84a020): 2001-verdenen,
+ *  eller en CM-database i ægte tilstand fra et spil, hvis spilstart byggede stabens hukommelse (g.cmStaffMem – newgame.ts). Ældre 2026/27-spil
+ *  beholder spillets egen stab (staff.ts). For den originale database = cmActive. */
+export function cmStaffOn(g: GameState): boolean {
+  return cmActive(g) || (cmLogic(g) && !g.draft && !!g.cmStaffMem);
+}
 
 // ---------------------------------------------------------------- en egen talrække (0x90cfc0's rolle)
 

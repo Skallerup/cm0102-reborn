@@ -1,4 +1,4 @@
-// Computerklubbernes stabsskifter som i CM 01/02 (kun den originale database i ægte tilstand, cmActive): klubberne henter assistenter, trænere,
+// Computerklubbernes stabsskifter som i CM 01/02 (en CM-database i ægte tilstand med stabens modul – cmStaffOn: den originale og nye 2026/27-spil): klubberne henter assistenter, trænere,
 // fysioterapeuter og spejdere – også fra andre klubber, som får kompensation. Nyheden er originalens transfernyhed (0x8dbef0 → teksten 0x8dc370):
 // "Fulham sign Collier" / "Fulham have appointed Sunderland's David Collier as a scout." (ejerens billede 16/11, images/153.png). Modtagerne
 // (0x8d1130): omdømmet ×0,25 for træner/spejder/fysioterapeut i reglerne, men 0x5407e0 (omdømmet set fra køberen) læser personens egne tal.
@@ -50,7 +50,7 @@
 // menneskets klub ved hans egen ansættelse (0x84abe0 – fyrer ikke), arbejdstilladelser for stab (0x84b180).
 import type { Club, GameState, Staff, StaffRole } from './types';
 import { addNews } from './state';
-import { cmActive, cmRand, clubRepMem } from './cmPlayerData';
+import { cmStaffOn, cmRand, clubRepMem } from './cmPlayerData';
 import { boardEnv, staffJobInterest } from './cmBoardGame';
 import { repFor, scoreStaffForJob, type BoardEnv, type Person } from './cmBoard';
 import { bookBlock, K as CMK, GBP } from './cmFinance';
@@ -104,7 +104,7 @@ function passesScouting(g: GameState, env: BoardEnv, p: Person, s: Staff, club: 
 
 /** halen 0x83ebfb–0x83f32b + 0x83b6e0's stabsdel + 0x83f3a0's stabsgren + 0x84a020: computerklubbens ledige stabspladser og buddene */
 export function cmStaffPlan(g: GameState, cid: number, clubT: number, openPlayerSlots: number, fire = false): void {
-  if (!cmActive(g) || isHumanClub(cid)) return;
+  if (!cmStaffOn(g) || isHumanClub(cid)) return;
   const club = g.clubs[cid];
   if (!club) return;
   if (fire) fireWeakStaff(g, cid, Math.min(Math.trunc(clubT / 5), 5000));
@@ -200,7 +200,7 @@ function fireWeakStaff(g: GameState, cid: number, T: number): void {
 
 /** dagligt: buddene, hvis tid er kommet – sælgeren har sagt ja (0x8c8160), personen svarer (se filhovedet), handlen og nyheden (0x8c34e0/0x8dbef0) */
 export function cmStaffMovesDaily(g: GameState): void {
-  if (!cmActive(g) || !g.cmStaffMoves?.length) return;
+  if (!cmStaffOn(g) || !g.cmStaffMoves?.length) return;
   // ældre gemte spil: bud, der ventede på menneskets Respond, får personens svar som alle andre (1–5 dage)
   for (const m of g.cmStaffMoves) if (m.h) {
     delete m.h; delete m.id;

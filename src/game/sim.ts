@@ -3,7 +3,7 @@ import { cmBoardAfterMatch, cmBoardDaily, cmBoardOn } from './cmBoardGame';
 import { cmWxDaily, cmWxFix } from './cmWeather';
 import { cmStaffOffersDaily } from './cmStaff';
 import { cmStaffMovesDaily } from './cmStaffMove';
-import { cmActive, cmLogic, cmMarketOn, cmMediaOn, cmAfterMatch, cmContractDaily, cmFlagSet, cmRand, cmSquadMoraleDaily, MORALE_OFF, withFlagCtx } from './cmPlayerData';
+import { cmActive, cmLogic, cmMarketOn, cmMediaOn, cmStaffOn, cmAfterMatch, cmContractDaily, cmFlagSet, cmRand, cmSquadMoraleDaily, MORALE_OFF, withFlagCtx } from './cmPlayerData';
 import { cmFitAfterMatch, cmFitDay, cmFitMatch, cmFitOn, cmFitPreMatch, setMatchSquad } from './cmFitnessGame';
 import { cmPermitAfterMatch, cmPermitDaily } from './cmPermit';
 import { cmScoutDaily, cmScoutMatch } from './cmScout';
@@ -698,7 +698,7 @@ function newDay() {
   forEachHuman(windowNews);
   forEachHuman(processOffers);
   answerPendingRenewals();
-  if (cmActive(g)) { cmStaffOffersDaily(g); cmStaffMovesDaily(g); }
+  if (cmStaffOn(g)) { cmStaffOffersDaily(g); cmStaffMovesDaily(g); }
   holidayDaily();
   squadNumbersDaily();
   euroSquadDaily();

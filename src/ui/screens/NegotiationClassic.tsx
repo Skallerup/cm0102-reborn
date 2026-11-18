@@ -6,7 +6,7 @@ import { gs } from '../../game/state';
 import { preferredYears, renewalDemand, signOnDemand, wageDemand } from '../../game/transfers';
 import type { ContractClauses, StaffRole, TransferOffer } from '../../game/types';
 import { cmStaffCompensation, cmStaffDemand, cmStaffInterestedIn } from '../../game/cmStaff';
-import { cmActive } from '../../game/cmPlayerData';
+import { cmStaffOn } from '../../game/cmPlayerData';
 import { cmBoardStaffWageAllow, cmBoardWageAllow } from '../../game/cmBudget';
 import { poachFee } from '../../game/staff';
 import { money, t } from '../../i18n';
@@ -67,7 +67,7 @@ export function ClassicStaffNegotiation({ staffId, role, onClose }: { staffId: n
   const end = (y: number) => `${t('cl.neg.jun')} ${g.season + y}`;
   const from = s.club ? g.clubs[s.club] : undefined;
   // 0x4e4b55: kompensationen 0x8d0780 – vises kun, når den er over 0
-  const comp = from ? (cmActive(g) ? cmStaffCompensation(g, s) : poachFee(s)) : 0;
+  const comp = from ? (cmStaffOn(g) ? cmStaffCompensation(g, s) : poachFee(s)) : 0;
   const col = titleColors(s.club || undefined);
   const wageOpts = [...new Set([0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 1, 1.05, 1.1, 1.2, 1.3, 1.5, 1.75, 2].map((f) => r50(demand * f)))];
   const send = () => { act({ t: 'cmStaffOffer', id: s.id, role, wage, years, signOn }); onClose(true); };

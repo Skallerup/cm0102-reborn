@@ -1,4 +1,4 @@
-// Stab og spejdere som i CM 01/02 (kun den originale database i ægte tilstand – cmActive): stabssøgningens Rep./Job/Inf, stabsprofilen
+// Stab og spejdere som i CM 01/02 (en CM-database i ægte tilstand med stabens modul – cmStaffOn; spejderne cmActive): stabssøgningens Rep./Job/Inf, stabsprofilen
 // (egenskaberne, Coaching Style, Preferred Formation/Style, Other), "Set Role At Club" og kontrakttilbuddet til en stabsperson med svaret
 // som nyhed ("Protasof rejects Man Utd" med knappen Negotiate). Læst i cm0102.exe 3.9.68 (13/11-2026); *estimeret* hvor det står.
 //
@@ -24,18 +24,18 @@ import { econ } from './econ';
 import { addNews } from './state';
 import { regionOf } from './leagues';
 import { hash01 } from './rng';
-import { cmActive } from './cmPlayerData';
+import { cmActive, cmStaffOn } from './cmPlayerData';
+import { cmGbp } from './cmMoney';
 import { staffShown, judgeAbility, recPositions } from './engine/grid/roleScore';
 import { combineScore, positionFactor } from './engine/grid/subs';
 import { playerRecord } from './engine/grid/aiTeam';
 import { clubRepMem } from './cmPlayerData';
-import { cmGbp } from './cmMoney';
 import { STAFF_LIMITS } from './staff';
 import { bookBlock, K as CMK, GBP as GBP_CM } from './cmFinance';
 import type { GameState, Staff, StaffRole } from './types';
 import { recordStaffMove } from './staffMoves';
 
-export { cmActive };
+export { cmActive, cmStaffOn };
 
 /** personpostens jobkode +0x3d (ledige = 0) */
 export const JOB_CODE: Record<StaffRole, number> = { manager: 5, assistant: 6, coach: 8, scout: 9, physio: 10 };
@@ -267,15 +267,15 @@ export function cmOfferStaff(g: GameState, o: Omit<CmStaffOffer, 'club' | 'date'
   return 'ok';
 }
 
-/** 0x8d0780 (ikke-spiller): restkontrakten ftol(dage til udløb · ugeløn / 7) i £ – `clamp` = £1.000..£1.000.000 (kompensationen); uden klub 0 */
+/** 0x8d0780 (ikke-spiller): restkontrakten ftol(dage til udløb · ugeløn / 7) i £ (ugelønnen med klubbens €→£-faktor, cmMoney.ts) – `clamp` = £1.000..£1.000.000 (kompensationen); uden klub 0 */
 export function cmStaffRestGbp(g: GameState, s: Staff, clamp = true): number {
   if (!s.club || !(s.wage > 0) || !s.expires) return 0;
   const days = Math.round((Date.parse(s.expires.slice(0, 10) + 'T00:00:00Z') - Date.parse(g.date.slice(0, 10) + 'T00:00:00Z')) / 86400000);
-  const v = Math.trunc((days * Math.round(s.wage * 0.86)) / 7) | 0;
+  const v = Math.trunc((days * Math.round(s.wage * cmGbp(g, s.club))) / 7) | 0;
   return clamp ? Math.min(1_000_000, Math.max(1000, v)) : v;
 }
 /** kompensationen i spillets valuta (€) */
-export const cmStaffCompensation = (g: GameState, s: Staff): number => Math.round(cmStaffRestGbp(g, s) / 0.86);
+export const cmStaffCompensation = (g: GameState, s: Staff): number => Math.round(cmStaffRestGbp(g, s) / cmGbp(g, s.club));
 
 /** dagligt: svarene på kontrakttilbuddene (afsendt i går eller før) */
 export function cmStaffOffersDaily(g: GameState): void {

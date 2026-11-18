@@ -146,7 +146,7 @@ Kontrol: oraklet med opdateringens Data-mappe (kopi!) som reference.
 | 10 | Karantæner/appel og bøder | personality.ts | discipline.cpp, Fine.cpp | F0 (cmChair/cmBoard); bøder er i ugeløn (skalafri) | lav | Middel |
 | 11 | Pensioneringer og fyldspillere | season.ts `retirements()` | PLAYER_REGEN, virtual_staff | F0 (nation85, cmFinRaw → B for den del) | middel (regens' antal over tid) | Middel |
 | 12 | Vejr, priser (awards), reserve-/B-hold, venskabskampe, sprog | intet/egne | weather.cpp, award/*.cpp, 0x84b940, friendly.cpp, cmLanguage | F0 (cities/city33, compRep, crowd, nations.lang) | lav; venskabskampe afhænger af kalenderen | **Lette** hver for sig |
-| 13 | Stab (stabssøgning, stabsskifter, stabsprofil) | staff.ts | staff_manager, Staff Search 0x7afa70 | F0 + staffX (25k – egen fil) + B for løn | middel | Middel |
+| 13 ✓ | Stab (stabssøgning, stabsskifter, stabsprofil) | staff.ts | staff_manager, Staff Search 0x7afa70 | F0 + staffX (25k – egen fil) + B for løn | middel | Middel |
 | – | IKKE overføre: kalender/sæsonskifte/forkørsel, Europas 2001-format, Liga Cup/Charity Shield, landsholdenes 2001-slutrunder/FIFA-liste, arbejdstilladelse (før Brexit), 3/5-reglerne, g.econ-priserne | moderne | 2001-verden | – | – | – |
 
 "Let" betyder: når F0 er på plads, er det en gate (`cmActive` → `cmLogic`) + spilstartens felter for modulet + en måling; ingen ny port.
@@ -259,3 +259,18 @@ klubber) 173 (316 kampe) → 236 (326 kampe), menneskets 1 → 2; appeller 0 (fa
 1 (personality.ts) → 2 (originalens nyhed cmfine.f2); spejderrapporter 10 + 6 talentnyheder (spillets) → 9 originale (0x138e); kendskab (spillere uden for
 klubben) snit 4,3 % → 4,9 % før, 25,3 % → 25,8 % efter (niveau 3: 0 → 56 før, 5.991 → 6.083 efter; engelske klubber 26,7 % → 78,7 % ved start).
 2001 bit for bit uændret (02ec66f5a29512d1, measure b8bbbd78832e). Kræver et nyt spil.
+
+## Status punkt 13 (18/11): stab på 2026/27
+
+Ny gate `cmStaffOn(g)` (cmPlayerData.ts) = cmActive, eller cmLogic + spil, hvis spilstart byggede stabens hukommelse 0x524d70 (`g.cmStaffMem`). Den slår
+Staff Search 0x7afa70 (hukommelsen), den klassiske stabsprofil, menneskets kontrakttilbud 0x4e06e0/svarene, startkontrakterne 0x4c7560/0x83a1b0
+(cmStaffWagePrepare/cmStaffWageNewGame) og computerens stabsskifter (trupplanens hale 0x83ebfb, målet 0x83f3a0, buddet 0x84a020, fyringen efter
+managerskiftet) til. Data (build-cm-data.mts, world.json bit for bit uændret): parseCM0102 `staffMem` (kun stabens 0x524d70 – uden cmMem's øvrige følger),
+world-cm.json `cmRaw.staffMem` (hukommelsen pr. person-id) og en ny fil `world-cm-staff.json` (staffX 28.520 ikke-spillere + clubNames, 5,4 MB – ikke i
+offline-cachen, NetworkFirst; mangler den, står kun spillets egen stab i søgningen). Spilstarten på 2026: person-id (Staff.cmId), databasens ugeløn
+(staff.dat +78 = staffBx[0][11], £) → startkontrakten med klubbens cmMoney-faktor; kompensationen 0x8d0780 (cmStaffRestGbp) med cmGbp i stedet for 0,86.
+Målt (`scripts/cm-staff-2026.ts`, PL frø 1, Brentford, 1/7-26 → 30/6-27; før measure 2424256869f1 → efter 2c5671ba9b41): stabsskifter til computerklubber
+0 → 37 (ledig → klub 36, klub → klub 1), fyret efter managerskifte 0 → 81; ledige stabspladser 96 hele sæsonen → 96 (start) / 134 (slut); stabens
+ugeløn PL sum €1.533k → €1.093k (median €4.950 → €1.598 = £275), Championship €875k → €437k (median €2.900 → €1.245); Staff Search 0 → 9.984
+(heraf 7.967 øvrige ikke-spillere). Åbent som på 2001: for få genansættelser mod fyringerne (2001: 61/12 mod oraklets 173/151 – ORIGINAL_PARITY).
+2001 bit for bit uændret (02ec66f5a29512d1, measure 3db81ff9f1ae). Kræver et nyt spil.

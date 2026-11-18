@@ -88,6 +88,9 @@ export interface CMWorld extends WorldData {
     staffBx?: Record<number, [number[], string, number[]]>;
     /** (2026/27) landsholdenes klub-id'er: A-holdet = natOff + nationsindeks (nat_club.dat efter club.dat – antallet af klubber i club.dat) */
     natOff?: number;
+    /** (MODERN_PARITY 13, kun 2026/27's world-cm.json) stabens hukommelse 0x524d70 pr. person-id (CMWorld.staff[15]: 1 = altid, ellers de nationer,
+     *  hvis valg beholder ham) – Staff Search 0x7afa70. De øvrige ikke-spillere (staffX/clubNames) står i world-cm-staff.json. */
+    staffMem?: Record<number, 1 | number[]>;
     /** viljen 0x844780: nation +0x71 (verdensdelens id) pr. nationsindeks, "Europe"s id ([0x9cfa10]) og byernes +0x33 (s8, city.dat-rækkefølge) */
     nationCont?: number[]; europe?: number; city33?: number[];
     /** (2026/27, MODERN_PARITY 12) originalens vejr (cmWeather.ts): Data-mappens weather.cfg (0x922c40/0x922d20 – [indeks, navn, fire perioder à 18])
@@ -217,7 +220,9 @@ const hashRand = (key: string) => { let k = 0; return (n: number) => hashStr(`${
 /** Konverter CM 01/02's Data-mappe til spillets verdensformat */
 /** `maxTiers`: rækker pr. land. `allClubs`: alle klubber og spillere kommer med – klubber uden for de importerede
  *  ligaer får liga-id `CMX<division>` (uden liga-post); byggescriptet afgør, hvad der beholdes. */
-export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers?: number; allClubs?: boolean; cmMem?: boolean } = {}): CMWorld {
+/** `staffMem` (MODERN_PARITY 13, 2026/27): kun stabens hukommelse 0x524d70 ([15]/[16] og staffX til Staff Search) – uden cmMem's øvrige følger
+ *  (kontraktdatoer, compHist, cmTrim, spillernes tm/tf), så world.json er uændret. */
+export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers?: number; allClubs?: boolean; cmMem?: boolean; staffMem?: boolean } = {}): CMWorld {
   const MAX_TIERS = opts.maxTiers ?? DEFAULT_TIERS;
   const missing = CM_REQUIRED.filter((f) => !files[f]);
   if (missing.length) throw new Error(`missing:${missing.join(',')}`);
@@ -511,6 +516,8 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
   const staff: NonNullable<CMWorld['staff']> = [];
   const staffX: NonNullable<CMWorld['staff']> = [];
   const mem = opts.cmMem && NON_REF >= 0 ? trimMemory() : null;
+  /** stabens hukommelse: cmMem (den originale database) eller staffMem (2026/27 – kun staben) */
+  const sMem = mem ?? (opts.staffMem && NON_REF >= 0 ? trimMemory() : null);
   /** 0x524d70 database_trim_staff_tables med databasestørrelsen "Maximum" (game.cfg +4 & 7 = 4; ejerens indstilling – argumentet 4,
    *  [esp+0x17] = 0): hvem originalen beholder i hukommelsen ved et nyt spil, for alle personer (spillere og stab). Personer af type 6 aldrig (0).
    *  Uafhængigt af de valgte lande (1 = altid): de 10 bedste ikke-spillere (+4, type 1/3) og 100 bedste spillere (+5, type 2/3) pr. nationalitet
@@ -578,7 +585,7 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
       const here = inGame.has(club);
       // kernen (spillets stab): de gamle regler; resten (opts.cmMem) kommer i staffX, når originalen kan have dem i hukommelsen
       const core = att.some(Boolean) && (here ? [5, 6, 8, 9, 10].includes(job) : ca >= 100);
-      if (!core && !mem) continue;
+      if (!core && !sMem) continue;
       const nation = nationIdx.get(S.i32(o + 26));
       if (nation === undefined) continue;
       const cn = S.i32(o + 12) >= 0 ? common[S.i32(o + 12)] ?? '' : '';
@@ -601,7 +608,7 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
       bx.push(S.i32(o + 78));
       const row: NonNullable<CMWorld['staff']>[number] = [core && here ? club : 0, fn, ln, nation, dob, core ? (here ? job : 0) : job, att, ca, S.i16(np + 10), S.i32(o), tac, raw, bx, S.date(o + 62) ?? '', [S.i32(o + 0x24), S.u8(o + 0x28)]];
       // [15] = hukommelsen (0x524d70), [16] = [klubben +0x39 (databasens id, −1 = ingen), jobbet +0x3d] – kun til Staff Search
-      if (mem) { const m = mem(o); if (m === 0 && !core) continue; row.push(m === 0 ? [] : m, [club, job]); }
+      if (sMem) { const m = sMem(o); if (m === 0 && !core) continue; row.push(m === 0 ? [] : m, [club, job]); }
       (core ? staff : staffX).push(row);
     }
   }

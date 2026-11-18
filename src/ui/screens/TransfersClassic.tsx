@@ -16,7 +16,7 @@ import { compName, dateFmt, money, natName, t } from '../../i18n';
 import { ClassicFoot, ClassicSub, CxDrop, CxPm, nationRoute, type DropItem } from '../classic';
 import { REGIONS, Seg, regionOfNation, showRealism } from '../classicOptions';
 import { authentic } from '../../game/rules';
-import { JOB_CODE, cmJobCode, cmScoutRec, cmRecScout, cmActive, cmStaffClub, cmStaffInSearch, cmStaffInf, cmJobKey, cmStaffRep, cmStaffRepRank, cmStaffRepWord } from '../../game/cmStaff';
+import { JOB_CODE, cmJobCode, cmScoutRec, cmRecScout, cmStaffOn, cmStaffClub, cmStaffInSearch, cmStaffInf, cmJobKey, cmStaffRep, cmStaffRepRank, cmStaffRepWord } from '../../game/cmStaff';
 import { cmMarketOn, cmScoutLogic } from '../../game/cmPlayerData';
 import { regionOf } from '../../game/leagues';
 import { askConfirm, askText } from '../confirm';
@@ -423,8 +423,8 @@ function StaffSearch() {
   const q = nameQuery(sf.text);
   const mins = Object.entries(parseMins(sf.attrMins)).map(([i, v]) => [Number(i), v] as [number, number]);
   const AGE: Record<string, [number, number]> = { '0-30': [0, 30], '30-40': [30, 40], '40-50': [40, 50], '50-60': [50, 60], '60+': [60, 200] };
-  // den originale database i ægte tilstand: "Famous staff and all staff in your region" (0x80af8d) – kun databasens stab (cmStaff.ts)
-  const cm = cmActive(g);
+  // en CM-database i ægte tilstand med stabens modul: "Famous staff and all staff in your region" (0x80af8d) – originalens hukommelse (cmStaff.ts)
+  const cm = cmStaffOn(g);
   const myRegion = regionOf(g.nations[home]?.name);
   const base = Object.values(g.staff).filter((s) => (cm ? cmStaffInSearch(g, s, myRegion) : s.club !== g.userClub));
   const list = base.filter((s) => {
