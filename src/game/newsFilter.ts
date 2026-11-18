@@ -24,14 +24,9 @@ export const ORIGINAL_OFF_NEWS: readonly string[] = [
   'news.scoutTalent', 'news.scoutReturned', 'youth.debut', 'news.reservesPromoted', 'board.wasteWage', 'board.overWage', 'board.meeting',
 ];
 
-/** 2026/27 i ægte tilstand: nyheder, hvis modstykke kommer fra et modul, der kun kører i 2001-verdenen (priserne cmAwards, karantænerne cmDiscipline,
- *  spejderne cmScout, reserveholdene cmReserves, landsholdene cmIntl), eller fra spillets egne systemer, der står på 2026/27 (sponsorerne/januar-
+/** 2026/27 i ægte tilstand: nyheder, hvis modstykke kommer fra et modul, der kun kører i 2001-verdenen (landsholdene cmIntl), eller fra spillets egne systemer, der står på 2026/27 (sponsorerne/januar-
  *  tillægget i econ26, Conference League og split-ligaerne) – de beholdes, til modulet er flyttet */
 export const KEEP_2026: readonly string[] = [
-  'award.playerOfYear', 'award.topScorer', 'award.monthManager', 'award.monthManagerMe', 'award.ballonDor', 'award.lgManager', 'award.managerOfYearMe', 'award.gala',
-  'ban.red', 'ban.yellows', 'ban.appeal.',
-  'scout.started', 'scout.doneNone', 'scout.doneOne', 'news.scoutTalent', 'news.scoutReturned',
-  'res.win', 'res.draw', 'res.loss', 'news.reservesPromoted',
   'intl.p.scored', 'intl.p.hattrick', 'intl.start.', 'intl.qual.start.', 'intl.qual.done.', 'intl.winner.', 'intl.injured', 'intl.jobLeft', 'intl.sacked',
   'sponsor.', 'budget.january', 'news.ueclQualified', 'news.split',
 ];
