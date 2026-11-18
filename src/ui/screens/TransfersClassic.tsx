@@ -17,7 +17,7 @@ import { ClassicFoot, ClassicSub, CxDrop, CxPm, nationRoute, type DropItem } fro
 import { REGIONS, Seg, regionOfNation, showRealism } from '../classicOptions';
 import { authentic } from '../../game/rules';
 import { JOB_CODE, cmJobCode, cmScoutRec, cmRecScout, cmActive, cmStaffClub, cmStaffInSearch, cmStaffInf, cmJobKey, cmStaffRep, cmStaffRepRank, cmStaffRepWord } from '../../game/cmStaff';
-import { cmMarketOn } from '../../game/cmPlayerData';
+import { cmMarketOn, cmScoutLogic } from '../../game/cmPlayerData';
 import { regionOf } from '../../game/leagues';
 import { askConfirm, askText } from '../confirm';
 import { FL_ATTRS, SF_ATTRS, countMins, encodeMins, parseMins, staffAttrValue } from './searchAttrs';
@@ -501,7 +501,8 @@ function ScoutTab({ scout, n, onPick }: { scout?: Staff; n: number; onPick?: (f:
   if (!scout) return <div className="cx-empty">{!rebornOn('helpTexts') ? '' : t('cl.sc.none', { n })}</div>;
   // den originale database i ægte tilstand (search_screens.cpp 0x80b479/0x80b4bf): "Scout Les Kershaw not assigned" / "Scout L.Kershaw
   // assigned to Bradford", Assign Scout → Club åbner Nations & Clubs, og en tildelt spejder har Recall Scout i stedet for Assign Scout
-  const cm = cmActive(g);
+  // (MODERN_PARITY 9: også nye 2026/27-spil i ægte tilstand – cmScoutLogic)
+  const cm = cmScoutLogic(g);
   const name = `${scout.first} ${scout.last}`.trim();
   const short = cm && scout.first ? `${scout.first.charAt(0)}.${scout.last}` : name;
   const a = scout.assignment;

@@ -1258,6 +1258,12 @@ export interface GameState {
   cmNation85?: number[];
   /** nation +0x76 pr. nationsindeks (sprog-/regionsgruppen – lønnen 0x862720, cmWageGame.ts) */
   cmNation76?: number[];
+  /** nation +0x7f pr. nationsindeks (2 = EU/EØS) – 2026/27 i ægte tilstand: spejdernes dækning 0x7b7490 og rapportens EU-pas (cmScout.ts) */
+  cmNation7f?: number[];
+  /** (MODERN_PARITY 9) spillet er startet med originalens kendskab (0x5aff00) og SCOUT_MANAGER på en CM-database i ægte tilstand (cmScoutLogic) */
+  cmScoutStart?: string;
+  /** (MODERN_PARITY 10) spillet er startet med originalens karantæner/appel (discipline.cpp) og bøder (Fine.cpp) (cmDiscLogic) */
+  cmDiscStart?: string;
   /** computerens trupplan 0x83cb40 pr. klub: de 40 pladser [rolle, maske, +0x24, +0xf, +0x13, +0x17, +0x23, dag, år], +4, +7, +8 */
   /** (den originale database i ægte tilstand) spillet er startet med databasestørrelsen Maximum – Player.cmMem er sat (loadedFilter) */
   cmMaxMem?: true;

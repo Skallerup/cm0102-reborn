@@ -16,7 +16,7 @@
 // Tabellen ligger i GameState.knowledge (niveau → 0/33/66/100 %, så resten af spillet kan læse den som før) og datoen i
 // manager.cmKnowSeen (kun når den afviger fra startdatoen manager.cmKnowStart).
 import type { GameState, Player } from './types';
-import { cmActive, cmRand, nationRepMem } from './cmPlayerData';
+import { cmRand, cmScoutLogic, nationRepMem } from './cmPlayerData';
 import { addDays, ageOn, daysBetween } from './dates';
 import { intlOnDuty } from './cmFitnessGame';
 
@@ -24,9 +24,10 @@ import { intlOnDuty } from './cmFitnessGame';
 export const KNOW_PCT = [0, 33, 66, 100];
 const lvOfPct = (k: number) => (k >= 100 ? 3 : k >= 66 ? 2 : k >= 33 ? 1 : 0);
 
-/** kendskabssystemet er slået til: den originale database i ægte tilstand med Attribute Masking */
+/** kendskabssystemet er slået til: den originale database i ægte tilstand med Attribute Masking – eller (MODERN_PARITY 9) et 2026/27-spil i ægte
+ *  tilstand, der er startet med modulet (cmScoutLogic) */
 export function cmKnowOn(g: GameState): boolean {
-  return cmActive(g) && !!g.options.masking;
+  return cmScoutLogic(g) && !!g.options.masking;
 }
 
 // ---------------------------------------------------------------- personposternes felter

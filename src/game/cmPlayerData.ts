@@ -58,6 +58,19 @@ export function cmMediaOn(g: GameState): boolean {
   return cmActive(g) || (cmLogic(g) && !g.draft && g.cmMedia === 1);
 }
 
+/** (MODERN_PARITY 9) originalens kendskab (fog_of_war.cpp, cmKnow.ts) og spejdere (SCOUT_MANAGER/PLAYER_SEARCH, cmScout.ts/cmScoutAsg.ts):
+ *  2001-verdenen, eller en CM-database i ægte tilstand fra et spil, der er startet med modulerne (g.cmScoutStart – newgame.ts). Ældre 2026/27-spil
+ *  beholder scouting.ts' eget kendskab og spejdere. For den originale database = cmActive. */
+export function cmScoutLogic(g: GameState): boolean {
+  return cmActive(g) || (cmLogic(g) && !g.draft && g.cmScoutStart !== undefined);
+}
+/** (MODERN_PARITY 10) originalens karantæner/appel (discipline.cpp + RulingBody, cmDiscipline.ts) og Discipline Player (Fine.cpp, cmFine.ts):
+ *  2001-verdenen, eller en CM-database i ægte tilstand fra et spil, der er startet med modulerne (g.cmDiscStart – newgame.ts). Ældre 2026/27-spil
+ *  beholder sim.ts' karantæner og personality.ts' bøder. For den originale database = cmActive. */
+export function cmDiscLogic(g: GameState): boolean {
+  return cmActive(g) || (cmLogic(g) && !g.draft && g.cmDiscStart !== undefined);
+}
+
 // ---------------------------------------------------------------- en egen talrække (0x90cfc0's rolle)
 
 function mix(...xs: number[]): number {

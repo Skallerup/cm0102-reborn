@@ -198,6 +198,8 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     if (raw.fin) g.cmFinRaw = Object.fromEntries(Object.entries(raw.fin).map(([k, v]) => [k, v.slice()]));
     if (raw.nation85) g.cmNation85 = raw.nation85.slice();
     if (raw.nation76) g.cmNation76 = raw.nation76.slice();
+    // (MODERN_PARITY 9) nation +0x7f (EU/EØS) – spejdernes dækning 0x7b7490 (cmScout.ts)
+    if (raw.nation7f) g.cmNation7f = raw.nation7f.slice();
     g.cmLowerDiv = raw.lowerDiv ?? -1;
     // (MODERN_PARITY 7) bestyrelse/managerjob – viljen 0x844780: nation +0x71 (verdensdelen), "Europe"s id og byernes +0x33
     if (raw.nationCont) { g.cmNationCont = raw.nationCont.slice(); g.cmEurope = raw.europe ?? -1; }
@@ -640,6 +642,9 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   // Transfer Funds = Finance::get_transfer_budget 0x598800 for alle klubber (cmBudget.ts) – erstatter skønnet originalTransferFunds
   cmRefreshTransferBudgets(g);
   progress('scouting', 0.9);
+  // (MODERN_PARITY 9+10) 2026/27 i ægte tilstand: originalens kendskab 0x5aff00 og SCOUT_MANAGER (cmScoutLogic) samt karantæner/appel og bøder
+  // (discipline.cpp/Fine.cpp – cmDiscLogic) for nye spil; den originale database har dem altid (cmActive)
+  if (cmRawLogic && cmLogic(g) && !cmActive(g) && !g.draft) { g.cmScoutStart = g.date; g.cmDiscStart = g.date; }
   initKnowledge();
   monthlyDevelopment();
   if (o.challenge) {

@@ -11,7 +11,7 @@ import { cmSquadPlanDaily } from './cmSquadPlanGame';
 import { cmDevDaily } from './cmDevelop';
 import { cmRelDaily } from './cmRelations';
 import { cmFineDaily } from './cmFine';
-import { cmBanPreMatch, cmDiscAfterMatch, cmDiscDaily } from './cmDiscipline';
+import { cmBanPreMatch, cmDiscAfterMatch, cmDiscDaily, cmDiscOn } from './cmDiscipline';
 import { cmAwardsAfterMatch, cmAwardsDaily, cmAwOn } from './cmAwards';
 import { cmRecordsDaily } from './cmMedia';
 import { cmRumoursDaily } from './cmRumours';
@@ -401,6 +401,9 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
   const isLeague = comp?.type === 'league';
   const played = new Set<number>();
   const cm = cmActive(g) && !g.draft;
+  // (MODERN_PARITY 10) karantænerne efter originalens organer (cmDiscipline.ts): 2001-verdenen og nye 2026/27-spil i ægte tilstand (cmDiscOn –
+  // for den originale database = cm); bonusserne nedenfor følger cm
+  const disc = cmDiscOn(g);
   // konditionsmodulet (cmFitnessGame.ts): 2001-verdenen og 2026/27-spil i ægte tilstand (cmBodyOn) – karantænerne/bonusserne ovenfor følger cmActive
   const fit = cmFitOn(g);
   for (const line of rep.players) {
@@ -425,18 +428,18 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
     if (!fit) p.condition = g.draft ? 100 : Math.max(20, Math.min(100, line.cond));
     const bannedBefore = p.banned;
     // den originale database i ægte tilstand: karantænerne efter originalens organer (cmDiscipline.ts, efter løkken)
-    if (cm) { if (line.yellow) s.yellows++; if (line.red) { s.reds++; p.lastRed = g.date; } }
-    if (line.yellow && !cm) {
+    if (disc) { if (line.yellow) s.yellows++; if (line.red) { s.reds++; p.lastRed = g.date; } }
+    if (line.yellow && !disc) {
       s.yellows++;
       p.yellowCount++;
       if (p.yellowCount >= 5) { p.banned = Math.max(p.banned, 1); p.yellowCount = 0; (p.banLog ??= []).push({ d: g.date, n: 1, red: false }); }
       else if (p.yellowCount === 4 && isHumanClub(p.club)) asOwner(p.club, () => addNews({ cat: 'injury', key: 'ban.oneAway', params: { player: pname(p) }, link: { kind: 'player', id: p.id } }));
     }
-    if (line.red && !cm) { s.reds++; p.banned = Math.max(p.banned, rng.int(1, 3)); p.lastRed = g.date; p.appealed = false; (p.banLog ??= []).push({ d: g.date, n: p.banned, red: true }); if (p.banLog.length > 30) p.banLog.shift(); }
+    if (line.red && !disc) { s.reds++; p.banned = Math.max(p.banned, rng.int(1, 3)); p.lastRed = g.date; p.appealed = false; (p.banLog ??= []).push({ d: g.date, n: p.banned, red: true }); if (p.banLog.length > 30) p.banLog.shift(); }
     // karantæne (CM 01/02: "[spiller] banned for [n] matches") – til spillerens egen manager
-    if (cm && comp && line.red && isHumanClub(p.club) && (line.team === 0 ? hs.goals < as.goals : as.goals < hs.goals))
+    if (disc && comp && line.red && isHumanClub(p.club) && (line.team === 0 ? hs.goals < as.goals : as.goals < hs.goals))
       asOwner(p.club, () => addNews({ cat: 'general', key: 'media.redCostly', params: { player: pname(p), club: g.clubs[p.club]?.name ?? '' }, link: { kind: 'player', id: p.id } }));
-    if (!cm && p.banned > bannedBefore && isHumanClub(p.club)) {
+    if (!disc && p.banned > bannedBefore && isHumanClub(p.club)) {
       const n = p.banned;
       asOwner(p.club, () => addNews({ cat: 'injury', key: line.red ? 'ban.red' : 'ban.yellows', params: { player: pname(p), n, pid: p.id }, link: { kind: 'player', id: p.id } }));
       // "[spiller] indiscipline costs [klub] dear": rødt kort i et tabt opgør
@@ -474,7 +477,7 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
   // karantæner afsones for spillere der ikke spillede
   for (const club of [f.home, f.away]) {
     for (const p of squad(club)) {
-      if (!cm && !played.has(p.id) && p.banned > 0) p.banned--;
+      if (!disc && !played.has(p.id) && p.banned > 0) p.banned--;
       if (!played.has(p.id) && isHumanClub(club)) p.unhappy = Math.min(100, (p.unhappy ?? 0) + (p.attrs[42] > 13 ? 3 : 1) * unhappyMult(p));
       else if (played.has(p.id)) p.unhappy = Math.max(0, (p.unhappy ?? 0) - 5);
     }

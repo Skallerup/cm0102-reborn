@@ -242,3 +242,20 @@ Målt (`scripts/cm-misc-2026.ts`, PL frø 1, Brentford, 1/7-26 → 30/6-27; før
 68 originale (60 måned, 4 år, 4 hold); reservekampe 33 res.*-nyheder → 12.675 baggrundskampe (fixture −2) og ingen for de spilbare ligaer; venskabskampe
 0 → 88; vejret i de engelske ligakampe: nedbør 0/1/2/3 = 160/465/228/79, temperatur mest 0–14 °C (før: spillets eget skøn); sprogtabel 0 → 15.075
 spillere; B-hold-par 0 → 2. 2001 bit for bit uændret (02ec66f5a29512d1, measure 6457cff7ef4c). Kræver et nyt spil.
+
+## Status punkt 9 og 10 (18/11): kendskab/spejdere og karantæner/appel/bøder på 2026/27
+
+Nye gates (cmPlayerData.ts): `cmScoutLogic(g)` = cmActive, eller cmLogic + spil startet med modulerne (g.cmScoutStart), og `cmDiscLogic(g)` = cmActive,
+eller cmLogic + g.cmDiscStart – begge sat af newgame.ts for nye 2026/27-spil i ægte tilstand. cmScoutLogic slår kendskabet (fog_of_war.cpp 0x5aff00/
+0x5b03e0/0x5b06e0/0x5b09d0, cmKnow.ts – med Attribute Masking), SCOUT_MANAGER (Scout Player 0x7f8ff0/0x7f9290/0x7f8750/0x7f8c00) og spejderopgaverne
+(0x7ae9c0/0x7b3e20, cmScoutAsg.ts) samt Scout #n-skærmene til; scouting.ts' egne fund/talentnyheder slås fra som i 2001. cmDiscLogic slår RulingBody/
+discipline.cpp (karantæner, appel 0x6ab800/0x6abef0) og Fine.cpp (Discipline Player 0x5a5980, dagligt 0x5a5820) til; sim.ts' gule-/røde-model og
+personality.ts' bøder slås fra. Data: world-cm.json får `nation7f` (nation.dat +0x7f, EU/EØS; build-cm-data.mts – world.json uændret); spejdernes
+region er databasens nation +0x76 (g.cmNation76 – opdateringen har Italien/Spanien/Portugal i region 13), EU-flaget g.cmNation7f. Spejdernes saldogrænse
+0x7f9190 og klubniveauet 0x7bca90 regner i £ med cmGbp (2001 uændret · 0,86). Arbejdstilladelser findes ikke på 2026/27 (V), så rapporternes
+tilladelses-/EU-pas-linje er kun med i 2001. Bøderne flytter ingen penge (som originalen) – dialogens beløb er ugelønnen.
+Målt (`scripts/cm-scout-disc-2026.ts`, PL frø 1, Brentford, 1/7-26 → 1/1-27; OLD=1 = før, measure 60672e44fab4 / 951396103977): karantæner (alle
+klubber) 173 (316 kampe) → 236 (326 kampe), menneskets 1 → 2; appeller 0 (fandtes ikke) → 2 (begge afvist, "FA dismiss ban appeal"); Discipline Player
+1 (personality.ts) → 2 (originalens nyhed cmfine.f2); spejderrapporter 10 + 6 talentnyheder (spillets) → 9 originale (0x138e); kendskab (spillere uden for
+klubben) snit 4,3 % → 4,9 % før, 25,3 % → 25,8 % efter (niveau 3: 0 → 56 før, 5.991 → 6.083 efter; engelske klubber 26,7 % → 78,7 % ved start).
+2001 bit for bit uændret (02ec66f5a29512d1, measure b8bbbd78832e). Kræver et nyt spil.

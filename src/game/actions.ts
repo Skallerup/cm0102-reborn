@@ -5,7 +5,7 @@ import { cmFinePlayer, FINE_REASONS } from './cmFine';
 // Singleplayer: anvendes direkte. Online: anvendes lokalt med det samme (optimistisk) og sendes
 // til serveren, hvor den manager der simulerer næste træk, afspiller dem i rækkefølge.
 import { submitSquadNumbers } from './squadNumbers';
-import { cmActive, cmMarketOn, cmMediaOn, setStatusCode } from './cmPlayerData';
+import { cmActive, cmDiscLogic, cmMarketOn, cmMediaOn, setStatusCode } from './cmPlayerData';
 import { CM_INTENSITIES, CM_SCHED_SLOTS, setPlayerSlot } from './cmTraining';
 import { cmOfferStaff } from './cmStaff';
 import { cmAnswerRequest, cmSetTransferStatus, cmToggleListed } from './cmTransferList';
@@ -363,7 +363,7 @@ export function applyAction(a: Action): unknown {
     case 'interact': {
       // den originale database i ægte tilstand: originalens Fine::fine_player 0x5a5980 (cmFine.ts) – ingen besked på spillersiden, svaret er en nyhed
       const p = g.players[a.pid];
-      if (cmActive(g) && p && club && p.club === club.id && (a.kind === 'warning' || a.kind === 'fine' || a.kind === 'fineHeavy')) {
+      if (cmDiscLogic(g) && p && club && p.club === club.id && (a.kind === 'warning' || a.kind === 'fine' || a.kind === 'fineHeavy')) {
         cmFinePlayer(g, p, a.kind === 'warning' ? 1 : a.kind === 'fine' ? 2 : 3, Math.max(0, FINE_REASONS.indexOf(a.reason ?? 'none')));
         return { key: '', mood: 'neutral' };
       }

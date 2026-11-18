@@ -36,16 +36,16 @@ import { addDays, ageOn } from './dates';
 import { isResFixture } from './cmReserves';
 import { addNews } from './state';
 import { asOwner, isHumanClub } from './humans';
-import { clubRepMem, cmActive, cmRand, statusCode } from './cmPlayerData';
+import { clubRepMem, cmActive, cmRand, cmScoutLogic, statusCode } from './cmPlayerData';
+import { cmGbp } from './cmMoney';
 import { cmClubLevelOf, cmStaffAttr, scoutJudgement } from './cmStaff';
 import { cmKnowSee } from './cmKnow';
-import { cmNeedsPermit, CM_EU } from './cmPermit';
+import { cmNeedsPermit } from './cmPermit';
 import { workPermitGranted } from './rules2001';
 import { cmForeign } from './cmNewsScope';
 import { playerRecord } from './engine/grid/aiTeam';
 import { naturalMask } from './engine/grid/aiTacticChoice';
-import { cmAsgCovers, cmAsgOf, cmAsgOn, cmAsgRecord, cmRunScoutDay, cmWill, sendRecommendation } from './cmScoutAsg';
-import REGION from './data/cmNationRegion.json';
+import { cmAsgCovers, cmAsgOf, cmAsgOn, cmAsgRecord, cmEuNation, cmRegionOf, cmRunScoutDay, cmWill, sendRecommendation } from './cmScoutAsg';
 
 /** SCOUT_MANAGER +0x5c: anmodningen (0x11 bytes: +0 klubben, +4 spilleren, +8 datoen, +0x10 antal rapporter) */
 export interface CmScoutReq { club: number; pid: number; date: string; n: number }
@@ -65,11 +65,12 @@ export interface CmScoutRec {
 const ANCIENT = '1969-04-27';
 const s16 = (v: number) => (v << 16) >> 16;
 const dayNo = (iso: string) => Math.round(Date.parse(iso + 'T00:00:00Z') / 86400000);
-const region = (g: GameState, n: number | undefined) => (n === undefined || n < 0 ? -1 : (REGION as Record<string, number>)[g.nations[n]?.name ?? ''] ?? -1);
-/** nation +0x7f = 2 (EU/EØS, 0x53d740) */
-const eu = (g: GameState, n: number | undefined) => n !== undefined && n >= 0 && CM_EU.has(g.nations[n]?.name ?? '');
+/** nation +0x76 (regionen) og +0x7f = 2 (EU/EØS, 0x53d740) – cmScoutAsg.ts (2026/27 fra databasens nation.dat) */
+const region = cmRegionOf;
+const eu = cmEuNation;
 
-export const cmScoutOn = (g: GameState) => cmActive(g) && !g.draft;
+/** (MODERN_PARITY 9) den originale database – eller et 2026/27-spil i ægte tilstand startet med modulet (cmScoutLogic) */
+export const cmScoutOn = (g: GameState) => cmScoutLogic(g) && !g.draft;
 
 /** klubbens spejderlister (type 4 med en spejder): menneskets 10 lister, én pr. spejder i Scout #n-rækkefølgen */
 export function scoutLists(g: GameState, club: number): Staff[] {
@@ -80,7 +81,7 @@ export function scoutLists(g: GameState, club: number): Staff[] {
 function canClubScoutNation(g: GameState, nation: number, club: number): boolean {
   const c = g.clubs[club];
   if (!c) return false;
-  if (Math.round(c.balance * 0.86) >= 1_000_000) return true;
+  if (Math.round(c.balance * cmGbp(g, club)) >= 1_000_000) return true;              // klubbens saldo i £ (cmMoney.ts – 2001: · 0,86)
   if (s16(clubRepMem(g, club)) >= 5000) return true;
   return region(g, c.nation) === region(g, nation);
 }
@@ -171,7 +172,9 @@ export function reportOnPlayer(g: GameState, s: Staff, p: Player, force: 0 | 1 |
   }
   // 0x7b69cf: listens resultattabel (cmScoutAsg.ts)
   const five = cmAsgRecord(g, s, p, raw.est, raw.pot, ab, pot);
-  const needs = cmNeedsPermit(g, p, club, true);
+  // 2026/27: spillet har ingen arbejdstilladelser (docs/MODERN_PARITY.md – V) – rapporten nævner hverken tilladelse eller EU-pas
+  const permits = cmActive(g);
+  const needs = permits && cmNeedsPermit(g, p, club, true);
   const granted = needs ? (workPermitGranted(p) ? 1 : 0) : 1;
   const match = m ? matchOf(m) : undefined;
   if (force === 0) {
@@ -184,7 +187,7 @@ export function reportOnPlayer(g: GameState, s: Staff, p: Player, force: 0 | 1 |
   const rec: CmScoutRec = { mode: force, pid: p.id, club, scout: s.id, age, pos: posMask(p), ab, pot, permit: 0, granted: 0 };
   if (match) rec.match = match;
   if (needs) { rec.permit = 1; rec.granted = granted; }
-  else if (!eu(g, p.nation) && p.cmNation2 !== undefined && p.cmNation2 >= 0 && eu(g, p.cmNation2) && region(g, g.clubs[club].nation) === 0xe) rec.permit = 2;
+  else if (permits && !eu(g, p.nation) && p.cmNation2 !== undefined && p.cmNation2 >= 0 && eu(g, p.cmNation2) && region(g, g.clubs[club].nation) === 0xe) rec.permit = 2;
   return rec;
 }
 

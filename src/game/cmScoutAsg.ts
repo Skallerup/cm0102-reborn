@@ -36,7 +36,7 @@ import type { GameState, Player, Staff } from './types';
 import { addDays, ageOn } from './dates';
 import { addNews } from './state';
 import { asOwner } from './humans';
-import { clubRepMem, cmRand, leagueAverage } from './cmPlayerData';
+import { clubRepMem, cmActive, cmRand, leagueAverage } from './cmPlayerData';
 import { cmClubLevelOf, cmStaffAttr } from './cmStaff';
 import { cmKnowSee } from './cmKnow';
 import { cmNeedsPermit, CM_EU } from './cmPermit';
@@ -58,9 +58,14 @@ const s16 = (v: number) => (v << 16) >> 16;
 const ftol = Math.trunc;
 const dayNo = (iso: string) => Math.round(Date.parse(iso + 'T00:00:00Z') / 86400000);
 const dayOf = (iso: string): Day => { const d = new Date(iso.slice(0, 10) + 'T00:00:00Z'), y = d.getUTCFullYear(); return { day: Math.round((d.getTime() - Date.UTC(y, 0, 1)) / 86400000), year: y }; };
-/** nation +0x76 (kontinentet/regionen 1..14) */
-export const cmRegionOf = (g: GameState, n: number | undefined) => (n === undefined || n < 0 ? -1 : (REGION as Record<string, number>)[g.nations[n]?.name ?? ''] ?? -1);
-const eu = (g: GameState, n: number | undefined) => n !== undefined && n >= 0 && CM_EU.has(g.nations[n]?.name ?? '');
+/** nation +0x76 (kontinentet/regionen 1..14): den originale database fra 3.9.68's nation.dat (cmNationRegion.json); 2026/27 fra databasens egen
+ *  nation.dat (g.cmNation76 – opdateringen har bl.a. Italien/Spanien/Portugal i region 13) */
+export const cmRegionOf = (g: GameState, n: number | undefined) => (n === undefined || n < 0 ? -1
+  : !cmActive(g) && g.cmNation76 ? g.cmNation76[n] ?? -1 : (REGION as Record<string, number>)[g.nations[n]?.name ?? ''] ?? -1);
+/** nation +0x7f = 2 (EU/EØS, 0x53d740): den originale database efter CM_EU, 2026/27 fra databasens nation.dat (g.cmNation7f) */
+export const cmEuNation = (g: GameState, n: number | undefined) => n !== undefined && n >= 0
+  && (!cmActive(g) && g.cmNation7f ? g.cmNation7f[n] === 2 : CM_EU.has(g.nations[n]?.name ?? ''));
+const eu = cmEuNation;
 /** spillerens land for spejderne: klubbens (+0x39 → +0x53), ellers nationaliteten (+0x1a) */
 const natOf = (g: GameState, p: Player) => (p.club ? g.clubs[p.club]?.nation ?? -1 : p.nation);
 /** kontraktens klub (0x4cf5a0) */
@@ -245,6 +250,8 @@ function cleanTable(g: GameState, s: Staff, a: CmAsg): number {
 
 /** 0x7b0050/0x7b3e20's tilladelsespladser: (1, får den) eller (2 EU-pas via anden nationalitet i en britisk klub / 0, 0) */
 function permitSlots(g: GameState, p: Player, club: number): { permit: number; granted: number } {
+  // 2026/27: spillet har ingen arbejdstilladelser (docs/MODERN_PARITY.md – V), så heller ingen pladser
+  if (!cmActive(g)) return { permit: 0, granted: 0 };
   if (cmNeedsPermit(g, p, club, true)) return { permit: 1, granted: workPermitGranted(p) ? 1 : 0 };
   const two = !eu(g, p.nation) && p.cmNation2 !== undefined && p.cmNation2 >= 0 && eu(g, p.cmNation2) && cmRegionOf(g, g.clubs[club]?.nation) === 0xe;
   return { permit: two ? 2 : 0, granted: 0 };

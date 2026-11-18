@@ -7,7 +7,7 @@ import { natName } from '../i18n';
 import { hash01 } from './rng';
 import { addNews, gs, hasGame, squad } from './state';
 import type { Club, Player, ScoutAssignment } from './types';
-import { cmActive } from './cmPlayerData';
+import { cmScoutLogic } from './cmPlayerData';
 import { rng } from './rng';
 import { A, naturalRole, roleScore } from './attributes';
 import { addDays, ageOn, daysBetween } from './dates';
@@ -384,11 +384,11 @@ function scoutKnowledge(pid: number, amount: number, scoutId: number, direct = f
     const p = g.players[pid];
     // kun det moderne spil (CM Reborns egen regel, ejerens fund 13/11): en spiller, der lige er skiftet klub, anbefales ikke. I CM 01/02 er
     // opgaverne originalens (cmScoutAsg.ts – 0x846920's vilje afgør, om han kommer med).
-    const justMoved = !cmActive(g) && !!p && !!p.club && !!p.joined && (p.joined > addDays(g.date, -120) || (!p.listed && p.joined > addDays(g.date, -300)));
+    const justMoved = !cmScoutLogic(g) && !!p && !!p.club && !!p.joined && (p.joined > addDays(g.date, -120) || (!p.listed && p.joined > addDays(g.date, -300)));
     if (!direct && asg && asg.kind !== 'player' && !justMoved) (asg.found ??= []).push(pid);
     const s = g.staff[scoutId];
     // Gode fund meldes i indbakken – ikke i CM 01/02 (der kommer kun "… search completed, after finding N suitable players")
-    if (p && s && !justMoved && !cmActive(g) && p.club !== g.userClub && scoutStars(p).potential[0] >= 4 && realistic(p)) {
+    if (p && s && !justMoved && !cmScoutLogic(g) && p.club !== g.userClub && scoutStars(p).potential[0] >= 4 && realistic(p)) {
       addNews({ cat: 'scout', key: 'news.scoutTalent', params: { scout: `${s.first} ${s.last}`, player: `${p.first} ${p.last}` }, link: { kind: 'player', id: pid } });
     }
   }

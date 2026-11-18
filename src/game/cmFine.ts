@@ -1,5 +1,6 @@
 // Discipline Player (bøde/advarsel) som i CM 01/02 – Fine.cpp i cm0102.exe 3.9.68 (disassembleret med ~/cm0102-engine/tools/cmdis.py 14/11-2026).
-// Kun den originale database i ægte tilstand (cmActive) – det udvidede spil og 2026/27 bruger personality.ts' interact som før.
+// Den originale database i ægte tilstand og (MODERN_PARITY 10) nye 2026/27-spil i ægte tilstand (cmDiscLogic) – det udvidede spil og ældre
+// 2026/27-spil bruger personality.ts' interact som før.
 //
 //   0x5a83e0 dialogen "Discipline Player": straffen (1 "Official Warning", 2 "1 Week Fine", 3 "2 Week Fine" – "<n> Week Fine" = straf − 1)
 //            og grunden (0 no reason, 1 unprofessional behaviour, 2 dismissal in prior match, 3 violent behaviour, 4 poor performance) → 0x5a5980
@@ -21,7 +22,7 @@ import { ATTRS } from './attributes';
 import { ageOn, addDays } from './dates';
 import { addNews, squad } from './state';
 import { asOwner, isHumanClub } from './humans';
-import { cmActive, cmContractOf, cmFlagSet, cmRand, clubRepMem, curRep, statusCode, wantsToLeave, withFlagCtx } from './cmPlayerData';
+import { cmDiscLogic, cmContractOf, cmFlagSet, cmRand, clubRepMem, curRep, statusCode, wantsToLeave, withFlagCtx } from './cmPlayerData';
 import { addDisClub, favoursPerson } from './cmRelations';
 import { npShown } from './cmStaffInit';
 import { newRec } from './cmBoard';
@@ -340,7 +341,7 @@ export function cmFinePlayer(g: GameState, p: Player, sev: FineSev, reason: numb
 /** 0x5a5820 (dagligt fra 0x5cccd0, før 0x5d6d10): den første udløbne post fjernes; den første forfaldne trænerrapport sendes (træneren har været
  *  i klubben over 30 dage og er ikke skadet – 0x5a7f20) og fjernes */
 export function cmFineDaily(g: GameState): void {
-  if (!cmActive(g) || !g.cmFine) return;
+  if (!cmDiscLogic(g) || !g.cmFine) return;
   const F = g.cmFine, today = dayNum(g.date);
   const i = F.recs.findIndex((r) => dayNum(r.until) < today);
   if (i >= 0) F.recs.splice(i, 1);

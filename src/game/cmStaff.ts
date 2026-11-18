@@ -29,6 +29,7 @@ import { staffShown, judgeAbility, recPositions } from './engine/grid/roleScore'
 import { combineScore, positionFactor } from './engine/grid/subs';
 import { playerRecord } from './engine/grid/aiTeam';
 import { clubRepMem } from './cmPlayerData';
+import { cmGbp } from './cmMoney';
 import { STAFF_LIMITS } from './staff';
 import { bookBlock, K as CMK, GBP as GBP_CM } from './cmFinance';
 import type { GameState, Staff, StaffRole } from './types';
@@ -495,7 +496,7 @@ export function cmClubLevelOf(g: GameState, cid: number): number {
   let squad = 0;
   for (const x of Object.values(g.players)) if (x.club === cid) squad++;
   return cmClubLevel({ rep, b77: st?.[1] ?? 0, divRep: m ? g.cmCompRep?.[+m[1]] ?? 0 : null, pro: (st?.[0] ?? 1) === 1,
-    squad: Math.min(50, squad), hasComp: !!lg && !lg.hidden && g.activeNations.includes(c.nation), finStatus: cmFinanceStatus(Math.round(c.balance * 0.86), rep) });
+    squad: Math.min(50, squad), hasComp: !!lg && !lg.hidden && g.activeNations.includes(c.nation), finStatus: cmFinanceStatus(Math.round(c.balance * cmGbp(g, cid)), rep) });   // saldoen i £ (cmMoney.ts – 2001: · 0,86)
 }
 
 /** svaret på "Delay Transfer Offer": Delay = prøv igen om en uge, Cancel = tilbuddet bortfalder */

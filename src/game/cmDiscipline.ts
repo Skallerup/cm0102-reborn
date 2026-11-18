@@ -1,6 +1,7 @@
 // Karantæner og appel som i CM 01/02 – discipline.cpp + rb_*.cpp (RulingBody) og manager_manager.cpp i cm0102.exe 3.9.68
 // (disassembleret med ~/cm0102-engine/tools/cmdis.py 16/11-2026; noter i ~/cm0102-engine/notes/discipline.md).
-// Kun den originale database i ægte tilstand (cmActive) – det udvidede spil og 2026/27 bruger sim.ts' egen model som før.
+// Den originale database i ægte tilstand og (MODERN_PARITY 10) nye 2026/27-spil i ægte tilstand (cmDiscLogic) – det udvidede spil og ældre
+// 2026/27-spil bruger sim.ts' egen model som før.
 //
 //   0x6b5f00 (kampdagen) → Discipline::process_match 0x55ca00: turneringens disciplinærorgan (comp +0x50) → RulingBody 0x7e7ff0(kamp, 1, 1, 1);
 //            venskabskampe og minturneringer (0x5c6710, comp ≥ [0xae2378] − 0x7f) → hvert holds LIGA-organ med (1,0,0)/(0,1,0) og
@@ -35,7 +36,7 @@ import type { Fixture, GameState, MatchReport, NewsItem, Player, PlayerMatchLine
 import { addDays } from './dates';
 import { addNews, squad } from './state';
 import { asOwner, isHumanClub } from './humans';
-import { cmActive, cmRand, clubRepMem } from './cmPlayerData';
+import { cmDiscLogic, cmRand, clubRepMem } from './cmPlayerData';
 import { ATTRS } from './attributes';
 
 /** 20-byte posten (0x556c70): +0 kampe (−1 = tidsbegrænset), +1 afsonet, +2 dage, +4 start, +0xc omfang (4 organer, −1 = intet),
@@ -54,7 +55,8 @@ export interface CmDiscState {
 }
 const st = (g: GameState): CmDiscState => (g.cmDisc ??= { bans: {}, ent: {}, appeals: [], clubAp: {} });
 
-export const cmDiscOn = (g: GameState) => cmActive(g) && !g.draft;
+/** (MODERN_PARITY 10) den originale database – eller et 2026/27-spil i ægte tilstand startet med modulet (cmDiscLogic) */
+export const cmDiscOn = (g: GameState) => cmDiscLogic(g) && !g.draft;
 
 const dayNum = (iso: string) => Math.round(Date.parse(iso + 'T00:00:00Z') / 86400000);
 const isoOf = (n: number) => new Date(n * 86400000).toISOString().slice(0, 10);

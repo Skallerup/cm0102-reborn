@@ -28,7 +28,7 @@ import { compLogoUrl } from './logos';
 import { isOriginal2001 } from '../game/rules2001';
 import { intlDayResults } from '../game/international';
 import { gs, hasGame, notify, setGame, squad, subscribe } from '../game/state';
-import { cmActive } from '../game/cmPlayerData';
+import { cmActive, cmScoutLogic } from '../game/cmPlayerData';
 import { compName, dateFmt, money, setMoneyRounding, t } from '../i18n';
 import { Crest } from './components';
 import { Icon } from './icons';
@@ -693,7 +693,7 @@ function Screen({ allowed }: { allowed: (k: ScreenName) => boolean }) {
     case 'transfers': return <Transfers tab={route.tab} />;
     case 'find': return <ClassicFind tab={route.tab} />;
     case 'nation': return <ClassicNation id={route.id as number | undefined} tab={route.tab} />;
-    case 'scouting': return isRetro() && cmActive(g) ? <Transfers tab="scout1" /> : <Scouting />;
+    case 'scouting': return isRetro() && cmScoutLogic(g) ? <Transfers tab="scout1" /> : <Scouting />;
     case 'staff': return <StaffScreen />;
     case 'finance': return <Finance />;
     case 'club': return <ClubScreen id={route.id as number | undefined} />;
