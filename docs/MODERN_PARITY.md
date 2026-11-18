@@ -229,3 +229,16 @@ PL-klub – sælgers division kræver C > 350·20; window.*, match.*, contract.e
 2001: 268 og ~500 – køen fødes af buddene, og 2026/27-markedet har langt færre), moral PL snit 13,0 → 13,4 før (10–14: 80–99 %), efter 10,1 → 13,5
 (aug.) → 8,8 (juni; 1–5 17 %, 15–20 4 %); 2001: 10,0 → 14,0 (sep.) → 10,4 (juni; 1–5 8 %). 2001 bit for bit uændret (02ec66f5a29512d1).
 Kræver et nyt spil.
+
+## Status punkt 12 (18/11): vejr, priser, reserve-/B-hold, venskabskampe og sprog på 2026/27
+
+Nye 2026/27-spil i ægte tilstand (cmLogic + markøren i g; ældre 2026-spil og udvidet tilstand uændrede) – data fra world-cm.json (build-cm-data.mts):
+vejret (cmWxOn: g.cmWxTab = opdateringens egen weather.cfg – 29 områder, 3.9.68 har 44 – og hjemmeholdets by/område/stadion), priserne (cmAwOn: g.cmAw
+fra spilstarten, prisskærmen med opdateringens staff_comp_history.dat → g.cmAwHist), baggrundskampene 0x84b940/0x84be20 (cmResOn: g.cmRes) og
+B-holdene/reserveholdet 0x540a50/0x542740/0x541e60 (g.cmBTeams – exe'ens navneliste giver Celta B og Real Sociedad B), venskabskampene (cmFriendlyOn:
+g.cmNationFr = opdateringens nation.dat-felter; nation-id = indeks, England 61) og sproget (g.nations[].lang fra `nationLang`; 0x7bfd50 med spillets
+startdato som [0xdd6ec8]). Spillets egne priser/gallaaften og res.*-reservekampe kører ikke på de nye spil (som 2001).
+Målt (`scripts/cm-misc-2026.ts`, PL frø 1, Brentford, 1/7-26 → 30/6-27; før 0fa91a34633b, efter d44e52ca9a64): priser 20 af spillets månedspriser →
+68 originale (60 måned, 4 år, 4 hold); reservekampe 33 res.*-nyheder → 12.675 baggrundskampe (fixture −2) og ingen for de spilbare ligaer; venskabskampe
+0 → 88; vejret i de engelske ligakampe: nedbør 0/1/2/3 = 160/465/228/79, temperatur mest 0–14 °C (før: spillets eget skøn); sprogtabel 0 → 15.075
+spillere; B-hold-par 0 → 2. 2001 bit for bit uændret (02ec66f5a29512d1, measure 6457cff7ef4c). Kræver et nyt spil.
