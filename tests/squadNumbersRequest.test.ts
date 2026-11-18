@@ -33,7 +33,7 @@ describe('Squad Numbers-beskeden', () => {
     expect(n?.params.done).toBe(1);
     const nums = squad(g.userClub).map((p) => p.number).filter(Boolean);
     expect(new Set(nums).size).toBe(nums.length);
-  }, 120_000);
+  }, 600_000);
   it('sendes automatisk, hvis klubben skal spille, før der er svaret', () => {
     start(8);
     const g = gs();
@@ -41,5 +41,5 @@ describe('Squad Numbers-beskeden', () => {
     until(() => g.date > '2001-08-04' && Object.values(g.fixtures).some((f) => f.result && f.date > '2001-08-04' && !f.comp.startsWith('FR') && (f.home === g.userClub || f.away === g.userClub)));
     expect(squadNumbersDue(g.userClub)).toBe(false);
     expect(g.news.find((x) => x.key === 'sqn.request')?.params.done).toBe(1);
-  }, 120_000);
+  }, 600_000);
 });

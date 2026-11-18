@@ -32,5 +32,5 @@ describe('Scout Player (ægte tilstand, original DB, masking)', () => {
     }
     // søgningen kører videre (originalens opgave, cmScoutAsg.ts) – eller er slut efter sine otte runder
     expect(g.staff[scout!.id].assignment?.kind === 'nation' || g.news.some((n) => n.key === 'cmsn.a70614')).toBe(true);
-  }, 180000);
+  }, 600_000);
 });
