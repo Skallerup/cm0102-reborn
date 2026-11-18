@@ -26,6 +26,8 @@ import { displayFromX, intrinsicOf } from './playerInit';
 import { type CmRec, type CmTrainEntry, nibble, normaliseRec, recInto, recOf, cmIntSync, cmTrainWeekTick } from './cmTraining';
 import { addFavClub, fadeRelations, removeFavClub } from './cmRelations';
 import { msvcQsort } from './engine/grid/loop';
+import { gs, hasGame } from './state';
+import { NO_CARRY, registerCarry } from './carry';
 
 const s8 = (v: number) => (v << 24) >> 24;
 const s16 = (v: number) => (v << 16) >> 16;
@@ -407,14 +409,18 @@ export function cmDevDaily(g: GameState): void {
  *  0x5d6200) → [0xae2d20]; [0xae2d24] = pegere til posterne i postrækkefølge. Efter hver dag, hvor en udvikling endte med T ≠ 0 (0x5d5780,
  *  [esp+0x28] = T), sorteres pegerne efter (CA, PA) stigende (0x5d6220) – i rækkefølgen fra forrige gang – og spiller nr. i får den i'te
  *  gemte CA, dog højst PA (0x5d58cc). Fordelingen af CA er altså den fra spilstarten; udviklingen flytter kun spillerne i rækken.
- *  Hos os: tilstanden pr. spil (originalen tager den ved første udvikling efter programstart – også efter indlæsning af et gemt spil, som
- *  vores spil efter hver indlæsning), postrækkefølgen = id-rækkefølgen, fyldspillerne (cmVirtual.ts, poster efter [0xae236c]) er ikke med.
+ *  Hos os: tilstanden pr. spil – den følger med en kopi og et gem af spillet (carry.ts), så et kopieret/indlæst spil fortsætter som uafbrudt
+ *  (originalen tager den ved første udvikling efter programstart), postrækkefølgen = id-rækkefølgen, fyldspillerne (cmVirtual.ts, poster efter [0xae236c]) er ikke med.
  *  Flere poster end ved øjebliksbilledet: originalen sorterer [0xae236c] pegere og læser [0xae2d20] ud over sin længde (ikke defineret) – her
  *  beholder posterne over den gemte længde deres egen CA (sker kun, hvis der kommer flere poster end ved øjebliksbilledet). */
 /** en spillerpost i [0xae2d24]: spilleren (id) og postens CA/PA (bliver stående, når spilleren går på pension – se caRedistribute) */
 interface CaSlot { id: number; ca: number; pa: number }
 interface CaRank { ref: number[]; slots: CaSlot[] }
 const caRanks = new WeakMap<GameState, CaRank>();
+// følger med en kopi/et gem af spillet (carry.ts): dagens Web Worker får en ny kopi hver dag, og uden posterne tog den et nyt øjebliksbillede
+// hver dag; det aktive spil (setGame lægger det på plads før restoreCarry)
+registerCarry('cmDevelop.caRank', () => { const r = hasGame() ? caRanks.get(gs()) : undefined; return r ? { ref: r.ref.slice(), slots: r.slots.map((x) => ({ ...x })) } : NO_CARRY; },
+  (v: CaRank) => { if (hasGame()) caRanks.set(gs(), { ref: v.ref, slots: v.slots }); }, () => {});
 const realPlayer = (p: Player | undefined): p is Player => !!p && !p.virtual;
 const caOf = (p: Player) => s16(Math.trunc(p.ca)), paOf = (p: Player) => s16(Math.trunc(p.pa));
 function caRankFor(g: GameState): CaRank {
