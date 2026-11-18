@@ -13,6 +13,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '2026-11-18',
     title: { da: 'Mere af det originale CM 01/02', en: 'More of the original CM 01/02' },
     items: [
+      { da: "Startmenuen: database-editoren har fået sit eget felt øverst til højre, og draft-ligaen findes nu under Online Multiplayer.", en: "Start menu: the database editor has its own field at the top right, and the draft league is now under Online Multiplayer." },
       { da: "Select Nationality viser nu alle nationer med klubber, ligaer eller spillere, så fx Northern Ireland, Wales og Skotland kan vælges (også ved tilmelding til fællesspil).", en: "Select Nationality now lists every nation with clubs, leagues or players, so e.g. Northern Ireland, Wales and Scotland can be picked (also when joining a shared game)." },
       { da: "Spillersøgning: nyt filter \"Til leje\" (spillere sat til rådighed for leje) ved siden af \"Udlejet\"; kolonnen \"Land\" viser klubbens land i stedet for ligaens navn.", en: "Player search: new \"For Loan\" filter (players made available for loan) next to \"On Loan\"; the \"Based\" column shows the club's nation instead of the league name." },
       { da: "Økonomien som i CM 01/02: næste sæsons tv-penge udbetales før sæsonskiftet med originalens nyhed, tv-kampe giver tv-penge, og pokal-, Europa- og Champions League-præmier udbetales.", en: "Finances as in CM 01/02: next season's TV money is paid before the new season with the original news item, televised matches earn TV money, and cup, European and Champions League prize money is paid." },
