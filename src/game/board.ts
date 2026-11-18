@@ -4,7 +4,7 @@ import { finalOrder, leagueRows } from './competitions';
 import { cmSquadPlanClub } from './cmSquadPlanGame';
 import { rng } from './rng';
 import { addDays, daysBetween } from './dates';
-import { authentic } from './rules';
+import { origLogic } from './rules';
 import { DEMONYM } from '../ui/demonyms';
 import { rulesFor, regionOf, type Region } from './leagues';
 
@@ -899,7 +899,7 @@ export function faAvailable(kind: FaKind): boolean {
   const g = gs();
   if (!g.clubs[g.userClub]) return false;
   // CM 01/02: begge punkter kan altid vælges – forbundet svarer med en nyhed (ejerens billeder 13/11)
-  if (authentic()) return true;
+  if (origLogic()) return true;
   if (kind === 'referee') {
     // efter en kamp inden for den sidste uge, og kun én klage pr. kamp
     const last = Object.values(g.fixtures).filter((f) => f.result && (f.home === g.userClub || f.away === g.userClub) && daysBetween(f.date, g.date) <= 7)
@@ -949,7 +949,7 @@ function faRequestOriginal(kind: FaKind): string {
 
 export function faRequest(kind: FaKind): string {
   const g = gs();
-  if (authentic()) return faRequestOriginal(kind);
+  if (origLogic()) return faRequestOriginal(kind);
   if (!faAvailable(kind)) return 'blocked';
   if (kind === 'referee') {
     const last = Object.values(g.fixtures).filter((f) => f.result && (f.home === g.userClub || f.away === g.userClub)).sort((a, b) => b.date.localeCompare(a.date))[0];

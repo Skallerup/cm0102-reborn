@@ -3,7 +3,7 @@ import { finalOrder } from './competitions';
 import { rulesFor } from './leagues';
 import { gs, squad } from './state';
 import { rng } from './rng';
-import { extended } from './rules';
+import { legacyExtended } from './rules';
 import type { Club, ClubFinance, Fixture } from './types';
 import { book, cmFinOn, hasLeagueMoney, nationLoaded, K as CMK } from './cmFinance';
 
@@ -376,7 +376,7 @@ export function sponsorSeasonBonus(pos: number, expectedPos: number, trophy: boo
 /** Et stjernekøb sælger trøjer */
 export function merchStarSigning(clubId: number, rep: number) {
   // merchandise-løft efter et stjernekøb er en moderne funktion (ikke i ægte CM 01/02)
-  if (!extended()) return;
+  if (!legacyExtended()) return;
   const g = gs();
   const c = g.clubs[clubId];
   if (!c || rep < 72) return;

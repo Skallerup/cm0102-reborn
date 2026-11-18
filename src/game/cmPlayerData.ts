@@ -16,6 +16,7 @@ import type { Fixture, GameState, MatchReport, Player } from './types';
 import { ATTRS } from './attributes';
 import { ageOn } from './dates';
 import { gs, hasGame } from './state';
+import { origLogic } from './rules';
 import { contractLanguageNibble, languageDay, languageFluency } from './cmLanguage';
 
 /** "2001-verdenen": kun den originale database i ægte tilstand (som cmDatabase i newgame.ts – ikke importeret: cirkulær import) */
@@ -27,7 +28,7 @@ export function cmActive(g: GameState): boolean {
  *  beslutning 17/11). Udvidet tilstand beholder CM Reborns regler. 2001-specifikke tal, regler og kalender hører under cmActive. For den originale
  *  database er cmLogic = cmActive. */
 export function cmLogic(g: GameState): boolean {
-  return g.dbKind === 'cm0102' && g.options.mode === 'authentic';
+  return g.dbKind === 'cm0102' && origLogic(g);
 }
 /** (MODERN_PARITY 5+6) originalens kondition/skader (injury.cpp), udvikling 0x5ce2d0 og træning TRAINING_MANAGER: 2001-verdenen, eller en CM-database
  *  i ægte tilstand fra et spil, der er startet med modulerne (Injury::Injury ved spilstarten sætter g.cmFitStart – cmFitnessGame.ts). Ældre

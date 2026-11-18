@@ -21,6 +21,7 @@ import { setSavedModern } from '../ui/modernFlag';
 import { cmPermitMove } from './cmPermit';
 import { cmActive, cmMediaOn, cmStaffStateMove } from './cmPlayerData';
 import { offInOriginal } from './newsFilter';
+import { legacyExtended } from './rules';
 
 /**
  * Admin-preview: en spillers gemte spil åbnet til fejlsøgning (Admin → Saves / New careers). Intet gemmes, og intet
@@ -42,7 +43,7 @@ export function setGame(g: GameState | null) {
   if (g?.customRules) Object.assign(LEAGUE_RULES, g.customRules);
   G = g;
   // et gammelt udvidet spil åbnes, som det blev gemt – men aldrig fællesspil (de er altid klassiske/ægte, ejeren 16/11)
-  setSavedModern(g?.options.mode === 'extended' && !g?.humans?.length);
+  setSavedModern(!!g && legacyExtended(g) && !g.humans?.length);
   // prisniveauet: nye spil med den originale 01/02-database spilles i 2001-priser (econ.ts)
   setEconomy(g?.econ);
   setModern26(g?.m26);

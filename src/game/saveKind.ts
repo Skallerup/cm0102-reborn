@@ -1,6 +1,7 @@
 // Hvilken slags et gemt spil er (listen over gemte spil og konverteringen af gamle spil – cmConvert.ts)
 import type { GameState } from './types';
 import { CM_SAVE_VER, cmDatabase } from './newgame';
+import { legacyExtended, origLogic } from './rules';
 
 export type SaveKind = 'current' | 'oldOriginal' | 'modern' | 'other';
 
@@ -10,8 +11,8 @@ export function saveKindOf(g: GameState): SaveKind {
   if (g.humans?.length || g.draft) return 'other';
   const db = cmDatabase(g);
   if (db !== 'original') return 'modern';
-  if (g.cmSaveVer && g.cmSaveVer >= CM_SAVE_VER && g.options.mode === 'authentic') return 'current';
-  if (g.options.mode !== 'authentic') return 'oldOriginal';
+  if (g.cmSaveVer && g.cmSaveVer >= CM_SAVE_VER && origLogic(g)) return 'current';
+  if (legacyExtended(g)) return 'oldOriginal';
   // ægte tilstand fra før originalens systemer: mangler bestyrelsen, økonomien eller de interne egenskaber
   if (!g.cmBoard || !g.cmFin || !g.cmPlan || !Object.values(g.players).some((p) => p.cmInt)) return 'oldOriginal';
   return 'current';

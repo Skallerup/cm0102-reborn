@@ -15,6 +15,7 @@ import {
 } from './data/generate';
 import { formulaValueGbp, originalValueGbp, repTriple } from './originalValue';
 import { rulesFor, LEAGUE_RULES } from './leagues';
+import { legacyExtended, origLogic } from './rules';
 import { Rng, hash, rng } from './rng';
 import { setEconomy, setModern26 } from './econ';
 import { calibrateWages } from './econ26';
@@ -640,9 +641,9 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   g.manager.onboard = {};
   if (!cmActive(g) && windowOpen()) addNews({ cat: 'transfer', key: 'window.opened', params: { date: windowLastDay() ?? g.date } });
   // sponsorvalget findes ikke i ægte CM 01/02
-  if (g.options.mode !== 'authentic') addNews({ cat: 'finance', key: 'sponsor.offers', params: {} });
+  if (legacyExtended(g)) addNews({ cat: 'finance', key: 'sponsor.offers', params: {} });
   // ægte CM 01/02 starter med tre nyheder (målt i originalen): ansættelsen, bestyrelsens mål og kampprogrammet
-  if (g.options.mode === 'authentic') {
+  if (origLogic(g)) {
     const board = g.news.filter((n) => n.key.startsWith('board.exp.') || n.key === 'board.cm');
     g.news = [];
     // 0x6a3060: "Man Utd appoint m m as manager" / "Manchester United have appointed m m as manager." (ingen forrige klub)
@@ -777,7 +778,7 @@ export function takeOverClub(club: Club, viaJob = false) {
   // den originale database i ægte tilstand: taktikken hører til manageren (0x5fbd00) – ved spilstart forudindstillingen "4-4-2" (442_default,
   // human_manager.dat i oraklets gemte spil – tacticTable.ts cmLoadPreset), ved et jobskifte hans egen taktik uden udtagelse
   if (cmActive(g)) g.tactic = viaJob && g.tactic ? { ...g.tactic, lineup: g.tactic.lineup.map(() => 0), bench: [] } : cmLoadPreset(newTactic('4-4-2'), neutralPlayerInstructions);
-  else g.tactic = g.options.mode === 'authentic' ? newTactic(best.formation) : best;
+  else g.tactic = origLogic(g) ? newTactic(best.formation) : best;
   for (const p of sq) recordDevelopment(p);
   g.board = { confidence: 65, expectation: 'mid', expectedPos: 10, warnings: 0 };
   // den originale database i ægte tilstand: 0x826f20 → 0x69ebc0 → 0x694c80 (cmBoardGame.ts); ellers spillets egne forventninger

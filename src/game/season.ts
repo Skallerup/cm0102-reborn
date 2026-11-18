@@ -40,7 +40,7 @@ import type { Club, Competition, Player, RegenSeed, SeasonFinance, SeasonSummary
 import { subPos } from './data/cm0102';
 import { asOwner, forEachHuman, isHumanClub } from './humans';
 import { econ } from './econ';
-import { extended } from './rules';
+import { legacyExtended } from './rules';
 import { cmEuroPrepareNext, cmEuroRolloverStart } from './cmEurope';
 import { cmMainNation, cmNatSeason, cmSeasonDue, cmSeasonOn, seasonYearAfter } from './cmSeason';
 import { compHooks } from './hooks';
@@ -302,7 +302,7 @@ function leaveFootball(p: Player) {
  */
 // (MODERN_PARITY 11) også 2026/27 i ægte tilstand, når spillet er startet med PLAYER_REGEN's liste (cmRetireOn): originalen skaber aldrig
 // spillere af ingenting – en regen overtager den pensioneredes post (0x7abac0), som CA-omfordelingen 0x5d587a forudsætter
-export const originalRegens = () => (isOriginal2001() && !extended()) || cmRetireOn(gs());
+export const originalRegens = () => (isOriginal2001() && !legacyExtended()) || cmRetireOn(gs());
 
 function spawnRegenQueue() {
   const g = gs();
@@ -748,7 +748,7 @@ export function seasonRollover(sc: Scope | null = null) {
   if (prevSum) prevSum.comps.push(...summary.comps); else { g.seasonHistory.push(summary); g.seasonHistory.sort((a, b) => a.season - b.season); }
   // Udfordringer og bestyrelsens dom – pr. menneskelig manager
   const challengeResults = new Map<string | undefined, 'won' | 'lost'>();
-  if (extended()) ffpReview(); // FFP kom først i 2011
+  if (legacyExtended()) ffpReview(); // FFP kom først i 2011
   forEachHuman(() => {
     if (!humanIn()) return;
     const club = g.clubs[g.userClub];
@@ -850,7 +850,7 @@ export function seasonRollover(sc: Scope | null = null) {
   cmBoardSeasonSetup(g, sc ? new Set(fresh.map((c) => c.id)) : undefined);
   forEachHuman(() => {
     if (!humanIn()) return;
-    if (g.userClub) { if (!cmBoardOn(g)) setBoardExpectation(); if (extended()) addNews({ cat: 'finance', key: 'sponsor.offers', params: {} }); }
+    if (g.userClub) { if (!cmBoardOn(g)) setBoardExpectation(); if (legacyExtended()) addNews({ cat: 'finance', key: 'sponsor.offers', params: {} }); }
     startScoreSeason();
     initKnowledgeKeep();
     const result = challengeResults.get(g.active);

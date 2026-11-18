@@ -1,6 +1,7 @@
 // Gem/indlæs i IndexedDB som gzip-komprimeret JSON (≈4-5 MB pr. save).
 import { addMissingConference } from './competitions';
 import { MODERN_ENABLED } from '../ui/modernFlag';
+import { legacyExtended } from './rules';
 const modernEnabledHere = () => { if (MODERN_ENABLED) return true; try { return localStorage.getItem('cm0102.modern') === '1'; } catch { return false; } };
 import { fixClubName } from './data/clubNames';
 import { cmDatabase } from './newgame';
@@ -175,7 +176,7 @@ function repairCupNames() {
 
 /** fællesspil er altid det originale (classic + ægte tilstand) – også et rum, der blev oprettet i udvidet tilstand (kaldes for hvert øjebliksbillede, alle klienter ens) */
 export function forceMultiplayerAuthentic(g: GameState) {
-  if (g.humans?.length && !modernEnabledHere() && g.options.mode !== 'authentic') { g.options.mode = 'authentic'; g.options.rules = 'classic'; }
+  if (g.humans?.length && !modernEnabledHere() && legacyExtended(g)) { g.options.mode = 'authentic'; g.options.rules = 'classic'; }
 }
 
 export function upgradeLoaded() {

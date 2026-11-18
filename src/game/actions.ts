@@ -44,7 +44,7 @@ import { addScoutRequest, scoutRequestStatus } from './cmScout';
 import { answerNationalOffer, resignNational, selectNationalSquad } from './international';
 import { appealBan } from './rules2001';
 import { cmAppeal } from './cmDiscipline';
-import { authentic } from './rules';
+import { origLogic } from './rules';
 import { A } from './attributes';
 import { rng } from './rng';
 import { ageOn } from './dates';
@@ -189,7 +189,7 @@ const VIRTUAL_BLOCK = new Set<Action['t']>(['listed', 'cmTransferStatus', 'squad
   'shortlist', 'negotiate', 'renew', 'renewLater', 'nickname', 'reserves', 'bTeam', 'trial', 'talk', 'interact', 'appealBan', 'staffReport']);
 
 export function applyAction(a: Action): unknown {
-  if (authentic() && (EXTENDED_ONLY.has(a.t) || (a.t === 'interact' && !AUTHENTIC_TALKS.has(a.kind)))) return 'authentic';
+  if (origLogic() && (EXTENDED_ONLY.has(a.t) || (a.t === 'interact' && !AUTHENTIC_TALKS.has(a.kind)))) return 'authentic';
   const g = gs();
   if (VIRTUAL_BLOCK.has(a.t) && 'pid' in a && g.players[(a as { pid: number }).pid]?.virtual) return 'error';
   const club = g.clubs[g.userClub];

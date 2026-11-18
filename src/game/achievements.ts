@@ -3,6 +3,7 @@ import { ageOn } from './dates';
 import { asOwner } from './humans';
 import { t } from '../i18n';
 import { addNews, gs } from './state';
+import { origLogic } from './rules';
 import type { Fixture, MatchReport } from './types';
 
 export type AchId =
@@ -28,7 +29,7 @@ export function unlock(id: AchId) {
   if (a[id]) return;
   a[id] = g.date;
   // ægte CM 01/02: præstationerne findes ikke i originalen – ingen nyhed (de vises stadig på managerprofilen)
-  if (g.options.mode === 'authentic') return;
+  if (origLogic(g)) return;
   addNews({ cat: 'award', key: 'ach.unlocked', params: { name: t(`ach.${id}`), icon: ACHIEVEMENTS.find((x) => x.id === id)?.icon ?? '🏅' } });
 }
 

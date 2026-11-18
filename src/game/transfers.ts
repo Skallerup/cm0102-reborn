@@ -30,7 +30,7 @@ import { ADDON_APPS, bidClauseWorth, cleanClauses, clauseWorth, defaultRelease, 
 import { asOwner, forEachHuman, isHumanClub, isMultiplayer } from './humans';
 import { AGENT_RULES, agentOf } from './agents';
 import { econ } from './econ';
-import { authentic, extended } from './rules';
+import { origLogic, legacyExtended } from './rules';
 import { aiRespond, aiReview, applyRejectReason, clauseOptIn, newTerms, putTerms, termsOf, valueCtx, MAX_SWAP, type BidTerms, type RejectKey } from './cmTransferBid';
 import { bookBlock, K as CMK, GBP as GBP_CM } from './cmFinance';
 import { cmGbp } from './cmMoney';
@@ -438,7 +438,7 @@ export function makeBid(pid: number, fee: number, loan = false, extra?: { sellOn
     status: p.club ? 'pending' : 'negotiating', created: g.date, respondBy: addDays(g.date, !p.club ? 7 : humanSeller ? 5 : rng.int(1, 3)),
   };
   // byder en anden manager også på spilleren hos en AI-klub: lukket budrunde med fælles frist
-  if (p.club && !loan && !humanSeller && extended()) startAuction(o, p); // budkrige: ikke i CM 01/02
+  if (p.club && !loan && !humanSeller && legacyExtended()) startAuction(o, p); // budkrige: ikke i CM 01/02
   if (p.club && !loan && extra?.sellOn) o.sellOn = Math.max(0, Math.min(50, Math.round(extra.sellOn)));
   if (p.club && !loan && extra?.addOn) o.addOn = roundValue(Math.max(0, extra.addOn));
   if (p.club && !loan && extra?.swap?.length) {
@@ -865,10 +865,10 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
   forEachHuman(() => {
     const involved = buyer.id === g.userClub || seller?.id === g.userClub;
     // ægte tilstand: også egne handler får originalens overskrift og brødtekst (0x8dbef0: "X seal Y deal" + "X have signed Z's Y for a fee of …")
-    if (involved && authentic() && !o.loan) addNews({ cat: 'transfer', key: `transfer.o${o.seller ? '' : 'Free'}.${p.id % 4}`, params: { to: buyer.short, from: seller?.short ?? '', player: pname(p), last: p.last, fee: o.fee, ...(o.addOn ? { fee2: o.fee + o.addOn } : {}) }, link: news.link });
+    if (involved && origLogic() && !o.loan) addNews({ cat: 'transfer', key: `transfer.o${o.seller ? '' : 'Free'}.${p.id % 4}`, params: { to: buyer.short, from: seller?.short ?? '', player: pname(p), last: p.last, fee: o.fee, ...(o.addOn ? { fee2: o.fee + o.addOn } : {}) }, link: news.link });
     else if (involved) addNews(news);
     // andre klubbers handler samles i ugens transferoverblik
-    else if (authentic()) originalTransferNews(p, buyer, seller, o.fee, o.loan, o.addOn, o);
+    else if (origLogic()) originalTransferNews(p, buyer, seller, o.fee, o.loan, o.addOn, o);
     else if (otherTransferNews(buyer, seller, o.fee, o.loan)) (g.transferDigest ??= []).push({ player: p.id, from: o.seller, to: buyer.id, fee: o.fee, ...(o.loan ? { loan: true } : {}) });
   });
 }
@@ -1412,7 +1412,7 @@ function aiClubTurn(club: Club) {
     recordMove(target, club.id, 0);
     setClub(target, club.id);
     target.joined = g.date;
-    forEachHuman(() => { if (authentic()) originalTransferNews(target, club, undefined, 0, false); else if (otherTransferNews(club, undefined, 0, false)) (g.transferDigest ??= []).push({ player: target.id, from: 0, to: club.id, fee: 0 }); });
+    forEachHuman(() => { if (origLogic()) originalTransferNews(target, club, undefined, 0, false); else if (otherTransferNews(club, undefined, 0, false)) (g.transferDigest ??= []).push({ player: target.id, from: 0, to: club.id, fee: 0 }); });
     return;
   }
   const ask = askingPrice(target);
@@ -2294,7 +2294,7 @@ export function offerRenewalLater(pid: number, wage: number, years: number, clau
   const g = gs();
   // CM 01/02: en spiller med et aftalt skifte (Next club) forhandler ikke en ny kontrakt ("… does not wish to negotiate a new contract at the
   // current time", 0x9b0964 i Offer Contract 0x4e06e0) – kun i ægte tilstand
-  if (authentic() && g.players[pid]?.contract?.futureClub) return 'refused';
+  if (origLogic() && g.players[pid]?.contract?.futureClub) return 'refused';
   (g.pendingRenewals ??= []).push({ pid, club: g.userClub, wage, years, clauses, date: g.date });
   return 'pending';
 }

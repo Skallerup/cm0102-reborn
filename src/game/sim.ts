@@ -36,7 +36,7 @@ import { GRID_ENGINE_DEFAULT, getGridFactory, setGridFactory, type LiveSim } fro
 import { gridFactory } from './engine/grid/adapter';
 import type { Rng } from './rng';
 import { pitchFor, refereeFor, weatherFor, type Pitch, type Weather } from './weather';
-import { maxSubs, extended, authentic } from './rules';
+import { maxSubs, legacyExtended, origLogic } from './rules';
 import { recordsAfterMatch } from './records';
 import { campDaily } from './camp';
 import { trialsDaily } from './trials';
@@ -184,7 +184,7 @@ function importance(f: Fixture): number {
 /** Turneringer med VAR (videodommer): de største ligaer og de europæiske turneringer */
 const VAR_LEAGUES = new Set(['GB1', 'ES1', 'IT1', 'L1', 'FR1', 'NL1', 'PO1', 'BE1', 'DK1', 'TR1', 'SC1', 'A1', 'C1', 'GR1', 'SE1', 'NO1', 'PL1', 'MLS1', 'BRA1', 'SA1', 'JAP1', 'MEX1', 'ARG1']);
 function usesVar(f: Fixture): boolean {
-  if (authentic()) return false; // VAR fandtes ikke i 2001
+  if (origLogic()) return false; // VAR fandtes ikke i 2001
   const c = gs().comps[f.comp];
   return !!c && (c.type === 'continental' || VAR_LEAGUES.has(c.id) || (c.type === 'cup' && (f.stage === 'F' || f.stage === 'SF')));
 }
@@ -216,7 +216,7 @@ export function prepareMatch(f: Fixture, userAuto = false): { home: EngineTeam; 
     pitch: pitchFor(f),
     referee: refereeFor(f),
     ...(cmDatabase(gs()) === 'original' ? ORIGINAL : MODERN),
-    ...(cmDatabase(gs()) === 'original' && authentic() ? ORIGINAL_LOWER : {}),
+    ...(cmDatabase(gs()) === 'original' && origLogic() ? ORIGINAL_LOWER : {}),
   };
 }
 
@@ -266,7 +266,7 @@ intlHooks.gridOn = () => gridEngineOn(gs());
 /** udviklerkontakten `cm0102.engine`, sat af dagens Web Worker (undefined = læs localStorage) */
 export const ENGINE_DEV: { v?: string | null } = {};
 export function gridEngineOn(g: GameState): boolean {
-  if (!cmLogic(g) || !authentic()) return false;
+  if (!cmLogic(g)) return false;
   // udviklerkontakten localStorage `cm0102.engine`: 'original' slår gittermotoren til, 'zone' fra (også i nye spil, hvor den er standard –
   // GRID_ENGINE_DEFAULT i engine/liveSim.ts)
   let dev: string | null = null;
@@ -538,8 +538,8 @@ function userMatchResult(f: Fixture, rep: MatchReport) {
       if (watcher) { const pid = watcher.shortlist!.find((id) => mine.has(id))!; addNews({ cat: 'scout', key: 'scout.spotted', params: { club: watcher.name, player: pname(g.players[pid]) }, link: { kind: 'player', id: pid } }); }
       recordRivalry(opp, scored, conceded);
       resolvePressPromise(f.id, scored, conceded);
-      if (extended()) invitePress(f, 'post');
-      if (extended()) fansAfterMatch(g.userClub, scored, conceded, squadStrength(g.userClub), squadStrength(opp), isBigMatch(g.userClub, opp));
+      if (legacyExtended()) invitePress(f, 'post');
+      if (legacyExtended()) fansAfterMatch(g.userClub, scored, conceded, squadStrength(g.userClub), squadStrength(opp), isBigMatch(g.userClub, opp));
     }
     knowledgeAfterMatch(opp, rep.players.filter((l) => l.team === (userHome ? 1 : 0)).map((l) => l.id));
     g.reports[f.id] = rep;
@@ -705,18 +705,18 @@ function newDay() {
     // pressemøde dagen før kampen
     for (const id of fixturesOn(addDays(d, 1))) {
       const f = g.fixtures[id];
-      if (f && g.userClub && (f.home === g.userClub || f.away === g.userClub) && extended()) invitePress(f, 'pre');
+      if (f && g.userClub && (f.home === g.userClub || f.away === g.userClub) && legacyExtended()) invitePress(f, 'pre');
     }
   });
   completeProjects();
   // udvidet spil: træningslejre og prøvespillere (ikke i CM 01/02)
-  if (extended()) { campDaily(); trialsDaily(); }
+  if (legacyExtended()) { campDaily(); trialsDaily(); }
   friendliesDaily();
   // originalens venskabskampe for computerens klubber (Friendly::update 0x5c2460 – cmFriendly.ts; kun den originale database i ægte tilstand)
   cmFriendlyDay(g);
   forEachHuman(aiBidsForListed);
   aiPursuits();
-  if (weekday(d) === 4 && extended()) forEachHuman(aiLoanOptions);
+  if (weekday(d) === 4 && legacyExtended()) forEachHuman(aiLoanOptions);
   aiTransferTick();
   // mediets daglige rygter 0x754a30 (0x5cdd8f): dagens nye bud → køen, rygterne og computerens svar (cmRumours.ts)
   cmRumoursDaily(g);
@@ -726,7 +726,7 @@ function newDay() {
   if (day(d) % 3 === 0 && !cmBoardOn(g)) fillVacancies();
   if (weekday(d) === 1) {
     forEachHuman(weeklyRumours);
-    if (extended()) { forEachHuman(weeklyTransferDigest); forEachHuman(weeklySummary); weeklyPlayerContact(); }
+    if (legacyExtended()) { forEachHuman(weeklyTransferDigest); forEachHuman(weeklySummary); weeklyPlayerContact(); }
     aiReleaseClauses();
     weeklyDevelopment();
     if (!cmFinOn(g)) weeklyWages();
@@ -739,9 +739,9 @@ function newDay() {
     if (cmMarketOn(g)) cmMonthlyInstalments();
     monthlyValues();
     monthlyDevelopment();
-    if (extended()) { monthlyPersonality(); monthlyWill(); fansMonthly(); }
+    if (legacyExtended()) { monthlyPersonality(); monthlyWill(); fansMonthly(); }
     if (month(d) !== 7) monthlyColumn();
-    if (extended()) forEachHuman(boardMeeting);
+    if (legacyExtended()) forEachHuman(boardMeeting);
     // den originale database i ægte tilstand: originalens priser (cmAwardsDaily) i stedet for spillets egne
     if (!cmAwOn(g)) { if (!(month(d) === 7)) monthlyAwards(); else snapshotMonth(); }
     monthlyClubReps();
@@ -764,7 +764,7 @@ function newDay() {
   }
   if (month(d) >= 1 && month(d) <= 5 && weekday(d) === 3) forEachHuman(aiBosman);
   // januar-tillægget til transferbudgettet er en moderne funktion (ikke i ægte CM 01/02)
-  if (month(d) === 1 && day(d) === 1 && extended()) januaryBudgetTopUp();
+  if (month(d) === 1 && day(d) === 1 && legacyExtended()) januaryBudgetTopUp();
   if (month(d) === 2 && day(d) === 1) youthPreview();
   if (month(d) === 3 && day(d) === 15) youthIntake();
   // AI-trupper fyldes op i sommer- og vinterpausen
