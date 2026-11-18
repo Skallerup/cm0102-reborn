@@ -781,6 +781,9 @@ export interface TransferOffer {
   rival?: { club: number; fee: number };
   /** Leje med købsoption (pris) */
   option?: number;
+  /** Lejebuddet (CM 01/02 "Loan bid"): udløbsdato og lejeklubbens andel af lønnen (0..1) */
+  loanUntil?: string;
+  loanShare?: number;
   /** Klausuler i buddet: videresalgsprocent til sælger og ekstra beløb efter 25 kampe */
   sellOn?: number;
   addOn?: number;

@@ -416,7 +416,7 @@ export function myPendingBid(pid: number): TransferOffer | undefined {
   return g.offers.find((o) => o.player === pid && o.buyer === g.userClub && !o.loan && (o.status === 'pending' || o.status === 'countered'));
 }
 
-export function makeBid(pid: number, fee: number, loan = false, extra?: { sellOn?: number; addOn?: number; swap?: number[]; terms?: BidTerms; change?: boolean }): TransferOffer | string {
+export function makeBid(pid: number, fee: number, loan = false, extra?: { sellOn?: number; addOn?: number; swap?: number[]; terms?: BidTerms; change?: boolean; loanUntil?: string; loanShare?: number }): TransferOffer | string {
   const g = gs();
   const p = g.players[pid];
   const buyer = g.clubs[g.userClub];
@@ -440,6 +440,7 @@ export function makeBid(pid: number, fee: number, loan = false, extra?: { sellOn
   };
   // byder en anden manager også på spilleren hos en AI-klub: lukket budrunde med fælles frist
   if (p.club && !loan && !humanSeller && legacyExtended()) startAuction(o, p); // budkrige: ikke i CM 01/02
+  if (p.club && loan && extra?.loanUntil) { o.loanUntil = extra.loanUntil; o.loanShare = Math.max(0, Math.min(1, extra.loanShare ?? 0)); }
   if (p.club && !loan && extra?.sellOn) o.sellOn = Math.max(0, Math.min(50, Math.round(extra.sellOn)));
   if (p.club && !loan && extra?.addOn) o.addOn = roundValue(Math.max(0, extra.addOn));
   if (p.club && !loan && extra?.swap?.length) {
@@ -776,7 +777,7 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
   if (o.loan) {
     // ægte tilstand, computer → computer: køberlandets lejeperiode (England: ENGLAND_RULES::get_loan_period 0x579c70 – rules2001.ts)
     const cmUntil = cmShortlistOn(g) && !isHumanClub(buyer.id) && !isHumanClub(p.club) ? englandLoanUntil(p, buyer) : null;
-    p.loan = { from: p.club, until: cmUntil ?? `${year(g.date) + (month(g.date) >= 7 ? 1 : 0)}-06-30`, ...(o.option ? { option: o.option } : {}) };
+    p.loan = { from: p.club, until: o.loanUntil ?? cmUntil ?? `${year(g.date) + (month(g.date) >= 7 ? 1 : 0)}-06-30`, ...(o.loanShare !== undefined ? { share: o.loanShare } : {}), ...(o.option ? { option: o.option } : {}) };
     if (cmShortlistOn(g)) noteLoan(buyer.id);
   } else {
     // (MODERN_PARITY 3) 2026/27 med originalens marked: alle handler (også menneskets) som originalen – rater, klausuler, videresalg
@@ -1069,9 +1070,11 @@ function aiAnswerBid(o: TransferOffer) {
   if (o.loan) {
     const rank = keyPlayerRank(p);
     const age = ageOn(p.dob, g.date);
-    if (rank > 13 && (age <= 24 || rank > 18)) {
+    // CM 01/02 (originalens logik): en spiller sat til leje (lejelisten, +0x4e bit 2) kan lejes
+    if ((cmLogic(g) && p.loanListed) || (rank > 13 && (age <= 24 || rank > 18))) {
       o.status = 'negotiating';
-      addNews({ cat: 'transfer', key: 'transfer.loanAccepted', params: { player: pname(p), club: sellerName(o.seller) }, link: { kind: 'offer', id: o.id } });
+      if (cmLogic(g)) asOwner(o.buyer, () => addNews({ cat: 'transfer', key: 'transfer.cmLoanAccepted', params: { last: p.last || pname(p), player: pname(p), seller: g.clubs[o.seller]?.short ?? sellerName(o.seller), buyer: g.clubs[o.buyer]?.short ?? '' }, link: { kind: 'player', id: p.id } }));
+      else addNews({ cat: 'transfer', key: 'transfer.loanAccepted', params: { player: pname(p), club: sellerName(o.seller) }, link: { kind: 'offer', id: o.id } });
       completeTransfer(o, p.contract?.wage ?? 0, 0);
     } else {
       o.status = 'rejected';

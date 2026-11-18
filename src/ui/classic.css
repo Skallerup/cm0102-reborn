@@ -1197,6 +1197,10 @@
 .cx-bid .cx-ts-body { align-items: stretch; }
 .cx-bid-row { display: grid; grid-template-columns: minmax(0, 1fr) 52px 220px 52px 52px; align-items: center; gap: 4px; margin-left: 40px; min-height: 27px; }
 .cx-bid-label { color: #fff; font-size: 17px; text-shadow: 1px 1px 0 #000; }
+/* Loan bid (ejerens billede 18/11): lønandelen i orange, oplysningerne i hvid */
+.cx-bid-row .cx-loan-amt { color: #ff9a2e; }
+.cx-bid-info { margin: 28px 0 0 40px; font-size: 19px; line-height: 1.5; }
+.cx-bid-info p { margin: 0; }
 .cx-bid-row.off .cx-bid-label, .cx-bid-row.off .cx-bid-val { color: #9a9ca6; }
 .cx-bid-val { text-align: center; color: #fff; font-size: 16px; text-shadow: 1px 1px 0 #000; }
 .cx-bid-val.wide { grid-column: 2 / span 3; }
@@ -1575,6 +1579,7 @@ button.cx-sl-cell:disabled { opacity: 1; cursor: default; }
 .cx-sq-orig .cx-slot.filled:not(.off) { color: #fff21f; border-color: #031401 #2c661a #2c661a #031401; box-shadow: inset 1px 1px 0 rgba(0, 0, 0, 0.45); padding-top: 1px; }
 .cx-sq-orig .cx-sq-info.cond { color: #3ef03a; }
 :root[data-skin='retro'] .cx-sq-orig .cx-sq-name.loan, :root[data-skin='retro'] .cx-sq-orig .cx-sq-name.loan:hover { color: #4f9cff; }
+:root[data-skin='retro'] .cx-sq-orig .cx-sq-name.loanin, :root[data-skin='retro'] .cx-sq-orig .cx-sq-name.loanin:hover { color: #3ee8ff; }
 :root[data-skin='retro'] .cx-sq-orig .cx-sq-name.dim, :root[data-skin='retro'] .cx-sq-orig .cx-sq-name.dim:hover { color: #9a9a9a; }
 /* Mærkefarverne aflæst pixel for pixel af originalens trup (ejerens billede 124): Inj/Sus rød #840000, Wnt grå #424142 med gul tekst, Int blå #000084 */
 :root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag, :root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag:hover { background: #840000; color: #e7e3e7; border-color: #ad0000 #5a0000 #5a0000 #ad0000; }

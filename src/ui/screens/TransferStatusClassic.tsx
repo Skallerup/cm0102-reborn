@@ -1,5 +1,5 @@
 // "Set Staff Transfer Status" (som i CM 01/02): udbudspris (− / + / Auto), status i truppen og transferstatus.
-import { useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { act } from '../../game/actions';
 import type { DisciplineReason } from '../../game/personality';
 import { SQUAD_STATUSES, statusAllowed, type SquadStatus } from '../../game/squadStatus';
@@ -9,7 +9,7 @@ import type { CoachArea, NewsItem, Player, TransferOffer } from '../../game/type
 import { cmStatusRows, statusNum } from '../../game/cmTransferList';
 import { valueTarget } from '../../game/training';
 import type { RejectReason } from '../../game/will';
-import { ageOn } from '../../game/dates';
+import { addDays, ageOn } from '../../game/dates';
 import { compName, currencySymbol, fromCurExact, getCurrency, money, moneyFull, t } from '../../i18n';
 import { posStr } from '../components';
 import { jobTerms } from '../../game/board';
@@ -23,7 +23,7 @@ import { BID_AMOUNTS_GBP, MAX_SWAP, addSwap, bidAct, clauseAtMin as clauseAtMin0
   type BidAct, type BidTerms, type RejectKey } from '../../game/cmTransferBid';
 import { ClassicFirstSquad } from './SquadClassic';
 import { authentic } from '../../game/rules';
-import { cmBidBudget, cmBoardLine } from '../../game/cmBudget';
+import { cmBoardWageAllow, cmBidBudget, cmBoardLine } from '../../game/cmBudget';
 import { rebornOn } from '../reborn';
 
 /** "£0", "£100K", "£2.5M" (originalens beløbsliste, i spillerens valuta) */
@@ -237,7 +237,56 @@ export function DisciplinePanel({ p, onClose, onDone }: { p: Player; onClose: ()
 export function BidPanel(props: { p: Player; loan: boolean; onClose: () => void; onSent: (o: TransferOffer) => void; onAsk?: (asking: boolean) => void; change?: boolean }) {
   const g = useGame()!;
   // den originale database i ægte tilstand: originalens budskærm (cmTransferBid.ts); ellers spillets egen
+  if (cmMarketOn(g) && props.loan) return <LoanBidPanel {...props} />;
   return cmMarketOn(g) && !props.loan ? <CmBidPanel {...props} /> : <OldBidPanel {...props} />;
+}
+
+/** CM 01/02 "Loan bid for Olesen": lønnen og bestyrelsens loft, Loan Expiry Date og Wage Contribution med - / +, to oplysninger (ejerens billede 18/11) */
+function LoanBidPanel({ p, onClose, onSent }: { p: Player; loan: boolean; onClose: () => void; onSent: (o: TransferOffer) => void }) {
+  const g = useGame()!;
+  useClassicDialog();
+  const [today] = useState(g.date);
+  const minD = addDays(today, 7);
+  const maxD = `${Number(today.slice(0, 4)) + (Number(today.slice(5, 7)) >= 7 ? 1 : 0)}-06-30`;
+  const [until, setUntil] = useState(() => { const d = addDays(today, 30); return d > maxD ? maxD : d; });
+  const [share, setShare] = useState(0);
+  const [err, setErr] = useState('');
+  const club = g.clubs[g.userClub];
+  const allow = useMemo(() => cmBoardWageAllow(g, p, g.userClub) ?? Math.max(0, (club?.wageBudget ?? 0) - Object.values(g.players).filter((x) => x.club === g.userClub).reduce((s, x) => s + (x.contract?.wage ?? 0), 0)), []); // eslint-disable-line react-hooks/exhaustive-deps
+  const wage = p.contract?.wage ?? 0;
+  const seller = g.clubs[p.club]?.short ?? '';
+  const name = `${p.first} ${p.last}`.trim();
+  const d = new Date(`${until}T00:00:00Z`);
+  const dn = d.getUTCDate();
+  const dateLbl = `${t('cl.locale').startsWith('da') ? `${dn}.` : `${dn}${dn % 100 >= 11 && dn % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][dn % 10] ?? 'th'}`} ${d.toLocaleDateString(t('cl.locale'), { month: 'short', timeZone: 'UTC' })} ${d.getUTCFullYear()}`;
+  const submit = () => {
+    setErr('');
+    const r = act<TransferOffer | string>({ t: 'bid', pid: p.id, fee: 0, loan: true, loanUntil: until, loanShare: share / 100 });
+    if (typeof r === 'string') setErr(t(r)); else onSent(r);
+  };
+  return (
+    <div className="cx-tstatus cx-bid">
+      <div className="cx-subtitle">{t('cl.bid.loanFor', { player: p.last })}</div>
+      <div className="cx-ts-body">
+        <p className="cx-ts-intro">{t('cl.bid.loanWage', { player: name, wage: money(wage), club: seller, allow: money(allow) })}</p>
+        <div className="cx-bid-row"><span className="cx-bid-label">{t('cl.bid.loanExpiry')}</span>
+          <CxPm disabled={until <= minD} onClick={() => setUntil(addDays(until, -7) < minD ? minD : addDays(until, -7))} aria-label="-">−</CxPm>
+          <span className="cx-bid-val">{dateLbl}</span>
+          <CxPm disabled={until >= maxD} onClick={() => setUntil(addDays(until, 7) > maxD ? maxD : addDays(until, 7))} aria-label="+">+</CxPm></div>
+        <div className="cx-bid-row"><span className="cx-bid-label">{t('cl.bid.loanShare')}</span>
+          <CxPm disabled={share <= 0} onClick={() => setShare(Math.max(0, share - 10))} aria-label="-">−</CxPm>
+          <span className="cx-bid-val">{share}%</span>
+          <CxPm disabled={share >= 100} onClick={() => setShare(Math.min(100, share + 10))} aria-label="+">+</CxPm></div>
+        <div className="cx-bid-row off"><span /><span /><span className="cx-bid-val cx-loan-amt">({money(Math.round(wage * share / 100))})</span></div>
+        <div className="cx-bid-info"><p>{t('cl.bid.loanCup')}</p><p>{t('cl.bid.loanAgainst', { club: seller })}</p></div>
+        {err && <div className="cx-bid-err">{err}</div>}
+      </div>
+      <ClassicFoot cols="3fr 1fr">
+        <button onClick={onClose}>{t('common.back')}</button>
+        <button className="primary" onClick={submit}>{t('cl.bid.offer')}</button>
+      </ClassicFoot>
+    </div>
+  );
 }
 
 function OldBidPanel({ p, loan, onClose, onSent }: { p: Player; loan: boolean; onClose: () => void; onSent: (o: TransferOffer) => void }) {

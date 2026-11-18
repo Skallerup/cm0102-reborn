@@ -162,7 +162,8 @@ export function originalTag(p: Player): { k: string; title: string } | null {
   if (isInternational(p)) return { k: 'Int', title: t('cl.tag.intTitle', { nation: natName(gs()?.nations[p.nation]?.name) ?? '' }) };
   if (p.contract?.futureClub) return { k: 'Fut', title: t('tag.leaving') };
   if (p.listed) return { k: 'Lst', title: t('tag.listed') };
-  if (p.loan) return { k: 'Lon', title: t('tag.loan') };
+  // Loa = sat til leje (lejelisten, +0x4e bit 2) – mærket står også under lejeaftalen (ejerens billeder 18/11)
+  if (p.loan || p.loanListed) return { k: 'Lon', title: t('tag.loan') };
   if ((p.unhappy ?? 0) > 60 || p.wantsAway) return { k: 'Unh', title: t('tag.unhappy') };
   // Wnt: en anden klub er interesseret (originalens Interested-række, 0x842180)
   if (interestedClubs(p).length) return { k: 'Wnt', title: !rebornOn('helpTexts') ? '' : t('cl.sq.wanted') };
@@ -487,12 +488,13 @@ export function ClassicFirstSquad({ reserves = false, cid, pick }: { reserves?: 
     const pl = placeOf(tac, p.id);
     const loanedOut = p.loan?.from === clubId && p.club !== clubId;
     // andre klubber (originalen): kun Inj og Lst
-    const tag = ro ? (p.injury ? { k: 'Inj', title: `${t(`injury.${p.injury.key}`)} (${p.injury.days} ${t('common.days')})` } : p.listed ? { k: 'Lst', title: t('tag.listed') } : null)
-      : orig ? (loanedOut ? null : originalTag(p)) : tagOf(p, g);
+    // andre klubber og egen trup (ejerens billeder 18/11): Inj, Lst, Loa, Unh og Int – ikke Wnt/Fut/Yel
+    const roTag = originalTag(p);
+    const tag = ro ? (roTag && !['Wnt', 'Fut', 'Yel'].includes(roTag.k) ? roTag : null)
+      : orig ? originalTag(p) : tagOf(p, g);
     // grå navn (originalens "Ryan, R" på reserveholdet): ikke spilleklar af en anden grund end skade/karantæne (*estimeret*)
     // originalens genererede fyldspillere står også i gråt (ejerens billede 85, cmVirtual.ts)
-    const loanedOutMain = orig && !ro && !reserves && loanedOut;
-    const dim = orig && (!!p.virtual || loanedOutMain || (!available(p) && !p.injury && !(p.banned > 0) && !p.reserves && !loanedOut));
+    const dim = orig && (!!p.virtual || (!available(p) && !p.injury && !(p.banned > 0) && !p.reserves && !loanedOut));
     const selCls = `cx-selbtn ${pl?.kind ?? ''} ${orig ? 'cx-orig' : ''}`;
     return (
       <div key={p.id} className={`cx-sq-row ${trad ? '' : 'wide'} ${drag === p.id ? 'dragging' : ''} ${over === `p${p.id}` ? 'over' : ''}`} style={tmpl} {...dropOn(`p${p.id}`, 'swapWith', p.id)}>
@@ -501,7 +503,7 @@ export function ClassicFirstSquad({ reserves = false, cid, pick }: { reserves?: 
           : <CxDrop className="cx-sel" caret={false} fixed label={lbl || ' '} items={menuFor(p)}
             btn={{ className: selCls, draggable: true, onDragStart: dragStart(p.id), onDragEnd: dragEnd, title: orig ? undefined : t('cl.sq.selHint'), 'data-pid': p.id }} />}
         <Tag p={p} tag={tag} />
-        <button className={`cx-sq-name ${!orig && !available(p) ? 'unavail' : ''} ${(ro || reserves ? loanedOut : orig ? false : p.loan) ? 'loan' : ''} ${dim ? 'dim' : ''}`} draggable={!ro} onDragStart={dragStart(p.id)} onDragEnd={dragEnd}
+        <button className={`cx-sq-name ${!orig && !available(p) ? 'unavail' : ''} ${(ro || reserves || orig ? loanedOut : p.loan) ? 'loan' : ''} ${orig && !loanedOut && p.loan && p.club === clubId ? 'loanin' : ''} ${dim ? 'dim' : ''}`} draggable={!ro} onDragStart={dragStart(p.id)} onDragEnd={dragEnd}
           onClick={() => (pick?.armed && pick.ok(p) ? pick.onPick(p.id) : armedTarget ? putArmed(p) : nav({ name: 'player', id: p.id }))}>{shortName(p, (!orig || ro || inSetup()) && starIds(players).has(p.id))}</button>
         {cols.map((c) => <span key={c.key} className={`cx-sq-info ${trad && c.key === 'cond' ? 'cond' : ''}`} data-col={c.key}>{c.show(p)}</span>)}
       </div>
