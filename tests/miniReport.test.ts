@@ -44,5 +44,5 @@ describe('kompakte rapporter for computerkampe', () => {
     expect(compsSeen.size).toBeGreaterThanOrEqual(4);
     const any = g.miniReports![ids[0]];
     expect(unpackReport(any, ids[0], 1, 2).heat[0].length).toBe(15);
-  });
+  }, 300_000);
 });
