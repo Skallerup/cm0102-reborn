@@ -2,6 +2,7 @@
 
 Flyttet fra CLAUDE.md 17/11-2026 (så CLAUDE.md er kort i hver session). Nyeste først. Tilføj en linje øverst ved hver udgivelse.
 
+- 2026-11-18 – Skudt live (v0.30.0): 2026-11-18 – MODERN_PARITY 13 + stabsjagt: cmStaffOn, world-cm-staff.json, staffTail 0x83ebfb, 0x83f3a0 stabsgren, plan-tæller ved skifte, cmContractEnd for stab, skjulte egenskaber; stabens daglige opdatering 0x5d340f–0x5d3525 (cmStaffNpDaily) + 0x539490 (rebalanceStaffNp). Arsenal hel sæson klub→klub 16 → 70 (oraklet 152; 103 med konverterrettelsen i world-genbygningen), →ledig 87 → 12 (22). Fingeraftryk 2001 → 7ab3d729e979cd13.
 - 2026-11-18 – Skudt live (v0.30.0): 2026-11-18 – UI (ejerens ønsker): rød prik Game Options/Hvad er nyt, Feedback og fejl som én formular, Game Settings 2 kolonner, multiplayer Invitér/Spillere i sidebaren, Competitions.tsx uden tom skærm; e2e opdateret.
 - 2026-11-18 – Skudt live (v0.30.0): 2026-11-18 – HOTFIX live-nedbrud 0.30.0: cmExchangeCheck/cmAskingPrice fik ønskelisternes adaptere 0x6e6340 (planScore) og 0x8c7950 (slShared) – før 'kald 0x58d710/0x6e6340 er ikke porteret'; App.tsx lazy AppPage venter efter vite:preloadError (reading 'default', 0.29.0). Regressionstest tests/cmExchangeCheck.test.ts.
 - 2026-11-18 – Skudt live (v0.30.0): 2026-11-18 – Ko-fi: api/kofi.ts (webhook, KOFI_VERIFY_TOKEN i Vercel production, idempotent, EUR-cent pr. måned, is_public=false → Anonym, ingen e-mail; GET s-maxage=60), SupportBox på Landing + Game Options. Ejeren: sæt webhook-URL i Ko-fi.
