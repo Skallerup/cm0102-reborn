@@ -11,7 +11,6 @@ export class VoiceChat {
   private stream: MediaStream | null = null;
   private timer: ReturnType<typeof setInterval> | null = null;
   private levels: ReturnType<typeof setInterval> | null = null;
-  private beat = 0;
   members: string[] = [];
   muted = false;
   /** Hvem taler lige nu (lydniveau over en tærskel) */
@@ -31,7 +30,7 @@ export class VoiceChat {
     this.meter(this.creds.pid, this.stream);
     const r = await mpPost<{ voice: string[] }>('voice', { ...this.creds, on: true });
     this.members = r.voice;
-    this.timer = setInterval(() => { void this.tick(); }, 1000);
+    this.timer = setInterval(() => { void this.tick(); }, 1000); // grundtakt; tick() springer over, når alt er forbundet
     this.levels = setInterval(() => this.measure(), 200);
     await this.tick();
   }
@@ -107,10 +106,21 @@ export class VoiceChat {
 
   connectedTo(pid: string) { return this.pcs.get(pid)?.connectionState === 'connected'; }
 
+  private lastPull = 0;
+  private lastBeat = 0;
+  /** Under opkobling (tilbud/svar/ICE) hver sekund; er alle forbundet, eller er man alene, kun hvert 5. sekund (sparer serverkald) */
+  private settled() {
+    const others = this.members.filter((m) => m !== this.creds.pid);
+    return others.every((m) => this.connectedTo(m));
+  }
+
   private async tick() {
     if (!this.stream) return;
-    // hjerteslag, så de andre kan se, at vi er med
-    if (++this.beat % 8 === 0) { try { await mpPost('voice', { ...this.creds, on: true }); } catch { /* offline */ } }
+    const now = Date.now();
+    if (this.settled() && now - this.lastPull < 5000) return;
+    this.lastPull = now;
+    // hjerteslag, så de andre kan se, at vi er med (deltagere udløber efter 25 s)
+    if (now - this.lastBeat >= 10_000) { this.lastBeat = now; try { await mpPost('voice', { ...this.creds, on: true }); } catch { /* offline */ } }
     let r: { msgs: { from: string; data: Sig }[]; voice: string[] };
     try { r = await mpPost('sigpull', { ...this.creds }); } catch { return; }
     this.members = r.voice;

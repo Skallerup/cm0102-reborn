@@ -14,6 +14,8 @@ import { isAdminToken } from './_lib/adminToken.js';
 
 const redis = makeRedis();
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+/** Offentlig, ikke-personlig GET: Vercels CDN svarer i s sekunder uden at ramme Redis */
+const pub = (body: unknown, s: number) => new Response(JSON.stringify(body), { headers: { 'content-type': 'application/json', 'cache-control': `public, max-age=0, s-maxage=${s}, stale-while-revalidate=${s * 4}`, vary: 'x-admin-token' } });
 const clean = (v: unknown, max: number) => String(v ?? '').replace(/[<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, max);
 const cleanBody = (v: unknown, max: number) => String(v ?? '').replace(/[<>]/g, '').replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim().slice(0, max);
 const parse = <T>(v: unknown, fb: T): T => { if (v && typeof v === 'object') return v as T; if (typeof v !== 'string') return fb; try { return JSON.parse(v) as T; } catch { return fb; } };
@@ -76,7 +78,7 @@ export async function GET(request: Request) {
     const rows = (await Promise.all(ids.map((id) => redis.hgetall<Record<string, unknown>>(`hall:${id}`))))
       .map((h, i) => (h ? { ...(h as object), id: Number(ids[i]), summary: undefined, data: undefined } : null))
       .filter((h): h is NonNullable<typeof h> => !!h && (admin || !(h as { hidden?: unknown }).hidden));
-    return json({ rows });
+    return admin ? json({ rows }) : pub({ rows }, 60);
   }
   if (op === 'hall-one') {
     const id = Number(url.searchParams.get('id'));

@@ -238,11 +238,20 @@ export class OnlineSession {
     // under en draft opdateres der hyppigt (live), ellers hvert 3,5 sekund
     this.pollTimer = setInterval(() => {
       const live = this.draftLive();
-      if (live || Date.now() - this.lastRefresh >= 3400) void this.refresh(false);
+      if (live || Date.now() - this.lastRefresh >= this.pollGap()) void this.refresh(false);
     }, 1200);
+    // fanen bliver synlig igen: opdater med det samme
+    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', this.onVis);
   }
 
   private lastRefresh = 0;
+  private onVis = () => { if (document.visibilityState === 'visible' && Date.now() - this.lastRefresh >= 3400) void this.refresh(false); };
+  /** Pauser mellem opdateringer (sparer serverkald): 3,4 s ved aktivt arbejde, længere når fanen er skjult eller man er alene i rummet */
+  private pollGap(): number {
+    const hidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
+    const alone = (this.room?.players.length ?? 2) <= 1 && !this.room?.draft;
+    return hidden ? 12_000 : alone ? 8_000 : 3400;
+  }
   /** Forskel mellem serverens og vores ur (ms) */
   clockSkew = 0;
 
@@ -258,6 +267,7 @@ export class OnlineSession {
   stop() {
     this.stopped = true;
     if (this.pollTimer) clearInterval(this.pollTimer);
+    if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', this.onVis);
     if (this.flushTimer) clearTimeout(this.flushTimer);
     setActionSink(null);
   }

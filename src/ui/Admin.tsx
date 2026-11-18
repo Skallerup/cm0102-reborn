@@ -332,7 +332,7 @@ function NewCareersTab({ open }: { open: OpenSave }) {
     const load = () => void adminGet<Data>('op=new-careers').then((r) => setData(r ?? { rows: [], days: {} }));
     load();
     // online-status opdateres løbende
-    const id = setInterval(load, 60_000);
+    const id = setInterval(() => { if (document.visibilityState === 'visible') load(); }, 60_000);
     return () => clearInterval(id);
   }, []);
   const removeCareers = async (what: { vids?: string[]; at?: string; manager?: string }, label: string) => {

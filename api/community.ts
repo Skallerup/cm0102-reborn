@@ -7,6 +7,8 @@ import { isAdminToken } from './_lib/adminToken.js';
 const redis = makeRedis();
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+/** Offentlig, ikke-personlig GET: Vercels CDN svarer i s sekunder uden at ramme Redis */
+const pub = (body: unknown, s: number) => new Response(JSON.stringify(body), { headers: { 'content-type': 'application/json', 'cache-control': `public, max-age=0, s-maxage=${s}, stale-while-revalidate=${s * 4}`, vary: 'x-admin-token' } });
 const now = () => new Date().toISOString();
 const day = (d = new Date()) => d.toISOString().slice(0, 10);
 async function sha(s: string) {
@@ -150,7 +152,8 @@ export async function GET(request: Request) {
   if (sort === 'roadmap') items = items.filter((s) => s.status !== 'new');
   let voted: string[] = [];
   if (me) voted = (await redis.smembers(`prof:${me}:sgvotes`)) as string[];
-  return json({ items: items.slice(0, 150).map(view), voted: voted.map(Number) });
+  const out = { items: items.slice(0, 150).map(view), voted: voted.map(Number) };
+  return admin || me ? json(out) : pub(out, 30);
 }
 
 // ---------- POST ----------

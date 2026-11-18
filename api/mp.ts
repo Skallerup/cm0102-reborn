@@ -78,6 +78,10 @@ interface RoomRec {
   settings: string;
   created: string;
   lastTurn: string;
+  /** seneste chat-id (feltet findes ikke i gamle rum: så læses chatten én gang og feltet efterfyldes) – sparer en læsning pr. opdatering i rum uden chat */
+  chatSeq?: number;
+  /** sidste hjerteslag fra voice-chatten – er det gammelt, springes læsningen af deltagerne over */
+  voiceAt?: number;
 }
 
 const k = (code: string) => ({ room: `room:${code}`, players: `room:${code}:players`, actions: `room:${code}:actions`, lock: `room:${code}:lock`, chat: `room:${code}:chat` });
@@ -192,7 +196,7 @@ async function touch(code: string) {
 async function getRoom(code: string): Promise<RoomRec | null> {
   const r = await redis.hgetall<Record<string, string | number>>(k(code).room);
   if (!r || !r.code) return null;
-  return { ...r, version: Number(r.version), lastApplied: Number(r.lastApplied) } as unknown as RoomRec;
+  return { ...r, version: Number(r.version), lastApplied: Number(r.lastApplied), chatSeq: r.chatSeq == null ? undefined : Number(r.chatSeq), voiceAt: r.voiceAt == null ? undefined : Number(r.voiceAt) } as unknown as RoomRec;
 }
 
 async function getPlayers(code: string): Promise<PlayerRec[]> {
@@ -212,16 +216,27 @@ async function savePlayer(code: string, p: PlayerRec) {
   await redis.hset(k(code).players, { [p.pid]: JSON.stringify(p) });
 }
 
-async function publicRoom(code: string) {
+async function publicRoom(code: string, seenPid = '') {
   const room = await getRoom(code);
   if (!room) return null;
   const players = await getPlayers(code);
   const lock = await redis.get<string>(k(code).lock);
   const actionCount = await redis.llen(k(code).actions);
-  const chatRaw = await redis.lrange<string | ChatRec>(k(code).chat, -100, -1);
-  const chat = chatRaw.map((c) => (typeof c === 'string' ? (JSON.parse(c) as ChatRec) : c));
+  let chat: ChatRec[] = [];
+  if (room.chatSeq !== 0) {
+    const chatRaw = await redis.lrange<string | ChatRec>(k(code).chat, -100, -1);
+    chat = chatRaw.map((c) => (typeof c === 'string' ? (JSON.parse(c) as ChatRec) : c));
+    // gamle rum: efterfyld feltet, så tomme chats ikke læses igen
+    if (room.chatSeq === undefined) await redis.hset(k(code).room, { chatSeq: chat.length ? chat[chat.length - 1].id : 0 });
+  }
   const seen = (await redis.hgetall<Record<string, number | string>>(`room:${code}:seen`)) ?? {};
   const now = Date.now();
+  // hjerteslag: kun en skrivning, når det forrige er over 15 s gammelt (SEEN_MS er 30 s) – og expire kun samtidig
+  if (seenPid && !(seen[seenPid] != null && now - Number(seen[seenPid]) < 15_000)) {
+    seen[seenPid] = now;
+    await redis.hset(`room:${code}:seen`, { [seenPid]: now });
+    await redis.expire(`room:${code}:seen`, TTL);
+  }
   return {
     code: room.code, host: room.host, status: room.status, version: room.version, snapshot: room.snapshot, date: room.date,
     lastApplied: room.lastApplied, actionCount, settings: typeof room.settings === 'string' ? JSON.parse(room.settings || '{}') : (room.settings ?? {}), lastTurn: room.lastTurn,
@@ -232,8 +247,8 @@ async function publicRoom(code: string) {
     })),
     joins: await pendingJoins(code, room, players),
     chat,
-    draft: await publicDraft(code),
-    voice: await voiceMembers(code),
+    draft: roomSettings(room).mode === 'draft' ? await publicDraft(code) : undefined,
+    voice: await voiceMembers(code, room),
   };
 }
 
@@ -249,7 +264,9 @@ async function pendingJoins(code: string, room: RoomRec, players: PlayerRec[]) {
 }
 
 /** Hvem er med i voice-chatten lige nu (hjerteslag inden for 25 sekunder) */
-async function voiceMembers(code: string): Promise<string[]> {
+async function voiceMembers(code: string, room?: RoomRec | null): Promise<string[]> {
+  // ingen hjerteslag det seneste halve minut: ingen er med, og hashen behøver ikke læses
+  if (room && !(room.voiceAt && Date.now() - room.voiceAt < 40_000)) return [];
   const h = (await redis.hgetall<Record<string, number | string>>(`room:${code}:voice`)) ?? {};
   const now = Date.now();
   return Object.entries(h).filter(([, ts]) => now - Number(ts) < 25_000).map(([pid]) => pid);
@@ -277,8 +294,7 @@ export async function GET(request: Request) {
   if (old) return old;
   // hjerteslag: hvem har rummet åbent (værten kan se, hvem der er offline)
   const seenPid = (url.searchParams.get('pid') ?? '').replace(/[^a-z0-9]/g, '').slice(0, 20);
-  if (seenPid) { await redis.hset(`room:${code}:seen`, { [seenPid]: Date.now() }); await redis.expire(`room:${code}:seen`, TTL); }
-  const room = await publicRoom(code);
+  const room = await publicRoom(code, seenPid);
   return room ? json(room) : json({ error: 'not-found' }, 404);
 }
 
@@ -310,7 +326,7 @@ export async function POST(request: Request) {
       const now = new Date().toISOString();
       await redis.hset(`room:${newCode}`, {
         code: newCode, host: pid, status: 'setup', version: 0, snapshot: '', prevSnapshot: '', lastApplied: 0, date: '',
-        settings: JSON.stringify(body.settings ?? {}), created: now, lastTurn: now,
+        settings: JSON.stringify(body.settings ?? {}), created: now, lastTurn: now, chatSeq: 0,
       });
       await savePlayer(newCode, { pid, name, club, token, ready: false, joined: now });
       if ((body.settings as Record<string, unknown> | undefined)?.mode === 'draft') {
@@ -403,7 +419,7 @@ export async function POST(request: Request) {
       const rec: ChatRec = { id: n, from: me.pid, name: me.name, to, text, at: new Date().toISOString() };
       await redis.rpush(keys.chat, JSON.stringify(rec));
       await redis.ltrim(keys.chat, -CHAT_KEEP, -1);
-      await Promise.all([touch(code), redis.expire(`${keys.chat}:seq`, TTL)]);
+      await Promise.all([touch(code), redis.expire(`${keys.chat}:seq`, TTL), redis.hset(keys.room, { chatSeq: n })]);
       return json(rec);
     }
     case 'autoready': {
@@ -512,9 +528,11 @@ export async function POST(request: Request) {
     case 'voice': {
       const me = await auth(code, String(body.pid), String(body.token));
       if (!me) return json({ error: 'auth' }, 403);
-      if (body.on) await redis.hset(`room:${code}:voice`, { [me.pid]: Date.now() });
-      else await redis.hdel(`room:${code}:voice`, me.pid);
-      await redis.expire(`room:${code}:voice`, 3600);
+      if (body.on) {
+        await redis.hset(`room:${code}:voice`, { [me.pid]: Date.now() });
+        await redis.hset(keys.room, { voiceAt: Date.now() });
+        await redis.expire(`room:${code}:voice`, 3600);
+      } else await redis.hdel(`room:${code}:voice`, me.pid);
       return json({ voice: await voiceMembers(code) });
     }
     case 'sig': {

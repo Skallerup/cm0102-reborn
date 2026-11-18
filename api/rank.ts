@@ -21,6 +21,8 @@ const LIMITS: Record<string, [number, number]> = {
 const ACH_IDS = new Set(['firstWin', 'bigWin', 'hattrick', 'fullHouse', 'shootout', 'europe', 'giantKiller', 'comeback', 'winStreak5', 'unbeaten10', 'kidsWin', 'survivor', 'promotion', 'cup', 'bigSale', 'loyal', 'legend', 'century', 'title', 'doublePromotion', 'clWin', 'patron']);
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+/** Offentlig, ikke-personlig GET: Vercels CDN svarer i s sekunder uden at ramme Redis */
+const pub = (body: unknown, s: number) => new Response(JSON.stringify(body), { headers: { 'content-type': 'application/json', 'cache-control': `public, max-age=0, s-maxage=${s}, stale-while-revalidate=${s * 4}`, vary: 'x-admin-token' } });
 const month = () => new Date().toISOString().slice(0, 7);
 const rid = (n = 16) => [...crypto.getRandomValues(new Uint8Array(n))].map((b) => b.toString(16).padStart(2, '0')).join('');
 async function sha(s: string) {
@@ -176,7 +178,7 @@ export async function GET(request: Request) {
       const rank = await redis.zrevrank('lb:career', id);
       return c ? { id, club: c.club, league: c.league, total: Number(c.total ?? 0), seasons: Number(c.seasons ?? 0), rank: rank === null ? null : rank + 1 } : null;
     }))).filter(Boolean).sort((a, b) => b!.total - a!.total);
-    return json({ name: h.name, created: h.created, ach: parse(h.ach) ?? [], summary: parse(h.summary), careers, avatar: h.avatar || null, motto: h.motto || '' });
+    return pub({ name: h.name, created: h.created, ach: parse(h.ach) ?? [], summary: parse(h.summary), careers, avatar: h.avatar || null, motto: h.motto || '' }, 60);
   }
   const board = url.searchParams.get('board') ?? 'career';
   const league = (url.searchParams.get('league') ?? '').replace(/[^A-Z0-9-]/g, '');
@@ -209,5 +211,5 @@ export async function GET(request: Request) {
     }
   }
   const total = await redis.zcard(key);
-  return json({ board, rows, me, total });
+  return pub({ board, rows, me, total }, 60);
 }

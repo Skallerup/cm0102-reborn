@@ -44,16 +44,24 @@ function progress(): { gid: string; date: string; club: string; pos: number } | 
 
 let last = 0;
 function ping() {
-  if (document.visibilityState !== 'visible' || Date.now() - last < 100_000) return;
+  if (document.visibilityState !== 'visible' || Date.now() - last < 150_000) return;
   last = Date.now();
   const vid = visitorId();
-  if (vid) void post({ op: 'ping', vid, theme: theme(), prog: progress() });
+  if (!vid) return;
+  // fremskridtet sendes kun når det har ændret sig (eller hvert ~30. minut) – serveren skriver så ikke hver gang
+  const pr = progress();
+  const key = pr ? JSON.stringify(pr) : '';
+  const send = key && (key !== lastProg || Date.now() - lastProgAt > 30 * 60_000);
+  if (send) { lastProg = key; lastProgAt = Date.now(); }
+  void post({ op: 'ping', vid, theme: theme(), prog: send ? pr : undefined });
 }
+let lastProg = '';
+let lastProgAt = 0;
 
 /** Start pulsen (kaldes én gang fra main.tsx) */
 export function startPresence() {
   if (!rankingAvailable()) return;
   ping();
-  setInterval(ping, 120_000);
+  setInterval(ping, 180_000); // 'online' i admin = set inden for 5 min
   document.addEventListener('visibilitychange', ping);
 }
