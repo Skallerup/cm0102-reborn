@@ -268,7 +268,7 @@ function LoanBidPanel({ p, onClose, onSent }: { p: Player; loan: boolean; onClos
     <div className="cx-tstatus cx-bid">
       <div className="cx-subtitle">{t('cl.bid.loanFor', { player: p.last })}</div>
       <div className="cx-ts-body">
-        <p className="cx-ts-intro">{t('cl.bid.loanWage', { player: name, wage: money(wage), club: seller, allow: money(allow) })}</p>
+        <p className="cx-ts-intro">{t('cl.bid.loanWage', { player: name, wage: money(wage), club: seller })} {t('cl.neg.allow', { allow: money(allow) })}</p>
         <div className="cx-bid-row"><span className="cx-bid-label">{t('cl.bid.loanExpiry')}</span>
           <CxPm disabled={until <= minD} onClick={() => setUntil(addDays(until, -7) < minD ? minD : addDays(until, -7))} aria-label="-">−</CxPm>
           <span className="cx-bid-val">{dateLbl}</span>
