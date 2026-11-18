@@ -2,6 +2,7 @@
 
 Flyttet fra CLAUDE.md 17/11-2026 (så CLAUDE.md er kort i hver session). Nyeste først. Tilføj en linje øverst ved hver udgivelse.
 
+- 2026-11-18 – Skudt live (v0.30.0): 2026-11-18 – Leje 1:1 (ejerens Brøndby/Olesen-billeder): svar 0x8cc5b0/0x84af00 (afslag-nyhed), cmLoan.ts (periode 0x8d0590 pr. land, udløb månedsvis, lønandel 0–100 % i 10'er = lejeklubbens), computerens lejebud med dato/lønandel, Loa bliver under lejen, mærker i rækkefølge 0x4849f0, Tir < 65 %, grå = fyldspillere, Division grå for ikke-aktive lande. Fingeraftryk 2001 → 6cc746b1e57d7849 (før stab).
 - 2026-11-18 – Skudt live (v0.30.0): 2026-11-18 – carry.ts (registerCarry → g.cmCarry) + cmDevelop.caRank + international.duty (cache pr. spil+dato); gemformat uden afrunding; createGame-cachen fra som standard (dødvande i vi.mock rettet).
 - 2026-11-18 – Skudt live (v0.30.0): 2026-11-18 – MODERN_PARITY 13 + stabsjagt: cmStaffOn, world-cm-staff.json, staffTail 0x83ebfb, 0x83f3a0 stabsgren, plan-tæller ved skifte, cmContractEnd for stab, skjulte egenskaber; stabens daglige opdatering 0x5d340f–0x5d3525 (cmStaffNpDaily) + 0x539490 (rebalanceStaffNp). Arsenal hel sæson klub→klub 16 → 70 (oraklet 152; 103 med konverterrettelsen i world-genbygningen), →ledig 87 → 12 (22). Fingeraftryk 2001 → 7ab3d729e979cd13.
 - 2026-11-18 – Skudt live (v0.30.0): 2026-11-18 – UI (ejerens ønsker): rød prik Game Options/Hvad er nyt, Feedback og fejl som én formular, Game Settings 2 kolonner, multiplayer Invitér/Spillere i sidebaren, Competitions.tsx uden tom skærm; e2e opdateret.
