@@ -1,5 +1,16 @@
 // Português (Brasil)
 export const pt: Record<string, string> = {
+  'cl.tag.Tir': "Can",
+  'transfer.cmLoanRejected': "{last}: proposta de empréstimo rejeitada",
+  'transfer.cmLoanRejected.body': "{seller} rejeitaram a proposta de empréstimo do {buyer} por {player}.",
+  'transfer.cmLoanAccepted': "{last}: proposta de empréstimo aceite",
+  'transfer.cmLoanAccepted.body': "{seller} aceitaram a proposta de empréstimo do {buyer} por {player}.",
+  'cl.bid.loanFor': "Proposta de empréstimo por {player}",
+  'cl.bid.loanWage': "{player} tem um contrato de {wage} por semana com {club}.",
+  'cl.bid.loanExpiry': "Fim do empréstimo",
+  'cl.bid.loanShare': "Parte do salário",
+  'cl.bid.loanCup': "O jogador pode jogar jogos da taça",
+  'cl.bid.loanAgainst': "O jogador pode jogar contra {club}",
   'common.ok': 'OK', 'common.back': 'Voltar', 'common.cancel': 'Cancelar', 'common.close': 'Fechar', 'common.days': 'dias', 'common.delete': 'Excluir',
   'common.free': 'Sem clube', 'common.from': 'de', 'common.no': 'Não', 'common.yes': 'Sim', 'common.none': 'Nenhum', 'common.stop': 'Parar',
   'common.week': 'semana', 'common.and': 'e', 'common.years': 'anos',

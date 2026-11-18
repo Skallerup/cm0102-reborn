@@ -1,5 +1,16 @@
 // Norsk (bokmål) (oversat af Claude fra dansk/engelsk, 2026-11-07)
 export const nb: Record<string, string> = {
+  'cl.tag.Tir': "Trø",
+  'transfer.cmLoanRejected': "{last}: lånebud avslått",
+  'transfer.cmLoanRejected.body': "{seller} har avslått lånebudet fra {buyer} på {player}.",
+  'transfer.cmLoanAccepted': "{last}: lånebud akseptert",
+  'transfer.cmLoanAccepted.body': "{seller} har akseptert lånebudet fra {buyer} på {player}.",
+  'cl.bid.loanFor': "Lånebud på {player}",
+  'cl.bid.loanWage': "{player} har en kontrakt på {wage} i uken med {club}.",
+  'cl.bid.loanExpiry': "Lånet utløper",
+  'cl.bid.loanShare': "Lønnsbidrag",
+  'cl.bid.loanCup': "Spilleren kan spille cupkamper",
+  'cl.bid.loanAgainst': "Spilleren kan spille mot {club}",
   "crash.title": "Noe gikk galt",
   "crash.text": "Spillet fikk en feil. Den er rapportert automatisk – det lagrede spillet ditt er trygt. Last inn på nytt for å fortsette.",
   "crash.reload": "Last inn på nytt",

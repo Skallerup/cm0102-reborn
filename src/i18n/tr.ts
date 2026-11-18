@@ -1,5 +1,16 @@
 // Türkçe
 export const tr: Record<string, string> = {
+  'cl.tag.Tir': "Yor",
+  'transfer.cmLoanRejected': "{last}: kiralama teklifi reddedildi",
+  'transfer.cmLoanRejected.body': "{seller}, {buyer} kulübünün {player} için kiralama teklifini reddetti.",
+  'transfer.cmLoanAccepted': "{last}: kiralama teklifi kabul edildi",
+  'transfer.cmLoanAccepted.body': "{seller}, {buyer} kulübünün {player} için kiralama teklifini kabul etti.",
+  'cl.bid.loanFor': "{player} için kiralama teklifi",
+  'cl.bid.loanWage': "{player}, {club} ile haftalık {wage} sözleşmeli.",
+  'cl.bid.loanExpiry': "Kiralama bitiş tarihi",
+  'cl.bid.loanShare': "Maaş katkısı",
+  'cl.bid.loanCup': "Oyuncu kupa maçlarında oynayabilir",
+  'cl.bid.loanAgainst': "Oyuncu {club} karşısında oynayabilir",
   'common.ok': 'Tamam', 'common.back': 'Geri', 'common.cancel': 'İptal', 'common.close': 'Kapat', 'common.days': 'gün', 'common.delete': 'Sil',
   'common.free': 'Serbest oyuncu', 'common.from': 'itibaren', 'common.no': 'Hayır', 'common.yes': 'Evet', 'common.none': 'Yok', 'common.stop': 'Durdur',
   'common.week': 'hafta', 'common.and': 've', 'common.years': 'yaş',

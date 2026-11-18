@@ -1,5 +1,16 @@
 // Svenska (oversat af Claude fra dansk/engelsk, 2026-11-07)
 export const sv: Record<string, string> = {
+  'cl.tag.Tir': "Trö",
+  'transfer.cmLoanRejected': "{last}: lånebud avslaget",
+  'transfer.cmLoanRejected.body': "{seller} har avslagit lånebudet från {buyer} på {player}.",
+  'transfer.cmLoanAccepted': "{last}: lånebud accepterat",
+  'transfer.cmLoanAccepted.body': "{seller} har accepterat lånebudet från {buyer} på {player}.",
+  'cl.bid.loanFor': "Lånebud på {player}",
+  'cl.bid.loanWage': "{player} har ett kontrakt på {wage} i veckan med {club}.",
+  'cl.bid.loanExpiry': "Lånet upphör",
+  'cl.bid.loanShare': "Lönebidrag",
+  'cl.bid.loanCup': "Spelaren får spela cupmatcher",
+  'cl.bid.loanAgainst': "Spelaren får spela mot {club}",
   "crash.title": "Något gick fel",
   "crash.text": "Spelet stötte på ett fel. Det har rapporterats automatiskt – ditt sparade spel är säkert. Ladda om för att fortsätta.",
   "crash.reload": "Ladda om",

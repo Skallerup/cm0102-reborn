@@ -163,7 +163,7 @@ export function originalTag(p: Player): { k: string; title: string } | null {
   if (p.banned > 0) return { k: 'Sus', title: `${t('tag.ban')} ${p.banned}` };
   if (p.injury) return { k: 'Inj', title: `${t(`injury.${p.injury.key}`)} (${p.injury.days} ${t('common.days')})` };
   if (p.virtual) return null;
-  if (p.condition < 65) return { k: 'Tir', title: !rebornOn('helpTexts') ? '' : t('cl.tag.tirTitle') };
+  if (p.condition < 65) return { k: 'Tir', title: '' };
   if (p.yellowCount === 4) return { k: 'Yel', title: !rebornOn('helpTexts') ? '' : t('cl.tag.yelTitle') };
   if (p.contract?.futureClub) return { k: 'Fut', title: t('tag.leaving') };
   if (interestedClubs(p).length) return { k: 'Wnt', title: !rebornOn('helpTexts') ? '' : t('cl.sq.wanted') };
