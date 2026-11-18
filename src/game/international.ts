@@ -9,7 +9,8 @@ import { naturalRole } from './attributes';
 import { asOwner, forEachHuman, isHumanClub } from './humans';
 import { regionOf } from './leagues';
 import { Rng, hash, rng } from './rng';
-import { addNews, gs } from './state';
+import { addNews, gs, hasGame } from './state';
+import { NO_CARRY, registerCarry } from './carry';
 import { cmAppsAfterMatch } from './transfers';
 import { autoSelect, newTactic } from './tactics';
 import type { GameState, MatchReport, MiniReport, Player } from './types';
@@ -541,12 +542,16 @@ function tournamentDay(t: IntlTournament | undefined) {
  *  træner fuldt (ingen sommerpause, ingen "lukket sæson"). Hos os: udtaget til næste vindues kamp (de to dage fra udtagelsen, kampdagen =
  *  datoen) eller i truppen til en slutrunde, landet stadig er med i, før dets næste kampdag. U21-holdene (type 2) trækkes først på kampdagen
  *  og har ingen udtagelse før – de tæller ikke. I ægte tilstand kommer kampene fra originalens kalender (cmIntl.ts, intlHooks.dutyNations). */
-let dutyCache: { date: string; ids: Set<number> } | null = null;
+// (hastighed) pr. spil og dato – kun datoen som nøgle gav et nyt spil i samme proces (samme startdato) det forrige spils udtagelser
+// i forkørslen; følger med en kopi/et gem af spillet (carry.ts), da den bygges ved første opslag på dagen og ikke genberegnes
+let dutyCache: { g: GameState; date: string; ids: Set<number> } | null = null;
 export function onIntlDuty(p: Player): boolean {
   const g = gs();
-  if (dutyCache?.date !== g.date) dutyCache = { date: g.date, ids: dutyIds() };
+  if (dutyCache?.g !== g || dutyCache.date !== g.date) dutyCache = { g, date: g.date, ids: dutyIds() };
   return dutyCache.ids.has(p.id);
 }
+registerCarry('international.duty', () => (dutyCache && hasGame() && dutyCache.g === gs() && dutyCache.date === gs().date ? { date: dutyCache.date, ids: [...dutyCache.ids] } : NO_CARRY),
+  (v: { date: string; ids: number[] }) => { dutyCache = hasGame() ? { g: gs(), date: v.date, ids: new Set(v.ids) } : null; }, () => { dutyCache = null; });
 function dutyIds(): Set<number> {
   const g = gs();
   const st = g.intl, out = new Set<number>();
