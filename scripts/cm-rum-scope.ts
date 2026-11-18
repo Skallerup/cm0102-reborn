@@ -31,9 +31,6 @@ while (g.date < until) {
     }
   }
 }
-const done = g.offers.filter((o) => o.status === 'completed' && !o.loan);
-const ff = done.filter((o) => foreign(o.buyer) && (!o.seller || foreign(o.seller)));
 console.log(`rygter ${rum}, heraf kun om klubber uden for ${nat} (spillerens klub og en interesseret): ${rumForeign}`);
 for (const e of ex) console.log('  ' + e);
 console.log(`andre transfernyheder ${tr}, om spillere i udenlandske klubber ${trForeign}`);
-console.log(`gennemførte køb ${done.length}, mellem to klubber uden for valgte lande ${ff.length}`);
