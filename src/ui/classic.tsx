@@ -344,6 +344,12 @@ function lastMatchId(g: GameState, club: number): number | undefined {
 /** Moderne skærme uden modstykke i CM 01/02 (Manager-hubbens Profile/Jobs/Managers, Community, Press) – skjult i ægte tilstand */
 const AUTH_HIDDEN = new Set<ScreenName>(['profile', 'jobs', 'community', 'managers', 'press']);
 
+/** CM 01/02: Division er grå, når klubbens land ikke er valgt som aktivt land (ligaen spilles ikke) */
+export function leaguePlayed(g: GameState, cid: number): boolean {
+  const n = g.clubs[cid]?.nation;
+  return !g.activeNations?.length || n === undefined || g.activeNations.includes(n);
+}
+
 function itemsFor(keys: Hub['sub'] | ScreenName[] | undefined, g: GameState, route: Route, allowed: (k: ScreenName) => boolean): Item[] {
   if (!keys) return [];
   // en anden klubs side: fanerne (trup, transfers, næste kamp, kampprogram, økonomi & info) og under-knapperne
@@ -386,7 +392,7 @@ function itemsFor(keys: Hub['sub'] | ScreenName[] | undefined, g: GameState, rou
       const lg = g.clubs[cid]?.league;
       // CM 01/02 (ejerens skærmbilleder): knappen viser ligaens navn ("FA Premier League") – ikke placeringen
       const name = compName(g.leagues[lg ?? '']?.name) ?? '';
-      out.push({ key: k, label: name || label(k), route: { name: 'competitions', id: lg }, disabled: !lg, arrow: true });
+      out.push({ key: k, label: name || label(k), route: { name: 'competitions', id: lg }, disabled: !lg || !leaguePlayed(g, cid), arrow: true });
     } else if (k === 'clubHistory') {
       const cid = viewed || g.userClub;
       out.push({ key: k, label: t('cl.history'), route: { name: 'clubhistory', id: cid }, on: route.name === 'clubhistory', arrow: true });
@@ -509,7 +515,7 @@ function TitleMenu({ clubId, playerId }: { clubId?: number; playerId?: number })
             <button key={c.id} role="menuitem" className={c.id === clubId ? 'on' : ''} onClick={() => go(c.id === g.userClub ? { name: 'squad' } : { name: 'club', id: c.id })}>{c.short}</button>
           ))}
           <div className="cx-drop-sep" />
-          <button role="menuitem" onClick={() => go({ name: 'competitions', id: club!.league })}>{compName(g.leagues[club!.league]?.name)}</button>
+          <button role="menuitem" disabled={!leaguePlayed(g, club!.id)} onClick={() => go({ name: 'competitions', id: club!.league })}>{compName(g.leagues[club!.league]?.name)}</button>
           <button role="menuitem" onClick={() => go({ name: 'nation', id: club!.nation })}>{natName(g.nations[club!.nation]?.name)}</button>
           {rebornOn('menus') && <div className="cx-drop-sep" />}
           {rebornOn('menus') && <button role="menuitem" onClick={() => setAll(true)}>{t('cl.menu.all')}</button>}

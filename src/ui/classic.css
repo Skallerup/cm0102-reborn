@@ -1581,6 +1581,9 @@ button.cx-sl-cell:disabled { opacity: 1; cursor: default; }
 :root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.wnt, :root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.wnt:hover { background: #424142; color: #ffff00; border-color: #6b696b #292829 #292829 #6b696b; }
 :root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.int, :root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.int:hover { background: #000084; color: #e7e3e7; border-color: #0000ad #000052 #000052 #0000ad; }
 :root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.fut, :root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.fut:hover { background: #4a4a4a; color: #fff; border-color: #8a8a8a #1a1a1a #1a1a1a #8a8a8a; }
+/* Loa/Unh grå, Inj brun/orange (ejerens billede 18/11: Brøndbys trup) */
+:root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.lon, :root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.lon:hover, :root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.unh, :root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.unh:hover { background: #4a4a4a; color: #f0e6b4; border-color: #8a8a8a #1a1a1a #1a1a1a #8a8a8a; }
+:root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.inj, :root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.inj:hover { background: #8c5a1e; color: #f0e6b4; border-color: #bd8a42 #4a2a08 #4a2a08 #bd8a42; }
 .cx-sq-orig .cx-sq-cols { scrollbar-gutter: stable; }
 .cx-sq-orig span.cx-selbtn { display: block; }
 /* standardsættet (originalens billeder): de er allerede mørklagt i RGN-filerne – skallens foto (med et let slør) står alene, som i originalen */

@@ -159,6 +159,7 @@ export function originalTag(p: Player): { k: string; title: string } | null {
   if (p.injury) return { k: 'Inj', title: `${t(`injury.${p.injury.key}`)} (${p.injury.days} ${t('common.days')})` };
   if (p.banned > 0) return { k: 'Sus', title: `${t('tag.ban')} ${p.banned}` };
   if (p.yellowCount === 4) return { k: 'Yel', title: !rebornOn('helpTexts') ? '' : t('cl.tag.yelTitle') };
+  if (isInternational(p)) return { k: 'Int', title: t('cl.tag.intTitle', { nation: natName(gs()?.nations[p.nation]?.name) ?? '' }) };
   if (p.contract?.futureClub) return { k: 'Fut', title: t('tag.leaving') };
   if (p.listed) return { k: 'Lst', title: t('tag.listed') };
   if (p.loan) return { k: 'Lon', title: t('tag.loan') };
@@ -385,7 +386,9 @@ export function ClassicFirstSquad({ reserves = false, cid, pick }: { reserves?: 
   const players = pick?.only ? squad(clubId).filter((p) => pick.ok(p))
     : ro ? [...squad(clubId), ...Object.values(g.players).filter((p) => p.loan?.from === clubId && p.club !== clubId)]
     : reserves ? [...squad(g.userClub).filter((p) => p.reserves), ...Object.values(g.players).filter((p) => p.loan?.from === g.userClub && p.club !== g.userClub)]
-    : squad(g.userClub).filter((p) => !p.reserves || (orig && of.res));
+    : [...squad(g.userClub).filter((p) => !p.reserves || (orig && of.res)),
+      // originalen: de udlejede spillere står i truppen med grå navn (ejerens billede 18/11)
+      ...(orig ? Object.values(g.players).filter((p) => p.loan?.from === g.userClub && p.club !== g.userClub) : [])];
   const byId = new Map(players.map((p) => [p.id, p]));
   const save = (next: Tactic | null) => { if (next && !ro) act(reserves ? { t: 'resTactic', tactic: next } : { t: 'tactic', tactic: next }); };
 
@@ -488,7 +491,8 @@ export function ClassicFirstSquad({ reserves = false, cid, pick }: { reserves?: 
       : orig ? (loanedOut ? null : originalTag(p)) : tagOf(p, g);
     // grå navn (originalens "Ryan, R" på reserveholdet): ikke spilleklar af en anden grund end skade/karantæne (*estimeret*)
     // originalens genererede fyldspillere står også i gråt (ejerens billede 85, cmVirtual.ts)
-    const dim = orig && (!!p.virtual || (!available(p) && !p.injury && !(p.banned > 0) && !p.reserves && !loanedOut));
+    const loanedOutMain = orig && !ro && !reserves && loanedOut;
+    const dim = orig && (!!p.virtual || loanedOutMain || (!available(p) && !p.injury && !(p.banned > 0) && !p.reserves && !loanedOut));
     const selCls = `cx-selbtn ${pl?.kind ?? ''} ${orig ? 'cx-orig' : ''}`;
     return (
       <div key={p.id} className={`cx-sq-row ${trad ? '' : 'wide'} ${drag === p.id ? 'dragging' : ''} ${over === `p${p.id}` ? 'over' : ''}`} style={tmpl} {...dropOn(`p${p.id}`, 'swapWith', p.id)}>
@@ -497,7 +501,7 @@ export function ClassicFirstSquad({ reserves = false, cid, pick }: { reserves?: 
           : <CxDrop className="cx-sel" caret={false} fixed label={lbl || ' '} items={menuFor(p)}
             btn={{ className: selCls, draggable: true, onDragStart: dragStart(p.id), onDragEnd: dragEnd, title: orig ? undefined : t('cl.sq.selHint'), 'data-pid': p.id }} />}
         <Tag p={p} tag={tag} />
-        <button className={`cx-sq-name ${!orig && !available(p) ? 'unavail' : ''} ${(ro || reserves ? loanedOut : p.loan) ? 'loan' : ''} ${dim ? 'dim' : ''}`} draggable={!ro} onDragStart={dragStart(p.id)} onDragEnd={dragEnd}
+        <button className={`cx-sq-name ${!orig && !available(p) ? 'unavail' : ''} ${(ro || reserves ? loanedOut : orig ? false : p.loan) ? 'loan' : ''} ${dim ? 'dim' : ''}`} draggable={!ro} onDragStart={dragStart(p.id)} onDragEnd={dragEnd}
           onClick={() => (pick?.armed && pick.ok(p) ? pick.onPick(p.id) : armedTarget ? putArmed(p) : nav({ name: 'player', id: p.id }))}>{shortName(p, (!orig || ro || inSetup()) && starIds(players).has(p.id))}</button>
         {cols.map((c) => <span key={c.key} className={`cx-sq-info ${trad && c.key === 'cond' ? 'cond' : ''}`} data-col={c.key}>{c.show(p)}</span>)}
       </div>
@@ -528,7 +532,7 @@ export function ClassicFirstSquad({ reserves = false, cid, pick }: { reserves?: 
         <span className="grow" />
         {/* CM 01/02: én Assistant-menu */}
         <CxDrop label={t('cl.sq.assistantMenu')} align="right" items={[
-          { key: 'pick', label: t('cl.sq.assistant'), disabled: ro, onClick: () => save(autoSelect(tac, reserves ? players.filter((p) => p.club === g.userClub) : players.filter((p) => !p.reserves))) },
+          { key: 'pick', label: t('cl.sq.assistant'), disabled: ro, onClick: () => save(autoSelect(tac, reserves ? players.filter((p) => p.club === g.userClub) : players.filter((p) => !p.reserves && p.club === g.userClub))) },
           { key: 'clear', label: t('cl.sq.clear'), disabled: ro, onClick: () => save({ ...tac, lineup: tac.lineup.map(() => 0), bench: [] }) },
         ]} />
         <CxDrop label={t('cl.sq.filter')} align="right" items={orig ? [
