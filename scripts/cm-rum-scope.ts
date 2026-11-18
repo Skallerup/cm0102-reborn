@@ -12,6 +12,7 @@ createGame(world, { managerName: 'Lab', managerNation: n0, clubId: world.clubs.f
 const g = gs();
 const act = new Set([n0]);
 const seen = new Set<number>();
+const club0 = new Map(Object.values(g.players).map((p) => [p.id, p.club]));
 let rum = 0, rumForeign = 0, tr = 0, trForeign = 0;
 const ex: string[] = [];
 const foreign = (c: number) => !!g.clubs[c] && !act.has(g.clubs[c].nation);

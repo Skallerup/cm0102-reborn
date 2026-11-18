@@ -25,6 +25,7 @@ import { cmCmOn, cmCmScope } from './cmContractManager';
 import { cmAcceptBid, cmOfferContract, cmTalksDaily, cmTalksOn } from './cmTransferTalks';
 import { cmBuildBid } from './cmAiBid';
 import { cmWindowOpen } from './cmOfferCheck';
+import { cmRumourAdd } from './cmRumours';
 import { cmAskingPrice, cmExchangeCheck, cmInterestedClubs, cmShortlistOn, setSlApply, setSlDue, type SlDueCtx, type SlEvent } from './cmShortlistGame';
 import { ADDON_APPS, bidClauseWorth, cleanClauses, clauseWorth, defaultRelease, settleSellOn } from './clauses';
 import { asOwner, forEachHuman, isHumanClub, isMultiplayer } from './humans';
@@ -1814,6 +1815,7 @@ registerAskingPrice(askingPrice, playerInterest, (p) => transferRealism(p).level
 export function cmShortlistApply(events: SlEvent[]) {
   const g = gs();
   for (const e of events) {
+    if (e.kind === 'rumour') { const p = g.players[e.player]; if (p) cmRumourAdd(g, p, e.club, fromK(e.amt, e.club), e.will); continue; }
     const p = g.players[e.player], buyer = g.clubs[e.buyer];
     if (!p || !buyer || p.contract?.futureClub || p.club === buyer.id || isHumanClub(buyer.id)) continue;
     if (!p.club && e.loan) continue;

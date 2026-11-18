@@ -92,7 +92,9 @@ export interface SlBid {
   days: number;
 }
 export interface SlFree { kind: 'free'; buyer: number; player: number }
-export type SlEvent = SlBid;
+/** add_rumour 0x754740(staff, klub, beløb £, vilje) fra 0x83f3a0 (0x84079d/0x840c4b): mediernes kø (cmRumours.ts) */
+export interface SlRumour { kind: 'rumour'; club: number; player: number; amt: number; will: number }
+export type SlEvent = SlBid | SlRumour;
 
 // ---------------------------------------------------------------- hukommelsen
 
@@ -1558,7 +1560,15 @@ export function buildSlMem(g: GameState, opts: { noStale?: boolean } = {}): SlMe
       case 0x85fc50: return setToDesiredContract_85fc50(S.M.c, a[0] >>> 0, a[1] >>> 0, a[2] >>> 0, a[3], a[4], a[5], a[6], a[7] >>> 0);
       case 0x68d1f0: return listRemove_68d1f0(m, a[0] >>> 0, a[1] >>> 0);
       case 0x66f4e0: case 0x4d9460: case 0x58d710:
-      case 0x4cc490: case 0x4cd230: case 0x4cd6d0: case 0x587220: case 0x754740: case 0x6181d0: case 0x5fea50: case 0x5a8f60: case 0x5cc7d0:
+      case 0x754740: {
+        // MEDIA::add_rumour(staff, klub, beløb, double vilje) – 0x83f3a0's mål (0x840ac2–0x840c4b: spillerplads, rand(37 − omd/300) = 0 og
+        // omdømme > 5000 + rand(2000) eller menneskets spiller; 0x84079d: menneskets spiller) → cmRumours.ts' kø
+        const n = a.length, p = S.byMem.get(m.s32(a[n - 5] >>> 0)), club = m.s32(a[n - 4] >>> 0);
+        const dv = new DataView(new ArrayBuffer(8)); dv.setInt32(0, a[n - 2] | 0, true); dv.setInt32(4, a[n - 1] | 0, true);
+        if (p && g.clubs[club]) S.events.push({ kind: 'rumour', club, player: p.id, amt: a[n - 3] | 0, will: Math.trunc(dv.getFloat64(0, true) * 100) });
+        return 0;
+      }
+      case 0x4cc490: case 0x4cd230: case 0x4cd6d0: case 0x587220: case 0x6181d0: case 0x5fea50: case 0x5a8f60: case 0x5cc7d0:
       case 0x690890: case 0x8c1f80: case 0x8c2060: case 0x4cc9e0:
         return 0;
     }

@@ -6,8 +6,11 @@
 //   £50.000.000 = 0x2faf080), +0x15 ftol(viljen 0x846920 · 100).
 //   0x754740 add_rumour(staff, klub, beløb, vilje): findes parret allerede (bsearch), sker intet. Kaldt fra computerens ønskeliste 0x83f3a0
 //   (0x840c4b/0x84079d), menneskets vurdering 0x7b62a0 og menneskets henvendelse 0x8f44d0 (0x8f4c07: udbudsprisen 0x4d1600/0x4d42d0, kun
-//   hvis budgettet 0x598800 eller saldoen ≥ 0,75 · prisen, vilje 0). I spillet: hvert nyt bud (TransferOffer) – computerens med buddets beløb,
-//   menneskets med udbudsprisen som 0x8f4c07. Ønskelisterne (SL_ON) er slået fra, så deres rygter kommer ikke.
+//   hvis budgettet 0x598800 eller saldoen ≥ 0,75 · prisen, vilje 0). Computerens rygter kommer KUN fra ønskelisternes mål 0x83f3a0 (adapteren
+//   0x754740 i cmShortlistGame.ts → transfers.ts cmShortlistApply): spillerplads, rand(37 − nuv. omdømme/300) = 0 og nuv. omdømme > 5000 +
+//   rand(2000) eller spilleren er menneskets (0x840ac2–0x840c4b; 0x84079d menneskets spiller) – ikke hvert bud. (Før 18/11 kom hvert computerbud
+//   i køen, så ukendte spillere i ikke-valgte lande – fx Atlante om Shanghais Wei Du – gav rygter, originalen ikke har.)
+//   Menneskets bud (TransferOffer) med udbudsprisen som 0x8f4c07.
 //   0x7549b0 (fra kontrakten 0x4ce4e0): alle poster for spilleren fjernes, når han skriver under – her: når han skifter klub.
 //   0x754a30 daily_update (0x5cccd0 → 0x5cdd8f), for hver post:
 //     – fjernes efter 31 dage (0x54c5b0(+8, 0x1f) < i dag), eller når spillerens klub (kontrakt 0x4cf5a0) mangler manager (+0xcf), eller han
@@ -81,7 +84,7 @@ export function cmRumourAdd(g: GameState, p: Player, club: number, amt: number, 
   st.q.sort((a, b) => a.p - b.p || a.c - b.c);
 }
 
-/** nye bud siden sidst → køen (computerens: buddets beløb, viljen regnes først, når variant 0x24 er mulig; menneskets: 0x8f4c07) */
+/** menneskets nye bud siden sidst → køen (0x8f4c07); computerens rygter kommer fra ønskelisterne (0x83f3a0 → cmShortlistApply) */
 function fromOffers(g: GameState, st: CmRumState): void {
   for (const o of g.offers) {
     if (o.id <= st.last) continue;
@@ -89,11 +92,10 @@ function fromOffers(g: GameState, st: CmRumState): void {
     if (o.loan || o.swap?.length) continue;
     const p = g.players[o.player], buyer = g.clubs[o.buyer];
     if (!p || !buyer || p.club === o.buyer) continue;
-    if (isHumanClub(o.buyer)) {
-      const price = askingPrice(p);
-      if (buyer.transferBudget < 0.75 * price && buyer.balance < 0.75 * price) continue;
-      cmRumourAdd(g, p, o.buyer, price, 0);
-    } else cmRumourAdd(g, p, o.buyer, o.fee, -1);
+    if (!isHumanClub(o.buyer)) continue;
+    const price = askingPrice(p);
+    if (buyer.transferBudget < 0.75 * price && buyer.balance < 0.75 * price) continue;
+    cmRumourAdd(g, p, o.buyer, price, 0);
   }
 }
 
