@@ -60,11 +60,12 @@ import { cmStaffDemand, cmStaffRestGbp, cmStaffCompensation } from './cmStaff';
 import { asOwner, forEachHuman, isHumanClub } from './humans';
 import { careerEnd } from './careers';
 import { cmStaffTerms, cmStaffWill } from './cmContractGame';
+import { rebalanceStaffNp } from './cmStaffInit';
 import { transferNewsToMe } from './cmNewsScope';
 import { afterPlanHooks, afterBudgetHooks, entryOf, storeEntry, staffTailed } from './cmSquadPlanGame';
 import { cmShortlistOn } from './cmShortlistGame';
 import { NAT7F } from './cmWageGame';
-import { addDays } from './dates';
+import { addDays, ageOn } from './dates';
 import { recordStaffMove } from './staffMoves';
 
 const s16 = (v: number) => (v << 16) >> 16;
@@ -284,6 +285,40 @@ function staffBidDone(g: GameState, m: CmStaffMove, refill: boolean): void {
     const open = e.slots.filter((s) => isStaffSlot(s.role) && s.f === -1 && s.s13 === -1 && s.s17 === -1).length;
     const share = cmShortlistOn(g) ? undefined : { budget: Math.max(0, boardEnv(g, g.date, undefined, true).transferBudget(m.c)), n: Math.max(1, open) };
     staffSearch(g, m.c, { only: i, share });
+  }
+}
+
+/** 0x5ce2d0's gren for ikke-spillerne (0x5d3367–0x5d352d, dagligt for alle personer med ikke-spillerpost): for stab med klub (kontraktens klub) og
+ *  job ≠ 5 (managerne har deres egen – 0x6a3770): omdømmet np+0xa = ftol(s16((klubbens +0x80 + 50·CA)/2)·0,05 + np+0xa·0,95) (0x5d341b–0x5d346f),
+ *  CA'ens gang (0x5d3473–0x5d3520: under 40 år rand(4) ≠ 0 → CA += rand(6) − rand(3), ellers CA += rand(6) − rand(6); fra 40 år kun når rand(20) = 0:
+ *  CA += rand(6) − rand(6); højst PA) og afbalanceringen 0x539490. Oraklet: Keith Creamer/Norwich omdømme 1 → 225 → 438 … → 4.440 (21/11-01) – uden
+ *  den stod stabens omdømme stille (mange på 1), så den nye managers vurdering 0x69d1b0 fyrede for mange (punkt 14b). Kontraktdelen (+0x4f/sproget
+ *  0x5d3378) springes over i originalen (kontrakten er nulstillet før grenen). */
+export function cmStaffNpDaily(g: GameState): void {
+  if (!cmStaffOn(g)) return;
+  const day = dayNum(g.date);
+  for (const s of Object.values(g.staff)) {
+    if (!s.club || s.cmExtra || !s.cmNp || s.role === 'manager') continue;
+    const club = g.clubs[s.club];
+    if (!club || club.nation === undefined || club.nation < 0) continue;
+    const ca = s16(s.ca ?? 0);
+    const r = (s.cmRep ??= [1, 1, 1]);
+    const tgt = s16(Math.trunc((s16(clubRepMem(g, s.club)) + 50 * ca) / 2));
+    r[1] = s16(ftol(tgt * 0.05 + s16(r[1]) * 0.95));
+    const rand = cmRand(g.seed ?? 0, s.id, day, 0x5d3473);
+    const age = s.dob ? ageOn(s.dob, g.date) : 40;
+    let c = ca;
+    if (age < 40) {
+      if (rand(4) !== 0) { const a = rand(3); c = s16(c - a + rand(6)); }
+      else { const a = rand(6); c = s16(c - a + rand(6)); }
+    } else {
+      if (rand(20) !== 0) continue;
+      const a = rand(6); c = s16(c - a + rand(6));
+    }
+    const pa = s16(s.cmPa ?? ca);
+    if (c > pa) c = pa;
+    s.ca = c;
+    s.cmNp = rebalanceStaffNp(c, pa, s.cmNp, JOB_OF[s.role] ?? 0);
   }
 }
 

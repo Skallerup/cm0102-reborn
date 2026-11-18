@@ -2,7 +2,7 @@
 import { cmBoardAfterMatch, cmBoardDaily, cmBoardOn } from './cmBoardGame';
 import { cmWxDaily, cmWxFix } from './cmWeather';
 import { cmStaffOffersDaily } from './cmStaff';
-import { cmStaffMovesDaily } from './cmStaffMove';
+import { cmStaffMovesDaily, cmStaffNpDaily } from './cmStaffMove';
 import { cmActive, cmLogic, cmMarketOn, cmMediaOn, cmStaffOn, cmAfterMatch, cmContractDaily, cmFlagSet, cmRand, cmSquadMoraleDaily, MORALE_OFF, withFlagCtx } from './cmPlayerData';
 import { cmFitAfterMatch, cmFitDay, cmFitMatch, cmFitOn, cmFitPreMatch, setMatchSquad } from './cmFitnessGame';
 import { cmPermitAfterMatch, cmPermitDaily } from './cmPermit';
@@ -649,6 +649,8 @@ function newDay() {
   cmRecordsDaily(g, squad);
   // 0x5ce2d0's kontraktdel (+0x44/+0x45) og klubtabellen [0xae2d14] (cmPlayerData.ts)
   cmContractDaily(g, squad);
+  // 0x5ce2d0's gren for ikke-spillerne: stabens omdømme og CA (cmStaffMove.ts)
+  cmStaffNpDaily(g);
   // CONTRACT_MANAGER::daily_update 0x4c7ac0: computerklubbernes forlængelser, udløb og frigivelser (cmContractManager.ts)
   cmContractManagerDay(g);
   // 0x4c7ec5: spillernes værdi +0x52 (0x4d0c60 – cmValueGame.ts)

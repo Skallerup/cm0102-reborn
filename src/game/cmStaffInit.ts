@@ -180,6 +180,15 @@ export function staffConvert(np: NpRec, job: number): void {
  * undtaget. Første gennemløb: de positive uden for gruppen samles, og over 28 i alt trækkes (sum − 28)/antal fra dem (ikke under 0).
  * Fysioterapeuter (job 10): alle andre ≤ −80, Physiotherapy ≥ 0.
  */
+/** sub_539490 på en persons ikke-spillerpost (Staff.cmNp = de 21 bytes + yndlingsformationen) – 0x5ce2d0's daglige del (cmStaffMove.ts) */
+export function rebalanceStaffNp(ca: number, pa: number, a: number[], job: number): number[] {
+  const np: NpRec = { ca, pa, a: a.slice(0, 21), f43: a[21] ?? 0 };
+  const list = npList(np);
+  rebalance539490(list, job);
+  npWrite(np, list);
+  return [...np.a, np.f43];
+}
+
 export function rebalance539490(list: number[], job: number): void {
   const n = list.length;
   const flag = new Array<number>(n).fill(0);
