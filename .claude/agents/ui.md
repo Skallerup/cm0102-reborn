@@ -17,3 +17,5 @@ Du arbejder i CM Reborn (React/Vite-remake af CM 01/02). Klassisk tema: `src/ui/
 - Ret IKKE `src/ui/changelogData.ts`, versionen i `package.json`, `CLAUDE.md` eller `docs/RELEASE_LOG.md` (det gør hovedsessionen ved udgivelsen). Commit i worktree'en.
 - Før du rapporterer: `npx tsc --noEmit -p tsconfig.app.json` ren, berørte tests grønne, K5 (`tests/estimateBudget.test.ts`) ikke steget.
 - **Rapport:** hvad der er gjort, tal før/efter, commit-hash(es), om et nyt spil kræves, og én ændringslogslinje (da + en). Intet andet.
+
+- **Kører en udgivelse?** Brug `pgrep -f '^/bin/bash scripts/ship.sh'` (ankret). Den uankrede `pgrep -f scripts/ship.sh` matcher din egen venteløkke, så du venter for evigt. Kør ikke tunge målinger/vitest, mens en udgivelse tester (den går ellers over tiden).
