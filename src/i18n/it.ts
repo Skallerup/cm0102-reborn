@@ -4239,6 +4239,7 @@ Object.assign(it, {
   "cmfe.h.stand": "Tribuna chiusa",
   "cmfe.h.terrace": "Settore in piedi chiuso per mancanza di manutenzione",
   "cmfe.h.facilities": "Strutture dello stadio ridotte",
+  "cmfe.h.tv": "{club} riceve {amt}",
   "cmfe.b.fundsNow": "Il consiglio ha immesso {amt}.\n\nOra sono disponibili {funds} per acquistare nuovi giocatori.",
   "cmfe.b.fundsSmall": "Il consiglio ha immesso {amt}.\n\nPurtroppo è disponibile solo una somma molto esigua per i nuovi giocatori.",
   "cmfe.b.fundsNone": "Il consiglio ha immesso {amt} nei conti del club.\n\nPurtroppo non ci sono ancora fondi disponibili per acquistare nuovi giocatori.",
@@ -4257,6 +4258,7 @@ Object.assign(it, {
   "cmfe.b.seats": "L'ispettore per la sicurezza ha chiuso parte della tribuna ovest, riducendo la capienza dei posti a sedere di {n}.",
   "cmfe.b.noSeats": "L'ispettore per la sicurezza ha chiuso la tribuna nord. Nello stadio non è rimasto alcun posto a sedere.",
   "cmfe.b.terrace": "L'ispettore per la sicurezza ha chiuso parte del settore est in piedi, riducendo la capienza dello stadio a {n}.",
+  "cmfe.b.tv": "Il {club} ha ricevuto {amt} per i diritti TV della {comp} per la stagione {season}.",
   "cmfe.b.heating": "Il riscaldamento del terreno di gioco si è guastato e il consiglio ha deciso che ripararlo sarebbe una spesa inutile.",
   // gamle gemte spil (cmConvert.ts)
   "cxs.conv.old": "Versione vecchia",

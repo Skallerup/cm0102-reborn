@@ -7665,6 +7665,7 @@ Object.assign(nb, {
   "cmfe.h.stand": "Tribune stengt",
   "cmfe.h.terrace": "Ståtribune stengt på grunn av manglende vedlikehold",
   "cmfe.h.facilities": "Stadionfasiliteter redusert",
+  "cmfe.h.tv": "{club} får {amt}",
   "cmfe.b.fundsNow": "Styret har tilført {amt}.\n\nNå er {funds} tilgjengelig for å kjøpe nye spillere.",
   "cmfe.b.fundsSmall": "Styret har tilført {amt}.\n\nDessverre er det bare et svært lite beløp tilgjengelig for nye spillere.",
   "cmfe.b.fundsNone": "Styret har tilført {amt} til klubbens kontoer.\n\nDessverre er det fortsatt ingen penger tilgjengelig for å kjøpe nye spillere.",
@@ -7683,6 +7684,7 @@ Object.assign(nb, {
   "cmfe.b.seats": "Arbeidstilsynet har stengt en del av vesttribunen, noe som reduserer antallet sitteplasser med {n}.",
   "cmfe.b.noSeats": "Arbeidstilsynet har stengt nordtribunen. Det er ikke lenger noen sitteplasser igjen på stadion.",
   "cmfe.b.terrace": "Arbeidstilsynet har stengt en del av østtribunen, noe som reduserer stadionkapasiteten til {n}.",
+  "cmfe.b.tv": "{club} har mottatt {amt} for TV-rettighetene til {comp} for sesongen {season}.",
   "cmfe.b.heating": "Undervarmen under banen har sviktet, og styret har besluttet at en reparasjon ville være en unødvendig utgift.",
   // gamle gemte spil (cmConvert.ts)
   "cxs.conv.old": "Gammel versjon",

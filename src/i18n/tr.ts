@@ -4239,6 +4239,7 @@ Object.assign(tr, {
   "cmfe.h.stand": "Tribün kapatıldı",
   "cmfe.h.terrace": "Ayakta tribün bakım eksikliği nedeniyle kapatıldı",
   "cmfe.h.facilities": "Stadyum olanakları azaltıldı",
+  "cmfe.h.tv": "{club} {amt} aldı",
   "cmfe.b.fundsNow": "Yönetim {amt} nakit koydu.\n\nArtık yeni oyuncular almak için {funds} mevcut.",
   "cmfe.b.fundsSmall": "Yönetim {amt} nakit koydu.\n\nMaalesef yeni oyuncular için yalnızca çok küçük bir miktar para mevcut.",
   "cmfe.b.fundsNone": "Yönetim kulüp hesaplarına {amt} koydu.\n\nMaalesef yeni oyuncular almak için hâlâ para yok.",
@@ -4257,6 +4258,7 @@ Object.assign(tr, {
   "cmfe.b.seats": "İş Sağlığı ve Güvenliği müfettişi batı tribününün bir kısmını kapattı ve oturma kapasitesi {n} azaldı.",
   "cmfe.b.noSeats": "İş Sağlığı ve Güvenliği müfettişi kuzey tribününü kapattı. Stadyumda artık hiç oturma yeri kalmadı.",
   "cmfe.b.terrace": "İş Sağlığı ve Güvenliği müfettişi doğu ayakta tribününün bir kısmını kapattı ve stadyum kapasitesi {n} oldu.",
+  "cmfe.b.tv": "{club}, {season} sezonu {comp} televizyon hakları için {amt} aldı.",
   "cmfe.b.heating": "Zemin altı ısıtması bozuldu ve yönetim, onarmanın gereksiz bir masraf olacağına karar verdi.",
   // gamle gemte spil (cmConvert.ts)
   "cxs.conv.old": "Eski sürüm",
