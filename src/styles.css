@@ -1424,3 +1424,18 @@ input[type='color'] { width: 44px; height: 30px; padding: 2px; }
 .ng-bar span { height: 16px; background: #0d1a48; }
 .ng-bar span.on { background: linear-gradient(180deg, #5ee08f 0%, #1f9a4c 100%); }
 .ng-pct { color: #cfd8ff; font-size: 12px; text-align: center; }
+
+/* Støt projektet (Ko-fi) – forsiden og Game Options */
+.sb { display: flex; flex-direction: column; gap: 10px; text-align: left; }
+.sb p { margin: 0; line-height: 1.5; }
+.sb-head { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.sb-bar { height: 12px; border-radius: 8px; background: rgba(128, 140, 170, 0.28); overflow: hidden; margin: 6px 0 2px; }
+.sb-bar i { display: block; height: 100%; background: #72a4f2; border-radius: 8px; min-width: 2px; }
+.sb-btn { align-self: flex-start; padding: 9px 18px; border-radius: 10px; background: #72a4f2; color: #0b1020; font-weight: 800; text-decoration: none; }
+.sb-btn:hover { filter: brightness(1.1); }
+.sb small { opacity: 0.75; }
+.sb-heroes ul { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.sb-heroes li { padding: 3px 10px; border-radius: 14px; background: rgba(114, 164, 242, 0.16); font-size: 13px; }
+.sb-heroes li em { margin-left: 6px; opacity: 0.8; font-style: italic; }
+.lp-sb { padding: 24px; margin: 20px auto; max-width: 720px; border-radius: 18px; background: rgba(148, 170, 255, 0.06); border: 1px solid rgba(148, 170, 255, 0.18); }
+.lp-sb h2 { margin: 0 0 12px; }

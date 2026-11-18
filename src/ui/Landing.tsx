@@ -8,6 +8,7 @@ import type { ChangelogEntry } from './changelogData';
 import { fetchBoard, rankingAvailable, type RankRow } from '../online/rank';
 import './landing.css';
 import { shot } from './shots';
+import { SupportBox } from './SupportBox';
 
 const img = shot;
 
@@ -421,6 +422,11 @@ export function Landing({ onPlay, onLang, onDraft }: { onPlay: () => void; onLan
           <p>{t('land.finalText')}</p>
           <Cta big />
         </div>
+      </section>
+
+      <section className="lp-sb lp-wrap reveal">
+        <h2>{t('sb.title')}</h2>
+        <SupportBox full />
       </section>
 
       <div className="lp-support lp-wrap">

@@ -24,7 +24,7 @@ regler, arkitektur og faldgruber.
 - **1:1-reglen:** det klassiske spil skal være 1:1 med CM 01/02 (plan: docs/ORIGINAL_PARITY.md). Eneste undtagelse er menuen
   Game Options: CM Reborns egne tilføjelser (features, konto, fællesskab, senere støtte/køb af pakker) ligger dér, adskilt fra
   originalens punkter – aldrig på originalens skærme.
-- Alt er gratis: betaling/Stripe/supportere er fjernet (2026-11-05). `season.ts` kalder stadig `rng.chance(0.04)` for
+- Alt er gratis: betaling/Stripe/supportere er fjernet (2026-11-05); spillet giver aldrig fordele for penge. Frivillige donationer via Ko-fi (`api/kofi.ts` webhook + målbar/helteliste på forsiden og i Game Options → Om projektet og støt; `KOFI_VERIFY_TOKEN`) er ejerens ønske fra 18/11. `season.ts` kalder stadig `rng.chance(0.04)` for
   supporter-regens, så tilfældighederne i gamle spil er uændrede – lad det stå.
 - Node (Mac mini fra 17/11): `export PATH="$HOME/.local/share/node/bin:$PATH"` (Node 24). Før push: `npx tsc --noEmit -p tsconfig.app.json` og de berørte testfiler; CI tager resten.
 - **Kun de berørte tests:** `npx vitest related --run --dir tests <ændrede filer>` (finder testene, der importerer filerne) – aldrig hele pakken lokalt.

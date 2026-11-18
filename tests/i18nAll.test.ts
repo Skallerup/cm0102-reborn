@@ -22,6 +22,7 @@ const LANGS: Record<string, Record<string, string>> = { da, de, es, fr, it: itl,
 /** nøgler, der med vilje ikke findes på et sprog (falder tilbage til engelsk) – tom, så længe alle er oversat */
 /** CM Reborn-tilvalgene (Game Options): kun en + da, øvrige sprog falder tilbage til engelsk */
 const RB = ['title', 'achievements', 'matchExtras', 'firstDay', 'articles', 'menus', 'searchPresets', 'helpTexts'].map((k) => `cl.rb.${k}`)
+  .concat(['title', 'about', 'cost', 'goal', 'raised', 'goalOnly', 'percent', 'btn', 'free', 'heroes', 'anon', 'menu'].map((k) => `sb.${k}`))
   .concat(['tag', 'title', 'q.convert', 'q.new', 'convert', 'new', 'keep'].map((k) => `legacyExt.${k}`));
 const EXCEPT: Record<string, string[]> = { de: RB, es: RB, fr: RB, it: RB, pt: RB, tr: RB, sv: RB, nb: RB };
 /** nøgler, hvor sproget med vilje bruger andre pladsholdere (dansk bruger {nation}/{fromDa} i stedet for {adj}/{fromEn}) */

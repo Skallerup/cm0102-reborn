@@ -2,6 +2,10 @@
   "minLetters": 2,
   "prefixes": [
     {
+      "prefix": "sb.",
+      "reason": "Støt projektet (Ko-fi): forside og Game Options → Om projektet og støt – CM Reborn-område, ikke en original skærm"
+    },
+    {
       "prefix": "legacyExt.",
       "reason": "Besked/mærke på gamle udvidede gemte spil (listen over gemte spil) – CM Reborn-område, ikke en original skærm"
     },

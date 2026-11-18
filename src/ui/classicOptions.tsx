@@ -12,6 +12,7 @@ import { ProfileGate, WriteModal } from './Community';
 import { GameInfoTable } from './GameInfoPanel';
 import { gameInfoMeta } from './gameInfo';
 import { Modal } from './components';
+import { SupportBox } from './SupportBox';
 import { createPortal } from 'react-dom';
 import { communityAvailable } from '../online/community';
 import { getProfile } from '../online/rank';
@@ -94,7 +95,7 @@ applyFlash();
 export function GameOptionsMenu({ onSave, onQuit, online, allowed }: { onSave: () => void; onQuit: () => void; online: boolean; allowed: (k: string) => boolean }) {
   const { nav, route } = useNav();
   const [settings, setSettings] = useState(false);
-  const [show, setShow] = useState<'changelog' | 'bug' | 'suggest' | 'info' | null>(null);
+  const [show, setShow] = useState<'changelog' | 'bug' | 'suggest' | 'info' | 'support' | null>(null);
   const go = (k: string) => () => nav({ name: k as never });
   const [, setInst] = useState(0);
   useEffect(() => onInstallChange(() => setInst((x) => x + 1)), []);
@@ -125,10 +126,11 @@ export function GameOptionsMenu({ onSave, onQuit, online, allowed }: { onSave: (
   if (communityAvailable()) items.push({ key: 'bug', label: t('cm.reportBug'), onClick: () => setShow('bug') }, { key: 'idea', label: t('cl.go.feedback'), onClick: () => setShow('suggest') });
   // CM Reborns egne punkter (ikke i originalen): installér som app, gem i skyen (ikke i fællesspil – det gemmes allerede online)
   const canInst = !standalone && (canInstall() || ios);
-  if (canInst || !online || os) items.push({ key: 'sepR', sep: true });
+  items.push({ key: 'sepR', sep: true });
   // fællesspil: ét punkt til Multiplayer-sektionen i Alle indstillinger (invitation, spillere, værtens kontrolpanel)
   if (os) items.push({ key: 'mp', label: t('mp.title'), onClick: () => nav({ name: 'options' }) });
   if (canInst) items.push({ key: 'install', label: t('cl.go.install'), onClick: () => { if (canInstall()) void installApp(); else void askNotice(t('cl.go.installIos'), { head: t('cl.go.install') }); } });
+  items.push({ key: 'support', label: t('sb.menu'), onClick: () => setShow('support') });
   if (!online) items.push({ key: 'cloud', label: t('cl.go.cloud'), onClick: () => { if (getAccount()) void cloudSave(); else setLogin(true); } });
   items.push({ key: 'sep', sep: true }, { key: 'restart', label: t('cl.go.restart'), onClick: onQuit }, { key: 'quit', label: t('cl.go.exit'), onClick: onQuit });
   return (
@@ -137,6 +139,7 @@ export function GameOptionsMenu({ onSave, onQuit, online, allowed }: { onSave: (
       {settings && <GameSettings onClose={() => setSettings(false)} />}
       {login && createPortal(<LoginModal onClose={() => setLogin(false)} onDone={() => { setLogin(false); void cloudSave(); }} />, document.body)}
       {show === 'changelog' && createPortal(<ChangelogModal onClose={() => setShow(null)} />, document.body)}
+      {show === 'support' && createPortal(<Modal title={t('sb.menu')} onClose={() => setShow(null)}><SupportBox full /></Modal>, document.body)}
       {show === 'info' && createPortal(<Modal title={t('info.title')} onClose={() => setShow(null)}><GameInfoTable route={route.name} /></Modal>, document.body)}
       {(show === 'bug' || show === 'suggest') && createPortal(getProfile()
         ? <WriteModal kind={show} meta={gameInfoMeta(route.name)} onClose={() => setShow(null)} />
