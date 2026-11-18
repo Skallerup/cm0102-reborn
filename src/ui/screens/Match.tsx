@@ -103,12 +103,18 @@ const CX_SPEEDS = [0.35, 0.6, 1, 2, 4, 8];
 const loadCxSpeed = () => { try { const v = Number(localStorage.getItem('cm-cx-speed')); return CX_SPEEDS.includes(v) ? v : 1; } catch { return 1; } };
 const saveCxSpeed = (v: number) => { try { localStorage.setItem('cm-cx-speed', String(v)); } catch { /* ignorer */ } };
 
+/** kampens turnering: originalens venskabskampe (cmFriendly.ts, comp 'FRIENDLY') har ingen post i g.comps – "Friendly" som i Fixtures */
+const fxComp = (f: Fixture) => f.comp === 'FRIENDLY' ? t('cl.fx.friendly') : compName(gs().comps[f.comp]?.name) ?? '';
+const fxTitle = (f: Fixture) => f.comp === 'FRIENDLY' ? t('cl.fx.friendly') : `${fxComp(f)} – ${stageLabel(f)}`;
+
 export function MatchScreen({ id }: { id: number }) {
   const g = useGame()!;
   const { nav } = useNav();
   const f = g.fixtures[id];
   // klassisk (CM 01/02): ingen optaktsside – man står på kampskærmen og trykker Kick Off Match
-  const [phase, setPhase] = useState<'pre' | 'live'>(live?.fixture === id || (isRetro() && g.pendingFixture === id && !g.humans) ? 'live' : 'pre');
+  // fællesspil: også dér (originalens netværksspil har ingen optakt) – kun en kamp mod en anden menneskelig manager (CM Reborns h2h) har optakten
+  const vsHuman = !!f && !!g.humans && ((f.home === g.userClub && isHumanClub(f.away) && !isBotClub(f.away)) || (f.away === g.userClub && isHumanClub(f.home) && !isBotClub(f.home)));
+  const [phase, setPhase] = useState<'pre' | 'live'>(live?.fixture === id || (isRetro() && g.pendingFixture === id && !vsHuman) ? 'live' : 'pre');
   if (!f) return <Head title="?" />;
   // en kamp for en klub, man ikke (længere) styrer – fx lige efter et jobskifte
   if (!f.result && f.home !== g.userClub && f.away !== g.userClub && live?.fixture !== id) {
@@ -139,7 +145,7 @@ function PreMatch({ id, onPlay, onQuick }: { id: number; onPlay: () => void; onQ
   const photo = useStadiumPhoto(f);
   return (
     <div>
-      <Head title={`${compName(g.comps[f.comp]?.name)} – ${stageLabel(f)}`} />
+      <Head title={fxTitle(f)} />
       <Scoreboard home={f.home} away={f.away} hg={null} ag={null} minute={t('match.preview')} photo={photo} venue={g.clubs[f.home]?.stadium} />
       <div className="insight weather-note">{WEATHER_ICON[weatherFor(f)]} <b>{t(`wx.${weatherFor(f)}`)}</b> – {t(`wx.d.${weatherFor(f)}`)}
         {pitchFor(f) !== 'normal' && <> · {PITCH_ICON[pitchFor(f)]} <b>{t(`pitch.${pitchFor(f)}`)}</b> – {t(`pitch.d.${pitchFor(f)}`)}</>}
@@ -307,7 +313,7 @@ export function CxOverview({ f, colors, line, poss, half, goals, injuries = [], 
   return (
     <div className="cx-mo">
       <div className="cx-subtitle small">{half}</div>
-      <div className="cx-mo-meta"><span>{cxLongDate(f.date)}</span><span>{compName(g.comps[f.comp]?.name)}{ht ? ` / ${t('cl.mt.ht')} ${ht[0]}-${ht[1]}` : ''}</span></div>
+      <div className="cx-mo-meta"><span>{cxLongDate(f.date)}</span><span>{fxComp(f)}{ht ? ` / ${t('cl.mt.ht')} ${ht[0]}-${ht[1]}` : ''}</span></div>
       {/* målscorerne under hvert hold, som i CM 01/02 (selvmål står hos holdet, der fik målet) */}
       <div className="cx-mo-scorers">
         {[0, 1].map((side) => (
@@ -942,7 +948,7 @@ function LiveMatch({ id }: { id: number }) {
   return (
     <div className="match-screen">
       {/* klassisk (CM 01/02): ingen titelbjælke – resultattavlen står øverst, knapperne i sidebjælken */}
-      {!classic && <Head title={`${compName(g.comps[f.comp]?.name)} – ${stageLabel(f)}`}>
+      {!classic && <Head title={fxTitle(f)}>
         {!report && h2h && <H2hSpeed mine={hs.homeSpeed} theirs={hs.awaySpeed} name={humanManager(f.away)?.name ?? ''} onPick={(v) => { hs.homeSpeed = v; force((x) => x + 1); }} />}
         {!report && !h2h && !classic && <>
           <button data-space onClick={() => setPaused(!paused)}>{paused ? `▶ ${t('match.resume')}` : `❚❚ ${t('match.pause')}`}</button>
@@ -1004,7 +1010,7 @@ function LiveMatch({ id }: { id: number }) {
       {classic && tab === 'astats' && <CxTeamStats rows={cxRows(sim, 1)} />}
       {classic && tab === 'ratings' && <CxRatings rows={[cxRows(sim, 0), cxRows(sim, 1)]} mom={report?.mom} />}
       {classic && tab === 'table' && <CxLiveTable f={f} live={[st[0].goals, st[1].goals]} others={others} minute={sim.minute} finished={sim.finished} kicked={!waiting} />}
-      {classic && tab === 'scores' && <CxScores own={waiting ? undefined : { f, scorers: sim.events.filter((e) => e.k === 'goal').map((e) => [e.m, e.t, e.og ? undefined : e.p] as [number, number, number?]) }} others={others} minute={sim.minute} finished={sim.finished} title={t('cl.mt.latest', { comp: compName(g.comps[f.comp]?.name) })} />}
+      {classic && tab === 'scores' && <CxScores own={waiting ? undefined : { f, scorers: sim.events.filter((e) => e.k === 'goal').map((e) => [e.m, e.t, e.og ? undefined : e.p] as [number, number, number?]) }} others={others} minute={sim.minute} finished={sim.finished} title={t('cl.mt.latest', { comp: fxComp(f) })} />}
       {classic && !(tab === 'tactics' || tab === 'oppTactics') && (
         <>
           <ClassicSub items={[['hstats', t('cl.mt.teamStats', { club: g.clubs[f.home].short })], ['ratings', t('match.ratings')], ['scores', t('cl.mt.scores')], ...(g.comps[f.comp]?.type === 'league' ? [['table', t('cl.mt.leagueTable')]] : []), ['astats', t('cl.mt.teamStats', { club: g.clubs[f.away].short })]].map(([k, l]) => ({ key: k, label: l, on: tab === k, onClick: () => setTab(k) }))} />
@@ -1190,7 +1196,7 @@ function FollowMatch({ id }: { id: number }) {
     window.addEventListener('beforeunload', warn);
     return () => window.removeEventListener('beforeunload', warn);
   }, [data?.finished]);
-  const head = <Head title={`${compName(g.comps[f.comp]?.name)} – ${stageLabel(f)}`}>{data && !data.finished && <H2hSpeed mine={mySpeed} theirs={data.homeSpeed} name={homeMgr} onPick={(v) => { setMySpeed(v); send({ k: 'speed', v }); }} />}{data?.finished && <button className="primary continue" onClick={() => { if (data.report) act({ t: 'matchResult', fixture: id, rep: data.report }); nav({ name: data.report ? 'report' : 'inbox', id }); }}>{t('match.continue')}</button>}</Head>;
+  const head = <Head title={fxTitle(f)}>{data && !data.finished && <H2hSpeed mine={mySpeed} theirs={data.homeSpeed} name={homeMgr} onPick={(v) => { setMySpeed(v); send({ k: 'speed', v }); }} />}{data?.finished && <button className="primary continue" onClick={() => { if (data.report) act({ t: 'matchResult', fixture: id, rep: data.report }); nav({ name: data.report ? 'report' : 'inbox', id }); }}>{t('match.continue')}</button>}</Head>;
   // før kampen: klar-tjek og nedtælling
   if (!data || data.phase === 'wait' || data.phase === 'countdown') {
     const iAmReady = ready;
