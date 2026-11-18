@@ -1056,7 +1056,7 @@ async function run(look) {
     await page.waitForTimeout(500);
     await noModern('i spillet');
     const side = await page.locator('.cx-side').innerText();
-    if (/Invite|Host|Install|full screen|Lobby/i.test(side)) throw new Error(`sidebjælken har fællesspil-ekstra: ${side.replace(/\n/g, ' | ')}`);
+    if (/Host|Install|full screen|Lobby/i.test(side) || !/Invite/.test(side) || !/Players/.test(side)) throw new Error(`sidebjælken har fællesspil-ekstra: ${side.replace(/\n/g, ' | ')}`);
     const before = (await page.locator('.cx-side [data-testid=online-continue]').innerText()).trim();
     if (/Ready/i.test(before)) throw new Error(`knappen siger Ready, før man har trykket: ${before}`);
     // læs eventuelle ulæste beskeder, så klikket melder klar
@@ -1065,20 +1065,22 @@ async function run(look) {
     await page.waitForFunction(() => /^Ready$/i.test(document.querySelector('.cx-side [data-testid=online-continue]')?.textContent?.trim() ?? ''), null, { timeout: 10000 });
     const note = await page.locator('.cx-side [data-testid=online-note]').innerText();
     if (!/Waiting for other players\.\.\./.test(note)) throw new Error(`statuslinje efter klar: ${note}`);
-    // Invite og Host ligger i Game Options (CM Reborn-gruppen), ikke i sidebjælken
+    // Invite og Players er egne punkter i sidebjælken i fællesspil (ejerens ønske 18/11) – ikke i Game Options
     await page.evaluate((room) => { window.__cm.devFakeSession(room, 'p1', true); }, mkRoom(true));
     await page.click('.cx-gopt');
     const items = (await page.locator('.cx-drop-pop button').allInnerTexts()).map((x) => x.trim());
-    // multiplayer-funktionerne ligger i Game Options: ét punkt "Online multiplayer" (ingen Invite/Host-punkter i rullemenuen), der åbner sektionen i Alle indstillinger
-    if (!items.some((x) => /^Online multiplayer$/.test(x))) throw new Error(`Game Options mangler Online multiplayer: ${items.join(' | ')}`);
-    if (items.some((x) => /^Invite|^Host controls$/.test(x))) throw new Error(`Invite/Host ligger stadig i rullemenuen: ${items.join(' | ')}`);
+    if (items.some((x) => /^Invite|^Host controls$|^Online multiplayer$/.test(x))) throw new Error(`Invite/Host/Multiplayer ligger stadig i Game Options: ${items.join(' | ')}`);
     if (items.some((x) => /Save game to cloud/.test(x))) throw new Error('Save game to cloud findes i fællesspil');
-    await page.locator('.cx-drop-pop >> text=/^Online multiplayer$/').click();
+    await page.keyboard.press('Escape'); await page.mouse.click(5, 5);
+    await page.click('[data-testid=mp-invite-btn]');
     await wsel('[data-testid=mp-section]');
-    if ((await page.locator('[data-testid=mp-code]').innerText()).trim() !== 'ABCDE') throw new Error('invitationskoden mangler i Multiplayer-sektionen');
+    if ((await page.locator('[data-testid=mp-code]').innerText()).trim() !== 'ABCDE') throw new Error('invitationskoden mangler i Invitér-vinduet');
+    await page.locator('.modal-head .x').first().click();
+    await page.click('[data-testid=mp-players-btn]');
     await wsel('[data-testid=mp-players]');
-    if (!/Host controls/.test(await page.locator('[data-testid=mp-section]').innerText())) throw new Error('værtens kontrolpanel mangler i Multiplayer-sektionen');
+    if (!/Host controls/.test(await page.locator('[data-testid=mp-section]').innerText())) throw new Error('værtens kontrolpanel mangler i Spillere-vinduet');
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-fællesspil-vært.png` });
+    await page.locator('.modal-head .x').first().click();
     await page.evaluate(() => { window.__cm.closeSession(); window.__cm.notify(); });
     await page.unroute(/\/api\/mp\?op=ready/);
     // enkeltspil: Save game to cloud findes i Game Options
