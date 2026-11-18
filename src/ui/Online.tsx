@@ -12,7 +12,6 @@ import { act } from '../game/actions';
 import { useNav } from './core';
 import { focusNews } from './inboxFocus';
 import { notifyUser } from './notify';
-import { modernOn } from './modernFlag';
 import { titleColors, useClassicDialog } from './classic';
 import { closeSession } from '../online/client';
 import { forgetLast } from '../game/save';
@@ -37,7 +36,7 @@ export function OnlineMenu({ onBack, onCreate, onCreateDraft, setBusy, initialCo
       <div className="col">
         <p className="muted">{t('mp.explain')}</p>
         <button className="primary" onClick={onCreate}>{t('mp.create')}</button>
-        {modernOn() && <button className="draft-cta" onClick={onCreateDraft}><b>🃏 {t('dr.create')}</b><span>{t('dr.createShort')}</span></button>}
+        <button className="draft-cta" onClick={onCreateDraft}><b>🃏 {t('dr.create')}</b><span>{t('dr.createShort')}</span></button>
         <div className="row">
           <input placeholder={t('mp.codePlaceholder')} value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} maxLength={5} style={{ width: 120, textTransform: 'uppercase' }} />
           <button disabled={code.length < 5} onClick={() => setJoining(code)}>{t('mp.join')}</button>

@@ -111,7 +111,7 @@ async function run(look) {
   if (look === 'klassisk') await step('nyt spil (klassisk startforløb)', async () => {
     await page.goto(URL);
     await page.waitForSelector('.cxs [data-field=new]');
-    for (const f of ['database', 'rules', 'new', 'quick', 'restore', 'delete', 'network', 'settings', 'opts', 'extras']) if (!(await page.locator(`[data-field="${f}"]`).count())) throw new Error(`startmenuen mangler feltet ${f}`);
+    for (const f of ['database', 'editor', 'new', 'quick', 'restore', 'delete', 'network', 'settings', 'opts', 'extras']) if (!(await page.locator(`[data-field="${f}"]`).count())) throw new Error(`startmenuen mangler feltet ${f}`);
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-start-01-menu.png` });
     // databasevalget (øverste venstre felt): udgaver af den originale + 2026/27; vælg den, testen skal bruge
     await page.locator('[data-field=database]').click();
@@ -2028,9 +2028,8 @@ async function editor() {
   await step('opret database og ret en spiller', async () => {
     await page.goto(URL);
     await page.waitForFunction(() => !!window.__cm, null, { timeout: 30000 });
-    await page.waitForSelector('.cxs [data-field=opts]', { timeout: 30000 });
-    await page.locator('[data-field=opts]').click();
-    await page.locator('[data-testid=editor], [data-field=editor]').first().click();
+    await page.waitForSelector('.cxs [data-field=editor]', { timeout: 30000 });
+    await page.locator('[data-field=editor]').click();
     await page.waitForSelector('.cxl', { timeout: 10000 });
     await page.getByPlaceholder(await t('ed.newName')).fill('E2E Legends');
     await page.getByRole('button', { name: await t('ed.create'), exact: true }).click();
@@ -2069,9 +2068,8 @@ async function editor() {
   await step('Editor → nyt spil: tryk på det valgte databasekort hænger ikke', async () => {
     await page.goto(URL);
     await page.waitForFunction(() => !!window.__cm, null, { timeout: 30000 });
-    await page.waitForSelector('.cxs [data-field=opts]', { timeout: 30000 });
-    await page.locator('[data-field=opts]').click();
-    await page.locator('[data-testid=editor], [data-field=editor]').first().click();
+    await page.waitForSelector('.cxs [data-field=editor]', { timeout: 30000 });
+    await page.locator('[data-field=editor]').click();
     await page.waitForSelector('.cxl', { timeout: 10000 });
     await page.getByRole('button', { name: await t('ed.play'), exact: true }).first().click();
     await page.waitForFunction(() => !!window.__cmPick, null, { timeout: 60000 });

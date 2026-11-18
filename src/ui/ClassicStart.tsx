@@ -460,8 +460,8 @@ export function ClassicStart({ onLang, onHome, onGo, onLook, online }: { onLang:
       <Frame {...common} title={t('cxs.title')}>
         <div className="cxs-grid">
           <F testid="database" className="cxs-db" onClick={() => go('db')}><b className="gold">{curOpt.big}</b><small>{curOpt.small}</small><i className="cxs-hint">{t('cxs.hint.db')}</i></F>
-          {/* originalens "Changing rules"-felt er tomt for nu: samme mørke boks, intet indhold og ingen funktion */}
-          <div className="cxs-field static" data-field="rules" aria-hidden />
+          {/* originalens "Changing rules"-felt (tomt i originalen) rummer CM Reborns database-editor */}
+          <F testid="editor" onClick={() => onGo('editor')}>{t('cxs.editor')}<i className="cxs-hint">{t('cxs.hint.editor')}</i></F>
           <F testid="new" onClick={startNew}>{t('cxs.startNew')}</F>
           <F testid="quick" onClick={quickStart}>{t('cxs.quick')}</F>
           <F testid="restore" onClick={() => go('restore')}>{t('cxs.restore')}</F>
@@ -730,8 +730,6 @@ export function ClassicStart({ onLang, onHome, onGo, onLook, online }: { onLang:
       <Frame {...common} title={t('cxs.title')} sub={t('cxs.rebornOpts')} onBack={back}>
         <div className="cxs-grid rows2">
           <F testid="challenges" onClick={() => onGo('challenges')}>{t('start.challenges')}</F>
-          <F testid="draft" onClick={() => onGo('draft')}>{t('db.draft')}</F>
-          <F testid="editor" onClick={() => onGo('editor')}>{t('ed.title')}</F>
           <F testid="account" onClick={() => go('account')}>{t('cxs.account')}</F>
         </div>
       </Frame>
