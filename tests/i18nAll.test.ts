@@ -21,7 +21,8 @@ import BT from '../src/game/data/cmBoardTexts.json';
 const LANGS: Record<string, Record<string, string>> = { da, de, es, fr, it: itl, pt, tr, sv, nb };
 /** nøgler, der med vilje ikke findes på et sprog (falder tilbage til engelsk) – tom, så længe alle er oversat */
 /** CM Reborn-tilvalgene (Game Options): kun en + da, øvrige sprog falder tilbage til engelsk */
-const RB = ['title', 'achievements', 'matchExtras', 'firstDay', 'articles', 'menus', 'searchPresets', 'helpTexts'].map((k) => `cl.rb.${k}`);
+const RB = ['title', 'achievements', 'matchExtras', 'firstDay', 'articles', 'menus', 'searchPresets', 'helpTexts'].map((k) => `cl.rb.${k}`)
+  .concat(['tag', 'title', 'q.convert', 'q.new', 'convert', 'new', 'keep'].map((k) => `legacyExt.${k}`));
 const EXCEPT: Record<string, string[]> = { de: RB, es: RB, fr: RB, it: RB, pt: RB, tr: RB, sv: RB, nb: RB };
 /** nøgler, hvor sproget med vilje bruger andre pladsholdere (dansk bruger {nation}/{fromDa} i stedet for {adj}/{fromEn}) */
 const PH_EXCEPT: Record<string, string[]> = { da: ['scout.doneOne.body', 'cm.fut.adjustLifestyle', 'cm.staffRejects.body', 'cm.rum.r.r1', 'cm.rum.r.r2', 'cm.fut.fellowHelp'] };
