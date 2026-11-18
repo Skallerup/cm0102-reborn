@@ -20,10 +20,10 @@
 // kontraktgrene 0x5d1a47/0x5d1e45 (managerens/klubbens uven ved klager), kampens hændelser 0x6b74a0/0x6b79a0, regens 0x7abac0,
 // Staff_Records 0x86dc30 og 0x7a3a10/0x7a6f10/0x69ba50/0x444930/0x448760/0x4e06e0. Primitiverne nedenfor er alle porteret, så de kan kobles på.
 //
-// Kun den originale database i ægte tilstand (cmActive). Tilfældighederne trækkes af egne talrækker (cmRand) – spillets rng røres ikke.
+// Den originale database i ægte tilstand og nye 2026/27-spil i ægte tilstand (cmMediaOn). Tilfældighederne trækkes af egne talrækker (cmRand) – spillets rng røres ikke.
 import type { Club, GameState, Player, Staff } from './types';
 import { ATTRS } from './attributes';
-import { cmActive, cmLogic, cmRand, setRelFlagHook } from './cmPlayerData';
+import { cmLogic, cmMediaOn, cmRand, setRelFlagHook } from './cmPlayerData';
 import { ageOn } from './dates';
 import { isHumanClub } from './humans';
 
@@ -188,7 +188,7 @@ function squadFallouts(club: number, squadOf: SquadOf, doy: number, onFlag: (p: 
 
 /** game_update_squad_relationships 0x5d6d10 (dagligt, 0x5cdb0a). onFlag(spiller, klage) = 0x867700 på spillerens kontrakt. */
 export function cmRelDaily(g: GameState, squadOf: SquadOf, onFlag: (p: Player, flag: number) => void): void {
-  if (!cmActive(g) || g.draft) return;
+  if (!cmMediaOn(g) || g.draft) return;
   const day = dayNum(g.date), doy = doyOf(g.date);
   const rand = cmRand(g.seed ?? 0, day, 0x5d6d10);
   const clubs = Object.keys(g.clubs).map(Number).sort((a, b) => a - b);          // [0xae23b4]: klubberne i databasens rækkefølge
@@ -260,7 +260,7 @@ export function managerStaff(g: GameState, club: number): Staff | null {
  *  rand(np +0x14) > rand(trunc(+0x44/15) + 10) → 0x547af0(manager, spiller, 1). Menneskets klub (0x600a50): managerens Loyalty −1 ved rand(5) = 0
  *  (hans staffpost findes ikke hos os). Formanden (club +0xbf, 0x867918–0x867965) findes ikke hos os. */
 export function cmRelOnFlag(g: GameState, p: Player, flag: number, b44: number, rand: (n: number) => number): void {
-  if (!cmActive(g) || !p.club || !(flag & 0x16288)) return;
+  if (!cmMediaOn(g) || !p.club || !(flag & 0x16288)) return;
   if (isHumanClub(p.club)) return;
   const m = managerStaff(g, p.club);
   if (!m?.cmNp) return;

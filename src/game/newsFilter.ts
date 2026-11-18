@@ -1,6 +1,7 @@
 /**
- * Nyheder uden modstykke i CM 01/02's exe (K3, docs/ORIGINAL_PARITY.md): sendes ikke i ægte tilstand med den originale database
- * (`addNews` i state.ts). Nøgler med punktum til sidst er præfikser. Ingen importer – læses også af scripts/text-parity.ts.
+ * Nyheder uden modstykke i CM 01/02's exe (K3, docs/ORIGINAL_PARITY.md): sendes ikke i ægte tilstand med den originale database, og (MODERN_PARITY 8)
+ * heller ikke i nye 2026/27-spil i ægte tilstand (cmMediaOn) – undtagen KEEP_2026 (`addNews` i state.ts). Nøgler med punktum til sidst er præfikser.
+ * Ingen importer – læses også af scripts/text-parity.ts.
  */
 export const ORIGINAL_OFF_NEWS: readonly string[] = [
   'news.newSeason', // "The season begins" findes ikke
@@ -23,6 +24,20 @@ export const ORIGINAL_OFF_NEWS: readonly string[] = [
   'news.scoutTalent', 'news.scoutReturned', 'youth.debut', 'news.reservesPromoted', 'board.wasteWage', 'board.overWage', 'board.meeting',
 ];
 
-export function offInOriginal(key: string): boolean {
-  return ORIGINAL_OFF_NEWS.some((k) => (k.endsWith('.') ? key.startsWith(k) : key === k));
+/** 2026/27 i ægte tilstand: nyheder, hvis modstykke kommer fra et modul, der kun kører i 2001-verdenen (priserne cmAwards, karantænerne cmDiscipline,
+ *  spejderne cmScout, reserveholdene cmReserves, landsholdene cmIntl), eller fra spillets egne systemer, der står på 2026/27 (sponsorerne/januar-
+ *  tillægget i econ26, Conference League og split-ligaerne) – de beholdes, til modulet er flyttet */
+export const KEEP_2026: readonly string[] = [
+  'award.playerOfYear', 'award.topScorer', 'award.monthManager', 'award.monthManagerMe', 'award.ballonDor', 'award.lgManager', 'award.managerOfYearMe', 'award.gala',
+  'ban.red', 'ban.yellows', 'ban.appeal.',
+  'scout.started', 'scout.doneNone', 'scout.doneOne', 'news.scoutTalent', 'news.scoutReturned',
+  'res.win', 'res.draw', 'res.loss', 'news.reservesPromoted',
+  'intl.p.scored', 'intl.p.hattrick', 'intl.start.', 'intl.qual.start.', 'intl.qual.done.', 'intl.winner.', 'intl.injured', 'intl.jobLeft', 'intl.sacked',
+  'sponsor.', 'budget.january', 'news.ueclQualified', 'news.split',
+];
+
+const hit = (list: readonly string[], key: string) => list.some((k) => (k.endsWith('.') ? key.startsWith(k) : key === k));
+/** world2001 = den originale database (cmActive); ellers et nyt 2026/27-spil i ægte tilstand (cmMediaOn) */
+export function offInOriginal(key: string, world2001 = true): boolean {
+  return hit(ORIGINAL_OFF_NEWS, key) && (world2001 || !hit(KEEP_2026, key));
 }

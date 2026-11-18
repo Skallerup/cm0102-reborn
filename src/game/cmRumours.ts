@@ -1,5 +1,5 @@
 // CM 01/02's transferrygter og mediesvaret "Select Media Response" (cm0102.exe 3.9.68, afkodet med ~/cm0102-engine/tools/cmdis.py 16/11-2026).
-// Kun den originale database i ægte tilstand (cmActive) – det udvidede spil har stadig media.ts' weeklyRumours ("Column:").
+// Den originale database og nye 2026/27-spil i ægte tilstand (cmMediaOn) – det udvidede spil har stadig media.ts' weeklyRumours ("Column:").
 //
 // Mediets kø [0xb6b7c8]+0xc (poster à 0x19 bytes, antal +0x14, sorteret med 0x757ea0):
 //   +0 staff-id (spilleren), +4 klub-id (den interesserede), +8 dato, +0x10 tilstand (0 ny, 1 rygtet, 2 "concerned"), +0x11 beløb (højst
@@ -51,11 +51,11 @@ import type { GameState, Player } from './types';
 import { ATTRS, naturalRole } from './attributes';
 import { addNews, squad } from './state';
 import { forEachHuman, isHumanClub } from './humans';
-import { cmActive, cmAdjustMorale, cmContractOf, cmFlagSet, cmRand, curRep, wantsToLeave, withFlagCtx } from './cmPlayerData';
+import { cmMediaOn, cmAdjustMorale, cmContractOf, cmFlagSet, cmRand, curRep, wantsToLeave, withFlagCtx } from './cmPlayerData';
 import { addDisPerson, clubDislikes, clubFavours, managerStaff, personKey } from './cmRelations';
-import { cmWindowOpen } from './cmOfferCheck';
 import { newRec } from './cmBoard';
-import { askingPrice } from './transfers';
+import { askingPrice, windowOpen } from './transfers';
+import { cmGbp } from './cmMoney';
 import { cmDayWill } from './cmAiBid';
 
 const s8 = (v: number) => (v << 24) >> 24;
@@ -65,8 +65,8 @@ const sh = (p: Player, k: string) => s8(Math.round(p.attrs[ATTRS.indexOf(k as ne
 const worldRep = (p: Player) => Math.round((p.cmRepMem ?? p.cmRep ?? [p.rep * 2, p.rep * 2, p.rep * 2])[2] * 50);
 const clubRep = (g: GameState, c: number) => s16(g.cmClubRep?.[c] ?? (g.clubs[c]?.rep ?? 50) * 100);
 const cl10k = (v: number) => (v < 1 ? 1 : v > 10000 ? 10000 : v);
-/** £50.000.000 (0x2faf080) i spillets penge (£ = € · 0,86) */
-const FEE_CAP = 50_000_000 / 0.86;
+/** £50.000.000 (0x2faf080) i spillets penge for den interesserede klub (cmMoney: 2001 £ = € · 0,86, 2026/27 ligaens faktor) */
+const feeCap = (g: GameState, club: number) => Math.round(50_000_000 / cmGbp(g, club));
 
 export interface RumEntry { p: number; c: number; d: string; st: number; amt: number; will: number; from: number }
 export interface CmRumState { q: RumEntry[]; last: number }
@@ -77,7 +77,7 @@ const lastOfferId = (g: GameState) => g.offers.reduce((m, o) => Math.max(m, o.id
 export function cmRumourAdd(g: GameState, p: Player, club: number, amt: number, will: number): void {
   const st = stateOf(g);
   if (st.q.some((e) => e.p === p.id && e.c === club)) return;
-  st.q.push({ p: p.id, c: club, d: g.date, st: 0, amt: Math.max(0, Math.min(Math.round(amt), Math.round(FEE_CAP))), will, from: p.club || 0 });
+  st.q.push({ p: p.id, c: club, d: g.date, st: 0, amt: Math.max(0, Math.min(Math.round(amt), feeCap(g, club))), will, from: p.club || 0 });
   st.q.sort((a, b) => a.p - b.p || a.c - b.c);
 }
 
@@ -186,7 +186,7 @@ function headline(id: number, v: number, n: number, cur: number): string {
 
 /** 0x754a30 for dagen */
 export function cmRumoursDaily(g: GameState): void {
-  if (!cmActive(g)) return;
+  if (!cmMediaOn(g)) return;
   const st = stateOf(g);
   fromOffers(g, st);
   if (!st.q.length) return;
@@ -196,7 +196,8 @@ export function cmRumoursDaily(g: GameState): void {
     if (drop.has(e)) continue;
     const p = g.players[e.p], club = g.clubs[e.c];
     if (!p || !club || (p.club || 0) !== e.from || today > dayNum(e.d) + 31) { drop.add(e); continue; }
-    if (!cmWindowOpen(g, club, g.date)) continue;
+    // 0x8ce990 (ikke porteret): den interesserede klubs transfervindue – 2001: landets vindue (cmOfferCheck.ts cmWindowOpen), 2026/27: spillets
+    if (!windowOpen(g.date, club.id)) continue;
     if (e.st !== 0) continue;
     const rand = cmRand(g.seed ?? 0, today, e.p, e.c, 0x754a30);
     if (rand(25) !== 0) continue;

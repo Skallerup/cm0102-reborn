@@ -1,6 +1,6 @@
 // Spillernes egen vilje: kontraktkrav efter gode perioder, utilfredshed der lækkes til pressen,
 // og grupperinger i omklædningsrummet med deres egne ledere.
-import { cmActive } from './cmPlayerData';
+import { cmMediaOn } from './cmPlayerData';
 import { natName } from '../i18n';
 import { A } from './attributes';
 import { ageOn, daysBetween } from './dates';
@@ -329,7 +329,7 @@ export function targetReaction(p: Player, buyerId: number) {
   if (!buyer || !cur || p.loan || p.contract?.futureClub || isHumanClub(p.club)) return;
   // den originale database i ægte tilstand: reaktionen findes ikke i originalen (dens transferønsker er 0x4d8610 i cmPlayerData.ts) – før gav
   // den nyheden "listed for about £0" uden at spilleren var sat til salg
-  if (cmActive(g)) return;
+  if (cmMediaOn(g)) return;
   if (buyer.rep < cur.rep - 3) return; // ikke et skridt op – han er ligeglad
   const amb = p.attrs[A.ambition];
   if (!rng.chance(Math.min(0.75, 0.2 + (buyer.rep - cur.rep) / 40 + Math.max(0, amb - 10) / 15))) return;

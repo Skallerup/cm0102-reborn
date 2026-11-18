@@ -3,7 +3,7 @@ import { cmBoardAfterMatch, cmBoardDaily, cmBoardOn } from './cmBoardGame';
 import { cmWxDaily, cmWxFix } from './cmWeather';
 import { cmStaffOffersDaily } from './cmStaff';
 import { cmStaffMovesDaily } from './cmStaffMove';
-import { cmActive, cmLogic, cmMarketOn, cmAfterMatch, cmContractDaily, cmFlagSet, cmRand, cmSquadMoraleDaily, MORALE_OFF, withFlagCtx } from './cmPlayerData';
+import { cmActive, cmLogic, cmMarketOn, cmMediaOn, cmAfterMatch, cmContractDaily, cmFlagSet, cmRand, cmSquadMoraleDaily, MORALE_OFF, withFlagCtx } from './cmPlayerData';
 import { cmFitAfterMatch, cmFitDay, cmFitMatch, cmFitOn, cmFitPreMatch, setMatchSquad } from './cmFitnessGame';
 import { cmPermitAfterMatch, cmPermitDaily } from './cmPermit';
 import { cmScoutDaily, cmScoutMatch } from './cmScout';
@@ -446,7 +446,7 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
     // unge spillere: debut og en stor kamp ("Talented [spiller] given boost", "Youngster [spiller] praised")
     if (isHumanClub(p.club) && !g.draft) {
       const age = ageOn(p.dob, g.date);
-      if (age <= 19 && s.apps + s.subs === 1 && (p.history?.length ?? 0) === 0 && !cmActive(g)) // ægte tilstand: debutnyheden findes ikke i exe'en
+      if (age <= 19 && s.apps + s.subs === 1 && (p.history?.length ?? 0) === 0 && !cmMediaOn(g)) // ægte tilstand: debutnyheden findes ikke i exe'en
         asOwner(p.club, () => addNews({ cat: 'youth', key: 'youth.debut', params: { player: pname(p), age }, link: { kind: 'player', id: p.id } }));
       else if (age <= 20 && line.rating >= 8.5) asOwner(p.club, () => addNews({ cat: 'general', key: 'media.youngsterPraised', params: { player: pname(p), age, rating: line.rating.toFixed(1) }, link: { kind: 'player', id: p.id } }));
     }
@@ -545,7 +545,7 @@ function userMatchResult(f: Fixture, rep: MatchReport) {
     g.reports[f.id] = rep;
     const key = scored > conceded ? 'match.won' : scored === conceded ? 'match.drew' : 'match.lost';
     // ægte CM 01/02 (den originale database): ingen nyhed om egne kampresultater – resultatet står på kampdagen
-    if (!cmActive(g)) addNews({ cat: 'match', key, params: { opp: g.clubs[opp].name, score: `${scored}-${conceded}`, comp: comp?.name ?? '', club: g.clubs[g.userClub]?.short ?? '', ha: userHome ? 'h' : 'a' }, link: { kind: 'fixture', id: f.id } });
+    if (!cmMediaOn(g)) addNews({ cat: 'match', key, params: { opp: g.clubs[opp].name, score: `${scored}-${conceded}`, comp: comp?.name ?? '', club: g.clubs[g.userClub]?.short ?? '', ha: userHome ? 'h' : 'a' }, link: { kind: 'fixture', id: f.id } });
     for (const line of rep.players) {
       // den originale database i ægte tilstand: konditionsmodulet sender originalens ene skadenyhed (cmFitnessGame.ts) – ikke også denne
       if (line.injured && g.players[line.id]?.club === g.userClub && !cmFitOn(g)) {
@@ -630,8 +630,8 @@ function newDay() {
   if (day(d) === 2 && (month(d) === 9 || month(d) === 2)) freeAgentDrift();
   // daglige ting – i ægte tilstand med den originale database styrer originalens konditionsmodul kondition og skader (cmFitness.ts; AWOL er spillets egen)
   const cmFit = cmFitOn(g);
-  // originalens daglige moral (cmPlayerData.ts moraleDay) er 2001-verdenens – på 2026/27 glider moralen som før
-  const cmMorale = cmFit && cmActive(g) && !MORALE_OFF;
+  // originalens daglige moral (cmPlayerData.ts moraleDay): 2001-verdenen og nye 2026/27-spil i ægte tilstand (cmMediaOn) – ældre 2026/27-spil glider som før
+  const cmMorale = cmFit && cmMediaOn(g) && !MORALE_OFF;
   // 0x5cccd0's planlægger (efter datoskiftet, før dagens konditionsmodul): computerens trupplan 0x83cb40 (cmSquadPlanGame.ts)
   cmSquadPlanDaily(g);
   // League::update_for_date 0x6847c0: tv-flytningerne 4 uger frem (cmCalendar.ts – originalens skema for de engelske ligaer)
@@ -749,7 +749,7 @@ function newDay() {
     forEachHuman(() => {
       const { mismatches } = monthlyTrainingReport();
       const asst = Object.values(g.staff).find((s) => s.club === g.userClub && s.role === 'assistant');
-      if (mismatches >= 3 && asst && month(d) % 3 === 1 && !cmActive(g)) addNews({ cat: 'general', key: 'news.trainingAdvice', params: { coach: `${asst.first} ${asst.last}`, n: mismatches } });
+      if (mismatches >= 3 && asst && month(d) % 3 === 1 && !cmMediaOn(g)) addNews({ cat: 'general', key: 'news.trainingAdvice', params: { coach: `${asst.first} ${asst.last}`, n: mismatches } });
     });
     // den originale database i ægte tilstand: originalens bestyrelse (cmBoardGame.ts) i stedet for spillets egne fyringer og jobmarked
     if (!cmBoardOn(g)) {

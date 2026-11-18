@@ -35,7 +35,7 @@ import { monthlyDevelopment, recordDevelopment } from './training';
 import { cmRand, fillReputation } from './cmPlayerData';
 import { npFromWorld, npTemplate, staffConvert, staffInitRecord, type NpTemplate } from './cmStaffInit';
 import { initialLanguages } from './cmLanguage';
-import { cmActive, cmLogic } from './cmPlayerData';
+import { cmActive, cmLogic, cmMediaOn } from './cmPlayerData';
 import { cmGbpMeasure } from './cmMoney';
 import { cmStartDate } from './cmCalendar';
 import { cmMainNation, cmSeasonOn } from './cmSeason';
@@ -587,7 +587,9 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   // originalens konditionsmodul (cmFitness.ts): posterne, skaderne fra databasens dato og startens Fitness (kun original DB i ægte tilstand)
   // (runde 10A) sub_535a80 0x536285: spillerpostens moral +0x45 = 10 for alle databasens spillere ved spilstarten (forkørslen 0x5cc850 kører ikke
   // 0x5ce2d0's daglige moral – først fra spillets start: cmPlayerData.ts moraleDay/cmSquadMoraleDaily)
-  if (cmActive(g)) for (const p of Object.values(g.players)) if (!p.regen) p.morale = 10;
+  // (MODERN_PARITY 8) nye 2026/27-spil i ægte tilstand: originalens forhold, medier, rygter, moral og nyhedsomfang (cmMediaOn) – også startens moral
+  if (cmRawLogic && !g.draft) g.cmMedia = 1;
+  if (cmMediaOn(g)) for (const p of Object.values(g.players)) if (!p.regen) p.morale = 10;
   // forholdene staff+0x65 og club +0x9b..+0xaf fra databasen (cmRelations.ts – ikke-indlæste id'er bliver 0)
   if (cm?.cmRaw && (season < 2020 || cmRawLogic)) cmRelNewGame(g, cm.cmRaw.prefs, cm.cmRaw.clubPrefs);
   progress('fitness', 0.7);

@@ -1,5 +1,5 @@
 // Originalens resterende moralskrivere (cm0102.exe 3.9.68, runde 12 – 13/11-2026): kontraktens underskrift og Staff_Records' sæsonslut.
-// Kun den originale database i ægte tilstand (cmActive). Afkodningen: ~/cm0102-engine/notes/media-morale.md.
+// Den originale database og nye 2026/27-spil i ægte tilstand (cmMediaOn). Afkodningen: ~/cm0102-engine/notes/media-morale.md.
 //
 // Målt i oraklet (mediesporet md1/md2, frø 1, 3.9.60 – alle kald af staff_adjust_morale 0x544710 med returadresse):
 //   45 dage (14/7–28/8):  0x5ce280 (0x5ce0b0) 19.784 · 0x5cf573 (0x5ce2d0) 15.780 · 0x6d319b (efter kampen) 11.990 · 0x4d004e (sign_contract)
@@ -22,7 +22,7 @@
 // stadionets +0x44 (mester), forlængelsestilbuddene 0x4cda70 (kontrakterne), mediesystemet 0x754a30/0x72c1f0/0x744240/0x733a60/0x735870/
 // 0x741020/0x736c00/0x73e870/0x74b060, Fine::fine_player 0x5a5980, AWOL 0x4190d0/0x41a360/0x419840, skadernes nyheder 0x630ee0.
 import type { Competition as Comp, GameState, Player } from './types';
-import { cmActive, cmAdjustMorale, cmRand, repMemOf, statAvg, statusCode } from './cmPlayerData';
+import { cmMediaOn, cmAdjustMorale, cmRand, repMemOf, statAvg, statusCode } from './cmPlayerData';
 import { finalOrder, promotionOrder } from './competitions';
 import { LEAGUE_RULES } from './leagues';
 import { CM_COMP_ID } from './engine/grid/gameInputs';
@@ -38,7 +38,7 @@ const add44 = (v: number, d: number) => { const e = s8(v) + d; return e > 100 ? 
 /** sign_contract 0x4cf720 (0x4d0032–0x4d004e): kontrakttypen (+0x35 & 0x3f) = 2 (almindelig) og spilleren har en spillerpost → 0x544710(staff,
  *  +20, 0). Kaldt for nye kontrakter (klubskifte uden leje, forlængelser). Spillets genererede spillere har ingen post (p.regen). */
 export function cmSignContractMorale(g: GameState, p: Player): void {
-  if (!cmActive(g) || p.regen || g.cmFitStart === undefined) return;
+  if (!cmMediaOn(g) || p.regen || g.cmFitStart === undefined) return;
   cmAdjustMorale(p, 20, false, cmRand(g.seed ?? 0, p.id, dayNum(g.date), 0x4cf720));
 }
 
@@ -127,7 +127,7 @@ export function recCupWinners(g: GameState, club: number, comp: Comp): void {
  *  LEAGUE_RULES.relegated, når der er en liga under) og oprykningerne fra ligaen under (promotionOrder); en færdig playoff giver vinderens
  *  oprykning, en færdig pokal/europæisk turnering pokalvinderen. Én gang pr. turnering og sæson (g.cmRecDone). */
 export function cmRecordsDaily(g: GameState, squadOf: (c: number) => Player[]): void {
-  if (!cmActive(g) || g.cmFitStart === undefined) return;
+  if (!cmMediaOn(g) || g.cmFitStart === undefined) return;
   const done = (g.cmRecDone ??= {});
   for (const comp of Object.values(g.comps)) {
     if (!comp?.finished || done[comp.id] === g.season) continue;

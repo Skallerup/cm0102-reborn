@@ -1192,6 +1192,8 @@ export interface GameState {
   cmFine?: import('./cmFine').CmFineState;
   /** CM 01/02's transferrygter (mediets kø [0xb6b7c8]+0xc – cmRumours.ts, kun den originale database i ægte tilstand) */
   cmRum?: import('./cmRumours').CmRumState;
+  /** (MODERN_PARITY 8) 2026/27 i ægte tilstand: spillet er startet med originalens forhold/medier/rygter/moral/nyhedsomfang (cmMediaOn) */
+  cmMedia?: 1;
   /** CM 01/02's karantæner (discipline.cpp/RulingBody) og appeller – cmDiscipline.ts (kun den originale database i ægte tilstand) */
   cmDisc?: import('./cmDiscipline').CmDiscState;
   /** CM 01/02's priser (cmAwards.ts – original DB i ægte tilstand): månedens karakterer, Comp_Stats, managernes point og vinderne */

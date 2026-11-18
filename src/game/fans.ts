@@ -6,7 +6,7 @@ import { fairTicketPrice } from './finance';
 import { asOwner, isHumanClub } from './humans';
 import { addNews, gs, squad } from './state';
 import { storyAdd } from './story';
-import { cmActive } from './cmPlayerData';
+import { cmMediaOn } from './cmPlayerData';
 import type { Club, Player } from './types';
 
 export const fanMood = (c: Club | undefined) => c?.fanMood ?? 60;
@@ -170,7 +170,7 @@ export function celebrateTrophy(clubId: number, compName: string, kind: 'league'
     const cap = gg.players[lineup[gg.tactic?.captain ?? 0] ?? 0] ?? squad(clubId).sort((a, b) => b.attrs[A.influence] - a.attrs[A.influence])[0];
     // nyeste øverst i indbakken: bestyrelsen først, så fans, anfører og presse
     // ægte CM 01/02 (den originale database): kun originalens "Fans celebrate winning the …" og "Board delighted/pleased by … success"
-    const cm = cmActive(gg);
+    const cm = cmMediaOn(gg);
     if (!cm) addNews({ cat: 'general', key: `trophy.press.${kind}`, params });
     if (cap && !cm) addNews({ cat: 'contract', key: `trophy.captain.${kind}`, params: { ...params, player: `${cap.first} ${cap.last}`.trim() }, link: { kind: 'player', id: cap.id } });
     addNews({ cat: 'general', key: `trophy.fans.${kind}`, params });

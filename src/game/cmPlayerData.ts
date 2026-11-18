@@ -50,6 +50,13 @@ export function cmBoardLogic(g: GameState): boolean {
   return cmLogic(g) && !g.draft && !!g.cmBoard;
 }
 
+/** (MODERN_PARITY 8) originalens forhold (0x5d6d10, relationsflagene), medier (Staff_Records, sign_contract 0x4cf720), rygter 0x754a30, moral
+ *  (0x5ce2d0/0x5ce0b0, spilstartens +0x45 = 10) og nyhedsomfang (cmNewsScope.ts, nyhedsfilteret): 2001-verdenen, eller en CM-database i ægte
+ *  tilstand fra et spil, der er startet med dem (g.cmMedia – newgame.ts). Ældre 2026/27-spil og udvidet tilstand beholder spillets egne. */
+export function cmMediaOn(g: GameState): boolean {
+  return cmActive(g) || (cmLogic(g) && !g.draft && g.cmMedia === 1);
+}
+
 // ---------------------------------------------------------------- en egen talrække (0x90cfc0's rolle)
 
 function mix(...xs: number[]): number {
@@ -553,9 +560,10 @@ export function cmApplyPost(g: GameState, f: Fixture, rep: MatchReport, world200
 /** 0x7c0d70 + 0x4ca6d0 for en klubkamp: statistik pr. kategori, formen, karaktersnittet og kontraktens tællere for begge hold. */
 export function cmAfterMatch(g: GameState, f: Fixture, rep: MatchReport, squadOf: (club: number) => Player[],
   bg?: { cats: [number, number] }): void {
-  // 2026/27 i ægte tilstand (cmLogic uden cmActive): kun kampmotorens omdømme (spillerne +9/+0xb/+0xd, klubben +0x80) – moralen, managerens
-  // omdømme, PlayerStats og kontraktens tællere hører til modulerne, der endnu kun gælder 2001-verdenen (spillets egen moral i sim.ts gælder)
-  if (!cmActive(g)) { if (cmLogic(g) && !g.draft) cmApplyPost(g, f, rep, false); return; }
+  // 2026/27 i ægte tilstand (cmLogic uden cmActive): ældre spil uden moralmodulet (g.cmMedia) kun kampmotorens omdømme (spillerne +9/+0xb/+0xd,
+  // klubben +0x80) – spillets egen moral i sim.ts gælder dér. Med cmMediaOn (MODERN_PARITY 8) som 2001: moralen, managerens omdømme, PlayerStats
+  // og kontraktens tællere (0x5ce2d0's kontraktdel læser dem)
+  if (!cmMediaOn(g)) { if (cmLogic(g) && !g.draft) cmApplyPost(g, f, rep, false); return; }
   cmApplyPost(g, f, rep);
   // baggrundskampene (fixture −2, 0x84be20 – cmReserves.ts): kategorien pr. hold rand(9) ? 2 : 3, og spillets karaktersnit tæller dem ikke
   const cat = statCategory(g, f);
@@ -691,7 +699,7 @@ function contractDayPlayer(g: GameState, p: Player, c: CmContract, rand: (n: num
 /** 0x5cccd0's klubtabel (ugentlig) og 0x5ce2d0 for alle spillere med kontrakt – hver dag (sim.ts newDay). Spillere i en klub i en aktiv liga
  *  (eller med verdensomdømme ≥ 4750) hver dag, de øvrige på dag id % 365, +120 og +240 (0x5ce412–0x5ce496). Egen talrække pr. spiller og dag. */
 export function cmContractDaily(g: GameState, squadOf: (club: number) => Player[]): void {
-  if (!cmActive(g)) return;
+  if (!cmMediaOn(g)) return;
   const d = new Date(`${g.date}T00:00:00Z`), y = d.getUTCFullYear();
   const doy = Math.round((d.getTime() - Date.UTC(y, 0, 1)) / 86400000);
   if (doy % 7 === 0 || !g.cmClubUnhappy) clubGrievanceCounts(g, squadOf);
@@ -740,7 +748,7 @@ export function cmAdjustMorale(p: Player, d: number, flag: boolean, rand: (n: nu
  *  +0x44·Influence (kun med kontrakt), n = antal; n < 16 → I += 10·(16 − n). I ≠ 0: for hver (kontrakt +0x44 eller 0): r = u8(rand(trunc(2S/
  *  (Influence + I))) + rand(trunc(+0x44/6))); r < 0 og rand(r) < rand(−5) → 0x544710(staff, −1, 1); r > 0 og rand(r) > rand(5) → (+1, 1). */
 export function cmSquadMoraleDaily(g: GameState, squadOf: (club: number) => Player[]): void {
-  if (!cmActive(g) || MORALE_OFF) return;
+  if (!cmMediaOn(g) || MORALE_OFF) return;
   const day = dayNum(g.date);
   for (const cl of Object.values(g.clubs)) {
     if (!cl) continue;

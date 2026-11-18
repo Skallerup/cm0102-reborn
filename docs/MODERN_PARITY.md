@@ -212,3 +212,20 @@ Kontrol af forventningen/fyringen (measure fb7e818da43c): 0x6a3770 regner ikke u
 1 gælder både spillets saldo i £ (€66,6m × 0,1721 = £11,5m) og databasens club.dat-saldo (£15m) – grænsen er 1000 · 6500 + 3,5m = £10m.
 Brentford lå 17. (dec.), 19. (jan.–mar.) og 18. (april) i kørslen – formen (tabsserier) og placeringen mod forventningen (0x699950) tog tilliden
 63 → 27, og fyringen 25/4 følger originalens regler. Ingen fejl i data eller port.
+
+## Status punkt 8 (18/11): forhold, medier, rygter, moral og nyhedsomfang på 2026/27
+
+Ny gate `cmMediaOn(g)` (cmPlayerData.ts) = cmActive, eller cmLogic + spil startet med modulerne (`g.cmMedia = 1` – newgame.ts, nye 2026/27-spil i
+ægte tilstand). Dermed kører på 2026/27: forholdene 0x5d6d10 og relationsflagene 0x867820 (cmRelations.ts – præferencerne fra world-cm.json lå der
+allerede via cmRelNewGame), Staff_Records og sign_contract 0x4cf720's +20 (cmMedia.ts), mediets rygter 0x754a30 med "Select Media Response"
+(cmRumours.ts; den interesserede klubs vindue = spillets windowOpen, loftet £50M med klubbens cmMoney-faktor), nyhedsomfanget 0x8dbef0/0x8d1130
+(cmNewsScope.ts; beløbene med køberens faktor), moralen (spilstartens +0x45 = 10, 0x5ce2d0's kontraktdel inkl. 0x5cf4c8 og transferønskerne
+0x4d8610/"requests move", 0x5ce0b0, kampenes moral/PlayerStats/kontrakttællere i cmAfterMatch) og nyhedsfilteret (newsFilter.ts; `KEEP_2026` beholder
+vores nyheder, hvor originalens modul endnu kun kører i 2001-verdenen: priser, karantæner, spejdere, reserver, landshold, sponsorer/econ26).
+media.ts' klumme/"Rumour:", will.ts' reaktion, fans.ts' trofæpresse, debut-/resultat-/træningsrådsnyhederne er slået fra som i 2001.
+Målt (`scripts/cm-media-2026.ts`, PL frø 1, Brentford, 1/7-26 → 30/6-27, før measure 1623053efe3f → efter 0f8e7a07ab8d; 2001-sammenligning
+`WORLD=original … 2002-06-30` c2897cfb2070): menneskets nyheder 428 → 232 (transfer.o.* 103 → 6: originalens omdømme-/divisionsregel for en
+PL-klub – sælgers division kræver C > 350·20; window.*, match.*, contract.expiring og column.month filtreret som i 2001), rygter cm.rum 0 → 14 (køen 20–37;
+2001: 268 og ~500 – køen fødes af buddene, og 2026/27-markedet har langt færre), moral PL snit 13,0 → 13,4 før (10–14: 80–99 %), efter 10,1 → 13,5
+(aug.) → 8,8 (juni; 1–5 17 %, 15–20 4 %); 2001: 10,0 → 14,0 (sep.) → 10,4 (juni; 1–5 8 %). 2001 bit for bit uændret (02ec66f5a29512d1).
+Kræver et nyt spil.

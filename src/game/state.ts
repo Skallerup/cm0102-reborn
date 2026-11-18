@@ -19,7 +19,7 @@ export function hasGame(): boolean {
 import { setEconomy, setModern26 } from './econ';
 import { setSavedModern } from '../ui/modernFlag';
 import { cmPermitMove } from './cmPermit';
-import { cmActive, cmStaffStateMove } from './cmPlayerData';
+import { cmActive, cmMediaOn, cmStaffStateMove } from './cmPlayerData';
 import { offInOriginal } from './newsFilter';
 
 /**
@@ -249,7 +249,7 @@ export function newsRelevant(...clubIds: (number | undefined)[]): boolean {
 export const newsStamp: { tod?: (g: GameState) => 0 | 1 | 2 | null } = {};
 export function addNews(n: Omit<NewsItem, 'id' | 'date' | 'read'> & { date?: string }, opts?: { all?: boolean }) {
   const g = gs();
-  if (offInOriginal(n.key) && cmActive(g)) return; // nyheder uden modstykke i originalen (newsFilter.ts)
+  if (cmMediaOn(g) && offInOriginal(n.key, cmActive(g))) return; // nyheder uden modstykke i originalen (newsFilter.ts)
   const muted = !!g.options.mutedNews?.includes(n.cat);
   // originalens kalender: nyhedens tidspunkt på dagen (News-listens "Fri 24th Aug EVE" – cmCalendar.ts registrerer cmTimeOfDay)
   const tod = n.date === undefined || n.date === g.date ? newsStamp.tod?.(g) ?? null : null;

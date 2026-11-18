@@ -1,4 +1,5 @@
-// Originalens regler for, HVEM der får nyheder om andre klubber (kun den originale database i ægte tilstand, cmActive).
+// Originalens regler for, HVEM der får nyheder om andre klubber (den originale database og nye 2026/27-spil i ægte tilstand, cmMediaOn).
+// Beløbene i £ med cmMoney-faktoren (2026/27: køberens liga for gebyret, spillerens klub for byttespillerne; 2001: 0,86).
 //
 // Nyhederne leveres af News (0xb7431c) til de menneskelige managere: send_to_club_manager 0x7861e0 (klubbens manager, hvis menneske),
 // send_to_nation_managers 0x7863f0 (managere hvis klub ELLER landshold hører til landet), send_to_all_managers 0x786780; deliver_to_manager
@@ -27,10 +28,10 @@
 // 0x6e86d0) og B-holdsparrene 0x540a50.
 import type { Club, GameState, Player } from './types';
 import { clubRepMem, statAvg } from './cmPlayerData';
+import { cmGbp, payClub } from './cmMoney';
 
 const s16 = (v: number) => (v << 16) >> 16;
 const ftol = Math.trunc;
-const GBP = 0.86;                                                              // £ = € · 0,86 (newgame.ts)
 const UK = new Set(['England', 'Scotland', 'Wales', 'Northern Ireland', 'Republic Of Ireland', 'Ireland']);
 const AN = new Set(['Australia', 'New Zealand']);
 
@@ -94,10 +95,11 @@ export interface TransferNewsIn {
 }
 
 /** 0x8e7b50(offer, 0, 0, 0, 0, 1) uden formuebåndet (1,0): gebyret + (1 − 25·0,005)·klausulen + byttespillernes værdi (+0x52), i £ */
-function weightedValue(g: GameState, x: TransferNewsIn): number {
-  let v = Math.round(x.fee * GBP);
-  if (x.addOn && x.addOn > 0) v += ftol((1 - 25 * 0.005) * Math.round(x.addOn * GBP));
-  for (const id of x.swap ?? []) v += Math.round((g.players[id]?.value ?? 0) * GBP);
+function weightedValue(g: GameState, x: TransferNewsIn, buyer: number): number {
+  const k = cmGbp(g, buyer);
+  let v = Math.round(x.fee * k);
+  if (x.addOn && x.addOn > 0) v += ftol((1 - 25 * 0.005) * Math.round(x.addOn * k));
+  for (const id of x.swap ?? []) { const q = g.players[id]; v += Math.round((q?.value ?? 0) * cmGbp(g, q ? payClub(q) : undefined)); }
   return v | 0;
 }
 
@@ -123,10 +125,10 @@ export function transferNewsToMe(g: GameState, p: Player, buyer: Club, x: Transf
   // flag 0x10 / 0x40
   const [H, C, W] = reps(p);
   const sellerDiv = divisionOf(g, seller), buyerDiv = divisionOf(g, buyer);
-  const w = weightedValue(g, x);
+  const w = weightedValue(g, x, buyer.id);
   // 0x8d160f: købers planlægger-plads for spilleren (rolle 0xb, gruppe < 3) og gebyret (+0x1b) ≥ £1.000.000
   const slot = x.staff ? undefined : g.cmPlan?.[buyer.id]?.s.find((r) => r[3] === p.id && r[0] === 0xb);
-  let buyerDivFlag = !!slot && ((slot[2] & 0x1e) < 6) && Math.round(x.fee * GBP) >= 1_000_000;
+  let buyerDivFlag = !!slot && ((slot[2] & 0x1e) < 6) && Math.round(x.fee * cmGbp(g, buyer.id)) >= 1_000_000;
   let all = false, cont = false, nat = false, sellerDivFlag = false;
   const conts: number[] = [], nats: number[] = [];
   const ax = x.swap?.length ? 500 : s16(ftol(3000 - w * 0.0006));

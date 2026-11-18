@@ -1,5 +1,5 @@
 // Transfers, kontrakter og AI-transfermarked (forbedring #7: behovsstyrede AI-klubber).
-import { cmActive, cmLogic, cmMarketOn, cmRand, setRequestHooks, setStatusCode } from './cmPlayerData';
+import { cmActive, cmLogic, cmMarketOn, cmMediaOn, cmRand, setRequestHooks, setStatusCode } from './cmPlayerData';
 import { cmBidChance, cmInterested, cmRequestNews } from './cmTransferList';
 import { transferNewsToMe } from './cmNewsScope';
 import { cmSignContractMorale } from './cmMedia';
@@ -250,7 +250,7 @@ function originalTransferNews(p: Player, buyer: Club, seller: Club | undefined, 
   const g = gs();
   const me = g.clubs[g.userClub];
   if (loan || (!own && (g.options.transferNews ?? 'big') === 'own')) return false;
-  if (cmActive(g)) {
+  if (cmMediaOn(g)) {
     if (!own && !transferNewsToMe(g, p, buyer, { seller, fee, addOn, swap: o?.swap, offerId: o?.id })) return false;
   } else {
     if (!me) return false;
@@ -971,7 +971,7 @@ export function renewContract(pid: number, wage: number, years: number, clauses?
     if (cl.signOn) { club.balance -= cl.signOn; club.finance.signOn = (club.finance.signOn ?? 0) + cl.signOn; bookBlock(g, club, CMK.signOn, Math.round(cl.signOn * GBP_CM)); }
     const hadDemand = !!p.demand;
     // original DB i ægte tilstand: sign_contract 0x4cf720's +20 (cmMedia.ts) i stedet for spillets +2/+4
-    if (cmActive(g)) cmSignContractMorale(g, p); else p.morale = Math.min(20, p.morale + (p.demand ? 4 : 2));
+    if (cmMediaOn(g)) cmSignContractMorale(g, p); else p.morale = Math.min(20, p.morale + (p.demand ? 4 : 2));
     p.demand = undefined;
     p.renewal = undefined;
     // en tilfreds spiller takker for den nye kontrakt
