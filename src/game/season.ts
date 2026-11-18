@@ -6,6 +6,7 @@ import { cmShortlistOn } from './cmShortlistGame';
 import { cmRetireOn } from './cmRetire';
 import { cmCmOn, cmCmScope } from './cmContractManager';
 import { cmRegenWage } from './cmWageGame';
+import { cmGbp } from './cmMoney';
 import { splitReserves } from './reserves';
 import { hasReserveTeam } from './cmBTeam';
 import { storeSeasonRecords } from './clubHistory';
@@ -299,7 +300,9 @@ function leaveFootball(p: Player) {
  * genfødes én gang med samme PA – og der er ingen ungdomsårgange skabt af ingenting. Ellers (udvidet spil, moderne
  * database): ungdomsårgange i marts + regens af de gode (PA 120+).
  */
-export const originalRegens = () => isOriginal2001() && !extended();
+// (MODERN_PARITY 11) også 2026/27 i ægte tilstand, når spillet er startet med PLAYER_REGEN's liste (cmRetireOn): originalen skaber aldrig
+// spillere af ingenting – en regen overtager den pensioneredes post (0x7abac0), som CA-omfordelingen 0x5d587a forudsætter
+export const originalRegens = () => (isOriginal2001() && !extended()) || cmRetireOn(gs());
 
 function spawnRegenQueue() {
   const g = gs();
@@ -368,7 +371,7 @@ function spawnRegen(old: RegenSeed, n: number) {
   p.value = Math.max(10_000, p.value);
   // ægte CM 01/02 med den originale database: player_regen_sign_for_club 0x7a6f10 → set_default_wage 0x8626e0 (0x862720 – cmWageGame.ts)
   const cmW = p.contract && club ? cmRegenWage(g, p, club) : null;
-  if (p.contract) p.contract.wage = cmW !== null ? cmW / 0.86 : Math.max(150, Math.round(p.contract.wage * 0.3 / 50) * 50);
+  if (p.contract) p.contract.wage = cmW !== null ? cmW / cmGbp(g, club!.id) : Math.max(150, Math.round(p.contract.wage * 0.3 / 50) * 50);
   addPlayer(p);
   return p;
 }
@@ -631,7 +634,8 @@ function updateClubReps() {
 export function freeAgentDrift() {
   const g = gs();
   // ønskelisterne: originalen lader de klubløse blive (de skriver under via 0x84a020 eller forbliver klubløse) – kun regens
-  if (cmShortlistOn(g)) { if (originalRegens()) spawnRegenQueue(); return; }
+  // (MODERN_PARITY 11) 2026/27 med PLAYER_REGEN (cmRetireOn uden cmActive): heller ingen udrensning – de klubløse stopper via 0x7a8050/0x7a7310
+  if (cmShortlistOn(g) || (cmRetireOn(g) && !cmActive(g))) { if (originalRegens()) spawnRegenQueue(); return; }
   const all = Object.values(g.players);
   const free = all.filter((p) => !p.club && p.ca < 130 && p.pa < 150 && p.rep < 70);
   // selvregulerende: kun det, puljen er over ~6 % af alle spillere, forsvinder (ellers skrumper verden)

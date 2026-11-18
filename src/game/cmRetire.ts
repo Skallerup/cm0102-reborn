@@ -1,5 +1,6 @@
-// Originalens pensioneringer (PLAYER_REGEN, player_regen.cpp i cm0102.exe 3.9.68) – kun den originale database i ægte tilstand (cmActive).
-// Udvidet spil og 2026/27 bruger stadig season.ts' retirements() ved sæsonskiftet.
+// Originalens pensioneringer (PLAYER_REGEN, player_regen.cpp i cm0102.exe 3.9.68) – en CM-database i ægte tilstand: den originale (cmActive) og
+// (MODERN_PARITY 11) 2026/27-opdateringen i spil startet med listen (g.cmRet fra spilstartens 0x7a58f0). Udvidet spil og ældre 2026/27-spil
+// bruger stadig season.ts' retirements() ved sæsonskiftet.
 //
 // Listen ([0xb7434c] +4, poster à 26 bytes: +0 person, +4 klubben (−1 klubløs), +8 meldingsdatoen, +0x10 stopdatoen (dag i året + år),
 // +0x18 årsagen, +0x19 meldt):
@@ -19,7 +20,7 @@
 // spillere med en rolle i klubben (Player.jobRole) fortsætter i staben som før); forsikringsnyheden 0x58a980; staffState +0xb's lave bits (0); personerne uden for originalens hukommelse (0x524d70) får
 // samme regler på en egen liste (st.ext), så de ikke blokerer originalens kø; for world-filer uden hukommelsesoplysningen = de ikke indlæste lande.
 import type { Club, GameState, Player } from './types';
-import { cmActive, cmRand, newCmContract, statusCode, type CmContract } from './cmPlayerData';
+import { cmActive, cmLogic, cmRand, newCmContract, statusCode, type CmContract } from './cmPlayerData';
 import { nationLoaded } from './cmFinance';
 import { seasonRow } from './cmFitness';
 import { regionOf } from './leagues';
@@ -41,7 +42,8 @@ export interface CmRetState { list: CmRetEntry[]; n?: number;
   /** de spillere, originalen ikke har i hukommelsen (0x524d70 – Player.cmMem / ikke indlæste lande): samme regler uden for listen (se hovedets liste) */
   ext?: CmRetEntry[] }
 
-export const cmRetireOn = (g: GameState) => cmActive(g) && !g.draft;
+/** 2001-verdenen, eller (MODERN_PARITY 11) en CM-database i ægte tilstand fra et spil, hvis spilstart byggede listen (cmRetireInit) */
+export const cmRetireOn = (g: GameState) => !g.draft && (cmActive(g) || (cmLogic(g) && g.cmRet !== undefined));
 
 // ------------------------------------------------------------------------------------------------ datoer (Date: dag i året + år)
 const D0 = (y: number) => Date.UTC(y, 0, 1) / 86400000;
@@ -221,7 +223,8 @@ const dayNo = (iso: string) => Math.round(Date.parse(iso + 'T00:00:00Z') / 86400
 /** 0x7a58f0 ved spilstarten: alle med klub, vurderet på databasens dato (1/1 i startåret – PLAYER_REGEN bygges ved indlæsningen,
  *  før forkørslen; oraklets meldingsdatoer ligger i dag 1–96 af 2001) */
 export function cmRetireInit(g: GameState): void {
-  if (!cmRetireOn(g)) return;
+  // spilstarten (newgame.ts/cmConvert.ts): enhver CM-database i ægte tilstand – listen g.cmRet slår modulet til (cmRetireOn)
+  if (g.draft || !cmLogic(g)) return;
   const st = stateOf(g);
   st.list = []; st.ext = [];
   const ref = `${g.date.slice(0, 4)}-01-01`;

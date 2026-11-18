@@ -33,7 +33,7 @@ const caRow = () => {
   const cas = Object.values(g.players).filter(real).map((p) => p.ca).sort((a, b) => b - a);
   const mean = (a: number[]) => a.reduce((s, x) => s + x, 0) / Math.max(1, a.length);
   const pl = Object.values(g.players).filter((p) => real(p) && plClubs.has(p.club)).map((p) => p.ca);
-  return `${g.date}  top100 ${mean(cas.slice(0, 100)).toFixed(2)}  top1000 ${mean(cas.slice(0, 1000)).toFixed(2)}  alle ${mean(cas).toFixed(2)} (${cas.length})  PL-trupper ${mean(pl).toFixed(2)}`;
+  return `${g.date}  top100 ${mean(cas.slice(0, 100)).toFixed(2)}  top1000 ${mean(cas.slice(0, 1000)).toFixed(2)}  alle ${mean(cas).toFixed(2)} (${cas.length})  PL-trupper ${mean(pl).toFixed(2)}  spillere i alt ${Object.values(g.players).filter((p) => !p.virtual).length} (regens ${Object.values(g.players).filter((p) => p.regen && !p.virtual).length}, kø ${g.regenQueue?.length ?? 0})`;
 };
 console.log(`${year} frø ${seed} → ${until}, ${clubName}; ${epl.name} (${plClubs.size} klubber)`);
 console.log(caRow());

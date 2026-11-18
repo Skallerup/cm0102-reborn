@@ -434,7 +434,7 @@ export function cmStandardWages(g: GameState, ids: Player[], unset: Set<number>)
 /** player_regen_sign_for_club 0x7a6f10 → STAFF_CONTRACT::set_default_wage 0x8626e0: en genereret spiller, der kommer til en klub, får
  *  max(55, ftol(0x862720(staff, klub, 1, −1, 0xb, 0))) i ugeløn (£) */
 export function cmRegenWage(g: GameState, p: Player, club: Club): number | null {
-  if (!cmActive(g) || g.draft) return null;
+  if (!cmLogic(g) || g.draft) return null;
   // spillets ugentlige lønsum (cmFinance: +0xc/+0x10) og lønloftet +0x14 = 0x5968d0(fin, 0, −1) – ikke 0x598370 igen
   const W = buildWageMem(g, [club.id], new Set(), false);
   const st = W.addGenerated(p, club.id);
