@@ -2,6 +2,7 @@
 
 Flyttet fra CLAUDE.md 17/11-2026 (så CLAUDE.md er kort i hver session). Nyeste først. Tilføj en linje øverst ved hver udgivelse.
 
+- 2026-11-19 – Skudt live (v0.31.0): 2026-11-19 – Playing Career: ClassicCareer viste hele sæsonens p.stats på den nye klubs linje (Total fordoblet); bogføring af den gamle klubs linje flyttet til setClub (state.ts) ved ethvert klubskifte (leje hjem, tilbagekald, frigivelse, fri agent, Bosman, computerkøb af klubløse), MoM med pr. linje. Test careerClubMove.
 - 2026-11-19 – Udviklerværktøj: testresultat-cache (scripts/test.mjs, springer testfiler over med samme input) og samlede udgivelser (ship.sh --item/--file); spil efter N dage (cachedGameAt) følger.
 - 2026-11-19 – Skudt live (v0.31.0): 2026-11-19 – can_loan_player 0x8d0040 porteret (kontrakttype ≠ 5, ingen leje i forvejen, job 0xb, 0x8ce990, England 0x579d60/Skotland 0x7f6650, vinduer 0x412dd0/0x902240) – ingen arbejdstilladelse; lockstep tæller afsluttede lejer som oraklet (art 4 separat). Lejer 167 → 166 (orakel 226).
 - 2026-11-19 – Skudt live (v0.31.0): 2026-11-19 – Transfermarked (K2): frie udløb i historikken (0x8c1af0) 0 → 78 (orakel 65), 0x4c7ac0 også for non-league, managerskift i stabens historik (0x68f9c0), bedste tilbud over 2,75 (0x4ce4e0); køb med gebyr 737 → 663 (621); e2e-diagnose ved låst Continue.
