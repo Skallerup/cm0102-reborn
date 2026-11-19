@@ -1141,6 +1141,8 @@ export interface Options {
   /** Hvor ofte der gemmes automatisk (standard: efter hver ændring) */
   autosaveMode?: 'changes' | 'daily' | 'weekly' | 'monthly' | 'off';
   matchSpeed: number; // ms pr. kommentarlinje
+  /** CM Reborn (Game Options): kampen fortsætter i en skjult browserfane (standard fra) */
+  bgMatch?: boolean;
   fullCommentary: boolean;
   /** Hvilke nyheder om andre klubber man får (standard: kun eget land) */
   newsScope?: 'league' | 'nation' | 'world';

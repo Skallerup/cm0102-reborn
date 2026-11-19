@@ -16,6 +16,7 @@ import { act } from '../../game/actions';
 import { humanManager, isHumanClub } from '../../game/humans';
 import { isBotClub } from '../../game/bots';
 import { session, skippedMatches, type LiveCmd } from '../../online/client';
+import { runCatchUp } from '../matchCatchUp';
 import { fixturesOn, gs, notify, squad } from '../../game/state';
 import type { Fixture, TableRow, MatchReport, MatchStatsSide, Tactic, OppInstructions, OppKind, PlayerMatchLine, CommentaryLine } from '../../game/types';
 import { compName, t } from '../../i18n';
@@ -97,7 +98,7 @@ void loadMatchTexts();
 /** Linjer, hvis lyd går forud for alt andet i samme opdatering (mål, fløjt, kort, straffespark) */
 const BIG_SOUND = new Set(['kickoff', 'halftime', 'fulltime', 'extratime', 'yellow', 'red', 'second-yellow', 'red-professional', 'penalty', 'goal-pen', 'pen-saved', 'pen-miss', 'goal-offside']);
 
-let live: { fixture: number; sim: LiveSim; lines: { text: string; cls: string; m: number; k?: string; t?: number; ci?: number }[]; poss5?: [number, number][]; consumed: number; halfShown?: boolean; shotsSeen?: number; cornersSeen?: number; h2hInit?: boolean; evSeen?: number; h2h?: H2hState; ldSeen?: number; prevTab?: string; kicked?: boolean; zones?: [number, number, number]; zposs?: [number, number][]; baseTactic?: Tactic; wantTactics?: { side: 0 | 1; from: number; m: number }; wantPause?: { from: number; m: number }; atHalf?: boolean; paused?: boolean; ht?: [number, number]; goalUntil?: number; goalTeam?: number; postShown?: boolean } | null = null;
+let live: { fixture: number; sim: LiveSim; lines: { text: string; cls: string; m: number; k?: string; t?: number; ci?: number }[]; poss5?: [number, number][]; consumed: number; halfShown?: boolean; shotsSeen?: number; cornersSeen?: number; h2hInit?: boolean; evSeen?: number; h2h?: H2hState; ldSeen?: number; prevTab?: string; kicked?: boolean; zones?: [number, number, number]; zposs?: [number, number][]; baseTactic?: Tactic; wantTactics?: { side: 0 | 1; from: number; m: number }; wantPause?: { from: number; m: number }; atHalf?: boolean; paused?: boolean; ht?: [number, number]; goalUntil?: number; goalTeam?: number; postShown?: boolean; hlOn?: boolean; bgLast?: number } | null = null;
 
 /** Commentary Speed i klassisk huskes fra kamp til kamp (originalens seks trin, langsom → hurtig) */
 const CX_SPEEDS = [0.35, 0.6, 1, 2, 4, 8];
@@ -540,7 +541,7 @@ function LiveMatch({ id }: { id: number }) {
   type Hl = { frames: Snap[]; i: number; outcome: string; texts: string[]; hideFrom: number; team: number; flashes?: (string | undefined)[]; bump?: number[]; reveal?: number[]; label?: string };
   const [hl, setHlState] = useState<Hl | null>(null);
   // 2D-højdepunkterne er skjult, indtil de er gode nok (ejerens ønske 13/11) – HIGHLIGHTS_2D slår dem til igen
-  const setHl = (v: Hl | null) => { if (v === null || HIGHLIGHTS_2D) setHlState(v); };
+  const setHl = (v: Hl | null) => { if (v === null || HIGHLIGHTS_2D) { setHlState(v); L.hlOn = v !== null; } };
   const [msg, setMsg] = useState('');
   const boxRef = useRef<HTMLDivElement>(null);
   const home = g.clubs[f.home].short, away = g.clubs[f.away].short;
@@ -795,8 +796,18 @@ function LiveMatch({ id }: { id: number }) {
     if (classic && flashLeft > 0) { const h2 = setTimeout(() => force((x) => x + 1), flashLeft); return () => clearTimeout(h2); }
     // klassisk: straffesparkskonkurrencen vises langsomt, spark for spark
     const ms = classic && sim.shootout ? Math.max(900, 2200 / Math.sqrt(speed)) : Math.max(30, g.options.matchSpeed / speed);
-    const h = setInterval(() => advance(speed >= 8 && !(classic && sim.shootout) ? 40 : 12), ms);
-    return () => clearInterval(h);
+    const one = () => advance(speed >= 8 && !(classic && sim.shootout) ? 40 : 12);
+    // tilvalget "Fortsæt kampen i en baggrundsfane": skjult fane → indhent de forfaldne ticks efter vægur-tid (samme ticks som ved normalt tempo)
+    const bg = !!g.options.bgMatch;
+    const stopped = () => sim.finished || !!L.atHalf || !!L.hlOn || !!L.paused || (L.goalUntil ?? 0) > Date.now();
+    const run = () => {
+      if (bg && typeof document !== 'undefined' && document.visibilityState === 'hidden') { L.bgLast = runCatchUp(performance.now(), L.bgLast ?? performance.now(), ms, one, stopped); return; }
+      L.bgLast = performance.now(); one();
+    };
+    const onVis = () => { if (bg && document.visibilityState === 'visible' && L.bgLast !== undefined) L.bgLast = runCatchUp(performance.now(), L.bgLast, ms, one, stopped); };
+    const h = setInterval(run, ms);
+    if (bg) document.addEventListener('visibilitychange', onVis);
+    return () => { clearInterval(h); if (bg) document.removeEventListener('visibilitychange', onVis); };
   });
 
   // tilskuerbrus, mens kampen kører (stille ved pause, slutfløjt og Instant – og når man forlader kampen)

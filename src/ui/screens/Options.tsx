@@ -96,6 +96,7 @@ export function Options() {
             <label className="col">{t('opt.speed')}
               <input type="range" min={60} max={1500} step={20} value={1560 - g.options.matchSpeed} onChange={(e) => { g.options.matchSpeed = 1560 - Number(e.target.value); notify(); }} />
             </label>
+            <label className="row"><input type="checkbox" checked={!!g.options.bgMatch} onChange={(e) => { g.options.bgMatch = e.target.checked; notify(); }} />{t('cl.rb.bgMatch')}</label>
           </div>
         </Panel>
         {!g.draft && <PlayableNations />}

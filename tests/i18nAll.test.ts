@@ -21,7 +21,7 @@ import BT from '../src/game/data/cmBoardTexts.json';
 const LANGS: Record<string, Record<string, string>> = { da, de, es, fr, it: itl, pt, tr, sv, nb };
 /** nøgler, der med vilje ikke findes på et sprog (falder tilbage til engelsk) – tom, så længe alle er oversat */
 /** CM Reborn-tilvalgene (Game Options): kun en + da, øvrige sprog falder tilbage til engelsk */
-const RB = ['title', 'achievements', 'matchExtras', 'firstDay', 'articles', 'menus', 'searchPresets', 'helpTexts'].map((k) => `cl.rb.${k}`)
+const RB = ['title', 'achievements', 'matchExtras', 'firstDay', 'articles', 'menus', 'searchPresets', 'helpTexts', 'bgMatch'].map((k) => `cl.rb.${k}`)
   .concat(['title', 'about', 'cost', 'goal', 'raised', 'goalOnly', 'percent', 'btn', 'free', 'heroes', 'anon', 'menu'].map((k) => `sb.${k}`))
   .concat(['tag', 'title', 'q.convert', 'q.new', 'convert', 'new', 'keep'].map((k) => `legacyExt.${k}`))
   .concat(['start.loadFailed', 'start.reloadBtn']) // nødskærm ved mislykket hentning af spillet (kun en + da)
