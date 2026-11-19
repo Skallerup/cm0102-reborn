@@ -37,6 +37,8 @@ import { INTRINSIC_KEYS } from '../src/game/playerInit';
 import { GBP } from '../src/game/cmContractInit';
 import { cmInMemory } from '../src/game/cmRetire';
 import type { GameState, Player } from '../src/game/types';
+import { _test as boardTest } from '../src/game/cmBoardGame';
+import { isoToCm } from '../src/game/cmBoard';
 
 const E = `${homedir()}/cm0102-engine`;
 const KNOWN: [string, string][] = [
@@ -330,11 +332,32 @@ function compareDay(v: View) {
       const [o0, m0] = mgr0.get(c.id)!;
       dist('bestyrelse: andel klubber med en anden manager end ved spilstart', on !== o0 ? 1 : 0, mn.trim() !== m0 ? 1 : 0);
     }
+    // Comp_Stats-rækken (0x4a4850: [comps[club+0x57 → id]+8] +0xc rækker à 0x76, +0x14 antal, række+0 = klub-id): +4 kampe, +0x72..+0x75 placeringerne
+    const dv = m.u32(adr + 0x57), cp = dv ? m.u32(m.u32(0xadadfc) + 4 * m.s32(dv)) : 0, sp = cp ? m.u32(cp + 8) : 0;
+    let tpost: number[][] | null = null;
+    if (sp) {
+      const rows = m.u32(sp + 0xc), nr = m.s32(sp + 0x14);
+      let row = 0;
+      for (let i = 0; i < nr && i < 200; i++) if (m.s32(rows + 0x76 * i) === m.s32(adr)) { row = rows + 0x76 * i; break; }
+      const e = row ? boardTest.entryOf(g, c.id, isoToCm(today)) : null;
+      if (row && e) {
+        const o = [e.played & 0xff, e.pos & 0xff, e.p73 & 0xff, e.p74 & 0xff, e.p75 & 0xff], or = [m.u8(row + 4), m.u8(row + 0x72), m.u8(row + 0x73), m.u8(row + 0x74), m.u8(row + 0x75)];
+        tpost = [o, or];
+        chk('bestyrelse: tabelpost kampe (+4)', o[0] === or[0], lab(`${o[0]} mod ${or[0]}`));
+        chk('bestyrelse: tabelpost +0x72 (udgangsplacering)', o[1] === or[1], lab(`${o[1]} mod ${or[1]}`));
+        if (o[0] === or[0]) {
+          chk('bestyrelse: tabelpost +0x73 (placering nu)', o[2] === or[2], lab(`${o[2]} mod ${or[2]} (${o[0]} kampe)`));
+          chk('bestyrelse: tabelpost +0x74/+0x75 (bedst/dårligst)', o[3] === or[3] && o[4] === or[4], lab(`${o[3]}/${o[4]} mod ${or[3]}/${or[4]} (nu ${o[2]}/${or[2]}, ${o[0]} kampe)`));
+        }
+        dist('bestyrelse: tabelpost +0x74 bedst', o[3], or[3]);
+        dist('bestyrelse: tabelpost +0x75 dårligst', o[4], or[4]);
+      }
+    }
     if (BOARD_DUMP && MM && c.id !== g.userClub) {
       const R = g.cmBoard?.rec[c.id], rb = m.u32(MM) + 0x49 * ix;
       const mine = R ? [R.b1, R.b2, R.w6, R.w8, R.wa, R.wc, R.e, R.w10, R.w12, R.w14, R.w16, R.t2c, R.q30, R.d38] : null;
       const orac = [m.u8(rb + 1), m.u8(rb + 2), m.s16(rb + 6), m.s16(rb + 8), m.s16(rb + 0xa), m.s16(rb + 0xc), m.u16(rb + 0xe), m.s16(rb + 0x10), m.s16(rb + 0x12), m.s16(rb + 0x14), m.s16(rb + 0x16), m.s32(rb + 0x2c), m.f64(rb + 0x30), m.f64(rb + 0x38)];
-      boardRows.push({ d: today, c: c.name, lg: c.league, om: on, mm: mn.trim(), o: mine, m: orac });
+      boardRows.push({ d: today, c: c.name, lg: c.league, om: on, mm: mn.trim(), o: mine, m: orac, tp: tpost });
     }
     if (MM && g.cmBoard?.rec[c.id]) {
       const R = g.cmBoard.rec[c.id], rb = m.u32(MM) + 0x49 * ix;

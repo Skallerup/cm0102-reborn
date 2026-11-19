@@ -23,6 +23,7 @@ import { clubStrength, dailyGate, financeStatus, newPlanEntry, planSquad, type P
 import { aiPickCtx, playerRecord, roleDataOf } from './engine/grid/aiTeam';
 import { roleScore, type Day } from './engine/grid/roleScore';
 import { planScore, type ManagerBlockIn } from './engine/grid/planScore';
+import { assignSquad } from './engine/grid/pickTeam';
 import { nationLanguage, playerLanguages } from './languages';
 import { SQUAD_STATUSES } from './squadStatus';
 import { dislikesClub, dislikesPerson, favoursClub, favoursPerson, managerStaff } from './cmRelations';
@@ -270,4 +271,63 @@ export function cmSquadPlanDaily(g: GameState): void {
     storeEntry(g, c.id, e);
     if (go) cmSquadPlanClub(g, c.id, true, false);
   }
+}
+
+// ---------------------------------------------------------------- 0x4c0720 klubbens styrke (League::set_predicted_positions 0x68a850)
+
+/** 0x4c0720(klub): økonomien (FinanceTable [0xae2a38]: 0x5a0590's saldo (i64) / 300 (__alldiv 0x945e80, mod 0); uden tabellen club +0x65 / 100)
+ *  + omdømmet · 16 + 0x6e6340(spiller, maske, 0x840, klub, −1, 0) for de 15 pladser, 0x6e2000(truppen, n, maskerne, 15, 0, ud, 0x840, klub, 0 …)
+ *  besætter (0x6e2f20 uden manager). Truppen = 0x541f90(klub, liste, 0): klubbens højst 50 spillere med spillerpost (staff +0x61).
+ *  `money` = saldoen i £ (null = intet økonomiobjekt). */
+const PREDICT_MASKS = [1, 0x804, 0x84, 0x204, 0x204, 0x204, 0x810, 0x90, 0x210, 0x210, 0x210, 0x40, 0x40, 0x40, 0x40];
+export function cmClubPredictValue(g: GameState, cid: number, money: number | null, rawBal: number): number {
+  const club = g.clubs[cid];
+  if (!club) return -10000000;                                            // 0xff676980
+  let v = money !== null ? Math.trunc(money / 300) : Math.trunc(rawBal / 100);
+  const rep = clubRepMem(g, cid);
+  v += ((rep << 16) >> 16) * 16;
+  const fit = cmFitRead(g);
+  const all = squad(cid).filter((p) => !p.virtual).slice(0, 50);
+  if (!all.length) return v | 0;
+  const pl = all.map((p) => planPlayer(g, p, fit, false));
+  const ctxPick = aiPickCtx(cid) ?? {};
+  const today = dayOf(g.date);
+  const yearAgo = dayOf(`${+g.date.slice(0, 4) - 1}${g.date.slice(4)}`);
+  const clubLang = nationLanguage(g, club.nation);
+  const lg = g.leagues[club.league];
+  const compId = (id?: string) => (id ? +(id.match(/(\d+)$/)?.[1] ?? NaN) : NaN);
+  const leagueRep = lg ? g.cmCompRep?.[compId(club.league)] ?? null : null;
+  const data = pl.map((pp, i) => roleDataOf(all[i], ctxPick, pp.age));
+  const role = (i: number, mask: number) => {
+    const p = all[i], pp = pl[i], d = data[i], c = pp.contract;
+    return roleScore({
+      id: p.id, age: pp.age, atClub: pp.clubId === cid, joined: { day: pp.joinedDay, year: pp.joinedYear }, realPlayer: !p.regen, nationFlag11c: true,
+      rec: pp.rec!, pos: mask, att: 0, lo: 0, hi: 0, tb: 0, tf: 0, flags: 0x840,
+      mgrJoined: null, today, yearAgo, captain: false, setPiece: 0,
+      data: { ...d, contract: c ? { b3e: c.b3e, b3f: c.b3f, b44: p.cmContract?.b44 ?? 0, b45: c.b45, b4f: c.b4f } : null },
+    });
+  };
+  const memo = new Map<number, number>();
+  const sc = (j: number, i: number) => { const k = j * 64 + i; let x = memo.get(k); if (x === undefined) { x = role(i, PREDICT_MASKS[j]); memo.set(k, x); } return x; };
+  const out = assignSquad(pl.length, PREDICT_MASKS.length, 0, sc, sc, (i) => ((pl[i].rec?.[0xf] ?? 0) << 24) >> 24, (j) => (PREDICT_MASKS[j] & 1) === 1);
+  for (let j = 0; j < out.length; j++) {
+    const i = out[j];
+    if (i === null) continue;
+    const p = all[i], pp = pl[i], d = data[i], c = pp.contract;
+    const inj = pp.injW2c !== null ? fit.injury(p) : null;
+    const pLang = nationLanguage(g, p.nation);
+    v += planScore({
+      id: p.id, real: !p.regen, age: pp.age, joined: { day: pp.joinedDay, year: pp.joinedYear }, rec: pp.rec!, pos: PREDICT_MASKS[j], flags: 0x840,
+      hasClub: true, atClub: pp.clubId === cid, stHasClub: pp.clubId > 0, sameNationClub: (g.clubs[pp.clubId]?.nation ?? -1) === club.nation,
+      mgrJoined: null, today, yearAgo,
+      nationRep: nationRepMem(g, p.nation), british: BRITISH.has(g.nations[p.nation]?.code ?? ''), caps: p.caps, b56: sh(p, 'adaptability'),
+      langDiff: !!clubLang && !!pLang && clubLang !== pLang, lang: clubLang && playerLanguages(g, p).includes(clubLang) ? 10 : 0,
+      nationOfClub: p.nation === club.nation || p.cmNation2 === club.nation,
+      clubRep: rep, stClubRep: clubRepMem(g, pp.clubId), listed: !!p.listed, daysNoClub: 0,
+      league69: leagueRep, mgr: { np: null, j59: 10, b59: 10, b5b: 10, rel: { d30: false, d60: false, m840: false, m810: false } },
+      data: { ...d, contract: c ? { b3d: c.b3d, b3e: c.b3e, b3f: c.b3f, b44: p.cmContract?.b44 ?? 0, b45: c.b45, b4f: c.b4f } : null,
+        injury: () => (inj ? { w28: inj.w28, w2c: inj.w2c } : null) },
+    });
+  }
+  return v | 0;
 }

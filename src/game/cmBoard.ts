@@ -87,6 +87,13 @@ export interface CmBoardState {
   month: number;
   /** Comp_Stats i vores spil: [bedste, dårligste placering, dag for seneste ligakamp] pr. klub i sæsonen */
   tab?: Record<number, [number, number, number]>;
+  /** ligatabellens række pr. klub, som League::update_table_positions 0x684cd0 sidst efterlod den: [+0x39 bedst, +0x3a dårligst mulige
+   *  placering, +0x37 status, og Comp_Stats +0x73/+0x74/+0x75 (vt+0x68)] – ny række: [1, hold, 0xff, 0, 0, 0] (0x687430 / 0x4aceb0) */
+  lt?: Record<number, [number, number, number, number, number, number]>;
+  /** Comp_Stats +0x72: den forudsagte placering (League::set_predicted_positions 0x68a850 ved ligaens opsætning) pr. klub */
+  pp?: Record<number, number>;
+  /** liga → datoen for dagens ligaresultat (League +0xc9, sat af vt+4 0x685d30) */
+  ltd?: Record<string, string>;
   /** landsholdenes managere (A-holdets club +0xcf): nation → staff-id (menneskene: ManagerProfile.national) – sat ved spilstarten 0x68f130 */
   nm?: Record<number, number>;
   /** staff +0x28 landsholdsjobbet efter 0x68f130 (0 for databasens landstrænere; 5 når bestyrelsen har udnævnt dem): staff-id → job */

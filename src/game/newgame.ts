@@ -50,7 +50,7 @@ import './cmNatTeams';                                          // landstrænern
 import './cmPrerunMatches';                                      // forkørslens konkurrencekampe (registerPrerun 'matches')
 import './cmFriendly';                                              // forkørslens venskabskampe (registerPrerun 'comps1')
 import { cmRelNewGame } from './cmRelations';
-import { cmClubDataFill_829960, cmFinanceNewGame, cmFinanceWageBills } from './cmFinance';
+import { cmClubDataFill_829960, cmFinanceNewGame, cmFinanceWageBills, cmStartBalanceGbp } from './cmFinance';
 import { cmContractsNewGame } from './cmContractInit';
 import { cmContractEnd } from './cmContractEnd';
 import { cmPermitNewGame } from './cmPermit';
@@ -624,7 +624,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   // create_game 0x82992b: klubbernes manglende omdømme, tilskuertal og træningsanlæg (cmFinance.ts – kun den originale database i ægte tilstand)
   if (cm) cmClubDataFill_829960(g, cm, seed);
   // originalens bestyrelse: init_club_board_records 0x68f130 på databasens dato (cmBoardGame.ts – kun den originale database i ægte tilstand)
-  cmBoardInit(g, cm?.cmRaw?.chairBoard, cm?.cmRaw?.nationBoard, natDbGame ?? undefined);
+  cmBoardInit(g, cm?.cmRaw?.chairBoard, cm?.cmRaw?.nationBoard, natDbGame ?? undefined, cm ? (c) => cmStartBalanceGbp(g, cm, seed, c) : undefined);
 
   progress('board', 0.62);
   // Brugerens klub

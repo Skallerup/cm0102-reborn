@@ -9,8 +9,8 @@
 // Spillets data, der ikke findes som i originalen (inddata – *afvigelser*, ikke regler):
 //   - personerne: world-filens stab med ikke-spillerpost (2.451 i 3.9.60 – originalen har ~8.900 i hukommelsen med England valgt) + menneskene;
 //     spillets genererede stab har ingen ikke-spillerpost (np = NULL i originalens forstand) og er ikke kandidater
-//   - Comp_Stats' +0x72 = sidste sæsons placering (club +0x5f, GameState.cmClubStat), +0x73/+0x74/+0x75 = nuværende/bedste/dårligste placering i
-//     sæsonen (vi fører dem efter hver ligakamp), stimerne af tabellens form; 0x4ae300's projicerede placering = den nuværende
+//   - Comp_Stats' +0x72 = den forudsagte placering (0x68a850/0x4c0720 ved ligaens opsætning – predictLeagues), +0x73/+0x74/+0x75 = placeringen
+//     og bedst/dårligst mulige slutplacering, som 0x684cd0 skriver dem efter dagens ligakampe (updateTablePositions); stimerne af tabellens form
 //   - UefaSeeding: spillets CL_SPOTS/UEFA_SPOTS efter landets rang; ingen europæisk Comp_Stats-post (bit 0x400 sættes ikke)
 //   - transferbudgettet 0x598800 = Club.transferBudget (£), formuebåndet 0x5986b0 af saldoen (£)
 //   - 0x844780 (viljen) – se interestOf
@@ -20,7 +20,7 @@ import { cmActive, cmBoardLogic, cmLogic, cmRand, clubRepMem, postHooks } from '
 import { cmGbp } from './cmMoney';
 import { personalFill_535a80 } from './cmStaffInit';
 import { financeStatus } from './cmSquadPlan';
-import { cmSquadPlanNewManager } from './cmSquadPlanGame';
+import { cmClubPredictValue, cmSquadPlanNewManager } from './cmSquadPlanGame';
 import { clubSeason } from './cmFitness';
 import { CL_SPOTS, UEFA_SPOTS, UEFA_NATIONS, rulesFor } from './leagues';
 import { leagueRows, nationRanking } from './competitions';
@@ -48,6 +48,10 @@ import { DEMONYM } from '../ui/demonyms';
 import { natCompHook } from './hooks';
 import { holidayHooks, holidayOpt } from './cmHoliday';
 import { NO_CARRY, registerCarry } from './carry';
+import { FRIENDLY_COMP } from './cmFriendlyOffers';
+
+/** club_comp.dat "Friendly" (Friendly +4 – 0x5c6710) */
+const CC_FRIENDLY = 72;
 
 /** € → £ for klubbens penge (cmMoney.ts: den originale database 0,86; 2026/27 ligaens faktor) */
 const gbpOf = (g: GameState, c: number) => cmGbp(g, c);
@@ -140,23 +144,16 @@ function entryOf(g: GameState, c: number, today: CmDate): StatsEntry | null {
   const row = comp.table.find((r) => r.club === c);
   if (!row) return null;
   const tr = g.cmBoard?.tab?.[c];
-  const pos = g.cmClubStat?.[c]?.[3] ?? 0;
+  const pos = g.cmBoard?.pp?.[c] ?? 0;
   const form = row.form ?? '';
   const trail = (pred: (ch: string) => boolean) => { let n = 0; for (let i = form.length - 1; i >= 0 && pred(form[i]); i--) n++; return n; };
   const last5 = form.slice(-5);
   let pts = 0, n = 0;
   for (const ch of last5) { if (ch === 'W') { pts += 3; n++; } else if (ch === 'D') { pts += 1; n++; } else if (ch === 'L') n++; }
-  const cur = row.p > 0 ? leagueRows(comp).findIndex((r) => r.club === c) + 1 : 0;
-  // +0x74/+0x75: bedst/dårligst mulige slutplacering (League::update_projected_positions 0x68ac40 – ikke afkodet; regnet af point og resterende
-  // ligakampe, uden målforskel – *afledt*); før første kamp 0/0 (p74 == p75 = "intet afgjort/førsæson")
-  let best = 0, worst = 0;
-  if (row.p > 0) {
-    const lm = leftMap(g, lid);
-    const left = (club: number) => lm.get(club) ?? 0;
-    const myMax = row.pts + 3 * left(c);
-    best = 1 + comp.table.filter((r) => r.club !== c && r.pts > myMax).length;
-    worst = 1 + comp.table.filter((r) => r.club !== c && r.pts + 3 * left(r.club) >= row.pts).length;
-  }
+  // +0x73/+0x74/+0x75: placeringen og bedst/dårligst mulige slutplacering, som 0x684cd0 sidst skrev dem (vt+0x68 – dagen med ligaresultater,
+  // efter kampene); før første opdatering 0/0/0
+  const ls = g.cmBoard?.lt?.[c];
+  const [cur, best, worst] = ls ? [ls[3], ls[4], ls[5]] : [0, 0, 0];
   return {
     pos: pos > 0 ? pos : 0, p73: cur, p74: best, p75: worst, played: row.p,
     winRun: trail((ch) => ch === 'W'), lossRun: trail((ch) => ch === 'L'), noWinRun: trail((ch) => ch !== 'W'), unbeatenRun: trail((ch) => ch !== 'L'),
@@ -175,19 +172,118 @@ function projectedOf(g: GameState, lid: string, c: number): number | null {
   return pr ? pr[0] : null;
 }
 
-let leftGen = 0;
-let leftCache: { key: string; m: Map<string, Map<number, number>> } = { key: '', m: new Map() };
-/** resterende ligakampe pr. klub (cache pr. dag og antal spillede kampe) */
-function leftMap(g: GameState, lid: string): Map<number, number> {
-  const key = `${g.date}:${leftGen}`;
-  if (leftCache.key !== key) leftCache = { key, m: new Map() };
-  let m = leftCache.m.get(lid);
-  if (!m) {
-    m = new Map();
-    for (const f of Object.values(g.fixtures)) if (f.comp === lid && !f.result) { m.set(f.home, (m.get(f.home) ?? 0) + 1); m.set(f.away, (m.get(f.away) ?? 0) + 1); }
-    leftCache.m.set(lid, m);
+// ---------------------------------------------------------------- 0x684cd0 League::update_table_positions
+// Kaldt som ligaens vt+0x94 fra den daglige vt+0x14 0x6847c0 (0x684946), når +0xc9 (dagen for seneste ligaresultat, sat af vt+4 0x685d30) er i dag –
+// dvs. efter dagens kampe (afterMatch 0x695240 ser forrige kampdags værdier, ugens tillid 0x697c40 dagens). Rækkerne i tabellens orden
+// (0x6827d0): +0x11 kampe, +0x19 point; a7 = (hold − 1)·+0x3c, c2 = point for en sejr. Ligaens tal (oraklet, England 3.9.60): +0xbe..+0xc1 =
+// oprykning/play-off/nedrykningsslutspil/nedrykning (PL 0/0/0/3, First 2/4/0/3, Second 2/4/0/4, Third 3/4/0/1), +0xd9 = 3, +0xe6 = 0.
+// vt+0x68 (Comp_Stats): England First/Second 0x573260 (bedst ∈ [3,6] → 3, dårligst ∈ [3,6] → 6), Third 0x578660 ([4,7] → 4/7), Premier 0x48e380
+// (uændret); andre ligaklassers vt+0x68 (~120, play-off-strukturer) er ikke afkodet – de skrives uændret.
+const VT68: Record<string, [number, number]> = { 'English First Division': [3, 6], 'English Second Division': [3, 6], 'English Third Division': [4, 7] };
+export function updateTablePositions(g: GameState, st: CmBoardState, lid: string): void {
+  const comp = g.comps[lid], L = leagueInfo(g, lid);
+  if (!comp || !L) return;
+  const rows = leagueRows(comp), n = rows.length;
+  if (!n) return;
+  const rules = g.customRules?.[lid] ?? rulesFor(lid, comp.clubs.length);
+  const a7 = s16((n - 1) * (rules.rounds ?? 2)), c2 = 3, e6 = 0, d9 = 3;
+  const lt = (st.lt ??= {});
+  const R = rows.map((r) => (lt[r.club] ??= [1, n, 0xff, 0, 0, 0]));
+  const G = rows.map((r) => s8(r.p)), P = rows.map((r) => s16(r.pts));
+  const cnt = [L.promo, L.playoff, 0, L.relegation].map((x) => s8(x));   // +0xbe..+0xc1 (lokal kopi, tælles ned)
+  const A: number[] = new Array(n).fill(0xff);
+  let l13 = -1;
+  if (d9 & 1) for (let i = 0; i < n; i++) { const s = R[i][2]; if (s !== 0xfe && s !== 0xfc && s !== 3) { l13 = i; break; } }
+  // kategorierne pr. plads: 0/1 fra toppen (oprykning, play-off), 3/2 fra bunden (nedrykning, nedrykningsslutspil) – rækker med status springes over
+  let di = 0;
+  for (let al = 0; di < n && al <= 1; al++) {
+    while (cnt[al] !== 0 && di < n) { const s = R[di][2]; if (s !== 0xfe && s !== 0xfc && s !== 3) { A[di] = al; cnt[al]--; } di++; }
   }
-  return m;
+  di = n - 1;
+  for (let al = 3; di >= 0 && al >= 2; al--) {
+    while (cnt[al] !== 0 && di >= 0) { const s = R[di][2]; if (s !== 0 && s !== 1 && s !== 5) { A[di] = al; cnt[al]--; } di--; }
+  }
+  // bedst/dårligst mulige placering (uden målforskel; uafgjort på point tæller som indhentet) – afgjorte rækker (+0x39 = +0x3a) står
+  for (let i = 0; i < n; i++) {
+    const r = R[i];
+    if (r[0] === r[1]) continue;
+    const gi = G[i];
+    let b = i + 1;
+    const mi = (a7 - gi) * c2 + P[i];
+    for (let j = 0; j < i; j++) {
+      const gj = G[j];
+      if (gi < a7 && gj < a7) { if (mi >= P[j]) b--; }
+      else if (gj < a7) { if (mi === P[j]) b--; }
+      else if (gi < a7) { if (mi >= P[j]) b--; }
+      else if (mi === P[j] && e6) b--;
+    }
+    let w = i + 1;
+    for (let k = i + 1; k < n; k++) {
+      const gk = G[k], mk = (a7 - gk) * c2 + P[k];
+      if (gi < a7 && gk < a7) { if (mk >= P[i]) w++; }
+      else if (gk < a7) { if (mk >= P[i]) w++; }
+      else if (gi < a7) { if (mk === P[i]) w++; }
+      else if (mk === P[k] && e6) w++;
+    }
+    r[0] = b & 0xff; r[1] = w & 0xff;
+  }
+  // status (+0x37; nyhederne vt+0x40 og 0x4cd030 ved nedrykning er ikke porteret) og vt+0x68
+  const vt = VT68[g.leagues[lid]?.name ?? ''];
+  for (let i = 0; i < n; i++) {
+    const r = R[i], b = r[0], w = r[1];
+    let s = r[2];
+    if (w === l13 + 1) { if (s !== 3 && s !== 0xfe && s !== 0xfc && s !== 5) s = 5; }
+    else {
+      const c = A[w - 1] ?? 0xff;
+      if (c === 0) {
+        if (s === 0xff || s === 1) { if (d9 & 2) s = 0; else if (d9 & 4) s = 7; else if (d9 & 8) s = 6; }
+      } else if (c === 1) { if (s === 0xff) s = 1; }
+      else {
+        const cb = A[b - 1] ?? 0xff;
+        if (cb === 3) { if (s === 0xff || s === 2 || s === 0xfc) s = 3; }
+        else if (cb === 2) { if (s === 0xff || s === 0xfe) s = 2; }
+      }
+    }
+    if ((d9 & 0x20) && b > s8(L.promo) + 0 && w <= n - s8(L.relegation) - 0) {
+      let all = true;
+      for (let a = b - 1; a < w; a++) if (A[a] !== 0xff) all = false;
+      if (all && s === 0xff) s = 0xfe;
+    }
+    r[2] = s;
+    let mb = b, mw = w;
+    if (vt) { if (mb >= vt[0] && mb <= vt[1]) mb = vt[0]; if (mw >= vt[0] && mw <= vt[1]) mw = vt[1]; }
+    r[3] = i + 1; r[4] = mb; r[5] = mw;
+  }
+}
+
+/** League::set_predicted_positions 0x68a850 (ligaens opsætning – spilstarten og hver ny sæson): tabelrækkernes klubber (+0xb1-rækkefølgen)
+ *  sorteres med 0x4c08f0 – nøglen 0x4c0720 (cmSquadPlanGame.ts cmClubPredictValue), byttesortering faldende (i < k: nøgle[i] < nøgle[k] → byt) –
+ *  og Comp_Stats +0x72 = pladsen (0x4a2540). Oraklet 14/7-01 (frø 1): 56/92 engelske klubber på samme plads, gns. afvigelse 0,54 plads. */
+function predictLeagues(g: GameState, st: CmBoardState, money?: (c: Club) => number, only?: Set<string>): void {
+  const pp = (st.pp ??= {});
+  for (const comp of Object.values(g.comps)) {
+    if (comp.type !== 'league' || g.leagues[comp.id]?.hidden || (only && !only.has(comp.id))) continue;
+    const cl = comp.table.length ? comp.table.map((r) => r.club) : comp.clubs;
+    const a = cl.filter((c) => g.clubs[c]).map((c) => {
+      const club = g.clubs[c];
+      return { c, v: cmClubPredictValue(g, c, money ? money(club) : Math.round(club.balance * cmGbp(g, c)), 0) };
+    });
+    for (let i = 0; i < a.length - 1; i++) for (let k = i + 1; k < a.length; k++) if (a[i].v < a[k].v) { const t = a[i]; a[i] = a[k]; a[k] = t; }
+    a.forEach((x, i) => { pp[x.c] = i + 1; });
+  }
+}
+
+/** 0x48f150 Comp::is_club_still_in_contention for ligaen (stats-rækken: +0x74 = +0x75 ≠ 0 → nej; tabelrækken: status 0xfe/7/6/5 → nej, ellers
+ *  +0x39 ≠ +0x3a); venskabskampe (0x5c6710) og B-/reserveturneringer (0x7e6f20) → nej; andre turneringer → ja (klubben findes i en runde) */
+function inContention(g: GameState, f: Fixture, c: number): boolean {
+  if (f.comp === FRIENDLY_COMP) return false;
+  const comp = g.comps[f.comp];
+  if (!comp || comp.type !== 'league') return true;
+  const r = g.cmBoard?.lt?.[c];
+  if (!r) return true;                                                   // ny række [1, hold]
+  if (r[4] === r[5] && r[4] !== 0) return false;
+  if (r[2] === 0xfe || r[2] === 7 || r[2] === 6 || r[2] === 5) return false;
+  return r[0] !== r[1];
 }
 
 function leagueInfo(g: GameState, lid: string): LeagueInfo | null {
@@ -205,7 +301,7 @@ function leagueInfo(g: GameState, lid: string): LeagueInfo | null {
 /** midlertidig manager (0x6a4f80: "som om han havde jobbet") */
 const tempManager = new Map<number, Person | null>();
 // (19/11) nulstilles ved et nyt spil (carry.ts) – ellers lækker den fra spillet før i samme fane/proces
-registerCarry('cmBoardGame.caches', () => NO_CARRY, () => {}, () => { tempManager.clear(); leftCache = { key: '', m: new Map() }; });
+registerCarry('cmBoardGame.caches', () => NO_CARRY, () => {}, () => { tempManager.clear(); });
 
 /** `lazy` (ønskelisternes og kontraktportenes kortlivede hukommelser): rangeringen og klublisten regnes først, når de bruges */
 export function boardEnv(g: GameState, todayIso = g.date, startIso?: string, lazy = false): BoardEnv {
@@ -786,7 +882,7 @@ export function cmInitStaffRep(g: GameState, s: Staff, row: NonNullable<CMWorld[
 
 /** newgame.ts: spilstarten 0x68f130 (på databasens dato 1/1) – efter at klubber, stab og turneringer findes */
 export function cmBoardInit(g: GameState, chair: Record<number, [number, number, number, number]> | undefined, nationBoard: [number, number, number][] | undefined,
-  natDb?: Record<number, [number, number]>): void {
+  natDb?: Record<number, [number, number]>, money?: (c: Club) => number): void {
   if (!cmLogic(g) || g.draft) return;
   // (MODERN_PARITY 7) 2026/27 i ægte tilstand: kun når world-filen har bestyrelsens data (formændene, nationerne – world-cm.json)
   const world2001 = cmActive(g);
@@ -798,6 +894,7 @@ export function cmBoardInit(g: GameState, chair: Record<number, [number, number,
   g.cmBoardStart = g.date;
   g.cmBoard = world2001 ? { rec: {}, dep: [], vac: [], ult: [], month: -1, tab: {}, nm: {}, nj: {} } : { rec: {}, dep: [], vac: [], ult: [], month: -1, tab: {}, nd: natDb ?? {} };
   if (world2001) cmBoardNationalInit(g);
+  predictLeagues(g, stateOf(g), money);
   const db = `${g.date.slice(0, 4)}-01-01`;
   const env = boardEnv(g, db, g.date);
   initRecords(env, stateOf(g), rnd(g, dayNum(db), 0x68f130));
@@ -883,6 +980,8 @@ export function cmBoardDaily(g: GameState): void {
   if (!cmBoardOn(g)) return;
   const st = stateOf(g), env = boardEnv(g);
   const rand = rnd(g, dayNum(g.date), 0x68f9c0);
+  // turneringernes daglige vt+0x14 (0x6847c0, før MANAGER_MANAGER i dagens tidspunkt): ligaerne med dagens resultater → 0x684cd0
+  if (st.ltd) for (const [lid, d] of Object.entries(st.ltd)) if (d === g.date) updateTablePositions(g, st, lid);
   holidayJobs.length = 0;
   boardDaily(env, st, rand, (r) => weeklyUpdate(env, st, r));
   syncHuman(g);
@@ -933,10 +1032,12 @@ export function cmBoardSeasonSetup(g: GameState, only?: Set<string>): void {
   if (!cmBoardOn(g)) return;
   const st = stateOf(g), env = boardEnv(g);
   // (16/11) sæsonskiftet pr. land (cmSeason.ts): kun de nye ligaer – de andre landes Comp_Stats-rækker fortsætter
-  if (!only) st.tab = {};
+  if (!only) { st.tab = {}; st.lt = {}; }
+  predictLeagues(g, st, undefined, only);
   for (const comp of Object.values(g.comps)) {
     if (comp.type !== 'league' || g.leagues[comp.id]?.hidden || (only && !only.has(comp.id))) continue;
     if (only && st.tab) for (const c of comp.clubs) delete st.tab[c];
+    if (only && st.lt) for (const c of comp.clubs) delete st.lt[c];
     for (const c of comp.clubs) { setSeasonExpectations(env, st, c, true, rnd(g, dayNum(g.date), 0x68aa80, c)); cmFineSeasonHalve(g, c); }   // 0x6a4472: 0x5a5930
   }
   syncHuman(g);
@@ -955,7 +1056,6 @@ function teamBlock89(lines: MatchReport['players']): { b8: number; b9: number } 
 export function cmBoardAfterMatch(g: GameState, f: Fixture, rep: MatchReport): void {
   if (!cmBoardOn(g)) return;
   const st = stateOf(g), env = boardEnv(g);
-  leftGen++;
   // Comp_Stats' bedste/dårligste placering og den seneste kampdato (ligakampe)
   const comp = g.comps[f.comp];
   if (comp?.type === 'league') {
@@ -965,6 +1065,7 @@ export function cmBoardAfterMatch(g: GameState, f: Fixture, rep: MatchReport): v
       const t = (st.tab ??= {})[c];
       st.tab[c] = t ? [Math.min(t[0], pos), Math.max(t[1], pos), dayNum(g.date)] : [pos, pos, dayNum(g.date)];
     }
+    (st.ltd ??= {})[f.comp] = g.date;                                     // League +0xc9 = i dag (vt+4 0x685d30)
   }
   const codes = fixtureCodesOf(g, f, f.comp, f.home);
   const [hs, as] = rep.stats;
@@ -987,10 +1088,12 @@ export function cmBoardAfterMatch(g: GameState, f: Fixture, rep: MatchReport): v
   const m: MatchIn = {
     home: f.home, away: f.away, len: rep.et ? 120 : 90, b3a: codes.b3a, w30: codes.w30, w32: codes.w32, w38: codes.flags38,
     gh: hs.goals, ga: as.goals, aggH, aggA, penH: rep.pens?.[0] ?? 0, penA: rep.pens?.[1] ?? 0,
-    compRep: comp ? codes.compRep : null,
+    // venskabskampene har turneringen "Friendly" (club_comp.dat id 72 i 3.9.60/3.9.65/3.9.68 og 2026/27; fixture +0x14 ≠ NULL, +0x69 = 1 hhv. 4 –
+    // oraklets crowd1.txt: comp 72, +0x3a = 1)
+    compRep: comp ? codes.compRep : f.comp === FRIENDLY_COMP ? g.cmCompRep?.[CC_FRIENDLY] ?? 0 : null,
     isDivision: (c) => g.clubs[c]?.league === f.comp,
     friendly: comp?.id === 'FRIENDLY' || f.comp.startsWith('FR'),
-    inContention: () => true,
+    inContention: (c) => inContention(g, f, c),
     derby: (c, o) => {
       const cr = g.cmCrowd?.[c], or = g.cmCrowd?.[o];
       const riv = cr ? cr.slice(6, 9) : [];

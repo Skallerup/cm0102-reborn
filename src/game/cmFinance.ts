@@ -243,6 +243,16 @@ export function cmClubDataFill_829960(g: GameState, world: CMWorld, seed: number
 
 /** spillets nye spil: posterne og startsaldoen for alle klubber (newgame.ts, efter staben – CM-database i ægte tilstand: den originale database
  *  og 2026/27 med world-cm.json's club.dat-økonomi; startsaldoen i £ omregnes med klubbens faktor) */
+/** saldoen i £ ved spilstarten, som cmFinanceNewGame sætter den (0x5961d0, samme talrække) – til 0x4c0720 (League::set_predicted_positions
+ *  0x68a850), der i originalen kører med økonomien oprettet, men hos os før cmFinanceNewGame (bestyrelsen 0x68f130 læser forudsigelsen) */
+export function cmStartBalanceGbp(g: GameState, world: CMWorld, seed: number, c: Club): number {
+  const cf = clubFinOf(world);
+  if (!cmLogic(g) || g.draft || !world.cmRaw?.fin || !cf) return Math.round(c.balance * gbp(g, c));
+  const fin = cf[c.id];
+  if (!fin || world.clubBalance?.[c.id] !== undefined) return Math.round(c.balance * gbp(g, c));
+  return initForClub(g, c, fin[0] ?? 0, cmRand(seed, c.id, 0x5961d0)).bal;
+}
+
 export function cmFinanceNewGame(g: GameState, world: CMWorld, seed: number): void {
   const cf = clubFinOf(world);
   if (!cmLogic(g) || g.draft || !world.cmRaw?.fin || !cf) return;
