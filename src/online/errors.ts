@@ -3,6 +3,7 @@
 import { APP_VERSION } from '../version';
 import { rankingAvailable } from './rank';
 import { previewInfo } from '../game/state';
+import { reloadOnce } from '../ui/lazyLoad';
 
 const sent = new Map<string, number>();
 let total = 0;
@@ -28,15 +29,7 @@ export function reportError(err: unknown, extra?: string) {
   try { void fetch('/api/notify', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), keepalive: true }).catch(() => {}); } catch { /* ignorér */ }
 }
 
-// efter en ny udgivelse hænger en gammel side på filer, der er væk: genindlæs én gang (sessionStorage-vagt mod løkker)
-function reloadOnce(): boolean {
-  try {
-    if (sessionStorage.getItem('cm0102.preloadReload')) return false;
-    sessionStorage.setItem('cm0102.preloadReload', String(Date.now()));
-  } catch { return false; }
-  location.reload();
-  return true;
-}
+// efter en ny udgivelse hænger en gammel side på filer, der er væk: genindlæs højst én gang pr. minut (vagten ligger i ui/lazyLoad.ts)
 const STALE = /Importing a module script failed|Unable to preload CSS|Failed to fetch dynamically imported module|error loading dynamically imported module/i;
 
 export function startErrorReport() {

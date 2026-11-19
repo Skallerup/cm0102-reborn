@@ -8,7 +8,7 @@ export const da: Record<string, string> = {
   // start
   'start.pill': 'Ny sæson · 40.000+ rigtige spillere', 'start.loadDesc': 'Fortsæt en gemt karriere', 'start.onlineDesc': 'Spil mod dine venner i samme verden', 'start.challengesDesc': 'Klare mål med en deadline', 'start.subtitle': 'Den klassiske fodboldmanager – med 22.700 rigtige spillere fra 2026/27 og 35.000 fra den originale 2001/02-database',
   'start.new': 'Nyt spil', 'start.load': 'Indlæs spil', 'start.challenges': 'Udfordringer', 'start.import': 'Importér save-fil',
-  'start.importFailed': 'Filen kunne ikke indlæses.', 'start.loading': 'Indlæser…', 'start.resuming': 'Fortsætter dit spil…', 'start.loadingDb': 'Indlæser spillerdatabasen…',
+  'start.importFailed': 'Filen kunne ikke indlæses.', 'start.loading': 'Indlæser…', 'start.resuming': 'Fortsætter dit spil…', 'start.loadFailed': 'Kunne ikke hente spillet. Tjek forbindelsen og genindlæs.', 'start.reloadBtn': 'Genindlæs', 'start.loadingDb': 'Indlæser spillerdatabasen…',
   'start.noSaves': 'Ingen gemte spil endnu.', 'start.savedAt': 'gemt', 'start.confirmDelete': 'Slet dette gemte spil?',
   'start.seasons': '{n} sæson(er)', 'start.managerName': 'Managerens navn', 'start.managerPlaceholder': 'Dit navn',
   'start.nations': 'Spilbare nationer', 'start.nationsHint': 'Ligaer i valgte lande simuleres fuldt ud',

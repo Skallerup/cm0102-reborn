@@ -6,7 +6,7 @@ export const en: Record<string, string> = {
 
   'start.pill': 'New season · 40,000+ real players', 'start.loadDesc': 'Continue a saved career', 'start.onlineDesc': 'Play against your friends in the same world', 'start.challengesDesc': 'Clear goals with a deadline', 'start.subtitle': 'The classic football manager – with 22,700 real players from 2026/27 and 35,000 from the original 2001/02 database',
   'start.new': 'New game', 'start.load': 'Load game', 'start.challenges': 'Challenges', 'start.import': 'Import save file',
-  'start.importFailed': 'Could not load that file.', 'start.loading': 'Loading…', 'start.resuming': 'Resuming your game…', 'start.loadingDb': 'Loading player database…',
+  'start.importFailed': 'Could not load that file.', 'start.loading': 'Loading…', 'start.resuming': 'Resuming your game…', 'start.loadFailed': 'Could not load the game. Check your connection and reload.', 'start.reloadBtn': 'Reload', 'start.loadingDb': 'Loading player database…',
   'start.noSaves': 'No saved games yet.', 'start.savedAt': 'saved', 'start.confirmDelete': 'Delete this saved game?',
   'start.seasons': '{n} season(s)', 'start.managerName': 'Manager name', 'start.managerPlaceholder': 'Your name',
   'start.nations': 'Playable nations', 'start.nationsHint': 'Leagues in selected nations are fully simulated',
