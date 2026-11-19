@@ -1997,7 +1997,15 @@ async function run(look) {
       if (await answerSquadNumbers()) continue;
       if (await page.locator('.cx-md-panel').isVisible().catch(() => false) && !st.done) { watched++; if (process.env.SHOTS && watched === 1) await page.screenshot({ path: `${OUT}/klassisk-kampdag-uden-egen.png` }); }
       // (ønskelisterne: en kørsel kan tage et minut i dagens Web Worker – vent, til bjælken er væk, før næste klik)
-      await page.waitForSelector('.cx-running', { state: 'detached', timeout: 300000 }).catch(() => {}); await page.locator('.cx-side .cx-continue').first().click({ timeout: 10000 });
+      await page.waitForSelector('.cx-running', { state: 'detached', timeout: 300000 }).catch(() => {});
+      try { await page.locator('.cx-side .cx-continue').first().click({ timeout: 10000 }); } catch (e) {
+        // hvorfor Continue Game ikke kan trykkes: nyheden på skærmen og menneskets åbne bud
+        const why = await gs(() => { const g = window.__cm.gs(); return JSON.stringify({ date: g.date, news: g.news.slice(-6).map((n) => [n.key, n.read, n.link]), offers: g.offers.filter((o) => o.buyer === g.userClub || o.seller === g.userClub).map((o) => [o.id, o.status, o.buyer, o.seller, o.player, o.cmTalks?.state]) }); }).catch(() => '?');
+        const btn = await page.locator('.cx-side .cx-continue').first().evaluate((b) => b.outerHTML.slice(0, 200)).catch(() => '?');
+        const dlg = await page.evaluate(() => [...document.querySelectorAll('[role=dialog], .cx-dlg')].map((d) => d.innerText.replace(/\s+/g, ' ').slice(0, 300)).join(' | ')).catch(() => '?');
+        if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-continue-laast.png` });
+        throw new Error(`${e.message.split('\n')[0]} – ${btn} – dialog: ${dlg || "ingen"} – ${why}`);
+      }
       await page.waitForTimeout(250);
       if (i === 199) throw new Error(`Continue Game nåede ikke næste kamp (dato ${st.date})`);
     }
