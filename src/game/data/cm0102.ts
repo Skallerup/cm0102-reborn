@@ -76,6 +76,8 @@ export interface CMWorld extends WorldData {
     clubPrefs?: Record<number, number[]>;
     /** (0x59ed70) pr. stadion-id (cmRaw.crowd[3]): stadium.dat +64 siddepladserne og +68 udvidelsen (hukommelsens +0x40/+0x44) */
     seats?: Record<number, [number, number]>;
+    /** (19/11) pr. stadion-id (cmRaw.crowd[3]): stadium.dat +72 nabostadionet (hukommelsens +0x48) – ligaens kampprogram 0x686a70 */
+    stadNear?: Record<number, number>;
     /** (økonomien) pr. klub: [division club.dat +87 (turnerings-id), PLC +130 (s8), stadionets +76/+77 (stadium.dat, s8)] */
     fin?: Record<number, [number, number, number, number]>;
     /** (økonomien) klubbens formand (club.dat +191): [CA (np +4), PA (+6), de 21 egenskaber +0x0e..+0x22 (rå), jobkoden (personpost +61),
@@ -363,6 +365,7 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
   const stadiumRaw = new Map<number, [number, number]>();   // (runde 9) stadium.dat +56 byen, +60 kapaciteten (rå)
   const stadiumFlags = new Map<number, [number, number]>(); // (økonomien) stadium.dat +76/+77 (s8) – månedens stadionudgift 0x59c3d4
   const stadiumSeats = new Map<number, [number, number]>(); // (0x59ed70) stadium.dat +64 siddepladserne, +68 udvidelsen – tribunelukningen
+  const stadiumNear = new Map<number, number>();            // (19/11) stadium.dat +72 nabostadionet – 0x686a70
   if (files['stadium.dat']) {
     const St = new Reader(files['stadium.dat']);
     // post: id (4) · navn (51) · by (4) · 1 byte · kapacitet (4, byte 60) · siddepladser (4, byte 64) · …
@@ -373,6 +376,7 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
       stadiumRaw.set(St.i32(o), [St.i32(o + 56), cap]);
       stadiumFlags.set(St.i32(o), [St.i8(o + 76), St.i8(o + 77)]);
       stadiumSeats.set(St.i32(o), [St.i32(o + 64), St.i32(o + 68)]);
+      stadiumNear.set(St.i32(o), St.i32(o + 72));
       const nm = St.str(o + 4, 51).trim();
       if (nm) stadiumName.set(St.i32(o), nm);
     }
@@ -971,6 +975,8 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
       ...(cities ? { cities } : {}),
       seats: Object.fromEntries([...new Set(rawClubs.filter((c) => clubRep[c.id] !== undefined && inGame.has(c.id) && stadiumRaw.has(c.stadium)).map((c) => c.stadium))]
         .filter((id) => stadiumSeats.has(id)).map((id) => [id, stadiumSeats.get(id)!])),
+      stadNear: Object.fromEntries([...new Set(rawClubs.filter((c) => clubRep[c.id] !== undefined && inGame.has(c.id) && stadiumRaw.has(c.stadium)).map((c) => c.stadium))]
+        .filter((id) => stadiumRaw.has(stadiumNear.get(id) ?? -1)).map((id) => [id, stadiumNear.get(id)!])),
       nation7e: [...nationIdx.keys()].map((id) => nationVal.get(id)![0]),
       nation85: [...nationIdx.keys()].map((id) => nationVal.get(id)![2]),
       nation76, nation7f,

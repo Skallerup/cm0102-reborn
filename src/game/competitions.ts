@@ -12,6 +12,7 @@ import { cmActive } from './cmPlayerData';
 import { CM_LEAGUE_CUT, cmCalendarOn, cmFaCupDate, cmFindNewDate, cmLeagueSchedule, cmPlaceFixture } from './cmCalendar';
 import { cmEuroFinished, cmEuroResult } from './cmEurope';
 import { cmCupKey, cmCupRound, cmFlagsOf, cmLeagueCupStructure } from './cmCups';
+import { CM_LEAGUE_FLAGS, cmLeaguePairs } from './cmFixtures';
 
 // ---------- kalender ----------
 
@@ -167,6 +168,9 @@ export function setupLeague(id: string, name: string, nation: number, tier: numb
     table: clubs.map(emptyRow), ties: [], stage: 'regular', finished: false, pending: 0,
   };
   g.comps[id] = comp;
+  // (19/11) originalens kampprogram (League::create_fixtures 0x6835c0, cmFixtures.ts): nye spil på alle databaser; ikke ligaerne med split
+  // (Skotland/Danmarks grupper efter runde 33 – originalens etaper) eller en afkortet turnering (USA: UsaMls har sin egen 0x9086e0)
+  if (g.cmPairs && !rules.split && !cut && clubs.length >= 2) { setupLeaguePort(comp, rules.rounds, season); return; }
   const rounds = multiRoundRobin(clubs, rules.rounds);
   if (cut) rounds.length = Math.min(rounds.length, cut.cut);
   let total = rounds.length;
@@ -186,6 +190,29 @@ export function setupLeague(id: string, name: string, nation: number, tier: numb
   const dates = leagueDates(leagueCalendar(cal, rules, season), total);
   comp.meta = { dates };
   rounds.forEach((r, i) => r.forEach(([h, a]) => newFixture(id, dates[i], h, a, i + 1)));
+}
+
+/** setupLeague med originalens par (0x6835c0): runde k → skemarækken fra 0x68a030, kampene i originalens rækkefølge gennem add_fixture */
+function setupLeaguePort(comp: Competition, legs: number, season: number) {
+  const g = gs();
+  const id = comp.id, n = comp.clubs.length, total = legs * (n + (n & 1) - 1);
+  const sched = cmCalendarOn(g) ? cmLeagueSchedule(id, season) : null;
+  const useSched = !!sched && sched.length === total;
+  const num = /^CM(\d+)$/.exec(id);
+  const pairs = cmLeaguePairs({
+    comp: num ? Number(num[1]) : -1, clubs: comp.clubs.slice().sort((a, b) => a - b), year: season, legs, rows: total,
+    flags: CM_LEAGUE_FLAGS[id] ?? 3, seed: g.seed ?? 0,
+    stadium: (c) => { const s = g.cmCrowd?.[c]?.[3]; return s !== undefined && s >= 0 ? s : undefined; },
+    near: (s) => g.cmStadNear?.[s], rand: (k) => rng.int(0, k - 1),
+  });
+  if (useSched) {
+    comp.meta = { dates: sched!.map((r) => r.date), cmSched: true, cmYear: season, cmLast: sched![sched!.length - 1].date };
+    for (const p of pairs) cmPlaceFixture(g, newFixture(id, sched![p.row].date, p.home, p.away, p.row + 1, { slot: sched![p.row].slot }));
+    return;
+  }
+  const dates = leagueDates(leagueCalendar(calendar(season), rulesFor(id, n), season), total);
+  comp.meta = { dates };
+  for (const p of pairs) newFixture(id, dates[p.row], p.home, p.away, p.row + 1);
 }
 
 /** Fase 2 i split-ligaer (DK, Skotland, Østrig) */

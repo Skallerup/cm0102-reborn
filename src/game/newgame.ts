@@ -190,6 +190,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     g.cmClubRep = { ...raw.clubRep }; g.cmNationRep = raw.nationRep.slice();
     if (raw.compRep) g.cmCompRep = { ...raw.compRep };
     if (raw.crowd) g.cmCrowd = Object.fromEntries(Object.entries(raw.crowd).map(([k, v]) => [k, v.slice()])) as GameState['cmCrowd'];
+    if (raw.stadNear) g.cmStadNear = { ...raw.stadNear };
     if (raw.cities) g.cmCities = raw.cities.slice();
     if (raw.nation7e) g.cmNation7e = raw.nation7e.slice();
     // (MODERN_PARITY 1+4) kontrakt-/lønlaget og spillerens vilje 0x846920 (cmWageGame/cmSlMem/cmContractGame): klubstatus +0x64, divisionen og
@@ -223,6 +224,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     if (cm.cmRaw.compRep) g.cmCompRep = { ...cm.cmRaw.compRep };
     // (runde 9) tilskuertallet sub_85cba0 (engine/grid/crowd.ts)
     if (cm.cmRaw.crowd) g.cmCrowd = Object.fromEntries(Object.entries(cm.cmRaw.crowd).map(([k, v]) => [k, v.slice()])) as GameState['cmCrowd'];
+    if (cm.cmRaw.stadNear) g.cmStadNear = { ...cm.cmRaw.stadNear };
     if (cm.cmRaw.seats) g.cmStadium = Object.fromEntries(Object.entries(cm.cmRaw.seats).map(([k, v]) => [k, v.slice()])) as GameState['cmStadium'];
     if (cm.cmRaw.cities) g.cmCities = cm.cmRaw.cities.slice();
     if (cm.cmRaw.nation7e) g.cmNation7e = cm.cmRaw.nation7e.slice();
@@ -617,6 +619,8 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   }
 
   progress('comps', 0.55);
+  // (19/11) ligaernes kampprogram som originalens League::create_fixtures 0x6835c0 (cmFixtures.ts) – alle databaser og tilstande
+  g.cmPairs = true;
   // Turneringer for aktive nationer
   setupSeasonComps(season, {});
   // (16/11) sæsonskiftet pr. land (cmSeason.ts): de spilbare lande med egen sæsondag (Norge, Sverige, Japan …) starter i spillets første år

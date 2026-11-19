@@ -1250,6 +1250,10 @@ export interface GameState {
   cmFinRaw?: Record<number, number[]>;
   /** (0x59ed70) stadionernes sæder +0x40 og udvidelse +0x44 pr. stadion-id – oprettes, når en tribune lukkes (cmFinEvents.ts) */
   cmStadium?: Record<number, [number, number]>;
+  /** (19/11) stadion +0x48 (stadium.dat +72, nabostadionets id) pr. stadion-id – ligaens kampprogram 0x686a70 (cmFixtures.ts) */
+  cmStadNear?: Record<number, number>;
+  /** (19/11) ligaernes kampprogram er originalens (League::create_fixtures 0x6835c0, cmFixtures.ts) – nye spil, alle databaser */
+  cmPairs?: boolean;
   cmLowerDiv?: number;
   /** viljen 0x844780 (cmBoardInterest.ts): nation +0x71 (verdensdelens id) pr. nationsindeks, "Europe"s id, byernes +0x33 og klubbernes
    *  mål-omdømme Shortlist_Manager +0xdc[9·klub]+5 (0x83bf40, skrevet når computerens trupplan 0x83cb40 kører) */
