@@ -45,6 +45,7 @@ import { clubNewsToMe, cmForeign } from './cmNewsScope';
 import { natClub, natClubId, natOfClub, resetNationalManagers } from './cmVirtual';
 import { DEMONYM } from '../ui/demonyms';
 import { natCompHook } from './hooks';
+import { NO_CARRY, registerCarry } from './carry';
 
 /** € → £ for klubbens penge (cmMoney.ts: den originale database 0,86; 2026/27 ligaens faktor) */
 const gbpOf = (g: GameState, c: number) => cmGbp(g, c);
@@ -201,6 +202,8 @@ function leagueInfo(g: GameState, lid: string): LeagueInfo | null {
 
 /** midlertidig manager (0x6a4f80: "som om han havde jobbet") */
 const tempManager = new Map<number, Person | null>();
+// (19/11) nulstilles ved et nyt spil (carry.ts) – ellers lækker den fra spillet før i samme fane/proces
+registerCarry('cmBoardGame.caches', () => NO_CARRY, () => {}, () => { tempManager.clear(); leftCache = { key: '', m: new Map() }; });
 
 /** `lazy` (ønskelisternes og kontraktportenes kortlivede hukommelser): rangeringen og klublisten regnes først, når de bruges */
 export function boardEnv(g: GameState, todayIso = g.date, startIso?: string, lazy = false): BoardEnv {

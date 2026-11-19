@@ -34,6 +34,7 @@ import { STAFF_LIMITS } from './staff';
 import { bookBlockEur, K as CMK } from './cmFinance';
 import type { GameState, Staff, StaffRole } from './types';
 import { recordStaffMove } from './staffMoves';
+import { NO_CARRY, registerCarry } from './carry';
 
 export { cmActive, cmStaffOn };
 
@@ -479,6 +480,8 @@ export function cmScoutRec(g: GameState, p: import('./types').Player, scout?: St
   return Math.max(ab, pot);
 }
 let lvCache: { key: string; v: number } | null = null;
+// (19/11) nulstilles ved et nyt spil (carry.ts) – ellers lækker den fra spillet før i samme fane/proces
+registerCarry('cmStaff.caches', () => NO_CARRY, () => {}, () => { icache = null; lvCache = null; });
 const levelCached = (g: GameState, cid: number) => {
   const key = `${g.seed}:${g.date}:${cid}:${g.clubs[cid]?.balance}`;
   if (lvCache?.key !== key) lvCache = { key, v: cmClubLevelOf(g, cid) };

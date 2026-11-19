@@ -8,6 +8,7 @@ import { A, naturalRole } from './attributes';
 import { addDays, ageOn, daysBetween, month, year } from './dates';
 import { makePlayer, randomDob, randomName, roundValue, wageFor } from './data/generate';
 import { rulesFor } from './leagues';
+import { NO_CARRY, registerCarry } from './carry';
 import { Rng, hash, hash01, rng } from './rng';
 import { recordDevelopment } from './training';
 import { merchStarSigning } from './finance';
@@ -120,6 +121,9 @@ const pname = (p: Player) => `${p.first} ${p.last}`.trim();
 // Cache over truppernes CA-rækkefølge (nulstilles dagligt og ved transfers)
 let rankCache = new Map<number, number[]>();
 let rankCacheDate = '';
+// (19/11) følger med spillet (carry.ts) og nulstilles ved et nyt spil – ellers lækker dagens rækkefølge fra spillet før i samme fane
+registerCarry('transfers.rankCache', () => (rankCacheDate ? { d: rankCacheDate, m: [...rankCache] } : NO_CARRY),
+  (v: { d: string; m: [number, number[]][] }) => { rankCacheDate = v.d; rankCache = new Map(v.m); }, () => { rankCache = new Map(); rankCacheDate = ''; });
 
 export function keyPlayerRank(p: Player): number {
   if (!p.club) return 99;
@@ -1263,6 +1267,9 @@ export function analyzeNeeds(clubId: number): { role: Role; score: number }[] {
 
 let roleIndex: Map<Role, number[]> | null = null;
 let roleIndexDate = '';
+// (19/11) indekset bygges hver 14. dag – det følger med spillet (carry.ts) og nulstilles ved et nyt spil (lækkede fra spillet før)
+registerCarry('transfers.roleIndex', () => (roleIndex ? { d: roleIndexDate, m: [...roleIndex] } : NO_CARRY),
+  (v: { d: string; m: [Role, number[]][] }) => { roleIndexDate = v.d; roleIndex = new Map(v.m); }, () => { roleIndex = null; roleIndexDate = ''; });
 
 function buildRoleIndex() {
   const g = gs();

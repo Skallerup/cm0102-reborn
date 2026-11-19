@@ -16,7 +16,7 @@
 import type { GameState, NewsItem, Player } from './types';
 import { ATTRS } from './attributes';
 import { ageOn } from './dates';
-import { addNews } from './state';
+import { addNews, gs, hasGame } from './state';
 import { asOwner, isHumanClub } from './humans';
 import { cmAdjustMorale, cmContractOf, cmFlagSet, cmRand, clubRepMem, curRep, statusCode, wantsToLeave, withFlagCtx, type CmContract } from './cmPlayerData';
 import { valueTarget } from './training';
@@ -25,6 +25,7 @@ import { favoursClub, favoursPerson, managerStaff, personKey } from './cmRelatio
 import { DEMONYM } from '../ui/demonyms';
 import { admiredLines, careerLines, clubLines, contractLines, nextManagerLine, offerLine, type FutX } from './cmFutureMore';
 import { mateLines, mediaLines, patientLines, positionLines, statusLines } from './cmFutureMore2';
+import { NO_CARRY, registerCarry } from './carry';
 
 const s8 = (v: number) => (v << 24) >> 24;
 const cl100 = (v: number) => (v > 100 ? 100 : v < -100 ? -100 : v);
@@ -657,6 +658,9 @@ export function cmInterested(g: GameState, p: Player, level: (club: number) => n
  *  synlig liga højst 2 mål pr. måned: de spillere med niveauet (CA mod de 14 bedstes snit −10…+30), som den har råd til, og som den vurderer
  *  højest over værdien (modelværdien × 0,7–1,3 > værdien); spillerens Interested = de klubber, der valgte ham (højst fire, størst omdømme først). */
 let imCache: { key: string; map: Map<number, number[]> } | null = null;
+// (19/11) månedens valg følger med spillet (carry.ts) og nulstilles ved et nyt spil
+registerCarry('cmTransferList.interest', () => (imCache && hasGame() && imCache.key.startsWith(`${gs().id}|${gs().date.slice(0, 7)}|`) ? { key: imCache.key, m: [...imCache.map] } : NO_CARRY),
+  (v: { key: string; m: [number, number[]][] }) => { imCache = { key: v.key, map: new Map(v.m) }; }, () => { imCache = null; });
 function interestMap(g: GameState, level: (club: number) => number): Map<number, number[]> {
   const ym = g.date.slice(0, 7);
   const key = `${g.id}|${ym}|${g.activeNations.join(',')}`;

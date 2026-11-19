@@ -9,6 +9,7 @@ import { addNews, gs, hasGame, squad } from './state';
 import type { Club, Player, ScoutAssignment } from './types';
 import { cmScoutLogic } from './cmPlayerData';
 import { rng } from './rng';
+import { NO_CARRY, registerCarry } from './carry';
 import { A, naturalRole, roleScore } from './attributes';
 import { addDays, ageOn, daysBetween } from './dates';
 import { ATTRS } from './attributes';
@@ -124,6 +125,13 @@ export function scoutStars(p: Player): { ability: [number, number]; potential: [
 }
 
 const levelCache = new Map<string, number>();
+// (19/11) månedens niveau (regnet første gang i måneden) følger med spillet (carry.ts) og nulstilles ved et nyt spil (lækkede fra spillet før);
+// kun den aktuelle måneds nøgler gemmes – datoen går kun frem
+registerCarry('scouting.levelCache', () => {
+  if (!hasGame()) return NO_CARRY;
+  const mo = `-${gs().date.slice(0, 7)}`, out = [...levelCache].filter(([k]) => k.endsWith(mo));
+  return out.length ? out : NO_CARRY;
+}, (v: [string, number][]) => { levelCache.clear(); for (const [k, x] of v) levelCache.set(k, x); }, () => levelCache.clear());
 export function clubLevel(cid: number): number {
   const g = gs();
   const key = `${cid}-${g.date.slice(0, 7)}`;

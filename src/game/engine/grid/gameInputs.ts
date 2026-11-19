@@ -42,6 +42,7 @@ import { npShown } from '../../cmStaffInit';
 import { captainRel, dislikesPerson, matchRelOf, personKey } from '../../cmRelations';
 import type { MotivationEnv } from './gridMatch';
 import { natOfClub } from '../../cmVirtual';
+import { NO_CARRY, registerCarry } from '../../carry';
 
 /** landskampens fixture-koder (international.ts intlCodes): +0x3a, +0x30, +0x3c (neutral bane) og turneringens id (−1 = ingen) */
 export interface IntlFixtureCodes { b3a: number; w30: number; b3c: number; compId: number }
@@ -140,6 +141,8 @@ export function matchValuesEnvOf(p: Player, side: GameMatchSide, fx: GameFixture
  *  [0xae2d14]+5 (GameState.cmClubUnhappy). fixture+0x40 = 1 som i alle oraklets klubkampe (6ec010's fx40, matchValuesEnvOf); 0x7a7eb0 for
  *  manageren = nej (stabens pensionsmelding findes ikke i spillet). */
 const ROWS = new Map<string, ReturnType<typeof gameLeagueRow>>();
+// (19/11) nulstilles ved et nyt spil (carry.ts) – ellers lækker den fra spillet før i samme fane/proces
+registerCarry('gameInputs.rows', () => NO_CARRY, () => {}, () => { ROWS.clear(); cityCache = null; });
 function motivationEnvOf(g: GameState, p: Player, own: GameMatchSide, opp: GameMatchSide, fx: GameFixtureInfo, compId: string | undefined): MotivationEnv {
   const k = p.contract && p.club === own.club && !p.loan ? p.cmContract : undefined;
   // 0x4cf5f0: +0x4f >> 4 (trupstatus) → 0,3/0,5/0,75/3,0, × (1 + 0,005·+0x44); uden post 1,0
