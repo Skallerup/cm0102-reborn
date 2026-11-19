@@ -2114,8 +2114,9 @@ export interface SlDueCtx {
   /** TRANSFER_MANAGER::offer_contract_to_offer_player 0x8c1e40 (computerens køber, accepteret bud): 0x4cda70(staff, køber, &kontrakt,
    *  buddets indeks, 1,0, 2) → kontraktens 0x50 bytes til add_contract_offer 0x4cc490; null = intet tilbud (buddet trækkes, 0x8bfcb0) */
   offerContract(pid: number, buyer: number, offerId: number): number[] | null;
-  /** CONTRACT_MANAGER::resolve_contract_offers 0x4ce4e0 for køberens tilbud: ja = han skriver under */
-  decide(pid: number, buyer: number, k: number[]): boolean;
+  /** CONTRACT_MANAGER::resolve_contract_offers 0x4ce4e0's point for køberens tilbud (f·point – lejeaftaler 0x846920); 0 = tilbuddet kan ikke
+   *  vælges. Han tager det bedste af sine tilbud over 2,75 (startværdien af det bedste) */
+  decide(pid: number, buyer: number, k: number[]): number;
   /** ai_respond_to_bid 0x8c8291: CONTRACT_MANAGER::calc_asking_price 0x4d1600(sælger, køber, staff, &grund, 1, 1) i dagens hukommelse (£) –
    *  samme hukommelse, som køberens build_bid 0x8e6533 regnede sin pris i */
   asking(pid: number, buyer: number): number | null;
@@ -2189,10 +2190,10 @@ function offerContract_8c1e40(S: SlMem, pid: number, buyer: number, offerId: num
  *  0x8c7560 arbejdstilladelse og under 90 dage til +0x2d → 0), x = 0x846920(staff, klub, 0, 0, status, 0); ≥ 0,9: max(x; 3,15), > 0,8 og
  *  x > 3,15: x, > 0,7 og x > 3,5: x, ellers intet – ja, når x'·point > 2,75 (startværdien af det bedste). Lejeaftaler (+0x35 = 5/6): 0x846920
  *  over 3,15 og 2,75. */
-function decide_4ce4e0(S: SlMem, pid: number, buyer: number, k: number[]): boolean {
+function decide_4ce4e0(S: SlMem, pid: number, buyer: number, k: number[]): number {
   const { m, g } = S;
   const id = S.memOf.get(pid), bc = S.clubAdr(buyer), p = g.players[pid];
-  if (id === undefined || !bc || !p) return false;
+  if (id === undefined || !bc || !p) return 0;
   const home = p.loan?.from ?? p.club;
   if (home) refreshClub(S, home);
   refreshClub(S, buyer);
@@ -2205,14 +2206,14 @@ function decide_4ce4e0(S: SlMem, pid: number, buyer: number, k: number[]): boole
     if (type === 5 || type === 6) {
       const v = type === 5 ? slCall(S.c, 0x846920, S.slm, st, bc, 0, 1, 8, 0)
         : slCall(S.c, 0x846920, S.slm, st, bc, 0, 1, slCall(S.c, 0x849f00, S.slm, st, bc, 0) & 0xff, 0);
-      return v > 2.75 && !(v < 3.15);
+      return v > 2.75 && !(v < 3.15) ? v : 0;
     }
     // (tilbudsposten 0x4cc490 = kontrakten + +0x59 transfertilbuddet, +0x61 jobbet: 0x8c1f5d giver 0xb)
     const s4 = m.u8(K_OUT + 0x4f) >> 4, job = 0xb;
     constructContract_85e410(m, K_DES);
     setToDesiredContract_85fc50(S.M.c, K_DES, st, bc, -1, s4, job, 0, 0);
     const a = calcContractValue_866830(S.M.c, K_DES, st, K_DES) | 0;
-    if (!(a > 0)) return false;
+    if (!(a > 0)) return 0;
     const s8v = (v: number) => (v << 24) >> 24;
     const loyAdj = (s8v(m.u8(st + 0x5b)) - s8v(m.u8(st + 0x57)) + s8v(m.u8(st + 0x59)) - 9) * 0.0033333333333333335;
     const bv = calcContractValue_866830(S.M.c, K_OUT, st, K_DES) | 0;
@@ -2225,9 +2226,9 @@ function decide_4ce4e0(S: SlMem, pid: number, buyer: number, k: number[]): boole
     if (score < 0.9) {
       if (score > 0.8 && x > 3.15) f = x;
       else if (score > 0.7 && x > 3.5) f = x > 3.15 ? x : 3.15;
-      else return false;
+      else return 0;
     } else f = x > 3.15 ? x : 3.15;
-    return f * score > 2.75;
+    return f * score > 2.75 ? f * score : 0;
   }, S);
 }
 const DELAY_REC = 0x5e7f0200;

@@ -1981,9 +1981,10 @@ function cmAiAiDue(cx: SlDueCtx) {
   // process_due_offer 0x8c63a0: de lukkede bud, hvis dag er kommet, fjernes (remove_offer 0x8d0f60)
   if (g.cmTmKept?.length) g.cmTmKept = g.cmTmKept.filter((k) => k.until > g.date);
   for (const o of g.offers.slice()) if (o.cmLoan && o.status === 'pending') cmHumanLoanDue(o, cx);
-  for (const o of g.offers.slice()) {
+  for (let o of g.offers.slice()) {
     if (!o.cmAi || !cmOpen(o) || o.respondBy > g.date) continue;
-    const p = g.players[o.player], buyer = g.clubs[o.buyer];
+    const p = g.players[o.player];
+    let buyer = g.clubs[o.buyer];
     if (!p || !buyer || p.club !== o.seller || p.loan || p.contract?.futureClub || isHumanClub(p.club) || isHumanClub(buyer.id)) {
       // (han er skiftet: 0x8c47d0's 0xf; ellers trukket 0x8bfcb0)
       if (p && p.club !== o.seller) cmTmClose(o, 0xf, 10, 'withdrawn'); else cmTmClose(o, 3, 10, 'withdrawn');
@@ -2044,11 +2045,18 @@ function cmAiAiDue(cx: SlDueCtx) {
       o.respondBy = addDays(g.date, cx.delay(p.id, buyer.id, 0x8c0810));
       continue;
     }
-    // 0x4ce4e0 på beslutningsdagen: venter et andet bud på ham i tilstand 0/1/5/6 (0x8cd150), udsættes beslutningen 2 dage; siger han nej,
-    // handle_player_rejected_terms 0x8c28c0 (tilstand 0xf)
+    // 0x4ce4e0 på beslutningsdagen: venter et andet bud på ham i tilstand 0/1/5/6 (0x8cd150), udsættes beslutningen 2 dage. Ellers gennemgår
+    // han ALLE sine åbne kontrakttilbud (listen +0x34) og tager det bedste over 2,75 (0x4ce9xx: t > best, det første ved lighed); de andre
+    // afvises – handle_player_rejected_terms 0x8c28c0 (tilstand 0xf). Før afgjorde det første forfaldne tilbud alene, om han skrev under.
     if (o.cmK && !o.loan) {
       if (g.offers.some((x) => x !== o && x.player === p.id && (x.status === 'pending' || x.status === 'countered' || (x.status === 'negotiating' && !x.cmK)))) { o.respondBy = addDays(g.date, 2); continue; }
-      if (!cx.decide(p.id, buyer.id, o.cmK)) { CM_AIAI.declined++; cmTmClose(o, 0xf, 10, 'collapsed'); closed = true; continue; }
+      const cands = g.offers.filter((x) => x.cmAi && x.player === p.id && x.status === 'negotiating' && x.cmK && !x.loan && !!g.clubs[x.buyer] && !isHumanClub(x.buyer));
+      let best = 2.75, win: TransferOffer | null = null;
+      for (const x of cands) { const t = cx.decide(p.id, x.buyer, x.cmK!); if (t > best) { best = t; win = x; } }
+      for (const x of cands) if (x !== win) { CM_AIAI.declined++; cmTmClose(x, 0xf, 10, 'collapsed'); }
+      if (!win) { closed = true; continue; }
+      o = win;
+      buyer = g.clubs[o.buyer];
     }
     // accepteret, og spilleren har besluttet sig: handlen (køberen skal stadig have råd – rater: kun første rate)
     if (!o.loan && !(o.months && o.months > 0) && buyer.transferBudget < o.fee) { cmTmClose(o, 0x10, 20, 'collapsed'); closed = true; continue; }
