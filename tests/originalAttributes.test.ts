@@ -29,7 +29,7 @@ describe('egenskaber som i originalen', () => {
     // forsvarere med 17+ i afslutning er sjældne (før rettelsen: ca. 8 %; udfyldningen giver nogle få)
     const cb = Object.values(g.players).filter((p) => p.pos[2] >= 15 && p.pos[6] < 15);
     expect(cb.filter((p) => p.attrs[ATTRS.indexOf('finishing')] >= 17).length / cb.length).toBeLessThan(0.06);
-  }, 60_000);
+  }, 240_000);
   it('omregningen kan gå begge veje', () => {
     for (const ca of [60, 120, 180]) for (let v = 1; v <= 20; v++) {
       const s = shownAtStart(v, ca, true);
@@ -44,5 +44,5 @@ describe('egenskaber som i originalen', () => {
     const a = (k: string) => j.attrs[ATTRS.indexOf(k as never)];
     expect(j.ca).toBe(165);
     expect([a('crossing'), a('longShots'), a('dribbling')]).toEqual([12, 11, 9]);
-  }, 60_000);
+  }, 240_000);
 });

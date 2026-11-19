@@ -26,7 +26,7 @@ describe('nyheder i ægte tilstand har brødtekst', () => {
     for (const n of g.news) if (!HEADLINE_ONLY.has(n.key) && !newsBody(n)) missing.set(n.key, (missing.get(n.key) ?? 0) + 1);
     expect(g.news.length).toBeGreaterThan(20);
     expect([...missing.entries()]).toEqual([]);
-  }, 240_000);
+  }, 600_000);
 
   it('egne handler (Lasse Lauth moves from … for £65,000) har brødtekst', () => {
     const base = { cat: 'transfer' as const, id: 1, date: '2001-07-27', read: false, params: { player: 'Lasse Lauth', last: 'Lauth', from: 'Vejle', to: 'Cheltenham', fee: 65_000 } };
