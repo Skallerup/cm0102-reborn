@@ -74,8 +74,9 @@ export const npTemplate = (np: NpRec): NpTemplate => ({ ca: np.ca, list: npList(
  */
 export function staffInitRecord(s: StaffInitIn, pool: readonly NpTemplate[], rand: Rand): number {
   const np = s.np;
-  // 0x537f75: CA uden for 1..200 → klubbens omdømme / 100 (landsholdsklubben +0x24 – ikke i spillet), ellers rand(100) + 1
-  if (np.ca < 1 || np.ca > 200) np.ca = s.clubRep !== null ? trunc(s.clubRep / 100) : rand(100) + 1;
+  // 0x537f75: CA uden for 1..200 → klubbens omdømme +0x80 / 50 (0x537f92: imul 0x51eb851f, sar 4 – før læst som / 100; oraklet 14/7-01:
+  // Hessenthaler/Gillingham 4500 → 90, Parks/Halifax 3000 → 60, Macari/Huddersfield 5000 → 100), landsholdsklubben +0x24 (ikke i spillet), ellers rand(100) + 1
+  if (np.ca < 1 || np.ca > 200) np.ca = s.clubRep !== null ? trunc(s.clubRep / 50) : rand(100) + 1;
   // 0x537fdd: PA uden for 1..200 → max(CA, rand(200) + 1)
   if (np.pa < 1 || np.pa > 200) { const v = rand(200) + 1; np.pa = np.ca > v ? np.ca : v; }
   // 0x538009: Directness 0 med en nation
