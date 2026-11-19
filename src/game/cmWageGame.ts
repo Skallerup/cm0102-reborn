@@ -21,7 +21,7 @@
 // manager uden ikke-spillerpost, ferietjekket 0x5fe040 i 0x600a50 ikke porteret.
 import type { Club, GameState, Player } from './types';
 import { type CmCtx, G, SparseMem } from './cmMem';
-import { getMaxWage_5968d0, recalcWages_598370 } from './cmMaxWage';
+import { getMaxWage_5968d0, maxStaffWage_597db0, recalcWages_598370 } from './cmMaxWage';
 import { clubInSeason_669bd0, linkedClub_540a50 } from './cmClubLinks';
 import { defaultStaffContract_864550, defaultWageUnset_862720 } from './cmWage';
 import { fillUnsetWage_83a1b0 } from './cmWageFill';
@@ -49,6 +49,8 @@ export function humanClub_600a50(c: CmCtx, club: number): boolean {
 export function cmMemCall(c: CmCtx, adr: number, ...a: number[]): number {
   switch (adr) {
     case 0x5968d0: return getMaxWage_5968d0(c, a[0], a[1], a[2]);
+    // Finance::get_max_staff_wage(job) – 0x4cda70's lønloft for et stabsjob (fx build_bid 0x8e6423 for en klubløs med spillerpost og job ≠ 0xb)
+    case 0x597db0: return maxStaffWage_597db0(c, a[0] >>> 0, a[a.length - 1] & 0xff);
     case 0x540a50: return linkedClub_540a50(c.m, a[0], a[1], a[2]);
     case 0x669bd0: return clubInSeason_669bd0(c, a[0], a[1], a[2]);
     case 0x600a50: return humanClub_600a50(c, a[0]) ? 1 : 0;
