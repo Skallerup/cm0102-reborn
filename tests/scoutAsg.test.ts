@@ -77,7 +77,7 @@ describe('Assign Scout ▸ Nation (den originale database, ægte tilstand)', () 
     for (const n of rec) {
       expect(newsTitle(n)).toBe('Recommended player in French search');
       const p = g.players[n.link!.id];
-      expect(newsBody(n)).toMatch(new RegExp(`^Scout ${scout.first} ${scout.last} (recommends|feels) ${ageOn(p.dob, n.date)} year old .+ ${p.first} ${p.last}`));
+      expect(newsBody(n)).toMatch(new RegExp(`^Scout ${scout.first} ${scout.last} (recommends|feels) ${ageOn(p.dob, n.date)} year old .+ ${[p.first, p.last].filter(Boolean).join(' ')}`));   // (enkeltnavne som Pauleta: intet fornavn)
     }
     // alle poster er rapporteret, listen står på Scout #n
     const after = cmAsgOf(g, scout)!;
