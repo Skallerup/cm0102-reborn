@@ -553,6 +553,15 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   if (npLogic && staffLogic) npLogic.staff = true;
   natDb = {};
   staffDbWage.clear();
+  // 0x527240 tæller klubbens pladser (+0x19f/+0x1b3/+0x1cf) med databasens folk – også dem, der her kun er i Staff Search (staffX: klubber uden for
+  // spillets ligaer), så de genererede kun fylder op
+  extraSlots = new Map();
+  if (memSel && cm?.staffX) for (const row of cm.staffX) {
+    const cj = row[16];
+    if (!cj || cj[0] < 0 || ![8, 9, 10].includes(cj[1]) || !memOf(row)) continue;
+    const e = extraSlots.get(cj[0]) ?? extraSlots.set(cj[0], { 8: 0, 9: 0, 10: 0 }).get(cj[0])!;
+    e[cj[1] as 8 | 9 | 10]++;
+  }
   for (const c of Object.values(g.clubs)) createClubStaff(c, world, seed, date, dbStaff.get(c.id) ?? []);
   // ledige stabsfolk fra databasen (CA 100+): rollen efter deres bedste egenskab
   for (const row of dbStaff.get(0) ?? []) {
@@ -589,7 +598,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
       }
     }
   }
-  npInit = null; npLogic = null; memSel = null; memFlags = null;
+  npInit = null; npLogic = null; memSel = null; memFlags = null; extraSlots = new Map();
   const natDbGame = natDb; natDb = null;
   // (den originale database) turneringernes tidligere vindere fra club_comp_history.dat – "<turnering> History" → Winners
   if (cm?.compHist && season < 2020) {
@@ -837,6 +846,8 @@ let npLogic: { pool: NpTemplate[]; nations: string[]; seed: number; np: Record<n
 /** 0x524d70: de valgte lande (den originale database med staffX, eller 2026/27 med stabens modul) og (2026/27) hukommelsen pr. person-id */
 let memSel: Set<number> | null = null;
 let memFlags: Record<number, 1 | number[]> | null = null;
+/** databasens trænere/spejdere/fysioterapeuter (job 8/9/10) pr. klub, der kun er i staffX (0x527240's pladser) */
+let extraSlots = new Map<number, { 8: number; 9: number; 10: number }>();
 /** (MODERN_PARITY 7) 2026/27: databasens landstrænere (staff +0x24/+0x28 med job 5/12) → bestyrelsens nd (cmBoardInit) */
 let natDb: Record<number, [number, number]> | null = null;
 /** 0x524d70: har originalen personen i hukommelsen med de valgte lande (world-rækkens [15]: 1 = altid, ellers nationerne) */
@@ -916,7 +927,7 @@ function createClubStaff(c: Club, world: WorldData, seed: number, date: string, 
   const infoNat = info?.[2] ? world.nations.findIndex((n) => n.name === info[2]) : -1;
   // Wikipedias liste (nyere end databasen) går forud; ellers databasens manager (club.dat 207)
   const coach = (info?.[0] ? `${info[0].split(' ')[0]}|${info[0].split(' ').slice(1).join(' ')}${infoNat >= 0 ? `|${infoNat}` : ''}` : '') || world.clubs.find((x) => x[0] === c.id)?.[7] || '';
-  const mk = (role: StaffRole, level: number) => {
+  const mk = (role: StaffRole, level: number, mem = false) => {
     let first: string, last: string, nation = c.nation;
     if (role === 'manager' && coach) {
       // databasen: "fornavn|efternavn|nation" – ellers første ord som fornavn
@@ -928,9 +939,9 @@ function createClubStaff(c: Club, world: WorldData, seed: number, date: string, 
       [first, last] = randomName(g.names, c.nation, r);
     }
     const s = makeStaff({ id: g.nextId.staff++, first, last, nation, club: c.id, role, level, date, seed });
-    // 0x527240 (database_generate_extra_non_playing_staff): de genererede trænere/spejdere/fysioterapeuter/managere i klubberne i de valgte
-    // lande er i originalens hukommelse og dermed i Staff Search (antallet er spillets eget, ikke 0x527240's – *estimeret*)
-    if (memSel?.has(c.nation)) s.cmMem = true;
+    // 0x527240 (database_generate_extra_non_playing_staff): kun dens genererede trænere/spejdere/fysioterapeuter er i originalens hukommelse
+    // og dermed i Staff Search (gen0x527240 nedenfor) – spillets øvrige genererede stab (manager/assistent uden databasens) findes ikke dér
+    if (mem) s.cmMem = true;
     g.staff[s.id] = s;
     return s;
   };
@@ -950,12 +961,23 @@ function createClubStaff(c: Club, world: WorldData, seed: number, date: string, 
   }
   if (!have.manager) { const m = mk('manager', lvl + r.int(-5, 5)); c.manager = m.id; }
   if (!have.assistant) mk('assistant', lvl - 5);
-  const coaches = 2 + Math.floor(c.rep / 25);
-  for (let i = have.coach; i < coaches; i++) mk('coach', lvl - 8 + r.int(-6, 6));
-  if (!have.physio) mk('physio', lvl - 5);
-  if (c.rep > 55 && have.physio < 2) mk('physio', lvl - 10);
-  const scouts = 1 + Math.floor(c.rep / 30);
-  for (let i = have.scout; i < scouts; i++) mk('scout', lvl - 8 + r.int(-6, 6));
+  // 0x527240 (den originale stabs hukommelse, memSel): klubberne i de valgte lande (nation +0x11c) – ikke Englands med omdømme +0x80 ≤ 500
+  // (0x527334/0x527340) – fyldes op til ftol((omd + 500)·k/10000) i 1..max (0x527422/0x527725/0x527a26): trænere k = 5 (+0x19f, højst 5),
+  // spejdere k = 7 (+0x1b3, højst 7), fysioterapeuter k = 3 (+0x1cf, højst 3); de nye får job 8/9/10. Ikke porteret: B-holdenes spring
+  // (0x540a50) og 0x527d03's ledige managere for klubber uden manager. Ellers spillets egne tal (uden for originalens hukommelse).
+  const R = g.cmClubRep?.[c.id] ?? c.rep * 100;
+  const gen0x527240 = !!memSel?.has(c.nation) && !(g.nations[c.nation]?.name === 'England' && R <= 500);
+  const target = (k: number, max: number) => Math.min(max, Math.max(1, Math.trunc(((R + 500) * k) / 10000)));
+  const xs = gen0x527240 ? extraSlots.get(c.id) : undefined;
+  const coaches = gen0x527240 ? target(5, 5) - (xs?.[8] ?? 0) : 2 + Math.floor(c.rep / 25);
+  for (let i = have.coach; i < coaches; i++) mk('coach', lvl - 8 + r.int(-6, 6), gen0x527240);
+  if (gen0x527240) { for (let i = have.physio; i < target(3, 3) - (xs?.[10] ?? 0); i++) mk('physio', lvl - 5 - 5 * i, true); }
+  else {
+    if (!have.physio) mk('physio', lvl - 5);
+    if (c.rep > 55 && have.physio < 2) mk('physio', lvl - 10);
+  }
+  const scouts = gen0x527240 ? target(7, 7) - (xs?.[9] ?? 0) : 1 + Math.floor(c.rep / 30);
+  for (let i = have.scout; i < scouts; i++) mk('scout', lvl - 8 + r.int(-6, 6), gen0x527240);
   // stabens løn følger klubbens lønniveau: højst 20 % af spillernes lønsum (*estimeret*) – ellers kostede seks stabsfolk i en
   // lille klub lige så meget som hele truppen, og hundredvis af små klubber gik i minus i første sæson
   // (K8) databasens egne stabslønninger (oraklet har dem som de står) ligger fast; kun de genererede skaleres ned
