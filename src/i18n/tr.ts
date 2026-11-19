@@ -3925,6 +3925,8 @@ Object.assign(tr, {
   "cm.staffAgrees": "{last}, {club} teklifini kabul etti",
   "cm.staffAgrees.body": "{name}, {club} ile şartlarda anlaştı.",
   "cm.job.acceptQ": "{club} teknik direktörlüğü görevini kabul ediyor musun ?",
+  "cl.cl.applyJob": "İşe Başvur",
+  "cl.cl.applyQ": "{club} işine başvurulsun mu ?",
   "cmret.ann": "{last} emekli olma kararını açıkladı",
   "cmret.b.old": "{player}, profesyonel futbol oynamak için çok yaşlandığına karar verdi.\n\nSezon sonunda emekli olma kararını resmen açıkladı.",
   "cmret.b.oldClub": "{club} oyuncusu {player}, profesyonel futbol oynamak için çok yaşlandığına karar verdi.\n\nSezon sonunda emekli olma kararını resmen açıkladı.",

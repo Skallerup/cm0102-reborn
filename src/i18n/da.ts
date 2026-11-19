@@ -2343,6 +2343,8 @@ export const da: Record<string, string> = {
   "cm.staffAgrees": "{last} accepterer {club}s tilbud",
   "cm.staffAgrees.body": "{name} er blevet enig med {club} om vilkårene.",
   "cm.job.acceptQ": "Tag imod jobbet som manager for {club}?",
+  "cl.cl.applyJob": "Søg job",
+  "cl.cl.applyQ": "Søg jobbet i {club} ?",
   // PLAYER_REGEN (cmRetire.ts): 0xbbb 0x7aa4c0 og 0xbba 0x7a9650
   "cmret.ann": "{last} meddeler, at han stopper karrieren",
   "cmret.b.old": "{player} har besluttet, at han er for gammel til at spille professionel fodbold.\n\nHan meddeler officielt, at han stopper karrieren ved sæsonens afslutning.",

@@ -20,6 +20,7 @@ import { realCompName } from '../i18n/comps';
 import { titleLogo } from './classicOptions';
 import { matchDayComps } from './screens/MatchDayClassic';
 import { friendlyInvite, friendlyInviteFor } from './screens/FriendlyClassic';
+import { applyJobAsk, canApplyForJob } from './screens/applyJob';
 import { authentic } from '../game/rules';
 import { cmActive } from '../game/cmPlayerData';
 import { rebornOn } from './reborn';
@@ -583,6 +584,8 @@ export function ClassicHead({ title, children, action, menu, club }: { title: Re
         {action ? <div className="cx-action">{action}</div> : setup && hub?.sub === CLUB_SUB ? <div className="cx-action"><button className="cx-take" onClick={setup.takeControl} data-take>{t('cxs.takeControl')}</button></div>
           // CM 01/02 0x482a40: "Invite Club" på en anden klubs skærm, mens en venskabskamp/turné venter på en modstander
           : !setup && hub?.sub === CLUB_SUB && logoClub && friendlyInviteFor(g, logoClub) ? <div className="cx-action"><button className="cx-take cx-invite-club" onClick={() => void friendlyInvite(g, logoClub)}>{t('cl.fr.inviteClub')}</button></div>
+          // 0x482c9e: "Apply for Job" (0x65), når klubben ingen manager har og kan styres (0x53ca90 = 0, 0x544820)
+          : !setup && hub?.sub === CLUB_SUB && logoClub && canApplyForJob(g, logoClub) ? <div className="cx-action"><button className="cx-take cx-apply-job" onClick={() => void applyJobAsk(g, logoClub)}>{t('cl.cl.applyJob')}</button></div>
           : null /* Print er fjernet overalt (ejerens ønske 13/11) */}
       </div>
       {tabs.length ? <ButtonRow items={tabs} className="cx-tabrow" /> : <div className="cx-tabslot" ref={slotRef} />}

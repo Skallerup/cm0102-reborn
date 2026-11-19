@@ -3925,6 +3925,8 @@ Object.assign(de, {
   "cm.staffAgrees": "{last} nimmt Angebot von {club} an",
   "cm.staffAgrees.body": "{name} hat sich mit {club} auf Konditionen geeinigt.",
   "cm.job.acceptQ": "Die Stelle als Manager von {club} annehmen?",
+  "cl.cl.applyJob": "Bewerben",
+  "cl.cl.applyQ": "Für den Job bei {club} bewerben ?",
   "cmret.ann": "{last} gibt Karriereende bekannt",
   "cmret.b.old": "{player} hat entschieden, dass er zu alt für den Profifußball ist.\n\nEr gibt offiziell bekannt, dass er am Saisonende seine Karriere beendet.",
   "cmret.b.oldClub": "{player} von {club} hat entschieden, dass er zu alt für den Profifußball ist.\n\nEr gibt offiziell bekannt, dass er am Saisonende seine Karriere beendet.",

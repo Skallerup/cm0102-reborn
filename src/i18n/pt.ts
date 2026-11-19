@@ -3925,6 +3925,8 @@ Object.assign(pt, {
   "cm.staffAgrees": "{last} aceita proposta do {club}",
   "cm.staffAgrees.body": "{name} chegou a um acordo com o {club}.",
   "cm.job.acceptQ": "Aceitar o cargo de técnico do {club}?",
+  "cl.cl.applyJob": "Candidatar-se",
+  "cl.cl.applyQ": "Candidatar-se ao cargo no {club} ?",
   "cmret.ann": "{last} anuncia decisão de se aposentar",
   "cmret.b.old": "{player} decidiu que está velho demais para jogar futebol profissional.\n\nEle anuncia oficialmente a sua decisão de se aposentar no fim da temporada.",
   "cmret.b.oldClub": "{player}, do {club}, decidiu que está velho demais para jogar futebol profissional.\n\nEle anuncia oficialmente a sua decisão de se aposentar no fim da temporada.",

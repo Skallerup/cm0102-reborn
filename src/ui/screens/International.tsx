@@ -20,6 +20,8 @@ import { ClassicSub, CxDrop, CxLink, clubRoute, type Item } from '../classic';
 import { ClassicClubSquad } from './SquadClassic';
 import { ClassicTournament, TOUR_KEYS, type TourKey } from './IntlTourClassic';
 import { rebornOn } from '../reborn';
+import { applyJobAsk, canApplyForJob } from './applyJob';
+import { natClub } from '../../game/cmVirtual';
 
 export function International({ nation }: { nation?: number }) {
   const g = useGame()!;
@@ -199,7 +201,8 @@ function ClassicNationTeam({ n }: { n: number }) {
   const Nn = ({ id }: { id: number }) => <span className={id === n ? 'cx-cup-team me' : ''}><CxLink to={{ name: 'international', id }}>{natName(g.nations[id]?.name)}</CxLink></span>;
   return (
     <div>
-      <Head title={natName(g.nations[n]?.name)} />
+      {/* 0x482a40 for landsholdet (en klub i originalen): "Apply for Job", når det ingen manager har og kan styres (0x544820: ikke U21, nation +0x88 > 150) */}
+      <Head title={natName(g.nations[n]?.name)} action={canApplyForJob(g, natClub(n)) ? <button className="cx-take cx-apply-job" onClick={() => void applyJobAsk(g, natClub(n))}>{t('cl.cl.applyJob')}</button> : undefined} />
       <Tabs tabs={[['squad', t('cl.nt.squad')], ['u21', t('cl.nt.u21')], ['results', t('intl.tab.results')], ['fifa', t('intl.tab.fifa')], ['info', t('cl.nt.info')]]} value={tab} onChange={(v) => setTab(v as typeof tab)} />
       {tab === 'u21' && (u21Squad(n).length ? <ClassicClubSquad cid={0} players={u21Squad(n)} /> : <div className="cx-empty">{!rebornOn('helpTexts') ? '' : t('intl.noSquad')}</div>)}
       {tab === 'squad' && (

@@ -2312,6 +2312,8 @@ export const en: Record<string, string> = {
   "cm.staffAgrees": "{last} accepts {club} offer",
   "cm.staffAgrees.body": "{name} has agreed terms with {club}.",
   "cm.job.acceptQ": "Accept the position as manager of {club} ?",
+  "cl.cl.applyJob": "Apply for Job",
+  "cl.cl.applyQ": "Apply for the {club} job ?",
   // PLAYER_REGEN (cmRetire.ts): 0xbbb 0x7aa4c0 og 0xbba 0x7a9650
   "cmret.ann": "{last} announces decision to retire",
   "cmret.b.old": "{player} has decided he is too old to play professional football.\n\nHe officially announces his decision to retire at the end of the season.",

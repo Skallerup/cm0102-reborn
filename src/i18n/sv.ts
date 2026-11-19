@@ -7337,6 +7337,8 @@ Object.assign(sv, {
   "cm.staffAgrees": "{last} godtar erbjudandet från {club}",
   "cm.staffAgrees.body": "{name} har kommit överens om villkor med {club}.",
   "cm.job.acceptQ": "Tacka ja till jobbet som manager i {club}?",
+  "cl.cl.applyJob": "Sök jobbet",
+  "cl.cl.applyQ": "Söka jobbet i {club} ?",
   "cmret.ann": "{last} meddelar att han lägger av",
   "cmret.b.old": "{player} har bestämt sig för att han är för gammal för att spela professionell fotboll.\n\nHan meddelar officiellt att han lägger av vid säsongens slut.",
   "cmret.b.oldClub": "{player} i {club} har bestämt sig för att han är för gammal för att spela professionell fotboll.\n\nHan meddelar officiellt att han lägger av vid säsongens slut.",
