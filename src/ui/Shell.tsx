@@ -36,8 +36,8 @@ import { ClassicLobby, Lobby, OnlineControls, onlineSimLabel } from './Online';
 import { closeSession, session } from '../online/client';
 import { submitPending } from '../online/rank';
 import { focusNews } from './inboxFocus';
-import { squadNumbersDue } from '../game/squadNumbers';
-import { euroDue, euroRegistered } from '../game/euroSquad';
+import { newsDue } from './screens/newsRespond';
+import { euroRegistered } from '../game/euroSquad';
 import { act } from '../game/actions';
 import { setScrollElement, useGame, useNav, type ScreenName } from './core';
 import { Inbox } from './screens/Inbox';
@@ -361,19 +361,18 @@ export function Shell() {
   };
   const onContinue = () => {
     if (cmNav && classicContinue()) return;
-    // klassisk (CM 01/02): Continue Game venter, til trøjenummerlisten er sendt – vis beskeden med Respond
-    if (cmNav && squadNumbersDue(g.userClub)) {
-      const n = g.news.find((x) => x.key === 'sqn.request' && !x.params.done);
-      if (n) { focusNews(n.id); nav({ name: 'inbox' }); return; }
+    // CM 01/02 (0x787350(m, 1) → 0x788010): er der ulæste nyheder eller en nyhed, der kræver svar (bud på egen spiller, jobtilbud, Squad
+    // Numbers …), åbner Continue Game den ældste af dem i stedet for at gå videre – også på kampdagen og før en fulgt dag spilles; først når alt
+    // er læst og besvaret, går spillet videre (ejerens ønske 13/11 + 19/11). På nyheden er Continue Game grå (Inbox: newsMustRespond).
+    if (cmNav) {
+      const due = newsDue(g);
+      if (due) {
+        if (!due.read) act({ t: 'read', ids: [due.id] });
+        focusNews(due.id);
+        if (route.name !== 'inbox') nav({ name: 'inbox' });
+        return;
+      }
     }
-    // … og på den europæiske trup (31/8)
-    if (cmNav && euroDue(g.userClub)) {
-      const n = g.news.find((x) => x.key === 'eur.request' && x.params.done === undefined);
-      if (n) { focusNews(n.id); nav({ name: 'inbox' }); return; }
-    }
-    // CM 01/02: er der ulæste nyheder, åbner Continue Game den næste (som Next Unread) i stedet for at gå videre – også på kampdagen og
-    // før en fulgt dag spilles; først når alt er læst, går spillet videre (ejerens ønske 13/11)
-    if (cmNav && showOldestUnread(g.news)) return;
     if (g.pendingFixture) {
       const pf = g.fixtures[g.pendingFixture];
       // gammel kamp fra en klub, man ikke længere styrer (efter jobskifte): spil den automatisk

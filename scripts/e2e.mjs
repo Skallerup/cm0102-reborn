@@ -76,6 +76,21 @@ async function run(look) {
       await page.waitForTimeout(300);
       return true;
     }
+    // CM 01/02 (0x782b70 = 2): står nyhedsskærmen på en nyhed, der kræver svar (bud på egen spiller, jobtilbud, rygte, transferønske,
+    // venskabskamp …), er Continue Game grå – testen svarer: bud/jobtilbud/rygter/ønsker afvises i tilstanden, ellers Respond (→ Please Confirm)
+    if (look === 'klassisk' && await page.locator('.cx-inbox').isVisible().catch(() => false) && await page.locator('.cx-side .cx-continue').isDisabled().catch(() => false)
+      && !(await gs(() => { const g = window.__cm.gs(); return g.clubs[g.userClub]?.sqnDue === g.season || g.clubs[g.userClub]?.euroDue === g.season; }))) {
+      const fixed = await gs(() => {
+        const g = window.__cm.gs(); let k = 0;
+        for (const o of g.offers) if (o.status === 'pending' && o.seller === g.userClub) { o.status = 'rejected'; k++; }
+        if (g.jobOffers.length) { g.jobOffers.length = 0; k++; }
+        for (const n of g.news) if ((n.key === 'cm.rum' || n.key === 'cm.req') && !n.params.ans) { n.params = { ...n.params, ans: 3 }; k++; }
+        window.__cm.notify(); return k;
+      });
+      if (!fixed && await page.locator('.cx-nbar .cx-respond').isVisible().catch(() => false)) await page.locator('.cx-nbar .cx-respond').first().click();
+      await page.waitForTimeout(300);
+      return true;
+    }
     if (!(await gs(() => { const g = window.__cm.gs(); return g.clubs[g.userClub]?.sqnDue === g.season; }))) return false;
     if (await page.locator('.cx-foot-btns button.primary').isVisible().catch(() => false)) await page.locator('.cx-foot-btns button.primary').click();
     else if (await page.locator('.cx-respond').isVisible().catch(() => false)) await page.locator('.cx-respond').first().click();
@@ -1871,6 +1886,8 @@ async function run(look) {
   if (look === 'klassisk') await step('Continue Game åbner de ulæste nyheder én ad gangen', async () => {
     // trøjenumre/European Squad venter ikke under testen (de stopper Continue Game før nyhederne)
     const due = await gs(() => { const c = window.__cm.gs().clubs[window.__cm.gs().userClub]; const d = [c.sqnDue, c.euroDue]; c.sqnDue = undefined; c.euroDue = undefined; return d; });
+    // … og heller ikke nyheder, der kræver svar (0x782b70 = 2: bud på egen spiller, jobtilbud) – de vælges ellers før de nye ulæste
+    await gs(() => { const g = window.__cm.gs(); for (const o of g.offers) if (o.status === 'pending' && o.seller === g.userClub) o.status = 'rejected'; g.jobOffers.length = 0; for (const n of g.news) if ((n.key === 'cm.rum' || n.key === 'cm.req') && !n.params.ans) n.params = { ...n.params, ans: 3 }; });
     const ids = await gs(() => {
       const g = window.__cm.gs();
       for (const n of g.news) n.read = true;
@@ -1892,6 +1909,39 @@ async function run(look) {
     }
     if ((await gs(() => window.__cm.gs().date)) !== d0) throw new Error('Continue Game gik videre, mens der var ulæste nyheder');
     await gs((d) => { const c = window.__cm.gs().clubs[window.__cm.gs().userClub]; c.sqnDue = d[0] ?? undefined; c.euroDue = d[1] ?? undefined; }, due);
+  });
+
+  // CM 01/02 (0x782b70 = 2, ejerens billede 19/11 "Valencia transfer bid for Scholes"): et bud på egen spiller skal besvares – Continue Game
+  // åbner buddet, er grå på nyheden, og Respond åbner svaret; først når buddet er besvaret, kan spillet gå videre
+  if (look === 'klassisk') await step('Continue Game er grå, til et bud er besvaret', async () => {
+    const id = await gs(() => {
+      const g = window.__cm.gs();
+      for (const n of g.news) n.read = true;
+      const p = Object.values(g.players).find((x) => x.club === g.userClub);
+      const buyer = Number(Object.keys(g.clubs).find((c) => Number(c) !== g.userClub && g.clubs[c].nation === g.clubs[g.userClub].nation));
+      const o = { id: g.nextId.offer++, player: p.id, buyer, seller: g.userClub, fee: 1000000, loan: false, status: 'pending', created: g.date, respondBy: g.date };
+      g.offers.push(o);
+      const nid = g.nextId.news++;
+      g.news.unshift({ id: nid, date: g.date, read: true, cat: 'transfer', key: 'transfer.incomingBid', params: { club: g.clubs[buyer].name, player: p.last ?? '', fee: o.fee }, link: { kind: 'offer', id: o.id } });
+      window.__cm.notify();
+      return { nid, oid: o.id };
+    });
+    const d0 = await gs(() => window.__cm.gs().date);
+    await go({ name: 'competitions' });
+    await page.waitForSelector('.cx-running', { state: 'detached', timeout: 300000 }).catch(() => {});
+    await page.locator('.cx-side .cx-continue').first().click({ timeout: 10000 });
+    await page.waitForSelector(`.cx-nrow.on[data-id="${id.nid}"]`, { timeout: 5000 });
+    if (!(await page.locator('.cx-side .cx-continue').isDisabled())) throw new Error('Continue Game er ikke grå på et ubesvaret bud');
+    if (!(await page.locator('.cx-nbar .cx-respond').isVisible())) throw new Error('Respond mangler på buddet');
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-bud-respond.png` });
+    await page.locator('.cx-nbar .cx-respond').first().click();
+    await page.waitForTimeout(300);
+    if ((await page.locator('body').innerText()).trim().length < 100) throw new Error('Respond åbnede ikke svaret på buddet');
+    await gs((oid) => { const g = window.__cm.gs(); const o = g.offers.find((x) => x.id === oid); if (o) o.status = 'rejected'; window.__cm.notify(); }, id.oid);
+    await go({ name: 'inbox' });
+    await page.waitForTimeout(300);
+    if (await page.locator('.cx-side .cx-continue').isDisabled()) throw new Error('Continue Game er stadig grå efter svaret');
+    if ((await gs(() => window.__cm.gs().date)) !== d0) throw new Error('Continue Game gik videre med et ubesvaret bud');
   });
 
   // klassisk: indlæsningsbjælken (grå bjælke med datoen + blå fremdrift) vises med det samme, når Continue Game simulerer, og står til
