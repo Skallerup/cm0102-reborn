@@ -1166,6 +1166,7 @@ export const da: Record<string, string> = {
   'cl.fin.total': "I alt",
   'cl.fin.balance': "Saldo",
   'cl.fin.funds': "Transferbudget",
+  'cl.fin.noneAvail': "Ingen til rådighed",
   'cl.fin.in.gate': "Billetindtægter",
   'cl.fin.in.seasonTickets': "Sæsonkort",
   'cl.fin.in.tv': "TV-indtægter",

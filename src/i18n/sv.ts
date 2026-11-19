@@ -4037,6 +4037,7 @@ export const sv: Record<string, string> = {
   "cl.fin.total": "Total",
   "cl.fin.balance": "Balance",
   "cl.fin.funds": "Transfer Funds",
+  "cl.fin.noneAvail": "Inga tillgängliga",
   "cl.fin.in.gate": "Gate Receipts",
   "cl.fin.in.seasonTickets": "Season Tickets",
   "cl.fin.in.tv": "TV Revenue",

@@ -160,21 +160,62 @@ export function moneyFull(eur: number): string {
   return (v < 0 ? '-' : '') + (currency === 'DKK' ? `${num} kr.` : currency === 'SEK' || currency === 'NOK' ? `${num} kr` : currency === 'BRL' ? `R$ ${num}` : `${currencySymbol()}${num}`);
 }
 
-/** CM 01/02 Finances-skærmen (ejerens billede 18/11): præcist beløb uden Cash-afrunding ("85.113.190DKr"), men over 13 tegn forkortet
- *  til 2 decimaler ("388,08M Dkr", "1,12B Dkr", "1B Dkr"); underskud i parentes "(86,41M Dkr)" */
+/** Originalens valutatabel (Cash 0x43f7f0(id) – unicorn-kørsel af exe'en): foran (0xad9ca8), efter (0xad9c70, kun fulde tal/under 1000),
+ *  tusindtalsseparator (0xad9ca2), decimaltegn (0xad9cc8), enhederne K/M/B/T (0xad9d00/0xad9d68/0xad9ccc/0xad9d34 – med valutaen) og
+ *  trinenheden til afrundingen (0xad9cc0). Id: GBP 0, DKK 6, EUR 7 (tegn 0xA4 = €, "€uro"), NOK 16, SEK 21, BRL 4, TRY 23. */
+const CASH_CUR: Record<Currency, { pre: string; suf: string; sep: string; dec: string; K: string; M: string; B: string; T: string; unit: number }> = {
+  EUR: { pre: '€', suf: '', sep: ',', dec: '.', K: 'K', M: 'M', B: 'B', T: 'T', unit: 1 },
+  DKK: { pre: '', suf: 'DKr', sep: '.', dec: ',', K: 'K Dkr', M: 'M Dkr', B: 'B Dkr', T: 'T Dkr', unit: 10 },
+  GBP: { pre: '£', suf: '', sep: ',', dec: '.', K: 'K', M: 'M', B: 'B', T: 'T', unit: 1 },
+  SEK: { pre: '', suf: ' :-', sep: ' ', dec: ',', K: ' TKr', M: ' MKr', B: ' BKr', T: ' TKr', unit: 10 },
+  NOK: { pre: 'Kr ', suf: '', sep: ',', dec: ',', K: ' K', M: ' M', B: ' B', T: ' T', unit: 10 },
+  BRL: { pre: 'R$', suf: ',00', sep: '.', dec: ',', K: 'K', M: 'M', B: 'B', T: 'T', unit: 1 },
+  TRY: { pre: '', suf: ' TL', sep: '.', dec: '.', K: ' K', M: ' Milyon', B: ' Milyar', T: ' Trilyon', unit: 1_000_000 },
+};
+
+/** cash_format_money 0x441c10(buf, len, v, flags) – heltal i den viste valuta. Kun flagbit 2 bruges: `full` = alle cifre med
+ *  tusindtalsseparator + efterstillet valuta ("85.113.190DKr"); ellers forkortet fra 1000: 1-3 heltal, ≤ 2 AFKORTEDE decimaler uden
+ *  efterstillede nuller, og enheden (som rummer valutaen): "1,5K Dkr", "388,08M Dkr", "1B Dkr". Negative tal (og ≥ 16 cifre) giver "0"
+ *  (cifferløkken stopper) – fortegnet er kalderens sag. Mellemrum skrives som '|' (vises som mellemrum). */
+export function cashFormat(v: number, full: boolean, cur: Currency = currency): string {
+  const c = CASH_CUR[cur];
+  const s = v > 0 ? String(Math.trunc(v)) : '';
+  const L = s.length;
+  if (L === 0 || L > 15) return `${c.pre}0${c.suf}`;
+  if (full) return c.pre + s.replace(/\B(?=(\d{3})+$)/g, c.sep) + c.suf;
+  if (L <= 3) return c.pre + s + c.suf;
+  const grp = Math.floor((L - 1) / 3); // 1 = K, 2 = M, 3 = B, 4 = T
+  const n = L - grp * 3; // heltalscifre (1-3); (en valuta uden B-enhed – fx Pta – viser M med separator; ingen af vores)
+  const d = s.slice(n, n + 2).replace(/0+$/, '');
+  return c.pre + s.slice(0, n) + (d ? c.dec + d : '') + (grp === 1 ? c.K : grp === 2 ? c.M : grp === 3 ? c.B : c.T);
+}
+
+/** Cash::get_display_amount 0x43f460 med flag 4/6 (uden 0x20): rundet til trinnet 0x4426e0 (trinnene × valutaens enhed 0xad9cc0) */
+export function cashDisplayRound(v: number, cur: Currency = currency): number {
+  const u = CASH_CUR[cur].unit;
+  const st = cashStepOf(v / u) * u;
+  return Math.trunc((v + Math.trunc(st / 2)) / st) * st;
+}
+
+/** CM 01/02 Finances-skærmen 0x460590: præcist beløb (flag 0x22, ingen Cash-afrunding), men over 13 tegn forkortet (0x21); underskud/negativ
+ *  saldo: beløbet uden fortegn (forkortet over 12 tegn) i parentes "(86,41M Dkr)". */
 export function moneyCx(eur: number): string {
   const v = Math.round(eur * RATE[currency]);
-  const neg = v < 0, a = Math.abs(v);
-  const dkk = currency === 'DKK' || currency === 'SEK' || currency === 'NOK';
-  const sym = currency === 'DKK' ? 'Kr' : currency === 'SEK' || currency === 'NOK' ? 'kr' : currencySymbol();
-  const loc = LOCALE[lang];
-  const full = a.toLocaleString(loc);
-  const wrap = (x: string) => (neg ? `(${x})` : x);
-  const fullTxt = dkk ? `${full}D${sym}` : currency === 'BRL' ? `R$ ${full}` : `${sym}${full}`;
-  if (wrap(fullTxt).length <= 13) return wrap(fullTxt);
-  const [d, u] = a >= 1e9 ? [1e9, 'B'] : [1e6, 'M'];
-  const n = (a / d).toLocaleString(loc, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-  return wrap(dkk ? `${n}${u} D${sym.toLowerCase()}` : currency === 'BRL' ? `R$ ${n}${u}` : `${sym}${n}${u}`);
+  if (v < 0) {
+    const a = -v, f = cashFormat(a, true);
+    return `(${f.length > 12 ? cashFormat(a, false) : f})`;
+  }
+  const f = cashFormat(v, true);
+  return f.length > 13 ? cashFormat(v, false) : f;
+}
+
+/** Transfer Funds på Finances (0x463aec): negativ → null ("None available" i rødt); ellers flag 6 (fuldt, rundet til Cash-trinnet), over 13
+ *  tegn forkortet med flag 0x21 (urundet) */
+export function moneyCxFunds(eur: number): string | null {
+  const v = Math.round(eur * RATE[currency]);
+  if (v < 0) return null;
+  const f = cashFormat(cashDisplayRound(v), true);
+  return f.length > 13 ? cashFormat(v, false) : f;
 }
 
 export function dateFmt(iso: string, long = false): string {

@@ -10,7 +10,7 @@ import { isInternational, u21Squad } from '../../game/international';
 import { CxDrop } from '../classic';
 import { SHIFT_WEEKS, boardMood, type BudgetKind } from '../../game/board';
 import { useState } from 'react';
-import { currencySymbol, dateFmt, getCurrency, money, moneyCx, moneyFull, t, toCur } from '../../i18n';
+import { currencySymbol, dateFmt, getCurrency, money, moneyCx, moneyCxFunds, moneyFull, t, toCur } from '../../i18n';
 import { Bar, Modal, MoneyInput, Panel, Tabs } from '../components';
 import { useGame, useNav, useRouteState } from '../core';
 import { AttendanceTab, FacilitiesTab, FinanceHistoryTab } from './Stadium';
@@ -357,7 +357,7 @@ export function ClassicFinanceBody({ view, clubId }: { view: 'finances' | 'incom
     <>
       {view === 'finances' && <>
         {table([[t('cl.fin.v.income'), (p) => sum(INCOME, p)], [t('cl.fin.v.expenditure'), (p) => sum(EXPENSE, p)], ['', () => 0], [t('cl.fin.profit'), (p) => sum(INCOME, p) - sum(EXPENSE, p), 'profit']])}
-        <div className="cx-fin-bal"><span>{t('cl.fin.balance')}</span><b className={c.balance < 0 ? 'neg' : ''}>{moneyCx(c.balance)}</b><span>{t('cl.fin.funds')}</span><b className={c.transferBudget < 0 ? 'neg' : ''}>{moneyCx(c.transferBudget)}</b></div>
+        <div className="cx-fin-bal"><span>{t('cl.fin.balance')}</span><b className={c.balance < 0 ? 'neg' : ''}>{moneyCx(c.balance)}</b><span>{t('cl.fin.funds')}</span><b className={c.transferBudget < 0 ? 'neg' : ''}>{moneyCxFunds(c.transferBudget) ?? t('cl.fin.noneAvail')}</b></div>
       </>}
       {view === 'income' && table(line(INCOME, 'in'))}
       {view === 'expenditure' && table(line(EXPENSE, 'out'))}
