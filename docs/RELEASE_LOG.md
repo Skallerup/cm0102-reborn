@@ -2,6 +2,7 @@
 
 Flyttet fra CLAUDE.md 17/11-2026 (så CLAUDE.md er kort i hver session). Nyeste først. Tilføj en linje øverst ved hver udgivelse.
 
+- 2026-11-19 – Skudt live (v0.31.0): 2026-11-19 – Leje (rest): spillerens svar 0x4cc930 (omdømme/500 > lejeklubbens omdømme → nej + 'rejects move'), pokal/mod-moderklub-valg som felter + regler i holdudtagelsen 0x8e8a60 (hjemlige turneringer), mærket Trn (0x18) i stedet for Fut. Europa-tilmelding ikke porteret.
 - 2026-11-19 – Skudt live (v0.31.0): 2026-11-18 – Finansskærm (ejerens billede): moneyCx (fulde tal med tusindtalsseparator; forkortes til 2 decimaler over 13 tegn – gæt, 0x441c10 ikke afkodet), Profit/Loss rød i parentes ved underskud, negativ Balance/Transfer Funds rød.
 - 2026-11-18 – Skudt live (v0.30.0): 2026-11-18 – MODERN_PARITY 4: cmFinOn(g) (cmFinance på 2026 ægte, g.cmFin), cmGbp i stedet for 0,86 overalt (bookBlockEur), world-cm.json cmRaw.clubFin (club.dat saldo/tilskuere/træningsanlæg); PL Brentford 1. sæson: klubber i minus 97 → 110/656, PL 0 → 3, tv-rettigheder først fra 2. sæson som originalen. 2001 uændret 9e533ca1.
 - 2026-11-18 – Skudt live (v0.30.0): 2026-11-18 – Kontrakttilbud (ejerens billede, Per Benjaminsen): Offer slås aldrig fra i 0x4e06e0 (no interest erstatter kun kravlinjen; løn sættes ned til loftet 0x4e1329); stabens svar = 0x4ce4e0 (cmStaffContractAnswer: point = tilbud/krav 0x866830 − loyalitet, vilje 0x844780, f·point > 2,75) i stedet for skøn; stabens krav 0x85fc50. K5 243 → 242. 2001 uændret.
