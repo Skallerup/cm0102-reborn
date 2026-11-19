@@ -20,7 +20,7 @@
 // id-rækkefølgen (lige nøgler kan derfor stå anderledes end i originalen, der sorterer gårsdagens liste); stabens pladser (rolle 6–10) får klubbens
 // nuværende stab som indehaver (0x69d1b0's vurdering af stabsfolk er ikke porteret – stabsansættelser går ikke gennem ønskelisten hos os – de har deres egen port af halen, budgettet og stabsgrenen i cmStaffMove.ts);
 // TRANSFER_MANAGER's tilbud er spillets åbne bud (uden rival- og forhandlingslister); skaderne 0x62ed70 fra konditionsmodulet; arbejdstilladelsen
-// 0x8c7950 = rules2001.ts permitOk; lejeregler 0x8d0040 = rules2001.ts loanBlocked; spillerens svar på et kontrakttilbud til en fri spiller
+// 0x8c7950 = rules2001.ts workPermitGranted (spil startet med porten: cmPermit.ts cmWorkPermit – originalens 0x8c7950); lejeregler 0x8d0040 = rules2001.ts loanBlocked; spillerens svar på et kontrakttilbud til en fri spiller
 // kommer straks (originalen venter på hans beslutningsdato 0x4cd230).
 import type { GameState, Player } from './types';
 import { type CmCtx, type CmMem, G, getContract, clubAt, SparseMem } from './cmMem';
@@ -1502,7 +1502,8 @@ function slShared(S: SlMem, adr: number, a: number[]): number | undefined {
   switch (adr) {
     case 0x6e6340: return planValue(S, a[0] >>> 0, a[1], a[2], a[3] >>> 0, a[4]);
     case 0x8c7950: {
-      // TRANSFER_MANAGER::is_work_permit_granted(staff, land, 0, 0, 0) – 0x84b180 har afgjort, at han skal have en (*estimeret*: rules2001.ts)
+      // TRANSFER_MANAGER::is_work_permit_granted(staff, land, 0, 0, 0) – 0x84b180 har afgjort, at han skal have en: spil startet med porten
+      // originalens 0x8c7950 (cmPermit.ts cmWorkPermit på spiltilstanden), gamle spil rules2001.ts' skøn
       const p = S.byMem.get(S.m.s32(a[a.length - 5] >>> 0));
       return p ? (workPermitGranted(p) ? 1 : 0) : 1;
     }

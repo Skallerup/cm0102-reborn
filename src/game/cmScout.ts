@@ -40,7 +40,7 @@ import { clubRepMem, cmActive, cmRand, cmScoutLogic, statusCode } from './cmPlay
 import { cmGbp } from './cmMoney';
 import { cmClubLevelOf, cmStaffAttr, scoutJudgement } from './cmStaff';
 import { cmKnowSee } from './cmKnow';
-import { cmNeedsPermit } from './cmPermit';
+import { cmNeedsPermit, cmPermitOn, cmWorkPermit } from './cmPermit';
 import { workPermitGranted } from './rules2001';
 import { cmForeign } from './cmNewsScope';
 import { playerRecord } from './engine/grid/aiTeam';
@@ -172,10 +172,11 @@ export function reportOnPlayer(g: GameState, s: Staff, p: Player, force: 0 | 1 |
   }
   // 0x7b69cf: listens resultattabel (cmScoutAsg.ts)
   const five = cmAsgRecord(g, s, p, raw.est, raw.pot, ab, pot);
-  // 2026/27: spillet har ingen arbejdstilladelser (docs/MODERN_PARITY.md – V) – rapporten nævner hverken tilladelse eller EU-pas
-  const permits = cmActive(g);
+  // 0x7b6e99/0x7b6eb7: 0x8c7560(…, 1) og 0x8c7950(spiller, land, 0, 0, 1) – med tilfældighed (rand(1000), 2 × rand(3), 2 × rand(10)). Spil startet
+  // med porten (cmPermitOn – også 2026/27); gamle 2001-spil uden den: CM Reborns skøn (rules2001.ts)
+  const permits = cmActive(g) || cmPermitOn(g);
   const needs = permits && cmNeedsPermit(g, p, club, true);
-  const granted = needs ? (workPermitGranted(p) ? 1 : 0) : 1;
+  const granted = needs ? ((cmPermitOn(g) ? cmWorkPermit(g, p, null, rnd) : workPermitGranted(p)) ? 1 : 0) : 1;
   const match = m ? matchOf(m) : undefined;
   if (force === 0) {
     // 0x7b701e: et nyt 5-stjernet fund i turneringssøgningen → nyheden 0x138b med kampen

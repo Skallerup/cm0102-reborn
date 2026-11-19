@@ -19,7 +19,7 @@ import { askingPrice, canPreContract, interestedClubs, myPendingBid, nextWindow,
 import { cmActive, cmLogic, cmMarketOn, statCell, statColumns } from '../../game/cmPlayerData';
 import { squadMoveOption } from '../../game/cmBTeam';
 import { cmTalksOpen } from '../../game/cmTransferTalks';
-import { cmPermitHistory } from '../../game/cmPermit';
+import { cmPermitHistory, cmPermitOn } from '../../game/cmPermit';
 import { cmScoutOn } from '../../game/cmScout';
 import { ClassicNegotiation } from './NegotiationClassic';
 import { DEMONYM } from '../demonyms';
@@ -298,7 +298,7 @@ function ContractTab({ p, mine }: { p: Player; mine: boolean }) {
   const showStarted = !!c && !p.loan && (c.cmType ?? 2) === 2 && g.date >= NEW_SYSTEM;
   // Work Permit (0x87d99f–0x87db3d): spilleren har en post i arbejdstilladelseshistorikken (0x8c7260), skal have tilladelse i klubben
   // (0x8c7560(…, 1)) og har en almindelig kontrakt – "N games played, M games missed (P%)", P = 100 · spillet / (spillet + ikke spillet)
-  const permit = c && !p.loan && (c.cmType ?? 2) === 2 && cmActive(g) ? cmPermitHistory(g, p) : null;
+  const permit = c && !p.loan && (c.cmType ?? 2) === 2 && (cmActive(g) || cmPermitOn(g)) ? cmPermitHistory(g, p) : null;
   const permitText = permit ? permitLine(permit.w4, permit.w6) : '';
   // CM 01/02 (0x85e960): originalens klausuler med det fælles beløb +0x21 (Manager Job Release Clause har intet beløb)
   const cmCl = c?.cmClauses ? c.cmClauses.map((v, i) => (v ? (i < 4 && c.cmClauseFee ? t('cm.clause.fee', { name: t(`cm.clause.${i}`), v: money(c.cmClauseFee) }) : t(`cm.clause.${i}`)) : '')).filter(Boolean).join(', ') : '';

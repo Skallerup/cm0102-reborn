@@ -1299,6 +1299,9 @@ export interface GameState {
   cmOutbreaks?: import('./cmFitness').CmOutbreak[];
   /** originalens arbejdstilladelses-historik (TRANSFER_MANAGER +0x93a, cmPermit.ts): staff-id → [kampe spillet, ikke spillet, året, landet] */
   cmPermit?: Record<number, import('./cmPermit').PermitEntry>;
+  /** 0x8c7950's tilstand (cmPermit.ts cmWorkPermit): landskampshistorikken TRANSFER_MANAGER +0x86e[id·8] +3/+5, landsholdenes kamptal
+   *  [[0xb74318]+4] nation·110 + 2 og (uden originalens FIFA-liste g.intl.cmFifa) FIFA_RANKINGS' resultatliste – findes = modulet er slået til */
+  cmWp?: import('./cmPermit').CmWp;
   /** [0xae2d14] + 6·klub +5 (cmPlayerData.ts): truppens utilfredse nøglespillere – 0x5cccd0 hver 7. dag */
   cmClubUnhappy?: Record<number, number>;
   version: number;

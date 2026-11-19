@@ -21,6 +21,7 @@ import { cmActive, postHooks, recordPlayerMatch, repMemOf } from './cmPlayerData
 import { intlHooks } from './hooks';
 import { cmSquadOf, cmIntlMatchReport, selectFinals, selectSquad, type FixName } from './cmIntlSquad';
 import { cmFifaRanking, cmFifaRecord, type FifaComp } from './cmFifa';
+import { cmWpFifaRecord, cmWpIntlMatch } from './cmPermit';
 
 export interface IntlRow { n: number; p: number; w: number; d: number; l: number; gf: number; ga: number; pts: number }
 export interface IntlTie { stage: string; a: number; b: number; hg?: number; ag?: number; pens?: boolean; winner?: number }
@@ -272,6 +273,8 @@ export function playNation(home: number, away: number, kind: IntlResult['kind'],
       if (isHumanClub(p.club)) asOwner(p.club, () => addNews({ cat: 'injury', key: 'intl.injured', params: { player: `${p.first} ${p.last}`.trim(), nation: g.nations[p.nation]?.name ?? '', days }, link: { kind: 'player', id: p.id } }));
     }
   }
+  // NationalTeams 0x76b600: landenes kamptal og (A-landskampe) arbejdstilladelsens landskampshistorik 0x8ce920 – cmPermit.ts (spil med porten)
+  cmWpIntlMatch(g, home, away, !u21, rep.players.filter((l) => l.minutes > 0).map((l) => ({ id: l.id, side: l.team })));
   const res: IntlResult & { pens?: [number, number] } = { date: g.date, home, away, hg: hs.goals, ag: as.goals, kind, stage, ...(rep.pens ? { pens: rep.pens } : {}), ...(TOUR_KINDS.has(kind) ? { mini: packReport(rep, (id) => g.players[id]?.number) } : {}) };
   const st = state();
   st.results = [res, ...st.results].slice(0, 150);
@@ -282,6 +285,8 @@ export function playNation(home: number, away: number, kind: IntlResult['kind'],
     const fx: FixName = kind === 'friendly' ? 'friendly' : kind === 'euroq' || kind === 'wcq' ? 'qual' : !stage ? 'group' : (stage as FixName);
     cmIntlMatchReport(g, rep, home, away, res.hg, res.ag, fx, caps);
   } else updateFifa(home, away, res.hg, res.ag, kind);
+  // 0x58cf70's resultatliste til 0x8c7950's 0x58d710 i spil uden originalens FIFA-liste (2026/27 – cmPermit.ts)
+  cmWpFifaRecord(g, home, away, g.date);
   // brugerens landshold: resultat og statistik
   const board = !!intlHooks.boardOn?.();
   forEachHuman(() => {

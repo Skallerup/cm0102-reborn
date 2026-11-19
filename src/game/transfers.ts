@@ -37,6 +37,7 @@ import { origLogic, legacyExtended } from './rules';
 import { aiRespond, aiReview, applyRejectReason, clauseOptIn, newTerms, putTerms, termsOf, valueCtx, MAX_SWAP, type BidTerms, type RejectKey } from './cmTransferBid';
 import { bookBlockEur, K as CMK } from './cmFinance';
 import { cmGbp } from './cmMoney';
+import { cmNeedsPermit, cmPermitOn, cmWorkPermit } from './cmPermit';
 
 /** (MODERN_PARITY 3) € ↔ originalens £ med faktoren for klubben, pengene tilhører (cmMoney.ts – den originale database: 0,86 som toGbp/fromGbp) */
 const toK = (eur: number, cid?: number) => Math.round(eur * cmGbp(gs(), cid || undefined));
@@ -432,7 +433,8 @@ export function makeBid(pid: number, fee: number, loan = false, extra?: { sellOn
   // grænse; pengene kontrolleres først ved Confirm Transfer Offer (0x8cfc90: budget × 1,1 → Delay Transfer Offer)
   if (!loan && fee > buyer.transferBudget && !cmMarketOn(g)) return 'transfer.overBudget';
   if (loan && loanBlocked(p, buyer)) return 'transfer.loanNonEu';
-  if (!permitOk(p, buyer)) return 'transfer.noWorkPermit';
+  // (spil startet med porten: som originalen ingen kontrol ved buddet – 0x8c7950 afgør det ved handlens gennemførelse 0x8c7690, completeTransfer)
+  if (!cmPermitOn(g) && !permitOk(p, buyer)) return 'transfer.noWorkPermit';
   // Change Transfer Bid (CM 01/02): det ventende bud erstattes af det ændrede (*estimeret*: et nyt bud med ny svartid)
   if (extra?.change && cmMarketOn(g)) { const old = myPendingBid(pid); if (old) { old.status = 'withdrawn'; old.cmCounter = undefined; } }
   if (g.offers.some((o) => o.player === pid && o.buyer === buyer.id && ['pending', 'negotiating', 'countered'].includes(o.status))) return 'transfer.alreadyBidding';
@@ -783,12 +785,20 @@ function aiNewContract(p: Player, club: Club, fallback: () => Contract): Contrac
   return r.contract;
 }
 
-export function completeTransfer(o: TransferOffer, wage: number, years: number, clauses?: ContractClauses) {
+export function completeTransfer(o: TransferOffer, wage: number, years: number, clauses?: ContractClauses): boolean {
   const g = gs();
   const p = g.players[o.player];
   const buyer = g.clubs[o.buyer];
   const seller = o.seller ? g.clubs[o.seller] : undefined;
-  if (!p || !buyer) return;
+  if (!p || !buyer) return false;
+  // CM 01/02 0x8c7690 (handlen) / 0x8c38b0 (den klubløse): 0x8c7560(spiller, køber, 0) og 0x8c7950 med det aftalte kontrakttilbud (klub, løn,
+  // udløb) – afslag: nyheden 0x13 ("Work permit refused"), tilbuddet +0x2c = 0x10 (spil startet med porten – cmPermit.ts)
+  if (!o.loan && cmPermitOn(g) && cmNeedsPermit(g, p, buyer.id, false)
+    && !cmWorkPermit(g, p, { club: buyer.id, wageGbp: Math.round(wage * cmGbp(g, buyer.id)), expires: `${year(g.date) + Math.max(1, years)}-06-30` }, null)) {
+    o.status = 'collapsed';
+    asOwner(buyer.id, () => addNews({ cat: 'transfer', key: 'transfer.permitRefused', params: { player: pname(p), club: buyer.name }, link: { kind: 'player', id: p.id } }));
+    return false;
+  }
   if (o.loan) {
     // CM 01/02: lejekontrakten 0x85e590 med buddets udløb og lønprocent (menneskets Loan bid / computerens 0x842740 – køberlandets lejeperiode
     // 0x8d0590, cmLoan.ts); lejeklubben betaler andelen `share`
@@ -889,6 +899,7 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
     else if (origLogic()) originalTransferNews(p, buyer, seller, o.fee, o.loan, o.addOn, o);
     else if (otherTransferNews(buyer, seller, o.fee, o.loan)) (g.transferDigest ??= []).push({ player: p.id, from: o.seller, to: buyer.id, fee: o.fee, ...(o.loan ? { loan: true } : {}) });
   });
+  return true;
 }
 
 export function toggleListed(pid: number) {

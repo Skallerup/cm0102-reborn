@@ -3,7 +3,7 @@ import { addNews, gs, squad } from './state';
 import { rng } from './rng';
 import { econ } from './econ';
 import { cmActive } from './cmPlayerData';
-import { cmNeedsPermit } from './cmPermit';
+import { cmNeedsPermit, cmPermitOn, cmWorkPermit, type PermitOffer } from './cmPermit';
 import { asOwner, isHumanClub } from './humans';
 import type { Club, Player } from './types';
 
@@ -23,20 +23,25 @@ const UK = new Set(['England', 'Scotland', 'Wales', 'Northern Ireland']);
 
 /** Skal spilleren have arbejdstilladelse for at spille for klubben? (britisk klub, spiller uden for EU/EØS) */
 export function needsWorkPermit(p: Player, club: Club): boolean {
-  if (!isOriginal2001()) return false;
   const g = gs();
+  // spil startet med 0x8c7950-porten (en CM-database i ægte tilstand – også 2026/27): originalens 0x8c7560 med databasens nation.dat
+  if (cmPermitOn(g)) return cmNeedsPermit(g, p, club.id, true);
+  if (!isOriginal2001()) return false;
   // ægte tilstand: originalens 0x8c7560 (britiske øer/Irland, EU-borger efter nation +0x7f og andet statsborgerskab, Schweiz) – cmPermit.ts
   if (cmActive(g)) return cmNeedsPermit(g, p, club.id, true);
   return UK.has(g.nations[club.nation]?.name ?? '') && !EU_EEA.has(g.nations[p.nation]?.name ?? '');
 }
 
 /**
- * Får han tilladelsen? Den rigtige regel (1999-2002): 75 % af landets tællende landskampe de seneste to år og landet i
+ * Får han tilladelsen? Spil startet med porten: originalens 0x8c7950 (cmPermit.ts cmWorkPermit – uden tilbud og uden tilfældighed, som 0x84b180).
+ * Ellers (gamle spil og udvidet tilstand) CM Reborns regel: den rigtige regel (1999-2002): 75 % af landets tællende landskampe de seneste to år og landet i
  * top 70 på FIFA-ranglisten – ellers en appel for "særligt talent". Databasen har kun det samlede antal landskampe,
  * så reglen er *estimeret*: etableret landsholdsspiller (15+ kampe), stort navn (omdømme 70+) eller landsholdsspiller
  * af høj klasse (5+ kampe og CA 140+).
  */
-export function workPermitGranted(p: Player): boolean {
+export function workPermitGranted(p: Player, offer?: PermitOffer): boolean {
+  const g = gs();
+  if (cmPermitOn(g)) return cmWorkPermit(g, p, offer ?? null, null);
   return p.caps >= 15 || p.rep >= 70 || (p.caps >= 5 && p.ca >= 140);
 }
 
@@ -84,7 +89,7 @@ export function englandLoanRefused(p: Player, buyer: Club): boolean {
 }
 
 /** Kan klubben hente ham (ingen tilladelse nødvendig, eller den gives)? */
-export const permitOk = (p: Player, club: Club) => !needsWorkPermit(p, club) || workPermitGranted(p);
+export const permitOk = (p: Player, club: Club, offer?: PermitOffer) => !needsWorkPermit(p, club) || workPermitGranted(p, offer);
 
 /**
  * Spillere, der udebliver (CM 01/02: awol.cpp – "[spiller] goes AWOL"): en utilfreds spiller kan forsvinde i 3-10 dage.

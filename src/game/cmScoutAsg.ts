@@ -39,7 +39,7 @@ import { asOwner } from './humans';
 import { clubRepMem, cmActive, cmRand, leagueAverage } from './cmPlayerData';
 import { cmClubLevelOf, cmStaffAttr } from './cmStaff';
 import { cmKnowSee } from './cmKnow';
-import { cmNeedsPermit, CM_EU } from './cmPermit';
+import { cmNeedsPermit, cmPermitOn, cmWorkPermit, CM_EU } from './cmPermit';
 import { workPermitGranted } from './rules2001';
 import { playerRecord, roleDataOf } from './engine/grid/aiTeam';
 import { roleScore, type Day } from './engine/grid/roleScore';
@@ -249,10 +249,14 @@ function cleanTable(g: GameState, s: Staff, a: CmAsg): number {
 }
 
 /** 0x7b0050/0x7b3e20's tilladelsespladser: (1, får den) eller (2 EU-pas via anden nationalitet i en britisk klub / 0, 0) */
-function permitSlots(g: GameState, p: Player, club: number): { permit: number; granted: number } {
-  // 2026/27: spillet har ingen arbejdstilladelser (docs/MODERN_PARITY.md – V), så heller ingen pladser
-  if (!cmActive(g)) return { permit: 0, granted: 0 };
-  if (cmNeedsPermit(g, p, club, true)) return { permit: 1, granted: workPermitGranted(p) ? 1 : 0 };
+function permitSlots(g: GameState, s: Staff, p: Player, club: number): { permit: number; granted: number } {
+  // modulet: den originale database i ægte tilstand eller et spil startet med 0x8c7950-porten (cmPermitOn – også 2026/27)
+  if (!cmActive(g) && !cmPermitOn(g)) return { permit: 0, granted: 0 };
+  // 0x7b4450/0x7b4473: 0x8c7560(…, 0) og 0x8c7950(spiller, land, 0, 0, 1) med tilfældighed (egen talrække – spillets rng røres ikke)
+  if (cmNeedsPermit(g, p, club, true)) {
+    const ok = cmPermitOn(g) ? cmWorkPermit(g, p, null, cmRand(g.seed ?? 0, s.id, p.id, dayNo(g.date), 0x7b3e20, 0x8c7950)) : workPermitGranted(p);
+    return { permit: 1, granted: ok ? 1 : 0 };
+  }
   const two = !eu(g, p.nation) && p.cmNation2 !== undefined && p.cmNation2 >= 0 && eu(g, p.cmNation2) && cmRegionOf(g, g.clubs[club]?.nation) === 0xe;
   return { permit: two ? 2 : 0, granted: 0 };
 }
@@ -314,7 +318,7 @@ export function sendRecommendation(g: GameState, s: Staff, a: CmAsg, p: Player, 
     scout: `${s.first} ${s.last}`.trim(), slast: s.last || s.first, pid: p.id, player: `${p.first} ${p.last}`.trim(), last: p.last || p.first,
     age: ageOn(p.dob, g.date), pos: posMaskOf(p), club: home || -1, ab, pt,
     nation: a.nation, region: a.region, comp: a.comp ?? '', youth: a.youth ? 1 : 0,
-    ...permitSlots(g, p, club), nat2: p.cmNation2 ?? -1, good: scoutGood(g, s, p),
+    ...permitSlots(g, s, p, club), nat2: p.cmNation2 ?? -1, good: scoutGood(g, s, p),
   };
   if (match) Object.assign(params, { mt: match.team, mo: match.opp, gf: match.gf, ga: match.ga, rsv: match.reserve ? 1 : 0, mcomp: match.comp, stg: match.stage, rnd: match.round });
   asOwner(club, () => addNews({ cat: 'scout', key: keyOf(a, 'rec'), params, link: { kind: 'player', id: p.id } }));
