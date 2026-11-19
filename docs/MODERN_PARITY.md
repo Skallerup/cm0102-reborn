@@ -98,7 +98,8 @@ Forkortelser: **L** = logik (bør kunne gælde 2026/27), **V** = 2001-verden (fo
 | Kalender, sæsonskifte pr. land, forkørsel | cmCalendar.ts, cmSeason.ts, cmPrerun*.ts | 2001/02-datoer | spillets kalender | – | V |
 | Europas turneringer, Liga Cup, Charity Shield | cmEurope.ts, cmCups.ts | 2001/02-formatet | moderne format (Swiss-liga, Conference League) | – | V |
 | Landshold, FIFA-rangliste, slutrunder | cmIntl*.ts, cmFifa.ts, cmNatTeams.ts, international.ts | 2001/02 (VM 2002) | international.ts | nationalTeams | V (udtagelsen cmIntlSquad = L) |
-| Arbejdstilladelse, leje, 3/5-regler | cmPermit.ts, rules2001.ts, rules.ts `classicRules` | før Brexit, 3 udsk./5 bænk | ingen tilladelse, 5/9 | – | V |
+| Arbejdstilladelse (0x8c7560/0x8c7950 + historik) | cmPermit.ts, rules2001.ts | De Britiske Øer (+0x76 = 0xe), ikke EU (+0x7f = 2), 0x8c7950 | **som originalen for nye spil (19/11)** – databasens nation.dat +0x76/+0x7f, FIFA-resultatlisten g.cmWp.res | – | L |
+| Leje, 3/5-regler | rules2001.ts, rules.ts `classicRules` | 3 udsk./5 bænk | 5/9 | – | V |
 | Priser/løn-niveau | g.econ, econ.ts, newgame.ts:357–421, finance.ts:102/148 | 2001-£ | econ26.ts | – | V (må ikke deles) |
 | UI-forgreninger | src/ui: `authentic()` (≈ 200 steder – tema/tilstand, ikke database) og `cmActive` i Shell, classic.tsx, PlayerClassic, Transfers(Classic), TransferStatusClassic, Inbox, Staff, Board, NegotiationClassic, TrainingClassic | | | | følger motoren |
 
@@ -147,7 +148,7 @@ Kontrol: oraklet med opdateringens Data-mappe (kopi!) som reference.
 | 11 | Pensioneringer og fyldspillere | season.ts `retirements()` | PLAYER_REGEN, virtual_staff | F0 (nation85, cmFinRaw → B for den del) | middel (regens' antal over tid) | Middel |
 | 12 | Vejr, priser (awards), reserve-/B-hold, venskabskampe, sprog | intet/egne | weather.cpp, award/*.cpp, 0x84b940, friendly.cpp, cmLanguage | F0 (cities/city33, compRep, crowd, nations.lang) | lav; venskabskampe afhænger af kalenderen | **Lette** hver for sig |
 | 13 ✓ | Stab (stabssøgning, stabsskifter, stabsprofil) | staff.ts | staff_manager, Staff Search 0x7afa70 | F0 + staffX (25k – egen fil) + B for løn | middel | Middel |
-| – | IKKE overføre: kalender/sæsonskifte/forkørsel, Europas 2001-format, Liga Cup/Charity Shield, landsholdenes 2001-slutrunder/FIFA-liste, arbejdstilladelse (før Brexit), 3/5-reglerne, g.econ-priserne | moderne | 2001-verden | – | – | – |
+| – | IKKE overføre: kalender/sæsonskifte/forkørsel, Europas 2001-format, Liga Cup/Charity Shield, landsholdenes 2001-slutrunder/FIFA-liste, 3/5-reglerne, g.econ-priserne | moderne | 2001-verden | – | – | – |
 
 "Let" betyder: når F0 er på plads, er det en gate (`cmActive` → `cmLogic`) + spilstartens felter for modulet + en måling; ingen ny port.
 Alle punkter er porte, der allerede findes – der skal ikke oversættes ny exe-kode, kun data og gates (plus pengeprincip B for 1, 3, 4, 7, 13).
@@ -252,8 +253,11 @@ eller cmLogic + g.cmDiscStart – begge sat af newgame.ts for nye 2026/27-spil i
 discipline.cpp (karantæner, appel 0x6ab800/0x6abef0) og Fine.cpp (Discipline Player 0x5a5980, dagligt 0x5a5820) til; sim.ts' gule-/røde-model og
 personality.ts' bøder slås fra. Data: world-cm.json får `nation7f` (nation.dat +0x7f, EU/EØS; build-cm-data.mts – world.json uændret); spejdernes
 region er databasens nation +0x76 (g.cmNation76 – opdateringen har Italien/Spanien/Portugal i region 13), EU-flaget g.cmNation7f. Spejdernes saldogrænse
-0x7f9190 og klubniveauet 0x7bca90 regner i £ med cmGbp (2001 uændret · 0,86). Arbejdstilladelser findes ikke på 2026/27 (V), så rapporternes
-tilladelses-/EU-pas-linje er kun med i 2001. Bøderne flytter ingen penge (som originalen) – dialogens beløb er ugelønnen.
+0x7f9190 og klubniveauet 0x7bca90 regner i £ med cmGbp (2001 uændret · 0,86). Arbejdstilladelser (19/11, "Altid som originalen"): originalens exe anvender
+0x8c7560/0x8c7950 på enhver CM-database – med 2026/27-databasen gælder reglen for britiske klubber (nation +0x76 = 0xe) og spillere uden EU-flag
+(+0x7f = 2) efter databasens egne data (ingen Brexit – det kender originalen ikke). Nye spil med en CM-database i ægte tilstand får porten (g.cmWp,
+cmPermit.ts); 0x58d710 tæller FIFA_RANKINGS' resultatliste, som 2026/27 fører i g.cmWp.res efter 0x58cf70/0x58d460's regler (originalens FIFA-liste
+g.intl.cmFifa findes kun i 2001). Rapporternes tilladelses-/EU-pas-linje følger med. Gamle 2026/27-spil uden g.cmWp er uændrede (ingen tilladelse). Bøderne flytter ingen penge (som originalen) – dialogens beløb er ugelønnen.
 Målt (`scripts/cm-scout-disc-2026.ts`, PL frø 1, Brentford, 1/7-26 → 1/1-27; OLD=1 = før, measure 60672e44fab4 / 951396103977): karantæner (alle
 klubber) 173 (316 kampe) → 236 (326 kampe), menneskets 1 → 2; appeller 0 (fandtes ikke) → 2 (begge afvist, "FA dismiss ban appeal"); Discipline Player
 1 (personality.ts) → 2 (originalens nyhed cmfine.f2); spejderrapporter 10 + 6 talentnyheder (spillets) → 9 originale (0x138e); kendskab (spillere uden for

@@ -145,7 +145,9 @@ View Finances (der læser Bonuses fra blokken) viste 0 bonusser, selv om pengene
    **Lønloftet** "Your board will allow wages up to …" = skærmparameter 0x18 fra 0x4de1f0/0x4de5d0 = get_max_wage 0x5968d0(fin, spiller, −1) pr. spiller
    (stab: 0x597db0(fin, job), mindst nuværende løn) – `cmBoardWageAllow`/`cmBoardStaffWageAllow`; Offer Contract og negotiate/renewContract bruger det
    i stedet for lønbudget − truppens løn. Originalen har intet samlet lønbudget (Club.wageBudget bruges kun uden for ægte tilstand).
-3. Arbejdstilladelse: tildelingen 0x8c7950 ikke porteret (kun "skal have").
+3. Arbejdstilladelse: tildelingen 0x8c7950 porteret 19/11 (cmPermit.ts cmWorkPermit – landskampshistorikken +0x86e, landenes kamptal 0x76b600/0x8ce920,
+   0x58d710; ønskelister 0x84b180, handlens gennemførelse 0x8c7690, spejderne 0x7b3e20/0x7b62a0 med a5, Player-skærmen). Ikke bygget: 'B'-landskampe
+   (tæller i originalen med i landets kamptal), 0x8c38b0's anden gren (0x8e4290 for en klubløs uden lejekontrakt – her samme nyhed 0x13), stab (0x84b180 for stab).
 4. Landsholdsfodbold – **etape 1 delvis 16/11** (`src/game/cmIntl.ts`, noter ~/cm0102-engine/notes/international.md, `scripts/cm-intl-check.ts`,
    tests/cmIntl.test.ts). Oraklet (crowd1) viser for 2001/02: ingen VM-kvalifikation uden for Oceanien (forkørslen), 142 A-venskabskampe på 19 datoer,
    136 U21-kampe dagen før, 3 'B' International, Copa 2001 (12 hold), Afrikamesterskabet feb.–mar. 2002 (32 kampe).
