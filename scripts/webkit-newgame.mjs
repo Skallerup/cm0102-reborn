@@ -14,6 +14,7 @@ const server = spawn('npx', PROD ? ['vite', 'preview', '--outDir', PROD, '--port
 const stop = () => { try { server.kill(); } catch { /* */ } };
 process.on('exit', stop);
 for (let i = 0; i < 60; i++) { try { if ((await fetch(URL)).ok) break; } catch { /* */ } await new Promise((r) => setTimeout(r, 500)); }
+const START_PIDS = execSync('ps -A -o pid=,command=', { encoding: 'utf8', maxBuffer: 1 << 24 }).split('\n').filter((l) => l.includes('ms-playwright')).map((l) => l.trim().split(/\s+/)[0]);
 const browser = await (kind === 'chromium' ? chromium : webkit).launch();
 const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
 const page = await ctx.newPage();
@@ -36,7 +37,10 @@ const t0 = Date.now();
 // fanens proces (WebKit: WebContent, Chromium: renderer) – største RSS undervejs (hovedtråd + arbejdere i samme proces)
 let peakRss = 0, peakAt = '';
 // macOS: phys_footprint (med komprimeret hukommelse – RSS falder under pres) via footprint(1); `peak` = processens egen top
-const tabPids = () => execSync('ps -A -o pid=,command=', { encoding: 'utf8', maxBuffer: 1 << 24 }).split('\n').filter((l) => l.includes('ms-playwright') && /WebContent|--type=renderer/.test(l)).map((l) => l.trim().split(/\s+/)[0]);
+const allTabPids = () => execSync('ps -A -o pid=,command=', { encoding: 'utf8', maxBuffer: 1 << 24 }).split('\n').filter((l) => l.includes('ms-playwright') && /WebContent|--type=renderer/.test(l)).map((l) => l.trim().split(/\s+/)[0]);
+// (kun denne browsers processer – ældre kørslers kan stadig være i gang med at lukke)
+const oldPids = new Set(START_PIDS);
+const tabPids = () => allTabPids().filter((x) => !oldPids.has(x));
 const foot = (key) => { try { const ps = tabPids(); if (!ps.length) return 0; const out = execSync(`footprint --noCategories -f bytes ${ps.map((x) => `-p ${x}`).join(' ')}`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }); return Math.max(0, ...[...out.matchAll(new RegExp(`${key}: (\\d+) B`, 'g'))].map((m) => Number(m[1]) / 1048576)); } catch { return 0; } };
 const rssNow = () => foot('phys_footprint');
 let phase = 'start';

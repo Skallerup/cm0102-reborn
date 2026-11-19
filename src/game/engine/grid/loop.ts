@@ -256,6 +256,8 @@ export function offsideLines(m: Match): void {
 export const MOVES = { n: 0 };
 /** offsidelinjernes grundlag fra sidste udregning (max1/min0 i offsideLines) – holdt ved lige af olMoved, når en spiller skifter række */
 let OL_M: Match | null = null, OL_ACT = -1, OL_MAX1 = 0, OL_MIN0 = 0, OL_DIRTY = true;
+/** (hukommelse, CM Reborn) glem sidste kamp (den holder sit spil i live) – en ny kamp er et nyt objekt, så intet regnes anderledes */
+export function olForget(): void { OL_M = null; }
 /** cells.ts setPos: q flytter fra række y0 til y1. En markspiller på banen kan kun skubbe sin sides yderste række udad (så følges den med);
  *  forlader han den yderste række indad, kendes den nye ikke – så regnes forfra ved næste kald */
 export function olMoved(m: Match, q: Player, y0: number, y1: number): void {

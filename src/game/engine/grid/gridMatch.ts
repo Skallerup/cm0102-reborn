@@ -40,7 +40,7 @@ import { statAvg } from '../../cmPlayerData';
 import { cmFitOn, cmFitRead } from '../../cmFitnessGame';
 import { INJ_TYPES } from '../../cmFitness';
 import { CM_INT_OFFSETS, INTRINSIC_KEYS } from '../../playerInit';
-import { gs, hasGame } from '../../state';
+import { gs, hasGame, onGameSwitch } from '../../state';
 import { ATTRS } from '../../attributes';
 import type { Player, Tactic } from '../../types';
 import { DIS_PERSON, FAV_PERSON, relPersons } from '../../cmRelations';
@@ -334,6 +334,8 @@ export interface GP extends L.Player {
 
 export { cellIx, cellList, cellRemove, setPos, cellAdd } from './cells';
 import { cellAdd, cellList as cellListOf, setPos } from './cells';
+// (hukommelse) sidste kamps offsidegrundlag holder kampen og dermed spillet – glemmes ved et andet spil (state.ts onGameSwitch)
+onGameSwitch(L.olForget);
 
 // ------------------------------------------------------------------ de ukendte dele (*estimeret*)
 
@@ -609,6 +611,7 @@ const seen = (ok: boolean, lane: number) => { SEEN.ok = ok; SEEN.lane = lane; re
 const RT_IN = new Int8Array(9), RT_FREE = new Int8Array(9), RT_OX = new Float64Array(64), RT_OY = new Float64Array(64);
 const ZONAL_WORLD = new WeakMap<GridMatchState, { rand: Rand; self: unknown; world: ZonalWorld<GP> }>();
 let lastZm: GridMatchState | null = null, lastZw: { rand: Rand; self: unknown; world: ZonalWorld<GP> } | undefined;
+onGameSwitch(() => { lastZm = null; lastZw = undefined; });
 export const GRID_UNKNOWN = {
   /** sub_6c2be0 (sikker; notes/6c2be0-tactical-cell.md): opslag i taktikkens positionstabel (med/uden bold, boldens felt), så
    *  holdinstruktionerne. Uden sub_715f50 – kalderne kører H.tacticalColumn bagefter (`cellWithDrift`). Boldhændelsen +0x8eb1 > 0 (efter
@@ -984,6 +987,8 @@ let kickFit: ((p: Player) => number) | null = null;
 let kickFat: ((p: Player) => number) | null = null;
 /** 0x62ed70/0x62ec00/0x62ece0 for knock-tjekket (konditionsmodulet i game/cmFitness.ts) – uden modulet: ingen skade */
 let kickInj: ((p: Player) => { cat: number; s: number }) | null = null;
+// (hukommelse) sat ved hver kamps start – holder ellers forrige spils konditionsmodul (og spillet)
+onGameSwitch(() => { kickFit = null; kickFat = null; kickInj = null; });
 function makePlayer(p: Player, side: Side, slot: number, tactic: Tactic, base?: { lo: number; hi: number; tb: number; pos?: number; posAttack?: number },
   crowd?: { byte: number; compRep: number; final: boolean; mot?: ReturnType<typeof initMotivation> }): GP {
   const s = tactic.slots[slot];

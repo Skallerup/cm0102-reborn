@@ -30,7 +30,7 @@ import { buildWantMem, type WantMem } from './cmContractGame';
 import { cmMarketOn, cmRand, clubRepMem, nationRepMem } from './cmPlayerData';
 import { cmGbp, payClub } from './cmMoney';
 import { slCall } from './cmShortlist';
-import { playerValue_4d0c60, knowsNation_53d980, seenRep_5407e0, knowledge_5408c0, judge_6e86d0, JUDGE_HI, euCitizen_53d740 } from './cmValue';
+import { playerValue_4d0c60, knowsNation_53d980, seenRep_5407e0, knowledge_5408c0, judge_6e86d0, JUDGE_HI, euCitizen_53d740, keyMemForget } from './cmValue';
 import { contractForClub_4cf5f0, expiryBand_867d30, setToDesiredContract_85fc50, hasActiveReleaseClause_867b50, constructContract_85e410, calcContractValue_866830 } from './cmContractWant';
 import { getMaxWage_5968d0 } from './cmMaxWage';
 import { addDays_54c5b0, subDays_54c8e0, listRemove_68d1f0, offerContract_4cda70, daysSince_54cdb0 } from './cmContract';
@@ -42,7 +42,7 @@ import { leagueClash } from './cmBoardInterest';
 import { GEN } from './cmGen/index';
 import { humanClub_600a50 } from './cmWageGame';
 import { contractFlag_5445x0, value_840d80_impl, value_840d80_any, PV_DIRECT } from './cmSlEval';
-import { registerAskingPrice } from './cmAskingPrice';
+import { registerAskingPrice, askingForget } from './cmAskingPrice';
 import { registerPlayerWill } from './cmPlayerWill';
 import { ensureImpls } from './cmGen/impls';
 import { isHumanClub } from './humans';
@@ -643,6 +643,8 @@ const JUDGE = { p: null as Player | null, ctx: {} as PickCtx, age: 0 };
 /** (runde 14) judgeAbility er en ren funktion – inddata i genbrugte objekter (ingen allokering pr. vurdering) */
 const JIN: Parameters<typeof judgeAbility>[0] = { playerId: 0, ca: 0, pa: 0, age: 0, gk: 0, gameSeed: 0, judge: null, kind: 1, hint: 0, repSeen: 0 };
 const JJ = { id: 0, ja: 0, jp: 0 };
+// (hukommelse) de genbrugte inddata peger på forrige spils data (PlanD's load-lukning holder spillet) – alle felter skrives før hver brug
+onGameSwitch(() => { PI.data = null as unknown as PlanD; PI.rec = []; PI.mgr = MG_NONE; MG_IN.np = null; JUDGE.p = null; JUDGE.ctx = {} as PickCtx; JIN.judge = null; });
 const judgeCur = (kind: 1 | 2, hint: number) => {
   const p = JUDGE.p!, ctx = JUDGE.ctx, j = JIN;
   j.playerId = p.id; j.ca = p.ca; j.pa = p.pa; j.age = JUDGE.age; j.gk = p.pos[0]; j.gameSeed = ctx.gameSeed ?? 0;
@@ -1216,6 +1218,8 @@ interface FrCtx {
 const FRHOIST = ENV.CM_SL_FRHOIST !== '0';
 const FC: FrCtx = { ebp: 0, esp: 0, slot: 0, club: 0, self: 0, staff: 0, cnt16: 0, flag: 0, human: false, x9cf: 0, b24: 0, slot7: 0, clubs: 0, rows: 0, cmArr: 0, cnt: 0, list10: 0,
   clubId: 0, cn0: 0, brit: false, tm86e: 0, e84: 0, kk: 0, idClub: 0, cn: 0, mgc: 0, dNp: 0, cr: 0, cn75: 0, cn85: 0, dSet: false, dY: 0, dD: 0, sp: null, day: null };
+// (hukommelse) dagens hukommelse (og under den spillets varige) – skrives igen ved hvert frCtx
+onGameSwitch(() => { FC.sp = null; FC.day = null; keyMemForget(); askingForget(); });
 function frCtx(R: X86, S: SlMem): FrCtx {
   const m = R.m, c = S.c, f = FC;
   const ebp = R.ebp >>> 0, esp = R.esp >>> 0;

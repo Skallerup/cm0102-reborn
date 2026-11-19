@@ -44,6 +44,8 @@ const C_867B50 = CV(0, true, false), C_8C7560 = CV(3, true, true);
 // et indlejret kald kører den oversatte)
 let busy = false;
 let Rx!: X86, m!: CmMem;
+/** (hukommelse, CM Reborn) glem sidste kalds maskine/hukommelse (de holder deres spil i live) – sættes igen ved hvert kald */
+export function askingForget(): void { if (!busy) { Rx = null as unknown as X86; m = null as unknown as CmMem; } }
 let E = 0, F = 0, cEbx = 0, cEsi = 0, cEdi = 0, cEbp = 0, ebx = 0, esi = 0, edi = 0, ebp = 0;
 let out = 0, L14 = 0, L44 = 1.0, L54 = 1.0, L6c = 0, L20 = 0, age = 0, b4f = 0, K = 0, buyer = 0;
 const pos = (v: number) => (v < 0 ? 0 : v);

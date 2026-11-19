@@ -21,7 +21,7 @@ import { nationLanguage } from './engine/grid/nationLanguage';
 import { regionOf } from './leagues';
 import { ATTRS } from './attributes';
 import { ageOn } from './dates';
-import { squadIds } from './state';
+import { onGameSwitch, squadIds } from './state';
 import { isHumanClub } from './humans';
 import { boardEnv } from './cmBoardGame';
 import { leagueClash } from './cmBoardInterest';
@@ -30,6 +30,8 @@ import { cmGbp, GBP_2001 } from './cmMoney';
 
 /** € → £ (cmMoney.ts: 0,86 for den originale database, 2026/27's faktor pr. liga) – sat af buildSlWantMem for spillet */
 let gbpOf: (cid: number | undefined) => number = () => GBP_2001;
+// (hukommelse) sættes af hver buildSlWantMem, før den bruges – holdt ellers forrige spil i live
+onGameSwitch(() => { gbpOf = () => GBP_2001; });
 // (cmContractGame.ts' adresser)
 const MMOBJ = 0x2bff0000, MMREC = 0x2b000000, EURO0 = 0x2c000000, STAD0 = 0x2d000000, CITY0 = 0x2c800000, COMP0 = 0x3e000000, VT = 0x3dff0000, CONT0 = 0x3dfe0000, PREF0 = 0x2f000000, STATS0 = 0x3e800000, ROW4A = 0x3dfd0000, NOBODY = 0x2e000000;
 // (cmContractGame.ts SEASON_ROWS – sæsontabellen 0xb63d60)

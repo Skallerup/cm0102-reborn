@@ -76,6 +76,8 @@ export function euCitizen_53d740(m: CmMem, person: number, nat: number): number 
 /** (hastighed, runde 12) landenes id-globaler, 0x53d980 sammenligner med – faste for en hukommelse (writeKeyIds skriver dem, før noget kaldes) */
 const KEY_ADR = [0x9cf2e4, 0x9cf45c, 0x9cf510, 0x9cf3e4, 0x9cf2dc, 0x9cf224, 0x9cf3f4, 0x9cf360, 0x9cf4f0, 0x9cf434];
 let KEY_M: CmMem | null = null;
+/** (hukommelse) glem sidste hukommelse (den holder sit spil i live) – en ny hukommelse er et nyt objekt, så intet regnes anderledes */
+export function keyMemForget(): void { KEY_M = null; }
 const KEY_V = new Int32Array(KEY_ADR.length);
 function keyIds(m: CmMem): Int32Array {
   if (m !== KEY_M) { for (let i = 0; i < KEY_ADR.length; i++) KEY_V[i] = m.s32(KEY_ADR[i]); KEY_M = m; }

@@ -5,7 +5,8 @@ import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { createGame, setNewGameProgress, type WorldData } from '../src/game/newgame';
 import { continueGame, quickPlayUserMatch } from '../src/game/sim';
-import { gs } from '../src/game/state';
+import { gs, setGame, indexSnapshot, restoreIndexes, packCarry, notify } from '../src/game/state';
+import { rng } from '../src/game/rng';
 import { SL_DIAG } from '../src/game/cmShortlistGame';
 import { Session } from 'node:inspector';
 import { writeFileSync } from 'node:fs';
@@ -52,12 +53,37 @@ createGame(world, { managerName: 'Mem', managerNation: eng, clubId: user, active
 world = null;
 setNewGameProgress(null); clearInterval(stepT); console.log(`  trin ${stepName.padEnd(10)} top heap ${MB(stepPeak)} MB`);
 report('createGame');
-const g = gs();
+// CLONE=1: som Continue Game med dagens Web Worker (ui/dayRunner.ts + ui/dayWorker.ts) – spillet kopieres frem og tilbage pr. dag, i samme
+// proces (WebKit: hovedtråd og arbejdere deler fanens hukommelse); arbejderen slipper spillet (setGame(null)) efter hver kørsel
+const CLONE = process.env.CLONE === '1';
+const sha = () => { gs().rng = rng.state; return createHash('sha256').update(JSON.stringify({ ...gs(), id: 0 })).digest('hex').slice(0, 16); };
+// (en funktion: kopierne må ikke ligge på stakken bagefter)
+function oneDay(): void {
+  if (CLONE) {
+    gs().rng = rng.state; packCarry(gs());
+    const msg = structuredClone({ game: gs(), idx: indexSnapshot() });
+    delete gs().cmCarry;
+    const main = gs();
+    setGame(msg.game); restoreIndexes(msg.idx);
+    const g = gs(), start = g.date;
+    while (g.date === start || !g.dayDone || g.pendingFixture) { const r = continueGame(); if (r?.match) quickPlayUserMatch(); if (g.date !== start && g.dayDone && !g.pendingFixture) break; }
+    notify(); packCarry(gs());
+    const back = structuredClone({ game: gs(), idx: indexSnapshot() });
+    setGame(null);
+    void main;
+    setGame(back.game); restoreIndexes(back.idx);
+  } else {
+    const g = gs(), start = g.date;
+    while (g.date === start || !g.dayDone || g.pendingFixture) { const r = continueGame(); if (r?.match) quickPlayUserMatch(); if (g.date !== start && g.dayDone && !g.pendingFixture) break; }
+  }
+}
 for (let d = 0; d < days; d++) {
-  const start = g.date;
-  while (g.date === start || !g.dayDone || g.pendingFixture) { const r = continueGame(); if (r?.match) quickPlayUserMatch(); if (g.date !== start && g.dayDone && !g.pendingFixture) break; }
-  report(`dag ${g.date}`);
+  oneDay();
+  await new Promise((r) => setTimeout(r, 0));
+  report(`dag ${gs().date} ${sha()}`);
+  if (CLONE && process.env.SNAPAT === String(d + 1)) { const v8 = await import('node:v8'); console.log('snapshot', v8.writeHeapSnapshot(process.env.SNAPFILE)); }
 }
 clearInterval(t);
-const h = createHash('sha256').update(JSON.stringify(g)).digest('hex').slice(0, 16);
+const g = gs();
+const h = sha();
 console.log(`fingeraftryk ${h}  spillere ${Object.keys(g.players).length}  stab ${Object.keys((g as { staff?: object }).staff ?? {}).length}`);
