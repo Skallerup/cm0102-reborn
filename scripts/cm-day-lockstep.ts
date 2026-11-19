@@ -418,6 +418,11 @@ function compareDay(v: View) {
     const kind = mv.loan ? 'leje' : !mv.to ? 'kontrakt udløbet (fri)' : !mv.from ? 'klubløs skriver under' : mv.fee > 0 ? 'køb med sum' : 'køb uden sum';
     ourKinds[kind] = (ourKinds[kind] ?? 0) + 1;
   }
+  // art 5 = ikke-spillernes skifter (0x68f9c0 @0x690432 managerskift klub → klub, 0x8c9720 @0x8c99bf job uden spillerpost) – vores Staff.moves
+  for (const s of Object.values(g.staff)) for (const mv of s.moves ?? []) {
+    if (mv.date < start || mv.date > today || (!engClub(mv.from) && !engClub(mv.to))) continue;
+    ourKinds['art 5'] = (ourKinds['art 5'] ?? 0) + 1;
+  }
   for (const k of new Set([...Object.keys(memKinds), ...Object.keys(ourKinds)])) dist(`transfers: ${k} (England, siden spilstart)`, ourKinds[k] ?? 0, memKinds[k] ?? 0);
   dist('transfers: originalens handler (parret spiller) også hos os', sameDeal, memPairedDeals);
 }

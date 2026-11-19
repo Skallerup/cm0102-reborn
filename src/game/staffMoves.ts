@@ -1,5 +1,5 @@
 // CM 01/02: klubbens Transfers-skærm, visningerne Staff In / Staff Out (club_screens.cpp 0x4542f0) – historikposter for ikke-spillere (type 5).
-// Vi gemmer de seneste skift pr. stabsperson (Staff.moves); managerskift (cmBoardGame.ts) bogføres ikke endnu.
+// Vi gemmer de seneste skift pr. stabsperson (Staff.moves); managerskift fra klub til klub: cmBoardGame.ts (0x68f9c0 @0x690432).
 import type { Staff } from './types';
 import { gs } from './state';
 
