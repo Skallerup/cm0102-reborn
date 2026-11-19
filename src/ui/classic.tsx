@@ -699,8 +699,18 @@ export function CxDrop({ label, items, align = 'left', className = '', btn, care
     const scrolled = (e: Event) => { if (fixed && !ref.current?.contains(e.target as Node)) setOpen(false); };
     document.addEventListener('mousedown', close);
     document.addEventListener('keydown', esc);
+    // en besked/dialog (Team Selection, Please Confirm …) eller optaget-tilstand, der dukker op, mens listen er åben, lukker den
+    // (ellers ligger listen i sidebjælkens filter-stakkontekst BAG dialogen, så kun dens kant ses)
+    const cover = () => document.querySelectorAll('.cx-dlg, .cx-winbox-bg, .cxs-pop, .shell.cx.cx-busy').length;
+    const base = cover();
+    const covered = () => {
+      if (ref.current?.closest('.cx-dlg, .cx-winbox-bg, .cxs-pop')) return;
+      if (cover() > base) setOpen(false);
+    };
+    const mo = new MutationObserver(covered);
+    mo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
     window.addEventListener('scroll', scrolled, true);
-    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', esc); window.removeEventListener('scroll', scrolled, true); };
+    return () => { mo.disconnect(); document.removeEventListener('mousedown', close); document.removeEventListener('keydown', esc); window.removeEventListener('scroll', scrolled, true); };
   }, [open, fixed]);
   return (
     <div className={`cx-drop ${className}`} ref={ref}>
