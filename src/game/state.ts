@@ -158,6 +158,9 @@ export function setClub(p: Player, club: number) {
   // "utilfreds med sin spilletid" samme dag, han kom – ejerens fejlmelding 2026-11-10)
   if (moved && club) p.unhappy = 0;
   // originalen: statistikken arkiveres (0x7c5fe0) og en ny kontrakt starter (0x4cf720) – cmPlayerData.ts
+  // Playing Career (0x7c5fe0): sæsonens tal for den gamle klub bogføres på dens egen linje ved ethvert skifte (salg, leje ud/hjem,
+  // fri transfer, frigivelse) – den nye klub starter fra 0 (før fik den nye klubs linje hele sæsonens tal, ejerens fejl 19/11)
+  if (moved && p.club && hasGame() && p.stats && p.stats.apps + p.stats.subs > 0) pushCareerLine(p, p.club, !!p.loan);
   if (moved) { p.cmStats = undefined; p.cmContract = undefined; if (hasGame()) { cmPermitMove(gs(), p, club); cmStaffStateMove(gs(), p, p.club, club); } }
   p.club = club;
   // en nyindkøbt spiller kommer på førsteholdet: reserve-mærket hører til den gamle klub (spillerrapport #25: Obi og Arthur
@@ -172,6 +175,23 @@ export function setClub(p: Player, club: number) {
   }
   // nyt trøjenummer ved klubskifte: det gamle, hvis det er ledigt – ellers et passende ledigt nummer
   if (moved) p.number = club ? pickNumber(p, club, p.number) : undefined;
+}
+
+/** Bogfør sæsonens tal siden sidste skifte (p.split) på en klub i karrieren; idempotent (intet nyt siden skiftet = ingen linje) */
+export function pushCareerLine(p: Player, club: number, loan: boolean) {
+  const g = gs();
+  const b = p.split ?? { apps: 0, goals: 0, assists: 0, minutes: 0, ratingSum: 0, ratingCount: 0 };
+  const apps = p.stats.apps + p.stats.subs - b.apps;
+  if (apps <= 0) return;
+  const rc = p.stats.ratingCount - b.ratingCount;
+  // (gemte spil fra før 19/11: skiftet uden MoM i p.split – den bogførte del kendes ikke, så linjen får ingen MoM)
+  const mom = p.split && p.split.mom === undefined ? 0 : p.stats.mom - (b.mom ?? 0);
+  p.history.push({
+    season: g.season, club, apps, goals: p.stats.goals - b.goals, assists: p.stats.assists - b.assists, minutes: p.stats.minutes - b.minutes,
+    avg: rc > 0 ? Math.round(((p.stats.ratingSum - b.ratingSum) / rc) * 100) / 100 : 0, ...(mom > 0 ? { mom } : {}), ...(loan ? { loan: true } : {}),
+  });
+  if (p.history.length > 30) p.history.shift();
+  p.split = { apps: p.stats.apps + p.stats.subs, goals: p.stats.goals, assists: p.stats.assists, minutes: p.stats.minutes, ratingSum: p.stats.ratingSum, ratingCount: p.stats.ratingCount, mom: p.stats.mom };
 }
 
 /** Foretrukne trøjenumre pr. position (som de klassiske numre: 1 mål, 2-5 forsvar, 6-8 midtbane, 9-11 angreb) */

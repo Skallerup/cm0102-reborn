@@ -20,7 +20,8 @@ import { ageOn } from './dates';
 import { emptyStats, makePlayer, randomDob, randomName, randomSub, type SubPos } from './data/generate';
 import { LEAGUE_RULES } from './leagues';
 import { Rng, hash, hash01, rng } from './rng';
-import { addNews, addPlayer, newsRelevant, gs, rebuildIndexes, removePlayer, setClub, squad } from './state';
+import { addNews, addPlayer, newsRelevant, gs, pushCareerLine, rebuildIndexes, removePlayer, setClub, squad } from './state';
+export { pushCareerLine };
 import { fansOnDeparture } from './fans';
 import { boardSeasonEnd, setBoardExpectation, strengthRank } from './board';
 import { seasonCareers } from './careers';
@@ -502,27 +503,12 @@ export function youthIntake() {
   }
 }
 
-/** Bogfør sæsonens tal siden sidste skifte på en klub i karrieren */
 /** Bogfør et klubskifte (til karriereoversigten) – kaldes før spilleren skifter */
 export function recordMove(p: Player, to: number, fee: number, loan = false, swap = false) {
   const g = gs();
   recordsAfterMove(p, to, fee, loan);
   (p.moves ??= []).push({ season: g.season, date: g.date, from: p.club, to, fee, ...(loan ? { loan: true } : {}), ...(swap ? { swap: true } : {}) });
   if (p.moves.length > 20) p.moves.shift();
-}
-
-export function pushCareerLine(p: Player, club: number, loan: boolean) {
-  const g = gs();
-  const b = p.split ?? { apps: 0, goals: 0, assists: 0, minutes: 0, ratingSum: 0, ratingCount: 0 };
-  const apps = p.stats.apps + p.stats.subs - b.apps;
-  if (apps <= 0) return;
-  const rc = p.stats.ratingCount - b.ratingCount;
-  p.history.push({
-    season: g.season, club, apps, goals: p.stats.goals - b.goals, assists: p.stats.assists - b.assists, minutes: p.stats.minutes - b.minutes,
-    avg: rc > 0 ? Math.round(((p.stats.ratingSum - b.ratingSum) / rc) * 100) / 100 : 0, ...(loan ? { loan: true } : {}),
-  });
-  if (p.history.length > 30) p.history.shift();
-  p.split = { apps: p.stats.apps + p.stats.subs, goals: p.stats.goals, assists: p.stats.assists, minutes: p.stats.minutes, ratingSum: p.stats.ratingSum, ratingCount: p.stats.ratingCount };
 }
 
 function archiveStats(sc: Scope | null = null) {

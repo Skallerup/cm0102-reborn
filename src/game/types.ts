@@ -108,6 +108,8 @@ export interface CareerLine {
   assists: number;
   avg: number;
   minutes?: number;
+  /** kampens spiller (Playing Career-kolonnen MoM) */
+  mom?: number;
   /** På leje i klubben */
   loan?: boolean;
 }
@@ -245,7 +247,7 @@ export interface Player {
   /** Manageren har lovet titler – frist */
   promiseUntil?: string;
   /** Sæsonstatistik allerede bogført på en tidligere klub (ved skifte midt i sæsonen) */
-  split?: { apps: number; goals: number; assists: number; minutes: number; ratingSum: number; ratingCount: number };
+  split?: { apps: number; goals: number; assists: number; minutes: number; ratingSum: number; ratingCount: number; mom?: number };
   /** Kontraktkrav fra spilleren/agenten efter en god periode */
   demand?: { since: string; wage: number; leaked?: boolean };
   /** Seneste uro i spillerens gruppering (dato) */

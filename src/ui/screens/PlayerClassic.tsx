@@ -394,13 +394,17 @@ export function ClassicCareer({ p }: { p: Player }) {
   }, [p.id, g.draft]);
   type Row = { season: number; club: number; name?: string; apps: number; goals: number; assists?: number; mom?: number; avr?: number; loan?: boolean; now?: boolean };
   const s = p.stats;
+  // den igangværende klub: kun tallene siden skiftet (det før står på den gamle klubs linje – p.split, season.ts pushCareerLine)
+  const b = g.draft ? undefined : p.split;
+  const nowRc = s.ratingCount - (b?.ratingCount ?? 0);
   const rows: Row[] = [
-    ...(p.club ? [{ season: g.season, club: p.club, apps: s.apps + s.subs, goals: s.goals, assists: s.assists, mom: s.mom, avr: s.ratingCount ? avgRating(p) : 0, loan: !!p.loan, now: true }] : []),
+    ...(p.club ? [{ season: g.season, club: p.club, apps: s.apps + s.subs - (b?.apps ?? 0), goals: s.goals - (b?.goals ?? 0), assists: s.assists - (b?.assists ?? 0),
+      mom: b && b.mom === undefined ? undefined : s.mom - (b?.mom ?? 0), avr: nowRc > 0 ? (s.ratingSum - (b?.ratingSum ?? 0)) / nowRc : 0, loan: !!p.loan, now: true }] : []),
     // klubberne, han har forladt i denne sæson (CM 01/02 viser en linje pr. klub – Barcelona → Roma → Sunderland samme sommer)
     ...(g.draft ? [] : (p.moves ?? []).filter((m) => m.season === g.season && m.from > 0 && m.from !== p.club).reverse()
       .filter((m, i, a) => a.findIndex((x) => x.from === m.from) === i && !(p.history ?? []).some((h) => h.season === g.season && h.club === m.from))
       .map((m) => ({ season: g.season, club: m.from, apps: 0, goals: 0, loan: !!m.loan }))),
-    ...(g.draft ? [] : (p.history ?? []).slice().reverse().map((h) => ({ season: h.season, club: h.club, apps: h.apps, goals: h.goals, assists: h.assists, avr: h.avg, loan: h.loan }))),
+    ...(g.draft ? [] : (p.history ?? []).slice().reverse().map((h) => ({ season: h.season, club: h.club, apps: h.apps, goals: h.goals, assists: h.assists, mom: h.mom ?? 0, avr: h.avg, loan: h.loan }))),
     ...(real ?? []).slice().reverse().map((r) => ({ season: r.season, club: r.club, name: r.clubName, apps: r.apps, goals: r.goals, loan: r.loan })),
   ];
   const season = (y: number) => `${y}/${String((y + 1) % 100).padStart(2, '0')}`;
