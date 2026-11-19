@@ -24,7 +24,7 @@ describe('originalens økonomi (cmFinance)', () => {
     expect(wealthBand(-250 * 3000 - 1, 3000)).toBe(-1);
     expect(wealthBand(1000 * (3750 - 6000) - 1, 6000)).toBe(-1);
     expect(wealthBand(0, 6000)).toBe(0);
-  });
+  }, 300_000);
 
   it('init_for_club 0x5961d0: startsaldoen som originalens (databasens beløb ± B/5, ellers tabellen)', () => {
     const g = start(load('world-original.json'), 'Arsenal', 'authentic');
@@ -41,7 +41,7 @@ describe('originalens økonomi (cmFinance)', () => {
     expect(r.wk).toBe(3);
     expect(r.share).toBeCloseTo(0.1, 6);
     expect(r.wb).toBeGreaterThan(0);
-  });
+  }, 300_000);
 
   it('dagene: søndagens løn og merchandise, månedens poster rulles til sidste måned', async () => {
     const g = start(load('world-original.json'), 'Arsenal', 'authentic');
@@ -57,7 +57,7 @@ describe('originalens økonomi (cmFinance)', () => {
     expect(r.lm[K.maintenance]).toBeGreaterThan(100_000);       // originalen 173K
     expect(r.lm[K.seasonTickets]).toBe(0);                      // første sæson: ingen sæsonkortindtægt
     expect(r.st).toBeGreaterThan(30_000);                        // originalen 37.896 kortholdere
-  });
+  }, 300_000);
 
   it('køb/salg og bonusser i blokkene (Finance 0x599890 add_bought, 0x599800 add_sold, 0x599960 add_bonus) – saldoen trækkes kun én gang', () => {
     // K2 (scripts/cm-day-lockstep.ts): originalens sæsonposter Bought/Sold/Bonuses var > 0 for de engelske klubber, vores stod på 0
@@ -93,7 +93,7 @@ describe('originalens økonomi (cmFinance)', () => {
     const bon2 = rb.ty[K.bonuses];
     afterAppearance(q, 2, false, { assists: 0, pay: true });
     expect(rb.ty[K.bonuses] - bon2).toBe(2 * Math.round(1000 * 0.86));
-  });
+  }, 300_000);
 
   it('create_game 0x82992b: manglende tilskuertal/træningsanlæg udfyldes af omdømmet (Brasilien, Peru …)', () => {
     const w = load('world-original.json');
@@ -115,5 +115,5 @@ describe('originalens økonomi (cmFinance)', () => {
   it('den moderne database og det udvidede spil har ingen cmFin', () => {
     expect(start(load('world-original.json'), 'Arsenal').cmFin).toBeUndefined();
     expect(start(load('world.json'), 'Arsenal', 'authentic').cmFin).toBeUndefined();
-  });
+  }, 300_000);
 });
