@@ -22,14 +22,17 @@
 // heller ingen række i nøglelandstabellen 0xb63d60). Liga Cup/Charity Shield/
 // Intertoto/landskampene i forkørslen, sammenstødsreglen 0x5ad780/0x5adba0 (kodernes rækkefølge; her: en anden kamp for et af holdene dagen
 // før/samme dag/dagen efter, koden = den anden kamps type), resolve_same_day_clash 0x5ae380, klubbens foretrukne kampdag +0x72 (alle
-// engelske klubber har 5 = lørdag eller 0xff), tv-nyheden (0x77bbe0/0x7861e0) og originalens parring af holdene (league_next_schedule_round
+// engelske klubber har 5 = lørdag eller 0xff) og originalens parring af holdene (league_next_schedule_round
 // 0x68a030 + talrækken).
+// Nyhederne (19/11): tv-flytningen (type 3, 0x685ac1 → 0x7861e0, tekst 0x77c46a) og den flyttede kamp ved en Europa-kamp (type 1, 0x5aac70-køen
+// FIXTURE_MANAGER +0x1128, leveret af 0x5aaf00; tekst 0x77bfe2).
 import type { Fixture, GameState } from './types';
 import { addDays, daysBetween, toDate } from './dates';
 import { CM_FA_CUP, CM_SCHEDULES, type SchedRound, type SchedTv, type SchedVar } from './data/cmSchedules';
 import { seasonStartDay } from './cmFitness';
 import { cmActive, cmRand } from './cmPlayerData';
-import { fixturesOn, indexFixture, newsStamp, unindexFixture } from './state';
+import { addNews, fixturesOn, gs, indexFixture, newsStamp, unindexFixture } from './state';
+import { asOwner } from './humans';
 
 /** kalenderen gælder: den originale database i ægte tilstand (ikke draft-ligaen) */
 export const cmCalendarOn = (g: GameState): boolean => cmActive(g) && !g.draft;
@@ -218,7 +221,7 @@ const nationLoaded = (g: GameState, n: number | undefined) => n !== undefined &&
  *  +0x11c) – klubbens kamp 2 dage før (0x54c8e0(2) + 0x5acbe0, førsteholdet, ikke venskabskamp, uspillet +0x43 = 0xff) flyttes til 3 dage
  *  før, og kampen 2 dage efter (0x54c5b0(2); intet spillet-tjek) til 3 dage efter, når den nye dato ikke giver andre sammenstød end den gamle
  *  kamp selv (0x5ad780(kopien, flag 0)) → 0x5abc30 + add_fixture(kopien); tidspunktet +0x3f følger med. (UEFA Cup torsdag → lørdagens
- *  ligakamp søndag, tirsdagens mandag; Champions League tirsdag → søndagens lørdag.) Nyheden 0x5aac70 er ikke porteret. */
+ *  ligakamp søndag, tirsdagens mandag; Champions League tirsdag → søndagens lørdag.) Nyheden: 0x5aac70 (cmMovedNews). */
 function cmEuroClubMoves(g: GameState, f: Fixture): void {
   for (const club of [f.home, f.away]) {
     if (!nationLoaded(g, g.clubs[club]?.nation)) continue;
@@ -231,6 +234,8 @@ function cmEuroClubMoves(g: GameState, f: Fixture): void {
       if (clashes(g, o, D, false)[0].length) continue;
       moveFixture(o, D);
       cmPlaceFixture(g, o);
+      // 0x5aec32/0x5aedec: 0x5aac70(kopien efter add_fixture, Europa-kampen, 0)
+      cmMovedNews(g, o, f);
     }
   }
 }
@@ -267,11 +272,43 @@ function tvMoves(g: GameState, comp: string, row: CmRound): void {
       if (s > top) { top = s; best = f; }
     }
     if (!best) continue;
+    const d0 = best.date, t0 = best.slot ?? row.slot;
     moveFixture(best, D, slot);
+    // 0x685ab7: tv-pladsens art 3 giver ingen nyhed; ellers type 3 til begge klubbers manager (0x7861e0 – kun et menneske)
+    if (kind !== 3) cmTvNews(g, best, d0, t0, slot);
     // 0x685c4a: fixture +0x3b = tv-pladsens art (process_match_income 0x59aab1: tv-pengene; 0x85d618: tilskuerne)
     best.tv = kind;
     list = list.filter((f) => f !== best);
   }
+}
+
+/** nyhedens felter for kampen: korte (+0x38) og lange navne (+4), turneringen + etape/runde (0x4bfa30's fixture +0x32/+0x30) */
+function fixParams(g: GameState, f: Fixture) {
+  const H = g.clubs[f.home], A = g.clubs[f.away];
+  return { home: H?.short ?? '', away: A?.short ?? '', homeL: H?.name ?? '', awayL: A?.name ?? '', fc: g.comps[f.comp]?.name ?? '', fs: f.cm?.w32 ?? 0, fr: f.cm?.w30 ?? 0 };
+}
+
+/** 0x685ac1–0x685c10: NewsItem type 3 [hjemme, ude, turnering, +0x32, +0x30, gammel dag/år, gammelt tidspunkt +0x3f, ny dag/år, nyt tidspunkt, art]
+ *  til hjemme- og udeholdets manager. Teksten 0x77c46a: overskrift a68f7c "{h} vs {a} match televised"; brødtekst efter dagen (plads 8 ≠ 5)
+ *  a690f0 "moved to {dato}", ellers tidspunktet (plads 10 ≠ 7) a69044 "moved to the {morning}", ellers a68fc0 "chosen for live television coverage". */
+export function cmTvNews(g: GameState, f: Fixture, d0: string, t0: number, t1: number): void {
+  const body = d0 !== f.date ? 'date' : t0 !== t1 ? 'time' : 'chosen';
+  const params = { ...fixParams(g, f), d1: f.date, tod: t1, body };
+  for (const c of [f.home, f.away]) asOwner(c, () => addNews({ cat: 'match', key: 'cmcal.tv', params: { ...params }, link: { kind: 'fixture', id: f.id } }));
+}
+
+/** 0x5aac70 (thiscall FIXTURE_MANAGER; kampen, sammenstødet, 0): NewsItem type 1 [hjemme, ude, turnering, +0x32, +0x30, dag, år, sammenstødets
+ *  hjemme/ude/turnering/+0x32/+0x30/dag/år, +0x40, +0x41] i køen +0x1128 – en post med samme hjemme, ude, turnering og +0x40/+0x41 får kun den
+ *  nye dato (plads 5/6). 0x5aaf00 (hvert tidspunkt) leverer køen: +0x40 ≠ 0 → hjemmeholdets manager, +0x41 ≠ 0 → udeholdets (0x7861e0; klubkampe
+ *  har 1/1). Spillet kører hele dage: køen er dagens nyheder. Tekst 0x77bfe2: overskrift a69184 "{h} vs {a} match re-arranged", brødtekst a692ec. */
+export function cmMovedNews(g: GameState, f: Fixture, clash: Fixture): void {
+  const E = fixParams(g, clash);
+  const params = { ...fixParams(g, f), d1: f.date, home2: E.home, away2: E.away, c2: E.fc, d2: clash.date, hid: f.home, aid: f.away, cid: f.comp };
+  for (const c of [f.home, f.away]) asOwner(c, () => {
+    const q = gs().news.find((n) => n.key === 'cmcal.moved' && n.date === g.date && n.params.hid === f.home && n.params.aid === f.away && n.params.cid === f.comp);
+    if (q) q.params.d1 = f.date;
+    else addNews({ cat: 'match', key: 'cmcal.moved', params: { ...params }, link: { kind: 'fixture', id: f.id } });
+  });
 }
 
 /** Datoboksens tidspunkt (originalens "14.7.01 AM": dato + "AM"/"PM"/"EVE" = spillets tidspunkt 0/1/2). Spillet kører hele dage: før dagens kampe

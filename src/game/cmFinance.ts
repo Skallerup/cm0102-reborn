@@ -768,9 +768,8 @@ compHooks.leagueDone = (comp, order) => { const g = gs(); if (cmFinOn(g)) cmLeag
 /** Cup::pay_round_prize_money 0x522240(vinder, taber, runde = fixture +0x34, fixture): rundepostens +0x60/+0x64 (w, l); −1 → puljen cup +0x28 /
  *  (antal runder +0x3c − runden) / rundens kampe +0x1a, og er taberens også −1: vinderen 3/4, taberen 1/4 (idiv mod nul, 0x5222ae); ellers vinderen
  *  hele andelen og taberen sin faste præmie. Begge beløb bogføres i Prize (0x5999a0: +0xa8/+0x148, saldoen) og trækkes fra puljen (som aldrig
- *  fyldes op igen – konstruktøren sætter den i spilstarten 0x830520). Nyheden 0x48e3e0 (0x1a, "awarded … for qualifying for the <runde>", kun
- *  til et menneske og beløb ≥ omdømme·50) er IKKE porteret – rundenavnet 0x4bfa30 mangler. */
-export function cmRoundPrize(g: GameState, key: string, fund0: number, w: number, l: number, nRounds: number, round: number, ties: number, winner: Club, loser: Club | undefined): void {
+ *  fyldes op igen – konstruktøren sætter den i spilstarten 0x830520). Vinderens beløb ≠ 0 → nyheden 0x48e3e0 (cmPrizeNews). Giver vinderens beløb. */
+export function cmRoundPrize(g: GameState, key: string, fund0: number, w: number, l: number, nRounds: number, round: number, ties: number, winner: Club, loser: Club | undefined): number {
   const fund = (g.cmCupFund ??= {});
   fund[key] ??= fund0;
   if (w === -1) {
@@ -779,6 +778,28 @@ export function cmRoundPrize(g: GameState, key: string, fund0: number, w: number
   }
   if (w) { book(g, winner, K.prize, w); fund[key] -= w; }
   if (l && loser) { book(g, loser, K.prize, l); fund[key] -= l; }
+  return w;
+}
+/** 0x522240's nyhed (0x52230b, før bogføringen): Cup 0x48e3e0(vinderen, beløbet, −1, næste runde, kampen, art) – kun når et menneske styrer klubben
+ *  (0x7875e0) og beløbet ≥ omdømme (+0x80)·50; NewsItem 0x1a [turnering, beløb, klub, placering −1, næste runde, modstander, sejr, art] til
+ *  klubbens manager (0x7861e0). Næste runde = rundepostens +0x6f (næste rundes id +0x07), når runden + 1 < antal runder (+0x3c) og id'et ≠ 0x8c
+ *  (bronzekampen), ellers 0. Art = holdpostens +5 (cup +0xa7): finalevejen 0x51af0f/0x51b27f (sidste runde – eller næstsidste, når den sidste er
+ *  bronzekampen 0x8c) giver vinderen 1 (bronzekampen 3), en almindelig runde 0xff (0x51b5cd); kampens +0x30 = 0x136 og art 1 → 3.
+ *  Teksten 0x48e590: næste runde ≠ 0 → 0x99bb78 "… for qualifying for the {0x4bfa30(turneringen, 0, runden, 1)}", art 1 → 0x99bad8 "winning the",
+ *  art 2 → 0x99ba2c "runners-up", ellers modstanderen (0x99b95c "win against"/0x99b88c "draw against"). Sejren: hjemmeholdets +0x3d (sat af
+ *  0x51c0a1, når kampen ikke blev afgjort af stillingen efter 90 minutter: forlænget spilletid, straffe), samlet +0x4b > +0x4c, eller +0x43 >
+ *  +0x44 efter 90 minutter – den afgjorte kamps vinder har altid én af dem → 1 ("draw against" kun i turneringer med pointkampe, flag 0x10). */
+export function cmPrizeNews(g: GameState, comp: string, f: Fixture, W: Club, L: Club | undefined, amount: number, ids: number[], round: number): void {
+  if (!isHumanClub(W.id) || amount < repOf(g, W) * 50) return;
+  const n = ids.length;
+  const next = round + 1 < n && ids[round + 1] !== 0x8c ? ids[round + 1] : 0;
+  const final = round === n - 1 || (round === n - 2 && ids[n - 1] === 0x8c);
+  let kind = final ? (ids[round] === 0x8c ? 3 : 1) : -1;
+  if (f.cm?.w30 === 0x136 && kind === 1) kind = 3;
+  const body = next ? 'qual' : kind === 1 ? 'won' : kind === 2 ? 'runnersUp' : L ? 'win' : '';
+  if (!body) return;   // modstander −1: ingen brødtekst (0x48e85a)
+  const fc = g.comps[comp]?.name ?? '';
+  asOwner(W.id, () => addNews({ cat: 'finance', key: 'cmprize.h', params: { club: W.short, amt: amount / gbp(g, W), fc, fr: next, opp: L?.short ?? '', body }, link: { kind: 'club', id: W.id } }));
 }
 /** de europæiske klasser (euro.py/gen_euro.py): puljen +0x28 fra konstruktøren (kun UefaCup 0x9023c6: 3.000.000; EuropeanCup, EurSuperCup og
  *  IntertotoCup sætter den ikke) og spillets trin → rundetabellen (CL: kvalifikationen stage −1, slutspillet stage 12 – samme objekt) */
@@ -803,13 +824,15 @@ compHooks.cupTieDone = (comp, f, winner, loser) => {
     // +0x1a: rundens kampe (Liga Cup'en: efter antallet i Europa – byes-tabellen)
     const euros = (comp.meta?.cmEntry as Record<number, number[]> | undefined)?.[3]?.length;
     const ties = key === 'ENG_LC' && euros !== undefined ? cmLeagueCupStructure(year, euros)?.[round]?.[1] ?? r[11] : r[11];
-    cmRoundPrize(g, key, pz.fund, e[0], e[1], rounds.length, round, ties, W, L);
+    const won = cmRoundPrize(g, key, pz.fund, e[0], e[1], rounds.length, round, ties, W, L);
+    if (won) cmPrizeNews(g, comp.id, f, W, L, won, rounds.map((x) => x[2]), round);
   } else if (typeof euro === 'string') {
     const tk = euroTable(euro, f.stage);
     const rows = tk ? CM_EURO_ROUNDS[tk] : undefined, r = rows?.[round];
     // slot, id, idx, b0b, f0d, f0f, f11, venue, b17, teams, ties, new, first, replays, legs, gap, pay, prizeW, prizeL
     if (!rows || !r) return;
-    cmRoundPrize(g, euro, EURO_FUND[euro] ?? 0, r[17], r[18], rows.length, round, r[10], W, L);
+    const won = cmRoundPrize(g, euro, EURO_FUND[euro] ?? 0, r[17], r[18], rows.length, round, r[10], W, L);
+    if (won) cmPrizeNews(g, comp.id, f, W, L, won, rows.map((x) => x[1]), round);
   }
 };
 

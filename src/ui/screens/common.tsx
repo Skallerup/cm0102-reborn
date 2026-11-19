@@ -14,6 +14,7 @@ import type { GameState } from '../../game/types';
 import { isRetro } from '../theme';
 import { ClassicHead, cxLongDate } from '../classic';
 import { cmRumBody, cmRumTitle } from '../cmRumText';
+import { cmCompShort, cmFixtureName, cmFixtureNameInText } from '../../game/cmRoundName';
 
 /** spillerens grunde (cmTransferTalks.ts cmWhy, "k:argument|k") som tekst: "… og …" (0x8e4ae0) */
 export function cmWhyText(why: string): string {
@@ -134,7 +135,33 @@ export function newsParams(n: NewsItem): Record<string, string | number> {
   }
   // landsholdenes nyheder som originalen (cmIntlSquad.ts: 0x76e3b0, 0x76f370, 0x770d20)
   if (n.key.startsWith('cmint.')) cmIntParams(n, p);
+  // originalens kalender (cmCalendar.ts): tv-flytningen og den flyttede kamp (0x77bc80 type 3/1)
+  if (n.key.startsWith('cmcal.')) cmCalParams(n, p);
+  // pokalpræmien (cmFinance.ts, 0x48e590)
+  if (n.key.startsWith('cmprize.')) {
+    if (typeof p.amt === 'number') p.amt = money(p.amt);
+    const fc = String(n.params?.fc ?? '');
+    p.comp = fc;
+    p.round = cmFixtureName(fc, 0, Number(n.params?.fr ?? 0), 1, compName);
+  }
   return p;
+}
+
+/** 0x54bef0(…, 0xff): "Saturday 10th February" (ugedag, dag og måned – uden år) */
+function cmDayMonth(iso: string): string {
+  const d = new Date(`${iso}T12:00:00Z`), loc = t('cl.locale');
+  if (!loc.startsWith('en')) return d.toLocaleDateString(loc, { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+  const n = d.getUTCDate(), suf = n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th';
+  return `${d.toLocaleDateString(loc, { weekday: 'long', timeZone: 'UTC' })} ${n}${suf} ${d.toLocaleDateString(loc, { month: 'long', timeZone: 'UTC' })}`;
+}
+function cmCalParams(n: NewsItem, p: Record<string, string | number>): void {
+  const q = n.params ?? {};
+  // kampens navn 0x4bfa30(turneringen, +0x32, +0x30, 2): det korte turneringsnavn + etape/runde; "Friendly"/"Reserve" med lille forbogstav
+  p.fix = cmFixtureNameInText(cmFixtureName(String(q.fc ?? ''), Number(q.fs ?? 0), Number(q.fr ?? 0), 2, compName));
+  if (typeof q.d1 === 'string') p.date = cmDayMonth(q.d1);
+  if (typeof q.d2 === 'string') p.date2 = cmDayMonth(q.d2);
+  if (typeof q.c2 === 'string') p.comp2 = compName(cmCompShort(q.c2));
+  if (typeof q.tod === 'number') p.tod = t(`cmcal.tod.${q.tod}`);
 }
 
 export function newsTitle(n: NewsItem) {
@@ -184,6 +211,9 @@ function bodyKey(n: NewsItem): string {
   if (n.key.startsWith('cmfine.') && typeof n.params?.body === 'string') return `cmfine.b.${n.params.body}`;
   // PLAYER_REGEN (cmRetire.ts): originalens brødtekst er valgt i spillet (0x7a9650/0x7aa4c0)
   if (n.key.startsWith('cmret.') && typeof n.params?.body === 'string') return `cmret.b.${n.params.body}`;
+  // tv-flytningen (cmCalendar.ts): dagen, tidspunktet eller "chosen" (0x77c5ab/0x77c675); pokalpræmien (cmFinance.ts, 0x48e590)
+  if (n.key === 'cmcal.tv' && typeof n.params?.body === 'string') return `cmcal.tvb.${n.params.body}`;
+  if (n.key.startsWith('cmprize.') && typeof n.params?.body === 'string') return `cmprize.b.${n.params.body}`;
   // klubøkonomiens begivenheder (cmFinEvents.ts): originalens brødtekst er valgt i spillet (0x59f3e0 m.fl.)
   if (n.key.startsWith('cmfe.') && typeof n.params?.body === 'string') return `cmfe.b.${n.params.body}`;
   // venskabskampens tilbud til mennesket (0x77ce44): arrangøren hjemme "have offered …", ellers "have challenged …"
