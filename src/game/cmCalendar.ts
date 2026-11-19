@@ -202,9 +202,37 @@ export function cmFindNewDate(g: GameState, f: Fixture): void {
  *  andre kampe flyttes (0x5abc30 + 0x5ab510 + add_fixture) */
 export function cmPlaceFixture(g: GameState, f: Fixture): void {
   const [list, code] = clashes(g, f, f.date, false);
-  if (!list.length) return;
-  if (code >= fixtureType(g, f)) { cmFindNewDate(g, f); return; }
-  for (const o of list) if (g.comps[o.comp]?.meta?.cmSched) cmFindNewDate(g, o);
+  if (list.length) {
+    if (code >= fixtureType(g, f)) cmFindNewDate(g, f);
+    else for (const o of list) if (g.comps[o.comp]?.meta?.cmSched) cmFindNewDate(g, o);
+  }
+  // 0x5aaa74–0x5aab27: kampen er lagt (også efter 0x5ab510 + det nye add_fixture 0x5aa978) → 0x48dd70 = 3/5 → 0x5ae9d0
+  if (g.comps[f.comp]?.meta?.cmEuro) cmEuroClubMoves(g, f);
+}
+
+/** nation +0x11c: landet er indlæst (Select League(s) = g.activeNations) */
+const nationLoaded = (g: GameState, n: number | undefined) => n !== undefined && n >= 0 && (g.activeNations?.length ? g.activeNations.includes(n) : true);
+
+/** 0x5ae9d0 (fra add_fixture 0x5aab27, når 0x48dd70(turneringen, kampen) = 3 eller 5 – turneringer uden land med verdensdelen Europa
+ *  (indgang 3 i 0xb63d60) eller Sydamerika (5); spillets Europa-turneringer = cmEurope): for hjemme- og udeholdet (landet indlæst, +0x53 →
+ *  +0x11c) – klubbens kamp 2 dage før (0x54c8e0(2) + 0x5acbe0, førsteholdet, ikke venskabskamp, uspillet +0x43 = 0xff) flyttes til 3 dage
+ *  før, og kampen 2 dage efter (0x54c5b0(2); intet spillet-tjek) til 3 dage efter, når den nye dato ikke giver andre sammenstød end den gamle
+ *  kamp selv (0x5ad780(kopien, flag 0)) → 0x5abc30 + add_fixture(kopien); tidspunktet +0x3f følger med. (UEFA Cup torsdag → lørdagens
+ *  ligakamp søndag, tirsdagens mandag; Champions League tirsdag → søndagens lørdag.) Nyheden 0x5aac70 er ikke porteret. */
+function cmEuroClubMoves(g: GameState, f: Fixture): void {
+  for (const club of [f.home, f.away]) {
+    if (!nationLoaded(g, g.clubs[club]?.nation)) continue;
+    for (const [k, to] of [[-2, -3], [2, 3]] as const) {
+      // 0x5acbe0: dagens kampe tidspunkt for tidspunkt (0..2) – den første
+      const o = clubFixtures(g, f, f.date, k, k, [club]).sort((a, b) => (a.slot ?? 1) - (b.slot ?? 1))[0];
+      // 0x5c6710: venskabskampene (cmFriendlyOffers.ts FRIENDLY_COMP – ikke importeret: competitions.ts ↔ cmCalendar.ts)
+      if (!o || o.comp === 'FRIENDLY' || (k < 0 && o.result)) continue;
+      const D = addDays(f.date, to);
+      if (clashes(g, o, D, false)[0].length) continue;
+      moveFixture(o, D);
+      cmPlaceFixture(g, o);
+    }
+  }
 }
 
 // ---------------------------------------------------------------- tv-flytningerne (0x685640)
