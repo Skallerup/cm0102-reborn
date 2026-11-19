@@ -44,7 +44,8 @@ export function newsMustRespond(g: GameState, n: NewsItem | undefined): boolean 
   if (cmStaffOn(g) && cmStaffDelayOpen(g, n)) return true;
   if (n.key === 'transfer.cmAgrees' && cmConfirmOpen(g, o)) return true;
   // 0xfac Offer Contract (de andre databaser i ægte tilstand: "X have accepted your offer" → Offer Contract)
-  if (n.key === 'transfer.cmTalks' && cmTalksOpen(g, o)) return true;
+  // kun indtil kontrakten er tilbudt (cmTalks.state 0) – efter Offer Contract (state 1) venter vi på spillerens svar, og spillet skal kunne gå videre
+  if (n.key === 'transfer.cmTalks' && cmTalksOpen(g, o) && o.cmTalks!.state === 0) return true;
   if (!cmActive(g) && (n.key === 'transfer.bidAccepted' || n.key === 'transfer.releaseMet') && o && o.status === 'negotiating' && o.buyer === g.userClub) return true;
   return false;
 }
