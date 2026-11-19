@@ -2,6 +2,7 @@
 
 Flyttet fra CLAUDE.md 17/11-2026 (så CLAUDE.md er kort i hver session). Nyeste først. Tilføj en linje øverst ved hver udgivelse.
 
+- 2026-11-19 – Skudt live (v0.31.0): 2026-11-19 – HOTFIX: cmMemCall (cmWageGame.ts) manglede 0x597db0 (lønloft for stabsjob, porteret i cmMaxWage.ts) → 'ikke porteret' ved build_bid 0x8e6423 → 0x4cda70 på person med spillerpost + stabsjob; engineFlag-test 300 s.
 - 2026-11-19 – Skudt live (v0.31.0): 2026-11-19 – cash_format_money 0x441c10 afkodet i unicorn (valutatabel 0x43f7f0, afrunding 0x4426e0): cashFormat i i18n/index.ts for 7 valutaer (136 beløb pr. valuta i tests/fixtures/cashFormat.json fra exe'en); finansskærm 0x460590: negative måles uden parentes (>12 tegn), Transfer Funds rundet til Cash-trin × valutaenhed, negativ = 'None available'.
 - 2026-11-19 – Skudt live (v0.31.0): 2026-11-19 – Nyheder: tv (type 3, fra 0x685640), flyttet kamp (0x5aac70, fra 0x5ae9d0), præmie (0x1a, ≥ omdømme×50) med rundenavne 0x4bfa30 (322 navne via unicorn, cmRoundNames.ts); perf-fingerprint NONEWS=1 – simulering uændret (cf513e9a).
 - 2026-11-19 – Skudt live (v0.31.0): 2026-11-19 – Testhastighed: CM_GAME_CACHE til som standard lokalt (CI fra; CM_GAME_CACHE=0 slår fra), efter lækage-rettelsen f488512f. Før: sum 4546 s/172 filer; med cache ~2460 s; cmInt 28 → 1,8 s varm.

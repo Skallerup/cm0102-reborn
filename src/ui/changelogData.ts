@@ -13,6 +13,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '2026-11-19',
     title: { da: 'Mere af det originale CM 01/02', en: 'More of the original CM 01/02' },
     items: [
+      { da: "Rettet: spillet kunne gå ned, når en computerklub bød på en klubløs person, der både er spiller og træner (fx en tidligere spiller).", en: "Fixed: the game could crash when a computer club bid for a free agent who is both a player and a coach (e.g. a former player)." },
       { da: "Finances viser beløb præcis som CM 01/02: fuldt tal op til 13 tegn, ellers K/M/B med afkortede decimaler, underskud i parentes, og Transfer Funds rundet eller \"Ingen til rådighed\".", en: "Finances shows amounts exactly like CM 01/02: full figures up to 13 characters, otherwise K/M/B with truncated decimals, losses in brackets, and Transfer Funds rounded or \"None available\"." },
       { da: "Nyheder som i originalen: tv-flytninger (\"match televised\"), kampe flyttet på grund af en Europa-kamp (\"match re-arranged\") og præmier fra pokal og Europa (\"awarded … for qualifying for the …\") med originalens rundenavne.", en: "News as in the original: TV moves (\"match televised\"), matches re-arranged because of a European tie (\"match re-arranged\") and cup/European prize money (\"awarded … for qualifying for the …\") with the original's round names." },
       { da: "Tests: createGame-cachen er til som standard lokalt, så testpakken kører hurtigere.", en: "Tests: the createGame cache is on by default locally, so the test suite runs faster." },
