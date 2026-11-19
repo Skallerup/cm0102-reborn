@@ -41,10 +41,19 @@ export function setSetupGame(g: GameState) { setGame(g); preview = { label: 'set
 /** LEAGUE_RULES som modulet definerer dem – et spils customRules lægges oven på (og forrige spils fjernes) */
 const BASE_RULES = { ...LEAGUE_RULES };
 
+/** Hukommelse (Safari "Out of memory" 19/11): modulernes caches med ét spil i sig (`{ g, … }`, sammenlignet med `=== g`) holdt det forrige spil
+ *  (nyt-spil-forløbets midlertidige verden, spillet før dagens Web Worker) i live efter et skifte. De tømmes, når et andet spil lægges ind – de ville
+ *  alligevel ikke ramme (nøglen er spilobjektet), så intet resultat ændres. (`var` + funktionserklæring: kan kaldes, mens modulerne indlæses i en
+ *  cirkulær import.) */
+// eslint-disable-next-line no-var
+var GAME_SWITCH: (() => void)[] | undefined;
+export function onGameSwitch(reset: () => void): void { (GAME_SWITCH ??= []).push(reset); }
+
 /** `keepCarry`: modulernes tilstand (carry.ts) røres ikke, selvom spillet er et nyt objekt (konverteringen bygger videre på createGame's tilstand) */
 export function setGame(g: GameState | null, opts?: { keepCarry?: boolean }) {
   preview = null;
   const other = !!g && g !== G;
+  if (g !== G && GAME_SWITCH) for (const f of GAME_SWITCH) f();
   // ligaregler fra en importeret database (CM 01/02) skal kendes, før spillet simuleres – forrige spils regler følger ikke med
   if (other && !opts?.keepCarry) { for (const k of Object.keys(LEAGUE_RULES)) if (!(k in BASE_RULES)) delete LEAGUE_RULES[k]; Object.assign(LEAGUE_RULES, BASE_RULES); }
   if (g?.customRules) Object.assign(LEAGUE_RULES, g.customRules);

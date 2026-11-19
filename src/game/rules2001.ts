@@ -1,5 +1,5 @@
 // Regler fra 2001/02, der kun gælder den originale database (ejerens ønske: den moderne database berøres ikke).
-import { addNews, gs, squad } from './state';
+import { addNews, gs, onGameSwitch, squad } from './state';
 import { rng } from './rng';
 import { econ } from './econ';
 import { cmActive } from './cmPlayerData';
@@ -58,6 +58,7 @@ const lastThursdayOfMarch = (y: number) => { const d = new Date(Date.UTC(y, 2, 3
 
 // sæsonens og de nuværende lejeaftaler pr. klub – regnet én gang pr. dag (og talt op, når en leje gennemføres: noteLoan)
 let LC: { date: string; g: object; season: Map<number, number>; now: Map<number, number> } | null = null;
+onGameSwitch(() => { LC = null; });
 function loanCounts(g: ReturnType<typeof gs>) {
   if (LC && LC.date === g.date && LC.g === g) return LC;
   const since = lastJune20(g.date), season = new Map<number, number>(), now = new Map<number, number>();

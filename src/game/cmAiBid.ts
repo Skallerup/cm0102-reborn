@@ -4,6 +4,7 @@
 // pladsen, pladsens +7, 0, &ud). Med ønskelisterne slået til (cmShortlistGame.ts) kommer vilkårene fra 0x84a020 selv; dette er vejen for
 // bud, spillet laver uden dem (transfers.ts cmBidsForListed).
 import type { GameState, Player } from './types';
+import { onGameSwitch } from './state';
 import { getContract, clubAt } from './cmMem';
 import { buildSlMem, type SlMem } from './cmShortlistGame';
 import { cmRand } from './cmPlayerData';
@@ -23,6 +24,7 @@ export interface AiBidTerms {
 
 /** hukommelsen for dagen (adapterne til 0x840d80 m.fl. er ønskelisternes – ~0,5 s at bygge, deles af dagens bud) */
 let cache: { g: GameState; date: string; S: SlMem } | null = null;
+onGameSwitch(() => { cache = null; willMemo = null; });
 function memFor(g: GameState): SlMem {
   if (cache && cache.g === g && cache.date === g.date) return cache.S;
   // (uden ønskelisternes udskudte spillerposter – cmShortlistGame.ts staleOk: kontrollen dækker ikke build_bid's læsninger)

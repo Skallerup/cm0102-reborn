@@ -3,7 +3,7 @@ import { compName, dateFmt, getLang, has, money, moneyCm, moneyWage, natName, t 
 import { useNav } from '../core';
 import { ClubLink, PlayerLink } from '../components';
 import type { NewsItem } from '../../game/types';
-import { gs } from '../../game/state';
+import { gs, onGameSwitch } from '../../game/state';
 import { cmScoutReportBody } from '../cmScoutNews';
 import { cmScoutAsgParams } from '../cmScoutAsgNews';
 import { cmBanAnswerBody, cmBanBody, cmBanParams } from '../cmBanText';
@@ -299,6 +299,7 @@ const PERSON_PARAMS = new Set(['manager', 'coach', 'scout', 'staff', 'name', 'ru
 const MONEY_PARAMS = new Set(['fee', 'fee2', 'wage', 'balance', 'budget', 'bill', 'missing', 'amount', 'bid2', 'wage2']);
 
 let nameIndex: { g: GameState; date: string; players: Map<string, number[]>; clubs: Map<string, number>; staff: Map<string, number[]> } | null = null;
+onGameSwitch(() => { nameIndex = null; });
 
 /** Opslag fra navn til id (nyhederne gemmer navne) – bygges én gang pr. spildag */
 function names() {

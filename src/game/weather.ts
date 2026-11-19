@@ -1,7 +1,7 @@
 // Vejr og bane: fast pr. kamp (afhænger af land og måned), så det kan vises i optakten og ændrer kampen.
 import { hash01, Rng } from './rng';
 import { randomName } from './data/generate';
-import { gs } from './state';
+import { gs, onGameSwitch } from './state';
 import type { Fixture, GameState } from './types';
 import { refereeFactor } from './engine/cm0102-original-rules';
 import { cmFixtureWeather, cmWxOn } from './cmWeather';
@@ -99,6 +99,7 @@ export const PITCH_ICON: Record<Pitch, string> = { normal: '', damp: '💧', mud
 /** Dagens dommer: en fast gruppe dommere pr. land, hver med sin strenghed (deterministisk pr. kamp) */
 /** Dommerne pr. land (fra databasen), de mest anerkendte først – cache pr. spil */
 let refCache: { g: unknown; by: Map<number, NonNullable<GameState['officials']>> } | null = null;
+onGameSwitch(() => { refCache = null; });
 function officialsOf(nation: number) {
   const g = gs();
   if (!g.officials?.length) return [];

@@ -8,7 +8,7 @@ import {
   applyMatchEffects, clearKnocks, clubSeason, condition, currentInjury, dayNum, fatigue, fitIso, fitRand, hasSeasonRow, initRecords, initSquadFitness, injuryDaily, injuryStatus,
   HURT, newFit, recordKnock, recoverFatigue, setKnockHook, syncPlayer, trainingLoad, updateFitness, type CmInjury, type FitCtx, type MatchEntry,
 } from './cmFitness';
-import { addNews, gs, hasGame, pickNumber, rebuildIndexes, squad } from './state';
+import { addNews, gs, hasGame, onGameSwitch, pickNumber, rebuildIndexes, squad } from './state';
 import { asOwner, isHumanClub } from './humans';
 import { cmRand, statCategory } from './cmPlayerData';
 import { cmTrainPlayer, humanLevels, setTrainCtx } from './cmTraining';
@@ -31,6 +31,7 @@ type FitFns = Pick<FitCtx, 'squadOf' | 'human' | 'news' | 'retire' | 'onDuty' | 
 /** (hastighed) kontekstens funktioner afhænger kun af (spil, dag) – bygget én gang pr. dag i stedet for pr. aflæsning (linkPlayerCtx
  *  laver en kontekst for hver spiller, kontrakten spørger om); talrækken er stadig ny for hver kontekst som før */
 let FIT_FNS: { g: GameState; today: number; f: FitFns } | null = null;
+onGameSwitch(() => { FIT_FNS = null; });
 function fitFns(g: GameState, today: number): FitFns {
   if (FIT_FNS && FIT_FNS.g === g && FIT_FNS.today === today) return FIT_FNS.f;
   const f: FitFns = {

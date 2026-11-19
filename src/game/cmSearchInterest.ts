@@ -8,6 +8,7 @@
 // Hukommelsen er ønskelisternes (buildSlMem: alle klubber og de klubløse) – bygget én gang pr. dag og klub, svarene gemt pr. spiller.
 // 0x846920 trækker ingen tilfældige tal og skriver kun til sin ud-parameter (her NULL), så spillets forløb er uberørt.
 import type { GameState, Player } from './types';
+import { onGameSwitch } from './state';
 import { cmLogic, cmRand } from './cmPlayerData';
 import { buildSlMem, type SlMem } from './cmShortlistGame';
 import { slCall, slmOf } from './cmShortlist';
@@ -16,6 +17,7 @@ import { slCall, slmOf } from './cmShortlist';
 export const SEARCH_INTEREST_MIN = 3.15;
 
 let cache: { g: GameState; date: string; club: number; S: SlMem | null; ans: Map<number, number> } | null = null;
+onGameSwitch(() => { cache = null; });
 
 function day(g: GameState, club: number) {
   if (!cache || cache.g !== g || cache.date !== g.date || cache.club !== club) cache = { g, date: g.date, club, S: null, ans: new Map() };

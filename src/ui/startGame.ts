@@ -9,7 +9,7 @@ import type { ConvertReport } from '../game/cmConvert';
 import type { NewGameJob } from './newGameWorker';
 import type { NewGameProgress } from './NewGameLoader';
 import { listDbs, loadCustomWorld } from './customDb';
-import { loadOriginalWorld, loadWorld, ORIGINAL_VERSIONS, withCommunityEdits, type OriginalVersion } from './world';
+import { loadOriginalWorld, loadWorld, ORIGINAL_VERSIONS, releaseWorldCaches, withCommunityEdits, type OriginalVersion } from './world';
 
 /** 'custom:<id>' = en database fra editoren (ændringer oven på den originale eller den moderne) */
 export type Db = 'modern' | 'original' | `custom:${string}`;
@@ -47,7 +47,8 @@ export async function loadStartWorld(db: Db, ver: OriginalVersion): Promise<Worl
 /** nyt spil i en Web Worker (ui/newGameWorker.ts) med status undervejs – siden fryser ikke; uden Worker (eller ved fejl) i hovedtråden.
  *  `opts.preview` = nyt-spil-forløbets midlertidige verden (setSetupGame); `signal` afbryder arbejderen (en ny liga-/databasevalg). */
 export async function createGameAsync(world: WorldData, opts: NewGameOptions, onProgress: (p: NewGameProgress) => void, signal?: AbortSignal): Promise<void> {
-  const put = (g: GameState) => (opts.preview ? setSetupGame(g) : setGame(g));
+  // (hukommelse) det rigtige spil: databasen behøves ikke længere i hovedtråden (world.ts releaseWorldCaches)
+  const put = (g: GameState) => { if (opts.preview) setSetupGame(g); else { setGame(g); releaseWorldCaches(); } };
   if (typeof Worker === 'undefined') { createGame(world, opts); if (opts.preview) setSetupGame(gs()); return; }
   try {
     const game = await new Promise<GameState>((resolve, reject) => {
@@ -68,7 +69,7 @@ export async function createGameAsync(world: WorldData, opts: NewGameOptions, on
     if ((e as Error).name === 'AbortError') return;
     console.warn('Nyt spil i en Worker fejlede – opretter i hovedtråden', e);
     createGame(world, opts);
-    if (opts.preview) setSetupGame(gs());
+    if (opts.preview) setSetupGame(gs()); else releaseWorldCaches();
   }
 }
 

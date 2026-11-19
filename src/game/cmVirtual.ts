@@ -35,7 +35,7 @@
 // hvor de kun findes omkring kampene). Reservespillerne laves ikke (spillets reserver kan ikke spille, og frøene er pr. spiller).
 import type { GameState, Player, Staff } from './types';
 import { ATTRS } from './attributes';
-import { addPlayer, dropPlayer, playersEpoch, squad } from './state';
+import { addPlayer, dropPlayer, onGameSwitch, playersEpoch, squad } from './state';
 import { cmActive, clubRepMem, NO_RESERVES } from './cmPlayerData';
 import { shownFromInternal } from './playerInit';
 import { emptyStats, randomName } from './data/generate';
@@ -155,6 +155,7 @@ export function virtualPlan(g: GameState, cid: number, match: boolean): VirtualS
 /** de rigtige spillere i postrækkefølge (skabelonerne; [0xae236c], højst 30000) – genbruges pr. dag, så længe ingen rigtig spiller er kommet til
  *  eller forsvundet (state.ts playersEpoch; før talte den alle nøgler, og hver ny fyldspiller byggede listen om – ~12 s ved nyt spil) */
 let tplCache: { g: GameState; players: GameState['players']; date: string; epoch: number; list: Player[] } | null = null;
+onGameSwitch(() => { tplCache = null; });
 function templates(g: GameState): Player[] {
   const epoch = playersEpoch();
   if (tplCache && tplCache.g === g && tplCache.players === g.players && tplCache.date === g.date && tplCache.epoch === epoch) return tplCache.list;

@@ -9,7 +9,7 @@ import { naturalRole } from './attributes';
 import { asOwner, forEachHuman, isHumanClub } from './humans';
 import { regionOf } from './leagues';
 import { Rng, hash, rng } from './rng';
-import { addNews, gs, hasGame } from './state';
+import { addNews, gs, hasGame, onGameSwitch } from './state';
 import { NO_CARRY, registerCarry } from './carry';
 import { cmAppsAfterMatch } from './transfers';
 import { autoSelect, newTactic } from './tactics';
@@ -90,6 +90,7 @@ export function setNationFillers(m: Map<number, Player[]> | null, keepBase = fal
 let cache: { date: string; g: unknown; by: Map<number, Player[]> } | null = null;
 /** listerne uden fyldspillere (samme nøgle som `cache`) */
 let base: { date: string; g: unknown; by: Map<number, Player[]> } | null = null;
+onGameSwitch(() => { cache = null; base = null; });
 function byNation(): Map<number, Player[]> {
   const g = gs();
   // også spillet selv: et nyt GameState-objekt samme dag (indlæst spil, dagens Web Worker – ui/dayRunner.ts) har nye spillerobjekter
@@ -550,6 +551,7 @@ function tournamentDay(t: IntlTournament | undefined) {
 // (hastighed) pr. spil og dato – kun datoen som nøgle gav et nyt spil i samme proces (samme startdato) det forrige spils udtagelser
 // i forkørslen; følger med en kopi/et gem af spillet (carry.ts), da den bygges ved første opslag på dagen og ikke genberegnes
 let dutyCache: { g: GameState; date: string; ids: Set<number> } | null = null;
+onGameSwitch(() => { dutyCache = null; });
 export function onIntlDuty(p: Player): boolean {
   const g = gs();
   if (dutyCache?.g !== g || dutyCache.date !== g.date) dutyCache = { g, date: g.date, ids: dutyIds() };
@@ -693,6 +695,7 @@ export const nationPool = (n: number): Player[] => (byNation().get(n) ?? []).sli
 
 /** Er spilleren udtaget til sit landshold? (mærket "Int" i trupoversigterne som i CM 01/02) – gemt pr. spildag */
 let intCache: { date: string; g: unknown; ids: Set<number> } | null = null;
+onGameSwitch(() => { intCache = null; });
 export function isInternational(p: Player): boolean {
   const g = gs();
   if (!intCache || intCache.date !== g.date || intCache.g !== g) {

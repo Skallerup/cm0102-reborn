@@ -46,6 +46,7 @@ import { registerAskingPrice } from './cmAskingPrice';
 import { registerPlayerWill } from './cmPlayerWill';
 import { ensureImpls } from './cmGen/impls';
 import { isHumanClub } from './humans';
+import { onGameSwitch } from './state';
 import { ageOn } from './dates';
 import { ATTRS } from './attributes';
 import { workPermitGranted, cmLoanRulesOk } from './rules2001';
@@ -296,6 +297,8 @@ export function touchClub(S: SlMem, cid: number, pids?: Set<number>): void {
 }
 /** scripts/cm-sl-stalecheck.ts: dagens hukommelse (med gårsdagens poster) og en frisk skygge (uden), som kontrollen skriver dagens skrivninger i
  *  (ikke refreshClub's) og sammenligner hver læsning med */
+// (hukommelse) planValue's genvej holder dagens SlMem (og dermed spillet) – tømmes ved et andet spil (state.ts onGameSwitch)
+onGameSwitch(() => { PV_DIRECT.c = null; PV_DIRECT.f = null; });
 export const STALECHECK = { on: false, mem: null as SparseMem | null, shadow: null as SparseMem | null, days: 0 };
 function staleCheck(g: GameState, M: WantMem, call: (adr: number, a: number[]) => number | undefined, useLog: (adr: number) => boolean): void {
   const all = Object.keys(g.clubs).map(Number);

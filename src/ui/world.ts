@@ -66,6 +66,9 @@ export const ORIGINAL_VERSIONS = ['3.9.60', '3.9.65', '3.9.68'] as const;
 export type OriginalVersion = (typeof ORIGINAL_VERSIONS)[number];
 export const originalFile = (v: OriginalVersion) => (v === '3.9.60' ? 'world-original.json' : `world-original-${v.replace(/\./g, '')}.json`);
 const origCache = new Map<OriginalVersion, Promise<WorldData>>();
+/** Hukommelse (Safari "Out of memory" 19/11): den indlæste database (den originale ≈ 110 MB i Chrome, flere gange det i Safari) blev holdt i
+ *  hovedtråden hele sessionen. Når spillet er oprettet, slippes den – et nyt spil henter den igen (fra browserens/arbejderens cache). */
+export function releaseWorldCaches(): void { origCache.clear(); cache = null; }
 export function loadOriginalWorld(v: OriginalVersion = '3.9.60'): Promise<WorldData> {
   let c = origCache.get(v);
   if (!c) {
