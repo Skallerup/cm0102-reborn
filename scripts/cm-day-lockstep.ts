@@ -60,6 +60,9 @@ const ONLY = process.env.ONLY ?? '';
 const CLUB = process.env.CLUB ?? 'Arsenal';
 const DUMP = process.env.DUMP ?? '';
 const dumpRows: unknown[] = [];
+/** BOARD_DUMP=<fil>: bestyrelsesposterne (+0..+0x38) og manageren pr. engelsk klub og billede, begge sider – til analysen af managerskifterne */
+const BOARD_DUMP = process.env.BOARD_DUMP ?? '';
+const boardRows: unknown[] = [];
 
 // ------------------------------------------------------------------ statistik pr. dag og felt
 interface Stat { n: number; bad: number; ex: string[] }
@@ -307,6 +310,12 @@ function compareDay(v: View) {
       const [o0, m0] = mgr0.get(c.id)!;
       dist('bestyrelse: andel klubber med en anden manager end ved spilstart', on !== o0 ? 1 : 0, mn.trim() !== m0 ? 1 : 0);
     }
+    if (BOARD_DUMP && MM && c.id !== g.userClub) {
+      const R = g.cmBoard?.rec[c.id], rb = m.u32(MM) + 0x49 * ix;
+      const mine = R ? [R.b1, R.b2, R.w6, R.w8, R.wa, R.wc, R.e, R.w10, R.w12, R.w14, R.w16, R.t2c, R.q30, R.d38] : null;
+      const orac = [m.u8(rb + 1), m.u8(rb + 2), m.s16(rb + 6), m.s16(rb + 8), m.s16(rb + 0xa), m.s16(rb + 0xc), m.u16(rb + 0xe), m.s16(rb + 0x10), m.s16(rb + 0x12), m.s16(rb + 0x14), m.s16(rb + 0x16), m.s32(rb + 0x2c), m.f64(rb + 0x30), m.f64(rb + 0x38)];
+      boardRows.push({ d: today, c: c.name, lg: c.league, om: on, mm: mn.trim(), o: mine, m: orac });
+    }
     if (MM && g.cmBoard?.rec[c.id]) {
       const R = g.cmBoard.rec[c.id], rb = m.u32(MM) + 0x49 * ix;
       for (const [nm, o, val] of [['w6 tillid', 6, R.w6], ['w8', 8, R.w8], ['wa', 0xa, R.wa], ['wc', 0xc, R.wc]] as const) {
@@ -549,6 +558,7 @@ const lines: string[] = [];
 const out = (s = '') => { console.log(s); lines.push(s); };
 const cell = (s: string) => s.replace(/\|/g, '/');
 if (DUMP) writeFileSync(DUMP, JSON.stringify(dumpRows));
+if (BOARD_DUMP) writeFileSync(BOARD_DUMP, JSON.stringify(boardRows));
 out(`\n# Dag for dag mod originalen – ${days[0]} → ${days[days.length - 1]} (${days.length} billeder, ${CLUB}, frø 1, ${worldFile})`);
 out('Eksempler: «vores mod originalen». Berørte = afvigelser/tjekket den dag. Billedet for dag D er taget før 0x4c7ac0(D, 2, 1); vores spil står ved dag D−1, færdigspillet.');
 out('\n## Første afvigelse pr. område (uden felter med tilfældige inddata)');

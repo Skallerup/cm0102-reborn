@@ -903,6 +903,15 @@ export function cmBoardSeasonSetup(g: GameState, only?: Set<string>): void {
   syncHuman(g);
 }
 
+/** kampposten holdblok +8/+9 (0x729ff0 0x72a5bb/0x72a5c1: engine+0xf5bc + 54·side +2/+3 = skud og skud på mål, summeret over kamptruppens
+ *  20 i 0x6d1cc0's watchedStats – u8) – læst af 0x695240 1.4a. Linjernes `cmr` [4]/[5] er spillerens +0x26/+0x27 (gittermotoren); uden dem
+ *  (zonemotoren) linjernes skud. */
+function teamBlock89(lines: MatchReport['players']): { b8: number; b9: number } {
+  let b8 = 0, b9 = 0;
+  for (const l of lines) { b8 = (b8 + (l.cmr ? l.cmr[4] : l.shots ?? 0)) & 0xff; b9 = (b9 + (l.cmr ? l.cmr[5] : l.on ?? 0)) & 0xff; }
+  return { b8, b9 };
+}
+
 /** sim.ts applyMatchResult (efter tabellen): 0x6951e0 */
 export function cmBoardAfterMatch(g: GameState, f: Fixture, rep: MatchReport): void {
   if (!cmBoardOn(g)) return;
@@ -927,7 +936,7 @@ export function cmBoardAfterMatch(g: GameState, f: Fixture, rep: MatchReport): v
     const lines = rep.players.filter((l) => l.team === t);
     const oppNation = g.clubs[t ? f.home : f.away]?.nation;
     return {
-      club: t ? f.away : f.home, b8: 0, b9: 0,
+      club: t ? f.away : f.home, ...teamBlock89(lines),
       rows: lines.map((l) => {
         const p = g.players[l.id];
         const r = p?.cmRepMem ?? p?.cmRep ?? [50, 50, 50];
@@ -971,7 +980,7 @@ export function cmBoardNationalAfterMatch(g: GameState, home: number, away: numb
   const sideOf = (t: 0 | 1) => {
     const oppN = nat[t ? 0 : 1];
     return {
-      club: natClub(nat[t]), b8: 0, b9: 0,
+      club: natClub(nat[t]), ...teamBlock89(rep.players.filter((l) => l.team === t)),
       rows: rep.players.filter((l) => l.team === t).map((l) => {
         const p = g.players[l.id];
         const r = p?.cmRepMem ?? p?.cmRep ?? [50, 50, 50];
