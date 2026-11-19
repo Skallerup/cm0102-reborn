@@ -95,5 +95,9 @@ export default defineConfig({
   // createGame gennem cachen på disken (tests/helpers/gameCache.ts): til som standard lokalt (nyt spil med den originale database = 18-25 s; med
   // cachen ~1 s), fra i CI og med CM_GAME_CACHE=0. snapCarry.test.ts slår den selv fra (den afprøver et nybygget spil i en ny proces).
   // Lokalt 120 s pr. test: under belastning (flere agenter) ramte 5 s-standarden falske fejl. CI giver selv --testTimeout.
-  test: { testTimeout: process.env.CI ? undefined : 120_000, maxWorkers: process.env.CI ? undefined : ramBudget().testWorkers, setupFiles: process.env.CM_GAME_CACHE !== '0' && !process.env.CI ? ['tests/helpers/setupGameCache.ts'] : [] },
+  test: { testTimeout: process.env.CI ? undefined : 120_000, maxWorkers: process.env.CI ? undefined : ramBudget().testWorkers, setupFiles: [
+    // scripts/test.mjs (testresultat-cachen) optager de læste filer – først, så testfilens egne læsninger på topniveau kommer med
+    ...(process.env.CM_TEST_RECORD && !process.env.CI ? ['tests/helpers/recordReads.ts'] : []),
+    ...(process.env.CM_GAME_CACHE !== '0' && !process.env.CI ? ['tests/helpers/setupGameCache.ts'] : []),
+  ] },
 })

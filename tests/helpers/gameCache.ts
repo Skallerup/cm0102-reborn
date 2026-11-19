@@ -54,7 +54,10 @@ function srcHash(): string {
       else if (e.isFile()) { h.update(path.relative(ROOT, f)); h.update('\0'); h.update(fs.readFileSync(f)); h.update('\0'); }
     }
   };
-  walk(path.join(ROOT, 'src'));
+  // scripts/test.mjs' optagelse (tests/helpers/recordReads.ts) skal ikke se denne gennemlæsning: den er cachens nøgle, ikke testens input
+  const G = globalThis as { __cmTestReadsPause?: number };
+  G.__cmTestReadsPause = (G.__cmTestReadsPause ?? 0) + 1;
+  try { walk(path.join(ROOT, 'src')); } finally { G.__cmTestReadsPause--; }
   return (codeHash = h.digest('hex'));
 }
 
@@ -73,7 +76,7 @@ function contextKey(): string {
     grid: gf ? sha(String(gf)) : null,
     unknown: GRID_UNKNOWN,
     rules: sha(JSON.stringify(LEAGUE_RULES)),
-    env: Object.keys(process.env).filter((k) => /^(CM_|GRID_|MODE$|RECOMP_|ENGINE$|NATIONS$)/.test(k) && !k.startsWith('CM_GAME_CACHE')).sort().map((k) => `${k}=${process.env[k]}`),
+    env: Object.keys(process.env).filter((k) => /^(CM_|GRID_|MODE$|RECOMP_|ENGINE$|NATIONS$)/.test(k) && !k.startsWith('CM_GAME_CACHE') && !k.startsWith('CM_TEST_')).sort().map((k) => `${k}=${process.env[k]}`),
   });
 }
 
