@@ -2,6 +2,7 @@
 
 Flyttet fra CLAUDE.md 17/11-2026 (så CLAUDE.md er kort i hver session). Nyeste først. Tilføj en linje øverst ved hver udgivelse.
 
+- 2026-11-19 – Skudt live (v0.31.0): 2026-11-19 – Live-fejl 'reading default' (Android, Facebook in-app, 18/11 23:13): lazyRetry (src/ui/lazyLoad.ts) – afvist/undefined import → én genindlæsning (vagt pr. minut, fælles med errors.ts; tåler sessionStorage-kast) → fejlskærm med Genindlæs. tests/lazyLoad.test.ts.
 - 2026-11-19 – Skudt live (v0.31.0): 2026-11-19 – Beløb i hele det klassiske tema på cashFormat (0x441c10): money=flag 5, moneyFull=6, moneyWage=0xA, 253 kald i 60 funktioner; spillerprofilens Value fuldt (0x87e0c3 flag 6), Asking Price forkortet (0x8f6eb4 flag 5) – e2e sammenligner tallet; cashStepOf × valutaenhed.
 - 2026-11-19 – Skudt live (v0.31.0): 2026-11-19 – 0x8c7950 1:1 (cmPermit.ts): historik +0x86e i g.cmWp (spilstart 0x8c6e60, landskampe 0x76b600 → 0x8ce920), 0x58d710 cmFifaCount; brugt i ønskelister 0x84b180, spejdere, completeTransfer 0x8c7690 (afslag = nyhed), Player-skærm; intet tjek ved menneskets bud (som originalen). 2026: databasens land-flag (+0x76/+0x7f), egen resultatliste. Ikke-EU ind i England 1/2-sæson 16 → 27. K5 240 → 239.
 - 2026-11-19 – Skudt live (v0.31.0): 2026-11-19 – HOTFIX: cmMemCall (cmWageGame.ts) manglede 0x597db0 (lønloft for stabsjob, porteret i cmMaxWage.ts) → 'ikke porteret' ved build_bid 0x8e6423 → 0x4cda70 på person med spillerpost + stabsjob; engineFlag-test 300 s.
