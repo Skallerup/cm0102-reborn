@@ -123,6 +123,9 @@ const nationName = (i: number) => g.nations[i]?.name ?? '';
 const engClub = (cid: number) => !!cid && g.clubs[cid]?.nation === eng;
 /** leje slut: lejerne ved forrige billede (spiller → "moderklub>lejeklub") og antallet af afsluttede siden spilstart */
 const loanSeen = new Map<number, string>();
+/** klubløse: originalens personer (se compare) */
+const inMem = new Set<number>(), knownIds = new Set<number>();
+let seenFree0 = false;
 let loanEnds = 0;
 const ourClubByName = new Map<string, number>();
 for (const c of Object.values(g.clubs)) if (!ourClubByName.has(c.name)) ourClubByName.set(c.name, c.id);
@@ -276,6 +279,13 @@ function compareDay(v: View) {
   let memFree = 0;
   for (const a of v.people) if (a.pr) { if (a.clubAdr) memSquad.set(clubIdx(v, a.clubAdr), (memSquad.get(clubIdx(v, a.clubAdr)) ?? 0) + 1); else memFree++; }
   dist('spiller: klubløse i hukommelsen (alle)', Object.values(g.players).filter((p) => !p.club && !p.virtual).length, memFree);
+  // kun de spillere, originalen har i hukommelsen: klubløse ved start, i en klub i de valgte lande (eller Player.cmMem) på et billede, nyskabte.
+  // Spillets spillere i de andre landes klubber findes ikke i originalen; når deres kontrakt udløber (cmExpireOutsideDaily), bliver de klubløse
+  // hos os uden modstykke (30/6-02: 666 af de 993)
+  for (const p of Object.values(g.players)) if (!p.virtual && (p.club ? g.activeNations?.includes(g.clubs[p.club]?.nation ?? -1) || p.cmMem === 1 : !seenFree0 || !knownIds.has(p.id))) inMem.add(p.id);
+  if (!seenFree0) { for (const id of Object.keys(g.players)) knownIds.add(+id); seenFree0 = true; }
+  else for (const id of Object.keys(g.players)) knownIds.add(+id);
+  dist('spiller: klubløse i hukommelsen (originalens personer)', Object.values(g.players).filter((p) => !p.club && !p.virtual && inMem.has(p.id)).length, memFree);
   // ---------------- klubber
   const MM = m.u32(0xb67a44);
   for (const c of Object.values(g.clubs)) {
