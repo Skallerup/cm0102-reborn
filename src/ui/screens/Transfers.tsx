@@ -521,7 +521,7 @@ function Deals() {
     const out: { p: Player; m: PlayerMove }[] = [];
     for (const p of Object.values(g.players)) {
       for (const m of p.moves ?? []) {
-        if (m.season !== season) continue;
+        if (m.season !== season || !m.to) continue;
         const from = g.clubs[m.from], to = g.clubs[m.to];
         if (scope === 'mine' && m.from !== g.userClub && m.to !== g.userClub) continue;
         if (scope === 'league' && me && from?.league !== me.league && to?.league !== me.league) continue;

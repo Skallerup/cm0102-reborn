@@ -34,6 +34,7 @@ import { slCall } from './cmShortlist';
 import { cmActive, cmRand, newCmContract, statusCode } from './cmPlayerData';
 import { isHumanClub } from './humans';
 import { setClub } from './state';
+import { recordMove } from './season';
 import { ageOn } from './dates';
 import { ATTRS } from './attributes';
 import { HEAP0, HEAP_PTR } from './cmGen/x86';
@@ -278,9 +279,10 @@ export function cmContractManagerDay(g: GameState): void {
   }
   // underskrifterne: originalens kontrakt i spillets enheder
   for (const { p, k } of signed) applySigned(g, p, m, k);
-  // frigivelserne: fri transfer (spilleren forlader klubben uden kontrakt)
+  // frigivelserne: fri transfer 0x8c1af0 (spilleren forlader klubben uden kontrakt) – historikposten art 3 (+0x10 = −1, +0x14 = klubben, +0x18 = 0)
   for (const p of released) {
     if (!p.club) continue;
+    recordMove(p, 0, 0);
     setClub(p, 0);
     p.contract = null;
     CMD_STATS.released++;

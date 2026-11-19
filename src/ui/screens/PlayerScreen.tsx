@@ -664,6 +664,7 @@ export function CareerPanel({ pid }: { pid: number }) {
   }
   // klubskifter: transfersummen på sæsonen i den nye klub (og en linje, hvis han ikke nåede at spille)
   for (const [i, m] of (p.moves ?? []).entries()) {
+    if (!m.to) continue;   // fri transfer (historikkens art 3) – ingen ny klub
     const row = rows.find((r) => !r.real && r.season === m.season && r.club === m.to && !r.move);
     if (row) row.move = m;
     else rows.push({ key: `m${i}`, season: m.season, club: m.to, apps: 0, goals: 0, assists: 0, loan: m.loan, move: m });

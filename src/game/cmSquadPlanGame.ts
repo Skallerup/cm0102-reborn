@@ -16,6 +16,7 @@ import type { GameState, Player } from './types';
 import { ATTRS } from './attributes';
 import { ageOn } from './dates';
 import { setClub, squad } from './state';
+import { recordMove } from './season';
 import { isHumanClub } from './humans';
 import { cmActive, cmLogic, cmMarketOn, cmContractOf, cmRand, cmUnhappy, clubRepMem, nationRepMem, squadPlacement, statusCode } from './cmPlayerData';
 import { cmClubEuro, cmFitRead } from './cmFitnessGame';
@@ -209,6 +210,8 @@ export function cmSquadPlanClub(g: GameState, cid: number, daily: boolean, first
   for (const id of releaseQ) {
     const p = byId.get(id);
     if (!p || p.club !== cid || p.loan || p.contract?.futureClub) continue;
+    // 0x8c16b0 → køen +0x92c → 0x8c18c0 → 0x8c1af0: historikposten art 3 (fri transfer)
+    recordMove(p, 0, 0);
     setClub(p, 0);
     p.contract = null;
   }
