@@ -13,6 +13,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '2026-11-19',
     title: { da: 'Mere af det originale CM 01/02', en: 'More of the original CM 01/02' },
     items: [
+      { da: "Rettet: man kunne ikke komme videre i spillet efter at have tilbudt en spiller kontrakt (Continue Game forblev grå).", en: "Fixed: the game could not continue after offering a player a contract (Continue Game stayed greyed out)." },
       { da: "⚠ Kræver et nyt spil: Spilstarten som originalen: skader, der heler i forkørslen, er ikke længere skader ved start, og fem flere lejeaftaler fra originalens opsætning (bl.a. Bloomer til Telford og Scullion til Ards).", en: "⚠ Requires a new game: Game start as in the original: injuries that heal during the pre-season run no longer show at the start, and five more loans from the original's setup (e.g. Bloomer to Telford, Scullion to Ards)." },
       { da: "Klassisk: Continue Game er grå, indtil nyheder, der kræver svar (bud på dine spillere, jobtilbud, venskabskampforslag, rygter, transferønsker, kontrakttilbud), er besvaret – Continue Game åbner nyheden, som i CM 01/02.", en: "Classic: Continue Game is greyed out until news that needs a response (bids for your players, job offers, friendly proposals, rumours, transfer requests, contract offers) has been answered – Continue Game opens that item, as in CM 01/02." },
       { da: "K2-lockstep ugentligt gennem hele sæsonen: rapport over første afvigelser mod originalen.", en: "K2 weekly lockstep over the whole season: report of first deviations from the original." },

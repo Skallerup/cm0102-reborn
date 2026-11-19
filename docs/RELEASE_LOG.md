@@ -2,6 +2,7 @@
 
 Flyttet fra CLAUDE.md 17/11-2026 (så CLAUDE.md er kort i hver session). Nyeste først. Tilføj en linje øverst ved hver udgivelse.
 
+- 2026-11-19 – Skudt live (v0.31.0): 2026-11-19 – HOTFIX (ejeren, kritisk): newsRespond låste på 'Offer contract to X' også efter tilbuddet (cmTalksOpen sand i state 1) – nu kun i cmTalks.state 0; tests/newsRespondTalks.test.ts.
 - 2026-11-19 – Skudt live (v0.31.0): 2026-11-19 – Spilstart-rækkefølge: trupplan 0x83a1b0 → player_setup.cfg 0x7a30c0 → 0x62a920 (cmFitSetupDay efter trupplan/ønskelister); skadede i England 4,9 → 4,5/3,9 % (orakel 3,94 %), raske-som-skadede 22–28 → 0; cmPreseason.ts genbygget (3.9.60 43 lejer). Åbent: forkørslens skader ×1,19 (hukommelsesudvalg), Roussel→Mons.
 - 2026-11-19 – Skudt live (v0.31.0): 2026-11-19 – Påkrævet svar (ejerens billede, Valencia/Scholes): 0x782b70 (værdi 2) → Continue Game grå på nyhedsskærmen (0x789044/0x7619a1); Continue fra anden skærm åbner ældste ulæste/ubesvarede (0x787350/0x788010); intet auto-afslag (kun ferie 0x784100). newsRespond.ts, tests/newsRespond.test.ts, e2e besvarer selv.
 - 2026-11-19 – Skudt live (v0.31.0): 2026-11-19 – docs/k2-2026-11-19.md: 52 ugentlige billeder 14/7-01–30/6-02; største afvigelser: transfers (16/662 fælles, fri udløb 0/65), forkørslens økonomi ikke bogført, CA-udvikling, bestyrelsens tillid, bonusser, kampprogram-datoer, nyheder; cm-day-lockstep.ts tåler pensionerede.
