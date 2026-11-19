@@ -383,7 +383,7 @@ function TransferTab({ p, mine }: { p: Player; mine: boolean }) {
 }
 
 /** "Playing Career" som i CM 01/02: én linje pr. sæson og klub – nyeste først, den igangværende sæson øverst */
-function ClassicCareer({ p }: { p: Player }) {
+export function ClassicCareer({ p }: { p: Player }) {
   const g = useGame()!;
   const { nav } = useNav();
   const [real, setReal] = useState<RealSeason[] | null>(null);
