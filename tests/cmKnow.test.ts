@@ -54,7 +54,10 @@ describe('kendskabet i et spil (3.9.60, ægte tilstand, Man Utd, engelsk manager
     expect(cmBoardLine(b)).toBe('cl.bid.boardNothing');
     const ratio = b.budget / koch.value;
     expect(ratio).toBeGreaterThan(0.28);
-    expect(ratio).toBeLessThan(0.38);
+    // ejerens billede 11M/33M = 0,33; Koch's viste værdi (+0x52, Kaiserslauterns syn) har 0x6e86d0's spredning af personernes hukommelses-id'er
+    // (cmValueGame.ts – tilfældig fra spil til spil i originalen; Brehmes Staff.id 6541 → 10857 med de nye stabsfolk), budgettet
+    // (købers syn) er uændret 1.087.584: main 0,315, med non-league/stab i world-filen 0,42
+    expect(ratio).toBeLessThan(0.45);
     for (const k of ['acceleration', 'pace', 'finishing', 'handling', 'reflexes'] as const) expect(attrMasked(koch, A[k])).toBe(true);
     expect(knowledgeOf(koch)).toBe(0);
   });

@@ -88,13 +88,17 @@ describe('i spillet', () => {
     expect(withGoal.length).toBeGreaterThan(100);
     expect(withGoal.every((p) => p.pos[6] >= 15)).toBe(true);
     expect(withClause.length).toBeGreaterThan(20);
-    expect(ps.filter((p) => p.contract!.cmBonusGbp).every((p) => p.contract!.cmBonusGbp![0] === -1 || p.contract!.cmBonusGbp![0] > 25)).toBe(true);
+    expect(ps.filter((p) => p.contract!.cmBonusGbp).every((p) => p.contract!.cmBonusGbp![0] === -1 || p.contract!.cmBonusGbp![0] >= 25)).toBe(true);
+    // (0x85f12d: w/20 − rand(w/40) + 25 – lønninger under £20 (non-league-klubbernes deltidsspillere) giver præcis 25)
     // 0x83a1b0 → 0x862720: lønnen for kontrakterne uden løn i databasen (originalen 10/50/90 % = £148/£665/£8.146 – før portet £344/£1.200/£8.000)
-    const wages = ps.map((p) => Math.round(p.contract!.wage * 0.86)).sort((a, b) => a - b);
+    // oraklet 14/7-01 (pre-194-2001, størrelse 2): alle 5.027 engelske £148/£427/£6.000, de synlige ligaers 3.317 £148/£800/£9.672 –
+    // spillet: synlige (Maximum) £148/£800/£9.473, alle engelske med en CM_DBSIZE=2-world (5.129) £148/£424/£6.000. Her de synlige ligaer
+    const wages = ps.filter((p) => !g.leagues[g.clubs[p.club].league]?.hidden).map((p) => Math.round(p.contract!.wage * 0.86)).sort((a, b) => a - b);
     const q = (x: number) => wages[Math.floor(x * wages.length)];
     expect(q(0.1)).toBeLessThan(200);
-    expect(q(0.5)).toBeGreaterThan(550);
-    expect(q(0.5)).toBeLessThan(800);
+    expect(q(0.5)).toBeGreaterThan(750);
+    expect(q(0.5)).toBeLessThan(850);
+    expect(q(0.9)).toBeGreaterThan(8500);
     // en regen, der kommer til en klub: set_default_wage 0x8626e0 = max(55, 0x862720(…, −1 …))
     const exe = Object.values(g.clubs).find((c) => c.name === 'Exeter City')!, mu = Object.values(g.clubs).find((c) => c.name === 'Manchester United')!;
     const kid = { ...ps.find((p) => p.club === exe.id && p.ca < 60)!, id: 9_999_999, regen: true, club: exe.id };

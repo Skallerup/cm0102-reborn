@@ -25,10 +25,13 @@ describe('PLAYER_REGEN ved spilstarten (0x7a58f0 → 0x7a79c0)', () => {
   it('listen har de ældre spillere i klubberne, dateret som originalen', () => {
     const L = g.cmRet!.list;
     const inEng = L.filter((e) => e.why === 1 && e.club && g.clubs[e.club]?.nation === eng);
-    // oraklet: 267 engelske, men 153 af dem er i engelske klubber uden for spillets world-fil (Conference og nedefter); i de synlige ligaer er
-    // listen identisk med oraklets (54 spillere, scripts/cm-retire-season.ts)
-    expect(inEng.length).toBeGreaterThan(50);
-    expect(inEng.length).toBeLessThan(160);
+    // oraklet (databasestørrelse 2, 14/7-01): 267 engelske – 61 i de synlige ligaer, 206 i Conference og nedefter (non-league, nu i world-filen);
+    // spillet med en world bygget med CM_DBSIZE=2: 258 (54 + 204). Her Maximum (ejerens størrelse): flere non-league-spillere i hukommelsen
+    // (381 = 53 + 328) – de synlige ligaer har alle spillere i hukommelsen ved begge størrelser
+    const vis = inEng.filter((e) => !g.leagues[g.clubs[e.club].league]?.hidden);
+    expect(vis.length).toBeGreaterThan(45);
+    expect(vis.length).toBeLessThan(75);
+    expect(inEng.length).toBeGreaterThan(250);
     // (forkørslens skader 0x7a7f20 giver poster med årsag 8 – også unge)
     for (const e of L.filter((x) => x.why !== 8)) {
       const p = g.players[e.id];
