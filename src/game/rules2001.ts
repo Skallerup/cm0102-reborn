@@ -6,6 +6,7 @@ import { cmActive } from './cmPlayerData';
 import { cmNeedsPermit, cmPermitOn, cmWorkPermit, type PermitOffer } from './cmPermit';
 import { asOwner, isHumanClub } from './humans';
 import type { Club, Player } from './types';
+import { cmWindowOpen } from './cmOfferCheck';
 
 /** Spilles der med den originale 2001/02-database? */
 // (samme regel som cmDatabase i newgame.ts – ikke importeret derfra, så filen ikke trækker hele newgame med og skaber
@@ -86,6 +87,32 @@ export function englandLoanRefused(p: Player, buyer: Club): boolean {
   const y = Number(g.date.slice(0, 4)), mo = isoMonth(g.date);
   if (mo === 3 || mo === 4) return true;                                       // april–maj: uden for vinduet
   return mo === 2 && g.date > lastThursdayOfMarch(y);
+}
+
+/** TRANSFER_MANAGER::can_loan_player 0x8d0040 (efter kontrakten, lejen, jobbet og can_club_bid_for_player 0x8ce990 – cmShortlistGame.ts): køberlandets
+ *  TRANSFER_RULES +0x20 (objektet, hvis nation +0xa = køberens, 28 objekter i TM +0x8ac; ingen = må). Der er INGEN arbejdstilladelse i lejereglerne
+ *  (før afviste loanBlocked/needsWorkPermit alle ikke-EU-lejer til britiske klubber – originalen lejede fx 6 australiere og 6 andre ikke-EU-spillere
+ *  til England i 2001/02). England 0x579d60: samme division som kontraktklubben (+0x57), og den er Premier Division (0x9cf5bc) → nej (0x1d); ≥ 5
+ *  lejer i sæsonen (+0x91c) → nej (0x1e); > 1 lejet ind i truppen (+0xd7, 0x4cf6d0, kontraktklub ≠ køberen) → nej (0x26); i dag i intet vindue
+ *  (0x8e8e50) → nej (9). Skotland 0x7f6650: kun samme division, når den er Premier Division (0x9cf5dc). Australien, Frankrig, Rusland 0x412dd0 og
+ *  Tyrkiet, USA 0x902240: kun vinduet. Grundreglen 0x40a600, Kroatien/Grækenland/Polen 0x5ed060, Danmark/Nordirland/Wales/Sydkorea 0x793900: må.
+ *  Ikke porteret (*estimeret*: må): Holland/Norge 0x794760, Irland 0x63c3d0, Italien 0x661770, Spanien 0x859630, Finland 0x5a9af0 – og sælgerlandets
+ *  +0x24 pr. lejemåned (Finland 0x5a9ba0, Frankrig 0x5c1ed0, Tyskland 0x5e0210, Irland 0x63c530, Italien 0x6618f0; de øvrige 0x40a610 = må). */
+export function cmLoanRulesOk(buyer: Club, home: Club | undefined): boolean {
+  const g = gs();
+  const nat = g.nations[buyer.nation]?.name ?? '';
+  const sameTop = () => !!home && home.league === buyer.league && g.leagues[buyer.league]?.tier === 1;
+  switch (nat) {
+    case 'England': {
+      if (sameTop()) return false;
+      const L = loanCounts(g);
+      if ((L.season.get(buyer.id) ?? 0) >= 5 || (L.now.get(buyer.id) ?? 0) > 1) return false;
+      return cmWindowOpen(g, buyer, g.date);
+    }
+    case 'Scotland': return !sameTop();
+    case 'Australia': case 'France': case 'Russia': case 'Turkey': case 'United States': return cmWindowOpen(g, buyer, g.date);
+    default: return true;
+  }
 }
 
 /** Kan klubben hente ham (ingen tilladelse nødvendig, eller den gives)? */

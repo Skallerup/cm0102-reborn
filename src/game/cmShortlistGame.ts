@@ -48,7 +48,7 @@ import { ensureImpls } from './cmGen/impls';
 import { isHumanClub } from './humans';
 import { ageOn } from './dates';
 import { ATTRS } from './attributes';
-import { workPermitGranted, loanBlocked, englandLoanRefused } from './rules2001';
+import { workPermitGranted, cmLoanRulesOk } from './rules2001';
 import { cmLoanPeriod } from './cmLoan';
 import { cmFitRead } from './cmFitnessGame';
 import { aiPickCtx, roleDataOf, playerRecord } from './engine/grid/aiTeam';
@@ -1580,9 +1580,19 @@ export function buildSlMem(g: GameState, opts: { noStale?: boolean } = {}): SlMe
         return r;
       }
       case 0x8d0040: {
-        // TRANSFER_MANAGER::can_loan_player (*estimeret*: rules2001.ts' lejeregel); 1 = må
-        const cl = g.clubs[m.s32(a[a.length - 3] >>> 0)], p = S.byMem.get(m.s32(a[a.length - 2] >>> 0));
-        return p && cl && !loanBlocked(p, cl) && !englandLoanRefused(p, cl) ? 1 : 0;
+        // TRANSFER_MANAGER::can_loan_player(klub, staff, besked) 0x8d0040; 1 = må: hovedkontrakt (0x4cf5a0) af en anden type end 5, ingen
+        // lejekontrakt (0x4cf6d0), jobbet +0x3d = 0xb (ren spiller – ellers "non playing role"), can_club_bid_for_player 0x8ce990(staff, klub,
+        // &grund, 0) og køberlandets TRANSFER_RULES +0x20 (rules2001.ts cmLoanRulesOk)
+        const n = a.length, cp = a[n - 3] >>> 0, st = a[n - 2] >>> 0;
+        const cl = g.clubs[m.s32(cp)], p = S.byMem.get(m.s32(st));
+        if (!p || !cl) return 0;
+        const k = getContract(m, st);
+        if (!k || (m.u8(k + 0x35) & 0x3f) === 5) return 0;
+        if (m.s32(m.u32(G.ROWS) + 79 * m.s32(st) + 4) >= 0) return 0;
+        if (m.u8(st + 0x3d) !== 0xb) return 0;
+        const why = 0x5e7f0080; m.w16(why, 0);
+        if (!slCall(S.M.c, 0x8ce990, m.u32(0xde1f54), st, cp, why, 0)) return 0;
+        return cmLoanRulesOk(cl, g.clubs[m.s32(k + 4)]) ? 1 : 0;
       }
       case 0x8ced40: return 1;
       case 0x8be300: {
