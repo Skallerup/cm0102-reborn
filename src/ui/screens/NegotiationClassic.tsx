@@ -10,7 +10,12 @@ import { cmStaffOfferCheck } from '../../game/cmContractGame';
 import { cmStaffOn } from '../../game/cmPlayerData';
 import { cmBoardStaffWageAllow, cmBoardWageAllow } from '../../game/cmBudget';
 import { poachFee } from '../../game/staff';
-import { money, t } from '../../i18n';
+import { moneyCm, moneyFull, moneyWage, t } from '../../i18n';
+
+// kontraktskærmen 0x4e06e0/0x4deac0/0x4e30f0 (0x441c10): løn via 0x85e750 fuldt (flag 0xA); Signing On Fee og Clause Release Fee flag 6,
+// bonusserne flag 0xA – begge over 8 tegn forkortet (5/9); kompensationen (0x4e4820) og kravet i teksten flag 6
+const fee8 = (v: number) => moneyCm(v, 6, 8);
+const bonus8 = (v: number) => moneyCm(v, 0xa, 8);
 import { CxDrop, CxPm, titleColors, useClassicDialog } from '../classic';
 import { SQUAD_STATUSES, expectedStatus, statusAllowed, type SquadStatus } from '../../game/squadStatus';
 import { ageOn, year } from '../../game/dates';
@@ -83,14 +88,14 @@ export function ClassicStaffNegotiation({ staffId, role, onClose }: { staffId: n
       <div className="cx-subtitle">{t('cl.neg.title')}</div>
       {ask ? (
         <div className="cx-dlg-body"><p className="cx-ts-intro">{t('cl.neg.confirm', { player: name })}</p>
-          {from && comp > 0 && <p className="cx-ts-intro">{t('cm.neg.comp', { club: from.short || from.name, fee: money(comp) })}</p>}</div>
+          {from && comp > 0 && <p className="cx-ts-intro">{t('cm.neg.comp', { club: from.short || from.name, fee: moneyFull(comp) })}</p>}</div>
       ) : (
         <div className="cx-dlg-body">
-          <p className="cx-ts-intro">{interested ? t('cl.neg.wants', { player: name, wage: money(demand), until: end(2), fee: '' }) : t('cm.neg.noInterest', { name })}</p>
-          <p className="cx-ts-intro">{t('cl.neg.allow', { allow: money(allow) })}</p>
+          <p className="cx-ts-intro">{interested ? t('cl.neg.wants', { player: name, wage: moneyWage(demand), until: end(2), fee: '' }) : t('cm.neg.noInterest', { name })}</p>
+          <p className="cx-ts-intro">{t('cl.neg.allow', { allow: moneyWage(allow) })}</p>
           {<>
-          <Row label={t('cl.neg.wage')} value={wage} show={money} options={wageOpts.includes(wage) ? wageOpts : [...wageOpts, wage].sort((a, b) => a - b)} onSet={setWage} reset={demand} />
-          <Row label={t('cl.neg.signOn')} value={signOn} show={money} options={[0, 5000, 10000, 25000, 50000, 100000, 250000]} onSet={setSignOn} reset={0} />
+          <Row label={t('cl.neg.wage')} value={wage} show={moneyWage} options={wageOpts.includes(wage) ? wageOpts : [...wageOpts, wage].sort((a, b) => a - b)} onSet={setWage} reset={demand} />
+          <Row label={t('cl.neg.signOn')} value={signOn} show={fee8} options={[0, 5000, 10000, 25000, 50000, 100000, 250000]} onSet={setSignOn} reset={0} />
           <Row label={t('cl.neg.expires')} value={years} show={end} options={[1, 2, 3, 4, 5]} onSet={setYears} reset={2} />
           <div className="cx-neg-row"><span className="cx-neg-label">{t('cl.neg.type')}</span><span /><span className="cx-neg-static cx-neg-type">{t('cl.neg.fullTime')}</span></div>
           <div className="cx-neg-row"><span className="cx-neg-label">{t('cm.neg.public')}</span><span />
@@ -201,12 +206,12 @@ function NegotiationBody({ offer, renewPid, onClose }: { offer?: TransferOffer; 
     else if (res === 'counter') {
       const d = r50(offer?.demand?.wage ?? (offer ? wageDemand(p, club) : renewalDemand(p, club)));
       setWage(d); setYears(offer?.demand?.years ?? preferredYears(p));
-      setMsg(t('cl.neg.counter', { player: name, wage: money(d), until: end(offer?.demand?.years ?? preferredYears(p)) }));
-    } else if (res === 'budget') setMsg(t('cl.neg.budget', { allow: money(allow) }));
+      setMsg(t('cl.neg.counter', { player: name, wage: moneyWage(d), until: end(offer?.demand?.years ?? preferredYears(p)) }));
+    } else if (res === 'budget') setMsg(t('cl.neg.budget', { allow: moneyWage(allow) }));
     else { setMsg(t('cl.neg.refused', { player: name })); setTimeout(onClose, 2600); }
   };
   const bonus = (k: 'goalBonus' | 'appBonus' | 'cleanSheetBonus', base: number) => (
-    <Row key={k} label={t(`cl.neg.${k}`)} value={cl[k] ?? Math.max(10, Math.round(base / 10) * 10)} show={money} options={bonusOpts(base)}
+    <Row key={k} label={t(`cl.neg.${k}`)} value={cl[k] ?? Math.max(10, Math.round(base / 10) * 10)} show={bonus8} options={bonusOpts(base)}
       on={!!cl[k]} onToggle={() => toggle(k, Math.max(10, Math.round(base / 10) * 10))} onSet={(v) => set(k, v)} reset={Math.max(10, Math.round(base / 10) * 10)} />
   );
   if (roleStep) {
@@ -251,10 +256,10 @@ function NegotiationBody({ offer, renewPid, onClose }: { offer?: TransferOffer; 
             {tab === 'basic' && (
               <>
                 <p className="cx-ts-intro">{noInt ? t(noInt.key, { player: name, reasons: noInt.reasons })
-                  : t(signReq ? 'cl.neg.wantsSign' : 'cl.neg.wants', { player: name, wage: money(demand), until: end(wantYears), fee: money(signReq) })}</p>
-                <p className="cx-ts-intro">{t('cl.neg.allow', { allow: money(allow) })}</p>
-                <Row label={t('cl.neg.wage')} value={wage} show={money} options={wageOpts.includes(wage) ? wageOpts : [...wageOpts, wage].sort((a, b) => a - b)} onSet={setWage} reset={demand} />
-                <Row label={t('cl.neg.signOn')} value={cl.signOn ?? 0} show={money} options={[...new Set([0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 2].map((f) => Math.round(Math.max(signReq, demand * 10) * f / 5000) * 5000))]} onSet={(v) => set('signOn', v)} reset={signReq} />
+                  : t(signReq ? 'cl.neg.wantsSign' : 'cl.neg.wants', { player: name, wage: moneyWage(demand), until: end(wantYears), fee: moneyFull(signReq) })}</p>
+                <p className="cx-ts-intro">{t('cl.neg.allow', { allow: moneyWage(allow) })}</p>
+                <Row label={t('cl.neg.wage')} value={wage} show={moneyWage} options={wageOpts.includes(wage) ? wageOpts : [...wageOpts, wage].sort((a, b) => a - b)} onSet={setWage} reset={demand} />
+                <Row label={t('cl.neg.signOn')} value={cl.signOn ?? 0} show={fee8} options={[...new Set([0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 2].map((f) => Math.round(Math.max(signReq, demand * 10) * f / 5000) * 5000))]} onSet={(v) => set('signOn', v)} reset={signReq} />
                 <Row label={t('cl.neg.expires')} value={years} show={end} options={[1, 2, 3, 4, 5]} onSet={setYears} reset={wantYears} />
                 <div className="cx-neg-row"><span className="cx-neg-label">{t('cl.neg.type')}</span><span />
                   <button className="cx-neg-static cx-neg-type" onClick={() => setCl((c) => ({ ...c, partTime: !c.partTime || undefined }))}>{t(cl.partTime ? 'cl.neg.partTime' : 'cl.neg.fullTime')}</button></div>
@@ -272,7 +277,7 @@ function NegotiationBody({ offer, renewPid, onClose }: { offer?: TransferOffer; 
               <>
                 <p className="cx-ts-intro">{t('cl.neg.clauseIntro')}</p>
                 <button className={`cx-opt ${cl.release ? 'on' : ''}`} onClick={() => toggle('release', Math.round(relBase * 2.5 / 100_000) * 100_000)}>{t('cl.neg.release')}</button>
-                <Row label={t('cl.neg.releaseFee')} value={cl.release ?? 0} show={money} options={relOpts} on={!!cl.release} onSet={(v) => set('release', v)} />
+                <Row label={t('cl.neg.releaseFee')} value={cl.release ?? 0} show={fee8} options={relOpts} on={!!cl.release} onSet={(v) => set('release', v)} />
                 <p className="cx-ts-intro">{t('cl.neg.nonRelease')}</p>
                 {!authentic() && (
                 <>

@@ -3,7 +3,7 @@
 // rekord pr. sæson (vælges under View). Tallene kommer fra game/clubHistory.ts.
 import { seasonRec, type HistMatch, type HistSeq, type SeasonRec } from '../../game/clubHistory';
 import { leagueRows } from '../../game/competitions';
-import { compName, money, t } from '../../i18n';
+import { compName, moneyFull, t } from '../../i18n';
 import { ClassicSub, CxDrop, classicDate } from '../classic';
 import { useGame, useRouteState } from '../core';
 import { Tabs } from '../components';
@@ -40,7 +40,7 @@ export function ClassicClubHistory({ cid }: { cid: number }) {
     return out.sort((a, b) => b[0] - a[0]);
   };
   const match = (m?: HistMatch) => (m ? `${m.gf}-${m.ga} v ${short(m.opp)} (${m.home ? 'H' : 'A'}) ${compName(m.comp)} ${d(m.date)}` : '-');
-  const att = (a?: { att?: number; gate?: number; opp: number; comp: string; date: string }) => (a ? `${a.gate !== undefined ? money(a.gate) : a.att} v ${short(a.opp)} ${compName(a.comp)} ${d(a.date)}` : '-');
+  const att = (a?: { att?: number; gate?: number; opp: number; comp: string; date: string }) => (a ? `${a.gate !== undefined ? moneyFull(a.gate) : a.att} v ${short(a.opp)} ${compName(a.comp)} ${d(a.date)}` : '-');
   const seq = (q?: HistSeq) => (q ? `${q.n} - ${d(q.from)} to ${d(q.to)}` : '-');
   const scorer = (x?: { name: string; n: number }) => (x ? `${x.name} - ${x.n}` : '-');
   // transfers pr. sæson fra spillernes skifter
@@ -50,7 +50,7 @@ export function ClassicClubHistory({ cid }: { cid: number }) {
       if (m.season !== season || m.loan || !m.fee || (dir === 'in' ? m.to !== cid : m.from !== cid)) continue;
       if (!best || m.fee > best.fee) best = { name: `${p.first} ${p.last}`.trim(), fee: m.fee };
     }
-    return best ? `${best.name} - ${money(best.fee)}` : '-';
+    return best ? `${best.name} - ${moneyFull(best.fee)}` : '-';
   };
   const value = (k: string, s: number, r: SeasonRec): string => {
     switch (k) {

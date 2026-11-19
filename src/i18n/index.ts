@@ -130,9 +130,45 @@ let roundCash = false;
 export function setMoneyRounding(on: boolean) { roundCash = on; }
 const cashStepOf = (x: number) => x <= 10_000 ? 1000 : x <= 30_000 ? 2000 : x <= 100_000 ? 5000 : x <= 250_000 ? 10_000 : x <= 1_000_000 ? 25_000
   : x <= 5_000_000 ? 100_000 : x <= 20_000_000 ? 250_000 : x <= 50_000_000 ? 500_000 : 1_000_000;
-const shown = (v: number) => { if (!roundCash) return v; const a = Math.abs(v), st = cashStepOf(a); return Math.sign(v) * Math.round(a / st) * st; };
+// trinnene og grænserne står i valutaens enhed 0xad9cc0 (DKK/NOK/SEK 10, TRY 1.000.000) – 0x4426e0 ganger begge med den
+const shown = (v: number) => { if (!roundCash) return v; const a = Math.abs(v), u = CASH_CUR[currency].unit, st = cashStepOf(a / u) * u; return Math.sign(v) * Math.round(a / st) * st; };
+/** 0x4426e0 med flagbit 8 (små beløb: løn, bonusser) – i valutaens enhed. NB: 50.000-100.000 giver 5.000 (originalens tabel 0x9688e8). */
+const cashStep8 = (x: number) => x <= 10 ? 1 : x <= 100 ? 5 : x <= 250 ? 10 : x <= 1000 ? 25 : x <= 5000 ? 100 : x <= 20_000 ? 250 : x <= 50_000 ? 500
+  : x <= 100_000 ? 5000 : x <= 250_000 ? 10_000 : x <= 1_000_000 ? 25_000 : x <= 5_000_000 ? 100_000 : x <= 20_000_000 ? 250_000 : x <= 50_000_000 ? 500_000 : 1_000_000;
+
+/** Klassisk udseende: money/moneyFull og moneyCm viser beløbene som originalens cash_format_money 0x441c10 (sættes af Shell) */
+let cashStyle = false;
+export function setCashStyle(on: boolean) { cashStyle = on; }
+export const cashStyleOn = () => cashStyle;
+
+/** Cash::get_display_amount 0x43f460(flags): uden 0x20 rundet til trinnet 0x4426e0 (bit 4: tabellen for store beløb, bit 8: små beløb,
+ *  ellers 1000) – grænser og trin × valutaens enhed; (v + trin/2) / trin × trin med heltalsdivision. Positive beløb (fortegnet er kalderens). */
+export function cashRound(v: number, flags: number, cur: Currency = currency): number {
+  if (flags & 0x20) return v;
+  const u = CASH_CUR[cur].unit;
+  const st = flags & 4 ? cashStepOf(v / u) * u : flags & 8 ? cashStep8(v / u) * u : 1000;
+  return Math.trunc((v + Math.trunc(st / 2)) / st) * st;
+}
+
+/** Et beløb i € som originalen: 0x43f460(flags) + 0x441c10(flags) – flagbit 2 = fuldt. `fit`: originalens mønster "fuldt, men over `fit`
+ *  tegn forkortet" (fx kontraktskærmen 0x4e06e0: 6 → 5 / 0xA → 9 over 8 tegn). Negative beløb med '-' foran. */
+export function cashMoney(eur: number, flags: number, fit = 0, cur: Currency = currency): string {
+  const v = Math.round(eur * RATE[cur]);
+  const a = Math.abs(v);
+  let s = cashFormat(cashRound(a, flags, cur), (flags & 2) !== 0, cur);
+  if (fit && s.length > fit) s = cashFormat(cashRound(a, (flags & ~2) | 1, cur), false, cur);
+  return (v < 0 ? '-' : '') + s;
+}
+
+/** Klassisk udseende: originalens visning med de givne flag (se cashMoney); ellers det moderne money() */
+export function moneyCm(eur: number, flags: number, fit = 0): string {
+  return cashStyle ? cashMoney(eur, flags, fit) : money(eur);
+}
+/** Ugeløn/bonus som originalen (0x85e750/0x85f830: flag 0xA = fuldt, rundet med småbeløbstabellen); `fit` = over så mange tegn forkortet (lister og kontraktskærmen: 8) */
+export const moneyWage = (eur: number, fit = 0) => moneyCm(eur, 0xa, fit);
 
 export function money(eur: number): string {
+  if (cashStyle) return cashMoney(eur, 5); // flag 5: forkortet + rundet (originalens almindelige i lister)
   const v = shown(eur * RATE[currency]);
   const neg = v < 0;
   const a = Math.abs(v);
@@ -155,6 +191,7 @@ export function money(eur: number): string {
 
 /** Hele beløbet uden forkortelse (CM 01/02: "£22,000,000") */
 export function moneyFull(eur: number): string {
+  if (cashStyle) return cashMoney(eur, 6); // flag 6: fuldt + rundet
   const v = Math.round(shown(eur * RATE[currency]));
   const num = Math.abs(v).toLocaleString(LOCALE[lang]);
   return (v < 0 ? '-' : '') + (currency === 'DKK' ? `${num} kr.` : currency === 'SEK' || currency === 'NOK' ? `${num} kr` : currency === 'BRL' ? `R$ ${num}` : `${currencySymbol()}${num}`);

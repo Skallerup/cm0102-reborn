@@ -1,5 +1,5 @@
 import { Fragment, type ReactNode } from 'react';
-import { compName, dateFmt, getLang, has, money, natName, t } from '../../i18n';
+import { compName, dateFmt, getLang, has, money, moneyCm, moneyWage, natName, t } from '../../i18n';
 import { useNav } from '../core';
 import { ClubLink, PlayerLink } from '../components';
 import type { NewsItem } from '../../game/types';
@@ -92,7 +92,7 @@ export function newsParams(n: NewsItem): Record<string, string | number> {
   if ((n.key === 'intl.selN' || n.key === 'intl.tourSel') && !n.params?.names && typeof p.n === 'number' && has(`num.${p.n}`)) p.n = t(`num.${p.n}`);
   // andre klubbers handler (CM 01/02): "The fee may be increased to £6,750,000 depending on appearances." og "… from Tottenham"
   if (n.key.startsWith('transfer.o')) {
-    p.more = typeof p.fee2 === 'number' ? `\n\n${t('transfer.o.more', { fee2: money(p.fee2) })}` : '';
+    p.more = typeof p.fee2 === 'number' ? `\n\n${t('transfer.o.more', { fee2: moneyCm(p.fee2, 6) })}` : ''; // 0x8dc370: flag 6
     p.fromFree = p.from ? ` ${t('transfer.o.fromClub', { from: String(p.from) })}` : '';
   }
   // navnelister ("A & B & C") som i originalen: "A, B and C"
@@ -139,7 +139,7 @@ export function newsParams(n: NewsItem): Record<string, string | number> {
   if (n.key.startsWith('cmcal.')) cmCalParams(n, p);
   // pokalpræmien (cmFinance.ts, 0x48e590)
   if (n.key.startsWith('cmprize.')) {
-    if (typeof p.amt === 'number') p.amt = money(p.amt);
+    if (typeof p.amt === 'number') p.amt = moneyCm(p.amt, 6); // 0x48e590: flag 6
     const fc = String(n.params?.fc ?? '');
     p.comp = fc;
     p.round = cmFixtureName(fc, 0, Number(n.params?.fr ?? 0), 1, compName);
@@ -246,7 +246,7 @@ function offerAnswer(n: NewsItem): string {
   if (!o || o.seller !== g.userClub || o.status === 'pending') return '';
   const club = g.clubs[g.userClub]?.short ?? '';
   const k = o.status === 'rejected' ? 'transfer.ans.rejected' : o.status === 'countered' ? 'transfer.ans.countered' : o.status === 'negotiating' || o.status === 'accepted' || o.status === 'completed' ? 'transfer.ans.accepted' : '';
-  return k ? `\n\n${t(k, { club, fee: money(o.counter ?? o.fee) })}` : '';
+  return k ? `\n\n${t(k, { club, fee: moneyCm(o.counter ?? o.fee, 6) })}` : ''; // 0x8d3520: flag 6
 }
 
 /** CM 01/02's transferanmodning (0xbbf, 0x4d8990): brødteksten af grundene i nyhedens pladser, og svaret under den */
@@ -346,7 +346,9 @@ function linked(n: NewsItem, key: string): ReactNode {
     if (i % 2 === 0) return <Fragment key={i}>{part}</Fragment>;
     const v = params[part];
     if (v === undefined) return <Fragment key={i}></Fragment>;
-    if (typeof v === 'number' && MONEY_PARAMS.has(part)) return <Fragment key={i}>{money(v)}</Fragment>;
+    // klassisk: originalens nyheder (transfers 0x8d3520…0x8e51d0, kontrakter 0x4d4fb0, bøder 0x758fe0) viser beløbet fuldt + rundet (flag 6),
+    // lønninger via 0x85e750 (flag 0xA)
+    if (typeof v === 'number' && MONEY_PARAMS.has(part)) return <Fragment key={i}>{part.startsWith('wage') ? moneyWage(v) : moneyCm(v, 6)}</Fragment>;
     const text = String(v);
     if (part === 'player') {
       const id = playerFor(n, text);

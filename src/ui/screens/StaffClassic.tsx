@@ -9,7 +9,7 @@ import { nationLanguage } from '../../game/languages';
 import { fireStaff } from '../../game/staff';
 import { cmCapsLine, cmCoachingStyle, cmJobKey, cmStaffClub, cmOtherStyles, cmPrefFormation, cmPrefStyle, cmRolesFor, cmStaffAttrList, cmStaffInterested } from '../../game/cmStaff';
 import type { Staff, StaffRole } from '../../game/types';
-import { dateFmt, getLang, money, natName, t } from '../../i18n';
+import { dateFmt, getLang, money, moneyWage, natName, t } from '../../i18n';
 import { CxDrop, classicDate, titleColors, useClassicDialog, type DropItem } from '../classic';
 import { DEMONYM } from '../demonyms';
 import { askConfirm } from '../confirm';
@@ -73,7 +73,7 @@ function ContractTab({ s }: { s: Staff }) {
   const on = s.club > 0;
   return <Ruled rows={[
     [t('cm.ct.type'), on ? t('cm.ct.fullTime') : t('cm.ct.na')],
-    [t('cm.ct.wages'), on ? `${money(s.wage)} ${t('cl.sf.pw')}` : '-'],
+    [t('cm.ct.wages'), on ? `${moneyWage(s.wage)} ${t('cl.sf.pw')}` : '-'], // 0x87cd90 → 0x85e750 fuldt
     [t('cm.ct.expires'), on && s.expires ? dateFmt(s.expires) : '-'],
     [t('cm.ct.bonuses'), t('cm.ct.none')],
     [t('cm.ct.clauses'), t('cm.ct.none')],

@@ -15,7 +15,7 @@ import { interestedClubs } from '../../game/transfers';
 import { avgRating } from '../../game/season';
 import type { GameState, Player, Slot, Tactic } from '../../game/types';
 import { POSITIONS, SIDES } from '../../game/types';
-import { dateFmt, money, natName, t } from '../../i18n';
+import { dateFmt, money, moneyWage, natName, t } from '../../i18n';
 import { CxDrop, type DropItem } from '../classic';
 import { Rating, age, posStr } from '../components';
 import { aiTactic } from '../../game/sim';
@@ -84,7 +84,7 @@ function infos(g: GameState): Info[] {
     { key: 'nat', label: t('cl.sq.nationality'), show: (p) => natName(g.nations[p.nation]?.name) ?? '' },
     { key: 'age', label: t('col.age'), show: (p) => age(p) },
     { key: 'caps', label: t('cl.sq.caps'), show: (p) => `${p.caps} / ${p.intGoals}` },
-    { key: 'wage', label: t('cl.sq.wage'), show: (p) => money(p.contract?.wage ?? 0) },
+    { key: 'wage', label: t('cl.sq.wage'), show: (p) => moneyWage(p.contract?.wage ?? 0, 8) }, // 0x475520: 0x85e750 fuldt, over 8 tegn forkortet
     { key: 'exp', label: t('cl.sq.expiry'), show: (p) => (p.contract ? dateFmt(p.contract.expires) : '-') },
     { key: 'value', label: t('col.value'), show: (p) => money(p.value) },
     { key: 'apps', label: t('cl.sq.apps'), show: (p) => `${p.stats.apps}${p.stats.subs ? ` (${p.stats.subs})` : ''}` },
@@ -298,7 +298,7 @@ function sqViews(g: GameState): SqView[] {
     { key: 'trad', label: t('cl.sq.v.trad'), head: t('cl.sq.positions'), cols: [c('position', 140, (p) => posStr(p))] },
     { key: 'contract', label: t('cl.sq.v.contract'), head: t('cl.sq.h.contract'), cols: [
       c('status', 130, (p) => (p.squadStatus ? t(`cl.sq.st.${p.squadStatus}`) : '-')),
-      c('wage', 100, (p) => (p.contract ? money(p.contract.wage) : '-')),
+      c('wage', 100, (p) => (p.contract ? moneyWage(p.contract.wage, 8) : '-')),
       c('expiry', 110, (p) => (p.contract ? dateFmt(p.contract.expires) : '-')),
       c('releases', 100, (p) => (p.contract?.release ? money(p.contract.release) : '-')),
       c('value', 100, (p) => money(p.value)),

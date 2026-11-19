@@ -12,7 +12,7 @@ import { willJoin } from '../../game/staff';
 import { attrMasked, attrRange, knowledgeOf, scoutStars } from '../../game/scouting';
 import type { Trait } from '../../game/personality';
 import type { GameState, Player, ScoutAssignment, Staff, StaffRole } from '../../game/types';
-import { compName, dateFmt, money, natName, t } from '../../i18n';
+import { compName, dateFmt, money, moneyWage, natName, t } from '../../i18n';
 import { ClassicFoot, ClassicSub, CxDrop, CxPm, nationRoute, type DropItem } from '../classic';
 import { REGIONS, Seg, regionOfNation, showRealism } from '../classicOptions';
 import { authentic } from '../../game/rules';
@@ -650,7 +650,7 @@ export function ClassicPlayerTable({ players, title, desc, view: viewProp, initi
       { key: 'k', label: t('tr.known'), cls: 'c-num c-yel', render: (p) => `${Math.round(knowledgeOf(p))}%`, sort: (p) => knowledgeOf(p) }, ...real]
     : view === 'contract'
     ? [...base, club, age,
-      { key: 'wage', label: t('col.wage'), cls: 'c-yel', render: (p) => money(p.contract?.wage ?? 0), sort: (p) => p.contract?.wage ?? 0 },
+      { key: 'wage', label: t('col.wage'), cls: 'c-yel', render: (p) => moneyWage(p.contract?.wage ?? 0, 8), sort: (p) => p.contract?.wage ?? 0 },
       { key: 'exp', label: t('col.expires'), cls: 'c-yel', render: (p) => (p.contract ? dateFmt(p.contract.expires) : '-'), sort: (p) => p.contract?.expires ?? '' }, val]
     : view === 'stats'
     ? [...base, pos, num('apps', t('cl.tn.apps'), (p) => st(p).apps + st(p).subs), num('gls', t('cl.tn.gls'), (p) => st(p).goals), num('asts', t('cl.tn.asts'), (p) => st(p).assists),

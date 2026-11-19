@@ -29,7 +29,7 @@ import { isOriginal2001 } from '../game/rules2001';
 import { intlDayResults } from '../game/international';
 import { gs, hasGame, notify, setGame, squad, subscribe } from '../game/state';
 import { cmActive, cmScoutLogic } from '../game/cmPlayerData';
-import { compName, dateFmt, money, setMoneyRounding, t } from '../i18n';
+import { compName, dateFmt, money, setCashStyle, setMoneyRounding, t } from '../i18n';
 import { Crest } from './components';
 import { Icon } from './icons';
 import { ClassicLobby, Lobby, OnlineControls, onlineSimLabel } from './Online';
@@ -193,6 +193,8 @@ export function Shell() {
   const cmNav = isRetro() && !g.draft && !(session() && !session()!.inGame);
   // ægte CM 01/02 med den originale database: beløbene vises rundet som i originalen
   setMoneyRounding(cmActive(g));
+  // klassisk udseende: alle beløb som originalens cash_format_money 0x441c10 (flag pr. skærm – se moneyCm i i18n)
+  setCashStyle(isRetro());
   const dialogOpen = useClassicDialogOpen();
   const [holiday, setHoliday] = useState<boolean | null>(null);
   const [saveOpen, setSaveOpen] = useState(false);

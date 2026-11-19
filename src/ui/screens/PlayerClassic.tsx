@@ -27,7 +27,7 @@ import { cmAvailability, cmFutureLines } from '../../game/cmTransferList';
 import { trialOf } from '../../game/trials';
 import type { Player, TransferOffer } from '../../game/types';
 import { POSITIONS, SIDES } from '../../game/types';
-import { compName, dateFmt, money, natName, t } from '../../i18n';
+import { compName, dateFmt, money, moneyFull, moneyWage, natName, t } from '../../i18n';
 import { askConfirm, askNotice } from '../confirm';
 import { ClubList, CxDrop, CxLink, classicDate, nationRoute, titleColors, type DropItem, useClassicDialog, ClassicFoot } from '../classic';
 import { compareIds, setCompareSlot } from '../compare';
@@ -288,10 +288,10 @@ function ContractTab({ p, mine }: { p: Player; mine: boolean }) {
   const status = p.squadStatus ?? (p.club ? expectedStatus(p, squad, g.date) : undefined);
   // CM 01/02 (0x87d723–0x87d7d3): én række pr. bonus i rækkefølgen +0x10 mål, +0x14 assist, +0x18 clean sheet – overskriften kun på den første
   const bonuses = c ? ([
-    c.goalBonus ? t('cl.pl.bonus.goal', { v: money(c.goalBonus) }) : '',
-    c.cmAssistBonus ? t('cl.pl.bonus.assist', { v: money(c.cmAssistBonus) }) : '',
-    c.cleanSheetBonus ? t('cl.pl.bonus.cs', { v: money(c.cleanSheetBonus) }) : '',
-    c.appBonus ? t('cl.pl.bonus.app', { v: money(c.appBonus) }) : '',
+    c.goalBonus ? t('cl.pl.bonus.goal', { v: moneyWage(c.goalBonus) }) : '', // 0x85f830: flag 0xA
+    c.cmAssistBonus ? t('cl.pl.bonus.assist', { v: moneyWage(c.cmAssistBonus) }) : '',
+    c.cleanSheetBonus ? t('cl.pl.bonus.cs', { v: moneyWage(c.cleanSheetBonus) }) : '',
+    c.appBonus ? t('cl.pl.bonus.app', { v: moneyWage(c.appBonus) }) : '',
   ].filter(Boolean)) : [];
   // CM 01/02 (0x87d057–0x87d23d): Started/Protected kun for en almindelig kontrakt (+0x35 = 2), når det nye transfersystem er trådt i kraft
   // ([0xae233c], sat fra 1/9-2001 i 0x5cdb5d)
@@ -305,7 +305,7 @@ function ContractTab({ p, mine }: { p: Player; mine: boolean }) {
   const type = p.loan ? <>{t('cl.pl.ctLoan')} <ClubLink id={p.loan.from} /> ({dateFmt(p.loan.until)})</> : !c ? t('common.none') : t(c.partTime ? 'cl.pl.ctPart' : 'cl.pl.ctFull');
   const rows: [string, ReactNode, string?][] = [
     [t('cl.pl.ctType'), type],
-    [t('cl.pl.wages'), c ? `${money(c.wage)} ${t('cl.pl.perWeek')}` : t('common.none')],
+    [t('cl.pl.wages'), c ? `${moneyWage(c.wage)} ${t('cl.pl.perWeek')}` : t('common.none')], // 0x87cd90 → 0x85e750 fuldt
     ...(showStarted ? [
       [t('cl.pl.started'), before ? t('cl.pl.beforeSystem') : p.joined ? classicDate(p.joined)[1] : '-'],
       [t('cl.pl.protected'), t(isProtected ? 'common.yes' : 'common.no')],
@@ -367,7 +367,7 @@ function TransferTab({ p, mine }: { p: Player; mine: boolean }) {
   const langs = playerLanguages(g, p).map((l: string) => { try { return new Intl.DisplayNames([t('cl.locale')], { type: 'language' }).of(l) ?? l; } catch { return l; } });
   const rows: [string, ReactNode, string?][] = [
     [t('cl.pl.availability'), availability],
-    [t('col.value'), money(p.value)],
+    [t('col.value'), moneyFull(p.value)], // 0x87dd80: Value flag 6, tilbuddene flag 5
     [t('cl.pl.languages'), langs.length ? langs.map((l: string) => l.charAt(0).toUpperCase() + l.slice(1)).join(', ') : '-'],
     [t('cl.pl.offers'), offerText],
     [t('cl.pl.interested'), <ClubList ids={interestIds} empty={t('common.none')} />],
@@ -542,7 +542,7 @@ export function ClassicPlayer({ id }: { id: number }) {
       { key: 'disc', label: t('cl.dp.menu'), disabled: !!p.lastTalk && daysBetween(p.lastTalk, g.date) < 10, title: t('talk.r.tooSoon'), onClick: () => setDiscOpen(true) },
     );
     items.push(
-      { key: 'release', label: t('cl.pl.releaseFree'), danger: true, onClick: async () => { if (await askConfirm(t('player.releaseConfirm', { player: `${p.first} ${p.last}`.trim(), club: g.clubs[p.club]?.short ?? '', pay: money(releaseCost(p)) }), { danger: true, head: t('cl.pl.releaseQ', { player: `${p.first} ${p.last}`.trim() }) })) { if (dispatch<string>({ t: 'release', pid: p.id }) === 'blocked') setMsg(t('transfer.releaseBlocked.body', { player: `${p.first} ${p.last}`.trim(), club: g.clubs[p.club]?.name ?? '' })); else nav({ name: 'squad' }); } } },
+      { key: 'release', label: t('cl.pl.releaseFree'), danger: true, onClick: async () => { if (await askConfirm(t('player.releaseConfirm', { player: `${p.first} ${p.last}`.trim(), club: g.clubs[p.club]?.short ?? '', pay: moneyFull(releaseCost(p)) }), { danger: true, head: t('cl.pl.releaseQ', { player: `${p.first} ${p.last}`.trim() }) })) { if (dispatch<string>({ t: 'release', pid: p.id }) === 'blocked') setMsg(t('transfer.releaseBlocked.body', { player: `${p.first} ${p.last}`.trim(), club: g.clubs[p.club]?.name ?? '' })); else nav({ name: 'squad' }); } } },
       { key: 'nick', label: t(p.realName ? 'cl.pl.editNick' : 'cl.pl.setNick'), onClick: () => setNickOpen(true) },
       { key: 'sep-rep', sep: true },
       { key: 'physio', label: t('cl.pl.physioRep'), disabled: !Object.values(g.staff).some((s) => s.club === g.userClub && s.role === 'physio'), onClick: () => setRepRole('physio') },

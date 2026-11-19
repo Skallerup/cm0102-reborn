@@ -68,7 +68,7 @@ function CmTransferStatusPanel({ p, onClose }: { p: Player; onClose: () => void 
     <div className="cx-tstatus">
       <div className="cx-subtitle">{t('cl.ts.title')}</div>
       <div className="cx-ts-body">
-        <p className="cx-ts-intro">{t('cl.ts.valued', { player: name, value: money(p.value) })}</p>
+        <p className="cx-ts-intro">{t('cl.ts.valued', { player: name, value: moneyFull(p.value) })}</p>
         <div className="cx-ts-price">
           <span className="cx-ts-label">{t('cl.ts.asking')}</span>
           <CxPm disabled={price <= 0} onClick={() => step(-1)} aria-label="-">−</CxPm>
@@ -169,7 +169,7 @@ function OwnTransferStatusPanel({ p, onClose }: { p: Player; onClose: () => void
     <div className="cx-tstatus">
       <div className="cx-subtitle">{t('cl.ts.title')}</div>
       <div className="cx-ts-body">
-        <p className="cx-ts-intro">{t('cl.ts.valued', { player: name, value: money(p.value) })}</p>
+        <p className="cx-ts-intro">{t('cl.ts.valued', { player: name, value: moneyFull(p.value) })}</p>
         <div className="cx-ts-price">
           <span className="cx-ts-label">{t('cl.ts.asking')}</span>
           <CxPm onClick={() => setPrice(round(shown - step))} aria-label="-">−</CxPm>
@@ -364,7 +364,7 @@ function OldBidPanel({ p, loan, onClose, onSent }: { p: Player; loan: boolean; o
     <div className="cx-tstatus cx-bid">
       <div className="cx-subtitle">{t(loan ? 'cl.bid.loanTitle' : 'cl.bid.title', { club: me?.short ?? '', player: p.last })}</div>
       <div className="cx-ts-body">
-        <p className="cx-ts-intro">{t('cl.bid.valued', { club: seller, player: name, value: moneyFull(p.value) })}<br />{!loan && t('cl.bid.board', { fee: moneyFull(budget) })}</p>
+        <p className="cx-ts-intro">{t('cl.bid.valued', { club: seller, player: name, value: moneyFull(p.value) })}<br />{!loan && t('cl.bid.board', { fee: money(budget) })}</p>
         {!loan && <>
           <div className="cx-bid-row">
             <span className="cx-bid-label">{t('cl.bid.fee')}</span>
@@ -699,7 +699,7 @@ function CmBidPanel({ p, onClose, onSent, onAsk, change }: { p: Player; loan: bo
       <CmBidRows terms={terms} set={setTerms} value={p.value} budget={budget} swapValue={swapValue} onExchange={() => setExch(true)} k={cmGbp(g, g.userClub)} kv={cmGbp(g, p.club)}
         intro={<p className="cx-ts-intro">
           <CxAmountText text={t('cl.bid.valued', { club: seller, player: name, value: '\u0000' })} amount={moneyFull(p.value)} cls="cx-bid-setval" onClick={() => setTerms({ ...terms, fee: p.value })} /><br />
-          <CxAmountText text={t(boardKey, { fee: '\u0000' })} amount={moneyFull(budget)} cls="cx-bid-setmax" onClick={() => setTerms({ ...terms, fee: budget })} />
+          <CxAmountText text={t(boardKey, { fee: '\u0000' })} amount={money(budget)} cls="cx-bid-setmax" onClick={() => setTerms({ ...terms, fee: budget })} />
         </p>}
         after={err ? <div className="cx-bid-err">{err}</div> : undefined} />
       <ClassicFoot cols="3fr 1fr">
