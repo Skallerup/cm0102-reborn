@@ -127,6 +127,8 @@ const loanSeen = new Map<number, string>();
 const inMem = new Set<number>(), knownIds = new Set<number>();
 let seenFree0 = false;
 let loanEnds = 0;
+const loanSeenO = new Map<number, string>();
+let loanEndsO = 0;
 const ourClubByName = new Map<string, number>();
 for (const c of Object.values(g.clubs)) if (!ourClubByName.has(c.name)) ourClubByName.set(c.name, c.id);
 
@@ -395,7 +397,7 @@ function compareDay(v: View) {
     const art = m.u8(r + 0x1c), own = m.s32(r + 0x14), other = m.s32(r + 0x10);
     const from = art === 4 ? other : own, to = art === 4 ? own : other;
     if (!engIx(from) && !engIx(to)) continue;
-    const kind = art === 0 ? (from < 0 ? 'klubløs skriver under' : m.s32(r + 0x18) > 0 ? 'køb med sum' : 'køb uden sum') : art === 2 ? 'leje' : art === 3 ? 'kontrakt udløbet (fri)' : art === 4 ? 'leje slut' : `art ${art}`;
+    const kind = art === 0 ? (from < 0 ? 'klubløs skriver under' : m.s32(r + 0x18) > 0 ? 'køb med sum' : 'køb uden sum') : art === 2 ? 'leje' : art === 3 ? 'kontrakt udløbet (fri)' : art === 4 ? 'leje slut i historikken (art 4)' : `art ${art}`;
     memKinds[kind] = (memKinds[kind] ?? 0) + 1;
     const pid = pair.get(m.s32(r));
     if (pid !== undefined && art !== 4) {
@@ -439,6 +441,17 @@ function compareDay(v: View) {
     if (now) loanSeen.set(p.id, now); else loanSeen.delete(p.id);
   }
   if (loanEnds) ourKinds['leje slut'] = loanEnds;
+  // originalens lejer slutter også midt i sæsonen (0x4c8077: lejekontraktens slutdato = i dag → end_loan 0x4d07e0, uden historikpost – art 4
+  // skrives næsten kun ved sæsonslut), så de tælles som vores: lejerne (rækken +4 ≥ 0) mellem to billeder
+  for (const a of v.people) {
+    if (!a.pr) continue;
+    const row = rowOf(v, a.id), kl = contractAt(v, m.s32(row + 4)), k = contractAt(v, m.s32(row));
+    const now = kl ? `${k ? m.s32(k + 4) : -1}>${m.s32(kl + 4)}` : '';
+    const was = loanSeenO.get(a.id);
+    if (was && was !== now) { const [f, t] = was.split('>').map(Number); if (engIx0(v, f) || engIx0(v, t)) loanEndsO++; }
+    if (now) loanSeenO.set(a.id, now); else loanSeenO.delete(a.id);
+  }
+  if (loanEndsO) memKinds['leje slut'] = loanEndsO;
   // art 5 = ikke-spillernes skifter (0x68f9c0 @0x690432 managerskift klub → klub, 0x8c9720 @0x8c99bf job uden spillerpost) – vores Staff.moves
   for (const s of Object.values(g.staff)) for (const mv of s.moves ?? []) {
     if (mv.date < start || mv.date > today || (!engClub(mv.from) && !engClub(mv.to))) continue;
