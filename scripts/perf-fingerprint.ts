@@ -28,7 +28,9 @@ const sortKeys = (v: unknown): unknown => {
   for (const k of Object.keys(o).sort()) out[k] = v === gs() && k === 'id' ? 0 : o[k];   // (id: som rep)
   return out;
 };
-const rep = function (this: unknown, k: string, v: unknown) { return this === gs() && k === 'id' ? 0 : v instanceof Map ? { __map: [...v] } : v instanceof Set ? { __set: [...v] } : sortKeys(v); };
+// NONEWS=1: alle felter med navnet `news` udelades (g.news, humans[].news, nextId.news) – en nyhedsport skal give samme hashes som før
+const NONEWS = process.env.NONEWS === '1';
+const rep = function (this: unknown, k: string, v: unknown) { if (NONEWS && k === 'news') return undefined; return this === gs() && k === 'id' ? 0 : v instanceof Map ? { __map: [...v] } : v instanceof Set ? { __set: [...v] } : sortKeys(v); };
 const hash = () => createHash('sha256').update(`${rng.state}\n`).update(JSON.stringify(gs(), rep)).digest('hex').slice(0, 16);
 const doHash = process.env.HASH !== '0';
 const all = createHash('sha256');
