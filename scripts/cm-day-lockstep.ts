@@ -378,7 +378,7 @@ function compareDay(v: View) {
       memPairedDeals++;
       const toName = to >= 0 ? str(m, v.C + 0x245 * to + 4, 51) : '';
       const ok = (ourMoves.get(pid) ?? []).some((mv) => (g.clubs[mv.to]?.name ?? '') === toName && (art === 2) === !!mv.loan);
-      chk('transfers: originalens handel findes hos os (spiller → klub, leje/køb)', ok, () => { const p = g.players[pid]; return `${d} ${p.first} ${p.last} → ${toName || '-'}${art === 2 ? ' (leje)' : ''}: ${ourMoves.get(pid)?.map((mv) => `${mv.date} → ${g.clubs[mv.to]?.name ?? '-'}`).join(', ') || 'ingen'} mod ${d} → ${toName || '-'}`; });
+      chk('transfers: originalens handel findes hos os (spiller → klub, leje/køb)', ok, () => { const p = g.players[pid]; return `${d} ${p?.first ?? pid} ${p?.last ?? '(væk)'} → ${toName || '-'}${art === 2 ? ' (leje)' : ''}: ${ourMoves.get(pid)?.map((mv) => `${mv.date} → ${g.clubs[mv.to]?.name ?? '-'}`).join(', ') || 'ingen'} mod ${d} → ${toName || '-'}`; });
       if (ok) sameDeal++;
       else if (process.env.DEBUG_DEALS && memPairedDeals <= 5) { const p = g.players[pid]; console.log(`    [deal] ${d} ${p.first} ${p.last}: art ${art} ${from >= 0 ? str(m, v.C + 0x245 * from + 4, 51) : '-'} → ${toName || '-'} £${m.s32(r + 0x18)}; vores: ${JSON.stringify(p.moves ?? [])} nu ${g.clubs[p.club]?.name}`); }
     }
