@@ -139,8 +139,10 @@ function realPlayers(g: GameState): Player[] {
   return Object.values(g.players).filter((p) => !p.regen);
 }
 
-/** Nyt spil: Injury::Injury (0x62cf70) på databasens dato (1/1), dagene frem til spillets start (0x5cc850 kører 0x62b7b0 hver dag – uden
- *  kampe og uden 0x5ce2d0), så 0x62a920 på startdagen. */
+/** Nyt spil: Injury::Injury (0x62cf70) på databasens dato (1/1) og dagene frem til spillets start (0x5cc850 kører 0x62b7b0 hver dag – uden
+ *  kampe og uden 0x5ce2d0). Efter løkken (0x5ccc91–0x5cccaa) kommer trupplanen 0x83a1b0 (newgame.ts cmSquadPlanStart … cmShortlistStart – den
+ *  læser konditionen og bringer posterne op til startdagen 0x62c680, så skader, der er helet, slutter), player_setup.cfg 0x7a30c0 (cmSetupLoans
+ *  og skaderne) og 0x62a920 – de to sidste i cmFitSetupDay. */
 export function cmFitNewGame(g: GameState): void {
   // (MODERN_PARITY 6) en CM-database i ægte tilstand – 2026/27 med: g.cmFitStart nedenfor slår modulet til (cmBodyOn)
   if (!cmLogic(g) || g.draft) return;
@@ -156,6 +158,15 @@ export function cmFitNewGame(g: GameState): void {
   const staff = Object.keys(g.staff).length;
   prerunInjury = { ps, staff };
   try { runPrerun(g, db + 1, start); } finally { prerunInjury = null; }
+}
+
+/** Nyt spil efter trupplanen 0x83a1b0: player_setup.cfg 0x7a30c0's skader (lejeaftalerne er cmSetupLoans lige før) og
+ *  Injury::init_squad_fitness 0x62a920 (0x5cccaa) for alle klubbers spillere – også de lejede i lejeklubben. */
+export function cmFitSetupDay(g: GameState): void {
+  if (!cmLogic(g) || g.draft || g.cmFitStart === undefined) return;
+  const ps = realPlayers(g);
+  const start = dayNum(g.date);
+  setKnockHook(true);
   cmSetupInjuries(g, start);
   const c = fitCtx(g, SALT.init, start);
   initSquadFitness(c, ps);
@@ -198,8 +209,8 @@ export function cmSetupInjuries(g: GameState, start: number): void {
  *  i dag eller han ingen kontrakt har (0x4cf5a0). Kontraktens udløb (staff +0x46, kontrakt +0x2d) før lejens slut → rykkes til slutdatoen.
  *  Lejekontrakten 0x85e590(staff, klub, slut, 0 %, 1, 1): lønnen 0 % hos lejeklubben (Player.loan.share 0), +0x25 = startdatoen, 0x4d01e0
  *  (staff +0x39 = lejeklubben); trøjenummeret 0x85a470 (her pickNumber); arbejdstilladelsen 0x8c7560 → 0x8c7070 (cmPermitMove).
- *  Ingen klubskifte-følger (0x8c9720 kaldes ikke: indkøringsbyten og klubbernes omdømme uændrede). Bagefter 0x62a920 for de lejede (lejeklubbens
- *  sæson). Ikke porteret: 0x5563f0 (Discipline), 0x540980(staff, 1) (+0x5e), staff +0x6d 2 → 0x10. */
+ *  Ingen klubskifte-følger (0x8c9720 kaldes ikke: indkøringsbyten og klubbernes omdømme uændrede). Bagefter 0x62a920 (cmFitSetupDay) – også for
+ *  de lejede (lejeklubbens sæson). Ikke porteret: 0x5563f0 (Discipline), 0x540980(staff, 1) (+0x5e), staff +0x6d 2 → 0x10. */
 export function cmSetupLoans(g: GameState): number {
   // 2001-verdenen: 2026/27-filens LOAN-linjer (8.490, datoer i 2001/02) er ikke fundet i databasen endnu (scripts/build-preseason.mts)
   if (!cmActive(g) || g.draft) return 0;
@@ -222,9 +233,6 @@ export function cmSetupLoans(g: GameState): number {
   }
   if (!moved.length) return 0;
   rebuildIndexes();
-  const c = fitCtx(g, SALT.init, dayNum(g.date));
-  initSquadFitness(c, moved);
-  for (const p of moved) syncPlayer(c, p);
   return moved.length;
 }
 

@@ -44,7 +44,7 @@ import { cmStartDate } from './cmCalendar';
 import { cmMainNation, cmSeasonOn } from './cmSeason';
 import { cmEuroOn, cmEuroRestoreNext, cmSetupEurope } from './cmEurope';
 import { compHooks } from './hooks';
-import { cmFitNewGame, cmSetupLoans } from './cmFitnessGame';
+import { cmFitNewGame, cmFitSetupDay, cmSetupLoans } from './cmFitnessGame';
 import './cmIntl';                                              // landskampkalenderen i ægte tilstand (intlHooks, registerPrerun 'comps1')
 import './cmNatTeams';                                          // landstrænerne i bestyrelsessystemet (intlHooks.ntStart/ntEnd/boardMatch …)
 import './cmPrerunMatches';                                      // forkørslens konkurrencekampe (registerPrerun 'matches')
@@ -659,11 +659,13 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   cmWageFillNewGame(g, unsetWages);
   // staben: 0x83a1b0's udfyldning af lønnen −1 med 0x862720 (cmWageGame.ts)
   cmStaffWageNewGame(g);
-  // player_setup.cfg's lejeaftaler (0x7a30c0 efter 0x83a1b0 → 0x8bf400 – cmFitnessGame.ts)
-  cmSetupLoans(g);
   // 0x83a1b0's slutning: positionslisterne 0x83a780 og budgettets fordeling/målene 0x83b6e0 for alle klubber (cmShortlistGame.ts)
   // (nyt spil-forløbets midlertidige verden: ikke – den bruges kun til Select Team, og spillet bygges igen ved Take Control)
   if (!o.preview) cmShortlistStart(g);
+  // 0x5ccc9c: player_setup.cfg 0x7a30c0 efter 0x83a1b0 – lejeaftalerne (0x8bf400) og skaderne, så 0x5cccaa: Injury::init_squad_fitness 0x62a920
+  // (cmFitnessGame.ts). Trupplanen ovenfor har læst konditionen (0x62c680 op til startdagen – helede skader er slut) før startens skader.
+  cmSetupLoans(g);
+  cmFitSetupDay(g);
   // startdagens CONTRACT_MANAGER::daily_update 0x4c7ac0 (originalen kører den også på [0xdd6ec8] – cmContractManager.ts)
   cmContractManagerDay(g);
   // spillernes værdi = originalens +0x52 (0x4d0c60 – cmValueGame.ts)
