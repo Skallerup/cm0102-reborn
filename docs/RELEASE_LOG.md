@@ -2,6 +2,7 @@
 
 Flyttet fra CLAUDE.md 17/11-2026 (så CLAUDE.md er kort i hver session). Nyeste først. Tilføj en linje øverst ved hver udgivelse.
 
+- 2026-11-19 – Skudt live (v0.31.0): 2026-11-19 – Spilstart: økonomi, startkontrakter og ugens lønsum bygges før forkørslen (newgame.ts/cmFinance.ts/cmConvert.ts), som originalen; 0x59b9c0 bogfører intet før 14/7. Bonusser bogført 21/7 460 → 502 (orakel 628). Fingeraftryk 2001-08-20 77c96bcbd15059ea → 4fb21131a80d4dcc. lockstep CON_DUMP; længere tidsgrænser i newsBodyAuthentic/originalAttributes.
 - 2026-11-19 – Skudt live (v0.31.0): 2026-11-19 – Hotfix 'RangeError: Out of memory' (Safari, cmSlMem recOf ← newDay i hovedtråden): onGameSwitch (state.ts) tømmer caches med ét spil (international, nameIndex, FIT_FNS, cmAiBid, PV_DIRECT, ønskelister, cmValue, cmAskingPrice, gbpOf, gittermotoren) + releaseWorldCaches efter nyt spil. Chrome hovedtråd 318 → 112 MB, Node pr. dag 578–864 → 263–268 MB; fingeraftryk uændret. scripts/mem-newgame.ts, webkit-newgame.mjs.
 - 2026-11-19 – Skudt live (v0.31.0): 2026-11-19 – Playing Career: ClassicCareer viste hele sæsonens p.stats på den nye klubs linje (Total fordoblet); bogføring af den gamle klubs linje flyttet til setClub (state.ts) ved ethvert klubskifte (leje hjem, tilbagekald, frigivelse, fri agent, Bosman, computerkøb af klubløse), MoM med pr. linje. Test careerClubMove.
 - 2026-11-19 – Udviklerværktøj: testresultat-cache (scripts/test.mjs, springer testfiler over med samme input) og samlede udgivelser (ship.sh --item/--file); spil efter N dage (cachedGameAt) følger.
