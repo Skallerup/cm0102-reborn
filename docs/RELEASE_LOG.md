@@ -2,6 +2,7 @@
 
 Flyttet fra CLAUDE.md 17/11-2026 (så CLAUDE.md er kort i hver session). Nyeste først. Tilføj en linje øverst ved hver udgivelse.
 
+- 2026-11-19 – Skudt live (v0.31.0): 2026-11-19 – 0x5ae9d0 (fra add_fixture 0x5aa680, Europa/Sydamerika-turneringer): klubbens kamp 2 dage før/efter flyttes til 3 dage (cmEuroClubMoves i cmCalendar.ts); oraklet: 22 af PL's 84 søndagskampe ligger 3 dage efter UEFA (84 vs vores 62). Nyhed 0x5aac70 ikke porteret; ikke målt pga. RAM.
 - 2026-11-19 – Skudt live (v0.31.0): 2026-11-19 – Leje (rest): spillerens svar 0x4cc930 (omdømme/500 > lejeklubbens omdømme → nej + 'rejects move'), pokal/mod-moderklub-valg som felter + regler i holdudtagelsen 0x8e8a60 (hjemlige turneringer), mærket Trn (0x18) i stedet for Fut. Europa-tilmelding ikke porteret.
 - 2026-11-19 – Skudt live (v0.31.0): 2026-11-18 – Finansskærm (ejerens billede): moneyCx (fulde tal med tusindtalsseparator; forkortes til 2 decimaler over 13 tegn – gæt, 0x441c10 ikke afkodet), Profit/Loss rød i parentes ved underskud, negativ Balance/Transfer Funds rød.
 - 2026-11-18 – Skudt live (v0.30.0): 2026-11-18 – MODERN_PARITY 4: cmFinOn(g) (cmFinance på 2026 ægte, g.cmFin), cmGbp i stedet for 0,86 overalt (bookBlockEur), world-cm.json cmRaw.clubFin (club.dat saldo/tilskuere/træningsanlæg); PL Brentford 1. sæson: klubber i minus 97 → 110/656, PL 0 → 3, tv-rettigheder først fra 2. sæson som originalen. 2001 uændret 9e533ca1.

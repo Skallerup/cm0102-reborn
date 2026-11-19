@@ -13,6 +13,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '2026-11-19',
     title: { da: 'Mere af det originale CM 01/02', en: 'More of the original CM 01/02' },
     items: [
+      { da: "⚠ Kræver et nyt spil: Ligakampe flyttes som i originalen, når klubben spiller i Europa: en UEFA Cup-kamp torsdag flytter lørdagens ligakamp til søndag og tirsdagens til mandag.", en: "⚠ Requires a new game: League matches are now moved as in the original when a club plays in Europe: a Thursday UEFA Cup tie moves Saturday's league match to Sunday and Tuesday's to Monday." },
       { da: "Leje som originalen: spilleren kan selv sige nej til et lejeskifte, afkrydsningerne 'Spilleren må spille pokalkampe/mod <klub>' kan slås fra og gælder i holdudtagelsen, og et aftalt skifte står som 'Trn' i truppen.", en: "Loans as in the original: the player can turn down a loan move himself, 'Player can play in cup matches/against <club>' can be unticked and is enforced in team selection, and an agreed transfer shows as 'Trn' in the squad." },
       { da: "Finances: beløb vises præcist som i originalen (forkortes kun, når de er lange), og underskud og negativ saldo er røde.", en: "Finances: amounts are shown exactly as in the original (abbreviated only when long), and losses and a negative balance are red." },
     ],
