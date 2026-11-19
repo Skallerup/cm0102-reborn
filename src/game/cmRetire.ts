@@ -12,14 +12,16 @@
 //     meldingsdatoen meldes det (0xbbb 0x7aa340/0x7aa4c0); løkken stopper ved den første post, der hverken er forfalden eller kan meldes.
 //   • En skade, der slutter karrieren (Injury 0x62da70/0x62dbc6 → schedule_injury_retirement 0x7a7f20): årsag 8, dato i dag + rand(dage/2) + 1.
 // Årsager: 1 alder/evne/kontrakt, 2 klubløs i et kørende land (rand(25·Stamina) = 0), 8 skade, 0x10 arbejdsløs > 1 år, 0x20 stab (ikke porteret).
-// Bagefter: queue_staff_for_regen 0x7a87d0 – regen'en kommer samme dag (under 30 år) eller om 1 + rand(65) dage (season.ts spawnDueRegens).
+// Bagefter: en spiller med ikke-spillerpost (+0x69 – databasens spillere med stabsegenskaber, Staff med samme person-id) bliver stab
+// (0x7a62c2: samme person, job efter 0x7aace0 – spillende manager/assistent/træner fortsætter i klubben, ellers ledig); de øvrige:
+// queue_staff_for_regen 0x7a87d0 – regen'en kommer samme dag (under 30 år) eller om 1 + rand(65) dage (season.ts spawnDueRegens).
 //
 // *Estimeret*/ikke porteret: tilfældige tal af spillets egen talrække (cmRand); stabens pensioneringer (årsag 0x20, ikke-spillerposterne
 // 0x7aaeb0/0x7ab340); 0x7a5cdb's "spilleren bliver træner" (kræver mindst 3 ledige ikke-spillerposter [this+0x20] – i oraklet 10 ved
 // spilstarten og 2 fra dag 1, så grenen er død; process_regen_queue 0x7a65d0's tildeling af ledige poster til ældre spillere er ikke porteret –
-// spillere med en rolle i klubben (Player.jobRole) fortsætter i staben som før); forsikringsnyheden 0x58a980; staffState +0xb's lave bits (0); personerne uden for originalens hukommelse (0x524d70) får
+// oraklet: 8 spillere på dag 1 og 14 mere i sæson 1, som stabens pensioneringer frigiver); forsikringsnyheden 0x58a980; staffState +0xb's lave bits (0); personerne uden for originalens hukommelse (0x524d70) får
 // samme regler på en egen liste (st.ext), så de ikke blokerer originalens kø; for world-filer uden hukommelsesoplysningen = de ikke indlæste lande.
-import type { Club, GameState, Player } from './types';
+import type { Club, GameState, Player, Staff, StaffRole } from './types';
 import { cmActive, cmLogic, cmRand, newCmContract, statusCode, type CmContract } from './cmPlayerData';
 import { nationLoaded } from './cmFinance';
 import { seasonRow } from './cmFitness';
@@ -27,7 +29,7 @@ import { regionOf } from './leagues';
 import { ageOn } from './dates';
 import { addNews, removePlayer } from './state';
 import { asOwner, forEachHuman, isHumanClub } from './humans';
-import { retireIntoStaff } from './records';
+import { JOB_CODE } from './cmStaff';
 import { ATTRS } from './attributes';
 import { playerRecordInto } from './engine/grid/aiTeam';
 
@@ -172,7 +174,7 @@ export function checkRetirement(g: GameState, p: Player, todayIso: string, rand:
     if (!club) return mk(1);
     // 0x85fa00: dage til udløbet (+0x2d) < 300 og for lidt spilletid (+0x3d < 50)
     if (sc && p.contract && daysBetween(pairOf(p.contract.expires), today) < 300 && plan < 50) {
-      if (p.jobRole && p.jobRole !== 'player') return mk(1);  // ikke-spillerposten +0x69
+      if (npStaffOf(g, p)) return mk(1);                        // ikke-spillerposten +0x69
       if (attr(p, A_AMB) > rand(20) && pr.pa * 0.85 > pr.ca) return mk(1);
     }
   }
@@ -292,19 +294,106 @@ function announceNews(g: GameState, p: Player, why: number): void {
   });
 }
 
+/** Nyhedens pladser fra 0x7a92e0 (+8 jobbet ved meldingen, 15 → 8 og 13 → 6; +0xd ikke-spillerposten) og personen efter 0x7a59e0's overgang
+ *  (jobbet +0x3d og klubben +0x39, som 0x7a9650 læser, når teksten vises) */
+export interface NewsJob { np: boolean; job: number; liveJob: number; liveClub: boolean }
+
+/** 0x7a9650 tekstdel 1 (brødteksten) for en spiller (spillerpost +0x61 sat; klubben +0x39 er altid sat, ellers sendes nyheden ikke): nøglen i
+ *  `cmret.b.*` og jobbet ({job}: 0x53ac40(job) = `cmret.j.*`, 0x53ad00(job, 0, 0) = `cmret.jl.*`) */
+export function retireBody(why: number, ann: number, caps: number, clubId: number, nj: NewsJob, rand: Rand): { body: string; job?: number; jl?: 1 } {
+  const j = nj.job, notPl = j !== 0 && j !== 16 && j !== 11;
+  if (why === 8) {                                                                  // 0x7aa120
+    if (caps) {
+      if (clubId === 1) return { body: 'injPlain' };                                // 0x7aa135: klubbens id = 1 (sic)
+      const lj = nj.liveJob;
+      return lj !== 0 && lj !== 16 && lj !== 11 ? { body: 'injIntlCont', job: j, jl: 1 } : { body: 'injIntl' };
+    }
+    // 0x7aa26f: klubben +0x39 nu – en spiller uden ikke-spillerpost står (indtil regen'en bruger pladsen) med 0x7aace0's tomme klub, men vises
+    // her som før med klubben (pladsen genbruges af regen'en, før nyheden læses)
+    return nj.liveClub ? { body: 'inj' } : { body: 'injPlain' };
+  }
+  if (ann) {
+    if (!nj.np) return { body: caps ? 'retIntl' : 'ret' };                         // 0x7a9c56 (uden ikke-spillerpost)
+    if (caps) {                                                                     // 0x7a99e2 (klubben er sat)
+      if (notPl) return { body: 'retIntlCont', job: j };
+      return { body: rand(2) ? 'retIntlCoach' : 'retIntlMgmt' };                    // 0x7a9a7a
+    }
+    const lj = nj.liveJob;                                                          // 0x7a9bf3: jobbet +0x3d nu
+    return lj !== 0 && lj !== 16 ? { body: 'retCont', job: j } : { body: 'retCoach' };
+  }
+  // 0x7a9de0 (årsag 0x10/0x20 – klubløse og stab – sendes ikke for spillere med klub)
+  if (nj.np && notPl) {
+    // med landskampe: jobbet +0x3d nu (12/13/15 → "He will continue …") – efter 0x7aace0 er det 5/6/8, så kun den korte tekst (0x7a9e51)
+    if (caps) return { body: 'nowIntl' };
+    return { body: 'nowCont', job: j, jl: 1 };                                      // 0x7aa047
+  }
+  return { body: caps ? 'nowIntl' : 'now' };
+}
+
+// ------------------------------------------------------------------------------------------------ spilleren med ikke-spillerpost (+0x69)
+const NPK = new WeakMap<GameState, { n: number; m: Map<number, Staff> }>();
+/** spillerens ikke-spillerpost staff +0x69: personens Staff med samme person-id (databasens spillere med en ikke-spillerpost står i staffX/staff –
+ *  newgame.ts addDbStaff, Staff.cmId = staff.dat +0 = spillerens id) */
+export function npStaffOf(g: GameState, p: Player): Staff | undefined {
+  const n = Object.keys(g.staff).length;
+  let c = NPK.get(g);
+  if (!c || c.n !== n) {
+    const m = new Map<number, Staff>();
+    for (const s of Object.values(g.staff)) if (s.cmId !== undefined && s.cmNp && !s.exPlayer) m.set(s.cmId, s);
+    c = { n, m };
+    NPK.set(g, c);
+  }
+  const s = c.m.get(p.id);
+  return s && !s.exPlayer && s.last === p.last ? s : undefined;
+}
+/** personens job +0x3d som spiller: 11 spiller, 12 spillende manager, 13 spiller/assistent, 15 spiller/træner (Set Role At Club: Player.jobRole;
+ *  ellers databasens job, så længe han er i databasens klub); stab med spillerpost: deres ikke-spillerjob */
+function playerJob(p: Player, s: Staff | undefined): number {
+  if (p.jobRole) return p.jobRole === 'assistant' ? 13 : p.jobRole === 'coach' ? 15 : 11;
+  if (!s || !p.club) return 11;
+  if (s.cmExtra) return s.cmClub === p.club && s.cmJob ? s.cmJob : 11;
+  if (s.club !== p.club) return 11;
+  return s.role === 'manager' ? 12 : JOB_CODE[s.role];
+}
+/** 0x7aace0 retire_from_playing_staff: 12 → 5 manager, 13 → 6 assistent, 15 → 8 træner (klubben beholdes); 11/14 → 16 (pensioneret spiller) og
+ *  klubben ryddes; 1–10 urørt */
+const afterPlaying = (job: number): number => (job === 12 ? 5 : job === 13 ? 6 : job === 15 ? 8 : job === 11 || job === 14 || job > 16 ? 16 : job);
+const ROLE_OF: Record<number, StaffRole> = { 5: 'manager', 6: 'assistant', 8: 'coach', 9: 'scout', 10: 'physio' };
+
+/** 0x7a62c2–0x7a6392: spilleren med ikke-spillerpost bliver ikke-spiller (samme person: spillerposten +0x61 → 0, +0x5f = 1). Med klub fortsætter
+ *  han i klubbens stab (kontrakten bygges om af 0x85e960 – løn og udløb er spillerkontraktens), ellers er han ledig (job 16, "Unemployed") */
+function becomeStaff(g: GameState, p: Player, s: Staff, job: number): void {
+  const club = job !== 16 && p.club && g.clubs[p.club] ? p.club : 0;
+  s.exPlayer = { pid: p.id };
+  s.dob = p.dob;                                                                    // samme person (staff +0x10)
+  if (s.cmExtra) { s.cmExtra = undefined; s.cmClub = undefined; s.cmJob = undefined; }
+  s.cmDbJob = job;
+  if (club) {
+    s.club = club;
+    s.role = ROLE_OF[job] ?? s.role;
+    s.wage = p.contract?.wage ?? s.wage;
+    if (p.contract?.expires) s.expires = p.contract.expires;
+  } else {
+    s.club = 0;
+    s.cmJob = 0;
+    s.wage = 0;
+  }
+}
+
 /** 0xbba 0x7a92e0/0x7a9650: kun når spillerens klub er menneskets (0x7875e0); kendte spillere (verdensomdømme > 8500 i et land med +0x85 > 8)
  *  til alle, over 7500 til landets managere (nationaliteten og klubbens land), ellers klubben og ønskelisterne (0x8d1da0) */
-function retireNews(g: GameState, p: Player, why: number, ann: number): void {
+function retireNews(g: GameState, p: Player, why: number, ann: number, nj: NewsJob, rand: Rand): void {
   const club = p.club ? g.clubs[p.club] : undefined;
   if (!club || !isHumanClub(club.id)) return;
+  if (nj.job === 8 || nj.job === 5) return;                                         // 0x7a930b: spillerpost og jobbet træner/manager
   const pr = prOf(p);
   const caps = Math.min(255, p.caps ?? 0);
   const country = caps > 0 ? g.nations[p.nation]?.name ?? '' : '';
   const key = why === 8 ? 'cmret.inj' : ann ? 'cmret.ret' : 'cmret.shock';
-  const body = why === 8 ? (caps ? 'injIntl' : 'inj')
-    : ann ? (caps ? 'retIntl' : 'ret')
-      : caps ? 'nowIntl' : 'now';
-  const n = { cat: 'general' as const, key, params: { player: pname(p), last: p.last, club: club.name, country, body }, link: { kind: 'player' as const, id: p.id } };
+  const b = retireBody(why, ann, caps, club.id, nj, rand);
+  const params: Record<string, string | number> = { player: pname(p), last: p.last, club: club.name, country, body: b.body };
+  if (b.job !== undefined) { params.job = b.job; if (b.jl) params.jl = 1; }
+  const n = { cat: 'general' as const, key, params, link: { kind: 'player' as const, id: p.id } };
   const n85 = s8(g.cmNation85?.[p.nation] ?? 0);
   if (n85 > 8 && pr.world > 8500) { forEachHuman(() => addNews(n)); return; }
   if (pr.world > 7500) {
@@ -329,23 +418,27 @@ function dropFromTactic(g: GameState, p: Player, club: number): void {
 }
 
 function retire(g: GameState, p: Player, e: CmRetEntry, today: string, rand: Rand): void {
-  retireNews(g, p, e.why, e.ann);
+  const s = npStaffOf(g, p);
+  const job = playerJob(p, s), after = afterPlaying(job);
+  // 0x7a92e0's job: 15 → 8, 13 → 6 (de to tekstfunktioner kender kun de to)
+  const nj: NewsJob = { np: !!s, job: job === 15 ? 8 : job === 13 ? 6 : job, liveJob: s ? after : 16, liveClub: s ? after !== 16 : true };
+  retireNews(g, p, e.why, e.ann, nj, rand);
   g.offers = g.offers.filter((o) => o.player !== p.id || o.status === 'completed' || o.status === 'rejected' || o.status === 'withdrawn' || o.status === 'collapsed');
   for (const c of Object.values(g.clubs)) if (c.shortlist?.includes(p.id)) c.shortlist = c.shortlist.filter((id) => id !== p.id);
   const club = p.club;
   if (club) dropFromTactic(g, p, club);
   const age = ageOn(p.dob, today);
-  // 0x7a5cd0: spillere med en ikke-spillerpost fortsætter i klubbens stab (0x85e960)
-  if (p.jobRole && p.jobRole !== 'player') retireIntoStaff(p);
+  // 0x7a62c2: med ikke-spillerpost bliver han stab (samme person) – ingen regen (0x7a87d0 kaldes ikke)
+  if (s) becomeStaff(g, p, s, after);
   // 0x7a6397: regen-køen – under 30 år samme dag, ellers i dag + 1 + rand(65) (over nytår: rand(35) året efter)
   let due = today;
-  if (age >= 30) {
+  if (!s && age >= 30) {
     const t = pairOf(today);
     let d = rand(65) + dayOf(t) + 1, y = yearOf(t);
     if (d > 365) { d = rand(35); y++; }
     due = new Date((D0(y) + d) * 86400000).toISOString().slice(0, 10);
   }
-  if (p.pa > 0) (g.regenQueue ??= []).push({ from: pname(p), nation: p.nation, pos: p.pos.slice(), side: p.side.slice(), foot: p.foot === 'L' ? 'L' : p.foot === 'B' ? 'B' : 'R', pa: p.pa, attrs: p.attrs.map((a) => Math.round(a)), due, fromId: p.id });
+  if (!s && p.pa > 0) (g.regenQueue ??= []).push({ from: pname(p), nation: p.nation, pos: p.pos.slice(), side: p.side.slice(), foot: p.foot === 'L' ? 'L' : p.foot === 'B' ? 'B' : 'R', pa: p.pa, attrs: p.attrs.map((a) => Math.round(a)), due, fromId: p.id });
   removePlayer(p);
   const st = stateOf(g);
   st.n = (st.n ?? 0) + 1;

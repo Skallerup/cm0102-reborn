@@ -34,6 +34,9 @@ function listStat(iso: string) {
   ours[iso] = `${L.length} (meldt ${L.filter((x) => x.ann).length}) alder ${hist(L.map((x) => ageOn(g.players[x.id].dob, g.date)))}`;
 }
 listStat(g.date);
+// spillere med en ikke-spillerpost (Staff med samme person-id – 0x7a59e0 0x7a62c2: de bliver stab, når de stopper)
+const npPl = new Set(Object.values(g.staff).filter((s) => s.cmId !== undefined && g.players[s.cmId] && g.players[s.cmId].last === s.last).map((s) => s.cmId!));
+console.log(`spillere med ikke-spillerpost ved start: ${npPl.size}`);
 const marks = ['2002-02-01', '2002-06-30'];
 const t0 = Date.now();
 while (g.date < until) {
@@ -46,6 +49,13 @@ console.log(`spillet: ${((Date.now() - t0) / 1000).toFixed(0)} s; pensioneret i 
 for (const to of ['2002-06-30', until]) {
   const xs = log.filter(([d, , , c]) => d <= to && shared.has(c));
   console.log(`  til ${to}: ${xs.length} årsager ${hist(xs.map((x) => x[2]))} alder ${hist(xs.map((x) => x[1]))}`);
+}
+{
+  const ex = Object.values(g.staff).filter((s) => s.exPlayer && !g.players[s.exPlayer.pid]);
+  const jobs: Record<string, number> = {};
+  for (const s of ex) { const k = `${s.role} ${s.club ? 'klub' : 'klubløs'}`; jobs[k] = (jobs[k] ?? 0) + 1; }
+  console.log(`  blev stab (alle lande) til ${until}: ${ex.length} ${JSON.stringify(jobs)}`);
+  if (process.env.LIST) for (const s of ex) console.log(`    ${s.first} ${s.last} ${s.role} ${s.club ? g.clubs[s.club]?.name : 'klubløs'}`);
 }
 const freeEng = log.filter(([d, , , c, n]) => d <= until && !c && n === eng);
 console.log(`  klubløse englændere til ${until}: ${freeEng.length} årsager ${hist(freeEng.map((x) => x[2]))}`);

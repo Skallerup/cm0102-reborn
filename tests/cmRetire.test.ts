@@ -6,7 +6,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { createGame, type WorldData } from '../src/game/newgame';
 import { gs } from '../src/game/state';
 import { continueGame, quickPlayUserMatch } from '../src/game/sim';
-import { checkRetirement, cmRetireInjury } from '../src/game/cmRetire';
+import { checkRetirement, cmRetireInjury, npStaffOf, retireBody } from '../src/game/cmRetire';
 import { ageOn } from '../src/game/dates';
 import type { GameState, Player } from '../src/game/types';
 
@@ -104,4 +104,36 @@ describe('dagene (0x7a59e0)', () => {
     expect(e.a).toBe(e.r);
     expect(p.cmRetire).toBeFalsy();                                          // meldes ikke (melding = stop)
   });
+});
+
+describe('spilleren med ikke-spillerpost bliver stab (0x7a59e0 0x7a62c2, 0x7aace0, 0x7a9650)', () => {
+  it('brødteksten efter jobbet ved meldingen og personen bagefter (0x7a9650)', () => {
+    const r = () => 0;
+    // van der Gouw (ejerens billede 19/11): spiller (job 11) uden landskampe, straks → den korte tekst
+    expect(retireBody(1, 0, 0, 5670, { np: true, job: 11, liveJob: 16, liveClub: false }, r).body).toBe('now');
+    expect(retireBody(1, 0, 0, 5670, { np: true, job: 8, liveJob: 8, liveClub: true }, r)).toEqual({ body: 'nowCont', job: 8, jl: 1 });
+    expect(retireBody(1, 0, 3, 5670, { np: true, job: 6, liveJob: 6, liveClub: true }, r).body).toBe('nowIntl');
+    expect(retireBody(1, 1, 0, 5670, { np: true, job: 11, liveJob: 16, liveClub: false }, r).body).toBe('retCoach');
+    expect(retireBody(1, 1, 0, 5670, { np: true, job: 6, liveJob: 6, liveClub: true }, r)).toEqual({ body: 'retCont', job: 6 });
+    expect(retireBody(1, 1, 2, 5670, { np: true, job: 12, liveJob: 5, liveClub: true }, r)).toEqual({ body: 'retIntlCont', job: 12 });
+    expect(retireBody(1, 1, 2, 5670, { np: true, job: 11, liveJob: 16, liveClub: false }, () => 1).body).toBe('retIntlCoach');
+    expect(retireBody(1, 1, 2, 5670, { np: false, job: 11, liveJob: 16, liveClub: true }, r).body).toBe('retIntl');
+    expect(retireBody(8, 0, 0, 5670, { np: true, job: 11, liveJob: 16, liveClub: false }, r).body).toBe('injPlain');
+    expect(retireBody(8, 0, 4, 5670, { np: true, job: 8, liveJob: 8, liveClub: true }, r)).toEqual({ body: 'injIntlCont', job: 8, jl: 1 });
+  });
+  it('samme person fortsætter som stab – ingen regen', () => {
+    const p = Object.values(g.players).find((x) => x.club && !x.loan && ageOn(x.dob, g.date) >= 30 && npStaffOf(g, x) && !g.cmRet!.list.some((e) => e.id === x.id));
+    expect(p).toBeDefined();
+    const s = npStaffOf(g, p!)!;
+    g.cmRet!.list.push({ id: p!.id, club: p!.club, a: 2001100, r: 2001100, why: 1, ann: 1 });
+    day();
+    expect(g.players[p!.id]).toBeUndefined();
+    expect(g.staff[s.id]).toBe(s);
+    expect(s.exPlayer?.pid).toBe(p!.id);
+    expect(s.cmExtra).toBeFalsy();
+    expect(g.regenQueue?.some((q) => q.fromId === p!.id)).toBeFalsy();
+    // spiller (job 11) → ledig; spillende assistent/træner → klubbens stab
+    if (s.club) expect(['manager', 'assistant', 'coach']).toContain(s.role);
+    else expect(s.cmJob).toBe(0);
+  }, 600_000);
 });

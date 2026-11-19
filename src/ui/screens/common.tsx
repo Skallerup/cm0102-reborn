@@ -57,6 +57,8 @@ export function newsParams(n: NewsItem): Record<string, string | number> {
   }
   // budet på menneskets stab (0x8d3520, 0xa91afc): "… a job as {job}" – jobnavnet uden artikel
   if (n.key === 'cm.stBid' && typeof p.job === 'number') p.job = t(`cm.stm.j.${p.job}`);
+  // PLAYER_REGEN (cmRetire.ts): stabsjobbet i brødteksten – 0x53ac40 ("Coach") eller 0x53ad00 ("coach", jl)
+  if (n.key.startsWith('cmret.') && typeof p.job === 'number') p.job = t(`cmret.${p.jl ? 'jl' : 'j'}.${p.job}`);
   if (n.key.startsWith('cm.stm.') && typeof p.job === 'number') { const jn = t(`cm.stm.j.${p.job}`); p.job = getLang() === 'en' ? `${/^[aeiou]/i.test(jn) ? 'an' : 'a'} ${jn}` : jn; }
   if (typeof p.injury === 'string') { p.injury = t(`injury.${p.injury}`); p.injuryLc = String(p.injury).toLowerCase(); }
   // originalens skadenyhed: periodens ord ("about three weeks") og skaden med lille forbogstav i brødteksten
