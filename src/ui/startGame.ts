@@ -49,7 +49,7 @@ export async function loadStartWorld(db: Db, ver: OriginalVersion): Promise<Worl
 export async function createGameAsync(world: WorldData, opts: NewGameOptions, onProgress: (p: NewGameProgress) => void, signal?: AbortSignal): Promise<void> {
   // (hukommelse) det rigtige spil: databasen behøves ikke længere i hovedtråden (world.ts releaseWorldCaches)
   const put = (g: GameState) => { if (opts.preview) setSetupGame(g); else { setGame(g); releaseWorldCaches(); } };
-  if (typeof Worker === 'undefined') { createGame(world, opts); if (opts.preview) setSetupGame(gs()); return; }
+  if (typeof Worker === 'undefined') { createGame(world, opts); if (opts.preview) setSetupGame(gs()); else releaseWorldCaches(); return; }
   try {
     const game = await new Promise<GameState>((resolve, reject) => {
       const w = new Worker(new URL('./newGameWorker.ts', import.meta.url), { type: 'module' });

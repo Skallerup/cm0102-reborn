@@ -23,6 +23,8 @@ page.on('console', (m) => { const t = m.text(); if (/memory|fejlede|error|RangeE
 page.on('pageerror', (e) => { console.log('PAGEERROR ' + e.message + '\n' + (e.stack ?? '').slice(0, 1200)); errs.push(e.message); });
 page.on('crash', () => { console.log('CRASH'); errs.push('crash'); });
 await page.addInitScript(() => { localStorage.setItem('cm0102.lang', 'en'); localStorage.setItem('cm0102.forceLogin', '1'); localStorage.setItem('cm-theme', 'retro'); localStorage.setItem('cm0102.mode', 'authentic'); localStorage.setItem('cm0102.db', 'original'); localStorage.setItem('cm0102.engine', 'original'); sessionStorage.setItem('cm0102.play', '1'); });
+// NOWORKER=1: uden Web Workers (som når dagens arbejder fejler – alt i hovedtråden)
+if (process.env.NOWORKER) await page.addInitScript(() => { Object.defineProperty(window, 'Worker', { value: undefined, configurable: true }); });
 // Chromium: hovedtrådens levende V8-heap efter en GC (CDP) ved hvert trin
 const cdp = kind === 'chromium' ? await ctx.newCDPSession(page) : null;
 // HEAPPROF=<fil-præfiks>: hovedtrådens allokeringsprofil (levende objekter) ved hvert trin (Chromium)
