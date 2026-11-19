@@ -62,6 +62,9 @@ const DUMP = process.env.DUMP ?? '';
 const dumpRows: unknown[] = [];
 /** BOARD_DUMP=<fil>: bestyrelsesposterne (+0..+0x38) og manageren pr. engelsk klub og billede, begge sider – til analysen af managerskifterne */
 const BOARD_DUMP = process.env.BOARD_DUMP ?? '';
+/** CON_DUMP=<fil>: kontrakterne (løn, bonusser, start +0x25, klub) pr. parret engelsk spiller og billede, begge sider – til bonusanalysen */
+const CON_DUMP = process.env.CON_DUMP ?? '';
+const conRows: unknown[] = [];
 const boardRows: unknown[] = [];
 
 // ------------------------------------------------------------------ statistik pr. dag og felt
@@ -206,6 +209,8 @@ function compareDay(v: View) {
     chk('kontrakt: findes', !!k === !!c, lab(`${c ? 'ja' : 'nej'} mod ${k ? 'ja' : 'nej'}`));
     if (k && c) {
       const wm = m.s32(k + 0xc), wo = Math.round(c.wage * GBP);
+      if (CON_DUMP) conRows.push({ d: days[days.length - 1], pid, oc: oClub, mc: mClub, wo, wm, ob: c.cmBonusGbp ?? null, mb: [m.s32(k + 0x10), m.s32(k + 0x14), m.s32(k + 0x18)],
+        os: c.cmStart ?? null, ms: dayIso(m.s16(k + 0x25), m.u16(k + 0x27)), oe: c.expires.slice(0, 10), me: dayIso(m.s16(k + 0x2d), m.u16(k + 0x2f)), ot: c.cmType ?? 2, mt: m.u8(k + 0x35) & 0x3f });
       chk('kontrakt: ugeløn (£)' + tag(dbWage), wo === wm, lab(`${wo} mod ${wm}`));
       dist('kontrakt: ugeløn (£)', wo, wm);
       const exp = dayIso(m.s16(k + 0x2d), m.u16(k + 0x2f));
@@ -598,6 +603,7 @@ const out = (s = '') => { console.log(s); lines.push(s); };
 const cell = (s: string) => s.replace(/\|/g, '/');
 if (DUMP) writeFileSync(DUMP, JSON.stringify(dumpRows));
 if (BOARD_DUMP) writeFileSync(BOARD_DUMP, JSON.stringify(boardRows));
+if (CON_DUMP) writeFileSync(CON_DUMP, JSON.stringify(conRows));
 out(`\n# Dag for dag mod originalen – ${days[0]} → ${days[days.length - 1]} (${days.length} billeder, ${CLUB}, frø 1, ${worldFile})`);
 out('Eksempler: «vores mod originalen». Berørte = afvigelser/tjekket den dag. Billedet for dag D er taget før 0x4c7ac0(D, 2, 1); vores spil står ved dag D−1, færdigspillet.');
 out('\n## Første afvigelse pr. område (uden felter med tilfældige inddata)');
