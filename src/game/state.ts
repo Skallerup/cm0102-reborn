@@ -139,14 +139,15 @@ export function squadIds(clubId: number): number[] {
 /** cmMedia.ts registrerer sign_contract's moral (en direkte import giver en cirkulær import) */
 export const signHooks: { onSign?: (g: GameState, p: Player) => void } = {};
 
-/** Flyt spiller mellem klubber og hold indekset opdateret */
 /** Fri transfer fra en computerklub (0x8c1af0 – historikkens art 3) i Player.moves som season.ts recordMove(p, 0, 0), uden rekorderne
- *  (kun menneskets klubber har dem). Her, så cmSquadPlanGame/cmContractManager ikke importerer season.ts (importkredsen) */
-export function recordFreeTransfer(p: Player) {
-  (p.moves ??= []).push({ season: gs().season, date: gs().date, from: p.club, to: 0, fee: 0 });
+ *  (kun menneskets klubber har dem). Her, så cmSquadPlanGame/cmContractManager ikke importerer season.ts (importkredsen). `g` gives med:
+ *  trupplanen kører også i ugens Web Worker, hvor gs() ikke er sat */
+export function recordFreeTransfer(g: GameState, p: Player) {
+  (p.moves ??= []).push({ season: g.season, date: g.date, from: p.club, to: 0, fee: 0 });
   if (p.moves.length > 20) p.moves.shift();
 }
 
+/** Flyt spiller mellem klubber og hold indekset opdateret */
 export function setClub(p: Player, club: number) {
   if (p.club) {
     const arr = squadIndex.get(p.club);

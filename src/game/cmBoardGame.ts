@@ -396,7 +396,7 @@ function setManagerGame(g: GameState, _env: BoardEnv, c: number, p: Person | nul
   if (from && from.manager === s.id) { from.manager = 0; from.tactic = null; }
   if (s.club && s.club !== c) careerEnd(s, 'poached');
   // 0x690368–0x69043f: historikposten art 5 (0x8cb810 – Staff In/Out) for et skifte fra en klub til en anden (ingen af dem landshold, +0x18 = 0)
-  if (old > 0 && old === s.club && natOfClub(old) === null && g.clubs[old]) recordStaffMove(s, c, 0);
+  if (old > 0 && old === s.club && natOfClub(old) === null && g.clubs[old]) recordStaffMove(s, c, 0, g);
   s.club = c; s.role = 'manager';
   club.manager = s.id; club.tactic = null;
   careerStart(s, c);

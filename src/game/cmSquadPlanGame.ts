@@ -210,7 +210,7 @@ export function cmSquadPlanClub(g: GameState, cid: number, daily: boolean, first
     const p = byId.get(id);
     if (!p || p.club !== cid || p.loan || p.contract?.futureClub) continue;
     // 0x8c16b0 → køen +0x92c → 0x8c18c0 → 0x8c1af0: historikposten art 3 (fri transfer)
-    recordFreeTransfer(p);
+    recordFreeTransfer(g, p);
     setClub(p, 0);
     p.contract = null;
   }

@@ -282,7 +282,7 @@ export function cmContractManagerDay(g: GameState): void {
   // frigivelserne: fri transfer 0x8c1af0 (spilleren forlader klubben uden kontrakt) – historikposten art 3 (+0x10 = −1, +0x14 = klubben, +0x18 = 0)
   for (const p of released) {
     if (!p.club) continue;
-    recordFreeTransfer(p);
+    recordFreeTransfer(g, p);
     setClub(p, 0);
     p.contract = null;
     CMD_STATS.released++;
