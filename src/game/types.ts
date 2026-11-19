@@ -892,6 +892,8 @@ export interface ManagerProfile {
   national?: { nation: number; since: string; played: number; won: number; picks?: number[]; form?: number[] };
   /** på ferie (CM 01/02) – assistenten svarer på bud efter indstillingerne */
   holiday?: HolidaySettings;
+  /** CM 01/02 HUMAN_MANAGER +0x9b23: ferievalgene fra sidste ferie (skærmen viser dem igen) */
+  holidayPrefs?: HolidaySettings;
   /** CM 01/02 "Control Reserve Team" (managermenuen 0x75ebd5, HUMAN_MANAGER +0x9a05 – 0x5fd480/0x5fd590): mennesket styrer også reserveholdet */
   ctrlRes?: boolean;
   nationalOffer?: number;

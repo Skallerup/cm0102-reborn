@@ -1,5 +1,6 @@
 // Bestyrelse, forventninger, fyringer og jobmarked.
-import { cmBoardAcceptJob, cmBoardApply, cmBoardDeclineJob, cmBoardOn, cmBoardRequest, cmBoardRequestAvailable, cmBoardResign } from './cmBoardGame';
+import { holidayHooks } from './cmHoliday';
+import { boardEnv, cmBoardAcceptJob, cmBoardApply, cmBoardDeclineJob, cmBoardOn, cmBoardRequest, cmBoardRequestAvailable, cmBoardResign } from './cmBoardGame';
 import { finalOrder, leagueRows } from './competitions';
 import { cmSquadPlanClub } from './cmSquadPlanGame';
 import { rng } from './rng';
@@ -13,7 +14,8 @@ function rulesForLeague(league: string) {
 }
 import { addNews, gs, indexFixture, newsRelevant, squad, unindexFixture } from './state';
 import { careerEnd, careerStart, pickManager } from './careers';
-import type { BoardAsk, Club, JobTalk } from './types';
+import type { BoardAsk, Club, GameState, JobTalk } from './types';
+import { natOfClub } from './cmVirtual';
 import { fanMood } from './fans';
 import { takeOverClub } from './newgame';
 import { forEachHuman, removeHooks } from './humans';
@@ -534,9 +536,19 @@ export function jobTerms(cid: number): JobTalk {
   return { stage: 'offer', exp, expectedPos: pos, budget: club.transferBudget, wageBudget: club.wageBudget, asked: [] };
 }
 
+/** CM 01/02 0x482a40: klubskærmens knap "Apply for Job" (0x65) – klubben (eller landsholdet) har ingen manager (0x53ca90) og kan styres
+ *  (0x544820). Ingen anden betingelse: knappen står der også efter en ansøgning (hvert Yes er en ny 0x69ca00). */
+export function canApplyForJob(g: GameState, cid: number): boolean {
+  if (cmBoardOn(g)) { const env = boardEnv(g); return !env.manager(cid) && env.canBeManaged(cid); }
+  const c = g.clubs[cid];
+  return !!c && c.manager === 0 && !g.leagues[c.league]?.hidden;
+}
+
 /** Søg et job: klubben svarer efter et par dage (afslag eller et tilbud med vilkår) */
 export function applyForJob(cid: number): 'sent' | 'offer' | 'error' {
   const g = gs();
+  // landsholdet (natClub < 0): dialogen 0x6b19d0 → 0x69ca00 som for en klub (ægte tilstand)
+  if (natOfClub(cid) !== null) return cmBoardOn(g) ? cmBoardApply(g, cid) : 'error';
   const club = g.clubs[cid];
   if (!club || club.manager !== 0 || g.leagues[club.league]?.hidden) return 'error';
   if (cmBoardOn(g)) return g.jobOffers.includes(cid) ? 'offer' : cmBoardApply(g, cid);
@@ -607,6 +619,9 @@ export function negotiateJob(cid: number, ask: 'budget' | 'exp'): 'yes' | 'no' |
   }
   return 'no';
 }
+
+// på ferie: assistentens ja til et jobtilbud (auto_respond 0x784100 → 0x69ebc0, cmBoardGame.ts holidayJobAnswers)
+holidayHooks.acceptJob = (cid) => acceptJob(cid);
 
 export function acceptJob(cid: number) {
   const g = gs();

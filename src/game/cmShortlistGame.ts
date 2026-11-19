@@ -24,6 +24,7 @@
 // kommer straks (originalen venter på hans beslutningsdato 0x4cd230).
 import type { GameState, Player } from './types';
 import { type CmCtx, type CmMem, G, getContract, clubAt, SparseMem } from './cmMem';
+import { holidayOpt_5fea50 } from './cmHoliday';
 import { buildSlWantMem, slMemPages, SLMEM_DEFER } from './cmSlMem';
 import { buildWantMem, type WantMem } from './cmContractGame';
 import { cmMarketOn, cmRand, clubRepMem, nationRepMem } from './cmPlayerData';
@@ -1562,7 +1563,9 @@ export function buildSlMem(g: GameState, opts: { noStale?: boolean } = {}): SlMe
   const call = (adr: number, a: number[]): number | undefined => {
     const m = S.M.c.m;
     switch (adr) {
-      case 0x600a50: return humanClub_600a50(S.M.c, a[0] >>> 0) ? 1 : 0;
+      case 0x600a50: return humanClub_600a50(S.M.c, a[0] >>> 0, a[1]) ? 1 : 0;
+      // HM.get_holiday_option(i, mennesket) – ferievalgene i dagens HUMAN_MANAGER-post (cmHoliday.ts)
+      case 0x5fea50: return holidayOpt_5fea50(m, a[0], a[1] >>> 0, m.s32(G.STAFF_COUNT));
       case 0x4d0c60: return undefined;
       case 0x6e6340: case 0x8c7950: return slShared(S, adr, a);
       case 0x849f00: { const withThis = a.length === 4; return withThis ? slCall(S.M.c, adr, a[0], ...a.slice(1)) : slCall(S.M.c, adr, m.u32(m.u32(0xde1f54) + 0x856), ...a); }
@@ -1625,7 +1628,7 @@ export function buildSlMem(g: GameState, opts: { noStale?: boolean } = {}): SlMe
         if (p && g.clubs[club]) S.events.push({ kind: 'rumour', club, player: p.id, amt: a[n - 3] | 0, will: Math.trunc(dv.getFloat64(0, true) * 100) });
         return 0;
       }
-      case 0x4cc490: case 0x4cd230: case 0x4cd6d0: case 0x587220: case 0x6181d0: case 0x5fea50: case 0x5a8f60: case 0x5cc7d0:
+      case 0x4cc490: case 0x4cd230: case 0x4cd6d0: case 0x587220: case 0x6181d0: case 0x5a8f60: case 0x5cc7d0:
       case 0x690890: case 0x8c1f80: case 0x8c2060: case 0x4cc9e0:
         return 0;
     }

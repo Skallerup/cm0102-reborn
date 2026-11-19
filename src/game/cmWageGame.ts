@@ -21,6 +21,7 @@
 // manager uden ikke-spillerpost, ferietjekket 0x5fe040 i 0x600a50 ikke porteret.
 import type { Club, GameState, Player } from './types';
 import { type CmCtx, G, SparseMem } from './cmMem';
+import { onHoliday_5fd210, writeHolidayMem } from './cmHoliday';
 import { getMaxWage_5968d0, maxStaffWage_597db0, recalcWages_598370 } from './cmMaxWage';
 import { clubInSeason_669bd0, linkedClub_540a50 } from './cmClubLinks';
 import { defaultStaffContract_864550, defaultWageUnset_862720 } from './cmWage';
@@ -36,13 +37,15 @@ import { AGE_PCT_9A7F30, FEE_STEPS_9A7F48, KEY_CLUB_GLOBALS, KEY_COMP_GLOBALS, K
 /** € → £: 0,86 for den originale database, 2026/27's faktor pr. liga (cmMoney.ts) */
 import { cmGbp, payClub } from './cmMoney';
 
-/** Menneskets klub 0x600a50(klub, a, …): klubbens manager +0xcf er en af de 16 sidste personer (id ≥ [0xae2364] − 16). Ferietjekket 0x5fe040
- *  (a = 0) er ikke porteret – spilstarten har ingen ferie. */
-export function humanClub_600a50(c: CmCtx, club: number): boolean {
+/** Menneskets klub 0x600a50(klub, a, …): klubbens manager +0xcf er en af de 16 sidste personer (id ≥ [0xae2364] − 16); med a = 0 ikke, når
+ *  han er på ferie (+0x9a01). Netværkstjekket 0x5fe040 er ikke porteret (ingen netværksspil). Direkte kald uden a regnes som a = 1. */
+export function humanClub_600a50(c: CmCtx, club: number, ignoreHoliday = 1): boolean {
   const m = c.m;
   if (!club) return false;
   const mg = m.u32(club + 0xcf);
-  return !!mg && m.s32(mg) >= m.s32(G.STAFF_COUNT) - 16;
+  if (!mg || m.s32(mg) < m.s32(G.STAFF_COUNT) - 16) return false;
+  // 0x600ab8–0x600b81 (andet argument 0): på ferie (HM +0x9a01, cmHoliday.ts) styrer assistenten – klubben regnes ikke som menneskets
+  return !(ignoreHoliday === 0 && onHoliday_5fd210(m, mg, m.s32(G.STAFF_COUNT)));
 }
 
 /** c.call for lønportene */
@@ -53,7 +56,7 @@ export function cmMemCall(c: CmCtx, adr: number, ...a: number[]): number {
     case 0x597db0: return maxStaffWage_597db0(c, a[0] >>> 0, a[a.length - 1] & 0xff);
     case 0x540a50: return linkedClub_540a50(c.m, a[0], a[1], a[2]);
     case 0x669bd0: return clubInSeason_669bd0(c, a[0], a[1], a[2]);
-    case 0x600a50: return humanClub_600a50(c, a[0]) ? 1 : 0;
+    case 0x600a50: return humanClub_600a50(c, a[0], a[1]) ? 1 : 0;
   }
   throw new Error(`cmWageGame: kald 0x${adr.toString(16)} er ikke porteret`);
 }
@@ -318,6 +321,7 @@ export function buildWageMem(g: GameState, clubs: Iterable<number>, unset: Set<n
   const count = next + 16;
   m.w32(G.STAFF_COUNT, count);
   for (const cid of humanMgr) { const st = staffAdr(count - 1); m.w32(st, count - 1); noContract(count - 1); m.w32(clubAdr(cid) + 0xcf, st); }
+  writeHolidayMem(m, g);
   // klubbens yndlingspersoner +0x9b/+0x9f/+0xa3 (spillere i de byggede klubber)
   const byPid = new Map(players.map(([p, st]) => [p.id, st]));
   for (const cid of clubIds) { const pr = g.clubs[cid].cmPrefs; if (pr) for (let k = 0; k < 3; k++) m.w32(clubAdr(cid) + 0x9b + 4 * k, byPid.get(pr[k]) ?? 0); }

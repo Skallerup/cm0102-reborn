@@ -4,6 +4,7 @@ import { SaveGameClassic } from './SaveGameClassic';
 import type { GameState, HolidaySettings } from '../game/types';
 import type { Route } from './core';
 import { addDays, daysBetween } from '../game/dates';
+import { holidayToggle } from '../game/cmHoliday';
 import { International } from './screens/International';
 import { stopVoice } from '../online/voice';
 import { RoomChat } from './RoomChat';
@@ -668,6 +669,7 @@ export function Shell() {
         setHoliday(null);
         const g2 = gs();
         g2.manager.holiday = set;
+        g2.manager.holidayPrefs = { ...set };
         // CM 01/02: ferien varer, til man klikker på bjælken ("Return from holiday ?") – kampene spilles automatisk (højst et år)
         onHolidayRef.current = !holiday;
         holidaySetRef.current = set;
@@ -779,10 +781,12 @@ function HolidayPanel({ untilMatch, onClose, onGo }: { untilMatch: boolean; onCl
   useClassicDialog();
   const g = gs();
   const col = titleColors(g.userClub || undefined);
-  const [set, setSet] = useState<HolidaySettings>({});
+  // HUMAN_MANAGER +0x9b23: valgene bliver stående til næste ferie (skærmen 0x6b2d80 viser posten)
+  const [set, setSet] = useState<HolidaySettings>(() => ({ ...(g.manager.holidayPrefs ?? {}) }));
   // originalens rækkefølge; afstanden efter 'onlyShortlist' (blank linje i skærmen)
   const keys: (keyof HolidaySettings)[] = ['rejectAll', 'rejectBelow', 'noBuy', 'onlyShortlist', 'applyJobs', 'useTactics', 'useSelection'];
-  const toggle = (k: keyof HolidaySettings) => setSet((s) => ({ ...s, [k]: !s[k] }));
+  // 0x6b35c1: bud- og købsrækkerne udelukker hinanden (tre-tilstandsbytes)
+  const toggle = (k: keyof HolidaySettings) => setSet((s) => holidayToggle(s, k));
   return (
     <div className="cx-dlg cx-confirm" role="dialog">
       <div className="cx-title" style={{ background: col.bg, color: col.fg }}><h2>{g.manager.name}</h2></div>

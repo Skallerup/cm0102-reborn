@@ -52,7 +52,7 @@ import { counterPlan, type CounterPlan } from './aitactics';
 import { autoSelect, available, lineupComplete, newTactic, slotValue, validateTactic } from './tactics';
 import type { Fixture, GameState, MatchReport, MatchResultShort, NewsItem, Player, PlayerMatchLine, Tactic } from './types';
 import { monthlyDevelopment, monthlyTrainingReport, monthlyValues, weeklyDevelopment } from './training';
-import { aiLoanOptions, aiPursuits, aiBidsForListed, aiBosman, aiFillSquads, aiReleaseClauses, aiRenewals, aiTransferTick, answerPendingRenewals, contractReminders, processOffers, refreshShortlists, resolveAuctions, resolveSignings, weeklyTransferDigest, windowNews, respondToOffer, askingPrice, cmMonthlyInstalments, cmAppsAfterMatch, holidaySignings } from './transfers';
+import { aiLoanOptions, aiPursuits, aiBidsForListed, aiBosman, aiFillSquads, aiReleaseClauses, aiRenewals, aiTransferTick, answerPendingRenewals, contractReminders, processOffers, refreshShortlists, resolveAuctions, resolveSignings, weeklyTransferDigest, windowNews, respondToOffer, askingPrice, cmMonthlyInstalments, cmAppsAfterMatch, holidaySignings, cmHolidayAnswerBids } from './transfers';
 import { afterAppearance } from './clauses';
 import { cmBonusPaid } from './cmContractInit';
 import { knowledgeAfterMatch, scoutDaily } from './scouting';
@@ -1150,7 +1150,10 @@ function holidayDaily() {
   const g = gs();
   const h = g.manager?.holiday;
   if (!h || !g.userClub) return;
-  for (const o of g.offers.filter((x) => x.status === 'pending' && x.seller === g.userClub)) {
+  // ægte tilstand: originalens svar (NewsItem::auto_respond 0x784100 → 0x84af00/0x8c8090 med ferievalgene, transfers.ts), og jobsøgningen
+  // sker kun, når en stilling bliver ledig (add_job_vacancy 0x69c4e7 → apply_for_job, cmBoard.ts) – ikke ugentligt
+  if (cmMarketOn(g)) cmHolidayAnswerBids();
+  if (!cmMarketOn(g)) for (const o of g.offers.filter((x) => x.status === 'pending' && x.seller === g.userClub)) {
     const p = g.players[o.player];
     if (h.rejectAll) respondToOffer(o.id, 'reject');
     else if (h.rejectBelow && p && !o.loan && o.fee < askingPrice(p)) respondToOffer(o.id, 'reject');
@@ -1159,7 +1162,7 @@ function holidayDaily() {
   if (!h.noBuy) holidaySignings(!!h.onlyShortlist);
   // søg en ledig stilling i en klub med større omdømme (højst én om ugen)
   const myRep = g.clubs[g.userClub]?.rep ?? 0;
-  if (h.applyJobs && g.date.endsWith('1') ) {
+  if (h.applyJobs && g.date.endsWith('1') && !cmBoardOn(g)) {
     const cid = (g.vacancies ?? []).filter((c) => (g.clubs[c]?.rep ?? 0) > myRep + 5 && !g.manager.jobTalks?.[c]).sort((a, b) => g.clubs[b].rep - g.clubs[a].rep)[0];
     if (cid) applyForJob(cid);
   }

@@ -45,6 +45,7 @@ import { clubNewsToMe, cmForeign } from './cmNewsScope';
 import { natClub, natClubId, natOfClub, resetNationalManagers } from './cmVirtual';
 import { DEMONYM } from '../ui/demonyms';
 import { natCompHook } from './hooks';
+import { holidayHooks, holidayOpt } from './cmHoliday';
 import { NO_CARRY, registerCarry } from './carry';
 
 /** € → £ for klubbens penge (cmMoney.ts: den originale database 0,86; 2026/27 ligaens faktor) */
@@ -497,6 +498,13 @@ function boardNews(g: GameState, _env: BoardEnv, n: BoardNews): void {
       else if (myNat(n.club) !== null) addNews({ cat: 'board', key: 'board.cm', params: boardParams({ k: 'c', i: confidenceIn(g, _env, n.club, n.days) }) });
       return;
     case 'jobOffer': {
+      // NewsItem::auto_respond 0x784100 (type 0x1774, 0x7841d9–0x78429d): på ferie svarer assistenten straks – uden klub, eller med ferievalg 1
+      // ("Apply for manager position at higher reputation clubs") og en klub med mindst samme omdømme (+0x80) som hans egen: ja (felt 1 = 1,
+      // appoint_manager_to_club 0x69ebc0); ellers nej (felt 1 = 2, ingen ny ledighed). Udføres efter dagens 0x68f9c0 (holidayJobAnswers).
+      if (n.human.id === HUMAN0 && g.manager.holiday) {
+        const own = n.human.club;
+        holidayJobs.push({ club: n.club, yes: holidayJobYes(holidayOpt(g.manager.holiday, 1), own ? _env.clubRep(own) : null, _env.clubRep(n.club)) });
+      }
       // landsholdet (0x6a5120): "The {nationality} Football Association offer you the position of manager." – svaret på International-skærmen
       const on = natOfClub(n.club);
       if (on !== null) {
@@ -872,8 +880,36 @@ export function cmBoardDaily(g: GameState): void {
   if (!cmBoardOn(g)) return;
   const st = stateOf(g), env = boardEnv(g);
   const rand = rnd(g, dayNum(g.date), 0x68f9c0);
+  holidayJobs.length = 0;
   boardDaily(env, st, rand, (r) => weeklyUpdate(env, st, r));
   syncHuman(g);
+  holidayJobAnswers(g);
+}
+
+/** auto_respond 0x784100 for jobtilbuddet 0x1774 på ferie: ja uden klub, ellers kun med ferievalg 1 og tilbuddets omdømme ≥ hans klubs (s16) */
+export function holidayJobYes(opt1: number, ownRep: number | null, offerRep: number): boolean {
+  if (ownRep === null) return true;
+  return opt1 !== 0 && s16(offerRep) >= s16(ownRep);
+}
+/** jobtilbuddene, assistenten har besvaret på ferie (boardNews 'jobOffer'; tests lægger dem direkte i køen) */
+export const holidayJobs: { club: number; yes: boolean }[] = [];
+export function holidayJobAnswers(g: GameState): void {
+  const list = holidayJobs.splice(0);
+  for (const { club, yes } of list) {
+    const on = natOfClub(club);
+    if (on !== null) {
+      if (g.manager.nationalOffer !== on) continue;
+      if (yes) { cmBoardNationalAnswer(g, true); continue; }
+      // nej: felt 1 = 2 (afslaget via auto_respond opretter ingen ny ledighed – 0x6b2790's add_job_vacancy er skærmens)
+      g.manager.nationalOffer = undefined;
+      const offer = g.news.find((x) => x.key === 'board.cm' && typeof x.params.bd === 'string' && x.params.bd.includes('"k":"o"') && x.params.club === g.nations[on]?.name);
+      if (offer) { try { const d = JSON.parse(String(offer.params.bd)); d.st = 2; Object.assign(offer.params, boardParams(d, { club: offer.params.club })); } catch { /* */ } }
+      continue;
+    }
+    if (!g.jobOffers.includes(club)) continue;
+    if (yes && holidayHooks.acceptJob && g.clubs[club]?.manager === 0) { holidayHooks.acceptJob(club); continue; }
+    g.jobOffers = g.jobOffers.filter((x) => x !== club);
+  }
 }
 
 /** Forkørslen 0x5cc850 (cmPrerun.ts, 1/1 → dagen før start): MANAGER_MANAGER 0x68f9c0 kører hver dag på tidspunkt 2 (notes/calendar-prerun.md),

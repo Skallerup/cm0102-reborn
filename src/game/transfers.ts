@@ -1,4 +1,5 @@
 // Transfers, kontrakter og AI-transfermarked (forbedring #7: behovsstyrede AI-klubber).
+import { holidayOpt, onHoliday } from './cmHoliday';
 import { cmActive, cmLogic, cmMarketOn, cmMediaOn, cmRand, setRequestHooks, setStatusCode } from './cmPlayerData';
 import { cmBidChance, cmInterested, cmRequestNews } from './cmTransferList';
 import { transferNewsToMe } from './cmNewsScope';
@@ -1176,6 +1177,36 @@ function cmAiAnswer(o: TransferOffer, p: Player, buyer: Club) {
   } else {
     o.status = 'rejected';
     addNews({ cat: 'transfer', key: r.reason === 10 ? 'transfer.bidUnacceptable' : 'transfer.bidRejected', params: { player: pname(p), club: sellerName(o.seller) }, link: { kind: 'player', id: p.id } });
+  }
+}
+
+/** CM 01/02 på ferie – NewsItem::auto_respond 0x784100 for buddet på en af menneskets spillere (0xfa0, svaret kommer med nyheden):
+ *  lejebud (+0x1f = 1) → sælgerens svar 0x84af00 (0 = ja → 0x8c0660, ellers reject_loan_offer 0x8bfa30); købsbud → ai_respond_to_bid 0x8c8090
+ *  for menneskets klub: ferievalg 0 ≠ 0 og et bytte (+4) → afvist 0x8bf680 (0x8c822a); valg 0 = 1 "Reject all offers" → afvist (0x8c825d);
+ *  ellers computerens egen vurdering mod udbudsprisen 0x4d1600 – på ferie med valg 0 ≠ 0 er den spillerens værdi +0x52 (0x4d16ce, læst i
+ *  hukommelsens HUMAN_MANAGER – cmHoliday.ts). Kun den originale database i ægte tilstand (cmMarketOn). */
+export function cmHolidayAnswerBids(): void {
+  const g = gs();
+  if (!cmMarketOn(g) || !onHoliday(g)) return;
+  const opt0 = holidayOpt(g.manager.holiday, 0);
+  const reject = (x: TransferOffer) => { x.status = 'rejected'; if (!x.loan && !cmShortlistOn(g)) startPursuit(x); };
+  for (const o of g.offers.slice()) {
+    if (o.status !== 'pending' || o.seller !== g.userClub || o.signing || o.cmTalks || o.cmAi || isHumanClub(o.buyer)) continue;
+    const p = g.players[o.player], buyer = g.clubs[o.buyer];
+    if (!p || !buyer || p.club !== o.seller) continue;
+    if (o.loan) {
+      if (cmLoanAnswerNow(g, p.id, buyer.id, o.seller) === 0) respondToOffer(o.id, 'accept'); else reject(o);
+      continue;
+    }
+    const t = termsOf(o);
+    if (opt0 === 1 || (opt0 !== 0 && t.swap.length > 0)) { reject(o); continue; }
+    const c = valueCtx(g, p, buyer.id);
+    const asking = cmAskingPrice(g, p, buyer.id) ?? toK(askingPrice(p), p.club);
+    const rivals = g.offers.filter((x) => x !== o && x.player === p.id && x.status === 'pending' && !x.loan).map(termsOf);
+    const r = aiRespond(t, c, { asking, rivals, unwanted: false, final: !!o.final, base: newTerms(g, p, buyer.id, 0), clause: clauseOptIn(g, p, buyer.id) });
+    if (r.kind === 'accept') respondToOffer(o.id, 'accept');
+    else if (r.kind === 'counter') respondToOffer(o.id, 'counter', r.terms.fee, undefined, undefined, { terms: r.terms });
+    else reject(o);
   }
 }
 

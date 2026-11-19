@@ -6,6 +6,7 @@
 // buildWantMem, skal denne følge med (kontrollen fanger det).
 import type { GameState, Player, Staff } from './types';
 import { type CmCtx, G, SparseMem } from './cmMem';
+import { writeHolidayMem } from './cmHoliday';
 import { cmMemCall, scanOf, writeKeyIds, KEY_NATIONS, OTHER_GLOBALS, NAT7F, STAFF0, PREC0, CLUB0, NAT0, DIV0, FIN0, K0, ROWS0, TM0, PTRS, type WageMem } from './cmWageGame';
 import type { WantMem } from './cmContractGame';
 import { getMaxWage_5968d0, recalcWages_598370 } from './cmMaxWage';
@@ -556,6 +557,7 @@ export function buildSlWantMem(g: GameState, clubs: Iterable<number>, opts: { ca
   for (const e of ents) natAdr(e.p.nation);
   m.w32(G.STAFF_COUNT, count);
   for (const cid of humanMgr) { const st = staffAdr(count - 1); m.w32(st, count - 1); noContract(count - 1); m.w32(clubAdr(cid) + 0xcf, st); }
+  writeHolidayMem(m, g);
   for (const cid of clubIds) { const pr = g.clubs[cid].cmPrefs; if (pr) for (let k = 0; k < 3; k++) m.w32(clubAdr(cid) + 0x9b + 4 * k, byPid.get(pr[k]) ?? 0); }
   // (2026/27 uden originalens økonomi – g.cmFin) lønsummen +0xc/+0x10 af kontrakterne som buildWageMem: 0x598370 to gange (den første med +0x14 = 0)
   for (const cid of clubIds) { const f = finAdr(cid); if (!g.cmFin) { m.w32(f + 0x14, 0); recalcWages_598370(wc, f); recalcWages_598370(wc, f); } else m.w32(f + 0x14, getMaxWage_5968d0(wc, f, 0, -1)); }
