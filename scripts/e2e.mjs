@@ -1420,7 +1420,11 @@ async function run(look) {
     await page.waitForTimeout(200);
     const kv = (await page.locator('.cx-kv.cx-ruled').first().innerText()).replace(/\s+/g, ' ');
     if (!kv.includes('Transfer listed by club')) throw new Error(`Availability er ikke "Transfer listed by club": ${kv}`);
-    if (!kv.includes(`Value ${asking}`)) throw new Error(`Value er ikke udbudsprisen ${asking}: ${kv}`);
+    // originalen: Asking Price forkortet (0x8f6a10, flag 5 – "£1M"), profilens Value fuldt (0x87dd80 @0x87e0c3, flag 6 – "£1,000,000");
+    // samme Cash-afrunding 0x4426e0 → sammenlign tallet
+    const amt = (s) => { const m = /([\d.,]+)\s*(K|M|B)?/.exec(s); if (!m) return NaN; const n = m[2] ? parseFloat(m[1].replace(',', '.')) : Number(m[1].replace(/[.,]/g, '')); return Math.round(n * ({ K: 1e3, M: 1e6, B: 1e9 }[m[2]] ?? 1)); };
+    const valTxt = /Value (\S+)/.exec(kv)?.[1] ?? '';
+    if (amt(valTxt) !== amt(asking) || /[KMB]$/.test(valTxt)) throw new Error(`Value er ikke udbudsprisen ${asking} (fuldt): ${kv}`);
     if (!/Future (Disappointed|Shocked|Angry|Surprised|Thinks he is too good|Believes he can force|Doesn't want|Feels|Wants|Unsettled|Is |Pleased|Looking)/.test(kv) || kv.includes('Happy to stay')) throw new Error(`Future er ikke originalens: ${kv}`);
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-transfer-future-original.png` });
     // transferanmodningen (nyheden 0xbbf) med to grunde → Respond → Transfer Request → Yes
