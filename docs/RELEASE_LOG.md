@@ -2,6 +2,7 @@
 
 Flyttet fra CLAUDE.md 17/11-2026 (så CLAUDE.md er kort i hver session). Nyeste først. Tilføj en linje øverst ved hver udgivelse.
 
+- 2026-11-19 – Skudt live (v0.31.0): 2026-11-19 – Ferie (cmHoliday.ts): valgene som originalen (gensidigt udelukkende, huskes), assistentens svar på bud/lejebud (cmMarketOn) og jobtilbud (cmBoardOn), ferien i den byggede hukommelse; Apply for Job for klub og landshold (applyJob.ts, 'Please Confirm'); ugentlig jobsøgning fra i ægte tilstand. Tests cmHoliday/applyJob/holiday2026.
 - 2026-11-19 – Skudt live (v0.31.0): 2026-11-19 – Managerskifter: holdblok +8/+9 (skud/skud på mål, 0x729ff0) i bestyrelsens kampvurdering 0x695240 var 0 → tillid −45 pr. kamp; teamBlock89. Klubber med skifte til 1/2: 30 → 23 (orakel 23); tillid 30/6 7064 → 7544 (7850).
 - 2026-11-19 – Skudt live (v0.31.0): 2026-11-19 – K3 173 → 162: comp.groupOut/comp.final/injury.awol/injDays/injWeeks/subDone til exe-ordlyd; CM Reborn-allow for info.title, authentic, career.source*, sqn.dragHint (nu kun bag hjælpetekster); resten i docs/k3-noter.md (labels fra datafiler kræver originalbillede).
 - 2026-11-19 – Skudt live (v0.31.0): 2026-11-19 – CA-udvikling: 0x5d43b0 læser trænerens +0x22/+0x14 rå 1–20 (Staff.cmNp); omfordeling 0x5d587a kun over hukommelsens spillere; top 500 ved start 139,9 → 160,05 (orakel 160,06); alder 0–20 −2,94 → −1,84.
