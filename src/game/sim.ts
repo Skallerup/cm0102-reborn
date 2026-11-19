@@ -4,6 +4,7 @@ import { cmWxDaily, cmWxFix } from './cmWeather';
 import { cmStaffOffersDaily } from './cmStaff';
 import { cmStaffMovesDaily, cmStaffNpDaily } from './cmStaffMove';
 import { cmActive, cmLogic, cmMarketOn, cmMediaOn, cmStaffOn, cmAfterMatch, cmContractDaily, cmFlagSet, cmRand, cmSquadMoraleDaily, MORALE_OFF, withFlagCtx } from './cmPlayerData';
+import { cmLoanBar } from './cmLoan';
 import { cmFitAfterMatch, cmFitDay, cmFitMatch, cmFitOn, cmFitPreMatch, setMatchSquad } from './cmFitnessGame';
 import { cmPermitAfterMatch, cmPermitDaily } from './cmPermit';
 import { cmScoutDaily, cmScoutMatch } from './cmScout';
@@ -199,15 +200,15 @@ export function prepareMatch(f: Fixture, userAuto = false): { home: EngineTeam; 
   cmBanPreMatch(gs(), f);
   // init_match 0x6b8042/0x6b8055: originalens vejr og bane for kampen (cmWeather.ts; kun den originale database i ægte tilstand)
   cmWxFix(gs(), f);
-  const ht = tacticFor(f.home, f.away, true, userAuto, f.comp);
-  const at = tacticFor(f.away, f.home, false, userAuto, f.comp);
+  const ht = tacticFor(f.home, f.away, true, userAuto, f.comp, f);
+  const at = tacticFor(f.away, f.home, false, userAuto, f.comp, f);
   if (cmFitOn(gs())) { setMatchSquad(f.home, [...ht.lineup, ...ht.bench].filter(Boolean)); setMatchSquad(f.away, [...at.lineup, ...at.bench].filter(Boolean)); }
   // MATCH_PLAYER::setup (0x6eb045): træningen 0x8b1750 for begge kamptrupper (cmTraining.ts; kun den originale database i ægte tilstand)
   cmTrainSquads(gs(), [...ht.lineup, ...ht.bench, ...at.lineup, ...at.bench].filter(Boolean) as number[], f.id);
   labHooks.preMatch?.(f);
   return {
-    home: engineTeam(f.home, ht, euroOnly(f.home, f.comp)),
-    away: engineTeam(f.away, at, euroOnly(f.away, f.comp)),
+    home: engineTeam(f.home, ht, euroOnly(f.home, f.comp, f)),
+    away: engineTeam(f.away, at, euroOnly(f.away, f.comp, f)),
     neutral: f.cm ? f.cm.b3c === 1 : f.stage === 'F',
     needsWinner: needsWinnerFn(f),
     weather: weatherFor(f),
@@ -235,15 +236,20 @@ export const ORIGINAL_FINISH = ORIGINAL.finish;
 /** Taktik for en klub: menneskets egen (via dets slot) eller AI'ens */
 /** europæiske kampe: kun den tilmeldte trup (European Squad); færre end 11 spilleklare tilmeldte (fx en tom liste): så gælder
  *  tilmeldingen ikke (*estimeret* – ellers stod holdet uden spillere) */
-function euroOnly(club: number, comp?: string): Set<number> | null {
+function euroOnly(club: number, comp?: string, f?: Fixture): Set<number> | null {
   const g = gs();
   const reg = comp && g.comps[comp]?.type === 'continental' ? euroRegistered(club) : null;
-  return reg && squad(club).filter((p) => reg.has(p.id) && available(p)).length >= 11 ? reg : null;
+  const only = reg && squad(club).filter((p) => reg.has(p.id) && available(p)).length >= 11 ? reg : null;
+  // 0x8cf5e0 → 0x8e8a60: lejespillere, der ikke må spille pokalkampe / mod moderklubben (cmLoan.ts cmLoanBar)
+  if (!f || !cmLogic(g)) return only;
+  const bar = new Set(squad(club).filter((p) => cmLoanBar(g, p, f) !== 0).map((p) => p.id));
+  if (!bar.size) return only;
+  return new Set([...(only ?? squad(club).map((p) => p.id))].filter((id) => !bar.has(id)));
 }
 
-function tacticFor(club: number, opp: number, home: boolean, userAuto: boolean, comp?: string): Tactic {
+function tacticFor(club: number, opp: number, home: boolean, userAuto: boolean, comp?: string, f?: Fixture): Tactic {
   const g = gs();
-  const only = euroOnly(club, comp);
+  const only = euroOnly(club, comp, f);
   if (club === g.userClub && g.userClub) return userTactic(userAuto, only);
   if (isHumanClub(club)) {
     const o = ownerOf(club);

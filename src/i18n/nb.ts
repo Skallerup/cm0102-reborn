@@ -2175,7 +2175,7 @@ export const nb: Record<string, string> = {
   "cl.tag.yelTitle": "Ett gult kort fra karantene",
   "cl.tag.Inj": "Ska",
   "cl.tag.Sus": "Kar",
-  "cl.tag.Fut": "Ny",
+  "cl.tag.Fut": "Ny", "cl.tag.Trn": "Trn",
   "cl.tag.Lst": "Sal",
   "cl.tag.Lon": "Lån",
   "cl.tag.Unh": "Utf",

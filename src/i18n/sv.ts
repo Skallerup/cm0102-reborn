@@ -2175,7 +2175,7 @@ export const sv: Record<string, string> = {
   "cl.tag.yelTitle": "Ett gult kort från avstängning",
   "cl.tag.Inj": "Ska",
   "cl.tag.Sus": "Avs",
-  "cl.tag.Fut": "Ny",
+  "cl.tag.Fut": "Ny", "cl.tag.Trn": "Trn",
   "cl.tag.Lst": "Tsl",
   "cl.tag.Lon": "Lån",
   "cl.tag.Unh": "Mis",

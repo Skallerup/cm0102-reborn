@@ -155,7 +155,8 @@ function tagOf(p: Player, g: GameState, clubId = g.userClub): { k: string; title
 }
 
 /** Ægte CM 01/02: get_player_status_code 0x4849f0 – det første, der passer, i originalens rækkefølge (de mærker, spillet har):
- *  Int (0x7757d0), Sus, Inj (0x62c400), Tir (kondition 0x62c590 under 65 %), Yel (0x55d360), Fut (aftalt skifte 0x8cca10 – originalens "Trn"),
+ *  Int (0x7757d0), Sus, Inj (0x62c400), Tir (kondition 0x62c590 under 65 %), Yel (0x55d360), Trn (aftalt skifte 0x8cca10 → kode 0x18, strengen 0x98e970 i 0x456900;
+ *  originalens "Fut " 0x98e8e0 er kode 0x14 – hovedkontrakt med trupstatus 0 – og ikke porteret),
  *  Wnt (interesse 0x842180), Lst (0x5444a0), Loa (lejelisten 0x544590: hovedkontraktens +0x4e bit 2 – også under lejen), Unh. De sidste
  *  (fra Tir) kun for databasens spillere – ikke de genererede fyldspillere (staff-id ≥ [0xae2364]). */
 export function originalTag(p: Player): { k: string; title: string } | null {
@@ -165,7 +166,7 @@ export function originalTag(p: Player): { k: string; title: string } | null {
   if (p.virtual) return null;
   if (p.condition < 65) return { k: 'Tir', title: '' };
   if (p.yellowCount === 4) return { k: 'Yel', title: !rebornOn('helpTexts') ? '' : t('cl.tag.yelTitle') };
-  if (p.contract?.futureClub) return { k: 'Fut', title: t('tag.leaving') };
+  if (p.contract?.futureClub) return { k: 'Trn', title: t('tag.leaving') };
   if (interestedClubs(p).length) return { k: 'Wnt', title: !rebornOn('helpTexts') ? '' : t('cl.sq.wanted') };
   if (p.listed) return { k: 'Lst', title: t('tag.listed') };
   if (p.loanListed) return { k: 'Lon', title: t('tag.loan') };
@@ -181,7 +182,7 @@ function nationalTag(p: Player): { k: string; title: string } | null {
 }
 
 /** Hvilken fane på spillerprofilen der forklarer mærket */
-const TAG_TAB: Record<string, string> = { Inj: 'injuries', Sus: 'injuries', Yel: 'injuries', Tir: 'profile', Fut: 'transfer', Lst: 'transfer', Lon: 'contract', Unh: 'transfer', Wnt: 'transfer', Fgn: 'profile' };
+const TAG_TAB: Record<string, string> = { Inj: 'injuries', Sus: 'injuries', Yel: 'injuries', Tir: 'profile', Fut: 'transfer', Lst: 'transfer', Lon: 'contract', Trn: 'transfer', Unh: 'transfer', Wnt: 'transfer', Fgn: 'profile' };
 
 /** Mærket foran navnet – et klik åbner den del af spillerprofilen, der handler om det */
 export function Tag({ p, tag }: { p: Player; tag: { k: string; title: string } | null }) {

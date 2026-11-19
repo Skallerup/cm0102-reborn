@@ -1202,6 +1202,10 @@
 .cx-bid-row .cx-loan-amt.over { color: #ff0000; }
 .cx-bid-info { margin: 28px 0 0 40px; font-size: 19px; line-height: 1.5; }
 .cx-bid-info p { margin: 0; }
+/* lejebudets afkrydsninger (0x4ae660-felterne 8/9): et felt foran teksten, krydset når valget er til */
+.cx-loan-cb { display: flex; align-items: center; gap: 10px; background: none; border: 0; padding: 0; margin: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.cx-loan-cb .box { flex: none; width: 16px; height: 16px; border: 2px solid currentColor; background: transparent; position: relative; }
+.cx-loan-cb[aria-checked='true'] .box::after { content: ''; position: absolute; left: 4px; top: 0; width: 5px; height: 10px; border: solid currentColor; border-width: 0 3px 3px 0; transform: rotate(45deg); }
 .cx-bid-row.off .cx-bid-label, .cx-bid-row.off .cx-bid-val { color: #9a9ca6; }
 .cx-bid-val { text-align: center; color: #fff; font-size: 16px; text-shadow: 1px 1px 0 #000; }
 .cx-bid-val.wide { grid-column: 2 / span 3; }
@@ -1586,7 +1590,8 @@ button.cx-sl-cell:disabled { opacity: 1; cursor: default; }
 :root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag, :root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag:hover { background: #840000; color: #e7e3e7; border-color: #ad0000 #5a0000 #5a0000 #ad0000; }
 :root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.wnt, :root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.wnt:hover { background: #424142; color: #ffff00; border-color: #6b696b #292829 #292829 #6b696b; }
 :root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.int, :root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.int:hover { background: #000084; color: #e7e3e7; border-color: #0000ad #000052 #000052 #0000ad; }
-:root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.fut, :root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.fut:hover { background: #4a4a4a; color: #fff; border-color: #8a8a8a #1a1a1a #1a1a1a #8a8a8a; }
+:root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.fut, :root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.fut:hover,
+:root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.trn, :root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.trn:hover { background: #4a4a4a; color: #fff; border-color: #8a8a8a #1a1a1a #1a1a1a #8a8a8a; }
 /* Loa/Unh grå, Inj brun/orange (ejerens billede 18/11: Brøndbys trup) */
 :root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.lon, :root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.lon:hover, :root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.unh, :root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.unh:hover { background: #4a4a4a; color: #f0e6b4; border-color: #8a8a8a #1a1a1a #1a1a1a #8a8a8a; }
 :root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.inj, :root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.inj:hover, :root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.tir, :root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.tir:hover { background: #8c5a1e; color: #f0e6b4; border-color: #bd8a42 #4a2a08 #4a2a08 #bd8a42; }

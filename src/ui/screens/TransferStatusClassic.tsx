@@ -244,14 +244,16 @@ export function BidPanel(props: { p: Player; loan: boolean; onClose: () => void;
 
 /** CM 01/02 "Loan bid for Olesen" (0x8f9690 → 0x8f9a20/0x8fac30, ejerens billede 18/11): lønnen og bestyrelsens loft 0x5968d0, Loan Expiry Date
  *  (standard = lejeperiodens start 0x8d0590, − / + én måned inden for perioden, dagen = min(i dag, 28)) og Wage Contribution (0..100 %, trin 10:
- *  lejeklubbens andel af lønnen) – cmLoan.ts. "Player can play in cup matches / against <klub>" står som standard til (+0xe/+0xf = 1);
- *  at slå dem fra (handling 8/9) og reglerne bag er ikke porteret. */
+ *  lejeklubbens andel af lønnen) – cmLoan.ts. "Player can play in cup matches / against <klub>": afkrydsningerne (0x8fa617/0x8fa6b9, handling 8/9,
+ *  som standard til) følger buddet til lejekontrakten +0x1c/+0x1d – reglerne i holdudtagelsen er cmLoan.ts cmLoanBar. */
 function LoanBidPanel({ p, onClose, onSent }: { p: Player; loan: boolean; onClose: () => void; onSent: (o: TransferOffer) => void }) {
   const g = useGame()!;
   useClassicDialog();
   const [per] = useState(() => cmLoanPeriod(g, g.userClub, p));
   const [cur, setCur] = useState(() => ({ m: per.sm, y: per.sy }));
   const [share, setShare] = useState(0);
+  const [cup, setCup] = useState(true);
+  const [against, setAgainst] = useState(true);
   const [err, setErr] = useState('');
   const club = g.clubs[g.userClub];
   const allow = useMemo(() => cmBoardWageAllow(g, p, g.userClub) ?? Math.max(0, (club?.wageBudget ?? 0) - Object.values(g.players).filter((x) => x.club === g.userClub).reduce((s, x) => s + (x.contract?.wage ?? 0), 0)), []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -268,7 +270,7 @@ function LoanBidPanel({ p, onClose, onSent }: { p: Player; loan: boolean; onClos
   const amount = Math.trunc(share * wage / 100);
   const submit = () => {
     setErr('');
-    const r = act<TransferOffer | string>({ t: 'bid', pid: p.id, fee: 0, loan: true, loanUntil: until, loanShare: share / 100 });
+    const r = act<TransferOffer | string>({ t: 'bid', pid: p.id, fee: 0, loan: true, loanUntil: until, loanShare: share / 100, loanNoCup: !cup, loanNoAgainst: !against });
     if (typeof r === 'string') setErr(t(r)); else onSent(r);
   };
   return (
@@ -285,7 +287,10 @@ function LoanBidPanel({ p, onClose, onSent }: { p: Player; loan: boolean; onClos
           <span className="cx-bid-val">{share}%</span>
           <CxPm disabled={share >= 100} onClick={() => setShare(share + 10)} aria-label="+">+</CxPm></div>
         <div className="cx-bid-row"><span /><span /><span className={`cx-bid-val cx-loan-amt ${amount > allow ? 'over' : ''}`}>({money(amount)})</span></div>
-        <div className="cx-bid-info"><p>{t('cl.bid.loanCup')}</p><p>{t('cl.bid.loanAgainst', { club: seller })}</p></div>
+        <div className="cx-bid-info">
+          <button className="cx-loan-cb" role="checkbox" aria-checked={cup} onClick={() => setCup(!cup)}><span className="box" />{t('cl.bid.loanCup')}</button>
+          <button className="cx-loan-cb" role="checkbox" aria-checked={against} onClick={() => setAgainst(!against)}><span className="box" />{t('cl.bid.loanAgainst', { club: seller })}</button>
+        </div>
         {err && <div className="cx-bid-err">{err}</div>}
       </div>
       <ClassicFoot cols="3fr 1fr">

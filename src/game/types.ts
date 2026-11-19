@@ -211,7 +211,8 @@ export interface Player {
   squadStatus?: SquadStatus;
   loanListed?: boolean;
   /** share = andel af lønnen lejeklubben betaler (0-1, standard 1) */
-  loan: { from: number; until: string; share?: number; fee?: number; option?: number } | null;
+  /** noCup/noAgainst: lejekontraktens +0x1c/+0x1d = 0 ("Cannot play in cup matches" / "… against <moderklub>" – cmLoan.ts cmLoanBar) */
+  loan: { from: number; until: string; share?: number; fee?: number; option?: number; noCup?: true; noAgainst?: true } | null;
   stats: SeasonStats;
   history: CareerLine[];
   /** Klubskifter i spillet: hvorhen, hvornår og for hvad */
@@ -786,6 +787,9 @@ export interface TransferOffer {
   /** Lejebuddet (CM 01/02 "Loan bid"): udløbsdato og lejeklubbens andel af lønnen (0..1) */
   loanUntil?: string;
   loanShare?: number;
+  /** "Player can play in cup matches" / "… in matches against <sælger>" slået fra (lejebudskærmens handling 8/9 → lejekontrakten +0x1c/+0x1d) */
+  loanNoCup?: true;
+  loanNoAgainst?: true;
   /** Klausuler i buddet: videresalgsprocent til sælger og ekstra beløb efter 25 kampe */
   sellOn?: number;
   addOn?: number;

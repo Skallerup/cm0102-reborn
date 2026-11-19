@@ -1168,6 +1168,10 @@
       "reason": "set på originalens skærm (images/123.png: Tottenhams trup, Wnt-mærket) – tre tegn, under strengudtrækkets mindstelængde"
     },
     {
+      "key": "cl.tag.Trn",
+      "reason": "exe-strengen \"Trn\" 0x98e970 (0x456900: kode 0x18 fra 0x4849f0 = aftalt skifte 0x8cca10) – tre tegn, under strengudtrækkets mindstelængde"
+    },
+    {
       "key": "scout.ctx.win",
       "reason": "Spillets egen spejderrapport (scouting.ts scoutReport) – kun uden den originale database / i det udvidede spil; i ægte CM 01/02 er Scout Player originalens anmodning med rapporten 0x138e (cmScout.ts, tekster cmsr.* fra 0x7f9d10)"
     },

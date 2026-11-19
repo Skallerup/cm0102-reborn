@@ -80,7 +80,7 @@ export type Action =
   | { t: 'appealBan'; pid: number }
   /** CM 01/02: knappen "Appeal" på karantænenyheden (0x55e620 → 0x55ed00 → 0x6ab800 – cmDiscipline.ts) */
   | { t: 'cmAppeal'; news: number }
-  | { t: 'bid'; pid: number; fee: number; loan: boolean; loanUntil?: string; loanShare?: number; sellOn?: number; addOn?: number; swap?: number[]; terms?: import('./cmTransferBid').BidTerms; change?: boolean }
+  | { t: 'bid'; pid: number; fee: number; loan: boolean; loanUntil?: string; loanShare?: number; loanNoCup?: boolean; loanNoAgainst?: boolean; sellOn?: number; addOn?: number; swap?: number[]; terms?: import('./cmTransferBid').BidTerms; change?: boolean }
   | { t: 'enquire'; pid: number }
   | { t: 'preContract'; pid: number }
   | { t: 'shortlist'; pid: number; on: boolean }
@@ -261,7 +261,7 @@ export function applyAction(a: Action): unknown {
     case 'appealBan': return appealBan(a.pid);
     case 'cmAppeal': return cmAppeal(g, a.news) ? 'ok' : 'blocked';
     case 'enquire': return enquire(a.pid);
-    case 'bid': return makeBid(a.pid, a.fee, a.loan, { loanUntil: a.loanUntil, loanShare: a.loanShare, sellOn: a.sellOn, addOn: a.addOn, swap: a.swap, terms: a.terms, change: a.change });
+    case 'bid': return makeBid(a.pid, a.fee, a.loan, { loanUntil: a.loanUntil, loanShare: a.loanShare, loanNoCup: a.loanNoCup, loanNoAgainst: a.loanNoAgainst, sellOn: a.sellOn, addOn: a.addOn, swap: a.swap, terms: a.terms, change: a.change });
     case 'preContract': return startPreContract(a.pid);
     case 'shortlist':
       g.shortlist = g.shortlist.filter((x) => x !== a.pid);
