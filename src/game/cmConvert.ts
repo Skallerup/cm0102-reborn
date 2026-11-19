@@ -25,7 +25,7 @@ import { cmBoardHumanAppoint, cmBoardInit } from './cmBoardGame';
 import { cmRelNewGame } from './cmRelations';
 import { cmRetireInit } from './cmRetire';
 import { cmFitConvert } from './cmFitnessGame';
-import { cmFinanceNewGame } from './cmFinance';
+import { cmFinanceNewGame, cmFinanceWageBills } from './cmFinance';
 import { cmContractsNewGame } from './cmContractInit';
 import { cmPermitNewGame } from './cmPermit';
 import { cmSquadPlanStart } from './cmSquadPlanGame';
@@ -263,6 +263,7 @@ export function convertOriginal(old: GameState, fresh: GameState, world: CMWorld
   const wages = new Map(Object.values(g.players).filter((p) => p.contract).map((p) => [p.id, p.contract!.wage] as const));
   g.cmFinStartYear = g.season;
   cmFinanceNewGame(g, world, g.seed);
+  cmFinanceWageBills(g);
   const dbWage = new Map([...wages].map(([id, w]) => [id, Math.round(w * GBP)] as const));
   cmContractsNewGame(g, dbWage, g.seed);
   for (const [id, w] of wages) { const c = g.players[id]?.contract; if (c) c.wage = w; }

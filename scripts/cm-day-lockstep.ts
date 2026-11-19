@@ -209,7 +209,7 @@ function compareDay(v: View) {
     chk('kontrakt: findes', !!k === !!c, lab(`${c ? 'ja' : 'nej'} mod ${k ? 'ja' : 'nej'}`));
     if (k && c) {
       const wm = m.s32(k + 0xc), wo = Math.round(c.wage * GBP);
-      if (CON_DUMP) conRows.push({ d: days[days.length - 1], pid, oc: oClub, mc: mClub, wo, wm, ob: c.cmBonusGbp ?? null, mb: [m.s32(k + 0x10), m.s32(k + 0x14), m.s32(k + 0x18)],
+      if (CON_DUMP) conRows.push({ d: days[days.length - 1], pid, mid, sc: m.s32(0xae2364), oc: oClub, mc: mClub, wo, wm, ob: c.cmBonusGbp ?? null, mb: [m.s32(k + 0x10), m.s32(k + 0x14), m.s32(k + 0x18)],
         os: c.cmStart ?? null, ms: dayIso(m.s16(k + 0x25), m.u16(k + 0x27)), oe: c.expires.slice(0, 10), me: dayIso(m.s16(k + 0x2d), m.u16(k + 0x2f)), ot: c.cmType ?? 2, mt: m.u8(k + 0x35) & 0x3f });
       chk('kontrakt: ugeløn (£)' + tag(dbWage), wo === wm, lab(`${wo} mod ${wm}`));
       dist('kontrakt: ugeløn (£)', wo, wm);

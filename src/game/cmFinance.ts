@@ -273,8 +273,11 @@ export function cmFinanceNewGame(g: GameState, world: CMWorld, seed: number): vo
     if (world.clubBalance?.[c.id] === undefined) c.balance = bal / gbp(g, c);
     supporterInit(g, c, cmRand(seed, c.id, 0x68f130));
   }
-  // ugens lønsum ved start (FinanceTable 0x59a370 → refresh_all_wage_bills 0x59cf50)
-  // (alle klubber på én gang: udlejede spillere og staben slås op pr. klub – samme rækkefølge som i updateWageBill)
+}
+/** ugens lønsum ved start: create_game's refresh_all_wage_bills 0x59cf50 (0x829852 – efter kontrakterne 0x4c7560, før forkørslen; newgame.ts)
+ *  (alle klubber på én gang: udlejede spillere og staben slås op pr. klub – samme rækkefølge som i updateWageBill) */
+export function cmFinanceWageBills(g: GameState): void {
+  if (!g.cmFin) return;
   const idx = wageIdx(g);
   for (const c of Object.values(g.clubs)) { const r = g.cmFin[c.id]; if (r) updateWageBill(g, c, r, idx); }
 }

@@ -50,7 +50,7 @@ import './cmNatTeams';                                          // landstrænern
 import './cmPrerunMatches';                                      // forkørslens konkurrencekampe (registerPrerun 'matches')
 import './cmFriendly';                                              // forkørslens venskabskampe (registerPrerun 'comps1')
 import { cmRelNewGame } from './cmRelations';
-import { cmClubDataFill_829960, cmFinanceNewGame } from './cmFinance';
+import { cmClubDataFill_829960, cmFinanceNewGame, cmFinanceWageBills } from './cmFinance';
 import { cmContractsNewGame } from './cmContractInit';
 import { cmContractEnd } from './cmContractEnd';
 import { cmPermitNewGame } from './cmPermit';
@@ -639,10 +639,11 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   // forholdene staff+0x65 og club +0x9b..+0xaf fra databasen (cmRelations.ts – ikke-indlæste id'er bliver 0)
   if (cm?.cmRaw && (season < 2020 || cmRawLogic)) cmRelNewGame(g, cm.cmRaw.prefs, cm.cmRaw.clubPrefs);
   progress('fitness', 0.7);
-  // PLAYER_REGEN's første pensioneringsliste 0x7a58f0 ved indlæsningen – før forkørslen (cmRetire.ts)
-  cmRetireInit(g);
-  cmFitNewGame(g);
-  // originalens økonomi (cmFinance.ts): Finance::init_for_club 0x5961d0 og ugens lønsum – CM-database i ægte tilstand (den originale database og,
+  // create_game 0x828110 FØR forkørslen 0x5cc850 (0x829fd9): FinanceTable 0x59a370 (0x82976f – init_for_club 0x5961d0), kontrakterne 0x4c7560
+  // (0x829809 – startkontrakterne 0x85e960) og refresh_all_wage_bills 0x59cf50 (0x829852). Forkørslens kampe (Intertoto, CL's 1. kvalifikationsrunde)
+  // bogfører derfor kampindtægterne 0x59a5d0 og bonusserne 0x4ca6d0 (FinanceTable::daily_update 0x59b9c0 selv bogfører intet før [0xdd6ec8]).
+  // Før 19/11 kom de tre efter forkørslen, så de kampe gav hverken gate/tv eller bonusser, og ugens lønsum blev regnet uden stabens løn.
+  // originalens økonomi (cmFinance.ts): Finance::init_for_club 0x5961d0 – CM-database i ægte tilstand (den originale database og,
   // MODERN_PARITY 4, nye 2026/27-spil med world-cm.json's club.dat-økonomi)
   if (cm) { g.cmFinStartYear = season; cmFinanceNewGame(g, cm, seed); }
   // originalens startkontrakter 0x85e960 (cmContractInit.ts): bonusser, klausuler og deltid – kun den originale database i ægte tilstand
@@ -650,6 +651,11 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   cmStaffWagePrepare(g, staffDbWage);
   staffDbWage.clear();
   const unsetWages = cm ? cmContractsNewGame(g, dbWageGbp, seed).unset : new Set<number>();
+  // ugens lønsum ved start (0x59cf50 efter kontrakterne)
+  cmFinanceWageBills(g);
+  // PLAYER_REGEN's første pensioneringsliste 0x7a58f0 ved indlæsningen – før forkørslen (cmRetire.ts)
+  cmRetireInit(g);
+  cmFitNewGame(g);
   // originalens arbejdstilladelses-historik (0x8c6e60 – cmPermit.ts)
   cmPermitNewGame(g);
   // computerens trupplan 0x83a1b0 → 0x83cb40 for alle klubber: trupstatus, lejeliste, +0x3d/+0x3e/+0x3f (cmSquadPlanGame.ts)
