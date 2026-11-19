@@ -9,6 +9,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.32.0',
+    date: '2026-11-20',
+    title: { da: 'Mere af det originale CM 01/02', en: 'More of the original CM 01/02' },
+    items: [
+      { da: "⚠ Kræver et nyt spil: Bestyrelsens tillid som originalen: forventet placering ud fra holdenes styrke (ikke sidste sæsons placering), bedst/dårligst mulige placering efter hver spilledag, og venskabskampe tæller med i tilliden.", en: "⚠ Requires a new game: Board confidence as in the original: predicted league position from team strength (not last season's finish), best/worst possible finish updated after each matchday, and friendlies count towards confidence." },
+    ],
+  },
+  {
     version: '0.31.0',
     date: '2026-11-19',
     title: { da: 'Mere af det originale CM 01/02', en: 'More of the original CM 01/02' },
