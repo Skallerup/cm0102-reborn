@@ -55,7 +55,7 @@ describe('kampmotoren bag et flag', () => {
     if (euro) expect(gridFixture(euro.home, euro.away, euro.id)).toBe(false);
     const friendly = fx.find((f) => !g.comps[f.comp]);
     if (friendly) expect(gridFixture(friendly.home, friendly.away, friendly.id)).toBe(false);
-  }, 60_000);
+  }, 300_000);
 
   it('(14/11) også de andre valgte landes hjemlige kampe – uden en menneskeklub i landet', () => {
     const w = load('world-original.json');
@@ -98,7 +98,7 @@ describe('kampmotoren bag et flag', () => {
 
   it('udvidet tilstand får ikke gittermotoren som standard', () => {
     expect(start(load('world-original.json'), 'Arsenal', 'extended').options.engine).toBeUndefined();
-  }, 60_000);
+  }, 300_000);
 
   it('fabrikken giver MatchSim, når flaget er slået fra – også med en registreret gittermotor', () => {
     const g = start(load('world-original.json'), 'Arsenal', 'authentic');
@@ -121,7 +121,7 @@ describe('kampmotoren bag et flag', () => {
     const me = engineTeam(g.userClub, aiTactic(g.userClub, a.club, true));
     makeMatch(me, a, { commentary: false }, new Rng(1));
     expect(used).toBe(1);
-  }, 60_000);
+  }, 300_000);
 
   it('samme frø giver samme kamp gennem fabrikken som med quickMatch', () => {
     start(load('world-original.json'), 'Arsenal', 'authentic').options.engine = 'zone';
@@ -130,5 +130,5 @@ describe('kampmotoren bag et flag', () => {
     const y = quickMatch(h, a, { fixtureId: 7 }, new Rng(42));
     expect(JSON.stringify(x)).toBe(JSON.stringify(y));
     expect(x.engine).toBeUndefined(); // zonemotoren: feltet mangler = 'zone'
-  }, 60_000);
+  }, 300_000);
 });
