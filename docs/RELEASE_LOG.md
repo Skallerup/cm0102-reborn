@@ -2,6 +2,7 @@
 
 Flyttet fra CLAUDE.md 17/11-2026 (så CLAUDE.md er kort i hver session). Nyeste først. Tilføj en linje øverst ved hver udgivelse.
 
+- 2026-11-19 – Skudt live (v0.31.0): 2026-11-19 – K3 173 → 162: comp.groupOut/comp.final/injury.awol/injDays/injWeeks/subDone til exe-ordlyd; CM Reborn-allow for info.title, authentic, career.source*, sqn.dragHint (nu kun bag hjælpetekster); resten i docs/k3-noter.md (labels fra datafiler kræver originalbillede).
 - 2026-11-19 – Skudt live (v0.31.0): 2026-11-19 – CA-udvikling: 0x5d43b0 læser trænerens +0x22/+0x14 rå 1–20 (Staff.cmNp); omfordeling 0x5d587a kun over hukommelsens spillere; top 500 ved start 139,9 → 160,05 (orakel 160,06); alder 0–20 −2,94 → −1,84.
 - 2026-11-19 – Skudt live (v0.31.0): 2026-11-19 – HOTFIX (ejeren, kritisk): newsRespond låste på 'Offer contract to X' også efter tilbuddet (cmTalksOpen sand i state 1) – nu kun i cmTalks.state 0; tests/newsRespondTalks.test.ts.
 - 2026-11-19 – Skudt live (v0.31.0): 2026-11-19 – Spilstart-rækkefølge: trupplan 0x83a1b0 → player_setup.cfg 0x7a30c0 → 0x62a920 (cmFitSetupDay efter trupplan/ønskelister); skadede i England 4,9 → 4,5/3,9 % (orakel 3,94 %), raske-som-skadede 22–28 → 0; cmPreseason.ts genbygget (3.9.60 43 lejer). Åbent: forkørslens skader ×1,19 (hukommelsesudvalg), Roussel→Mons.
