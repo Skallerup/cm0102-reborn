@@ -71,11 +71,12 @@ export function cmCmScope(g: GameState, p: Player): boolean {
   if (!p.club || !p.contract || p.loan || p.virtual || p.contract.futureClub) return false;
   const c = g.clubs[p.club];
   if (!c || isHumanClub(c.id)) return false;
-  if (g.leagues[c.league]?.hidden) return false;
+  // også klubberne uden aktiv liga (de valgte landes inaktive divisioner – England: 146 non-league-klubber, 1.610 spillere i oraklets hukommelse):
+  // 0x4c7ac0's personløkke går over alle personer i hukommelsen, og 0x83a1b0/0x83cb40 giver dem trupplanen (cmSquadPlanStart). Før stod de uden
+  // for porten, og cmExpireOutsideDaily (*estimeret*) satte dem fri dagen efter udløbet – klubløse 30/6 918 mod oraklets 202
   if (g.activeNations?.includes(c.nation) ?? true) return true;
   // de andre lande: originalens personløkke går over ALLE personer i hukommelsen – med databasestørrelsen Maximum også de udvalgte i
-  // klubber uden for de valgte lande (0x524d70, Player.cmMem). Skjulte klubber har ingen trupplan (cmSquadPlanGame.ts – trupstatus +0x4f),
-  // og uden den giver 0x4c7ac0 aldrig et tilbud
+  // klubber uden for de valgte lande (0x524d70, Player.cmMem)
   return FOREIGN && !!g.cmMaxMem && p.cmMem === 1;
 }
 /** CM_CM_FOREIGN=0: kun de valgte lande (målinger) */
