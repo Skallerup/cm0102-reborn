@@ -28,6 +28,7 @@ import { addFavClub, fadeRelations, removeFavClub } from './cmRelations';
 import { msvcQsort } from './engine/grid/loop';
 import { gs, hasGame } from './state';
 import { NO_CARRY, registerCarry } from './carry';
+import { cmInMemory } from './cmRetire';
 
 const s8 = (v: number) => (v << 24) >> 24;
 const s16 = (v: number) => (v << 16) >> 16;
@@ -334,15 +335,19 @@ const AX = (k: string) => ATTRS.indexOf(k as never);
 export const devPersOf = (p: Player): DevPers => Object.fromEntries(PERS.map(([k, a]) => [k, Math.round(p.attrs[AX(a)] ?? 10)])) as unknown as DevPers;
 const dayNum = (iso: string) => Math.round(Date.parse(iso + 'T00:00:00Z') / 86400000);
 
-/** vores stab → en ikke-spillerpost. I originalens hukommelse er postens egenskaber interne værdier (oraklet: Coaching −30…+30), vist =
- *  0x544410 display(CA + 2·intern); hos os de interne, der vises som databasens 1–20 (sub_544380's omvendte – staff-initialiseringen er ikke
- *  porteret, *estimeret*). Coaching Goalkeepers, Man Management og Working with Youngsters findes ikke i world-filerne → Coaching/Motivating/Coaching
- *  (*estimeret*); uden databasens CA: 100. */
+/** vores stab → en ikke-spillerpost (bytes som i originalens hukommelse – scripts/dv-trace-check.ts læser dem sådan): +0x10 Coaching, +0x11 Coaching
+ *  Goalkeepers, +0x19 Man Management og +0x1b Motivating er interne værdier (vist = 0x544410 display(CA + 2·intern)), +0x14 Discipline og +0x22
+ *  Working with Youngsters de rå 1–20 (0x5d43b0 ganger +0x22 med 1/26,6 og lægger den til trænerens Coaching; +0x14 sammenlignes med 6/10/15).
+ *  Med Staff.cmNp (spilstartens post, cmStaffInit.ts): bytene direkte. Uden (ældre spil/world-filer): de viste stabsegenskaber – Coaching
+ *  Goalkeepers/Man Management/Working with Youngsters findes ikke dér → Coaching/Motivating/Coaching (*estimeret*); uden databasens CA: 100. */
 function coachOf(s: Staff | undefined): DevCoach | null {
   if (!s) return null;
+  const np = s.cmNp;
+  if (np && s.ca) return { ca: s.ca, b10: np[0x10 - 0x0e], b11: np[0x11 - 0x0e], b14: np[0x14 - 0x0e], b19: np[0x19 - 0x0e], b1b: np[0x1b - 0x0e], b22: np[0x22 - 0x0e] };
   const a = s.attrs, ca = s.ca ?? 100;
-  const int = (v: number) => intrinsicOf(Math.max(1, Math.min(20, Math.round(v || 1))), ca);
-  return { ca, b10: int(a.coaching), b11: int(a.coaching), b14: int(a.discipline), b19: int(a.motivating), b1b: int(a.motivating), b22: int(a.coaching) };
+  const raw = (v: number) => Math.max(1, Math.min(20, Math.round(v || 1)));
+  const int = (v: number) => intrinsicOf(raw(v), ca);
+  return { ca, b10: int(a.coaching), b11: int(a.coaching), b14: raw(a.discipline), b19: int(a.motivating), b1b: int(a.motivating), b22: raw(a.coaching) };
 }
 function clubOf(g: GameState, cid: number, byClub: Map<number, Staff[]>): DevClub | null {
   const c = g.clubs[cid];
@@ -392,11 +397,14 @@ export function cmDevDaily(g: GameState): void {
   const avg = g.cmRatingAvg ?? [680, 100];
   const mean = avg[1] ? avg[0] / avg[1] : 6.8;
   let changed = false;                                                          // [esp+0x67]
+  let mem: Set<number> | null = null;
   for (const p of Object.values(g.players)) {
     const a = p.id % 365, b2 = (a + 120) % 365, e3 = (b2 + 120) % 365;
     if (doy !== a && doy !== b2 && doy !== e3) continue;
+    // 0x5ce2d0 gennemgår staff-tabellen [0xae23bc]: kun personerne i originalens hukommelse (0x524d70) – de andre findes ikke i originalen
+    mem ??= new Set(caRankFor(g).slots.map((x) => x.id));                    // 0x5d393e: før den første udvikling
+    if (!mem.has(p.id) && !cmInMemory(g, p)) continue;
     ensureCmInt(p);
-    caRankFor(g);                                                              // 0x5d393e: før den første udvikling
     if (!clubs.has(p.club)) clubs.set(p.club, p.club ? clubOf(g, p.club, byClub) : null);
     if (cmDevelopPlayer(g, p, clubs.get(p.club) ?? null, mean, cmRand(g.seed ?? 0, p.id, day, 0x5ce2d0, 0x5d38f9)) !== 0) changed = true;
   }
@@ -415,21 +423,23 @@ export function cmDevDaily(g: GameState): void {
  *  beholder posterne over den gemte længde deres egen CA (sker kun, hvis der kommer flere poster end ved øjebliksbilledet). */
 /** en spillerpost i [0xae2d24]: spilleren (id) og postens CA/PA (bliver stående, når spilleren går på pension – se caRedistribute) */
 interface CaSlot { id: number; ca: number; pa: number }
-interface CaRank { ref: number[]; slots: CaSlot[] }
+/** top: g.nextId.player ved øjebliksbilledet – spillere med lavere id fandtes da og havde ingen post (uden for hukommelsen) */
+interface CaRank { ref: number[]; slots: CaSlot[]; top?: number }
 const caRanks = new WeakMap<GameState, CaRank>();
 // følger med en kopi/et gem af spillet (carry.ts): dagens Web Worker får en ny kopi hver dag, og uden posterne tog den et nyt øjebliksbillede
 // hver dag; det aktive spil (setGame lægger det på plads før restoreCarry)
-registerCarry('cmDevelop.caRank', () => { const r = hasGame() ? caRanks.get(gs()) : undefined; return r ? { ref: r.ref.slice(), slots: r.slots.map((x) => ({ ...x })) } : NO_CARRY; },
-  (v: CaRank) => { if (hasGame()) caRanks.set(gs(), { ref: v.ref, slots: v.slots }); }, () => {});
+registerCarry('cmDevelop.caRank', () => { const r = hasGame() ? caRanks.get(gs()) : undefined; return r ? { ref: r.ref.slice(), slots: r.slots.map((x) => ({ ...x })), top: r.top } : NO_CARRY; },
+  (v: CaRank) => { if (hasGame()) caRanks.set(gs(), { ref: v.ref, slots: v.slots, top: v.top }); }, () => {});
 const realPlayer = (p: Player | undefined): p is Player => !!p && !p.virtual;
 const caOf = (p: Player) => s16(Math.trunc(p.ca)), paOf = (p: Player) => s16(Math.trunc(p.pa));
 function caRankFor(g: GameState): CaRank {
   let r = caRanks.get(g);
   if (r) return r;
-  const ps = Object.values(g.players).filter(realPlayer).sort((a, b) => a.id - b.id);
+  // [0xae236c] = spillerposterne i originalens hukommelse (0x524d70 – cmRetire.ts cmInMemory); de øvrige spillere findes ikke i originalen
+  const ps = Object.values(g.players).filter((p) => realPlayer(p) && cmInMemory(g, p)).sort((a, b) => a.id - b.id);
   const ref = ps.map(caOf);
   msvcQsort(ref, (a, b) => a - b);                                             // 0x5d39b3: qsort(…, 2, 0x5d6200)
-  r = { ref, slots: ps.map((p) => ({ id: p.id, ca: caOf(p), pa: paOf(p) })) };
+  r = { ref, slots: ps.map((p) => ({ id: p.id, ca: caOf(p), pa: paOf(p) })), top: g.nextId.player };
   caRanks.set(g, r);
   return r;
 }
@@ -443,6 +453,9 @@ function caRedistribute(g: GameState): void {
   for (const p of Object.values(g.players).sort((a, b) => a.id - b.id)) {
     if (!realPlayer(p) || used.has(p.id)) continue;
     const sl = p.regenOf !== undefined && !used.has(p.regenOf) ? byId.get(p.regenOf) : undefined;
+    // uden post: kun nye personer i hukommelsen (oprettet efter øjebliksbilledet); en spiller, der fandtes uden for hukommelsen og siden er
+    // kommet til et indlæst land, findes ikke i originalen (ingen post – han udvikles uden omfordeling)
+    if (!sl && (!cmInMemory(g, p) || (r.top !== undefined && p.id < r.top))) continue;
     if (sl) { byId.delete(sl.id); sl.id = p.id; sl.ca = caOf(p); sl.pa = paOf(p); byId.set(p.id, sl); }
     else { const n = { id: p.id, ca: caOf(p), pa: paOf(p) }; r.slots.push(n); byId.set(p.id, n); }
     used.add(p.id);

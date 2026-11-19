@@ -868,7 +868,7 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
     const n2 = nationIdx.get(S.i32(o + 30)), joined = S.date(o + 62);
     ratings[id] = { ca: tf !== undefined && S.i16(po + 5) < 1 ? 0 : ca, pa, attrs, pos, side, ...(paRaw !== undefined ? { paRaw } : {}), rep, feet, ...(fr !== 1 ? { fr } : {}),
       ...(rdob ? { rd: 1 as const } : {}), ...(n2 !== undefined && n2 !== nation ? { n2 } : {}), ...(joined ? { j: joined } : {}), ...(histLang.has(id) ? { lg: histLang.get(id) } : {}),
-      ...(opts.cmMem && !club ? { tf: tf ?? 0 } : {}), ...(club && mem && !dbSize2 && mem(o) === 1 ? { tm: 1 as const } : {}),
+      ...(opts.cmMem && !club ? { tf: tf ?? 0 } : {}), ...(club && (mem && !dbSize2 ? mem(o) === 1 : clubTc[i] === 1) ? { tm: 1 as const } : {}),
       ...(opts.cmMem && club && cmTrim ? { tc: dbSize2 || !mem ? clubTc[i] ?? 0 : mem(o) } : {}) };
   }
 

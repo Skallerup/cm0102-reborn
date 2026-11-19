@@ -35,6 +35,7 @@ import { gs } from '../src/game/state';
 import { ATTRS } from '../src/game/attributes';
 import { INTRINSIC_KEYS } from '../src/game/playerInit';
 import { GBP } from '../src/game/cmContractInit';
+import { cmInMemory } from '../src/game/cmRetire';
 import type { GameState, Player } from '../src/game/types';
 
 const E = `${homedir()}/cm0102-engine`;
@@ -135,6 +136,7 @@ const W_IX = w.playerFields.indexOf('wage'), C_IX = w.playerFields.indexOf('cont
 const INT_OFFS = [0x1e, 0x23, 0x24, 0x26, 0x27, 0x2a, 0x2b, 0x31, 0x32, 0x33, 0x35, 0x37, 0x38, 0x39, 0x3a, 0x3e, 0x41, 0x43];
 
 // ------------------------------------------------------------------ parring (ved det første billede; personernes id'er er faste i kørslen)
+const startCa = new Map<number, number>();   // CA_GROUPS: oraklets CA ved første billede
 let pair = new Map<number, number>();   // hukommelsens person-id → spillets spiller-id
 const keyP = (first: string, last: string, yob: number | string, nat: string) => `${first}|${last}|${yob}|${nat}`;
 function buildPairs(v: View) {
@@ -464,6 +466,39 @@ for (const [, iso, load] of snaps) {
   console.log(`  ${iso}: billedets dato ${v.date}, spillets ${g.date} (færdig); ${v.people.filter((p) => p.pr).length} spillere i hukommelsen, ${pair.size} parret (${((Date.now() - t0) / 1000).toFixed(0)} s)`);
   compareDay(v);
   compareNews(v, prev);
+  if (process.env.CA_GROUPS) caGroups(v);
+}
+
+// CA_GROUPS=1: CA-fordelingen i hele hukommelsen (alle spillerposter mod alle vores ikke-fyldspillere – uafhængigt af parringen) og for de
+// parrede efter start-CA (oraklets CA ved det første billede)
+function caGroups(v: View) {
+  const m = v.m, yrs = (dob: string) => (Date.parse(v.date) - Date.parse(dob)) / (365.25 * 86400000);
+  const ages = [[0, 21], [21, 25], [25, 30], [30, 99]] as const, ag = (a: number) => ages.findIndex(([lo, hi]) => a >= lo && a < hi);
+  const oc: number[] = [], uc: number[] = [], oa: number[][] = ages.map(() => []), ua: number[][] = ages.map(() => []);
+  for (const a of v.people) if (a.pr) { const c = m.s16(a.pr + 5); oc.push(c); const i = ag(yrs(a.dobIso || `${a.yob}-07-01`)); if (i >= 0) oa[i].push(c); }
+  for (const p of Object.values(g.players)) if (!p.virtual) { uc.push(p.ca); const i = ag(yrs(p.dob)); if (i >= 0 && cmInMemory(g, p)) ua[i].push(p.ca); }   // aldersgrupperne: kun hukommelsens
+  const mean = (xs: number[]) => (xs.length ? xs.reduce((t, x) => t + x, 0) / xs.length : 0);
+  const top = (xs: number[], k: number) => mean([...xs].sort((a, b) => b - a).slice(0, k));
+  const put = (f: string, o: number, t: number) => { const byDay = dists.get(f) ?? dists.set(f, new Map()).get(f)!; byDay.set(today, { n: 1, ours: o, theirs: t }); };
+  put('ca-hele: antal poster', uc.length, oc.length);
+  put('ca-hele: antal i hukommelsen (cmInMemory)', Object.values(g.players).filter((p) => !p.virtual && cmInMemory(g, p)).length, oc.length);
+  { const um = Object.values(g.players).filter((p) => !p.virtual && cmInMemory(g, p)).map((p) => p.ca); put('ca-hele: CA gns. i hukommelsen', mean(um), mean(oc)); put('ca-hele: CA top 100 i hukommelsen', top(um, 100), top(oc, 100)); put('ca-hele: CA top 500 i hukommelsen', top(um, 500), top(oc, 500)); }
+  put('ca-hele: CA gns.', mean(uc), mean(oc));
+  put('ca-hele: CA top 100', top(uc, 100), top(oc, 100));
+  put('ca-hele: CA top 500', top(uc, 500), top(oc, 500));
+  put('ca-hele: CA top 2000', top(uc, 2000), top(oc, 2000));
+  ages.forEach(([lo, hi], i) => { put(`ca-hele: CA alder ${lo}-${hi - 1} gns.`, mean(ua[i]), mean(oa[i])); put(`ca-hele: CA alder ${lo}-${hi - 1} antal`, ua[i].length, oa[i].length); });
+  const grp = [[0, 40], [40, 80], [80, 120], [120, 999]] as const;
+  for (const [mid, pid] of pair) {
+    const a = v.byId.get(mid), p = g.players[pid];
+    if (!a || !a.pr || !p) continue;
+    const c = m.s16(a.pr + 5);
+    if (!startCa.has(mid)) startCa.set(mid, c);
+    const s0 = startCa.get(mid)!, k = grp.findIndex(([lo, hi]) => s0 >= lo && s0 < hi);
+    if (k >= 0) dist(`ca-parret: start-CA ${grp[k][0]}-${grp[k][1] - 1}`, p.ca, c);
+    const i = ag(yrs(p.dob));
+    if (i >= 0) dist(`ca-parret: alder ${ages[i][0]}-${ages[i][1] - 1}`, p.ca, c);
+  }
 }
 
 // ------------------------------------------------------------------ rapport

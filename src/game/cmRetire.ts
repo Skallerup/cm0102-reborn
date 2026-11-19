@@ -203,15 +203,16 @@ const stateOf = (g: GameState): CmRetState => (g.cmRet ??= { list: [] });
 /** personen findes i originalens hukommelse (0x524d70): Maximum-spillets udvalgte (Player.cmMem), ellers spillere i de indlæste landes
  *  klubber og klubløse af de indlæste landes nationalitet (world-filer uden oplysningen – se hovedets liste) */
 const MEMK = new WeakMap<GameState, boolean>();
-function inMemory(g: GameState, p: Player): boolean {
+export function cmInMemory(g: GameState, p: Player): boolean {
   let known = MEMK.get(g);
-  if (known === undefined) { known = !!g.cmMaxMem && Object.values(g.players).some((x) => x.club && x.cmMem === 1); MEMK.set(g, known); }
+  // world-filen kender 0x524d70's udvalgte (Maximum: Player.cmMem; størrelse 2 (CM_DBSIZE=2): trim2 uden lande – CMRatings.tm)
+  if (known === undefined) { known = Object.values(g.players).some((x) => x.club && x.cmMem === 1); MEMK.set(g, known); }
   if (known && p.cmMem === 1) return true;
   return nationLoaded(g, p.club ? g.clubs[p.club]?.nation ?? -1 : p.nation);
 }
 function add(g: GameState, p: Player, e: CmRetEntry): void {
   const st = stateOf(g);
-  (inMemory(g, p) ? st.list : (st.ext ??= [])).push(e);
+  (cmInMemory(g, p) ? st.list : (st.ext ??= [])).push(e);
 }
 /** 0x7ae2a0: næste dato – meldingen, hvis den ikke er passeret, ellers stoppet; så personen */
 function sortList(list: CmRetEntry[], today: number) {
