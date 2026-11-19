@@ -121,6 +121,9 @@ const g: GameState = gs();
 const start = g.date;
 const nationName = (i: number) => g.nations[i]?.name ?? '';
 const engClub = (cid: number) => !!cid && g.clubs[cid]?.nation === eng;
+/** leje slut: lejerne ved forrige billede (spiller → "moderklub>lejeklub") og antallet af afsluttede siden spilstart */
+const loanSeen = new Map<number, string>();
+let loanEnds = 0;
 const ourClubByName = new Map<string, number>();
 for (const c of Object.values(g.clubs)) if (!ourClubByName.has(c.name)) ourClubByName.set(c.name, c.id);
 
@@ -418,6 +421,14 @@ function compareDay(v: View) {
     const kind = mv.loan ? 'leje' : !mv.to ? 'kontrakt udløbet (fri)' : !mv.from ? 'klubløs skriver under' : mv.fee > 0 ? 'køb med sum' : 'køb uden sum';
     ourKinds[kind] = (ourKinds[kind] ?? 0) + 1;
   }
+  // leje slut (art 4): vores lejeaftaler noteres ikke ved afslutningen – lejerne mellem to billeder sammenlignes (en leje, der både starter og
+  // slutter mellem to billeder, ses ikke)
+  for (const p of Object.values(g.players)) {
+    const was = loanSeen.get(p.id), now = p.loan ? `${p.loan.from}>${p.club}` : '';
+    if (was && was !== now) { const [f, t] = was.split('>').map(Number); if (engClub(f) || engClub(t)) loanEnds++; }
+    if (now) loanSeen.set(p.id, now); else loanSeen.delete(p.id);
+  }
+  if (loanEnds) ourKinds['leje slut'] = loanEnds;
   // art 5 = ikke-spillernes skifter (0x68f9c0 @0x690432 managerskift klub → klub, 0x8c9720 @0x8c99bf job uden spillerpost) – vores Staff.moves
   for (const s of Object.values(g.staff)) for (const mv of s.moves ?? []) {
     if (mv.date < start || mv.date > today || (!engClub(mv.from) && !engClub(mv.to))) continue;
