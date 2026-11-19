@@ -2,6 +2,7 @@
 
 Flyttet fra CLAUDE.md 17/11-2026 (så CLAUDE.md er kort i hver session). Nyeste først. Tilføj en linje øverst ved hver udgivelse.
 
+- 2026-11-19 – Skudt live (v0.31.0): 2026-11-19 – Nyheder: tv (type 3, fra 0x685640), flyttet kamp (0x5aac70, fra 0x5ae9d0), præmie (0x1a, ≥ omdømme×50) med rundenavne 0x4bfa30 (322 navne via unicorn, cmRoundNames.ts); perf-fingerprint NONEWS=1 – simulering uændret (cf513e9a).
 - 2026-11-19 – Skudt live (v0.31.0): 2026-11-19 – Testhastighed: CM_GAME_CACHE til som standard lokalt (CI fra; CM_GAME_CACHE=0 slår fra), efter lækage-rettelsen f488512f. Før: sum 4546 s/172 filer; med cache ~2460 s; cmInt 28 → 1,8 s varm.
 - 2026-11-19 – Skudt live (v0.31.0): 2026-11-19 – Lækage mellem spil: transfers.ts roleIndex/rankCache, scouting.ts levelCache, cmTransferList imCache i carry (nøglet pr. spil); nulstilles ved nyt spil: cmBoardGame tempManager/leftCache, cmStaff icache/lvCache, grid gameInputs ROWS/cityCache. tests/newGameLeak.test.ts; snapCarry grøn også med CM_GAME_CACHE=1. 2001 uændret d301ef04.
 - 2026-11-19 – Skudt live (v0.31.0): 2026-11-19 – 0x5ae9d0 (fra add_fixture 0x5aa680, Europa/Sydamerika-turneringer): klubbens kamp 2 dage før/efter flyttes til 3 dage (cmEuroClubMoves i cmCalendar.ts); oraklet: 22 af PL's 84 søndagskampe ligger 3 dage efter UEFA (84 vs vores 62). Nyhed 0x5aac70 ikke porteret; ikke målt pga. RAM.
