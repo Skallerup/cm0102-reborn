@@ -524,6 +524,26 @@
   ],
   "keys": [
     {
+      "key": "info.title",
+      "reason": "Game Options → \"Om spillet\"-punktet (GameInfoTable) – CM Reborn-område, ikke en original skærm"
+    },
+    {
+      "key": "authentic",
+      "reason": "Besked når en udvidet handling blokeres i Authentic-tilstand – tilstandsvælgeren er en CM Reborn-tilføjelse (Game Options)"
+    },
+    {
+      "key": "career.source",
+      "reason": "Kildenote om transfermarkt-datasæt (2026/27-databasen/moderne spillerside) – ikke vist i den originale database"
+    },
+    {
+      "key": "career.sourceCm",
+      "reason": "Kildenote på spillerens karrierefane; kun bag Game Options → CM Reborn → hjælpetekster (rebornOn helpTexts)"
+    },
+    {
+      "key": "sqn.dragHint",
+      "reason": "Hjælpetekst på trøjenummer-skærmen; kun bag Game Options → CM Reborn → hjælpetekster (rebornOn helpTexts)"
+    },
+    {
       "key": "cmwx.p0",
       "reason": "originalens nedbørsord 0xad4f20 \"Dry\" (weather_format_description 0x9233a0) – tre tegn, under strengudtrækkets mindstelængde 4"
     },

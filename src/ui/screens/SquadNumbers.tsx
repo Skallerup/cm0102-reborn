@@ -124,7 +124,7 @@ export function ClassicSquadNumbers({ onClose, missing = false }: { onClose?: ()
       <div className={`cx-sqn-list ${only ? 'tall' : ''}`}>
         {players.map((p) => (
           <div key={p.id} className="cx-sqn-row">
-            <span className={`cx-sqn-box ${picked !== null ? 'target' : ''}`} data-pid={p.id} role="button" tabIndex={0} title={t('sqn.dragHint')}
+            <span className={`cx-sqn-box ${picked !== null ? 'target' : ''}`} data-pid={p.id} role="button" tabIndex={0} title={rebornOn('helpTexts') ? t('sqn.dragHint') : undefined}
               onClick={() => clickBox(p.id)} onDragOver={(e) => e.preventDefault()}
               onDrop={(e) => { e.preventDefault(); const n = Number(e.dataTransfer.getData('text/sqn')); if (n) { assign(p.id, n); setPicked(null); } }}>{nums[p.id] || ''}</span>
             <span className="cx-sqn-tag">{p.injury ? <i className="inj">{t('cl.tag.Inj')}</i> : null}</span>

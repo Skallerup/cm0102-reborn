@@ -2396,7 +2396,7 @@ Object.assign(pt, {
   "comp.lostFinal.body": "O {opp} leva o troféu. O {club} termina como vice-campeão.",
   "comp.playoffLost": "{club} não conquista o acesso",
   "comp.playoffLost.body": "O {opp} vence a {comp}. O {club} terá que tentar de novo na próxima temporada.",
-  "comp.final": "{club} avança à final da {comp}",
+  "comp.final": "{club} avança à final",
   "comp.final.body": "O {club} enfrenta o {opp} na final em {date}.",
   "comp.groupThrough": "{club} se classifica para a segunda fase",
   "comp.groupThrough.body": "O {club} terminou em {pos}º e avança para o mata-mata.",

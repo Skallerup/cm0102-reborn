@@ -5333,7 +5333,7 @@ export const nb: Record<string, string> = {
   "comp.lostFinal.body": "{opp} vinner trofeet. {club} ender som nummer to.",
   "comp.playoffLost": "{club} rykker ikke opp",
   "comp.playoffLost.body": "{opp} vinner {comp}. {club} må prøve igjen neste sesong.",
-  "comp.final": "{club} i finalen i {comp}",
+  "comp.final": "{club} i finalen",
   "comp.final.body": "{club} møter {opp} i finalen den {date}.",
   "comp.groupThrough": "{club} videre fra gruppespillet i {comp}",
   "comp.groupThrough.body": "{club} endte som nr. {pos} og er med i utslagsfasen.",

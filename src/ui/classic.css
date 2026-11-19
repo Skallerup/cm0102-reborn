@@ -837,7 +837,7 @@
 :root[data-skin='retro'] .cx-green .cx-drop-pop button:hover:not(:disabled) { background: #ffd21f; color: #10164e; }
 @media (max-width: 760px) { .cx-neg-row { grid-template-columns: 1fr 40px 1fr 40px 40px; margin-left: 0; } .cx-neg-label { font-size: 14px; } }
 .cx-confirm { z-index: 90; }
-.cx-confirm .cx-ts-intro { text-align: center; max-width: 760px; }
+.cx-confirm .cx-ts-intro { text-align: center; max-width: 760px; white-space: pre-line; }
 .cx-staff-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 0 10px; }
 .cx-staff-cols .cx-kv { font-size: 17px; align-content: start; }
 .cx-staff-attrs { font-size: 15px; }

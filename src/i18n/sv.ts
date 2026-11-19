@@ -5333,7 +5333,7 @@ export const sv: Record<string, string> = {
   "comp.lostFinal.body": "{opp} vinner pokalen. {club} blir tvåa.",
   "comp.playoffLost": "{club} flyttas inte upp",
   "comp.playoffLost.body": "{opp} vinner {comp}. {club} får försöka igen nästa säsong.",
-  "comp.final": "{club} i finalen i {comp}",
+  "comp.final": "{club} i finalen",
   "comp.final.body": "{club} möter {opp} i finalen den {date}.",
   "comp.groupThrough": "{club} vidare från gruppspelet i {comp}",
   "comp.groupThrough.body": "{club} slutade som nr {pos} och är med i utslagsfasen.",

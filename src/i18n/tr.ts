@@ -2396,7 +2396,7 @@ Object.assign(tr, {
   "comp.lostFinal.body": "{opp} kupayı aldı. {club} ikinci oldu.",
   "comp.playoffLost": "{club} yükselemedi",
   "comp.playoffLost.body": "{opp}, {comp} play-off'unu kazandı. {club} gelecek sezon tekrar denemek zorunda.",
-  "comp.final": "{club}, {comp} finaline yükseldi",
+  "comp.final": "{club} finale yükseldi",
   "comp.final.body": "{club}, finalde {date} tarihinde {opp} ile karşılaşacak.",
   "comp.groupThrough": "{club} ikinci tura yükseldi",
   "comp.groupThrough.body": "{club} grubu {pos}. sırada tamamladı ve eleme turlarına yükseldi.",

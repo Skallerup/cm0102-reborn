@@ -1,5 +1,5 @@
 {
- "total": 173,
+ "total": 162,
  "areas": {
   "common": 1,
   "top": 2,
@@ -12,28 +12,23 @@
   "transfer": 10,
   "neg": 1,
   "job": 1,
-  "cl": 71,
-  "career": 2,
+  "cl": 68,
   "tac": 1,
   "fix": 3,
   "cm": 4,
   "stage": 3,
-  "comp": 5,
+  "comp": 3,
   "tbl": 1,
   "role": 4,
   "contract": 2,
   "staff": 3,
   "club": 6,
   "exp": 2,
-  "info": 1,
-  "injury": 1,
   "awol": 1,
   "cmaw": 3,
   "intl": 11,
-  "authentic": 1,
   "blocked": 1,
   "staffrep": 10,
-  "sqn": 1,
   "eur": 1
  }
 }
