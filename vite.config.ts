@@ -19,6 +19,8 @@ const seoHtml = {
   },
 }
 
+if (!process.env.CI && process.env.CM_GAME_CACHE === undefined) process.env.CM_GAME_CACHE = '1';   // arves af test-workers
+
 export default defineConfig({
   // appens version til src/version.ts (uden at hente ændringsloggen på forsiden)
   define: { __APP_VERSION__: JSON.stringify(pkg.version) },
@@ -90,7 +92,8 @@ export default defineConfig({
   // Lokalt højst 3 test-workers: hver indlæser world-filerne (~1,2 GB), og 11 parallelle (standard = kerner-1) fyldte
   // de 16 GB og fik Mac mini'en til at gå ned 17/11 (WindowServer-watchdog). CI bruger standarden. Er Chrome lukket (og ≥ 6 GB ledig), 5
   // (scripts/ram-budget.mjs; CM_TEST_WORKERS=n overstyrer).
-  // createGame gennem cachen på disken (tests/helpers/gameCache.ts) kun med CM_GAME_CACHE=1 (fra som standard – se gameCacheOn)
+  // createGame gennem cachen på disken (tests/helpers/gameCache.ts): til som standard lokalt (nyt spil med den originale database = 18-25 s; med
+  // cachen ~1 s), fra i CI og med CM_GAME_CACHE=0. snapCarry.test.ts slår den selv fra (den afprøver et nybygget spil i en ny proces).
   // Lokalt 120 s pr. test: under belastning (flere agenter) ramte 5 s-standarden falske fejl. CI giver selv --testTimeout.
-  test: { testTimeout: process.env.CI ? undefined : 120_000, maxWorkers: process.env.CI ? undefined : ramBudget().testWorkers, setupFiles: process.env.CM_GAME_CACHE === '1' ? ['tests/helpers/setupGameCache.ts'] : [] },
+  test: { testTimeout: process.env.CI ? undefined : 120_000, maxWorkers: process.env.CI ? undefined : ramBudget().testWorkers, setupFiles: process.env.CM_GAME_CACHE !== '0' && !process.env.CI ? ['tests/helpers/setupGameCache.ts'] : [] },
 })

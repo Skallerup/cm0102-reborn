@@ -15,6 +15,9 @@ import { serializeState, deserializeState } from '../src/game/snapshot';
 import { ensureAllNumbers, upgradeLoaded } from '../src/game/save';
 import type { GameState } from '../src/game/types';
 
+// et nybygget spil i en ny proces er det, der afprøves: ikke createGame-cachen (tests/helpers/gameCache.ts)
+process.env.CM_GAME_CACHE = '0'; delete process.env.CM_GAME_CACHE_USE;
+
 const world = JSON.parse(readFileSync('public/data/world-original.json', 'utf8')) as WorldData;
 const eng = world.nations.findIndex((x) => x.name === 'England');
 const club = world.clubs.find((c) => c[1] === 'Wrexham')![0];
