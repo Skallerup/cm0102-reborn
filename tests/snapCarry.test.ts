@@ -45,7 +45,10 @@ const step = (): string => {
 const v8Copy = (): Buffer => { const g = gs(); g.rng = rng.state; packCarry(g); try { return serialize(g); } finally { delete g.cmCarry; } };
 
 describe('kopi/gem af spillet = uafbrudt (carry.ts)', () => {
-  const STEPS = 7;
+  // skridt til og med to efter pausen før egen kamp (højst 16): klubbens første kampdag (en tilfældig venskabskamp) flytter sig med
+  // alt, der trækker tilfældige tal i forkørslen (20/11: Intertoto-pladserne flyttede Wrexhams første kamp fra uge 1 til 22/7)
+  const MAX = 16;
+  let STEPS = MAX;
   newGame();
   const fp0 = fp();
   const ref: string[] = [], refC: string[] = [], what: string[] = [];
@@ -53,10 +56,12 @@ describe('kopi/gem af spillet = uafbrudt (carry.ts)', () => {
   const saves = new Map<number, Blob>();
   const wantAt = (i: number) => i === 2 || what[i - 1] === 'pause';
   // referencen i ét stræk; kopier ved skridt 2 (dagsskifte) og ved pausen før egen kamp (midt i en kampdag)
-  for (let i = 1; i <= STEPS; i++) {
+  for (let i = 1; i <= MAX; i++) {
     what.push(step());
     ref.push(fp());
     refC.push(fp(true));
+    const p = what.indexOf('pause');
+    if (p >= 0 && i >= p + 3) { STEPS = i; break; }
   }
   const pts = [2, what.indexOf('pause') + 1].filter((x, j, a) => x > 0 && a.indexOf(x) === j);
 
