@@ -236,6 +236,8 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     // (20/11, MODERN_PARITY §0 B) originalens CONTRACT_MANAGER – startkontrakterne 0x4c7560 (cmContractEnd) og computerklubbernes daglige
     // forlængelser, udløb og frigivelser 0x4c7ac0 (cmContractManager.ts cmCmOn)
     g.cmCmMgr = 1;
+    // (20/11, MODERN_PARITY §0 E) originalens fyldspillere 0x90dae0 (cmVirtual.ts cmVirtualOn) – i stedet for spillets reservehold
+    g.cmVirt = 1;
     if (raw.euro) g.cmEuroDb = JSON.parse(JSON.stringify(raw.euro)) as GameState['cmEuroDb'];
   }
   if (cm?.cmRaw && season < 2020) {

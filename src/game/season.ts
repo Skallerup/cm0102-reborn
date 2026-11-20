@@ -2,6 +2,7 @@
 import { cmDiscSeason } from './cmDiscipline';
 import { cmBoardOn, cmBoardSeasonSetup } from './cmBoardGame';
 import { cmActive, cmMarketOn } from './cmPlayerData';
+import { cmVirtualOn } from './cmVirtual';
 import { cmShortlistOn } from './cmShortlistGame';
 import { cmRetireOn } from './cmRetire';
 import { cmCmOn, cmCmScope } from './cmContractManager';
@@ -807,7 +808,7 @@ export function seasonRollover(sc: Scope | null = null) {
     if (c.manager === -1) {
       // menneskestyret klub: reserveholdet sørger for at der er nok spillere til at stille hold
       // ægte tilstand: originalens fyldspillere (cmVirtual.ts) dækker en for lille trup – ingen opdigtede spillere eller nyhed
-      if (sq.length < 16 && !cmActive(g)) {
+      if (sq.length < 16 && !cmVirtualOn(g)) {
         const before = sq.length;
         fillSquad(c, sq, clubLevel(c.id) - 15, g.date, hash(g.seed, g.season, c.id), 16);
         asOwner(c.id, () => addNews({ cat: 'youth', key: 'news.reservesPromoted', params: { n: squad(c.id).length - before } }));

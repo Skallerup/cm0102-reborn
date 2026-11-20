@@ -1,5 +1,5 @@
-// Originalens genererede fyldspillere ("virtual staff", virtual_staff.cpp – cm0102.exe 3.9.68). Kun den originale database i ægte tilstand
-// (cmActive). Afkodet i ~/cm0102-engine/notes/filler-players.md.
+// Originalens genererede fyldspillere ("virtual staff", virtual_staff.cpp – cm0102.exe 3.9.68). cmVirtualOn: 2001-verdenen eller en CM-database
+// i ægte tilstand fra et spil startet med modulet (g.cmVirt – MODERN_PARITY §0 E). Afkodet i ~/cm0102-engine/notes/filler-players.md.
 //
 // Originalen gemmer ikke fyldspillerne: før hver kamp (0x90d2f0, kaldt fra kampdagen 0x6b43f8/0x6b4a43/0x6b5bc1 og 0x84c339) og når en
 // menneskelig manager åbner en klubs skærm (0x90d4f0 fra 0x484215) kører 0x90dae0 for klubben: de gamle fyldspillere fjernes (0x90d8f0), og
@@ -36,7 +36,11 @@
 import type { GameState, Player, Staff } from './types';
 import { ATTRS } from './attributes';
 import { addPlayer, dropPlayer, onGameSwitch, playersEpoch, squad } from './state';
-import { cmActive, clubRepMem, NO_RESERVES } from './cmPlayerData';
+import { cmActive, cmLogic, clubRepMem, NO_RESERVES } from './cmPlayerData';
+
+/** (MODERN_PARITY §0 E) fyldspillerne 0x90dae0: 2001-verdenen, eller en CM-database i ægte tilstand fra et spil startet med dem (g.cmVirt –
+ *  newgame.ts). Ældre 2026/27-spil beholder spillets reservehold (season.ts fillSquad). */
+export const cmVirtualOn = (g: GameState): boolean => (cmActive(g) || (cmLogic(g) && g.cmVirt === 1)) && !g.draft;
 import { shownFromInternal } from './playerInit';
 import { emptyStats, randomName } from './data/generate';
 import { Rng } from './rng';
@@ -220,13 +224,13 @@ const virtualsOf = (cid: number) => squad(cid).filter((p) => p.virtual);
 
 /** 0x90d6b0(fixture) for én klub: kampens fyldspillere ud igen lige efter kampen (baggrundskampene 0x84c493 – cmReserves.ts) */
 export function cmVirtualDrop(g: GameState, cid: number): void {
-  if (!cmActive(g) || g.draft) return;
+  if (!cmVirtualOn(g)) return;
   for (const p of virtualsOf(cid)) dropPlayer(p);
 }
 
 /** 0x90dae0 for klubben: de gamle fyldspillere ud (0x90d8f0), nye ind efter planen. Returnerer antallet af fyldspillere bagefter. */
 export function cmVirtualSync(g: GameState, cid: number, match: boolean): number {
-  if (!cmActive(g) || g.draft || !g.clubs[cid]) return 0;
+  if (!cmVirtualOn(g) || !g.clubs[cid]) return 0;
   const old = virtualsOf(cid);
   for (const p of old) dropPlayer(p);
   const plan = virtualPlan(g, cid, match).filter((s) => s.kind === 'first');
@@ -241,14 +245,14 @@ export function cmVirtualSync(g: GameState, cid: number, match: boolean): number
 
 /** før kampen (0x90d2f0): begge hold */
 export function cmVirtualMatch(g: GameState, home: number, away: number): void {
-  if (!cmActive(g) || g.draft) return;
+  if (!cmVirtualOn(g)) return;
   cmVirtualSync(g, home, true);
   cmVirtualSync(g, away, true);
 }
 
 /** truppen vises (0x90d4f0): kun hvis klubben ikke allerede har sine fyldspillere. true = noget er ændret. */
 export function cmVirtualView(g: GameState, cid: number): boolean {
-  if (!cmActive(g) || g.draft || !g.clubs[cid] || virtualsOf(cid).length) return false;
+  if (!cmVirtualOn(g) || !g.clubs[cid] || virtualsOf(cid).length) return false;
   return cmVirtualSync(g, cid, false) > 0;
 }
 
@@ -262,7 +266,7 @@ export function cmVirtualClear(g: GameState): void {
 /** menneskets klubber: fyldspillerne, der hører til truppen (originalen laver dem, når manageren ser truppen – her efter dagens systemer, så
  *  udtagelsen ikke peger på spillere, der er væk) */
 export function cmVirtualHumans(g: GameState, clubs: number[]): void {
-  if (!cmActive(g) || g.draft) return;
+  if (!cmVirtualOn(g)) return;
   for (const c of clubs) if (c) cmVirtualSync(g, c, false);
 }
 

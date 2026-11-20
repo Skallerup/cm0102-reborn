@@ -1279,6 +1279,9 @@ export interface GameState {
    *  0x4c7560 og computerklubbernes daglige forlængelser/udløb/frigivelser 0x4c7ac0) – nye spil med en CM-database i ægte tilstand; den originale
    *  database har den altid (cmActive), ældre 2026/27-spil beholder spillets egne forlængelser og udløbet 1/7 */
   cmCmMgr?: 1;
+  /** (20/11, "Altid som originalen", MODERN_PARITY §0 E) spillet er startet med originalens fyldspillere (cmVirtual.ts cmVirtualOn, 0x90dae0) – nye
+   *  spil med en CM-database i ægte tilstand; den originale database har dem altid (cmActive), ældre 2026/27-spil beholder reserveholdets fyldspillere */
+  cmVirt?: 1;
   /** (20/11) databasens Europa-data for cmEurope.ts, når det ikke er den originale database: landenes seks koefficienter (nation.dat +0xe0..+0x108),
    *  euro.cfg og den seneste sæsons vindere i club_comp_history.dat (turnerings-id → [år, vinder, nr. 2]) – world-cm.json `euro` */
   cmEuroDb?: { coef: Record<string, number[]>; cfg: Record<string, string[]>; last: Record<number, [number, number, number]> };
