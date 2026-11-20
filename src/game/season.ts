@@ -1,7 +1,7 @@
 // Sæsonskifte: priser, historik, op/nedrykning, kontrakter, pensioneringer, regens.
 import { cmDiscSeason } from './cmDiscipline';
 import { cmBoardOn, cmBoardSeasonSetup } from './cmBoardGame';
-import { cmActive, cmMarketOn } from './cmPlayerData';
+import { cmActive, cmMarketOn, cmMediaOn } from './cmPlayerData';
 import { cmVirtualOn } from './cmVirtual';
 import { cmShortlistOn } from './cmShortlistGame';
 import { cmRetireOn } from './cmRetire';
@@ -552,7 +552,8 @@ function driftRep(cid: number, target: number, rate: number) {
   }
 }
 
-/** Ægte tilstand: klubbens omdømme (0-99) afledes af originalens club +0x80 (opdateres af 0x6d3de0 efter hver kamp) */
+/** Ægte tilstand: klubbens omdømme (0-99) afledes af originalens club +0x80 (opdateres af 0x6d3de0 efter hver kamp) – med originalens omdømme/moral
+ *  (cmMediaOn: 2001-verdenen og nye spil med en CM-database i ægte tilstand, MODERN_PARITY §0 E) */
 function syncClubRepsFromCm(g: ReturnType<typeof gs>) {
   for (const [id, v] of Object.entries(g.cmClubRep ?? {})) {
     const c = g.clubs[+id];
@@ -563,7 +564,7 @@ function syncClubRepsFromCm(g: ReturnType<typeof gs>) {
 /** Den 1. i måneden: omdømmet følger den aktuelle tabelplacering (når der er spillet nok kampe) */
 export function monthlyClubReps() {
   const g = gs();
-  if (cmActive(g)) { syncClubRepsFromCm(g); return; }
+  if (cmMediaOn(g)) { syncClubRepsFromCm(g); return; }
   for (const comp of Object.values(g.comps)) {
     if (comp.type !== 'league' || comp.finished) continue;
     const rows = leagueRows(comp);
@@ -587,7 +588,7 @@ export function repTrend(cid: number): -1 | 0 | 1 {
 
 function updateClubReps() {
   const g = gs();
-  if (cmActive(g)) { syncClubRepsFromCm(g); return; }
+  if (cmMediaOn(g)) { syncClubRepsFromCm(g); return; }
   // sæsonslut: et større skridt mod det omdømme slutplaceringen er værd (løbende ændringer er sket hver måned)
   for (const comp of Object.values(g.comps)) {
     if (comp.type !== 'league') continue;
@@ -755,8 +756,9 @@ export function seasonRollover(sc: Scope | null = null) {
   updateClubReps();
   const prevTables: Record<string, number[]> = {};
   for (const comp of Object.values(g.comps)) if (comp.type === 'league' && comp.finished && inComp(comp.id)) prevTables[comp.id] = finalOrder(comp);
-  // den originale database i ægte tilstand: klubbens sidste division og placering (club +0x5b/+0x5f – Comp_Stats' udgangsrækkefølge næste sæson)
-  if (cmActive(g) && g.cmClubStat) for (const [lid, order] of Object.entries(prevTables)) {
+  // originalens marked (cmMarketOn – alle CM-databaser i ægte tilstand): klubbens sidste division og placering (club +0x5b/+0x5f – Comp_Stats'
+  // udgangsrækkefølge næste sæson; trupplanen/lønnen læser dem)
+  if (cmMarketOn(g) && g.cmClubStat) for (const [lid, order] of Object.entries(prevTables)) {
     const cid = +(lid.match(/(\d+)$/)?.[1] ?? NaN);
     order.forEach((club, i) => { const s = g.cmClubStat![club]; if (s) g.cmClubStat![club] = [s[0], s[1], cid, i + 1]; });
   }
@@ -783,8 +785,8 @@ export function seasonRollover(sc: Scope | null = null) {
     else if (g.season >= g.challenge.deadlineSeason) challengeResults.set(g.active, 'lost');
   });
   seasonWageClauses(tierBefore, inClub);
-  // ægte tilstand: spillets egne præstationer og sæsonfortælling har intet modstykke i originalen
-  if (!cmActive(g)) { achievementsSeasonEnd(tierBefore); storySeasonEnd(tierBefore); }
+  // ægte tilstand: spillets egne præstationer og sæsonfortælling har intet modstykke i originalen (nyhedsomfanget cmMediaOn – alle CM-databaser)
+  if (!cmMediaOn(g)) { achievementsSeasonEnd(tierBefore); storySeasonEnd(tierBefore); }
   // ligaer kan have skiftet klubber → opdater prevTables så europæiske pladser kun gives til tier-1
   for (const [lg, order] of Object.entries(prevTables)) prevTables[lg] = order.filter((cid) => g.clubs[cid].league === lg);
   storeCompRecords(sc ? (id) => sc.comps.has(id) : undefined); // før statistikken nulstilles og kampprogrammet ryddes
