@@ -2,6 +2,7 @@
 
 Flyttet fra CLAUDE.md 17/11-2026 (så CLAUDE.md er kort i hver session). Nyeste først. Tilføj en linje øverst ved hver udgivelse.
 
+- 2026-11-20 – Skudt live (v0.32.0): 2026-11-20 – MODERN_PARITY E: løse cmActive-kald → cmMarketOn (transfervinduer 0x8e8800, bud/jagt/klausuler), cmValueOn/g.cmCmMgr (værdi +0x52 0x4c7ec5/0x4d0c60), g.cmVirt (fyldspillere 0x90dae0), cmMediaOn (omdømme club +0x80, holdudtagelse), cmBodyOn/cmStaffOn, cmMatchOn (preset-instruktioner), skærme. 2001-fingeraftryk uændret. Tabel i docs/MODERN_PARITY.md §0 E.
 - 2026-11-20 – Skudt live (v0.32.0): 2026-11-20 – Hotfix (spiller på iPad sad fast 4/6-02): 0x5fea50 porteret i cmWageGame (ferie → cmHolidayAnswerBids → cmAskingPrice kastede), FA Cup-omkamp kalder add_fixture 0x5aa680 (0x51aecc), redning af uspillede egne kampe, hængende manager.holiday ryddes, Worker-fejl rapporteres + besked crash.run (alle sprog).
 - 2026-11-20 – Skudt live (v0.32.0): 2026-11-20 – setupLeaguePort (competitions.ts, g.cmCal): ligaklassens skema bruges med create_fixtures' logik (0x6835c0/0x68a030/0x5aa680) også når klubtallet ikke passer; 11 ligaer fra fallback 8/8–22/5 til originalens skema, Ligue 1/2 og Korea 0 dobbeltbookinger. 2001-fingeraftryk uændret. scripts/cm-leagues-2026.ts.
 - 2026-11-20 – Skudt live (v0.32.0): 2026-11-20 – Forkørslen (0x5cc850 → MATCH_DAY 0x6b3c10 pr. tidspunkt 0–2) spiller også venskabskampe: cmFriendlyPrerunDay (cmFriendly.ts, krog i hooks.ts/sim.ts, cmFriendlyOn). 2026/27 alle lande: uspillede 425 → 0. 2001-fingeraftryk uændret. scripts/fr-stale-diag.ts.
