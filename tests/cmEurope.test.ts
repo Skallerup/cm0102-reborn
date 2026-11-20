@@ -23,6 +23,14 @@ describe('Europa i originalens format', () => {
     RES_SKIP.on = true; // reservekampene påvirker ikke Europas kalender
     const g = gs();
     expect(g.date).toBe('2001-07-14');
+    // (20/11) Intertoto 2001 som oraklet (crowd1): England har 2 pladser (0x903cc0: tælleren i 2001, 0x903890 giver ingen frivillige) – de næste
+    // klubber efter euro.cfg, Aston Villa og Newcastle, i 3. runde; UEFA-titelforsvareren Liverpool er i CL, så England beholder 3 UEFA-pladser (0x904796)
+    const named = (id: string, k: string) => ((g.comps[id].meta?.entry as Record<string, number[]>)[k] ?? []).map((c) => g.clubs[c].name);
+    const engOf = (ids: number[]) => ids.filter((c) => g.clubs[c].nation === eng).map((c) => g.clubs[c].name).sort();
+    expect(named('UIC', 'R3')).toEqual(expect.arrayContaining(['Aston Villa', 'Newcastle United']));
+    expect(engOf(g.comps.UIC.clubs)).toEqual(['Aston Villa', 'Newcastle United']);
+    expect(engOf(g.comps.UEFA.clubs)).toEqual(['Chelsea', 'Ipswich Town', 'Leeds United']);
+    expect(g.comps.UIC.clubs.length).toBe(60);
     // forkørslen: 1. kvalifikationsrundes første kampe (11/7) er spillet
     const q1 = Object.values(g.fixtures).filter((f) => f.comp === 'CL' && f.stage === 'Q1' && f.leg === 1);
     expect(q1.length).toBe(9);

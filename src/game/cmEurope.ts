@@ -21,20 +21,21 @@
 //     i første sæson (apply_euro_cfg_order 0x9059e0), point 2/1 pr. sejr/uafgjort + 1 pr. gruppespil (0x9058b0).
 //
 //   Intertoto (runde 10D): IntertotoCup::create_round_table 0x633300 (5 runder, juni–august: 40/12/8 nye hold), assign_intertoto_places 0x904e30
-//     (læst: kode +0x1df = 1 for rang 0–7, 2 for 8–11, ellers 3, landets anden klub +1; pladserne +0xe efter Bosman-projektets læsning af 0x903cc0),
+//     (læst: landene i rangfølge igen og igen til 60 klubber, kode +0x1df = 1 for indeks 0–7, 2 for 8–11, ellers 3, landets k-te klub +k; pladserne +0xe
+//     0x903cc0 læst – England har 2 i 2001 via tælleren, 1 senere; Englands klubber 0x903890 (frivillige, 2001 ingen) eller 0x9050d0 uden menneske),
 //     sorteret efter koden faldende (cup_compare_entries_by_level_desc 0x522190), finalens 3 vindere til UEFA Cup'ens 1. runde (0x633d40).
 //     Fra 2. sæson ligger 1.–2. runde før sæsonskiftet 1/7 – de spilles som forkørslen ved sæsonskiftet (*afvigelse*).
 // IKKE porteret (se ENGINE_PORT_PLAN.md "Kalender og turneringer"): sort_round_teams/0x51d9f0/0x51e220/0x51e870 og gruppelodtrækningerne er porteret efter deres regler, ikke instruktion for instruktion
 // (seedningen bruger klubbens omdømme i stedet for postens seed-byte, og originalens tilfældige tal er spillets), kamppræmierne er spillets egne
 // (sim.ts), gruppekampenes parring er spillets cirkelmetode (League_Stage::create_fixtures / 0x68a030 ikke porteret), klubber fra lande uden
-// klubber i world-filen erstattes af de næstbedste klubber (originalen har alle lande), collect_european_clubs' sortering bruger sidste sæsons
+// klubber i world-filen erstattes af de næstbedste klubber (originalen har alle lande; Intertoto: se assign_intertoto_places nedenfor), collect_european_clubs' sortering bruger sidste sæsons
 // tabel/omdømmet (databasens sidste placering findes ikke i world-filen).
 import type { Competition, Fixture, GameState, Tie } from './types';
 import { addDays } from './dates';
 import { compHooks } from './hooks';
 import { rng } from './rng';
 import { addNews, gs, indexFixture, unindexFixture } from './state';
-import { asOwner } from './humans';
+import { asOwner, isHumanClub } from './humans';
 import { cmCalendarOn, cmPlaceFixture } from './cmCalendar';
 import { CM_EURO_DATES, CM_EURO_ROUNDS } from './data/cmEuroTables';
 import { CM_EURO_CFG, CM_NATION_COEF } from './data/cmEuroData';
@@ -165,11 +166,13 @@ function seedEuro(g: GameState, season: number, prevTables: Record<string, numbe
   // UEFA Cup: [1. runde (36 seedede + 3 Intertoto-pladser), kvalifikation (82)]
   const uefa: number[][] = [[], []];
   const holderU = s.holders?.uefa;
-  if (holderU !== undefined && ok(holderU) && !placed.has(holderU)) { uefa[0].push(holderU); placed.add(holderU); enter(g.nations[g.clubs[holderU].nation].name); }
+  // 0x90460f: titelforsvarerens land ([esp+0x54]) sættes kun, når forsvareren selv får UEFA-pladsen – kun da mister landet en 1.-rundeplads (0x904796)
+  let holderNation: string | undefined;
+  if (holderU !== undefined && ok(holderU) && !placed.has(holderU)) { holderNation = g.nations[g.clubs[holderU].nation].name; uefa[0].push(holderU); placed.add(holderU); enter(holderNation); }
   ranked.forEach((n, r) => {
     const band = uefaBand(r).slice();
     if (season === 2001 ? FAIR_PLAY_2001.includes(n) : false) band[1]++;
-    if (holderU !== undefined && g.nations[g.clubs[holderU]?.nation ?? -1]?.name === n && band[0] > 0) band[0]--;
+    if (holderNation === n && band[0] > 0) band[0]--;
     const nation = g.nations.findIndex((x) => x.name === n);
     let firstPlace = true;
     band.forEach((k, round) => {
@@ -188,19 +191,75 @@ function seedEuro(g: GameState, season: number, prevTables: Record<string, numbe
   const fill = (arr: number[], n: number, nat?: boolean) => { while (arr.length < n) { const c = spare(); if (c === undefined) break; arr.push(c); placed.add(c); if (nat) enter(g.nations[g.clubs[c].nation].name); } arr.length = Math.min(arr.length, n); };
   cl.forEach((a, i) => fill(a, CL_CAP[i], true));
   fill(uefa[1], rnd('UEFA', 0).nw, true);
-  // Intertoto (0x904e30): pladserne +0xe – de 16 første lande uden faste tal 2, de næste 27 1; faste: Liechtenstein, San Marino, Moldova, Andorra,
-  // Bosnien 0, Skotland 1, England 1 efter 2001 (0 i 2001: ingen engelsk klub, 0x9038af); 2001: Frankrig 4, Tyskland 3, Portugal/Norge/Spanien/
-  // Rusland 0, Italien 1
-  const FIX: Record<string, number> = { Liechtenstein: 0, 'San Marino': 0, Moldova: 0, Andorra: 0, 'Bosnia-Herzegovina': 0, Bosnia: 0, Scotland: 1, England: season === 2001 ? 0 : 1,
-    ...(season === 2001 ? { France: 4, Germany: 3, Portugal: 0, Norway: 0, Spain: 0, Russia: 0, Italy: 1 } : {}) };
-  const uicE: [number, number][] = [];
+  // Intertoto-pladserne +0xe (0x903cc0): faste – Liechtenstein, San Marino, Moldova, Andorra, Bosnien 0, Skotland 1, England 1 efter 2001
+  // (i 2001 går England til tælleren – 0x903e73); 2001: Frankrig 4, Tyskland 3, Portugal/Norge/Spanien/Rusland 0, Italien 1. Resten efter
+  // tælleren over de ikke-faste lande: de 16 første 2, de næste 27 1, ellers 0 (Belgien 2 i 2000).
+  const FIX: Record<string, number> = { Liechtenstein: 0, 'San Marino': 0, Moldova: 0, Andorra: 0, 'Bosnia-Herzegovina': 0, Bosnia: 0, Scotland: 1,
+    ...(season === 2001 ? { France: 4, Germany: 3, Portugal: 0, Norway: 0, Spain: 0, Russia: 0, Italy: 1 } : { England: 1 }) };
   let free = 0;
-  ranked.forEach((n, r) => {
-    const places = n in FIX ? FIX[n] : free++ < 16 ? 2 : free <= 43 ? 1 : 0;
-    const base = r < 8 ? 1 : r < 12 ? 2 : 3;
-    for (let k = 0; k < places && uicE.length < 60; k++) { const c = next(n); if (c === undefined) break; uicE.push([c, base + k]); placed.add(c); enter(n); }
-  });
-  while (uicE.length < 60) { const c = spare(); if (c === undefined) break; uicE.push([c, 3]); placed.add(c); }
+  const uicPlaces = ranked.map((n) => (n in FIX ? FIX[n] : free++ < 16 || (n === 'Belgium' && season === 2000) ? 2 : free <= 43 ? 1 : 0));
+  // assign_intertoto_places 0x904e30: landene i rangfølge igen og igen, til 60 klubber har en plads (0x905003/0x9050b3); koden 1 (indeks < 8),
+  // 2 (< 12), ellers 3 regnes af tælleren FØR omløbet (indeks 0 i 2. gennemløb får 3) + landets k-te klub
+  // [klub, kode]; klub −1 = en plads, originalen fylder med en klub, world-filen ikke har (landet uden flere klubber her – *afvigelse*, se nedenfor)
+  const uicE: [number, number][] = [];
+  const place = (c: number | undefined, n: string, code: number) => {
+    if (c === undefined) { uicE.push([-1, code]); return; }
+    if (placed.has(c)) return;
+    uicE.push([c, code]); placed.add(c); enter(n);
+  };
+  const plId = Object.keys(g.leagues).find((id) => g.leagues[id].nation === g.nations.findIndex((x) => x.name === 'England') && g.leagues[id].tier === 1 && !g.leagues[id].hidden);
+  // 0x903890 pick_english_intertoto_club: 2001 → ingen; ellers op til 6 frivillige (80 forsøg: tilfældig PL-klub uden menneske og plads), den med
+  // den bedste placering (+0x5f, +30 uden for PL; under 100); ingen → tilfældige PL-klubber, til en uden plads findes
+  const pickEnglish = (): number | undefined => {
+    if (season === 2001 || !plId) return undefined;
+    const team = g.comps[plId]?.clubs ?? [];
+    if (!team.length) return undefined;
+    const vol: number[] = [];
+    for (let tries = 0; vol.length < 6 && tries < 0x50; tries++) {
+      const c = team[rng.int(0, team.length - 1)];
+      if (!isHumanClub(c) && !placed.has(c)) vol.push(c);
+    }
+    let best: number | undefined, key = 100;
+    for (const c of vol) {
+      if (placed.has(c)) continue;
+      const lg = g.clubs[c]?.league, t = lg ? prevTables[lg] : undefined, i = t ? t.indexOf(c) : -1;
+      const k = (i < 0 ? 99 : i + 1) + (lg === plId ? 0 : 30);
+      if (k < key) { key = k; best = c; }
+    }
+    if (best !== undefined) return best;
+    if (!team.some((c) => !placed.has(c))) return undefined;
+    for (;;) { const c = team[rng.int(0, team.length - 1)]; if (!placed.has(c)) return c; }
+  };
+  const nextNonHuman = (n: string) => order(n).find((c) => !placed.has(c) && !isHumanClub(c));
+  const pick = (n: string) => (n === 'England' ? pickEnglish() ?? nextNonHuman(n) : next(n));
+  for (let cl = 0, idx = 0, pass = 0; uicE.length < 60; ) {
+    const code = cl < 8 ? 1 : cl < 12 ? 2 : 3;
+    if (cl === ranked.length) { idx = 0; cl = 0; if (++pass > 60) break; }
+    const n = ranked[idx], k = uicPlaces[idx];
+    if (n === 'England') {
+      place(pick(n), n, code);
+      if (k === 2) place(pick(n), n, code + 1);
+    } else {
+      for (let i = 0; i < k && uicE.length < 60; i++) place(pick(n), n, code + i);
+    }
+    cl++; idx = cl;
+  }
+  // *afvigelse*: originalen har alle landes klubber (også lande uden liga – Albanien, Færøerne, Irland …), world-filen ikke. Med alle klubber når
+  // originalen 60 i første gennemløb (2001: 63 pladser); de manglende klubbers pladser beholder her koden (og dermed runden) og fyldes med de
+  // nærmeste lande nedefra i rangfølgen med pladser (+0xe > 0, ikke England), én klub pr. land pr. omgang – til world-filen har klubberne
+  const holes = uicE.filter((x) => x[0] < 0);
+  for (let pass = 0; holes.length && pass < 60; pass++) {
+    let got = false;
+    for (let idx = ranked.length - 1; idx >= 0 && holes.length; idx--) {
+      const n = ranked[idx];
+      if (n === 'England' || uicPlaces[idx] <= 0) continue;
+      const c = next(n);
+      if (c === undefined) continue;
+      holes.shift()![0] = c; placed.add(c); enter(n); got = true;
+    }
+    if (!got) break;
+  }
+  for (let i = uicE.length - 1; i >= 0; i--) if (uicE[i][0] < 0) uicE.splice(i, 1);
   // 0x522190: koden faldende, så omdømmet stigende
   uicE.sort((a, b) => b[1] - a[1] || (g.clubs[a[0]].rep - g.clubs[b[0]].rep));
   const u = rnd('UIC', 0).nw, u2 = rnd('UIC', 1).nw;
