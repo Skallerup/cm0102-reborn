@@ -36,7 +36,7 @@ import { monthlyDevelopment, recordDevelopment } from './training';
 import { cmRand, fillReputation } from './cmPlayerData';
 import { npFromWorld, npTemplate, staffConvert, staffInitRecord, type NpTemplate } from './cmStaffInit';
 import { initialLanguages } from './cmLanguage';
-import { cmActive, cmLogic, cmMediaOn } from './cmPlayerData';
+import { cmActive, cmLogic, cmMarketOn, cmMediaOn } from './cmPlayerData';
 import { cmAwNewGame } from './cmAwards';
 import { cmResNewGame } from './cmReserves';
 import { cmRsvNewGame } from './cmReserveMatches';
@@ -733,7 +733,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   startScoreSeason();
   addNews({ cat: 'general', key: 'news.welcome', params: { manager: o.managerName, club: club.name } });
   g.manager.onboard = {};
-  if (!cmActive(g) && windowOpen()) addNews({ cat: 'transfer', key: 'window.opened', params: { date: windowLastDay() ?? g.date } });
+  if (!cmMarketOn(g) && windowOpen()) addNews({ cat: 'transfer', key: 'window.opened', params: { date: windowLastDay() ?? g.date } });
   // sponsorvalget findes ikke i ægte CM 01/02
   if (legacyExtended(g)) addNews({ cat: 'finance', key: 'sponsor.offers', params: {} });
   // ægte CM 01/02 starter med tre nyheder (målt i originalen): ansættelsen, bestyrelsens mål og kampprogrammet

@@ -23,7 +23,7 @@
 import type { Club, GameState, Player, TransferOffer } from './types';
 import { squad } from './state';
 import { cmForeign } from './cmNewsScope';
-import { cmActive } from './cmPlayerData';
+import { cmMarketOn } from './cmPlayerData';
 
 /** Grænsen for udlændinge i truppen (+0x13) pr. nation i 2001/02; standard 50. 0xff (Belgien) = ingen grænse (sweep-rulebooks §3.2) */
 export const CM_FOREIGN_CAP: Record<string, number> = {
@@ -112,8 +112,8 @@ export function cmCheckOffer(g: GameState, o: TransferOffer): OfferCheck {
   // 3. trupplads (0x8cd450): køberen får spilleren og mister byttespillerne
   if (squad(o.buyer).length + 1 - swap.length > 50) return { code: 1, reason: 4 };
 
-  // 4.–5. nationens regelsæt (0x8e8800) og vinduet: 2001/02-reglerne (MODERN_PARITY: verdenen) – 2026/27 har spillets egne vinduer og ingen loft
-  if (!cmActive(g)) return { code: 0, reason: 0 };
+  // 4.–5. nationens regelsæt (0x8e8800) og vinduet: konstruktørernes tal står fast i exe'en – alle CM-databaser med originalens marked (cmMarketOn)
+  if (!cmMarketOn(g)) return { code: 0, reason: 0 };
   const limit = cmForeignLimit(g, buyer);
   if (limit !== null && cmForeignPlayer(g, p, buyer.nation) && !swap.some((s) => cmForeignPlayer(g, s, buyer.nation))) {
     const foreign = squad(o.buyer).filter((x) => cmForeignPlayer(g, x, buyer.nation)).length;

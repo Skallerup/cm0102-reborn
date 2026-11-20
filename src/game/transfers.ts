@@ -1,6 +1,6 @@
 // Transfers, kontrakter og AI-transfermarked (forbedring #7: behovsstyrede AI-klubber).
 import { holidayOpt, onHoliday } from './cmHoliday';
-import { cmActive, cmLogic, cmMarketOn, cmMediaOn, cmRand, setRequestHooks, setStatusCode } from './cmPlayerData';
+import { cmLogic, cmMarketOn, cmMediaOn, cmRand, setRequestHooks, setStatusCode } from './cmPlayerData';
 import { cmBidChance, cmInterested, cmRequestNews } from './cmTransferList';
 import { transferNewsToMe } from './cmNewsScope';
 import { cmSignContractMorale } from './cmMedia';
@@ -44,10 +44,11 @@ import { cmNeedsPermit, cmPermitOn, cmWorkPermit } from './cmPermit';
 const toK = (eur: number, cid?: number) => Math.round(eur * cmGbp(gs(), cid || undefined));
 const fromK = (gbp: number, cid?: number) => Math.round(gbp / cmGbp(gs(), cid || undefined));
 
-/** Klubben, vinduet gælder for i den originale database i ægte tilstand: den angivne, ellers menneskets (landets regelsæt 0x8e8800) */
+/** Klubben, vinduet gælder for med originalens marked (cmMarketOn – alle CM-databaser i ægte tilstand, MODERN_PARITY §0 E): den angivne, ellers
+ *  menneskets (landets regelsæt 0x8e8800 – konstruktørernes vinduer står fast i exe'en, ikke i databasen) */
 function cmWindowClub(club?: number): Club | undefined {
   const g = gs();
-  if (!cmActive(g)) return undefined;
+  if (!cmMarketOn(g)) return undefined;
   return g.clubs[club ?? (g.userClub || -1)];
 }
 
@@ -88,7 +89,7 @@ export function refusedBy(p: Player, buyer: number): boolean {
 function inPlayedNation(c: Club): boolean {
   const g = gs();
   // med ønskelisterne (cmShortlistOn) afgør de selv, hvem der byder (0x84a020) – reglen gælder kun spillets egne skøn
-  return !cmActive(g) || cmShortlistOn(g) || g.activeNations.includes(c.nation);
+  return !cmMarketOn(g) || cmShortlistOn(g) || g.activeNations.includes(c.nation);
 }
 
 function canBidOnHuman(p: Player, buyer: number): boolean {
@@ -1416,7 +1417,7 @@ export function aiTransferTick() {
   const g = gs();
   // ønskelisterne (0x83b6e0/0x84a020) står for computerens køb og salg – spillets eget marked er slået fra
   if (cmShortlistOn(g)) return;
-  if (!cmActive(g) && !windowOpen()) return;   // ægte tilstand: hver klubs eget lands vindue (aiClubTurn)
+  if (!cmMarketOn(g) && !windowOpen()) return;   // ægte tilstand: hver klubs eget lands vindue (aiClubTurn)
   const m = month(g.date);
   const rate = m === 7 || m === 8 ? 1 / 5 : m === 1 ? 1 / 9 : m === 6 ? 1 / 12 : 1 / 60;
   // skjulte klubber (uden for de spilbare ligaer) handler ikke selv – de sælger kun, når andre byder
@@ -1431,7 +1432,7 @@ export function aiTransferTick() {
 
 function aiClubTurn(club: Club) {
   const g = gs();
-  if (cmActive(g) && !windowOpen(g.date, club.id)) return;
+  if (cmMarketOn(g) && !windowOpen(g.date, club.id)) return;
   const sq = squad(club.id);
   // den originale database i ægte tilstand: computerens trupplan 0x83cb40 sætter til salg/leje og fritstiller (cmSquadPlanGame.ts) – ikke her
   const plan = cmMarketOn(g) && !!g.cmPlan?.[club.id];
@@ -1528,13 +1529,13 @@ function startPursuit(o: TransferOffer) {
 export function aiPursuits() {
   const g = gs();
   if (cmShortlistOn(g)) return;   // ønskelisternes genudfyldning efter et afslag (0x843e10) erstatter jagten
-  if (!g.pursuits?.length || (!cmActive(g) && !windowOpen())) return;
+  if (!g.pursuits?.length || (!cmMarketOn(g) && !windowOpen())) return;
   const keep: typeof g.pursuits = [];
   for (const pu of g.pursuits) {
     const p = g.players[pu.player];
     const club = g.clubs[pu.club];
     if (!p || !club || !p.club || !isHumanClub(p.club) || !inPlayedNation(club)) continue;
-    if (cmActive(g) && !windowOpen(g.date, club.id)) { keep.push(pu); continue; }
+    if (cmMarketOn(g) && !windowOpen(g.date, club.id)) { keep.push(pu); continue; }
     if (g.date < pu.next) { keep.push(pu); continue; }
     if (g.offers.some((o) => o.player === p.id && o.status === 'pending')) { keep.push(pu); continue; }
     const fee = roundValue(Math.min(pu.maxFee, pu.lastFee * rng.range(1.08, 1.2)));
@@ -2101,8 +2102,8 @@ setSlApply(cmShortlistApply);
 export function aiReleaseClauses() {
   const g = gs();
   if (cmShortlistOn(g)) return;   // ønskelisternes bud (build_bid 0x8e5d60) erstatter skønnet
-  if (!cmActive(g) && !windowOpen()) return;
-  const clubs = Object.values(g.clubs).filter((c) => !isHumanClub(c.id) && c.balance > 0 && (!cmActive(g) || windowOpen(g.date, c.id)));
+  if (!cmMarketOn(g) && !windowOpen()) return;
+  const clubs = Object.values(g.clubs).filter((c) => !isHumanClub(c.id) && c.balance > 0 && (!cmMarketOn(g) || windowOpen(g.date, c.id)));
   for (const p of Object.values(g.players)) {
     const rel = p.contract?.release;
     if (!rel || !p.club || !isHumanClub(p.club) || p.loan || p.contract?.futureClub) continue;
@@ -2300,7 +2301,7 @@ export function interestedClubs(p: Player): Interest[] {
   // den originale database i ægte tilstand, menneskets spiller: computerklubberne efter 0x842180 (cmTransferList.ts, *estimeret*)
   // nyt spil-forløbet (Take Control): klubben vises, som den bliver efter indlæsningen – før stod spillets egne ønskelister som røde Wnt-mærker,
   // der forsvandt, når spillet var indlæst (ejerens test 16/11)
-  const cm = cmShortlistOn(g) || (cmActive(g) && (isHumanClub(p.club) || inSetup()));
+  const cm = cmShortlistOn(g) || (cmMarketOn(g) && (isHumanClub(p.club) || inSetup()));
   if (cm) for (const id of cmShortlistOn(g) ? cmInterestedClubs(g, p) : cmInterested(g, p, clubLevel)) out.push({ club: id });
   for (const c of Object.values(g.clubs)) {
     if (c.id === p.club || cm) continue;
@@ -2331,7 +2332,7 @@ export function windowLastDay(date = gs().date, club?: number): string | null {
 export function windowNews() {
   const g = gs();
   // CM 01/02 har ingen af disse nyheder (transfervinduerne kom først i 2002) – kun i det udvidede spil
-  if (cmActive(g)) return;
+  if (cmMarketOn(g)) return;
   const today = g.date, yesterday = addDays(today, -1);
   const open = windowOpen(today), wasOpen = windowOpen(yesterday);
   if (open && !wasOpen) {
