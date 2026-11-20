@@ -1539,6 +1539,7 @@ Object.assign(it, {
   "crash.title": "Qualcosa è andato storto",
   "crash.text": "Il gioco ha incontrato un errore. È stato segnalato automaticamente – la tua partita salvata è al sicuro. Ricarica per continuare.",
   "crash.reload": "Ricarica",
+  "crash.run": "Il gioco ha incontrato un errore durante la continuazione ({date}). È stato segnalato automaticamente e la partita è tornata a prima di premere Continue: non è andato perso nulla.",
   "award.lgManagerMe": "Premio importante per {last}",
   "award.lgManagerMe.body": "{manager} ha vinto il premio di Allenatore dell'Anno della {comp} per {season}.\n\nAl secondo posto si è piazzato {runner}.",
   "award.lgManager": "{last} nominato Allenatore dell'Anno",

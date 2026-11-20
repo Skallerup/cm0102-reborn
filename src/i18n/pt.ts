@@ -1539,6 +1539,7 @@ Object.assign(pt, {
   "crash.title": "Algo deu errado",
   "crash.text": "O jogo encontrou um erro. Ele foi relatado automaticamente – seu jogo salvo está seguro. Recarregue para continuar.",
   "crash.reload": "Recarregar",
+  "crash.run": "O jogo encontrou um erro ao continuar ({date}). Foi comunicado automaticamente e o jogo voltou ao ponto antes de carregar em Continue – nada se perdeu.",
   "award.lgManagerMe": "Grande prêmio para {last}",
   "award.lgManagerMe.body": "{manager} ganhou o prêmio de Treinador do Ano da {comp} para {season}.\n\nO segundo colocado foi {runner}.",
   "award.lgManager": "{last} eleito Treinador do Ano",

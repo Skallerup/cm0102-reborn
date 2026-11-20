@@ -1539,6 +1539,7 @@ Object.assign(fr, {
   "crash.title": "Une erreur est survenue",
   "crash.text": "Le jeu a rencontré une erreur. Elle a été signalée automatiquement – votre partie sauvegardée est intacte. Rechargez pour continuer.",
   "crash.reload": "Recharger",
+  "crash.run": "Le jeu a rencontré une erreur en continuant ({date}). Elle a été signalée automatiquement et la partie est revenue là où elle était avant d'appuyer sur Continue – rien n'est perdu.",
   "award.lgManagerMe": "Grande distinction pour {last}",
   "award.lgManagerMe.body": "{manager} a remporté le trophée de l'entraîneur de l'année en {comp} pour {season}.\n\nLe dauphin est {runner}.",
   "award.lgManager": "{last} élu entraîneur de l'année",

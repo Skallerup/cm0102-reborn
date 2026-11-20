@@ -1539,6 +1539,7 @@ Object.assign(tr, {
   "crash.title": "Bir şeyler ters gitti",
   "crash.text": "Oyunda bir hata oluştu. Hata otomatik olarak bildirildi – kayıtlı oyunun güvende. Devam etmek için sayfayı yenile.",
   "crash.reload": "Yenile",
+  "crash.run": "Devam ederken oyunda bir hata oluştu ({date}). Otomatik olarak bildirildi ve oyun Continue'ya basmadan önceki yerine döndü – hiçbir şey kaybolmadı.",
   "award.lgManagerMe": "{last} için büyük ödül",
   "award.lgManagerMe.body": "{manager}, {season} için {comp} Yılın Teknik Direktörü ödülünü kazandı.\n\nİkinci olan {runner} oldu.",
   "award.lgManager": "{last} Yılın Teknik Direktörü seçildi",

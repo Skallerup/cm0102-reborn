@@ -14,6 +14,7 @@ export const nb: Record<string, string> = {
   "crash.title": "Noe gikk galt",
   "crash.text": "Spillet fikk en feil. Den er rapportert automatisk – det lagrede spillet ditt er trygt. Last inn på nytt for å fortsette.",
   "crash.reload": "Last inn på nytt",
+  "crash.run": "Spillet fikk en feil under fortsettelsen ({date}). Den er rapportert automatisk, og spillet er tilbake der det var før du trykket Continue – ingenting er tapt.",
   "common.ok": "OK",
   "common.back": "Tilbake",
   "common.cancel": "Avbryt",

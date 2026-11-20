@@ -1539,6 +1539,7 @@ Object.assign(de, {
   "crash.title": "Etwas ist schiefgelaufen",
   "crash.text": "Im Spiel ist ein Fehler aufgetreten. Er wurde automatisch gemeldet – dein gespeichertes Spiel ist sicher. Lade die Seite neu, um weiterzuspielen.",
   "crash.reload": "Neu laden",
+  "crash.run": "Beim Fortsetzen ist ein Fehler aufgetreten ({date}). Er wurde automatisch gemeldet, und das Spiel steht wieder dort, wo es vor dem Klick auf Continue war – nichts ist verloren.",
   "award.lgManagerMe": "Große Auszeichnung für {last}",
   "award.lgManagerMe.body": "{manager} hat die Auszeichnung zum Manager des Jahres der {comp} für {season} gewonnen.\n\nZweiter wurde {runner}.",
   "award.lgManager": "{last} zum Manager des Jahres gewählt",

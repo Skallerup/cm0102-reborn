@@ -14,6 +14,7 @@ export const sv: Record<string, string> = {
   "crash.title": "Något gick fel",
   "crash.text": "Spelet stötte på ett fel. Det har rapporterats automatiskt – ditt sparade spel är säkert. Ladda om för att fortsätta.",
   "crash.reload": "Ladda om",
+  "crash.run": "Spelet stötte på ett fel när det fortsatte ({date}). Det har rapporterats automatiskt, och spelet är tillbaka där det var innan du tryckte på Continue – inget har gått förlorat.",
   "common.ok": "OK",
   "common.back": "Tillbaka",
   "common.cancel": "Avbryt",
