@@ -21,7 +21,8 @@ import { ClassicManagerHistory } from './screens/ManagerHistoryClassic';
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { flushAutosave, forgetLast, saveGame, scheduleAutosave } from '../game/save';
 import { runUntil, watchedDay } from '../game/sim';
-import { runDays } from './dayRunner';
+import { GameRunError, runDays } from './dayRunner';
+import { reportError } from '../online/errors';
 import { realCompName, setCompEra } from '../i18n/comps';
 import { authentic } from '../game/rules';
 import { cmTimeOfDay } from '../game/cmCalendar';
@@ -418,10 +419,21 @@ export function Shell() {
     // 13/11); derefter opdateres den efter hver dag (runUntil giver plads med setTimeout(0) mellem dagene)
     if (cmNav) { setRunning(g0.date); await painted(); }
     setRunFrac(0);
-    const r = await runDays({ ...opts, shouldStop: () => stopRef.current,
-      onProgress: (d) => { if (cmNav || Date.now() - t0 > 60) { setRunning(d); setRunFrac(0); } setRunNote(d.slice(5, 10) === '06-30' && !authentic() ? t('cl.run.season') : null); },
-      // (arbejderen) dagen d regnes: datoen før og brøkdelen
-      onFrac: (d, f) => { if (cmNav || Date.now() - t0 > 60) { setRunning(addDays(d, -1)); setRunFrac(f); } } });
+    let r: Awaited<ReturnType<typeof runDays>>;
+    try {
+      r = await runDays({ ...opts, shouldStop: () => stopRef.current,
+        onProgress: (d) => { if (cmNav || Date.now() - t0 > 60) { setRunning(d); setRunFrac(0); } setRunNote(d.slice(5, 10) === '06-30' && !authentic() ? t('cl.run.season') : null); },
+        // (arbejderen) dagen d regnes: datoen før og brøkdelen
+        onFrac: (d, f) => { if (cmNav || Date.now() - t0 > 60) { setRunning(addDays(d, -1)); setRunFrac(f); } } });
+    } catch (e) {
+      // (20/11) en fejl i kørslen: før blev fremdriftsbjælken stående (siden låst), og spilleren genindlæste til sidste gem uden at vide hvorfor –
+      // og fejlen fra arbejderen nåede aldrig fejlloggen. Nu: rapportér den, slip bjælken og sig det
+      setRunning(null); setRunNote(null); setRunFrac(0);
+      reportError(e, `\n--- Continue Game (${g0.date}${e instanceof GameRunError ? ` → ${e.date}, Worker` : ''}) ---`);
+      notify();
+      await askNotice(e instanceof GameRunError ? t('crash.run', { date: dateFmt(e.date) }) : t('crash.text'), { head: t('crash.title') });
+      return {};
+    }
     setRunning(null); setRunNote(null); setRunFrac(0);
     if (r.stop === 'news') { notify(); return r; }
     handle(r);

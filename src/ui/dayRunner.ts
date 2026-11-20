@@ -9,6 +9,14 @@ import { cmShortlistOn } from '../game/cmShortlistGame';
 import { getLang } from '../i18n';
 import { rng } from '../game/rng';
 import type { DayIn, DayOut, RunOpts } from './dayWorker';
+import { reportError } from '../online/errors';
+
+/** Spillets egen kode fejlede i arbejderen (ikke arbejderen selv): hovedtrådens spil er urørt – det samme spil ville fejle på samme måde i
+ *  hovedtråden (20/11: ferien gik ned midt i en dag, og genkørslen i hovedtråden efterlod et halvt regnet spil), så kørslen stopper her */
+export class GameRunError extends Error {
+  readonly date: string;
+  constructor(message: string, date: string) { super(message); this.name = 'GameRunError'; this.date = date; }
+}
 
 type Opts = Parameters<typeof runUntil>[0] & {
   /** brøkdelen af dagen undervejs (0..1) – kun fra arbejderen */
@@ -36,6 +44,8 @@ export async function runDays(opts: Opts): Promise<DayResult> {
   try {
     return await inWorker(opts);
   } catch (e) {
+    if (e instanceof GameRunError) throw e;
+    reportError(e, '\n--- dayWorker (infrastruktur) – kører i hovedtråden ---');
     console.warn('Continue Game i en Worker fejlede – kører i hovedtråden', e);
     broken = true;
     worker?.terminate(); worker = null;
@@ -62,7 +72,12 @@ function inWorker(opts: Opts): Promise<DayResult> {
         return;
       }
       done();
-      if (m.type === 'error') { reject(new Error(m.message)); return; }
+      if (m.type === 'error') {
+        const err = new GameRunError(m.message.split('\n')[0], m.date ?? start);
+        err.stack = m.message;
+        reject(err);
+        return;
+      }
       const t1 = performance.now();
       setGame(m.game);
       restoreIndexes(m.idx);

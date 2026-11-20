@@ -215,6 +215,9 @@ export function upgradeLoaded() {
   // gamle gemte spil i udvidet tilstand åbnes, som de blev gemt (moderne udseende + udvidet) – tilstanden ændres ikke (setGame → setSavedModern)
   // fællesspil er altid det originale (classic + ægte tilstand) – alle klienter stiller samme spil om ens
   forceMultiplayerAuthentic(g);
+  // ferien kører kun, mens Shell's ferieløkke kører (manager.holiday sættes ved start og ryddes bagefter). Et spil gemt midt i ferien (fx før en
+  // fejl i ferieløkken 20/11) havde ferien hængende: assistenten svarede på bud resten af spillet, uden at man var på ferie
+  if (!g.humans?.length && g.manager?.holiday) g.manager.holiday = undefined;
   if (!currentSave(g) && addMissingConference()) {
     const club = g.clubs[g.userClub];
     if (club && g.comps.UECL?.clubs.includes(club.id)) addNews({ cat: 'general', key: 'news.ueclQualified', params: { club: club.name } });

@@ -985,6 +985,17 @@ export function playPendingAsAi() {
   if (f && !f.result) simulateFixture(f, true, false);
 }
 
+/** Kampe for menneskets klub, hvis dato er passeret uden resultat: playDay venter kun på én kamp pr. dag for mennesket, så en anden kamp samme
+ *  dag blev aldrig spillet (20/11: en FA Cup-omkamp lagt oven i en ligakamp – 37/38 ligakampe, og gemte spil står stadig sådan). Originalen
+ *  har aldrig to kampe samme dag for en klub (add_fixture 0x5aa680 flytter den ene); sker det alligevel, spilles den med assistenten dagen efter. */
+function playMissedUserFixtures() {
+  const g = gs();
+  if (!g.userClub) return;
+  const missed = Object.values(g.fixtures).filter((f) => !f.result && f.date < g.date && f.comp !== 'FRIENDLY' && (f.home === g.userClub || f.away === g.userClub)
+    && g.comps[f.comp] && !g.comps[f.comp].finished);
+  for (const f of missed.sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id)) simulateFixture(f, true, false);
+}
+
 /** "Fortsæt" – én dag frem */
 export function continueGame(pauseBefore?: (date: string) => boolean): DayResult {
   const g = gs();
@@ -998,6 +1009,7 @@ export function continueGame(pauseBefore?: (date: string) => boolean): DayResult
   }
   if (g.pendingFixture) return { match: g.pendingFixture };
   if (!g.dayDone) return playDay();
+  playMissedUserFixtures();
   const lastNews = g.nextId.news;
   newDay();
   cmVirtualHumans(g, humanClubIds());

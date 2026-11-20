@@ -764,6 +764,10 @@ function resolveTie(comp: Competition, f: Fixture) {
       cm: { ...f.cm, w30: f.cm.w30 - (f.cm.rep ?? 0) + n, f38: f.cm.fRep?.[n - 1] ?? 3, rep: n } });
     // 0x51a830–0x51a8b2: kampdato + 0x22 dage, så altid find_new_fixture_date 0x5ab510 (oraklet: lørdag 13/10 → onsdag 24/10)
     cmFindNewDate(g, fr);
+    // 0x51aab9–0x51aecc: derefter add_fixture 0x5aa680(omkampen, 1) – den flytter klubbernes kampe med lavere type på datoen (0x5ab510 godtager
+    // en dato med en ligakamp, når omkampens type er højere). Uden det blev ligakampen stående samme dag, og menneskets ene kamp blev aldrig
+    // spillet (20/11: FA Cup-omkampen Man Utd–West Ham lørdag 2/3-02 oven i Sunderland–Man Utd → 37/38 ligakampe)
+    cmPlaceFixture(g, fr);
     return;
   }
   if (tie.legs === 1) {

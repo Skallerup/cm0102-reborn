@@ -1,6 +1,6 @@
 // English
 export const en: Record<string, string> = {
-  'crash.title': "Something went wrong", 'crash.text': "The game hit an error. It has been reported automatically – your saved game is safe. Reload to carry on.", 'crash.reload': "Reload", 'common.ok': 'OK', 'common.back': 'Back', 'common.cancel': 'Cancel', 'common.close': 'Close', 'common.days': 'days', 'common.delete': 'Delete',
+  'crash.title': "Something went wrong", 'crash.text': "The game hit an error. It has been reported automatically – your saved game is safe. Reload to carry on.", 'crash.reload': "Reload", 'crash.run': "The game hit an error while continuing ({date}). It has been reported automatically, and the game is back where it was before you pressed Continue – nothing has been lost.", 'common.ok': 'OK', 'common.back': 'Back', 'common.cancel': 'Cancel', 'common.close': 'Close', 'common.days': 'days', 'common.delete': 'Delete',
   'common.free': 'Free agent', 'common.from': 'from', 'common.no': 'No', 'common.yes': 'Yes', 'common.none': 'None', 'common.stop': 'Stop',
   'common.week': 'week', 'common.and': 'and', 'common.years': 'years',
 

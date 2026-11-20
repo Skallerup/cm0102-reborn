@@ -18,7 +18,7 @@ export type DayIn =
 export type DayOut =
   | { type: 'progress'; date: string; frac: number }
   | { type: 'done'; result: { match?: number; stop?: string }; game: GameState; idx: IndexSnapshot }
-  | { type: 'error'; message: string };
+  | { type: 'error'; message: string; date?: string };
 
 let stop = false;
 const post = (m: DayOut) => (self as unknown as Worker).postMessage(m);
@@ -48,7 +48,9 @@ self.onmessage = async (e: MessageEvent<DayIn>) => {
     packCarry(gs());
     post({ type: 'done', result, game: gs(), idx: indexSnapshot() });
   } catch (err) {
-    post({ type: 'error', message: err instanceof Error ? `${err.message}\n${err.stack ?? ''}` : String(err) });
+    let date: string | undefined;
+    try { date = gs().date; } catch { date = undefined; }
+    post({ type: 'error', message: err instanceof Error ? `${err.message}\n${err.stack ?? ''}` : String(err), date });
   } finally {
     SL_PROGRESS.cb = undefined;
     // arbejderen beholder ikke spillet (hukommelsen) – næste kørsel får hovedtrådens udgave

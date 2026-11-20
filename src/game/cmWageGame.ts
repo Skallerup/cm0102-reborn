@@ -21,7 +21,7 @@
 // manager uden ikke-spillerpost, ferietjekket 0x5fe040 i 0x600a50 ikke porteret.
 import type { Club, GameState, Player } from './types';
 import { type CmCtx, G, SparseMem } from './cmMem';
-import { onHoliday_5fd210, writeHolidayMem } from './cmHoliday';
+import { holidayOpt_5fea50, onHoliday_5fd210, writeHolidayMem } from './cmHoliday';
 import { getMaxWage_5968d0, maxStaffWage_597db0, recalcWages_598370 } from './cmMaxWage';
 import { clubInSeason_669bd0, linkedClub_540a50 } from './cmClubLinks';
 import { defaultStaffContract_864550, defaultWageUnset_862720 } from './cmWage';
@@ -57,6 +57,9 @@ export function cmMemCall(c: CmCtx, adr: number, ...a: number[]): number {
     case 0x540a50: return linkedClub_540a50(c.m, a[0], a[1], a[2]);
     case 0x669bd0: return clubInSeason_669bd0(c, a[0], a[1], a[2]);
     case 0x600a50: return humanClub_600a50(c, a[0], a[1]) ? 1 : 0;
+    // HM.get_holiday_option(i, mennesket) 0x5fea50 – ferievalgene i HUMAN_MANAGER-posten (cmHoliday.ts). Nås fra calc_asking_price 0x4d16ce,
+    // når mennesket er på ferie (0x5fd210 ≠ 0): før kastede den her, og ferien gik i stå ved første bud på en af hans spillere (20/11)
+    case 0x5fea50: return holidayOpt_5fea50(c.m, a[0], a[1] >>> 0, c.m.s32(G.STAFF_COUNT));
   }
   throw new Error(`cmWageGame: kald 0x${adr.toString(16)} er ikke porteret`);
 }

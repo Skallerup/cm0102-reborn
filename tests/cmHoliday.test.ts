@@ -5,7 +5,7 @@ import { holidayOpt, holidayOpt_5fea50, holidayToggle, onHoliday_5fd210 } from '
 import { createGame, type WorldData } from '../src/game/newgame';
 import { gs } from '../src/game/state';
 import { G } from '../src/game/cmMem';
-import { buildSlMem } from '../src/game/cmShortlistGame';
+import { buildSlMem, cmAskingPrice, SL_ON } from '../src/game/cmShortlistGame';
 import { humanClub_600a50 } from '../src/game/cmWageGame';
 import { cmHolidayAnswerBids } from '../src/game/transfers';
 import { holidayJobAnswers, holidayJobs, holidayJobYes } from '../src/game/cmBoardGame';
@@ -74,6 +74,32 @@ describe('ferien i spillet (3.9.60, ægte tilstand)', () => {
     cmHolidayAnswerBids();
     expect(b.status).not.toBe('pending');
     g.manager.holiday = undefined;
+  });
+  it('udbudsprisen på ferie (ønskelisterne til): 0x4d16ce → 0x5fea50 i lønportenes hukommelse kaster ikke (20/11: ferien gik ned ved første bud)', () => {
+    const g = gs();
+    const prev = SL_ON.on;
+    SL_ON.on = true;
+    try {
+      const p = Object.values(g.players).filter((x) => x.club === mu && !x.loan).sort((a, b) => b.ca - a.ca)[0];
+      const buyer = Object.values(g.clubs).find((c) => c.id !== mu && c.league === g.clubs[mu].league)!;
+      const home = cmAskingPrice(g, p, buyer.id);
+      g.manager.holiday = {};
+      const hol = cmAskingPrice(g, p, buyer.id);
+      g.manager.holiday = { rejectBelow: true };
+      const below = cmAskingPrice(g, p, buyer.id);
+      expect(home).toBeGreaterThan(0);
+      expect(hol).toBeGreaterThan(0);
+      expect(below).toBeGreaterThan(0);
+      // og assistentens svar på et bud går igennem (før: Error "cmWageGame: kald 0x5fea50 er ikke porteret")
+      g.manager.holiday = {};
+      const o = { id: g.nextId.offer++, player: p.id, buyer: buyer.id, seller: mu, fee: 1_000, loan: false, status: 'pending' as const, created: g.date, respondBy: g.date };
+      g.offers.push(o);
+      expect(() => cmHolidayAnswerBids()).not.toThrow();
+      expect(o.status).not.toBe('pending');
+    } finally {
+      SL_ON.on = prev;
+      g.manager.holiday = undefined;
+    }
   });
   it('jobtilbuddet besvares af assistenten: nej fjerner tilbuddet uden ny ledighed, ja giver jobbet', () => {
     const g = gs();
