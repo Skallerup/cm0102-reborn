@@ -413,7 +413,7 @@ function playReserveMatch(r: CmRsvFixture): MatchReport | null {
     const opts = { neutral: false, needsWinner: undefined, importance: m.importance, var: false, weather: m.weather, finish: m.finish, homeAdv: m.homeAdv, finSlope: m.finSlope, squash: m.squash, squashAtt: m.squashAtt, squashDef: m.squashDef, ease: m.ease, cards: m.cards, corners: m.corners, countBlocked: m.countBlocked, close: m.close, closeSlope: m.closeSlope, onTarget: m.onTarget, offside: m.offside, shotSpread: m.shotSpread, oneOnOneK: m.oneOnOneK, level: m.level, openDamp: m.openDamp, rules: m.rules, pitch: m.pitch, referee: m.referee, subs: maxSubs(), fixtureId: f.id, date: g.date };
     const grid = gridEngineOn(g) ? getGridFactory() : null;
     const rep = grid ? grid(m.home, m.away, { ...opts, commentary: false, aiSubs: [true, true] }, rr).runToEnd() : new MatchSim(m.home, m.away, { ...opts, commentary: false, aiSubs: [true, true] }, rr).runToEnd();
-    cmRsvRecord(g, r, rep.stats[0].goals, rep.stats[1].goals);
+    cmRsvRecord(g, r, rep.stats[0].goals, rep.stats[1].goals, rep);
     // 0x6b6cc0 (kamprapportens omdømme/moral) og 0x7c0d70 (kategori 1, karaktersnittet tæller) – ingen kontrakttællere (0x4ca6d0)
     cmAfterMatch(g, f, rep, squad, { cats: [1, 1], avg: true, contract: false });
     // 0x55ca00: venskabsgrenen (ligaorganerne uden afsoning) + reservekampens lige røde kort (0x7e8278)

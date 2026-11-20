@@ -1748,7 +1748,7 @@ async function run(look) {
     await page.evaluate(async () => { const c = window.__cm; const g = c.gs(); const f = Object.values(g.fixtures).filter((x) => x.home === g.userClub || x.away === g.userClub).sort((a, b) => a.date.localeCompare(b.date))[0]; if (!f) return; const days = Math.round((Date.parse(f.date) - Date.parse(g.date)) / 864e5) - 1; if (days > 0) await c.advance(days); const me = g.clubs[g.userClub]; me.sqnDue = undefined; me.euroDue = undefined; for (const n of g.news) n.read = true; });
     // originalens baggrundskampe (fixture −2, cmReserves.ts): fra 1/8 spiller klubberne uden for de valgte ligaer – ingen "Reserves win"-nyheder
     if (ENGINE_GRID) {
-      const res = await gs(() => { const g = window.__cm.gs(); return { played: g.cmRes?.played ?? 0, groups: g.cmRes?.groups.length ?? 0, news: g.news.filter((n) => n.key.startsWith('res.')).length, date: g.date }; });
+      const res = await gs(() => { const g = window.__cm.gs(); return { played: g.cmRes?.played ?? 0, groups: g.cmRes?.groups.length ?? 0, news: g.cmRsv ? 0 : g.news.filter((n) => n.key.startsWith('res.')).length, date: g.date }; });
       if (res.date >= '2001-08-02' && (!res.groups || res.played < 100 || res.news)) throw new Error(`baggrundskampene: ${JSON.stringify(res)}`);
     }
     await page.evaluate(async () => { const c = window.__cm; const g = c.gs(); const f = Object.values(g.fixtures).filter((x) => x.home === g.userClub || x.away === g.userClub).sort((a, b) => a.date.localeCompare(b.date))[0]; if (!f) return; const days = Math.round((Date.parse(f.date) - Date.parse(g.date)) / 864e5) - 1; if (days > 0) await c.advance(days); const g2 = c.gs(); const me = g2.clubs[g2.userClub]; me.sqnDue = undefined; me.euroDue = undefined; for (const n of g2.news) n.read = true; });
@@ -1834,6 +1834,31 @@ async function run(look) {
     if (bad.length) throw new Error(`nyheder, der ikke findes i CM 01/02: ${[...new Set(bad)].join(', ')}`);
     // kampdagen: ingen "Press Continue Game to go to your match."
     if (await page.locator('.cx-md-hint').count()) throw new Error('kampdagens hjælpetekst står der stadig');
+  });
+  // reservekampene (cmReserveMatches.ts, 0x45ccf0/0x4671e0/0x723dd2/0x7e6f70): reservevisningens Fixtures (kampprogram med resultat), Last Match (resultat, målscorere,
+  // "Reserves Latest") og nyheden "X Reserves win/draw/lose" – ét resultat lægges ind, så skærmene har noget at vise
+  if (look === 'klassisk' && ENGINE_GRID) await step('reservevisningen: Fixtures og Last Match med reservekampe (klassisk)', async () => {
+    const ok = await page.evaluate(async () => {
+      const g = window.__cm.gs();
+      if (!g.cmRsv) return false;
+      const m = await import('/cm0102-reborn/src/game/cmReserveMatches.ts');
+      const opp = Object.values(g.clubs).find((c) => c.league === g.clubs[g.userClub].league && c.id !== g.userClub);
+      m.cmRsvRecord(g, { id: -1999999999, date: g.date, home: g.userClub, away: opp.id }, 2, 1);
+      return true;
+    });
+    if (!ok) return;
+    const news = await gs(() => window.__cm.gs().news.filter((n) => n.key === 'res.win'));
+    if (news.length !== 1) throw new Error('reservenyheden mangler');
+    await go({ name: 'squad', tab: 'reserves' });
+    await page.waitForTimeout(300);
+    await page.locator('.cx-subrow button', { hasText: 'Fixtures' }).click();
+    await page.waitForSelector('[data-testid="rsv-fixtures"]', { timeout: 3000 });
+    if (!/2:1/.test(await page.locator('[data-testid="rsv-fixtures"]').innerText())) throw new Error('reservekampens resultat mangler i kampprogrammet');
+    await page.locator('.cx-subrow button', { hasText: 'Last Match' }).click();
+    await page.waitForSelector('.cx-rsv-match', { timeout: 3000 });
+    await page.locator('.cx-rsv-match').getByText(await t('cl.res.latest')).first().click().catch(() => {});
+    await gs(() => { const g = window.__cm.gs(); g.news = g.news.filter((n) => !n.key.startsWith('res.')); });
+    await go({ name: 'club' });
   });
   // CM 01/02's priser (cmAwards.ts / AwardsClassic.tsx): "English Awards" med databasens tidligere vindere og spillets egne vindere
   if (look === 'klassisk' && ENGINE_GRID) await step('Awards: English Awards (original)', async () => {

@@ -43,6 +43,8 @@ export function newsParams(n: NewsItem): Record<string, string | number> {
   const p: Record<string, string | number> = { ...n.params };
   // bestyrelsens nyheder (cmBoardText.ts) og ansættelsen: teksten bygges igen på det valgte sprog (ældre nyheder uden `bd`/`full` beholder den gemte)
   if (n.key === 'board.cm' && typeof p.bd === 'string') { try { const r = boardCmText(JSON.parse(p.bd)); p.title = r.title; p.body = r.body; } catch { /* den gemte tekst bruges */ } }
+  // reservekampenes nyhed (0x7e6f70, exe 31862-31870): klubnavnene står som "X Reserves" i pladserne
+  if (n.key.startsWith('res.')) { p.teamR = t('res.club', { club: String(p.team ?? '') }); p.oppR = t('res.club', { club: String(p.opp ?? '') }); }
   if (n.key === 'news.cmAppoint' && typeof p.full === 'string') p.body = appointBody(p.full, String(p.manager), String(p.prev ?? ''));
   // CM 01/02's rygte 0xfbc (cmRumours.ts): overskriften 0x756e51
   if (n.key === 'cm.rum') p.title = cmRumTitle(n);
@@ -190,6 +192,8 @@ function cmIntParams(n: NewsItem, p: Record<string, string | number>): void {
 
 function bodyKey(n: NewsItem): string {
   if (n.key.startsWith('cmsr.')) return 'cmsr.body';
+  // uden stadion: exe'ens korte brødtekst (31865-31867)
+  if (n.key.startsWith('res.') && !n.params?.venue) return `${n.key}.body0`;
   if (n.key.startsWith('cmsn.')) return 'cmsr.body';
   // landsholdenes nyheder (cmIntlSquad.ts): brødteksten er valgt i spillet
   if (n.key.startsWith('cmint.') && typeof n.params?.body === 'string') return n.key.startsWith('cmint.r.') ? 'cmint.r.body' : `cmint.b.${n.params.body}`;

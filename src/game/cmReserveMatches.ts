@@ -29,12 +29,14 @@
 // Ikke porteret (UI/nyheder – senere opgave): reservemanagerens vtbl+4 0x7e6f70 (nyheden 0x25 om reserveholdets resultat til mennesket), "Reserves
 // Latest" (0x723dd2), klubbens kampprogram/sidste kamp i reservevisningen (0x45ccf0/0x4671e0), "Control Reserve Team" (+0x9a05 – mennesket vælger
 // selv), menneskets reserveudtagelse 0x8972c0, Belgiens bænk (+0x4d | 0x44 – Belgien er ikke spilbart i 2001), 0x5ad780's faste landsdage.
-import type { GameState, Player } from './types';
+import type { GameState, MatchReport, MiniReport, Player } from './types';
+import { packReport } from './miniReport';
 import { addDays, ageOn } from './dates';
 import { fixturesOn, squad } from './state';
 import { cmWeekday } from './cmCalendar';
 import { hasReserveTeam } from './cmBTeam';
-import { isHumanClub } from './humans';
+import { asOwner, isHumanClub } from './humans';
+import { addNews } from './state';
 import { cmFitOn, cmFitRead } from './cmFitnessGame';
 
 /** spillets turnerings-id for reservekampene (ikke i g.comps – som venskabskampene en "turnering uden tabel") */
@@ -50,9 +52,14 @@ export interface CmRsvState {
   next: number;
   /** spillede reservekampe i alt (måling) */
   played?: number;
-  /** menneskeklubbernes seneste reserveresultater (til en senere skærm) */
+  /** menneskeklubbernes seneste reserveresultater (reservevisningens kampprogram) */
   hist?: { d: string; h: number; a: number; hg: number; ag: number }[];
+  /** den seneste spillede dags reservekampe for alle klubber ("Reserves Latest", 0x723dd2): mål som [minut, hold, spiller, selvmål] */
+  day?: { d: string; r: CmRsvResult[] };
+  /** hver menneskeklubs seneste reservekamp (reservevisningens Last Match, 0x4671e0) med den kompakte kamprapport */
+  last?: Record<number, CmRsvResult & { d: string; mini?: MiniReport }>;
 }
+export interface CmRsvResult { id: number; h: number; a: number; hg: number; ag: number; s: [number, number, number, number][] }
 
 export const cmRsvOn = (g: GameState) => !!g.cmRsv && !g.draft;
 export function cmRsvNewGame(g: GameState): void { if (!g.draft) g.cmRsv = { fx: [], next: 1 }; }
@@ -172,15 +179,46 @@ export function cmRsvTake(g: GameState): CmRsvFixture[] {
   return today.filter((r) => r.date === g.date);
 }
 
-/** menneskeklubbens resultat gemmes (reservevisningens "Last Match"/kampprogram – senere skærm) */
-export function cmRsvRecord(g: GameState, r: CmRsvFixture, hg: number, ag: number): void {
+/** nyheden 0x25 (0x7e6f70: kun når mennesket ikke selv styrer reserverne) – "X Reserves win/draw/lose" til hver menneskeklub i kampen; titlen og
+ *  brødteksten er exe'ens (31862-31870, med stadion når hjemmeklubben har et), set fra menneskeklubbens side */
+function rsvNews(g: GameState, r: CmRsvFixture, hg: number, ag: number): void {
+  for (const mine of [r.home, r.away]) {
+    if (!isHumanClub(mine)) continue;
+    const home = mine === r.home, opp = home ? r.away : r.home, a = home ? hg : ag, b = home ? ag : hg;
+    const key = a > b ? 'res.win' : a === b ? 'res.draw' : 'res.loss';
+    const venue = g.clubs[r.home]?.stadium ?? '';
+    asOwner(mine, () => addNews({ cat: 'match', key, params: { team: g.clubs[mine]?.name ?? '', opp: g.clubs[opp]?.name ?? '', a, b, ...(venue ? { venue } : {}) }, link: { kind: 'club', id: mine } }));
+  }
+}
+
+/** kampens resultat gemmes: dagens liste ("Reserves Latest"), menneskeklubbernes program og seneste kamp (Fixtures/Last Match i reservevisningen) og nyheden */
+export function cmRsvRecord(g: GameState, r: CmRsvFixture, hg: number, ag: number, rep?: MatchReport): void {
   const st = g.cmRsv;
   if (!st) return;
   st.played = (st.played ?? 0) + 1;
+  const res: CmRsvResult = { id: r.id, h: r.home, a: r.away, hg, ag, s: (rep?.events ?? []).filter((e) => e.k === 'goal').map((e) => [e.m, e.t, e.og ? 0 : e.p ?? 0, e.og ? 1 : 0]) };
+  if (st.day?.d !== r.date) st.day = { d: r.date, r: [] };
+  st.day.r.push(res);
   if (isHumanClub(r.home) || isHumanClub(r.away)) {
     (st.hist ??= []).push({ d: r.date, h: r.home, a: r.away, hg, ag });
     if (st.hist.length > 40) st.hist.splice(0, st.hist.length - 40);
+    const mini = rep ? packReport(rep, (id) => g.players[id]?.number) : undefined;
+    for (const c of [r.home, r.away]) if (isHumanClub(c)) (st.last ??= {})[c] = { ...res, d: r.date, ...(mini ? { mini } : {}) };
+    rsvNews(g, r, hg, ag);
   }
+}
+
+/** reservevisningens kampprogram for en menneskeklub (0x45ccf0): kommende og spillede reservekampe i sæsonen, efter dato */
+export function cmRsvRows(g: GameState, club: number): { d: string; opp: number; home: boolean; res?: [number, number] }[] {
+  const st = g.cmRsv;
+  if (!st) return [];
+  const from = `${g.season}-07-01`, to = `${g.season + 1}-07-01`;
+  const mine = (a: number, b: number) => a === club || b === club;
+  const rows = [
+    ...(st.hist ?? []).filter((x) => mine(x.h, x.a) && x.d >= from && x.d < to).map((x) => ({ d: x.d, opp: x.h === club ? x.a : x.h, home: x.h === club, res: (x.h === club ? [x.hg, x.ag] : [x.ag, x.hg]) as [number, number] })),
+    ...st.fx.filter((x) => mine(x.home, x.away)).map((x) => ({ d: x.date, opp: x.home === club ? x.away : x.home, home: x.home === club })),
+  ];
+  return rows.sort((a, b) => a.d.localeCompare(b.d));
 }
 
 /** kun til tests/målinger */

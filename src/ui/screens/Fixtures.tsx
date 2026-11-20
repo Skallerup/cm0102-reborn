@@ -11,6 +11,7 @@ import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
 import { CxDrop, cxShortDate } from '../classic';
 import { authentic } from '../../game/rules';
+import { cmRsvRows } from '../../game/cmReserveMatches';
 import { cmFriendlyOn } from '../../game/cmFriendly';
 import { FriendlyDates, FriendlyTourClubs, FriendlyTourNations, cmFrCancelRow, cmFrCancellable, cmFrFixtureRows } from './FriendlyClassic';
 
@@ -37,13 +38,43 @@ export function Fixtures() {
   return isRetro() ? <ClassicFixtures /> : <ModernFixtures />;
 }
 
-/** CM 01/02: reserveholdets kampprogram (0x45ccf0) – originalen har ingen reservekampe for klubberne i de spilbare ligaer, så skærmen viser
- *  altid "There are no forthcoming reserve matches to be played." (0x45cdff → 0x98f7b8) */
-function ReserveFixturesClassic() {
-  return (
+/** CM 01/02: reserveholdets kampprogram (0x45ccf0) – kommende og spillede reservekampe (cmReserveMatches.ts: turneringen "Reserve"); uden kampe
+ *  "There are no forthcoming reserve matches to be played." (0x45cdff → 0x98f7b8) */
+export function ReserveFixturesClassic() {
+  const g = useGame()!;
+  const { nav } = useNav();
+  const rows = cmRsvRows(g, g.userClub);
+  if (!rows.length) return (
     <div className="cx-norecent">
       <Head title={t('nav.fixtures')} />
       <div className="cx-norecent-body">{t('cl.res.noFixtures')}</div>
+    </div>
+  );
+  const myNation = g.clubs[g.userClub]?.nation;
+  return (
+    <div>
+      <Head title={t('nav.fixtures')}>
+        <button className="cx-greybtn" disabled>{t('cl.fx.prev')}</button>
+        <button className="cx-greybtn" disabled>{t('cl.fx.next')}</button>
+      </Head>
+      <div className="cx-subtitle cx-orig-band">{t('cl.fx.season', { s: `${g.season}/${String((g.season + 1) % 100).padStart(2, '0')}` })}</div>
+      <div className="cx-fx cx-fx-orig" data-testid="rsv-fixtures">
+        {rows.map((r, i) => {
+          const c = g.clubs[r.opp];
+          const foreign = c && c.nation !== myNation;
+          const win = !r.res ? 0 : Math.sign(r.res[0] - r.res[1]);
+          return (
+            <div key={`${r.d}${i}`} className="cx-fx-row">
+              <span className="cx-fx-date">{cxShortDate(r.d)}</span>
+              <span className="cx-fx-opp" onClick={() => c && nav({ name: 'club', id: r.opp })}>{c?.short ?? '?'}</span>
+              <span className="cx-fx-nat">{foreign ? g.nations[c.nation]?.code : ''}</span>
+              <span className="cx-fx-ha">{r.home ? t('cl.fx.h') : t('cl.fx.a')}</span>
+              <span className="cx-fx-comp">{t('cl.res.comp')}</span>
+              <span className={`cx-fx-res ${win > 0 ? 'w' : win < 0 ? 'l' : ''}`}>{r.res ? `${r.res[0]}:${r.res[1]}` : '---'}</span>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -143,6 +174,7 @@ function ModernFixtures() {
     <div>
       <Head title={t('nav.fixtures')} />
       {!g.draft && <FriendliesPanel />}
+      {!g.draft && <ReservePanel />}
       <Panel className="flush">
         <table className="grid">
           <thead><tr><th>{t('col.date')}</th><th>{t('col.comp')}</th><th>{t('fix.stage')}</th><th>{t('fix.venue')}</th><th>{t('fix.opponent')}</th><th className="center">{t('fix.result')}</th><th></th></tr></thead>
@@ -169,6 +201,27 @@ function ModernFixtures() {
         </table>
       </Panel>
     </div>
+  );
+}
+
+/** Reserveholdets kampe (moderne udseende): kommende og spillede reservekampe, nyeste først – kun med reservekampene (g.cmRsv) */
+function ReservePanel() {
+  const g = useGame()!;
+  const rows = cmRsvRows(g, g.userClub);
+  if (!g.cmRsv || !rows.length) return null;
+  return (
+    <Panel title={t('cl.res.full', { club: g.clubs[g.userClub]?.name ?? '' })} className="flush">
+      <table className="grid" data-testid="rsv-panel">
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={`${r.d}${i}`}>
+              <td>{dateFmt(r.d)}</td><td>{t('cl.res.comp')}</td><td>{r.home ? t('fix.home') : t('fix.away')}</td><td><ClubLink id={r.opp} /></td>
+              <td className="center"><b>{r.res ? `${r.res[0]} - ${r.res[1]}` : '-'}</b></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </Panel>
   );
 }
 

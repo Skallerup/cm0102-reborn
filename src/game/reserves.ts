@@ -8,6 +8,7 @@ import type { Player } from './types';
 import { hash01 } from './rng';
 import { addNews, fixturesOn, gs, squad } from './state';
 import { forEachHuman } from './humans';
+import { cmMediaOn } from './cmPlayerData';
 
 const poisson = (mean: number, u: number) => { let k = 0, p = Math.exp(-mean), s = p; while (u > s && k < 9) { k++; p *= mean / k; s += p; } return k; };
 
@@ -24,7 +25,7 @@ function reserveStrength(club: number): number {
 /** Kaldes hver dag fra newDay */
 export function reservesDaily() {
   const g = gs();
-  if (g.draft || new Date(`${g.date}T12:00:00Z`).getUTCDay() !== 3) return;
+  if (g.draft || cmMediaOn(g) || new Date(`${g.date}T12:00:00Z`).getUTCDay() !== 3) return;
   forEachHuman(() => {
     const me = g.clubs[g.userClub];
     if (!me) return;
