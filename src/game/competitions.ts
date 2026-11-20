@@ -198,14 +198,22 @@ function setupLeaguePort(comp: Competition, legs: number, season: number) {
   const g = gs();
   const id = comp.id, n = comp.clubs.length, total = legs * (n + (n & 1) - 1);
   const sched = cmCalendarOn(g) ? cmLeagueSchedule(id, season) : null;
-  const useSched = !!sched && sched.length === total;
+  // (20/11, Bosman 0.7.2 punkt 1) create_fixtures 0x6835c0 sammenligner ikke skemaets rækker (+0xa9) med runderne: runde k får rækken fra
+  // 0x68a030 med rækketallet = skemaets (flag 3: rundt efter sidste række – runderne derefter genbruger de første rækkers datoer, og
+  // add_fixture 0x5aa680 flytter dem; færre runder end rækker: de sidste rækker bliver ubrugte). Ligaklassens opsætning (fx 0x41e8b0 Belgien,
+  // 0x5bc2b0 Frankrig, 0x641510 Italien) har et fast klubtal +0x3e og afviser/afkorter ligaen ved et andet tal i databasen – den kontrol er
+  // ikke med (2026/27's klubtal: divisions-2026.json). Kun et spil med kalenderen (g.cmCal); den originale database har kun skemaer, der passer.
+  const rows = sched && sched.length !== total && g.cmCal === 1 ? sched.length : total;
   const num = /^CM(\d+)$/.exec(id);
   const pairs = cmLeaguePairs({
-    comp: num ? Number(num[1]) : -1, clubs: comp.clubs.slice().sort((a, b) => a - b), year: season, legs, rows: total,
+    comp: num ? Number(num[1]) : -1, clubs: comp.clubs.slice().sort((a, b) => a - b), year: season, legs, rows,
     flags: CM_LEAGUE_FLAGS[id] ?? 3, seed: g.seed ?? 0,
     stadium: (c) => { const s = g.cmCrowd?.[c]?.[3]; return s !== undefined && s >= 0 ? s : undefined; },
     near: (s) => g.cmStadNear?.[s], rand: (k) => rng.int(0, k - 1),
   });
+  // 0x68a030's prev + 1 (flag 0x40, ét ben eller under 8 klubber) går ikke rundt – en række ud over skemaet (originalen læser forbi tabellen)
+  // → spillets kalender som før
+  const useSched = !!sched && sched.length === rows && pairs.every((p) => p.row < rows);
   if (useSched) {
     comp.meta = { dates: sched!.map((r) => r.date), cmSched: true, cmYear: season, cmLast: sched![sched!.length - 1].date };
     for (const p of pairs) cmPlaceFixture(g, newFixture(id, sched![p.row].date, p.home, p.away, p.row + 1, { slot: sched![p.row].slot }));
