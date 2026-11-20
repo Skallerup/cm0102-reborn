@@ -119,7 +119,7 @@ export function cmPrefFormation(s: Staff): string | null {
 }
 
 /** taktikbytes: Attacking +0xe, Directness +0x13, Marking +0x1a, Offside +0x1c, Pressing +0x1f (rå) */
-const tacByte = (s: Staff, off: number): number => {
+export const tacByte = (s: Staff, off: number): number => {
   if (s.cmNp) return s.cmNp[off - 0x0e];
   const i = [0x0e, 0x13, 0x15, 0x1a, 0x1c, 0x1f].indexOf(off);
   return i >= 0 ? s.tac?.[i] ?? 10 : 10;

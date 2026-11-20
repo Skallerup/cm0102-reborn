@@ -45,7 +45,7 @@ import { workPermitGranted } from './rules2001';
 import { cmForeign } from './cmNewsScope';
 import { playerRecord } from './engine/grid/aiTeam';
 import { naturalMask } from './engine/grid/aiTacticChoice';
-import { cmAsgCovers, cmAsgOf, cmAsgOn, cmAsgRecord, cmEuNation, cmRegionOf, cmRunScoutDay, cmWill, sendRecommendation } from './cmScoutAsg';
+import { cmAsgCovers, cmAsgOf, cmAsgOn, cmAsgRecord, cmEuNation, cmNextOppAfterMatch, cmRegionOf, cmRunScoutDay, cmWill, sendRecommendation } from './cmScoutAsg';
 
 /** SCOUT_MANAGER +0x5c: anmodningen (0x11 bytes: +0 klubben, +4 spilleren, +8 datoen, +0x10 antal rapporter) */
 export interface CmScoutReq { club: number; pid: number; date: string; n: number }
@@ -279,7 +279,10 @@ function scoutRequestsDaily(g: GameState): void {
 
 /** 0x7f8c00 + 0x7b5be0: efter en kamp – menneskeklubbernes spejdere uden opgave ser kampen, hvis en anmodet spiller er med */
 export function cmScoutMatch(g: GameState, f: Fixture, rep: MatchReport): void {
-  if (!cmScoutOn(g) || !rep.players?.length) return;
+  if (!cmScoutOn(g)) return;
+  // 0x7f8cb0: listerne med Next Opposition sættes forfra efter klubbens kamp (før 0x7b5be0 – listen ser så ingen kampe før rapportdagen)
+  cmNextOppAfterMatch(g, f, isHumanClub, (c) => scoutLists(g, c));
+  if (!rep.players?.length) return;
   // (hastighed) kun klubber med anmodninger eller en turneringssøgning – de andre lister ser ingen kampe
   const comps = g.cmScoutAsg ? Object.entries(g.cmScoutAsg).filter(([, a]) => a.comp === f.comp).map(([id]) => g.staff[+id]?.club ?? 0) : [];
   if (!g.cmScoutReq?.length && !comps.length) return;
@@ -306,7 +309,7 @@ export function cmScoutMatch(g: GameState, f: Fixture, rep: MatchReport): void {
 function scoutMatchList(g: GameState, s: Staff, f: Fixture, rep: MatchReport, rnd: (n: number) => number, out: CmScoutRec[]): void {
   const club = s.club;
   const a = cmAsgOf(g, s);
-  // de opgaver, der stadig kører som før (Club, Next Opposition – scouting.ts): ingen kampe for anmodningerne
+  // den opgave, der stadig kører som før (Club – scouting.ts): ingen kampe for anmodningerne
   if (!a && s.assignment && s.assignment.kind !== 'player') return;
   const watch = (g.cmScoutWatch ??= {});
   if (watch[s.id] && g.date < watch[s.id]) return;

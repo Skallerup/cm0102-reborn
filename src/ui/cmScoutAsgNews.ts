@@ -12,6 +12,7 @@ import type { GameState, NewsItem } from '../game/types';
 import { CM_BRITISH } from '../game/cmPermit';
 import { compName, has, natName, t } from '../i18n';
 import { positionWord } from './cmScoutNews';
+import { cmNextOppBody, cmNextOppTitle } from './cmScoutOppNews';
 
 const k = (key: string, p: Record<string, string | number> = {}) => t(`cmsn.${key}`, p);
 const REG = ['', 'Africa', 'Asia', 'Caribbean', 'CentralAmerica', 'CentralEurope', 'EasternEurope', 'MiddleEast', 'NorthAfrica', 'NorthAmerica', 'Oceania',
@@ -22,6 +23,8 @@ export const cmRegionName = (r: number, adj = false) => (r >= 1 && r <= 14 ? t(`
 /** pladsernes navne til overskriften og brødteksten: {nat} (nationalitetsordet, 0x6181d0 stil 1), {reg}, {comp} */
 export function cmScoutAsgParams(g: GameState, n: NewsItem, p: Record<string, string | number>): void {
   const q = n.params;
+  // 0x138a med Next Opposition (+0x19d): "{klub} scouting completed" og rapporten 0x7be670
+  if (n.key === 'cmsn.a704f8') { p.club = cmNextOppTitle(g, n); p.body = cmNextOppBody(g, n); return; }
   const nat = g.nations[Number(q.nation)];
   // engelsk som originalen: nationalitetsordet ("French search"); de andre sprog: landets/regionens navn ("søgning i Frankrig")
   const en = t('cl.locale').startsWith('en');

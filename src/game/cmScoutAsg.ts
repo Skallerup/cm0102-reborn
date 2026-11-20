@@ -28,21 +28,26 @@
 //            Ability), og 0x7bdd70: (spiller-id + spejder-id) % 17 + 4·|Man Management − 10| − 8 > 35 − værdien (+ 2·(22 − alder) for unge,
 //            − (10000 − kendskab)/1000 når spejderen kender ham). Svaghederne kræver staffState +0xb bit 0x40, som kun en udviklerkommando i
 //            exe'en sætter (0x7a3c12) – de er altid 0.
-// Ikke porteret: Assign Scout ▸ Next Opposition (0x19d: tabellen af modstanderen og rapporten 0x7be670) og Club (klubvagten +0x170/0x7bd310)
-//   – de kører stadig som før (scouting.ts); mediernes rygte om interessen (0x754740 i 0x7b62a0 – 0x84b6f0's vurdering med en delvist
+//   Next Opposition (+0x19d, modstanderen +0x1a1 – porteret 20/11-2026): 0x7aed83 sætter opgaven uden rand(3) med rapportdagen i morgen og
+//            runden 1 (ingen "started"); 0x7b0216 finder klubbens første uspillede kamp fra i morgen til i dag + 8 uger (ikke venskabskampe,
+//            0x5acbe0) – uden kamp ingen tabel; tabellen er alle modstanderens spillere (staff +0x39) med skøn og stjerner, uden grænser,
+//            vilje og dækning. 0x7b3e20: én runde, posterne bliver i renseløkken, ingen 0x138b; runde 1 → 0x138a "{klub} scouting completed"
+//            med analysen (cmNextOppAnalysis: nøglespillerne 0x7b4ec1, holdets bytes 0x549100–0x549940 og niveauet 0x549a30) – rapportens tekst
+//            er 0x7be670 (src/ui/cmScoutAsgNews.ts). Opgaven nulstilles ikke; 0x7f8c00 sætter den forfra efter hver af klubbens kampe.
+// Ikke porteret: Club (klubvagten +0x170/0x7bd310) – kører stadig som før (scouting.ts); mediernes rygte om interessen (0x754740 i 0x7b62a0 – 0x84b6f0's vurdering med en delvist
 //   uinitialiseret post); 0x5465a0 (spillerens beskrivelse i stedet for positionsordet, som i 0x138e).
 // Tilfældige tal: cmRand (egen talrække – spillets rng røres ikke).
 import type { GameState, Player, Staff } from './types';
 import { addDays, ageOn } from './dates';
 import { addNews } from './state';
 import { asOwner } from './humans';
-import { clubRepMem, cmActive, cmRand, leagueAverage } from './cmPlayerData';
+import { clubRepMem, cmActive, cmFormRatings, cmRand, leagueAverage, newCmContract, statAvg, statusCode } from './cmPlayerData';
 import { cmClubLevelOf, cmStaffAttr } from './cmStaff';
 import { cmKnowSee } from './cmKnow';
 import { cmNeedsPermit, cmPermitOn, cmWorkPermit, CM_EU } from './cmPermit';
 import { workPermitGranted } from './rules2001';
 import { playerRecord, roleDataOf } from './engine/grid/aiTeam';
-import { roleScore, type Day } from './engine/grid/roleScore';
+import { recentForm, roleScore, type Day } from './engine/grid/roleScore';
 import { ATTRS } from './attributes';
 import { posMask as posMaskOf } from './cmScout';
 import REGION from './data/cmNationRegion.json';
@@ -51,7 +56,9 @@ import REGION from './data/cmNationRegion.json';
 export interface CmAsgRow { pid: number; seen: string; f: number; est: number; pot: number; ab: number; pt: number }
 /** listens opgave (+0x18c nation, +0x194 region 1..14, +0x195 turnering, +0x199 ungdom), +0x1ad rapportdagen, +0x1b5 runden,
  *  +0x1b6/+0x1be turneringens første/sidste kampdag, +0x1ee tabellen */
-export interface CmAsg { nation: number; region: number; comp: string | null; youth: boolean; date: string; round: number; cStart?: string; cEnd?: string; tab: CmAsgRow[] }
+export interface CmAsg { nation: number; region: number; comp: string | null; youth: boolean; date: string; round: number; cStart?: string; cEnd?: string; tab: CmAsgRow[];
+  /** +0x19d Next Opposition og +0x1a1 modstanderen (klub-id, −1 = ingen) */
+  opp?: boolean; oppClub?: number }
 
 const s8 = (v: number) => (v << 24) >> 24;
 const s16 = (v: number) => (v << 16) >> 16;
@@ -80,7 +87,7 @@ export const cmWill: WillFn = (...a) => willFn(...a);
 
 export const cmAsgOf = (g: GameState, s: Staff | undefined): CmAsg | undefined => (s ? g.cmScoutAsg?.[s.id] : undefined);
 /** en opgave er sat (0x7aefd0) */
-export const cmAsgOn = (a: CmAsg | undefined): a is CmAsg => !!a && (a.nation >= 0 || a.region >= 0 || !!a.comp || a.youth);
+export const cmAsgOn = (a: CmAsg | undefined): a is CmAsg => !!a && (a.nation >= 0 || a.region >= 0 || !!a.comp || a.youth || !!a.opp);
 
 /** 0x5407e0(spiller, spejder, 0) – som cmScout.ts */
 function repSeen(g: GameState, p: Player, club: number): number {
@@ -155,11 +162,25 @@ function buildTable(g: GameState, s: Staff, a: CmAsg, rnd: (n: number) => number
   const rep2 = 2 * s16(clubRepMem(g, club));
   const cn = g.clubs[club].nation;
   const out: CmAsgRow[] = [];
+  // 0x7b0216: Next Opposition – klubbens næste kamp (ellers ingen tabel; +0x1a1 bliver stående)
+  let opp = 0;
+  if (a.opp) {
+    const o = cmNextOpponent(g, club);
+    if (o === null) return;
+    a.oppClub = opp = o;
+  }
   const ids = Object.keys(g.players).map(Number).sort((x, y) => x - y);
   for (const id of ids) {
     const p = g.players[id];
     if (!p || p.virtual || homeOf(p) === club || p.cmRetire || p.contract?.futureClub) continue;
     const age = ageOn(p.dob, g.date);
+    if (opp) {
+      // 0x7b0405: kun modstanderens spillere (staff +0x39); 0x7b06e7/0x7b0c16: uden grænserne, viljen og dækningen
+      if (p.club !== opp) continue;
+      const { est, pot } = estimate(g, p, s, club, false, rnd);
+      out.push({ pid: p.id, seen: g.date, f: 1, est, pot, ab: starsOfEst(est, L, rep2, 10750), pt: starsOfEst(pot, L, rep2, 10500) });
+      continue;
+    }
     // (dækningen før skønnet – se filhovedet)
     if (!a.youth && !covered(g, a, p, club, age, null)) continue;
     if (a.youth && age >= 20) continue;
@@ -184,11 +205,37 @@ function buildTable(g: GameState, s: Staff, a: CmAsg, rnd: (n: number) => number
 
 const ASG_KIND = { nation: 'nation', region: 'region', comp: 'league', youth: 'youth' } as const;
 
-/** 0x7ae9c0 + 0x7b0050: opgaven sættes (Assign Scout ▸ Nation / Region / Youth Players, turneringen) */
-export function cmAssignScout(g: GameState, s: Staff, o: { nation?: number; region?: number; comp?: string; youth?: boolean }): void {
+/** 0x7b0216: 0x5acbe0(i morgen 0x54c5b0(1), i dag + 8 uger 0x54c770(8), klub, liste, −1, −2, 1) – klubbens kampe dag for dag og tidspunkt for
+ *  tidspunkt, hvor klubbens side har flaget +0x40/+0x41 = 1 (ikke venskabskampe); den første uspillede (+0x43 = 0xff) → modstanderen */
+export function cmNextOpponent(g: GameState, club: number): number | null {
+  const from = addDays(g.date, 1), to = addDays(g.date, 56);
+  let best: { date: string; slot: number; id: number; opp: number } | null = null;
+  for (const f of Object.values(g.fixtures)) {
+    if ((f.home !== club && f.away !== club) || f.date < from || f.date > to || f.result || isFriendlyFx(g, f.comp)) continue;
+    const slot = f.slot ?? 1;
+    if (!best || f.date < best.date || (f.date === best.date && (slot < best.slot || (slot === best.slot && f.id < best.id))))
+      best = { date: f.date, slot, id: f.id, opp: f.home === club ? f.away : f.home };
+  }
+  return best && best.opp && g.clubs[best.opp] ? best.opp : null;
+}
+/** fixture +0x40/+0x41 = 0: venskabskampene (og reserveholdets kampe – cmReserves.ts RES_COMP, uden turnering i g.comps) */
+const isFriendlyFx = (g: GameState, c: string) => !g.comps[c] || c === 'FRIENDLY' || c.startsWith('FR');
+
+/** 0x7ae9c0 + 0x7b0050: opgaven sættes (Assign Scout ▸ Nation / Region / Youth Players / Next Opposition, turneringen) */
+export function cmAssignScout(g: GameState, s: Staff, o: { nation?: number; region?: number; comp?: string; youth?: boolean; nextOpp?: boolean }): void {
   const a: CmAsg = (g.cmScoutAsg ??= {})[s.id] ?? { nation: -1, region: -1, comp: null, youth: false, date: g.date, round: 0, tab: [] };
   g.cmScoutAsg[s.id] = a;
   const rnd = cmRand(g.seed ?? 0, s.id, dayNo(g.date), 0x7ae9c0);
+  // 0x7aed83: Next Opposition – ingen rand(3): rapportdagen i morgen og runden 1 (ingen "started"-nyhed – max runder er 1)
+  const other = (o.nation !== undefined && o.nation >= 0) || (o.region !== undefined && o.region >= 1 && o.region <= 14) || !!o.comp || !!o.youth;
+  if (o.nextOpp && !other) {
+    a.nation = -1; a.region = -1; a.comp = null; a.opp = true;
+    a.date = addDays(g.date, 1);
+    a.round = 1;
+    buildTable(g, s, a, rnd);
+    s.assignment = { kind: 'nextOpp', target: a.oppClub !== undefined && a.oppClub >= 0 ? a.oppClub : 0, since: g.date };
+    return;
+  }
   a.date = addDays(g.date, rnd(3) + 1);
   if (o.nation !== undefined && o.nation >= 0) { a.nation = o.nation; a.region = -1; a.comp = null; }
   else if (o.region !== undefined && o.region >= 1 && o.region <= 14) { a.nation = -1; a.region = o.region; a.comp = null; }
@@ -210,7 +257,7 @@ export function cmAssignScout(g: GameState, s: Staff, o: { nation?: number; regi
 /** 0x7aee80 */
 export function cmRecallScout(g: GameState, s: Staff): void {
   const a = cmAsgOf(g, s);
-  if (a) { a.nation = -1; a.region = -1; a.comp = null; a.youth = false; }
+  if (a) { a.nation = -1; a.region = -1; a.comp = null; a.youth = false; a.opp = false; a.oppClub = -1; }
   s.assignment = null;
 }
 
@@ -231,6 +278,8 @@ function cleanTable(g: GameState, s: Staff, a: CmAsg): number {
     if (!p || p.virtual) { remove(); continue; }
     // 0x7b410e: kendskabet (Attribute Masking, 0x5b09d0 med spejderen)
     if (g.options.masking) cmKnowSee(g, p, cmStaffAttr(s, 'judgingAbility'), s.id);
+    // 0x7b4148: Next Opposition – posterne bliver
+    if (a.opp) { if (r.f & 1) fresh++; continue; }
     const nat = natOf(g, p);
     if (a.nation > -1 && nat >= 0 && nat !== a.nation) { remove(); continue; }
     if (a.region > -1 && nat >= 0 && cmRegionOf(g, nat) !== a.region) { remove(); continue; }
@@ -341,16 +390,20 @@ export function cmRunScoutDay(g: GameState, s: Staff): void {
   if (a.round === 0) {
     asOwner(club, () => addNews({ cat: 'scout', key: keyOf(a, 'started'), params: asgParams(a, s) }));
   } else {
-    const max = a.comp ? 1 : 8;
+    // 0x7b408d: turneringen og Next Opposition har én runde
+    const max = a.comp || a.opp ? 1 : 8;
     const fresh = cleanTable(g, s, a);
     const cnt = a.tab.length;
     let n = a.round < max ? ftol(((rnd(50) + 75) * cnt) / (max * 100)) : fresh;
     n = Math.max(n, 1) < fresh ? Math.max(n, 1) : fresh;
     let reported = cnt - fresh;
+    // [esp+0x30]: kontraktklubben for den sidst trukne post (0x8c7560 i analysen) – uden trækning antallet nye (0 – ingen klub)
+    let lastClub = 0;
     const report = (r: CmAsgRow) => {
       r.seen = g.date; r.f &= ~1; n--; reported++;
       const p = g.players[r.pid];
-      if (p && (r.ab >= 4 || r.pt >= 4)) sendRecommendation(g, s, a, p, r.ab, r.pt);
+      // 0x7b4481: Next Opposition sender ingen anbefalinger
+      if (p && !a.opp && (r.ab >= 4 || r.pt >= 4)) sendRecommendation(g, s, a, p, r.ab, r.pt);
     };
     while (n > 0) {
       const r = a.tab[rnd(cnt)];
@@ -358,9 +411,18 @@ export function cmRunScoutDay(g: GameState, s: Staff): void {
       report(r);
       // 0x7b4803: de andre nye fra spillerens klub
       const pc = homeOf(g.players[r.pid]);
+      lastClub = pc;
       if (pc) for (const q of a.tab) if (q.f & 1 && g.players[q.pid] && homeOf(g.players[q.pid]) === pc) report(q);
     }
-    if (a.round === max) {
+    if (a.round === max && a.opp) {
+      // 0x7b4d99–0x7b59e6: nyheden 0x138a med analysen af modstanderen; uden modstander eller tabel sættes opgaven forfra (ingen nyhed) –
+      // opgaven nulstilles ikke (0x7b59d9), den sættes igen efter klubbens næste kamp (0x7f8ce3)
+      const oc = a.oppClub ?? -1;
+      if (oc >= 0 && g.clubs[oc] && a.tab.length) {
+        const params = { ...asgParams(a, s), n: reported, done: 1, opp: 1, oc, mc: club, ...cmNextOppAnalysis(g, a, oc, club, lastClub) };
+        asOwner(club, () => addNews({ cat: 'scout', key: 'cmsn.a704f8', params, link: { kind: 'club', id: oc } }));
+      } else cmAssignScout(g, s, { nation: a.nation, region: a.region, comp: a.comp ?? undefined, youth: a.youth, nextOpp: true });
+    } else if (a.round === max) {
       if (a.tab.length) asOwner(club, () => addNews({ cat: 'scout', key: keyOf(a, 'done'), params: { ...asgParams(a, s), n: reported, done: 1 } }));
       // 0x7b59ad: tom tabel → opgaven sættes forfra (ny tabel) og nulstilles straks
       else cmAssignScout(g, s, { nation: a.nation, region: a.region, comp: a.comp ?? undefined, youth: a.youth });
@@ -373,6 +435,158 @@ export function cmRunScoutDay(g: GameState, s: Staff): void {
   // 0x7b5b6a: næste rapportdag
   a.date = a.comp ? addDays(a.cEnd ?? g.date, 2) : addDays(g.date, rnd(7) + 2);
   a.round++;
+}
+
+// ---------------------------------------------------------------- Next Opposition: analysen i nyheden 0x138a (0x7b4ec1–0x7b5817)
+
+/** posten (0x1a bytes) for en nøglespiller: +0 skønnet, +4 spilleren, +0x14 flagene, +0x18 CA */
+export interface CmOppKey { est: number; pid: number; fl: number; ca: number }
+
+/** 0x7b4f1a–0x7b542c: postens flag af spillerposten (+0x61), statistikken og kontrakten */
+export function cmOppKeyRow(g: GameState, p: Player, r: CmAsgRow): CmOppKey {
+  const rec = playerRecord(p);
+  const R = (o: number) => s8(rec[o]);
+  const W = (o: number) => s16(rec[o] | (rec[o + 1] << 8));
+  let est = r.est;
+  // 0x7b50ba: kontrakten (0x4cf5a0) +0x3d under 25 → skønnet 0
+  if (p.club) { const c = p.cmContract ?? newCmContract(statusCode(p)); if (s8(c.b3d) < 25) est = 0; }
+  let fl = 0;
+  if (R(0x11) === 20) fl = 0x200;                                            // Defender
+  if (R(0x15) === 20) {                                                      // Attacker: midt, ellers (offensiv) midtbane, ellers forsvar
+    if (R(0x19) === 20) fl |= 0x100;
+    else if (R(0x14) === 20 || R(0x13) === 20) fl |= 0x1000;
+    else if (R(0x11) === 20 || R(0x12) === 20) fl |= 0x2000;
+    else fl |= 0x100;
+  }
+  if (R(0x14) === 20 || R(0x12) === 20 || R(0x13) === 20) {
+    fl |= R(0x11) === 20 ? 0x2000 : 0x400;
+    if (R(0x18) === 20 || R(0x17) === 20) fl |= 0x1000;                      // venstre/højre
+  }
+  if (R(0xf) === 20) fl |= 0x800;
+  if (R(0x2e) > 18 && R(0x2b) > 14 && R(0x3d) > 15) fl |= 0x20;              // Jumping, Heading, Strength
+  else if (R(0x2e) < 6) fl |= 0x10;
+  if (R(0x44) > 14 && R(0x1c) > 10 && R(0x3e) > 14) fl |= 2;                 // Work Rate, Aggression, Tackling
+  if (R(0x36) > 18) fl |= 4; else if (R(0x36) < 6) fl |= 8;                  // Pace
+  if (R(0x21) > 15) fl |= 0x80000; else if (R(0x21) < 5) fl |= 0x400000;     // Consistency
+  if (R(0x2f) > 14) fl |= 0x80;                                              // Influence
+  // 0x7b525f: PlayerStats kategori 6 – over 5 kampe: målene pr. kamp (angribere over 15) og formen mod spillets karaktersnit (float)
+  const apps = statAvg(p, 6, 1, 6.5);
+  if (apps > 5) {
+    const per = statAvg(p, 6, 2, 6.5) / (apps > 1 ? apps : 1);
+    if (R(0x15) > 15) { if (per < 0.25) fl |= 0x200000; else if (per > 0.65) fl |= 0x100000; }
+    const L = Math.fround(leagueAverage(g));
+    const v = recentForm(cmFormRatings(p)) * 0.2;
+    if (v > L + 0.25) fl |= 0x800000; else if (v < L - 0.35) fl |= 0x1000000;
+  }
+  if (R(0x43) > 14) fl |= 1;                                                 // Creativity
+  if (R(0x3d) > 14) fl |= 0x4000;                                            // Strength
+  const age = ageOn(p.dob, g.date);
+  if (age < 22 && W(0xb) < 5750) fl |= 0x8000;
+  if (age > 34) fl |= 0x10000;
+  // 0x54cdb0(i dag, staff +0x3e): under 65 dage i klubben (uden ankomstdato: intet flag)
+  const joined = p.joined ?? p.cmJoined;
+  if (joined && dayNo(g.date) - dayNo(joined) < 65) fl |= 0x20000;
+  if (p.injury) fl |= 0x40000;                                               // 0x62c400 = 2
+  return { est, pid: p.id, fl, ca: W(5) };
+}
+
+/** klubbens trup (+0xd7) – databasens spillere (id < [0xae2364]) med spillerpost */
+const realSquad = (g: GameState, club: number) => Object.values(g.players).filter((p) => p.club === club && !p.virtual && !p.regen).sort((a, b) => a.id - b.id);
+
+/** Comp_Stats-rækken (0x4a4850) i klubbens division (+0x57): [kampe, mål for (+0x69), mål imod (+0x6a)] som bytes; null uden række */
+function divRow(g: GameState, club: number): [number, number, number] | null {
+  const lid = g.clubs[club]?.league;
+  const comp = lid ? g.comps[lid] : undefined;
+  if (!lid || !comp || comp.type !== 'league' || g.leagues[lid]?.hidden) return null;
+  const row = comp.table.find((r) => r.club === club);
+  return row ? [row.p & 0xff, row.gf & 0xff, row.ga & 0xff] : null;
+}
+
+/** 0x549100…0x549940 + 0x549470: holdets bytes i 0x7b81f0's rækkefølge (+0..+0xb; +8 sættes ikke) og stemningen +0xc */
+export function cmOppTeamFlags(g: GameState, club: number): number[] {
+  const rep = s16(clubRepMem(g, club));
+  const tq = (div: number, add: number, lo: number, hi: number) => { const v = s16(Math.trunc(rep / div) + add); return v < lo ? lo : v > hi ? hi : v; };
+  const jq = (cap: number) => Math.min(s16(Math.trunc(rep / 500) + 5), cap);
+  const fit = realSquad(g, club).filter((p) => !p.injury).map((p) => playerRecord(p));
+  const R = (r: number[], o: number) => s8(r[o]);
+  const CA = (r: number[]) => s16(r[5] | (r[6] << 8));
+  const count = (pred: (r: number[]) => boolean) => fit.filter(pred).length;
+  const mid = (r: number[]) => R(r, 0x14) === 20 || R(r, 0x12) === 20 || R(r, 0x13) === 20;
+  const row = divRow(g, club);
+  const T2 = tq(75, 25, 40, 135);
+  const f: number[] = new Array(13).fill(0);
+  // +0 0x5492c0 angrebet: under 1,5 mål pr. kamp (heltalsdivision) → 0, ellers over én angriber med CA > T
+  f[0] = row && row[0] && Math.trunc(row[1] / row[0]) < 1.5 ? 0 : +(count((r) => R(r, 0x15) === 20 && CA(r) > tq(65, 40, 40, 150)) > 1);
+  // +1 0x549100 forsvaret: over 1,35 mål imod pr. kamp → 0, ellers over to forsvarere
+  f[1] = row && row[0] && Math.trunc(row[2] / row[0]) > 1.35 ? 0 : +(count((r) => R(r, 0x11) === 20 && CA(r) > tq(65, 40, 40, 145)) > 2);
+  f[2] = +(count((r) => mid(r) && CA(r) > tq(65, 40, 40, 145)) > 2);                                     // 0x549200 midtbanen
+  f[3] = +(count((r) => mid(r) && CA(r) > T2 && R(r, 0x43) > jq(14) && R(r, 0x37) > jq(14)) > 1);        // 0x549940 Creativity + Passing
+  f[4] = +(count((r) => mid(r) && CA(r) > T2 && R(r, 0x44) > jq(14) && R(r, 0x3e) > jq(14)) > 1);        // 0x549850 Work Rate + Tackling
+  f[5] = +(count((r) => R(r, 0x11) === 20 && CA(r) > T2 && R(r, 0x2e) > jq(13)) <= 1);                   // 0x5495b0 forsvarere i luften
+  f[6] = +(count((r) => R(r, 0x15) === 20 && CA(r) > T2 && R(r, 0x2e) > jq(13)) <= 1);                   // 0x5494d0 angribere i luften
+  f[7] = +(count((r) => R(r, 0x11) === 20 && CA(r) > T2 && R(r, 0x36) > jq(10)) <= 1);                   // 0x549690 forsvarets fart
+  f[9] = +(count((r) => R(r, 0x15) === 20 && CA(r) > T2 && R(r, 0x36) > jq(17)) > 0);                    // 0x549770 hurtige angribere
+  f[10] = +fit.some((r) => R(r, 0xf) === 20);                                                            // 0x549470 en målmand
+  f[11] = +(count((r) => CA(r) > tq(65, 40, 40, 140) && R(r, 0x44) > 14) > 4);                           // 0x5493c0 Work Rate
+  f[12] = s8(g.cmClubMood?.[club] ?? 0);                                                                 // [0xae2d14] + 6·klub + 4
+  return f;
+}
+
+/** 0x549a30(modstanderen, egen klub): holdets niveau 0..6 */
+export function cmOppLevel(g: GameState, opp: number, mine: number): number {
+  const recs = realSquad(g, opp).map((p) => playerRecord(p));
+  const CA = (r: number[]) => s16(r[5] | (r[6] << 8));
+  const RP = (r: number[]) => s16(r[0xb] | (r[0xc] << 8));
+  recs.sort((a, b) => CA(b) - CA(a) || RP(b) - RP(a));                      // 0x549c30
+  // 0x549aa7: de første min(n − 1, 16) (sic)
+  let sum = 0, k = 0;
+  for (let i = 0; i < recs.length - 1 && i < 16; i++) { sum += CA(recs[i]); k++; }
+  const orep = s16(clubRepMem(g, opp));
+  let al: number;
+  if (!k) al = orep > 7250 ? 6 : orep > 5750 ? 5 : orep > 4750 ? 4 : orep > 3250 ? 3 : orep > 2250 ? 2 : 1;
+  else { const av = Math.trunc(sum / k); al = av > 155 ? 6 : av > 135 ? 5 : av > 110 ? 4 : av > 85 ? 3 : av > 60 ? 2 : av > 40 ? 1 : 0; }
+  const me = g.clubs[mine];
+  if (me) {
+    const mrep = s16(clubRepMem(g, mine));
+    if (mrep > 7250) {
+      if (orep < 4250 && al > 2) al -= 2;
+      if (orep < 7250 && al > 0) al--;
+    } else if (mrep < 4250 && al < 5) al++;
+    if (me.league === g.clubs[opp]?.league) {
+      const d = s16(mrep - orep), mood = (c: number) => s8(g.cmClubMood?.[c] ?? 0);
+      if (d > 1250 && al > 0 && mood(mine) >= 0 && mood(opp) <= 0) al--;
+      else if (d < 1250 && al < 5 && mood(opp) >= 0 && mood(mine) <= 0) al++;
+    }
+  }
+  return al < 0 ? 0 : al > 6 ? 6 : al;
+}
+
+/** 0x7b4ec1–0x7b5817: nyhedens pladser – højst to nøglespillere (4+ stjerner eller 3 og omdømme > 6750, ikke 0x8c7560 i den sidst trukne
+ *  posts klub; faldende skøn 0x7be640), holdets bytes og niveauet */
+export function cmNextOppAnalysis(g: GameState, a: CmAsg, opp: number, mine: number, lastClub: number): Record<string, string | number> {
+  const rows: CmOppKey[] = [];
+  for (const r of a.tab) {
+    const p = g.players[r.pid];
+    if (!p) continue;
+    const rec = playerRecord(p);
+    const rp = s16(rec[0xb] | (rec[0xc] << 8));
+    if (!((rp > 6750 && s8(r.ab) === 3) || s8(r.ab) > 3)) continue;
+    if (lastClub && cmNeedsPermit(g, p, lastClub, false)) continue;
+    rows.push(cmOppKeyRow(g, p, r));
+  }
+  rows.sort((x, y) => y.est - x.est || y.pid - x.pid);
+  const kp = rows.slice(0, 2);
+  return { kp: kp.map((k) => `${k.pid}:${k.fl}:${k.ca}`).join('|'), tf: cmOppTeamFlags(g, opp).join(','), lv: cmOppLevel(g, opp, mine) };
+}
+
+/** 0x7f8c00 (0x7f8cb0): efter en kamp, hvor begge sider har flaget +0x40/+0x41 (ikke venskabskampe), sættes menneskeklubbens lister med
+ *  Next Opposition forfra (0x7ae9c0 → den næste modstander, rapporten i morgen) */
+export function cmNextOppAfterMatch(g: GameState, f: { comp: string; home: number; away: number }, human: (club: number) => boolean, lists: (club: number) => Staff[]): void {
+  if (!g.cmScoutAsg || isFriendlyFx(g, f.comp)) return;
+  for (const club of [f.home, f.away]) {
+    if (!club || !human(club)) continue;
+    for (const s of lists(club)) if (g.cmScoutAsg[s.id]?.opp) cmAssignScout(g, s, { nextOpp: true });
+  }
 }
 
 /** 0x7b62a0's tabeldel (0x7b69cf–0x7b6bf8): posten opdateres eller indsættes – true, hvis den allerede var 5-stjernet */

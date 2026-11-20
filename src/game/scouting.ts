@@ -18,8 +18,8 @@ import { cmStaffAttr } from './cmStaff';
 import { addScoutRequest, cmScoutOn, scoutRequestStatus } from './cmScout';
 import { cmAsgOf, cmAsgOn, cmAssignScout, cmRecallScout } from './cmScoutAsg';
 
-/** opgavetyperne, CM 01/02 har som originalens (cmScoutAsg.ts) – Club og Next Opposition kører som før */
-const CM_KINDS = new Set<ScoutAssignment['kind']>(['nation', 'region', 'league', 'youth']);
+/** opgavetyperne, CM 01/02 har som originalens (cmScoutAsg.ts) – Club kører som før */
+const CM_KINDS = new Set<ScoutAssignment['kind']>(['nation', 'region', 'league', 'youth', 'nextOpp']);
 
 export function initKnowledge() {
   const g = gs();
@@ -173,6 +173,7 @@ export function scoutDaily() {
     if (a.kind === 'nation') cmAssignScout(g, s, { nation: a.target as number });
     else if (a.kind === 'league') cmAssignScout(g, s, { comp: String(a.target) });
     else if (a.kind === 'youth') cmAssignScout(g, s, { youth: true });
+    else if (a.kind === 'nextOpp') cmAssignScout(g, s, { nextOpp: true });
     else if (typeof a.target === 'number') cmAssignScout(g, s, { region: a.target });
     else s.assignment = null;
   }
@@ -310,6 +311,7 @@ export function startScoutAssignment(staffId: number, a: ScoutAssignment | null)
     if (a.kind === 'nation') cmAssignScout(g, s, { nation: a.target as number });
     else if (a.kind === 'league') cmAssignScout(g, s, { comp: String(a.target) });
     else if (a.kind === 'youth') cmAssignScout(g, s, { youth: true });
+    else if (a.kind === 'nextOpp') cmAssignScout(g, s, { nextOpp: true });
     else cmAssignScout(g, s, { region: Number(a.target) });
     return;
   }
