@@ -2033,3 +2033,23 @@ button.cx-bid-swap.removing { cursor: pointer; color: #fff21f; }
   .cx-settings:not(.cx-filters) .cx-set-grid { grid-template-columns: minmax(120px, 190px) 1fr minmax(120px, 190px) 1fr; gap: 6px 14px; }
   .cx-settings:not(.cx-filters) .cx-set-grid > span { font-size: 15.5px; }
 }
+
+/* ---------- mobil: trykflader (mobiltest 19/11, scripts/e2e-mobile.mjs) ----------
+   Kun smal skærm (≤ 760 px): trykmål på mindst ~34 px, så knapper ikke misses og ikke presses sammen. Indholdet er uændret, desktop uberørt. */
+@media (max-width: 760px) {
+  :root[data-skin='retro'] .cx-drop-btn, :root[data-skin='retro'] .cx-greybtn, :root[data-skin='retro'] .cx-grey, :root[data-skin='retro'] .cx-funds { min-height: 34px !important; }
+  :root[data-skin='retro'] .cx-rowbtn, :root[data-skin='retro'] .cx-sq-orig .cx-selbtn, :root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag, :root[data-skin='retro'] .cx-selbtn { min-height: 34px !important; height: 34px !important; }
+  :root[data-skin='retro'] button.cx-sq-tag { min-width: 40px; }
+  :root[data-skin='retro'] .cx-sl-cell { min-height: 36px !important; min-width: 40px; }
+  :root[data-skin='retro'] .cx-sq-orig .cx-slot, .cx-slot { height: 34px !important; }
+  /* pladsrækken (GK DL … SB9): to rækker og mindre skrift, så SB1SB2 ikke løber sammen */
+  :root[data-skin='retro'] .cx-sq-orig .cx-sq-slots, .cx-sq-slots { grid-template-columns: repeat(10, minmax(0, 1fr)) !important; }
+  .cx-slot { font-size: 12px; letter-spacing: -0.3px; padding: 0; overflow: hidden; }
+  .cx-menu-btn { width: 34px; height: 34px; font-size: 14px; }
+  :root[data-skin='retro'] .cx-pl-arrow { min-width: 34px; min-height: 34px; }
+  /* menuerne (Game Options, Competitions, rullelister): højere linjer */
+  :root[data-skin='retro'] .cx-drop-pop button, .cx-menu-pop button { min-height: 38px; }
+  .cx-fl-input { min-height: 34px; }
+  :root[data-skin='retro'] button.cx-sq-name, :root[data-skin='retro'] button.cx-sq-tag, :root[data-skin='retro'] .cx-take, :root[data-skin='retro'] .cxs-btn.small, :root[data-skin='retro'] .cx-arrows button, :root[data-skin='retro'] .cx-pager button { min-height: 34px; }
+  input[type='checkbox'], input[type='radio'] { width: 22px; height: 22px; }
+}
