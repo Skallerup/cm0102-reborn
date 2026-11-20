@@ -125,11 +125,15 @@ Løse `cmActive(`-kald uden for en kontakt (84 på 14b0259a): gennemgået og for
   spillere i 31 lande – landene med koefficienter uden liga i world.json, øverste klubber i euro.cfg-rækkefølgen og så omdømmet, højst 8 pr. land,
   trupper ≤ 22 spillere ≤ 40 år; en ekstra indlæsning med allClubs, så world.json er bit for bit uændret), og newgame.ts lægger dem på verdenen
   som skjulte klubber (`HE<nation>`, ingen kampe) i ægte tilstand – som originalens hukommelse. euro.cfg's klubber findes også under et andet land
-  (FC Vaduz står for Liechtenstein, i databasen schweizisk). Rest (åben): Liechtenstein har ingen brugbar klub (Vaduz tages af Schweiz først;
-  de fire klubber fra "Lower Division" har ingen trup), og UEFA Cup'ens 1. runde har en plads mere end båndene – de to pladser går stadig til den
-  næste klub efter rang (England: 3 egne + 2). At give dem til de nærmeste lavere lande (Intertoto-reglen) ændrer 2001-fingeraftrykket (målt: 2001
-  bruger også `spare()`, fordi spilstarten fjerner de skjulte klubber uden spillere i hukommelsen) – kræver en beslutning og en måling mod oraklets
-  2001-deltagere.
+  (FC Vaduz står for Liechtenstein, i databasen schweizisk). **Løst 20/11 (UEFA Cup'ens pladser):** 0x904580/0x902b90 læst – fair play er tre
+  tilfældige lande (0x90cfc0, ikke 0x903cc0's Finland/Slovakiet/Hviderusland), højst 118, et land uden klubber mister pladsen, build_entrants fylder
+  under 118 fra ikke-spillede lande med omdømme < 2000, og kval./1. runde deles efter qsort 0x522190 (kode faldende, omdømme stigende → 1. rundes
+  36. plads = kvalifikationsklubben med højst omdømme); nationstabellen 0x903360 = alle lande i Europa (også uden koefficienter). euro.cfg flytter
+  kun klubber i landets egen blok (0x9059e0) – Vaduz forbliver schweizisk. Originalen har klubber uden spillere i Europa (fyldspillerne 0x90d2f0):
+  world-filerne (2001 og world-cm.json) har nu Europas lande uden liga som skjulte klubber HE<land>, også uden trup (Liechtensteins fire klubber).
+  Målt (scripts/cm-uefa-entrants.ts): 2026/27 England 3 (før 5), Liechtenstein 2 egne klubber; 2001 mod oraklet 14/7-01 (størrelse 2): 7 lande
+  med andet antal (før 24; Spanien 3 + 29 → 4, resten fair play-trækningen). Rest: CL's opfyldning (`spare()`) og 0x904580's ligacupvinder/
+  semifinalister.
 - **H. Venskabskampe på Europa-dage**: add_fixture 0x5aa680 flytter her kun ligakampe med originalens skema (`meta.cmSched`), ikke venskabskampe
   (målt: 2–3 klubber pr. sæson med venskabskamp og CL samme dag) – 0x5abc30/0x5ab510 for de øvrige kamptyper.
 

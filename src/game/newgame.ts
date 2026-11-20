@@ -267,7 +267,9 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   if (cm) { const Fp = Object.fromEntries(world.playerFields.map((f, i) => [f, i])); for (const r of world.players) if (r[Fp.club] && tcOk(r[Fp.id] as number)) hiddenWithPlayers.add(r[Fp.club] as number); }
   // Klubber
   for (const [id, name, short, nation, league, stadium, seats] of world.clubs) {
-    if (cm && leagueById.get(league)?.hidden && !hiddenWithPlayers.has(id)) continue;
+    // (20/11, UEFA-pladserne 0x904580) undtagen Europas lande uden spillet liga (HE<land>, build-cm-data.mts): originalen har deres klubber i
+    // hukommelsen også uden spillere, og Europas pladser går til dem (fyldspillerne 0x90d2f0 stiller holdet)
+    if (cm && leagueById.get(league)?.hidden && !hiddenWithPlayers.has(id) && !(mode === 'authentic' && league.startsWith('HE'))) continue;
     const h = hash(id);
     g.clubs[id] = {
       id, name, short, nation, league, stadium: stadium || `${short} Stadium`, seats: seats || 5000,

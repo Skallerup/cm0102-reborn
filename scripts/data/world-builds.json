@@ -2,26 +2,26 @@
   "world-original-3965.json": {
     "source": "/Applications/CM 01-02 Bosman Edition.app/Contents/Resources/game/Data-3.9.65",
     "season": 2001,
-    "sha256": "213a0bd182d35e7df4c8b365d3973b54f51af679d5e7593e735c978f2b33e93b",
+    "sha256": "ec0709eabb079cf42cbacb2b929834fdd3fb64ae887aea0f9c7814fbd12dd9bb",
     "careers": "careers-original-3965.json",
-    "careersSha256": "e00918d984d5ed5bcf37e25b1bcf55c518feecf7389f199117ce1def0ed80d68",
+    "careersSha256": "ebfbf2718d8c2a699aa68b1d6eb7d77577024857bd2fd7847611ad528f5818cd",
     "reproducible": true
   },
   "world-original-3968.json": {
     "source": ".orig-db/Original-3.9.68-Database",
     "season": 2001,
     "noLegacy": true,
-    "sha256": "ba8ce3effe2ece724674d62cd8bf32c8f46289d6211879c18039a8b7355f9398",
+    "sha256": "3dc4cd1f8928aac2220b3a4f6cdce70a881c9119f3936e8ede60c138cd22f0ce",
     "careers": "careers-original-3968.json",
-    "careersSha256": "9a510047af3da2cbb64a7305cef55cf782593ac3f20b16aac043948a83014431",
+    "careersSha256": "c2aef848c54bf5522e37bdb0a9db6b0407b645da55e4db891b451938c476f369",
     "reproducible": true
   },
   "world-original.json": {
     "source": ".orig-db/Original-3.9.60-Database-Swedish_fixed",
     "season": 2001,
-    "sha256": "9bfd5d98ef04bdbd03085c6e10fc4837ac43b6ea3bc8d54ac79d898e080aaf27",
+    "sha256": "7ae1a2e3e2082a0c3008db28e55e4c263f6332f14699200c543abcdd4fd6a1bb",
     "careers": "careers-original.json",
-    "careersSha256": "805bef9f007eb019df317db2c5c1be5a38a7e8fc6b9f41b7bbedbfd6858e5594",
+    "careersSha256": "bad00bea0bf6b65ab42577ac78281629dd4109afcbe11ee7d0cdca6735b74cea",
     "reproducible": true
   },
   "world.json": {
@@ -31,7 +31,7 @@
     "careers": "careers-cm.json",
     "careersSha256": "352c28a022160e40a07080603ae5562c15b915ee6447696430a099ff6eae48db",
     "cm": "world-cm.json",
-    "cmSha256": "17f0d1bc53f6ed55ea4469390c6f6f691930fde4c0b74a5fbd27ae1452d003c5",
+    "cmSha256": "2222d13cd30f9798909b8cbe66ffc5cb6e9de4269f730b60c1fd5cf49dc45e1d",
     "cmStaff": "world-cm-staff.json",
     "cmStaffSha256": "f8169a9e2a3d873ae6da833160e1596f15b0dbab9d63f0ee4ef8d93d58cd615b",
     "reproducible": true

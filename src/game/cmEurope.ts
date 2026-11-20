@@ -16,7 +16,8 @@
 //     0x200 → 0x51e220 (tilfældig); så hjemmeholdene 0x51e870. Gruppespillene: draw_phase1_groups 0x585290 (4 seedningslag, lande adskilt),
 //     draw_phase2_groups 0x585ab0 (vindere og toere, ikke samme gruppe/land), draw_quarter_finals 0x586330 (vinder mod toer fra en anden gruppe).
 //     CL's Q3-tabere går til UEFA Cup'ens 1. runde (0x585920), 1. gruppespils treere til 3. runde (0x586286).
-//   Pladserne pr. land efter koefficientrang (UefaSeeding 0x903cc0/0x904210/0x904580 – tabellerne efter Bosman-projektets læsning, sweep-europe §3.2),
+//   Pladserne pr. land efter koefficientrang (UefaSeeding 0x903cc0/0x904210/0x904580 – tabellerne efter Bosman-projektets læsning, sweep-europe §3.2;
+//     UEFA Cup'en 0x904580 + UefaCup::build_entrants 0x902b90 læst 20/11: fair play, loftet 118, opfyldningen og delingen kval./1. runde),
 //     koefficienterne fra nation.dat +0xe0..+0x108 (roll_coefficients 0x903b50, læst: summen af de fem første; i 2001 ingen forskydning), euro.cfg
 //     i første sæson (apply_euro_cfg_order 0x9059e0), point 2/1 pr. sejr/uafgjort + 1 pr. gruppespil (0x9058b0).
 //
@@ -27,8 +28,10 @@
 //     Fra 2. sæson ligger 1.–2. runde før sæsonskiftet 1/7 – de spilles som forkørslen ved sæsonskiftet (*afvigelse*).
 // IKKE porteret (se ENGINE_PORT_PLAN.md "Kalender og turneringer"): sort_round_teams/0x51d9f0/0x51e220/0x51e870 og gruppelodtrækningerne er porteret efter deres regler, ikke instruktion for instruktion
 // (seedningen bruger klubbens omdømme i stedet for postens seed-byte, og originalens tilfældige tal er spillets), kamppræmierne er spillets egne
-// (sim.ts), gruppekampenes parring er spillets cirkelmetode (League_Stage::create_fixtures / 0x68a030 ikke porteret), klubber fra lande uden
-// klubber i world-filen erstattes af de næstbedste klubber (originalen har alle lande; Intertoto: se assign_intertoto_places nedenfor), collect_european_clubs' sortering bruger sidste sæsons
+// (sim.ts), gruppekampenes parring er spillets cirkelmetode (League_Stage::create_fixtures / 0x68a030 ikke porteret), CL-pladser fra lande uden
+// klubber i world-filen går til de næstbedste klubber (UEFA Cup og Intertoto: hullerne fyldes nedefra – se nedenfor; world-filerne har siden 20/11
+// Europas lande uden liga som skjulte klubber HE<land>, også uden spillere), 0x904580's pokalvindere ud over den første plads (ligacupvinderen,
+// semifinalisterne +0x440) er ikke porteret, collect_european_clubs' sortering bruger sidste sæsons
 // tabel/omdømmet (databasens sidste placering findes ikke i world-filen).
 import type { Competition, Fixture, GameState, Tie } from './types';
 import { addDays } from './dates';
@@ -40,6 +43,8 @@ import { cmCalendarOn, cmPlaceFixture } from './cmCalendar';
 import { CM_EURO_DATES, CM_EURO_ROUNDS } from './data/cmEuroTables';
 import { CM_EURO_CFG, CM_NATION_COEF } from './data/cmEuroData';
 import { emptyRow, finalOrder, newFixture, sortTable } from './competitions';
+import { cmVirtualOn } from './cmVirtual';
+import { clubRepMem, nationRepMem } from './cmPlayerData';
 
 export const cmEuroOn = (g: GameState): boolean => cmCalendarOn(g);
 
@@ -75,7 +80,6 @@ function clBand(r: number): number[] {
 function uefaBand(r: number): number[] {
   return r <= 5 ? [3, 0] : r <= 7 ? [4, 0] : r <= 14 ? [1, 1] : r <= 16 ? [1, 2] : r <= 20 ? [0, 3] : r <= 47 ? [0, 2] : [0, 1];
 }
-const FAIR_PLAY_2001 = ['Finland', 'Slovakia', 'Belarus'];
 
 /** spillets lagrede seedingtilstand: koefficienterne pr. land (seks sæsoner) og sæsonens point/deltagere */
 export interface CmUefaState { year: number; coef: Record<string, number[]>; pts: Record<string, number>; entered: Record<string, number>; holders?: { cl?: number; uefa?: number } }
@@ -93,6 +97,11 @@ function uefaState(g: GameState, season: number): CmUefaState {
     for (const n of Object.keys(s.pts)) if (!s.coef[n]) s.coef[n] = [0, 0, 0, 0, 0, s.entered[n] ? s.pts[n] / s.entered[n] : 0];
     s.pts = {}; s.entered = {}; s.year = season;
   }
+  // UefaSeeding::UefaSeeding 0x903360 (0x9034a4..0x90353f): én post for HVERT land med verdensdelen Europa (nation +0x71 = [0x9cfa10]) – også dem
+  // uden koefficienter i nation.dat (3.9.60: Andorra og San Marino, oraklet 14/7-01 rang 49/50; 2026/27: Rusland og Jugoslavien), sidst med 0
+  if (g.cmNationCont && g.cmEurope !== undefined && g.cmEurope >= 0) {
+    g.cmNationCont.forEach((c, i) => { const n = g.nations[i]?.name; if (c === g.cmEurope && n && !s!.coef[n]) s!.coef[n] = [0, 0, 0, 0, 0, 0]; });
+  }
   return s;
 }
 const total = (v: number[]) => Math.fround(v[0] + v[1] + v[2] + v[3] + v[4]);
@@ -104,10 +113,14 @@ export function cmEuroAddPoints(g: GameState, club: number, points: number): voi
   g.cmUefa.pts[n] = (g.cmUefa.pts[n] ?? 0) + points;
 }
 
-/** brugbare klubber: en trup med målmand og mindst 11 spillere (skjulte klubber har højst 16) */
+/** brugbare klubber: uefa_find_nth_unplaced_club_of_nation 0x9050d0 ser ikke på truppen – originalens fyldspillere (0x90d2f0 før kampen, cmVirtual.ts)
+ *  stiller holdet (oraklet 14/7-01: Albaniens, Liechtensteins … klubber i UEFA Cup'en uden spillere). Uden fyldspillerne (fx kladdespil): en trup
+ *  med målmand og mindst 11 spillere. */
 function playable(g: GameState, counts: Map<number, [number, number]>, cid: number): boolean {
+  if (!g.clubs[cid]) return false;
+  if (cmVirtualOn(g)) return true;
   const c = counts.get(cid);
-  return !!c && c[0] >= 11 && c[1] >= 1 && !!g.clubs[cid];
+  return !!c && c[0] >= 11 && c[1] >= 1;
 }
 
 /** Klubberne pr. land i seedingens rækkefølge (collect_european_clubs 0x904040: division, placering, omdømme; første sæson euro.cfg først) */
@@ -121,10 +134,9 @@ function nationOrder(g: GameState, nationName: string, prevTables: Record<string
   let ids = clubs.map((c) => c.id);
   if (first) {
     const cfg = (g.cmEuroDb?.cfg ?? CM_EURO_CFG)[nationName] ?? [];
-    // (20/11) euro.cfg nævner klubben ved navn under landet – også når databasen har den under et andet land (2026/27: FC Vaduz for Liechtenstein,
-    // i databasen schweizisk); en klub fra landet selv går først
-    const any = (nm: string) => Object.values(g.clubs).find((c) => c.name === nm && c.nation !== nation && g.leagues[c.league] && ok(c.id));
-    const listed = cfg.map((nm) => clubs.find((c) => c.name === nm)?.id ?? any(nm)?.id).filter((x): x is number => x !== undefined);
+    // apply_euro_cfg_order 0x9059e0 søger kun i landets egen blok (0x905bbe: næste posts klub +0x53 = landet) – en klub, databasen har under et
+    // andet land (2026/27: FC Vaduz for Liechtenstein, i databasen schweizisk), flyttes ikke
+    const listed = cfg.map((nm) => clubs.find((c) => c.name === nm)?.id).filter((x): x is number => x !== undefined);
     ids = [...listed, ...ids.filter((x) => !listed.includes(x))];
   }
   return ids;
@@ -167,34 +179,58 @@ function seedEuro(g: GameState, season: number, prevTables: Record<string, numbe
       }
     });
   });
-  // UEFA Cup: [1. runde (36 seedede + 3 Intertoto-pladser), kvalifikation (82)]
-  const uefa: number[][] = [[], []];
+  // UEFA Cup – assign_uefa_cup_places 0x904580: [klub, kode] med kode 1 = 1. runde, 2 = kvalifikation (+0x1df); højst 118 (0x904b8c)
+  const UEFA_SEEDED = 0x76;
+  const uefaE: [number, number][] = [];
   const holderU = s.holders?.uefa;
   // 0x90460f: titelforsvarerens land ([esp+0x54]) sættes kun, når forsvareren selv får UEFA-pladsen – kun da mister landet en 1.-rundeplads (0x904796)
   let holderNation: string | undefined;
-  if (holderU !== undefined && ok(holderU) && !placed.has(holderU)) { holderNation = g.nations[g.clubs[holderU].nation].name; uefa[0].push(holderU); placed.add(holderU); enter(holderNation); }
-  ranked.forEach((n, r) => {
+  if (holderU !== undefined && ok(holderU) && !placed.has(holderU)) { holderNation = g.nations[g.clubs[holderU].nation].name; uefaE.push([holderU, 1]); placed.add(holderU); enter(holderNation); }
+  // 0x904670..0x9046db: fair play – tre forskellige tilfældige rang (0x90cfc0 med antallet af lande; de to sidste trækkes om, til alle tre er
+  // forskellige) får én kvalifikationsplads mere (0x9047ac). Ikke 0x903cc0's +0xd (2001: Finland, Slovakiet, Hviderusland – kun ligatabellernes
+  // markering); oraklet 14/7-01 (frø 1): Georgien, Færøerne og Aserbajdsjan har 3
+  const nr = ranked.length;
+  const fp = [rng.int(0, nr - 1), rng.int(0, nr - 1), rng.int(0, nr - 1)];
+  while (fp[0] === fp[1] || fp[0] === fp[2] || fp[1] === fp[2]) { fp[1] = rng.int(0, nr - 1); fp[2] = rng.int(0, nr - 1); }
+  ranked.every((n, r) => {
     const band = uefaBand(r).slice();
-    if (season === 2001 ? FAIR_PLAY_2001.includes(n) : false) band[1]++;
-    if (holderNation === n && band[0] > 0) band[0]--;
+    if (fp.includes(r)) band[1]++;
+    if (holderNation === n) band[0]--;
     const nation = g.nations.findIndex((x) => x.name === n);
     let firstPlace = true;
-    band.forEach((k, round) => {
-      for (let i = 0; i < k; i++) {
+    for (let round = 0; round < 2; round++) {
+      for (let i = 0; i < band[round]; i++) {
         let c: number | undefined;
         // første plads: pokalvinderen (er han placeret, går pladsen videre efter tabellen)
         if (firstPlace) { firstPlace = false; const w = cupWinners[nation]; if (w !== undefined && !placed.has(w) && ok(w)) c = w; }
         c ??= next(n);
-        if (c === undefined) return;
-        uefa[round].push(c); placed.add(c); enter(n);
+        // 0x9050d0 uden flere klubber i landet: originalen springer pladsen over (0x904a3c) – men den har alle landes klubber i hukommelsen (også
+        // uden spillere), world-filen ikke (2001: Albanien, Færøerne, Liechtenstein … ingen klubber). *afvigelse*: pladsen bliver et hul med sin
+        // runde, der tæller med i loftet, og fyldes nedenfor fra de nærmeste lavere rangerede lande
+        uefaE.push([c ?? -1, round + 1]);
+        if (c !== undefined) { placed.add(c); enter(n); }
+        if (uefaE.length >= UEFA_SEEDED) return false;
       }
-    });
+    }
+    return true;
   });
-  // pladser fra lande uden klubber i world-filen: de næste klubber efter rang (originalen: build_entrants fylder op til 118 – *afvigelse*)
+  // hullerne: de lavest rangerede lande med flere klubber, én pr. land pr. omgang nedefra (som Intertoto-hullerne nedenfor) – i stedet for de næste
+  // klubber fra de øverste lande (England/Spanien/Italien – før 20/11-rettelsen: Spanien 3 + 29 i 2001, England 3 + 2 på 2026/27)
+  const uHoles = uefaE.filter((x) => x[0] < 0);
+  for (let pass = 0; uHoles.length && pass < 60; pass++) {
+    let got = false;
+    for (let idx = ranked.length - 1; idx >= 0 && uHoles.length; idx--) {
+      const c = next(ranked[idx]);
+      if (c === undefined) continue;
+      uHoles.shift()![0] = c; placed.add(c); enter(ranked[idx]); got = true;
+    }
+    if (!got) break;
+  }
+  for (let i = uefaE.length - 1; i >= 0; i--) if (uefaE[i][0] < 0) uefaE.splice(i, 1);
+  // CL: pladser fra lande uden klubber i world-filen → de næste klubber efter rang (*afvigelse*; originalen har alle landes klubber)
   const spare = () => { for (const n of ranked) { const c = next(n); if (c !== undefined) return c; } return undefined; };
   const fill = (arr: number[], n: number, nat?: boolean) => { while (arr.length < n) { const c = spare(); if (c === undefined) break; arr.push(c); placed.add(c); if (nat) enter(g.nations[g.clubs[c].nation].name); } arr.length = Math.min(arr.length, n); };
   cl.forEach((a, i) => fill(a, CL_CAP[i], true));
-  fill(uefa[1], rnd('UEFA', 0).nw, true);
   // Intertoto-pladserne +0xe (0x903cc0): faste – Liechtenstein, San Marino, Moldova, Andorra, Bosnien 0, Skotland 1, England 1 efter 2001
   // (i 2001 går England til tælleren – 0x903e73); 2001: Frankrig 4, Tyskland 3, Portugal/Norge/Spanien/Rusland 0, Italien 1. Resten efter
   // tælleren over de ikke-faste lande: de 16 første 2, de næste 27 1, ellers 0 (Belgien 2 i 2000).
@@ -268,7 +304,24 @@ function seedEuro(g: GameState, season: number, prevTables: Record<string, numbe
   uicE.sort((a, b) => b[1] - a[1] || (g.clubs[a[0]].rep - g.clubs[b[0]].rep));
   const u = rnd('UIC', 0).nw, u2 = rnd('UIC', 1).nw;
   const uic = [uicE.slice(0, u).map((x) => x[0]), uicE.slice(u, u + u2).map((x) => x[0]), uicE.slice(u + u2).map((x) => x[0])];
-  fill(uefa[0], rnd('UEFA', 1).nw - 16 - (uic[0].length ? 3 : 0), true);
+  // UefaCup::build_entrants 0x902b90 (efter Intertoto – 0x902fac/0x902fb3): under 118, så klubberne i klubtabellens rækkefølge (uden landsholdene)
+  // fra lande, der ikke spilles (nation +0x11c = 0), med landets omdømme +0x8e under 2000 og uden Europa-plads (+0x1db = −1), kode 3; ingen
+  // +0x11 (landets deltagere tælles kun i 0x904580)
+  if (uefaE.length < UEFA_SEEDED) {
+    const active = new Set(g.activeNations);
+    for (const c of Object.values(g.clubs)) {
+      if (uefaE.length >= UEFA_SEEDED) break;
+      if (placed.has(c.id) || active.has(c.nation) || !g.nations[c.nation] || !g.leagues[c.league] || !ok(c.id)) continue;
+      if ((nationRepMem(g, c.nation) << 16 >> 16) >= 2000) continue;
+      uefaE.push([c.id, 3]); placed.add(c.id);
+    }
+  }
+  // 0x902dbf qsort 0x522190: koden faldende, så omdømmet (+0x80) stigende – kvalifikationsrunden tager de 82 første (rundetabellens +0x1c/+0x1e),
+  // 1. runde resten: den 36. plads i 1. runde går til kvalifikationsklubben med det højeste omdømme (oraklet 14/7-01: Trabzonspor)
+  const repOf = new Map(uefaE.map(([c]) => [c, clubRepMem(g, c)]));
+  uefaE.sort((a, b) => b[1] - a[1] || repOf.get(a[0])! - repOf.get(b[0])!);
+  const nq = rnd('UEFA', 0).nw;
+  const uefa = [uefaE.slice(nq).map((x) => x[0]), uefaE.slice(0, nq).map((x) => x[0])];
   return { cl, uefa, uic };
 }
 

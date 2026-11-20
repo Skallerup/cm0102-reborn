@@ -213,12 +213,26 @@ if (ORIGINAL) {
 // ≠ 0) uden en beholdt liga – deres øverste divisions klubber i rækkefølgen euro.cfg, så omdømmet (+0x80), højst EURO_CLUBS pr. land, som skjulte
 // klubber (ingen kampe) med deres spillere (≤ 40 år, højst EURO_SQUAD efter CA). newgame.ts lægger dem på verdenen i ægte tilstand.
 const EURO_CLUBS = 8, EURO_SQUAD = 22;
+/** continent.dat: "Europe"s id (nation +0x71 – [0x9cfa10]); −1 uden filen */
+function europeId(): number {
+  const C = files['continent.dat'];
+  if (!C) return -1;
+  const V = new DataView(C), dec = new TextDecoder('latin1');
+  for (let o = 0; o + 198 <= C.byteLength; o += 198) {
+    const u = new Uint8Array(C, o + 4, 25), e = u.indexOf(0);
+    if (dec.decode(u.subarray(0, e < 0 ? 25 : e)) === 'Europe') return V.getInt32(o, true);
+  }
+  return -1;
+}
 let euroClubs: { leagues: typeof w.leagues; clubs: typeof w.clubs; players: typeof w.players; ratings: typeof w.ratings; clubRep: Record<number, number> } | null = null;
 const euroKeep = new Set<number>();
 if (!ORIGINAL && files['nation.dat']) {
   const N = new DataView(files['nation.dat']), dec = new TextDecoder('latin1'), coefNat = new Set<string>();
+  // (20/11, UEFA-pladserne) UefaSeeding 0x903360 har ALLE lande med verdensdelen Europa (nation +0x71) – også uden koefficienter (2026/27: Rusland,
+  // Jugoslavien); før kun landene med koefficienter ≠ 0
+  const euroCont = europeId();
   for (let o = 0; o + 290 <= N.byteLength; o += 290) {
-    if (!Array.from({ length: 6 }, (_, k) => N.getFloat64(o + 0xe0 + 8 * k, true)).some((x) => x !== 0)) continue;
+    if (euroCont >= 0 ? N.getInt32(o + 0x71, true) !== euroCont : !Array.from({ length: 6 }, (_, k) => N.getFloat64(o + 0xe0 + 8 * k, true)).some((x) => x !== 0)) continue;
     const u = new Uint8Array(files['nation.dat'], o + 4, 51), e = u.indexOf(0);
     coefNat.add(dec.decode(u.subarray(0, e < 0 ? 51 : e)));
   }
@@ -257,7 +271,8 @@ if (!ORIGINAL && files['nation.dat']) {
       const ca = (p: (typeof w.players)[number]) => wa.ratings[p[Fa.id] as number]?.ca ?? 0;
       const squad = (byClub.get(c[0] as number) ?? []).filter((p) => !have.has(p[Fa.id] as number) && ageAt(shift(p[Fa.dob] as string)) <= 40)
         .sort((a, b) => ca(b) - ca(a)).slice(0, EURO_SQUAD);
-      if (squad.length < 11 || !squad.some((p) => (wa.ratings[p[Fa.id] as number]?.pos?.[0] ?? 0) >= 15)) continue;
+      // (20/11) også klubber uden (fuld) trup: originalen har dem i hukommelsen, og fyldspillerne 0x90d2f0 stiller holdet før kampen (2026/27:
+      // Liechtensteins fire klubber i "Lower Division" – før ingen klub, så landets UEFA-pladser gik til England)
       n++;
       const row = c.slice() as typeof c; row[4] = lid;
       out.clubs.push(row); euroKeep.add(c[0] as number);
@@ -287,6 +302,7 @@ if (!ORIGINAL && files['nation.dat']) {
 }
 w.leagues = [...w.leagues.filter((l) => keptLeagues.has(l.id)), ...hiddenLeagues];
 const keptClubs = new Set<number>();
+const parsedClubs = w.clubs;
 w.clubs = w.clubs.filter((c) => keptLeagues.has(c[4] as string));
 // (de spilbare landes inaktive divisioner) kun klubber med mindst én spiller, originalen kan have i hukommelsen (tomme klubber – åbent punkt)
 if (playableNat.size) {
@@ -299,6 +315,33 @@ if (playableNat.size) {
     if (hiddenKeep.has(p[F.id] as number) || tc === undefined || tc === 1 || (Array.isArray(tc) && tc.some((n) => playableNat.has(n)))) withP.add(club);
   }
   w.clubs = w.clubs.filter((c) => !lgOf.get(c[4] as string)?.hidden || withP.has(c[0] as number));
+}
+// (20/11, UEFA-pladserne 0x904580/0x902b90) den originale database: originalens hukommelse har ALLE de europæiske landes klubber – også uden
+// spillere (oraklet 14/7-01, størrelse 2: Albaniens, Færøernes, Liechtensteins … klubber i UEFA Cup'en med 0 spillere; fyldspillerne 0x90d2f0 stiller
+// holdet før kampen). Lande med verdensdelen Europa (nation +0x71 = "Europe") uden klubber i world-filen: op til EURO_CLUBS_ORIG klubber (omdømmet
+// +0x80 faldende) i en skjult liga HE<land> – deres spillere som de øvrige skjulte klubbers (kun dem, 0x524d70 har i hukommelsen); newgame.ts
+// beholder klubberne uden spillere
+if (ORIGINAL && w.cmRaw?.nationCont && (w.cmRaw.europe ?? -1) >= 0) {
+  const EURO_CLUBS_ORIG = 8;
+  // lande med en spillet liga har deres klubber; de øvrige (kun skjulte klubber – newgame.ts fjerner dem uden spillere i hukommelsen) får HE<land>
+  const lgHidden = new Map(w.leagues.map((l) => [l.id, !!l.hidden]));
+  const real = new Set(w.clubs.filter((c) => !lgHidden.get(c[4] as string)).map((c) => c[3] as number));
+  const inW = new Map(w.clubs.map((c) => [c[0] as number, c]));
+  const rawRep = w.cmRaw.clubRep;
+  let added = 0, moved = 0, nats = 0;
+  w.cmRaw.nationCont.forEach((cont, idx) => {
+    if (cont !== w.cmRaw!.europe || real.has(idx)) return;
+    const cs = parsedClubs.filter((c) => c[3] === idx).sort((a, b) => (rawRep[b[0] as number] ?? 0) - (rawRep[a[0] as number] ?? 0) || (a[0] as number) - (b[0] as number)).slice(0, EURO_CLUBS_ORIG);
+    if (!cs.length) return;
+    const lid = `HE${idx}`;
+    const lg = { id: lid, name: nationName(idx), nation: idx, tier: 9, hidden: true };
+    hiddenLeagues.push(lg); w.leagues.push(lg); keptLeagues.add(lid); nats++;
+    for (const c of cs) {
+      const row = inW.get(c[0] as number);
+      if (row) { row[4] = lid; moved++; } else { c[4] = lid; w.clubs.push(c); added++; }
+    }
+  });
+  console.error(`Europas lande uden spillet liga: ${nats} lande, ${added} klubber + ${moved} skjulte flyttet til HE<land>`);
 }
 const hiddenIds = new Set(hiddenLeagues.map((l) => l.id));
 const clubLg = new Map(w.clubs.map((c) => [c[0] as number, c[4] as string]));
