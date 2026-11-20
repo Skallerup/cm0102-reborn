@@ -285,7 +285,7 @@ function ContractTab({ p, mine }: { p: Player; mine: boolean }) {
   const ageAtSign = p.joined ? ageOn(p.dob, p.joined) : 99;
   const isProtected = !!c && (before || (!!p.joined && daysBetween(p.joined, g.date) < (ageAtSign < 28 ? 3 : 2) * 365));
   const squad = p.club ? Object.values(g.players).filter((x) => x.club === p.club) : [];
-  const status = p.squadStatus ?? (p.club ? expectedStatus(p, squad, g.date) : undefined);
+  const status = p.club ? p.squadStatus ?? expectedStatus(p, squad, g.date) : undefined;   // klubløs: ingen kontrakt, ingen trupstatus (også i gamle gemte spil)
   // CM 01/02 (0x87d723–0x87d7d3): én række pr. bonus i rækkefølgen +0x10 mål, +0x14 assist, +0x18 clean sheet – overskriften kun på den første
   const bonuses = c ? ([
     c.goalBonus ? t('cl.pl.bonus.goal', { v: moneyWage(c.goalBonus) }) : '', // 0x85f830: flag 0xA

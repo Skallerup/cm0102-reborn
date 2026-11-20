@@ -170,6 +170,8 @@ export function setClub(p: Player, club: number) {
   // Playing Career (0x7c5fe0): sæsonens tal for den gamle klub bogføres på dens egen linje ved ethvert skifte (salg, leje ud/hjem,
   // fri transfer, frigivelse) – den nye klub starter fra 0 (før fik den nye klubs linje hele sæsonens tal, ejerens fejl 19/11)
   if (moved && p.club && hasGame() && p.stats && p.stats.apps + p.stats.subs > 0) pushCareerLine(p, p.club, !!p.loan);
+  // en klubløs spiller har ingen kontrakt og dermed ingen trupstatus (kontrakten +0x4f slettes sammen med posten) – før hang "squad rotation" ved efter fri transfer/frigivelse (ejerens fund 21/11)
+  if (moved && !club) p.squadStatus = undefined;
   if (moved) { p.cmStats = undefined; p.cmContract = undefined; if (hasGame()) { cmPermitMove(gs(), p, club); cmStaffStateMove(gs(), p, p.club, club); } }
   p.club = club;
   // en nyindkøbt spiller kommer på førsteholdet: reserve-mærket hører til den gamle klub (spillerrapport #25: Obi og Arthur
