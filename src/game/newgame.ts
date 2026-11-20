@@ -233,6 +233,9 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     g.cmCal = 1;
     // (20/11, MODERN_PARITY §0 C+D) originalens kampregler – 3 udskiftninger/5 på bænken (rules.ts) og zonemotorens kampkonstanter (sim.ts ORIGINAL)
     g.cmMatch = 1;
+    // (20/11, MODERN_PARITY §0 B) originalens CONTRACT_MANAGER – startkontrakterne 0x4c7560 (cmContractEnd) og computerklubbernes daglige
+    // forlængelser, udløb og frigivelser 0x4c7ac0 (cmContractManager.ts cmCmOn)
+    g.cmCmMgr = 1;
     if (raw.euro) g.cmEuroDb = JSON.parse(JSON.stringify(raw.euro)) as GameState['cmEuroDb'];
   }
   if (cm?.cmRaw && season < 2020) {
@@ -319,7 +322,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
       ca: rtOf(r[F.id] as number)?.ca ?? caFromValue(value, age), value, caps: r[F.caps] as number, intGoals: r[F.intGoals] as number,
       stats: { apps: r[F.apps] as number, minutes: r[F.minutes] as number, goals: r[F.goals] as number, assists: r[F.assists] as number, yellows: r[F.yellows] as number, reds: r[F.reds] as number },
       // originalens startkontrakt 0x4c7560: databasens dato som den er (trukket, hvis den mangler; +52 uger, hvis for tidlig) – cmContractEnd.ts
-      contractEnd: club && cm && cmStartGame ? cmContractEnd((r[F.contract] as string) || '', date, g.nations[g.leagues[g.clubs[club].league]?.nation]?.name, seed, r[F.id] as number)
+      contractEnd: club && cm && (cmStartGame || g.cmCmMgr === 1) ? cmContractEnd((r[F.contract] as string) || '', date, g.nations[g.leagues[g.clubs[club].league]?.nation]?.name, seed, r[F.id] as number)
         : (r[F.contract] as string) || undefined, date, seed, wealth,
     });
     // CM 01/02: originalens evner, potentiale og positioner

@@ -17,7 +17,7 @@ men på en databaseuafhængig markør sat af newgame.ts for nye spil (cmLogic + 
 | `cmSeasonOn` (cmSeason.ts) | = cmCalendarOn | sæsonskiftet pr. land 0x5d5ae0 (Europa 20/6, Norge 27/11 …), kontrakter/lejer dagligt, kampene før starten | **til (20/11)** |
 | `cmIntlOn` (cmIntl.ts) + 11 × `cmActive` i international.ts | kun cmActive | landsholdenes kalender, trupper, U21, slutrunder, FIFA-listen | fra – åbent punkt A |
 | `cmPrerunMatchesOn` (cmPrerunMatches.ts) | kun cmActive (+ PRERUN_YEAR 2001) | forkørslens landskampe (VM-kval. Oceanien, Copa América 2001), Europas kampe dag for dag | fra – 2001-kampe (Europas kampe før starten: cmEuroCatchUp) |
-| `cmCmOn` (cmContractManager.ts) | kun cmActive | CONTRACT_MANAGER 0x4c7ac0 dagligt (computerklubbernes udløb, forlængelser) | fra – åbent punkt B |
+| `cmCmOn` (cmContractManager.ts) | cmActive **eller cmLogic + `g.cmCmMgr`** (20/11) | CONTRACT_MANAGER: startkontrakterne 0x4c7560 (cmContractEnd), 0x4c7ac0 dagligt (computerklubbernes udløb, forlængelser, frigivelser); spillets aiRenewals/udløbet 1/7 kun uden for området | **til (20/11)** – punkt B |
 | `cmMarketOn` / `cmShortlistOn` | cmLogic + `g.cmPlan` | trupplan, ønskelister, bud, svar, budskærmen | til (18/11) |
 | `cmBoardLogic` / `cmBoardOn` | cmLogic + `g.cmBoard` | MANAGER_MANAGER, managerjob, bestyrelsens loft | til (landstrænerdelen kun 2001) |
 | `cmMediaOn` | cmLogic + `g.cmMedia` | forhold, medier, rygter, moral, nyhedsomfang | til |
@@ -44,7 +44,19 @@ state.ts:306 (nyhedsfilteret), competitions.ts (split-nyheden), cmOfferCheck.ts:
 - **A. Landsholdene** (cmIntlOn + international.ts): originalens landsholdskalender/-trupper/slutrunder/FIFA-liste på 2026/27 – kræver databasens
   landshold (nationalTeams kun i world-original), 2026's slutrunder (VM 2026 i USA – originalen kender kun sine egne år: hvad exe'en gør med
   året 2026, skal afkodes) og FIFA_RANKINGS' data.
-- **B. CONTRACT_MANAGER** (cmCmOn): det daglige udløb/forlængelser for computerklubberne – kræver hukommelsens omfang (cmCmScope) på 2026/27.
+- **B. CONTRACT_MANAGER – lukket 20/11.** Ny markør `g.cmCmMgr` (newgame.ts, nye spil med en CM-database i ægte tilstand; `g.cmCm` er portens
+  tilstand) → cmCmOn: startkontrakterne 0x4c7560 (cmContractEnd: databasens dato, trukket hvis den mangler, +52 uger hvis før [0xae2330]) og
+  0x4c7ac0 dagligt for computerklubberne i de spilbare lande (cmCmScope) – forlængelsestilbud/beslutninger, udløb (type 1: bliver med den udløbne
+  kontrakt), frigivelser/fri transfer, Signing On Fee (£ via cmGbp); spillets aiRenewals (150 dages udsyn) og udløbet gælder kun dem uden for
+  området. Ingen nye data krævet: kontraktfelter, løn (99 %) og udløb (74 %) står allerede i world.json, omdømme/trupplan/klubstatus i
+  world-cm.json (buildWantMem kørte allerede på 2026/27 for markedet). Målt (`scripts/cm-contracts-2026.ts`, frø 1, England + Danmark):
+  2001-fingeraftrykket uændret (perf-fingerprint 2001-08-20 samlet 438b6c8c376734d0 før/efter – measure 85e65e4dcc00 / edbf66aa3fc5). 2026/27
+  Brentford til 2/7-2027 (før 57486b34d3a2 / efter 461cfd503bd7): intet nedbrud; forlængelser 464 (kun jan–maj, spillets) → 765 (CONTRACT_MANAGER
+  770 underskrifter; toppe juli 151, dec 67, jan 167, apr 181, jun 113 – samme mønster som 2001: juli 404, dec 460, jan 299, apr 217, jun 99),
+  klubløse 328 (312 den 1/7) → 182 (159 frigivet af porten), 165 med udløbet kontrakt i klubben 2/7 (2001: 409); lønsum pr. uge 2/7-2027 Premier
+  League £13,4M (før £12,9M), Championship £4,2M (£4,0M), Superligaen £0,54M (£0,55M) – 2001 til 2/7-2002 (5df1536fa85d): PL £7,3M, Div 1 £3,3M,
+  Superligaen £0,29M (forholdet PL/Superliga 2001 25, 2026 25). Vejle til 31/12 (7a2294e18d92): 236 forlængelser, intet nedbrud. Kræver et nyt
+  spil. **Rest:** de *estimerede* dele i cmContractManager.ts' hoved ([0xae2330]'s opdatering, TRANSFER_MANAGER-tjekkene) gælder nu også 2026/27.
 - **C. Udskiftningsreglerne – lukket 20/11.** Originalen tager ikke tallene fra databasen: hver turnerings konstruktør sætter dem fast i koden
   (konkurrenceobjektets +0x49 = bænk, +0x4a = udskiftninger; 0x5bb100/0x48f2d0 kopierer dem til kampens +0x4d – lav nibble bænk, høj
   udskiftninger; 0x6dbac0 bruger min(+0x4d >> 4, bænkens antal)). Ny markør `g.cmMatch` (newgame.ts, nye spil med en CM-database i ægte tilstand)

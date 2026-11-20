@@ -1,5 +1,5 @@
 // CONTRACT_MANAGER::daily_update 0x4c7ac0 på spillets data – computerklubbernes forlængelser, udløb og frigivelser som i CM 01/02 (kun den
-// originale database i ægte tilstand, cmActive). Porten selv er cmContract.ts (instruktion for instruktion, kontrolleret mod oraklets
+// originale database i ægte tilstand, cmActive – og nye spil med en CM-database i ægte tilstand, g.cmCmMgr: cmCmOn). Porten selv er cmContract.ts (instruktion for instruktion, kontrolleret mod oraklets
 // hukommelse 20/7-2001, 1/2-2002 og 30/6-2002); her bygges originalens poster af spiltilstanden (cmContractGame.ts buildWantMem) og
 // CONTRACT_MANAGER's vedvarende tilstand (tilbudslisten +0x34, beslutningsdatoerne +0xc, rækkernes +8/+0xb, kontrakternes +0x25/+0x35/+0x49)
 // gemmes i GameState.cmCm og spillets kontrakter mellem dagene.
@@ -31,7 +31,7 @@ import { buildWantMem, applyCmTerms, type CmTerms, type WantMem } from './cmCont
 import { contractDailyUpdate_4c7ac0, listAdd_68d0d0, listInit_68d020, listNext_68d1b0 } from './cmContract';
 import { humanClub_600a50 } from './cmWageGame';
 import { slCall } from './cmShortlist';
-import { cmActive, cmRand, newCmContract, statusCode } from './cmPlayerData';
+import { cmActive, cmLogic, cmRand, newCmContract, statusCode } from './cmPlayerData';
 import { isHumanClub } from './humans';
 import { recordFreeTransfer, setClub } from './state';
 import { ageOn } from './dates';
@@ -80,8 +80,9 @@ export function cmCmScope(g: GameState, p: Player): boolean {
 }
 /** CM_CM_FOREIGN=0: kun de valgte lande (målinger) */
 const FOREIGN = ENV.CM_CM_FOREIGN !== '0';
-/** Porten styrer computerklubbernes kontrakter i dette spil */
-export const cmCmOn = (g: GameState) => !OFF && cmActive(g) && !g.draft;
+/** Porten styrer computerklubbernes kontrakter i dette spil: den originale database (cmActive) eller en CM-database i ægte tilstand i et spil,
+ *  der er startet med CONTRACT_MANAGER (g.cmCmMgr – newgame.ts; 2026/27 fra 20/11). Ældre 2026/27-spil beholder spillets egne forlængelser. */
+export const cmCmOn = (g: GameState) => !OFF && (cmActive(g) || (cmLogic(g) && g.cmCmMgr === 1)) && !g.draft;
 
 /** [0xae2330]: 31/8 i sæsonens startår (*estimeret*) */
 function date2330(iso: string): number {

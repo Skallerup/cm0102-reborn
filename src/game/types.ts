@@ -1275,6 +1275,10 @@ export interface GameState {
    *  (rules.ts classicRules – 3/5 som 2001) og zonemotorens originale kampkonstanter (sim.ts ORIGINAL/ORIGINAL_LOWER) – nye spil med en CM-database
    *  i ægte tilstand; den originale database har dem altid, ældre 2026/27-spil ikke (5/9 og MODERN) */
   cmMatch?: 1;
+  /** (20/11, "Altid som originalen", MODERN_PARITY §0 B) spillet er startet med originalens CONTRACT_MANAGER (cmContractManager.ts cmCmOn: startkontrakterne
+   *  0x4c7560 og computerklubbernes daglige forlængelser/udløb/frigivelser 0x4c7ac0) – nye spil med en CM-database i ægte tilstand; den originale
+   *  database har den altid (cmActive), ældre 2026/27-spil beholder spillets egne forlængelser og udløbet 1/7 */
+  cmCmMgr?: 1;
   /** (20/11) databasens Europa-data for cmEurope.ts, når det ikke er den originale database: landenes seks koefficienter (nation.dat +0xe0..+0x108),
    *  euro.cfg og den seneste sæsons vindere i club_comp_history.dat (turnerings-id → [år, vinder, nr. 2]) – world-cm.json `euro` */
   cmEuroDb?: { coef: Record<string, number[]>; cfg: Record<string, string[]>; last: Record<number, [number, number, number]> };
