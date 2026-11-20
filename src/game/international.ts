@@ -17,7 +17,7 @@ import type { GameState, MatchReport, MiniReport, Player } from './types';
 import { getGridFactory } from './engine/liveSim';
 import { cmNationalFillers, natClub } from './cmVirtual';
 import { packReport } from './miniReport';
-import { cmActive, postHooks, recordPlayerMatch, repMemOf } from './cmPlayerData';
+import { cmIntlOn, postHooks, recordPlayerMatch, repMemOf } from './cmPlayerData';
 import { intlHooks } from './hooks';
 import { cmSquadOf, cmIntlMatchReport, selectFinals, selectSquad, type FixName } from './cmIntlSquad';
 import { cmFifaRanking, cmFifaRecord, type FifaComp } from './cmFifa';
@@ -40,7 +40,9 @@ export interface OfcQual { year: number; groups: number[][]; table: Record<numbe
 /** Kvalifikationen til næste VM/EM: grupper af fire i hver verdensdel, spillet i landsholdsvinduerne (*estimeret* format) */
 export interface IntlQual { name: 'wc' | 'euro'; year: number; groups: number[][]; region: string[]; table: Record<number, IntlRow>; round: number; qualified?: number[];
   /** (ægte tilstand, cmIntl.ts) originalens kvalifikation: rundedatoerne, kampene pr. runde og playoff */
-  cm?: 1; dates?: string[]; sched?: [number, number][][]; po?: IntlTie[]; poDates?: string[] }
+  cm?: 1; dates?: string[]; sched?: [number, number][][]; po?: IntlTie[]; poDates?: string[];
+  /** værtslandene (HostCountry::find_hosts 0x5fa730) – kvalificeret på forhånd */
+  hosts?: number[] }
 export interface IntlResult { date: string; home: number; away: number; hg: number; ag: number; kind: 'friendly' | 'wc' | 'euro' | 'copa' | 'afcon' | 'asian' | 'wcq' | 'euroq' | 'u21'; stage?: string;
   /** slutrundekampenes kompakte rapport (miniReport.ts) – målscorere, kort, opstillinger, statistik; resultatet i Afternoon Results åbner den */
   mini?: MiniReport; pens?: [number, number] }
@@ -132,7 +134,7 @@ export function nationSquad(n: number): Player[] {
   }
   // ægte tilstand (original DB): originalens udtagelse 0x76c120 (cmIntlSquad.ts) – skadede er trukket (0x775cd0) eller spiller ikke; under kampen
   // landsholdets fyldspillere (0x90dc66, cmVirtual.ts – sat af playNation)
-  const cq = cmActive(g) && !g.draft ? cmSquadOf(g, n, 0) : null;
+  const cq = cmIntlOn(g) ? cmSquadOf(g, n, 0) : null;
   if (cq) return withFill(cq.ids.map((id) => g.players[id]).filter((p): p is Player => !!p && !p.injury), n, byNation().get(n) ?? []);
   const all = byNation().get(n) ?? [];
   const gk = all.filter((p) => naturalRole(p) === 'GK').slice(0, 3);
@@ -221,7 +223,7 @@ export function playNation(home: number, away: number, kind: IntlResult['kind'],
   const caps: [number | undefined, number | undefined] = [undefined, undefined];
   // ægte tilstand: originalens kampstart for landshold – gittermotoren (når den er slået til) med landsholdene som hold (0x53b900), fixture-koderne
   // (intlCodes) og kampens fyldspillere 0x90dc66 (0x90d2f0 før kampen, cmVirtual.ts)
-  const cmOn = cmActive(g) && !g.draft;
+  const cmOn = cmIntlOn(g);
   const grid = cmOn && intlHooks.gridOn?.() ? getGridFactory() : null;
   zoneNeedsGk = !grid;
   if (cmOn) prepareFillers(g, [home, away], u21, kind, stage);
@@ -247,7 +249,7 @@ export function playNation(home: number, away: number, kind: IntlResult['kind'],
   if (cmOn) intlHooks.boardMatch?.(home, away, rep, kind, stage);
   const [hs, as] = rep.stats;
   // ægte tilstand (original DB): klubbernes nyhed efter kampen 0x7706c0 og FIFA-ranglisten 0x58cf70 (cmIntlSquad.ts, cmFifa.ts) i stedet for spillets egne
-  const cmRep = cmActive(g) && !g.draft && !u21;
+  const cmRep = cmIntlOn(g) && !u21;
   // 0x62c080 også for landskampe: kampkondition, træthed og skader (venskabskampe halvt) – i stedet for spillets egne nedenfor
   if (cm) cmFitMatch(g, rep, kind !== 'friendly', -1);
   for (const line of rep.players) {
@@ -255,7 +257,7 @@ export function playNation(home: number, away: number, kind: IntlResult['kind'],
     if (!p || line.minutes <= 0 || u21) continue;
     p.caps = (p.caps ?? 0) + 1;
     // originalens spillerstatistik 0x7c0d70: landskampe i kategori 5 (International – tæller ikke i Senior Club og ikke i spillets karaktersnit)
-    if (cmActive(g) && !g.draft) recordPlayerMatch(g, p, 5, line, line.team === 0 ? hs.goals : as.goals, line.team === 0 ? as.goals : hs.goals, rep.mom === p.id, false);
+    if (cmIntlOn(g)) recordPlayerMatch(g, p, 5, line, line.team === 0 ? hs.goals : as.goals, line.team === 0 ? as.goals : hs.goals, rep.mom === p.id, false);
     // CM 01/02 0x8c39f0: "Fee after N International Apps." tæller landskampe
     if (p.cmApps) cmAppsAfterMatch(p, 'int');
     p.intGoals = (p.intGoals ?? 0) + line.goals;
@@ -391,7 +393,7 @@ function startTournament(name: 'wc' | 'euro', year: number) {
   state().tournament = t;
   state().qual = undefined;
   intlHooks.ntStart?.(name, year, field);                                // (ægte tilstand) NationalTeams: set_predicted_positions + 0x775220
-  if (cmActive(g) && !g.draft) selectFinals(g, field, name, `${year}-${GROUP_DAYS[0]}`, `${year}-${KO_DAYS.F}`);
+  if (cmIntlOn(g)) selectFinals(g, field, name, `${year}-${GROUP_DAYS[0]}`, `${year}-${KO_DAYS.F}`);
   else callUpNews(field, new Map(), name);
   forEachHuman(() => addNews({ cat: 'general', key: `intl.start.${name}`, params: { year, n: field.length } }));
 }
@@ -417,7 +419,7 @@ function startContinental(name: 'copa' | 'afcon' | 'asian', year: number) {
   for (const n of field) t.table[n] = { n, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 };
   const st = state();
   st.cont = [...(st.cont ?? []).filter((x) => x.name !== name), t];
-  if (cmActive(g) && !g.draft) selectFinals(g, field, name, `${year}-${c.days.g[0]}`, `${year}-${c.days.ko.F}`);
+  if (cmIntlOn(g)) selectFinals(g, field, name, `${year}-${c.days.g[0]}`, `${year}-${c.days.ko.F}`);
   else callUpNews(field, new Map(), name);
   forEachHuman(() => addNews({ cat: 'general', key: `intl.start.${name}`, params: { year, n: field.length } }));
 }
@@ -477,7 +479,7 @@ const rowsOf2 = (table: Record<number, IntlRow>, grp: number[]) => grp.map((n) =
 /** U21-landsholdet: de 20 bedste spillere på 21 år eller yngre */
 export function u21Squad(n: number): Player[] {
   const g = gs();
-  const cq = cmActive(g) && !g.draft ? cmSquadOf(g, n, 2) : null;
+  const cq = cmIntlOn(g) ? cmSquadOf(g, n, 2) : null;
   if (cq) return withFill(cq.ids.map((id) => g.players[id]).filter((p): p is Player => !!p && !p.injury), n, (byNation().get(n) ?? []).filter((p) => ageOn(p.dob, g.date) <= 21));
   const all = (byNation().get(n) ?? []).filter((p) => ageOn(p.dob, g.date) <= 21);
   // to målmænd og 18 markspillere (uden målmand kan kampen ikke spilles)
@@ -591,7 +593,7 @@ export function intlDaily() {
   const year = Number(g.date.slice(0, 4));
   // ægte tilstand med den originale database: originalens kalender (cmIntl.ts – landskampdatoerne 0x5ca4f0, venskabskampene 0x5cbdf0, U21-kampene
   // 0x7e6720, EM-kvalifikationen) i stedet for de fire vinduer, VM-kvalifikationen i 2001 og de 64 stærkestes venskabskampe
-  const cm = !!intlHooks.cmDay && cmActive(g);
+  const cm = !!intlHooks.cmDay && cmIntlOn(g);
   if (cm) intlHooks.cmDay!();
   else {
     if (WINDOWS.some((w) => addDays(g.date, 2).slice(5) === w)) { const opp = planWindow(addDays(g.date, 2)); callUpNews([...opp.keys()], opp); }
@@ -599,7 +601,8 @@ export function intlDaily() {
   }
   // kvalifikation i august året før (VM i år ≡ 2, EM i år ≡ 0 mod 4) – ægte tilstand: EM 2004 fra 2002 (cmIntl.ts), VM 2002 har ingen (originalens
   // Europa-/Sydamerika-/Asien-zoner begynder med 2004-kampagnen); de senere er stadig spillets egne (som i udvidet spil)
-  if (md === '08-20' && year % 2 === 1 && (!cm || year >= 2005)) startQualification((year + 1) % 4 === 2 ? 'wc' : 'euro', year + 1);
+  // (g.cmIntl, 20/11) EM-kvalifikationens kampagner er originalens hvert fjerde år (cmIntl.ts 0x57ce10/0x57dab0) – kun VM-kvalifikationen er spillets egen
+  if (md === '08-20' && year % 2 === 1 && (!cm || year >= 2005) && !(cm && g.cmIntl === 1 && (year + 1) % 4 === 0)) startQualification((year + 1) % 4 === 2 ? 'wc' : 'euro', year + 1);
   // slutrunder: VM i år ≡ 2 (mod 4), EM i år ≡ 0 (mod 4) – lodtrækning 1. juni
   // (ægte tilstand) VM 2002 og Afrikamesterskabet 2002 er originalens (cmIntlFinals.ts – lodtrækning 27/12-2001 og 6/10-2001)
   if (md === '06-01' && (year % 4 === 2 || year % 4 === 0) && !(cm && year === 2002)) startTournament(year % 4 === 2 ? 'wc' : 'euro', year);
@@ -657,7 +660,7 @@ export function resignNational(): string {
 /** FIFA-point: start fra originalens koefficient (eller landets styrke), opdateret efter hver landskamp som Elo */
 export function fifaPoints(n: number): number {
   const g = gs();
-  if (cmActive(g) && !g.draft) return cmFifaRanking(g).find((r) => r.n === n)?.pts ?? 0;
+  if (cmIntlOn(g)) return cmFifaRanking(g).find((r) => r.n === n)?.pts ?? 0;
   const st = state();
   st.fifa ??= {};
   if (st.fifa[n] === undefined) st.fifa[n] = Math.round(st.info?.[n]?.fifa || nationStrength(n) * 5);
@@ -675,7 +678,7 @@ function updateFifa(home: number, away: number, hg: number, ag: number, kind: In
 /** FIFA-ranglisten: alle nationer med en trup, flest point først */
 export function fifaRanking(): { n: number; pts: number }[] {
   const g = gs();
-  if (cmActive(g) && !g.draft) return cmFifaRanking(g).filter((r) => nationSquad(r.n).length >= 11 || state().info?.[r.n]).map((r) => ({ n: r.n, pts: Math.round(r.pts * 100) / 100 }));
+  if (cmIntlOn(g)) return cmFifaRanking(g).filter((r) => nationSquad(r.n).length >= 11 || state().info?.[r.n]).map((r) => ({ n: r.n, pts: Math.round(r.pts * 100) / 100 }));
   return g.nations.map((_, n) => n).filter((n) => nationSquad(n).length >= 11 || state().info?.[n]).map((n) => ({ n, pts: fifaPoints(n) })).sort((x, y) => y.pts - x.pts);
 }
 
@@ -687,7 +690,7 @@ export function selectNationalSquad(pids: number[]): string {
   const ok = [...new Set(pids)].filter((id) => g.players[id]?.nation === nj.nation);
   // ægte tilstand: listen (club +0xd7, 50 pladser) må have et hvilket som helst antal – størrelsen kontrolleres først i Respond-dialogen
   // (0x779a50: "Squad Invalid" uden for 0x775520..0x7754c0)
-  if (cmActive(g) && !g.draft ? ok.length > 50 : ok.length < 20 || ok.length > 24) return 'intl.squadSize';
+  if (cmIntlOn(g) ? ok.length > 50 : ok.length < 20 || ok.length > 24) return 'intl.squadSize';
   nj.picks = ok;
   return 'intl.squadSaved';
 }

@@ -94,6 +94,9 @@ export interface CMWorld extends WorldData {
     staffBx?: Record<number, [number[], string, number[]]>;
     /** (2026/27) landsholdenes klub-id'er: A-holdet = natOff + nationsindeks (nat_club.dat efter club.dat – antallet af klubber i club.dat) */
     natOff?: number;
+    /** (20/11, MODERN_PARITY §0 A, 2026/27's world-cm.json) landsholdene som world-original.json's nationalTeams: nat_club.dat's A-hold (omdømme +0x80,
+     *  stadion), FIFA-koefficienten nation +0xa8 og nation_comp_history.dat's slutrunder – landstræneren ('') sættes ved nyt spil fra staffBx */
+    natTeams?: { nations: Record<number, import('../international').NatInfo>; history: import('../international').PastFinal[] };
     /** (MODERN_PARITY 13, kun 2026/27's world-cm.json) stabens hukommelse 0x524d70 pr. person-id (CMWorld.staff[15]: 1 = altid, ellers de nationer,
      *  hvis valg beholder ham) – Staff Search 0x7afa70. De øvrige ikke-spillere (staffX/clubNames) står i world-cm-staff.json. */
     staffMem?: Record<number, 1 | number[]>;

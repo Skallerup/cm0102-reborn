@@ -1285,6 +1285,11 @@ export interface GameState {
   /** (20/11, "Altid som originalen", MODERN_PARITY §0 E) spillet er startet med originalens fyldspillere (cmVirtual.ts cmVirtualOn, 0x90dae0) – nye
    *  spil med en CM-database i ægte tilstand; den originale database har dem altid (cmActive), ældre 2026/27-spil beholder reserveholdets fyldspillere */
   cmVirt?: 1;
+  /** (20/11, "Altid som originalen", MODERN_PARITY §0 A) spillet er startet med originalens landshold (cmIntl.ts cmIntlOn: landskampkalenderen
+   *  0x5ca4f0/0x5cbb00, U21 0x7e6720, NationalTeams-udtagelsen, FIFA_RANKINGS, landsholdenes fyldspillere 0x90dc66, landstrænerne i bestyrelsen og
+   *  EM-kvalifikationens kampagner 0x57ce10) – nye spil med en CM-database i ægte tilstand; den originale database har det altid (cmActive), ældre
+   *  2026/27-spil beholder spillets egne landsholdsvinduer */
+  cmIntl?: 1;
   /** (20/11) databasens Europa-data for cmEurope.ts, når det ikke er den originale database: landenes seks koefficienter (nation.dat +0xe0..+0x108),
    *  euro.cfg og den seneste sæsons vindere i club_comp_history.dat (turnerings-id → [år, vinder, nr. 2]) – world-cm.json `euro` */
   cmEuroDb?: { coef: Record<string, number[]>; cfg: Record<string, string[]>; last: Record<number, [number, number, number]> };

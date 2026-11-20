@@ -617,6 +617,50 @@ if (cmSide && files['nation.dat'] && files['club_comp_history.dat']) {
   if (euroClubs?.clubs.length) cmSide.euroClubs = euroClubs;
   console.error(`Europa: ${Object.keys(coef).length} lande med koefficienter, euro.cfg ${Object.keys(cfg).length} lande, ${Object.keys(last).length} turneringer med vindere`);
 }
+// (20/11, MODERN_PARITY §0 A) landsholdene på 2026/27 (som national-original.json for den originale database – g.intl.info/past): nat_club.dat's
+// A-hold (club.dat-formatet: omdømmet +0x80, stadion +105 → stadium.dat navn/kapacitet byte 60), FIFA-koefficienten nation.dat +0xa8 (double) og
+// nation_comp_history.dat (26 bytes: id, turnering, år, vinder, nr. 2, nr. 3, vært – nat_club-id'er; året + SHIFT) – titlerne og slutrunderne.
+// Landstrænerne kommer fra staffBx (+0x24/+0x28) ved nyt spil.
+if (cmSide && files['nat_club.dat'] && files['nation.dat'] && files['nation_comp.dat']) {
+  const dec = new TextDecoder('latin1');
+  const nm = (buf: ArrayBuffer, o: number) => { const u = new Uint8Array(buf, o + 4, 51), e = u.indexOf(0); return dec.decode(u.subarray(0, e < 0 ? 51 : e)).trim(); };
+  const N = new DataView(files['nation.dat']), NC = new DataView(files['nat_club.dat']);
+  const natIdx = new Map<number, number>(), fifa = new Map<number, number>();
+  for (let o = 0; o + 290 <= N.byteLength; o += 290) {
+    const i = w.nations.findIndex((x) => x.name === nm(files['nation.dat'], o));
+    if (i >= 0) { natIdx.set(N.getInt32(o, true), i); fifa.set(i, Math.round(N.getFloat64(o + 0xa8, true) * 10) / 10); }
+  }
+  const stad = new Map<number, [string, number]>();
+  if (files['stadium.dat']) { const S = new DataView(files['stadium.dat']); for (let o = 0; o + 78 <= S.byteLength; o += 78) stad.set(S.getInt32(o, true), [nm(files['stadium.dat'], o), S.getInt32(o + 60, true)]); }
+  const teamNat = new Map<number, number>(), seen = new Set<number>(), nations: Record<number, { stadium: string; cap: number; fifa: number; coach: string; rep: number; titles: Record<string, number> }> = {};
+  for (let o = 0; o + 581 <= NC.byteLength; o += 581) {
+    const n = natIdx.get(NC.getInt32(o + 83, true));
+    if (n === undefined) continue;
+    teamNat.set(NC.getInt32(o, true), n);
+    if (seen.has(n)) continue;                                         // den første post pr. land er A-holdet (U21-holdene følger efter)
+    seen.add(n);
+    const [sn, cap] = stad.get(NC.getInt32(o + 105, true)) ?? ['', 0];
+    nations[n] = { stadium: sn, cap: cap > 0 ? cap : 0, fifa: fifa.get(n) ?? 0, coach: '', rep: NC.getInt16(o + 128, true), titles: {} };
+  }
+  const C = new DataView(files['nation_comp.dat']), comps = new Map<number, string>();
+  for (let o = 0; o + 107 <= C.byteLength; o += 107) comps.set(C.getInt32(o, true), nm(files['nation_comp.dat'], o));
+  const CODES: Record<string, string> = { 'FIFA World Cup': 'wc', 'European Football Championship': 'euro', 'Copa America': 'copa', 'African Cup of Nations': 'afcon', 'Asian Cup': 'asian', 'Confederations Cup': 'confed', 'Olympic Games': 'olympic', 'Oceania Nations Cup': 'ofc', 'Asian Games Football Tournament': 'asiangames' };
+  const past: { c: string; y: number; w: string; r: string; t: string; h: string }[] = [];
+  const natName = (id: number) => { const n = teamNat.get(id); return n !== undefined ? w.nations[n].name : ''; };
+  if (files['nation_comp_history.dat']) {
+    const H = new DataView(files['nation_comp_history.dat']);
+    for (let o = 0; o + 26 <= H.byteLength; o += 26) {
+      const comp = comps.get(H.getInt32(o + 4, true)) ?? '', c = CODES[comp], y = H.getInt16(o + 8, true) + SHIFT, wn = H.getInt32(o + 10, true);
+      if (!c || wn < 0 || !natName(wn) || y > SEASON) continue;
+      const wi = teamNat.get(wn)!;
+      if (nations[wi]) nations[wi].titles[comp] = (nations[wi].titles[comp] ?? 0) + 1;
+      past.push({ c, y, w: natName(wn), r: natName(H.getInt32(o + 14, true)), t: natName(H.getInt32(o + 18, true)), h: natName(H.getInt32(o + 22, true)) });
+    }
+  }
+  past.sort((a, b) => b.y - a.y || (a.c < b.c ? -1 : a.c > b.c ? 1 : 0));
+  cmSide.natTeams = { nations, history: past };
+  console.error(`landshold: ${Object.keys(nations).length} A-hold, ${past.length} slutrunder`);
+}
 // (20/11, Bosman 0.7.2-tjeklisten punkt 4) turneringernes tidligere vindere på 2026/27 (club_comp_history.dat): opdateringens årstal følger
 // originalens konvention (sæsonens slutår – 3.9.60: Premier League 2000/01 = 2001; kalenderårsligaer = året), så kun urets SHIFT lægges til
 // (2001 → 2026 = 2025/26: Arsenal; Norge 2000 → 2025: Viking). Før havde 2026/27-spil ingen historik før spillets første sæson.

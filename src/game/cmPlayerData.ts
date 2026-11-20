@@ -30,6 +30,9 @@ export function cmActive(g: GameState): boolean {
 export function cmLogic(g: GameState): boolean {
   return g.dbKind === 'cm0102' && origLogic(g);
 }
+/** (MODERN_PARITY §0 A) originalens landshold (cmIntl.ts og international.ts' ægte gren): 2001-verdenen, eller en CM-database i ægte tilstand fra
+ *  et spil, der er startet med dem (g.cmIntl – newgame.ts) */
+export const cmIntlOn = (g: GameState): boolean => (cmActive(g) || (cmLogic(g) && g.cmIntl === 1)) && !g.draft;
 /** (MODERN_PARITY 5+6) originalens kondition/skader (injury.cpp), udvikling 0x5ce2d0 og træning TRAINING_MANAGER: 2001-verdenen, eller en CM-database
  *  i ægte tilstand fra et spil, der er startet med modulerne (Injury::Injury ved spilstarten sætter g.cmFitStart – cmFitnessGame.ts). Ældre
  *  2026/27-spil uden spilstartens poster beholder spillets egen model. For den originale database = cmActive. */

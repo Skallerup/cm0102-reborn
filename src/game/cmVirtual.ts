@@ -36,7 +36,7 @@
 import type { GameState, Player, Staff } from './types';
 import { ATTRS } from './attributes';
 import { addPlayer, dropPlayer, onGameSwitch, playersEpoch, squad } from './state';
-import { cmActive, cmLogic, clubRepMem, NO_RESERVES } from './cmPlayerData';
+import { cmActive, cmIntlOn, cmLogic, clubRepMem, NO_RESERVES } from './cmPlayerData';
 
 /** (MODERN_PARITY §0 E) fyldspillerne 0x90dae0: 2001-verdenen, eller en CM-database i ægte tilstand fra et spil startet med dem (g.cmVirt –
  *  newgame.ts). Ældre 2026/27-spil beholder spillets reservehold (season.ts fillSquad). */
@@ -390,7 +390,7 @@ function makeNationalVirtual(g: GameState, n: number, u21: boolean, cid: number,
 /** 0x90dae0 for landsholdet `n` før kampen (0x90d2f0): fyldspillerne til truppen `squad` (de udtagne) med største størrelse `max` og landsholdets
  *  omdømme `rep` (club +0x80). Menneskets landshold (0x600a50) får ingen. De lægges ikke i g.players (international.ts setNationFillers). */
 export function cmNationalFillers(g: GameState, n: number, u21: boolean, squad: Player[], max: number, human: boolean, rep: number): Player[] {
-  if (!cmActive(g) || g.draft || human) return [];
+  if (!cmIntlOn(g) || human) return [];
   // 0x90dd36: U21 uden udtaget trup (0x775520 = 0) og over 500 spillere af nationaliteten (+0x88) → ingen
   if (u21 && !squad.length && Object.values(g.players).reduce((k, p) => k + (!p.virtual && p.nation === n ? 1 : 0), 0) > 500) return [];
   const plan = nationalPlan(squad, max, u21, true).filter((s) => s.kind === 'first');

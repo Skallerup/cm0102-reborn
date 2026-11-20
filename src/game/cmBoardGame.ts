@@ -892,8 +892,10 @@ export function cmBoardInit(g: GameState, chair: Record<number, [number, number,
   for (const [cid, x] of Object.entries(chair ?? {})) g.cmChair[+cid] = [x[0], x[1], personalFill_535a80(x[2], cmRand(g.seed ?? 0, +cid, 0x535f04), 'avg'), x[3]];
   g.cmNationBoard = nationBoard ? nationBoard.map((x) => x.slice() as [number, number, number]) : [];
   g.cmBoardStart = g.date;
-  g.cmBoard = world2001 ? { rec: {}, dep: [], vac: [], ult: [], month: -1, tab: {}, nm: {}, nj: {} } : { rec: {}, dep: [], vac: [], ult: [], month: -1, tab: {}, nd: natDb ?? {} };
-  if (world2001) cmBoardNationalInit(g);
+  // (MODERN_PARITY §0 A) spil startet med originalens landshold (g.cmIntl): landstrænerne i bestyrelsen som på den originale database
+  const natBoard = world2001 || g.cmIntl === 1;
+  g.cmBoard = natBoard ? { rec: {}, dep: [], vac: [], ult: [], month: -1, tab: {}, nm: {}, nj: {} } : { rec: {}, dep: [], vac: [], ult: [], month: -1, tab: {}, nd: natDb ?? {} };
+  if (natBoard) cmBoardNationalInit(g);
   predictLeagues(g, stateOf(g), money);
   const db = `${g.date.slice(0, 4)}-01-01`;
   const env = boardEnv(g, db, g.date);

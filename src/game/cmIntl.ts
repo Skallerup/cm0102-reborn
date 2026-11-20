@@ -19,7 +19,7 @@
 // playoff-datoerne, -lodtrækningen og udebanemål/lodtrækning ved lige stilling, "bedste toer",
 // 'B' International (0x7e6720's B-gren: lige år før 20/6 – ikke bygget, U21-kampen spilles i stedet). U21-holdenes fyldspillere: originalens 0x90dc66 (cmVirtual.ts) i playNation.
 import type { GameState } from './types';
-import { cmActive } from './cmPlayerData';
+import { cmIntlOn } from './cmPlayerData';
 import { cmDate } from './cmCalendar';
 import { addDays } from './dates';
 import { rng } from './rng';
@@ -33,7 +33,7 @@ import { cmIntlSquadDaily, cmWithdrawInjured, initSquads, selectForFixture, type
 import { cmFifaDaily, cmFifaInit } from './cmFifa';
 import { cmFinalsBusy, cmFinalsDay, cmFinalsDuty } from './cmIntlFinals';
 
-export const cmIntlOn = (g: GameState): boolean => cmActive(g) && !g.draft;
+export { cmIntlOn };
 
 /** 0x5ca4f0: [ugedag (0 = mandag), dag, måned (0–11), år i cyklussen, verdensdel (continent.dat 0–5), turnering (nøgleindeks 137–143 eller −1)] */
 export const CM_INTL_DATES: [number, number, number, number, number, number][] = [
@@ -83,6 +83,8 @@ export interface CmIntlState {
   n88?: Record<number, number>;
   /** sidst behandlede dag (+0x34f4) */
   last?: string;
+  /** HostCountry 0x5f9970: det valgte kandidatpar pr. EM-år (rækker med flere kandidater) */
+  hosts?: Record<number, number>;
 }
 const cmState = (g: GameState): CmIntlState => {
   const st = (g.intl ??= { results: [], history: [] });
@@ -252,11 +254,32 @@ export const EURO04_Q_GROUPS: string[][] = [
   ['Malta', 'FYR of Macedonia', 'Republic of Ireland', 'Croatia', 'Yugoslavia'],
   ['Scotland', 'Faroe Islands', 'Bosnia-Herzegovina', 'Lithuania', 'Estonia', 'Czech Republic'],
 ];
+/** create_schedule 0x57d190: de 10 runder 0x68a160(runde, dag, måned (0–11), år + k, ugedag) for kampagnen +0x40 – [dag, måned, k, ugedag] */
+const EQ_ROUNDS: [number, number, number, number][] = [[2, 8, 0, 5], [6, 8, 0, 2], [7, 9, 0, 5], [11, 9, 0, 2], [24, 2, 1, 5], [28, 2, 1, 2], [6, 5, 1, 2], [2, 8, 1, 5], [6, 8, 1, 2], [7, 9, 1, 5]];
+export const euroQualDates = (y: number): string[] => EQ_ROUNDS.map(([d, m, k, wd]) => cmDate(d, m, y + k, wd));
 /** 0x57d190 (år 2002): de 10 runder */
-export const EURO04_Q_DATES = ['2002-08-31', '2002-09-04', '2002-10-05', '2002-10-09', '2003-03-22', '2003-03-26', '2003-06-04', '2003-08-30', '2003-09-03', '2003-10-04'];
-/** playoff-kampene (gæt: create_playoff_stage 0x57ef50's rundetabel ikke læst) */
-const EURO04_PO_DATES = ['2003-11-15', '2003-11-19'];
-const EURO04_HOST = 'Portugal';
+export const EURO04_Q_DATES = euroQualDates(2002);
+/** set_up_rules 0x57e8f0: lodtrækningen +0xb6/+0xb8 = Date(10, marts, år, lørdag) (0x549f70) – 0x57fd60 trækker grupperne den dag (også i forkørslen) */
+export const euroQualDrawDate = (y: number): string => cmDate(10, 2, y, 5);
+/** EuroChampQual 0x57ce10: kampagnens år = år − 1 rundet op til (år − 1990) % 4 = 0; start_new_season 0x57ebb4 lægger 4 til */
+export const isEuroCampaign = (y: number): boolean => (y - 1990) % 4 === 0;
+/** playoff-kampene (gæt: create_playoff_stage 0x57ef50's rundetabel ikke læst) – 15/11 og 19/11 i kampagnens andet år */
+const poDates = (y: number) => [`${y + 1}-11-15`, `${y + 1}-11-19`];
+/** HostCountry::init_default_table 0x5f9970: EM's rækker (år → kandidaterne; én kandidat = fast). Efter 2028 ingen vært (find_hosts = 0). */
+const EURO_HOSTS: Record<number, string[][]> = {
+  2000: [['Holland', 'Belgium']], 2004: [['Portugal']], 2008: [['Scotland', 'Wales'], ['Sweden'], ['Switzerland']], 2012: [['France'], ['Norway'], ['Denmark']],
+  2016: [['Republic of Ireland'], ['Switzerland'], ['Yugoslavia']], 2020: [['Switzerland'], ['Belgium'], ['Holland']], 2024: [['Italy'], ['Germany'], ['England']],
+  2028: [['Greece'], ['Spain'], ['France']],
+};
+/** HostCountry::find_hosts 0x5fa730 for EM `year`: værtslandene. Rækker med flere kandidater vælges tilfældigt af HostCountry::daily_update 0x5fa850
+ *  (*estimeret*: valget trækkes første gang, det bruges, med spillets talrække – originalens tidspunkt 5 år før er ikke vores) */
+function euroHosts(g: GameState, year: number): number[] {
+  const rows = EURO_HOSTS[year];
+  if (!rows) return [];
+  const s = cmState(g);
+  const pick = rows.length > 1 ? ((s.hosts ??= {})[year] ??= rng.int(0, rows.length - 1)) : 0;
+  return rows[pick].map((nm) => g.nations.findIndex((x) => x.name === nm)).filter((n) => n >= 0);
+}
 
 /** dobbelt runde-robin over 10 runder (gæt – League's skema-par ikke læst): 5 hold får en fridag pr. runde */
 export function roundRobin(teams: number[]): [number, number][][] {
@@ -285,22 +308,72 @@ function book(t: Record<number, IntlRow>, a: number, b: number, hg: number, ag: 
 }
 const ranked = (t: Record<number, IntlRow>, grp: number[]) => grp.map((n) => t[n]).sort((a, b) => b.pts - a.pts || b.gf - b.ga - (a.gf - a.ga) || b.gf - a.gf);
 
-function startEuroQual(g: GameState): void {
+/** EuroChampQual::pick_entrants 0x57f600 (kampagnen `y`): puljen = de europæiske lande (nation +0x71) i landenes rækkefølge uden EM-værterne for
+ *  år + 2, højst 51 − værterne i Europa (+0xf6, 0–2 – ellers 1), sorteret efter landsholdets omdømme club +0x80 (qsort 0x4b07d0, faldende).
+ *  For få lande (0x57f877) → null (originalen fortsætter med en ufuldstændig pulje – her ingen kampagne). */
+function euroQualPool(g: GameState, y: number): { pool: number[]; f6: number; hosts: number[] } | null {
+  const hosts = euroHosts(g, y + 2), eur = g.cmEurope ?? -1;
+  let f6 = hosts.filter((n) => contOf(g, n) === eur).length;
+  if (f6 > 2) f6 = 1;
+  const f2 = 51 - f6, pool: number[] = [];
+  for (let n = 0; n < g.nations.length; n++) if (contOf(g, n) === eur && pool.length < f2 && !hosts.includes(n)) pool.push(n);
+  if (pool.length < f2) return null;
+  msvcQsort(pool, (a, b) => teamRep(g, b) - teamRep(g, a));
+  return { pool, f6, hosts };
+}
+/** 0x57d9d0: gruppens største størrelse (argumentet = gruppen − 1): +0xf6 = 1 → 0, 2, 5 → 6; +0xf6 = 2 → 0, 2, 5, 7 → 6; ellers 5 */
+const groupCap = (f6: number, k: number) => (f6 === 1 ? [0, 2, 5].includes(k) : f6 === 2 ? [0, 2, 5, 7].includes(k) : false) ? 6 : 5;
+/** EuroChampQual::draw_groups 0x57dab0 for år ≠ 2002 (0x57e6e6): 9 grupper (+0xff = 7, + 2); i 6 potter: gruppernes rækkefølge blandes (20 ombytninger af
+ *  rand(9) og rand(9)), og grupperne i den rækkefølge får hver den næste fra puljen, når der er plads */
+export function euroQualDraw(pool: number[], f6: number, rand: (n: number) => number): number[][] {
+  const G = 9, perm = [0, 1, 2, 3, 4, 5, 6, 7, 8], groups: number[][] = Array.from({ length: G }, () => []);
+  let placed = 0;
+  for (let pot = 0; pot < 6 && placed < pool.length; pot++) {
+    for (let k = 0; k < 20; k++) { const a = rand(G), b = rand(G); const t = perm[a]; perm[a] = perm[b]; perm[b] = t; }
+    for (let i = 0; i < G && placed < pool.length; i++) {
+      const gi = perm[i];
+      if (groups[gi].length < groupCap(f6, gi - 1)) groups[gi].push(pool[placed++]);
+    }
+  }
+  return groups;
+}
+
+function startEuroQual(g: GameState, y: number): void {
   const st = intlState();
-  const groups = EURO04_Q_GROUPS.map((grp) => grp.map((nm) => g.nations.findIndex((x) => x.name === nm)).filter((n) => n >= 0));
+  let groups: number[][], host: number[];
+  if (y === 2002) {
+    groups = EURO04_Q_GROUPS.map((grp) => grp.map((nm) => g.nations.findIndex((x) => x.name === nm)).filter((n) => n >= 0));
+    host = euroHosts(g, 2004);
+  } else {
+    const p = euroQualPool(g, y);
+    if (!p) return;
+    groups = euroQualDraw(p.pool, p.f6, (n) => rng.int(0, n - 1)).filter((x) => x.length);
+    host = p.hosts;
+  }
+  const dates = euroQualDates(y), year = y + 2;
   const table: Record<number, IntlRow> = {};
   for (const n of groups.flat()) table[n] = row(n);
   const per = groups.map(roundRobin);
-  const sched = EURO04_Q_DATES.map((_, r) => per.flatMap((x) => x[r] ?? []));
-  st.qual = { name: 'euro', year: 2004, groups, region: groups.map(() => 'europe'), table, round: 0, dates: EURO04_Q_DATES.slice(), sched, cm: 1 };
-  intlHooks.ntStart?.('euroq', 2004, groups.flat());                    // 0x5806d0 set_predicted_positions → 0x775220 (NationalTeams)
-  forEachHuman(() => addNews({ cat: 'general', key: 'intl.qual.start.euro', params: { year: 2004 } }));
+  const sched = dates.map((_, r) => per.flatMap((x) => x[r] ?? []));
+  st.qual = { name: 'euro', year, groups, region: groups.map(() => 'europe'), table, round: 0, dates, sched, cm: 1, ...(host.length ? { hosts: host } : {}) };
+  intlHooks.ntStart?.('euroq', year, groups.flat());                    // 0x5806d0 set_predicted_positions → 0x775220 (NationalTeams)
+  forEachHuman(() => addNews({ cat: 'general', key: 'intl.qual.start.euro', params: { year } }));
+}
+
+/** 0x57fd60 for dagen `iso`: lodtrækningen på +0xb6 (2002-kampagnen: de faste grupper; senere kun i spil startet med g.cmIntl). Dagen efter
+ *  lodtrækningsdatoen tæller også (gemte spil fra før 20/11, hvor lodtrækningen var gættet til 14 dage før første runde). */
+function euroQualDrawDay(g: GameState, iso: string): void {
+  const y = +iso.slice(0, 4);
+  if (!isEuroCampaign(y) || (y !== 2002 && g.cmIntl !== 1)) return;
+  if (iso < euroQualDrawDate(y) || iso >= euroQualDates(y)[0]) return;
+  const st = intlState();
+  if (st.qual || st.history.some((h) => h.name === 'euro' && h.year === y + 2) || st.tournament?.name === 'euro' && st.tournament.year === y + 2) return;
+  startEuroQual(g, y);
 }
 
 function cmEuroQualDay(g: GameState): void {
   const st = intlState();
-  // lodtrækningen før første runde (gæt: når truppen til første runde kaldes ind)
-  if (g.date === addDays(EURO04_Q_DATES[0], -14) && !st.qual && !st.history.some((h) => h.name === 'euro' && h.year === 2004)) startEuroQual(g);
+  euroQualDrawDay(g, g.date);
   const q = st.qual;
   if (!q?.cm || !q.dates || !q.sched) return;
   // 0x76b100: kampene 14 dage frem → 0x76bab0
@@ -327,7 +400,7 @@ function cmEuroQualDay(g: GameState): void {
       t.winner = aGoals > bGoals ? t.a : bGoals > aGoals ? t.b : res.ag > (t.ag ?? 0) ? t.a : res.ag < (t.ag ?? 0) ? t.b : rng.chance(0.5) ? t.a : t.b;
     }
     if (pi === 1) {
-      intlHooks.ntOut?.('euroq', 2004, q.po.map((t) => (t.winner === t.a ? t.b : t.a)));   // 0x57f261: playoffens tabere
+      intlHooks.ntOut?.('euroq', q.year, q.po.map((t) => (t.winner === t.a ? t.b : t.a)));   // 0x57f261: playoffens tabere
       q.qualified = [...(q.qualified ?? []), ...q.po.map((t) => t.winner!)];
       announceQualified(g, q.qualified);
     }
@@ -339,22 +412,21 @@ function euroQualGroupsDone(g: GameState): void {
   const rows = q.groups.map((grp) => ranked(q.table, grp));
   const winners = rows.map((x) => x[0].n);
   const seconds = rows.map((x) => x[1]).sort((a, b) => b.pts - a.pts || b.gf - b.ga - (a.gf - a.ga) || b.gf - a.gf);
-  const host = g.nations.findIndex((x) => x.name === EURO04_HOST);
-  q.qualified = [...(host >= 0 ? [host] : []), ...winners, seconds[0].n].filter((n, i, a) => a.indexOf(n) === i);
+  q.qualified = [...(q.hosts ?? []), ...winners, seconds[0].n].filter((n, i, a) => a.indexOf(n) === i);
   const rest = rng.shuffle(seconds.slice(1).map((x) => x.n).filter((n) => !q.qualified!.includes(n)));
   q.po = [];
   for (let i = 0; i + 1 < rest.length; i += 2) q.po.push({ stage: 'PO', a: rest[i], b: rest[i + 1] } as IntlTie);
-  q.poDates = EURO04_PO_DATES.slice();
+  q.poDates = poDates(q.year - 2);
   // create_playoff_stage 0x57ef50 → 0x775000: de, der hverken er kvalificeret eller i playoff, mister turneringen
   const inPo = new Set(q.po.flatMap((t) => [t.a, t.b]));
-  intlHooks.ntOut?.('euroq', 2004, q.groups.flat().filter((n) => !q.qualified!.includes(n) && !inPo.has(n)));
+  intlHooks.ntOut?.('euroq', q.year, q.groups.flat().filter((n) => !q.qualified!.includes(n) && !inPo.has(n)));
   if (!q.po.length) announceQualified(g, q.qualified);
 }
 
 function announceQualified(g: GameState, qualified: number[]): void {
   forEachHuman(() => {
     const mine = g.clubs[g.userClub]?.nation;
-    for (const n of qualified.filter((x) => x === mine || x === g.manager.national?.nation)) addNews({ cat: 'general', key: 'intl.qual.done.euro', params: { nation: g.nations[n]?.name ?? '', year: 2004 } });
+    for (const n of qualified.filter((x) => x === mine || x === g.manager.national?.nation)) addNews({ cat: 'general', key: 'intl.qual.done.euro', params: { nation: g.nations[n]?.name ?? '', year: intlState().qual?.year ?? 2004 } });
   });
 }
 
@@ -372,7 +444,7 @@ function dutyNations(): number[] {
 }
 
 // Friendly::update_for_date er en af turneringerne (0x5cc850's vtbl+0x14(dato, 1)): også i forkørslen – dage før starten lægger kampe efter den
-registerPrerun('comps1', (g, _day, iso) => { inPrerun = true; try { cmIntlFriendlyDay(g, iso); } finally { inPrerun = false; } });
+registerPrerun('comps1', (g, _day, iso) => { inPrerun = true; try { cmIntlFriendlyDay(g, iso); if (cmIntlOn(g)) euroQualDrawDay(g, iso); } finally { inPrerun = false; } });
 intlHooks.cmDay = () => {
   const g = gs();
   // NationalTeams (0x76a4e0/0x76a840) og FIFA_RANKINGS (0x58dd50) bygges ved spilstarten – hos os på den første dag

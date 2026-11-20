@@ -15,7 +15,7 @@ men på en databaseuafhængig markør sat af newgame.ts for nye spil (cmLogic + 
 | `cmCalendarOn` (cmCalendar.ts) | cmActive **eller cmLogic + `g.cmCal`** (20/11) | ligaernes skemaer create_schedule/add_fixture/tv-flytningerne, pokalernes rundetabeller (cmCups.ts), Liga Cup/Charity Shield, spilstarten 0x830520 | **til (20/11)** |
 | `cmEuroOn` (cmEurope.ts) | = cmCalendarOn | CL/UEFA Cup/Intertoto/Super Cup, UefaSeeding (pladser, koefficienter, euro.cfg), lodtrækningerne, Europa-flytningerne 0x5ae9d0 | **til (20/11)** – data: world-cm.json `euro` |
 | `cmSeasonOn` (cmSeason.ts) | = cmCalendarOn | sæsonskiftet pr. land 0x5d5ae0 (Europa 20/6, Norge 27/11 …), kontrakter/lejer dagligt, kampene før starten | **til (20/11)** |
-| `cmIntlOn` (cmIntl.ts) + 11 × `cmActive` i international.ts | kun cmActive | landsholdenes kalender, trupper, U21, slutrunder, FIFA-listen | fra – åbent punkt A |
+| `cmIntlOn` (cmPlayerData.ts → cmIntl.ts, international.ts, cmVirtual.ts' landsholdsfyldspillere) | cmActive **eller cmLogic + `g.cmIntl`** (20/11) | landsholdenes kalender, trupper, U21, EM-kvalifikationen, FIFA-listen, landstrænerne i bestyrelsen | **til (20/11)** – punkt A; data: world-cm.json `natTeams` |
 | `cmPrerunMatchesOn` (cmPrerunMatches.ts) | kun cmActive (+ PRERUN_YEAR 2001) | forkørslens landskampe (VM-kval. Oceanien, Copa América 2001), Europas kampe dag for dag | fra – 2001-kampe (Europas kampe før starten: cmEuroCatchUp) |
 | `cmCmOn` (cmContractManager.ts) | cmActive **eller cmLogic + `g.cmCmMgr`** (20/11) | CONTRACT_MANAGER: startkontrakterne 0x4c7560 (cmContractEnd), 0x4c7ac0 dagligt (computerklubbernes udløb, forlængelser, frigivelser); spillets aiRenewals/udløbet 1/7 kun uden for området | **til (20/11)** – punkt B |
 | `cmMarketOn` / `cmShortlistOn` | cmLogic + `g.cmPlan` | trupplan, ønskelister, bud, svar, budskærmen | til (18/11) |
@@ -38,9 +38,30 @@ men på en databaseuafhængig markør sat af newgame.ts for nye spil (cmLogic + 
 Løse `cmActive(`-kald uden for en kontakt (84 på 14b0259a): gennemgået og fordelt i punkt **E** nedenfor (tabel: rettet/bliver/rest).
 
 Åbne punkter (egne opgaver – hver kræver data/markør + måling på 2001 og 2026/27):
-- **A. Landsholdene** (cmIntlOn + international.ts): originalens landsholdskalender/-trupper/slutrunder/FIFA-liste på 2026/27 – kræver databasens
-  landshold (nationalTeams kun i world-original), 2026's slutrunder (VM 2026 i USA – originalen kender kun sine egne år: hvad exe'en gør med
-  året 2026, skal afkodes) og FIFA_RANKINGS' data.
+- **A. Landsholdene – lukket 20/11.** Ny markør `g.cmIntl` (newgame.ts, nye spil med en CM-database i ægte tilstand) → `cmIntlOn` (international.ts'
+  11 cmActive, cmNationalFillers 0x90dc66, International-skærmens trupgrænse): landskampdatoerne 0x5ca4f0/venskabskampene 0x5cbdf0, U21 0x7e6720,
+  NationalTeams-udtagelsen (inkl. menneskets 0x1e/0x22), FIFA_RANKINGS og landstrænerne i bestyrelsen (cmBoardInit: `nm`/`nj` som 2001 – Staff.cmNat fra
+  staffBx +0x24/+0x28). Data (build-cm-data.mts → world-cm.json `natTeams`, world.json uændret): nat_club.dat's A-hold (omdømme +0x80, stadion),
+  FIFA-koefficienten nation +0xa8 (double) og nation_comp_history.dat (titler/slutrunder, år + SHIFT); landstrænerne fra staffBx (34 med job 5).
+  Originalens cyklusser (Bosman sweep §4) for et spil, der starter i 2026: VM 2026 er spillet (juni/juli), VM-zonerne begynder med 2028-kampagnen,
+  ACN 2028, Asian Cup 2028, Copa América 2027 (juli – efter sæsonen), Confed Cup 2027 (ikke porteret på nogen database) – i sæsonen 26/27 kører
+  altså kun venskabs-/U21-kampene og **EM 2028-kvalifikationen (kampagnen 2026)**, nu porteret generelt: EuroChampQual 0x57ce10 (kampagne = år − 1
+  rundet op til (år − 1990) % 4 = 0), lodtrækningen 0x57e8f0/0x57fd60 Date(10, marts, år, lør) – også i forkørslen (2026: 7/3; 2002: 9/3 i stedet for
+  gættet 17/8), pick_entrants 0x57f600 (Europas lande i nation-rækkefølge uden værterne for år + 2, højst 51 − værterne, qsort efter club +0x80),
+  draw_groups 0x57dab0 for år ≠ 2002 (9 grupper, 6 potter, 20 ombytninger af rand(9) pr. pot, gruppestørrelserne 0x57d9d0 – én vært giver 48 af 50
+  lande), runderne create_schedule 0x57d190 for alle år (2002 giver de kendte datoer) og EM-værterne fra HostCountry 0x5f9970 (2028: Grækenland/
+  Spanien/Frankrig). Spillets egen EM-kvalifikation er slået fra i g.cmIntl-spil. 2002-kampagnen (faste grupper) er uændret.
+  Målt (`scripts/cm-intl-2026.ts`, frø 1, England + Danmark): 2001-fingeraftrykket uændret (perf-fingerprint 2001-08-20 samlet 438b6c8c376734d0 før/efter –
+  measure e521ba0bcd08 / d800b91d5172). 2026/27 til 30/6-2027, intet nedbrud: Brentford med mennesket som Danmarks landstræner fra 1/8 (d0651c322eab):
+  712 landskampe (371 venskabskampe, 194 U21, 147 EM-kval.), 176 A-landshold med kampe; England og Danmark 7 kvalifikationskampe + 2 venskabs- + 2 U21-
+  kampe hver; EM-kval. 9 grupper (5/6/5/6/5/5/6/5/5), vært Spanien, England 19 point efter 7 runder; Englands trup 26 (Kane, Rice, Bellingham, Saka …);
+  2.500 spillere fik landskampe (+8.804; England 31/+117, Danmark 24/+119); menneskets Danmark: 9 kampe, 5 sejre, 111 trupnyheder. Leeds uden job
+  (03c8a948b728): 706 landskampe, Danmarks trup udtaget af computeren (26: Christensen, Hjulmand, Højlund …). Kræver et nyt spil.
+  **Rest:** playoffens datoer/parringer (0x57ef50) og lodtrækningens tidspunkt for HostCountry-valget er stadig *estimerede*; VM-zonerne (2028-
+  kampagnen), Confed Cup, Copa/ACN/Asian Cup efter 2002 er spillets egne (også på 2001); 2001-spil får de generelle EM-kampagner først med markøren
+  (fra 2006 bruger de stadig spillets egen EM-kvalifikation – at give dem markøren ændrer fingeraftrykket); i 2030 deler spillets VM-kvalifikation
+  og EM-kampagnen feltet `intl.qual` (EM-lodtrækningen springes over, mens spillets VM-kvalifikation kører); historikkens år følger spillets ur
+  (+25 – opdateringen gemmer EM 2024 som 2000, så den vises som 2025).
 - **B. CONTRACT_MANAGER – lukket 20/11.** Ny markør `g.cmCmMgr` (newgame.ts, nye spil med en CM-database i ægte tilstand; `g.cmCm` er portens
   tilstand) → cmCmOn: startkontrakterne 0x4c7560 (cmContractEnd: databasens dato, trukket hvis den mangler, +52 uger hvis før [0xae2330]) og
   0x4c7ac0 dagligt for computerklubberne i de spilbare lande (cmCmScope) – forlængelsestilbud/beslutninger, udløb (type 1: bliver med den udløbne

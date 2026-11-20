@@ -2,7 +2,7 @@
 // venskabskampene 0x5cbdf0 med U21-kampene dagen før (0x7e6720). Oraklet: crowd1 (frø 1, 3.9.60) – scripts/cm-intl-check.ts.
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { cmIntlDates, EURO04_Q_DATES, EURO04_Q_GROUPS, roundRobin } from '../src/game/cmIntl';
+import { cmIntlDates, EURO04_Q_DATES, EURO04_Q_GROUPS, euroQualDates, euroQualDraw, euroQualDrawDate, isEuroCampaign, roundRobin } from '../src/game/cmIntl';
 import { createGame, type WorldData } from '../src/game/newgame';
 import { gs } from '../src/game/state';
 import { continueGame, quickPlayUserMatch } from '../src/game/sim';
@@ -26,6 +26,29 @@ describe('landskampdatoerne (0x5ca4f0/0x5cc510)', () => {
     expect(t[t.length - 1].d.slice(0, 4)).toBe('2004');
     // EM-kvalifikationens datoer (turnering 143) = create_schedule 0x57d190's første runder
     expect(cmIntlDates(2002).filter((x) => x.comp === 143).map((x) => x.d).slice(0, 2)).toEqual(['2002-08-31', '2002-10-05']);
+  });
+});
+
+describe('EM-kvalifikationens kampagner (EuroChampQual 0x57ce10)', () => {
+  it('rundedatoerne 0x57d190 giver 2002-kampagnens kendte datoer, og 2026-kampagnen følger samme regler', () => {
+    expect(EURO04_Q_DATES).toEqual(['2002-08-31', '2002-09-04', '2002-10-05', '2002-10-09', '2003-03-22', '2003-03-26', '2003-06-04', '2003-08-30', '2003-09-03', '2003-10-04']);
+    expect(euroQualDates(2026)[0] < euroQualDates(2026)[9]).toBe(true);
+    expect(euroQualDates(2026).map((d) => new Date(d).getUTCDay())).toEqual([6, 3, 6, 3, 6, 3, 3, 6, 3, 6]);
+  });
+  it('lodtrækningen 0x57e8f0: lørdagen nærmest 10/3 i kampagneåret; kampagnerne hvert fjerde år fra 2002', () => {
+    expect(euroQualDrawDate(2002)).toBe('2002-03-09');
+    expect(euroQualDrawDate(2026)).toBe('2026-03-07');
+    expect([2001, 2002, 2006, 2026, 2027, 2030].map(isEuroCampaign)).toEqual([false, true, true, true, false, true]);
+  });
+  it('draw_groups 0x57dab0 (år ≠ 2002): én vært → 48 af 50 i 9 grupper (6 i gruppe 2, 4 og 7), to værter → 49', () => {
+    let k = 0;
+    const rand = (n: number) => (k = (k * 1103515245 + 12345) >>> 0) % n;
+    const g1 = euroQualDraw(Array.from({ length: 50 }, (_, i) => i), 1, rand);
+    expect(g1.map((x) => x.length)).toEqual([5, 6, 5, 6, 5, 5, 6, 5, 5]);
+    expect(g1.flat().sort((a, b) => a - b)).toEqual(Array.from({ length: 48 }, (_, i) => i));
+    // pot 1 = de ni stærkeste, én i hver gruppe
+    expect(g1.map((x) => x[0]).sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8]);
+    expect(euroQualDraw(Array.from({ length: 49 }, (_, i) => i), 2, rand).map((x) => x.length)).toEqual([5, 6, 5, 6, 5, 5, 6, 5, 6]);
   });
 });
 

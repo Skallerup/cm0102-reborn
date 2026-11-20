@@ -238,6 +238,10 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     g.cmCmMgr = 1;
     // (20/11, MODERN_PARITY §0 E) originalens fyldspillere 0x90dae0 (cmVirtual.ts cmVirtualOn) – i stedet for spillets reservehold
     g.cmVirt = 1;
+    // (20/11, MODERN_PARITY §0 A) originalens landshold (cmIntl.ts cmIntlOn): landskampkalenderen, U21, udtagelsen, FIFA-listen, fyldspillerne,
+    // landstrænerne i bestyrelsen og EM-kvalifikationens kampagner – med databasens landshold (world-cm.json natTeams: omdømme, stadion, FIFA)
+    g.cmIntl = 1;
+    if (raw.natTeams) g.intl = { results: [], history: [], info: JSON.parse(JSON.stringify(raw.natTeams.nations)) as Record<number, import('./international').NatInfo>, past: raw.natTeams.history.slice() };
     if (raw.euro) g.cmEuroDb = JSON.parse(JSON.stringify(raw.euro)) as GameState['cmEuroDb'];
   }
   if (cm?.cmRaw && season < 2020) {
@@ -968,6 +972,13 @@ function addDbStaff(row: NonNullable<CMWorld['staff']>[number], club: number, ro
     cmInitStaffRep(g, s, r);
     const n = nat[0] - (npLogic.natOff ?? Infinity);
     if ((nat[1] === 5 || nat[1] === 12) && n >= 0 && n < g.nations.length && natDb) natDb[s.id] = [n, nat[1]];
+    // (MODERN_PARITY §0 A) landsholdene i bestyrelsen som den originale database (0x68f130 2a – cmBoardNationalInit): personpost +0x24/+0x28,
+    // og landstræneren (+0x28 = 5) i landsholdets data
+    if (g.cmIntl === 1) {
+      s.cmNat = [nat[0], nat[1]];
+      const inf = nat[1] === 5 && n >= 0 && n < g.nations.length ? g.intl?.info?.[n] : undefined;
+      if (inf) inf.coach = `${s.first} ${s.last}`.trim();
+    }
   }
   if (memSel && memFlag(row) !== undefined) s.cmMem = memOf(row);
   g.staff[s.id] = s;

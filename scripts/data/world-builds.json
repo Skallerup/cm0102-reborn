@@ -31,7 +31,7 @@
     "careers": "careers-cm.json",
     "careersSha256": "352c28a022160e40a07080603ae5562c15b915ee6447696430a099ff6eae48db",
     "cm": "world-cm.json",
-    "cmSha256": "2222d13cd30f9798909b8cbe66ffc5cb6e9de4269f730b60c1fd5cf49dc45e1d",
+    "cmSha256": "4a89518e8d35818ee2e972c97f946d1e88f4e104760b586eac970bf34b1575ea",
     "cmStaff": "world-cm-staff.json",
     "cmStaffSha256": "f8169a9e2a3d873ae6da833160e1596f15b0dbab9d63f0ee4ef8d93d58cd615b",
     "reproducible": true
