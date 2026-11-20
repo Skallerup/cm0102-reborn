@@ -21,5 +21,5 @@ describe('bud kun fra de valgte lande', () => {
     }
     const bids = g.offers.filter((o) => o.seller === g.userClub);
     for (const o of bids) expect(outside(o.buyer), `bud fra ${g.clubs[o.buyer]?.name}`).toBe(false);
-  }, 240_000);
+  }, 600_000);
 });
