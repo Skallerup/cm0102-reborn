@@ -1913,6 +1913,87 @@ function dropDeadBids(S: SlMem): void {
   }
 }
 
+/** dagens hukommelse, mens transfers.ts behandler de forfaldne bud (dueHook) – cmSlMoved bruger den i stedet for at bygge en ny */
+let DUE_S: SlMem | null = null;
+export const SL_MOVED = { n: 0, slot: 0, holder: 0, own: 0, old: 0 };
+
+/** Ønskelisternes del af et klubskifte, før spilleren skifter (staff +0x39 er stadig den gamle klub):
+ *  TRANSFER_MANAGER::move_player_to_club 0x8c9720, 0x8c9a58–0x8c9cd2:
+ *   – den nye klub er en computerklub (0x600a50(klub, 0, 1, 0, 0) = 0): den første af pladserne 0..24 med ham som mål (+0xf) og rolle 0xb:
+ *     har pladsen en indehaver (+0x13 > −1), hvis kontrakt (0x4cf5a0) er med den nye klub, falder indehaverens +0x3d med 50 (0x4cf5f0(indehaver,
+ *     klub), højst −100 – 0x8c9be0) og 0x842c00(indehaver, 0). (0x6e6340(staff, −1, 0x5e82, klub, −1, 0) → [esp+0x30] og flaget [esp+0x20],
+ *     som 0x8c9fb0/0x8ca461 bruger til nyheden 0x7c5fe0 og spillerens omdømme, er ikke porteret her.)
+ *   – står parret (staff, ny klub) på ønskelisten (0x842080): 0x843e10(staff, ny klub, 2, buddets +0x11 ≠ 0xb) – målet bliver pladsens
+ *     indehaver (0x844112: +0x13 = ham, +0x17 = −1, +7 = +0xb = 0, dato + 120, kontraktens +0x4f-nibble, klubbens +8 = 100);
+ *   – den gamle klub (+0x39 ≠ ny): 0x843e10(staff, gammel, 4, 2) (0x8441db: indehaver/mål ham → −1);
+ *   – er han udlejet (+0x39 ≠ kontraktens klub, 0x4cf6d0): 0x843e10(staff, kontraktens klub, 4, 2).
+ *  og finalise_transfer 0x8c9390's hale 0x8c965d–0x8c9701: 0x84aeb0(køber, staff) – køberens budmærker +0x17 på pladserne med ham ryddes –
+ *  og 0x84aeb0(spillerens kontraktklub, x) for byttespillerne (buddets liste +4).
+ *  Uden dette blev pladserne stående med målet, der var kommet, og et budmærke til et lukket bud: trupplanen 0x83cb40 springer pladser med
+ *  budmærke over (trin 4), så de hang resten af sæsonen (6/10-01: 193 pladser mod oraklets 1) og klubberne fandt færre nye mål – især
+ *  lejespillere (0x84a020 @0x84aab7 kræver et mål med +0x4e bit 2). */
+export function cmSlMoved(g: GameState, p: Player, to: number, buyer: number, swap: number[] = []): void {
+  if (!cmShortlistOn(g) || !g.cmPlan || ENV.CM_SL_MOVED === '0') return;   // (CM_SL_MOVED=0: til målinger før/efter)
+  const from = p.club, home = p.loan?.from ?? p.club;
+  const clubs = [...new Set([to, from, home, buyer].filter((c) => c && g.cmPlan![c]))];
+  if (!clubs.length) return;
+  const own = !DUE_S;
+  const S = DUE_S ?? buildSlMem(g);
+  try {
+    const { m } = S;
+    const id = S.memOf.get(p.id);
+    if (id === undefined) return;
+    SL_MOVED.n++;
+    const staffOf = (mid: number) => (m.u32(G.STAFF) + 0x6e * mid) >>> 0;
+    const st = staffOf(id);
+    for (const c of clubs) { refreshClub(S, c); writeSlots(S, c, entryOf(g, c), true); }
+    S.M.setRand(cmRand(g.seed ?? 0, p.id, dayNum(g.date), 0x8c9720));
+    const toAdr = S.clubAdr(to);
+    let holderPid = -1;
+    shared(() => {
+      if (toAdr && g.cmPlan![to] && !isHumanClub(to)) {
+        const base = m.u32((m.u32(S.slm + 0xdc) + 9 * to) >>> 0);
+        for (let i = 0; i < 0x19 && base; i++) {
+          const a = base + SLOT * i;
+          if (m.s32(a + 0xf) !== id || m.u8(a) !== 0xb) continue;
+          SL_MOVED.slot++;
+          const h = m.s32(a + 0x13);
+          if (h > -1) {
+            const hs = staffOf(h), hk = getContract(m, hs);
+            if (hk && (m.u8(hk + 0x35) & 0x3f) !== 5 && m.s32(hk + 4) === to) {
+              const k = contractForClub_4cf5f0(S.c, hs, toAdr);
+              if (k) { const v = s8(m.u8(k + 0x3d)) - 50; m.w8(k + 0x3d, v < -100 ? -100 : v); }
+              slCall(S.c, 0x842c00, S.slm, hs, 0);
+              holderPid = S.byMem.get(h)?.id ?? -1;
+              SL_MOVED.holder++;
+            }
+          }
+          break;
+        }
+      }
+      if (toAdr && (slCall(S.c, 0x842080, S.slm, st, toAdr) & 0xff)) { slCall(S.c, 0x843e10, S.slm, st, toAdr, 2, 0); SL_MOVED.own++; }
+      const fromAdr = from ? S.clubAdr(from) : 0;
+      if (fromAdr && from !== to) { slCall(S.c, 0x843e10, S.slm, st, fromAdr, 4, 2); SL_MOVED.old++; }
+      const homeAdr = home ? S.clubAdr(home) : 0;
+      if (homeAdr && home !== from && p.loan) slCall(S.c, 0x843e10, S.slm, st, homeAdr, 4, 2);
+      const bAdr = buyer ? S.clubAdr(buyer) : 0;
+      if (bAdr) slCall(S.c, 0x84aeb0, S.slm, bAdr, st);
+      // (byttespillerne: ebx = spillerens kontraktklub efter skiftet – køberen ved køb)
+      const kAdr = S.clubAdr(p.loan ? home : to);
+      for (const x of swap) { const xm = S.memOf.get(x); if (kAdr && xm !== undefined) slCall(S.c, 0x84aeb0, S.slm, kAdr, staffOf(xm)); }
+    }, S);
+    for (const c of clubs) readSlots(S, c);
+    readPairs(S);
+    if (holderPid > -1) {
+      const hp = g.players[holderPid], cc = hp?.cmContract;
+      const k = hp && toAdr ? contractForClub_4cf5f0(S.c, staffOf(S.memOf.get(holderPid)!), toAdr) : 0;
+      if (cc && k) cc.b3d = s8(m.u8(k + 0x3d));
+    }
+  } finally {
+    if (own) (S.m as SparseMem).release();
+  }
+}
+
 /** TRANSFER_MANAGER::move_player_to_club 0x8c9720 (fra finalise_transfer 0x8c9390 – køb, leje, klubløse og bytte-spillere), 0x8ca0a4–0x8ca0ce:
  *  har spilleren en klub efter skiftet (+0x39) og er han ikke transferlistet der (0x5444a0: kontrakten 0x4cf5a0's +0x4e bit 1 – efter et køb den
  *  nye kontrakt, ved leje moderklubbens), sættes klubbens trupplanstæller +8 = 100: 0x84a020 byder ikke (+8 ≥ 100), før 0x5cccd0 har kørt
@@ -2105,7 +2186,8 @@ export function cmShortlistDaily(g: GameState, planClub: (cid: number) => { drop
   tt = now();
   applyHook(ev);
   // TRANSFER_MANAGER::daily_update 0x8c5880 → process_due_offer 0x8c63a0: de computer → computer-bud, hvis tid er kommet (også dagens med 0 dage)
-  dueHook({
+  DUE_S = S;
+  try { dueHook({
     loanAnswer: (pid, buyer, seller) => loanAnswer_84af00(S, pid, buyer, seller),
     delay: (pid, buyer, site, loan) => offerDelay(S, pid, buyer, site, loan),
     interest: (pid, buyer) => moveInterest(S, pid, buyer),
@@ -2113,7 +2195,7 @@ export function cmShortlistDaily(g: GameState, planClub: (cid: number) => { drop
     offerContract: (pid, buyer, offerId) => offerContract_8c1e40(S, pid, buyer, offerId),
     decide: (pid, buyer, k) => decide_4ce4e0(S, pid, buyer, k),
     asking: (pid, buyer) => askingPrice_8c8291(S, pid, buyer),
-  });
+  }); } finally { DUE_S = null; }
   (S.m as SparseMem).release();
   tick('d.apply', tt);
 }

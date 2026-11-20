@@ -29,7 +29,7 @@ import { cmLoanRefuses } from './cmLoan';
 import { cmBuildBid } from './cmAiBid';
 import { cmWindowOpen } from './cmOfferCheck';
 import { cmRumourAdd } from './cmRumours';
-import { cmAskingPrice, cmExchangeCheck, cmInterestedClubs, cmLoanAnswerNow, cmLoanDelayNow, cmMovedToClub, cmShortlistOn, setSlApply, setSlDue, type SlDueCtx, type SlEvent } from './cmShortlistGame';
+import { cmAskingPrice, cmExchangeCheck, cmInterestedClubs, cmLoanAnswerNow, cmLoanDelayNow, cmMovedToClub, cmShortlistOn, cmSlMoved, setSlApply, setSlDue, type SlDueCtx, type SlEvent } from './cmShortlistGame';
 import { ADDON_APPS, bidClauseWorth, cleanClauses, clauseWorth, defaultRelease, settleSellOn } from './clauses';
 import { asOwner, forEachHuman, isHumanClub, isMultiplayer } from './humans';
 import { AGENT_RULES, agentOf } from './agents';
@@ -842,6 +842,8 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
   recordMove(p, buyer.id, o.fee, o.loan);
   // fansene reagerer på stjernesalg og -køb
   if (!o.loan && seller) fansOnDeparture(p, seller, 'sold', o.fee);
+  // 0x8c9720/0x8c9390: ønskelisternes del af skiftet (før staff +0x39 skifter) – pladsen med ham bliver hans, budmærkerne ryddes
+  cmSlMoved(g, p, buyer.id, buyer.id, !o.loan && seller ? o.swap : undefined);
   setClub(p, buyer.id);
   cmMovedToClub(g, p);
   if (!o.loan) merchStarSigning(buyer.id, p.rep);
@@ -856,6 +858,7 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
       recordMove(x, seller.id, swapWorth(x.id, seller.id), false, true);
       x.contract = aiNewContract(x, seller, () => ({ wage: wageDemand(x, seller), expires: `${year(g.date) + preferredYears(x)}-06-30` }));
       x.sellOn = undefined; x.addOn = undefined; x.listed = false; x.listPrice = undefined; x.squadStatus = undefined; x.loanListed = undefined; x.renewal = undefined; x.complaint = undefined;
+      cmSlMoved(g, x, seller.id, 0);   // (0x8c9579: kun 0x8c9720 – halens 0x84aeb0 for byttespillerne står i hovedspillerens kald)
       setClub(x, seller.id);
       cmMovedToClub(g, x);
       x.joined = g.date;
@@ -2067,6 +2070,7 @@ function cmAiAiDue(cx: SlDueCtx) {
       CM_AIAI.freeDone++;
       p.contract = aiNewContract(p, buyer, () => ({ wage: wageDemand(p, buyer), expires: `${year(g.date) + preferredYears(p)}-06-30` }));
       recordMove(p, buyer.id, 0);
+      cmSlMoved(g, p, buyer.id, buyer.id);   // 0x8c9720/0x8c9390: ønskelisterne (før skiftet)
       setClub(p, buyer.id);
       cmMovedToClub(g, p);
       p.joined = g.date;
