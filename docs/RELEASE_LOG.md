@@ -2,6 +2,7 @@
 
 Flyttet fra CLAUDE.md 17/11-2026 (så CLAUDE.md er kort i hver session). Nyeste først. Tilføj en linje øverst ved hver udgivelse.
 
+- 2026-11-20 – Skudt live (v0.32.0): 2026-11-20 – CxDrop lukker ved dialog/optaget (sidebjælkens filter gav eget lag, menu z 80 under besked 70); mobil fase 1: classic.css ≤760 px trykflader 34–38 px, pladsrække i to rækker, checkboxes 22 px – utrykbare mål 8–33 → 0, små mål 45–62 → 0–9 pr. skærm (iPhone 13). scripts/e2e-mobile.mjs.
 - 2026-11-20 – Skudt live (v0.32.0): 2026-11-20 – Ligaparring 1:1 (cmFixtures.ts, g.cmPairs): originalens blanding (frø+år), stadion-/nabostadionregel (nyt world-felt, 4 world-filer genbygget), turneringstabel og hjemme/ude; split-ligaer og MLS undtaget. PL samme dato 8 → 123/380, 1.–3. div 6/10/9 → 267/223/188 af 552. Fingeraftryk 2001-08-20 → 774b3d9bf9efe302. Rest i backloggen (Europa-uger, Liga/FA Cup, landskampsdag).
 - 2026-11-20 – Skudt live (v0.32.0): 2026-11-20 – Bestyrelsens tillid: forudsagt placering (+0x72) 0x68a850/0x4c08f0/0x4c0720 (saldo/300 + omdømme·16 + 15 bedste), bedst/dårligst/status/play-off-bånd 0x684cd0/0x573260/0x578660 efter dagens kampe, 0x48f150, venskabskampe = Friendly (72). w6 snit 30/6 8123 → 7900 (orakel 7850), ugeafvigelse 346 → 113. Fingeraftryk 2001-08-20 4fb21131a80d4dcc → 889c330143d26e7d.
 - 2026-11-19 – Skudt live (v0.31.0): 2026-11-20 – Forslag #31: g.options.bgMatch (Game Options, standard fra) – matchCatchUp.ts indhenter forløbet vægur-tid i hele ticks (samme advance, samme frø), stopper ved halvleg/dialoger/mål-blink/slutfløjt; test matchCatchUp.
