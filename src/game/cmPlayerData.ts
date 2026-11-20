@@ -830,7 +830,7 @@ function moraleDay(g: GameState, p: Player, rand: (n: number) => number): void {
  *  bl = u8(rand(20 − Adaptability) + rand(20 − Influence +0x2f) + rand(s16(forskel)/max(20·Pressure, 1))), ftol(bl·(1,5 − 0,1·0x7c6830(spiller,
  *  ny klub, klubbens sprog +0x77))) som byte, højst 100, lagt til byten (u8). */
 export function cmStaffStateMove(g: GameState, p: Player, from: number, to: number): void {
-  if (!cmActive(g) || g.cmFitStart === undefined || !to) return;
+  if (!cmBodyOn(g) || g.cmFitStart === undefined || !to) return;
   // 0x8ca0a4–0x8ca0ce: den nye klubs trupplan-tæller +8 = 100 (Shortlist_Manager [+0xdc] + 9·klub), medmindre 0x5444a0 (kontrakten +0x4e & 1 –
   // en ny kontrakt er ikke transferlistet) – så åbner 0x5cccd0's port (rand(70) + 30 < +8) og klubben planlægger igen inden for få dage
   cmPlanKick(g, to);

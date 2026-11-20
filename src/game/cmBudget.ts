@@ -15,7 +15,7 @@ import type { GameState, Player } from './types';
 import { buildWantMem, cmTalkStatus, roleCode, type WantMem } from './cmContractGame';
 import { GEN } from './cmGen/index';
 import { ensureImpls } from './cmGen/impls';
-import { cmActive, cmBoardLogic, cmLogic } from './cmPlayerData';
+import { cmActive, cmBoardLogic, cmLogic, cmStaffOn } from './cmPlayerData';
 import { cmGbp } from './cmMoney';
 import { cmKnowLevel } from './cmKnow';
 import { cmClubEuro } from './cmFitnessGame';
@@ -134,7 +134,8 @@ export function cmBoardWageAllow(g: GameState, p: Player, clubId: number, role?:
  *  er ansat i klubben, mindst hans nuværende løn (0x4d0c20). Ugeløn i € (null uden for ægte tilstand). */
 const JOB: Record<string, number> = { manager: 5, assistant: 6, coach: 8, scout: 9, physio: 10 };
 export function cmBoardStaffWageAllow(g: GameState, s: { club: number; wage?: number }, role: string, clubId: number): number | null {
-  if (!cmActive(g) || !g.clubs[clubId]) return null;
+  // (MODERN_PARITY §0 E) originalens stab (cmStaffOn – også nye 2026/27-spil i ægte tilstand); beløbene i klubbens £ (cmGbp)
+  if (!cmStaffOn(g) || !g.clubs[clubId]) return null;
   const M = buildWantMem(g, [clubId]);
   const fin = M.W.finOf(clubId);
   if (!fin) return null;

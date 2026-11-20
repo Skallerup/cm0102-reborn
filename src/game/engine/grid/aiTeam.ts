@@ -24,7 +24,7 @@ import { AI_TACTIC_LIST, chooseAiTactic, type AiTacticEntry, type ChoiceManager,
 import { assignSquad, benchSlots, pickFlags, setPieceTakers, type Rand } from './pickTeam';
 import { gs, hasGame } from '../../state';
 import { benchSize } from '../../rules';
-import { cmActive, cmLogic, cmContractOf, cmFormRatings, leagueAverage, statAvg, statusCode } from '../../cmPlayerData';
+import { cmLogic, cmMediaOn, cmContractOf, cmFormRatings, leagueAverage, statAvg, statusCode } from '../../cmPlayerData';
 import { cmFitOn, cmFitRead, setMatchSquad } from '../../cmFitnessGame';
 import { cmPermitHistory } from '../../cmPermit';
 import { newTacticStats, recordTacticResult } from './aiTacticChoice';
@@ -374,7 +374,8 @@ export function aiPickCtx(clubId: number, aiControlled = false): AiPickCtx | nul
   const st = engineManager(clubId, aiControlled);
   // med Staff.cmNp (originalens spilstart, cmStaffInit.ts) de interne værdier i hukommelsen; ellers databasens værdi omregnet uden afbalancering
   const shownOf = (v: number, off: number) => npShown(st, off) ?? (st?.ca ? staffShown(st.ca, staffIntrinsic(v, st.ca)) : v);
-  const cm = cmActive(g);
+  // PlayerStats, karaktersnittet og kontrakten (+0x3d/+0x44) føres af cmAfterMatch under cmMediaOn (2001-verdenen og nye CM-spil i ægte tilstand)
+  const cm = cmMediaOn(g);
   const tac = gridTacOf(st);
   return {
     date: g.date, gameSeed: g.seed, clubId, ...(natOfClub(clubId) !== null ? { national: true } : {}), manager: st && tac ? { id: st.id, ca: st.ca ?? st.rep * 2, tac } : null,   // ikke-spillerpostens +4 (CA) – 0x6ddab0's 0x544410/0x543f30
@@ -384,7 +385,7 @@ export function aiPickCtx(clubId: number, aiControlled = false): AiPickCtx | nul
     // taktiklistens statistik 0x896290 (ren kampmotor – også 2026/27 i ægte tilstand, cmLogic); PlayerStats/karaktersnittet kun 2001-verdenen
     ...(cmLogic(g) ? { tacticStats: (g.aiTacticStats ??= newTacticStats()) } : {}),
     ...(cm ? { cm, leagueAvg: leagueAverage(g) } : {}),
-    // (MODERN_PARITY 6) 2026/27 i ægte tilstand: kun konditionsmodulets aflæsninger (PlayerStats/kontrakten forbliver 2001-verdenens)
+    // (MODERN_PARITY 6) ældre 2026/27-spil i ægte tilstand: kun konditionsmodulets aflæsninger (PlayerStats/kontrakten kun med cmMediaOn)
     ...(!cm && cmFitOn(g) ? { fit: true } : {}),
   };
 }
