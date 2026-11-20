@@ -686,14 +686,14 @@ registerStaffOfferCheck(cmStaffOfferCheck);
  *  Tilbuddets trupstatus er skærmens 0xff (nibblen 0xf i +0x4f), jobbet +0x61 = jobbet (6/8/9/10, ≠ 0xb):
  *  - point = 0x866830(tilbud)/0x866830(krav 0x85fc50(staff, klub, −1, 0xf, job)) − (+0x5b − +0x57 + +0x59 − 9)/300; under 0,6 → 0.
  *  - ikke-spillerposten +0x69 ≠ 0 og job ≠ 0xb: x = 0x844780(staff, klub, 0, job, 0) (et spillende job 0x53b620 – 0xb/0xc/0xd/0xf – tager
- *    gennemsnittet med 0x846920; ikke stabens jobs). Han er ikke klubbens egen (isOwn = 0).
+ *    gennemsnittet med 0x846920; ikke stabens jobs). Er han klubbens egen (Offer New Contract), er isOwn = 1: point ≥ 0,99 og x ≤ 3,15 → x = 3,15.
  *  - 0x4ceae2: point > 0,5, arbejdstilladelse 0x8c7560 og kontraktens udløb +0x2d under 90 dage væk → 0 (kan ikke ske her: udløbet er mindst
  *    30/6 næste år).
  *  - point ≥ 0,9: f = max(x, 3,15); 0,8–0,9 og x > 3,15: x; 0,7–0,8 og x > 3,5: x; ellers intet. Ja, når f·point > 2,75 (`best`'s start).
  *  - 0x4cec5a: +0x69 ≠ 0 og kandidat til et managerjob (0x69fc60 på MANAGER_MANAGER – cmBoard vac.cand) → intet tilbud vælges.
  *  Kun menneskets tilbud vurderes (computerklubbernes samtidige tilbud til samme person indgår ikke – som cmContractAnswer). Null uden for cmStaffOn. */
 export function cmStaffContractAnswer(g: GameState, s: import('./types').Staff, clubId: number, job: number, o: { wage: number; signOn: number; expires: string }):
-  { score: number; x: number; t: number; accept: boolean } | null {
+  { score: number; x: number; t: number; accept: boolean; reasons?: number; mgr?: boolean; variant?: number } | null {
   if (!cmStaffOn(g) || g.draft || !g.clubs[clubId]) return null;
   const X = staffMem(g, s, clubId, job, 0xf);
   if (!X) return null;
@@ -721,6 +721,9 @@ export function cmStaffContractAnswer(g: GameState, s: import('./types').Staff, 
     x = Math.fround(c.call(0x844780, st, club, 0, job, 0));
     if (job === 0xb || job === 0xc || job === 0xd || job === 0xf) x = Math.fround((slCall(c, 0x846920, slmOf(m), st, club, 0, 0, 0xf, 0) + x) * 0.5);
   } else x = Math.fround(slCall(c, 0x846920, slmOf(m), st, club, 0, 0, 0xf, 0));
+  // 0x4ce9b5: hans nuværende kontrakt er med den tilbydende klub (Offer New Contract til egen stab) → isOwn, og point ≥ 0,99 løfter x til 3,15
+  const own = !!s.club && s.club === clubId;
+  if (own && !(score < 0.99) && !(x > 3.15)) x = 3.15;
   if (score < 0.6) score = 0;
   let f = 0;
   if (score >= 0.9) f = x > 3.15 ? x : 3.15;
@@ -728,6 +731,15 @@ export function cmStaffContractAnswer(g: GameState, s: import('./types').Staff, 
   else if (score > 0.7 && x > 3.5) f = x;
   const t = f * score;
   const cand = np && ((g.cmBoard as { vac?: { cand?: number }[] } | undefined)?.vac ?? []).some((v) => v.cand === s.id);
-  return { score, x, t, accept: t > 2.75 && !cand };
+  const accept = t > 2.75 && !cand;
+  // nyheden 0xbb8 (0x4d49a0): grundene = ud-flagene fra 0x846920(staff, klub, 0, kontrakttype 2, status 0xf, &ud) (0x4d4bbe), klubbens manager
+  // +0xcf (0x4d4bd5) og variantens rand(3) (0x4d4d12) – samme hukommelse og rand-strøm, efter afgørelsen som i originalen
+  const RS = OUT + 0x68;
+  m.w32(RS, 0);
+  slCall(c, 0x846920, slmOf(m), st, club, 0, 2, 0xf, RS);
+  const reasons = m.u32(RS);
+  const mgr = m.u32(club + 0xcf) !== 0;
+  const variant = c.rand(3);
+  return { score, x, t, accept, reasons, mgr, variant };
 }
 registerStaffContractAnswer(cmStaffContractAnswer);

@@ -466,6 +466,27 @@ async function run(look) {
     const n = await gs((id) => (window.__cm.gs().cmStaffOffers ?? []).filter((o) => o.staff === id).length, sid);
     if (n !== 1) throw new Error('kontrakttilbuddet blev ikke sendt');
   });
+  if (look === 'klassisk' && ENGINE_GRID) await step('egen stab: Offer New Contract og Terminate Contract (0x870650)', async () => {
+    // ejerens fejl 21/11: egen spejder havde kun "Fire" – originalen har Offer New Contract (→ Set Role At Club → Offer Contract) og Terminate Contract
+    const sid = await gs(() => { const g = window.__cm.gs(); return Object.values(g.staff).find((s) => s.club === g.userClub && s.role === 'scout')?.id; });
+    if (!sid) throw new Error('ingen egen spejder');
+    await go({ name: 'staff', id: sid });
+    await page.waitForTimeout(300);
+    await page.locator('.cx-act .cx-drop-btn').first().click();
+    const acts = await page.locator('.cx-drop-pop').last().innerText();
+    if (!/Offer New Contract/.test(acts) || !/Terminate Contract/.test(acts) || /\bFire\b/.test(acts)) throw new Error(`Action-menuen (egen stab): ${acts}`);
+    await page.locator('.cx-drop-pop >> text=Offer New Contract').first().click();
+    await page.waitForSelector('.cx-st-role', { timeout: 3000 });
+    await page.locator('.cx-st-role', { hasText: 'Scout' }).first().click();
+    await page.locator('.cx-dlg-foot button.primary').click();
+    await page.waitForSelector('.cx-staff-neg', { timeout: 3000 });
+    if (!(await page.locator('.cx-staff-neg').innerText()).includes('Your board will allow wages up to')) throw new Error('Offer New Contract mangler lønloftet');
+    await page.locator('.cx-staff-neg .cx-dlg-foot button.primary').click();
+    await page.locator('.cx-staff-neg .cx-dlg-foot button.primary').click();
+    await page.waitForTimeout(300);
+    const n = await gs((id) => (window.__cm.gs().cmStaffOffers ?? []).filter((o) => o.staff === id && o.club === window.__cm.gs().userClub).length, sid);
+    if (n !== 1) throw new Error('fornyelsestilbuddet blev ikke sendt');
+  });
   // den originale database i ægte tilstand: originalens træningsskærm (TrainingCm.tsx) – skemaer, Edit, tildeling, Ok
   const cmTrain = () => gs(() => { const g = window.__cm.gs(); return g.dbKind === 'cm0102' && g.options.mode === 'authentic' && (g.dbYear ?? g.season) < 2020; });
   if (look === 'klassisk') await step('træning som CM 01/02: opret/ændr skema, tildel spillere, Ok', async () => {

@@ -16,7 +16,9 @@ import type { DropItem } from '../classic';
 import { ClubLink, Modal, Panel, Tabs } from '../components';
 import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
-import { ClassicStaffProfile } from './StaffClassic';
+import { ClassicStaffProfile, SetRolePanel } from './StaffClassic';
+import { ClassicStaffNegotiation } from './NegotiationClassic';
+import { cmRolesFor } from '../../game/cmStaff';
 import { cmStaffOn } from '../../game/cmPlayerData';
 
 const ATTRS: (keyof Staff['attrs'])[] = ['coaching', 'judgingAbility', 'judgingPotential', 'physio', 'motivating', 'discipline', 'tactics'];
@@ -128,6 +130,8 @@ function StaffProfile({ id }: { id: number }) {
   const { nav } = useNav();
   const [offer, setOffer] = useState(false);
   const [msg, setMsg] = useState<{ text: string; tone: string } | null>(null);
+  // Offer New Contract (CM 01/02 0x870650 → Set Role At Club → Offer Contract) med stabens modul: samme forhandling som i det klassiske udseende
+  const [renew, setRenew] = useState<StaffRole | 'pick' | null>(null);
   const mine = s.club === g.userClub && !!g.userClub;
   const name = `${s.first} ${s.last}`.trim();
   const role = s.role === 'manager' ? null : s.role;
@@ -145,6 +149,7 @@ function StaffProfile({ id }: { id: number }) {
   };
   // Action-menuen i titelbjælken (som på spillerprofilen og i CM 01/02)
   const items: DropItem[] = [];
+  if (mine && cmStaffOn(g)) items.push({ key: 'renew', label: t('cl.pl.offerNew'), disabled: !cmRolesFor(s, g.date).length, onClick: () => setRenew('pick') });
   if (mine) items.push({ key: 'fire', label: t('staff.fire'), danger: true, onClick: fire });
   else if (g.userClub) {
     const broke = s.club > 0 && (g.clubs[g.userClub]?.balance ?? 0) < poachFee(s);
@@ -153,6 +158,8 @@ function StaffProfile({ id }: { id: number }) {
   }
   if (s.club) items.push({ key: 'club', label: t('staff.viewClub', { club: g.clubs[s.club]?.short ?? '' }), onClick: () => nav(s.club === g.userClub ? { name: 'squad' } : { name: 'club', id: s.club }) });
   const action = items.length ? <ActionMenu items={items} clubId={s.club || undefined} /> : null;
+  if (renew === 'pick') return <div><SetRolePanel s={s} onBack={() => setRenew(null)} onSet={(r) => setRenew(r)} /></div>;
+  if (renew) return <div><ClassicStaffNegotiation staffId={s.id} role={renew} onClose={() => setRenew(null)} /></div>;
   return (
     <div>
       <Head title={`${name}${s.club ? ` (${g.clubs[s.club]?.short ?? ''})` : ''}`} action={action} />

@@ -7,7 +7,7 @@ import { natName } from '../i18n';
 import { hash01 } from './rng';
 import { addNews, gs, hasGame, squad } from './state';
 import type { Club, Player, ScoutAssignment } from './types';
-import { cmScoutLogic } from './cmPlayerData';
+import { cmScoutLogic, cmStaffOn } from './cmPlayerData';
 import { rng } from './rng';
 import { NO_CARRY, registerCarry } from './carry';
 import { A, naturalRole, roleScore } from './attributes';
@@ -150,8 +150,9 @@ export function scoutDaily() {
   cmKnowDaily(g);
   if (!g.userClub) return;
   const scouts = Object.values(g.staff).filter((s) => s.club === g.userClub && s.role === 'scout');
-  // CM 01/02: påmindelser om scoutens kontrakt 12, 6, 3 og 2 måneder, 1 måned og 1 uge før udløb
-  for (const s of scouts) {
+  // påmindelser om scoutens kontrakt 12, 6, 3 og 2 måneder, 1 måned og 1 uge før udløb – med stabens modul (cmStaffOn) originalens 0x4c7ac0 for
+  // al ikke-spillende stab i stedet (cmStaff.ts cmOwnStaffContractsDaily: 182/91/7 dage og udløbsdagen)
+  if (!cmStaffOn(g)) for (const s of scouts) {
     if (!s.expires) continue;
     const left = daysBetween(g.date, s.expires);
     if ([365, 182, 91, 61, 30, 7].includes(left)) addNews({ cat: 'contract', key: 'scout.contractReminder', params: { scout: `${s.first} ${s.last}`, date: s.expires, days: left } });

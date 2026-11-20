@@ -83,6 +83,13 @@ export function newsParams(n: NewsItem): Record<string, string | number> {
   }
   // CM 01/02's karantæner (cmDiscipline.ts): længden i overskriften (0x7e5780), "Keane's" og forbundets nationalitetsord
   if (n.key.startsWith('cmban.')) cmBanParams(n, p);
+  // egen stabs kontrakt (cmStaff.ts cmRenewNews / cmOwnStaffContractsDaily – 0x4d4fb0/0x4daa00): genitiven, beløbet og grundene
+  if (n.key.startsWith('cm.staffRenew') || n.key === 'cm.staffExpires') {
+    for (const k of ['club', 'clubFull', 'name'] as const) if (typeof p[k] === 'string') p[`${k}S`] = possessiveName(String(p[k]));
+    if (typeof p.worth === 'number') p.worth = money(p.worth);
+    const r = [p.r1, p.r2].filter((x) => typeof x === 'string' && x).map((x) => t(`cm.rn.r.${x}`, p));
+    p.reasons = r.length > 1 ? t('cm.rn.r.and', { a: r[0], b: r[1] }) : r[0] ?? '';
+  }
   // klubøkonomiens begivenheder: beløbene (€) i den viste valuta, antallet af pladser
   if (n.key.startsWith('cmfe.')) {
     if (typeof p.amt === 'number') p.amt = money(p.amt);
@@ -190,7 +197,16 @@ function cmIntParams(n: NewsItem, p: Record<string, string | number>): void {
   }
 }
 
+/** originalens genitiv efter et navn: engelsk 's (' efter s), de nordiske sprog og tysk s (' efter s/x/z), ellers navnet selv */
+export function possessiveName(x: string): string {
+  const l = getLang();
+  if (l === 'en') return /s$/i.test(x) ? `${x}'` : `${x}'s`;
+  if (l === 'da' || l === 'nb' || l === 'sv' || l === 'de') return /[sxz]$/i.test(x) ? `${x}'` : `${x}s`;
+  return x;
+}
+
 function bodyKey(n: NewsItem): string {
+  if ((n.key === 'cm.staffRenewOk' || n.key === 'cm.staffRenewNo') && typeof n.params?.body === 'string') return `cm.rn.${n.params.body}`;
   if (n.key.startsWith('cmsr.')) return 'cmsr.body';
   // uden stadion: exe'ens korte brødtekst (31865-31867)
   if (n.key.startsWith('res.') && !n.params?.venue) return `${n.key}.body0`;

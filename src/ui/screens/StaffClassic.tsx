@@ -9,13 +9,13 @@ import { nationLanguage } from '../../game/languages';
 import { fireStaff } from '../../game/staff';
 import { cmCapsLine, cmCoachingStyle, cmJobKey, cmStaffClub, cmOtherStyles, cmPrefFormation, cmPrefStyle, cmRolesFor, cmStaffAttrList, cmStaffInterested } from '../../game/cmStaff';
 import type { Staff, StaffRole } from '../../game/types';
-import { dateFmt, getLang, money, moneyWage, natName, t } from '../../i18n';
+import { dateFmt, getLang, moneyWage, natName, t } from '../../i18n';
 import { CxDrop, classicDate, titleColors, useClassicDialog, type DropItem } from '../classic';
 import { DEMONYM } from '../demonyms';
 import { askConfirm } from '../confirm';
 import { Tabs } from '../components';
 import { useGame, useNav, useRouteState } from '../core';
-import { Head } from './common';
+import { Head, possessiveName } from './common';
 import { ActionMenu } from './PlayerClassic';
 import { ClassicStaffNegotiation } from './NegotiationClassic';
 
@@ -114,7 +114,7 @@ function HistoryTab() {
 }
 
 /** Set Role At Club (0x4dd0f0): "Job Description" og de job, personen kan få (0x4cb990) – Back / Set */
-function SetRolePanel({ s, onBack, onSet }: { s: Staff; onBack: () => void; onSet: (r: StaffRole) => void }) {
+export function SetRolePanel({ s, onBack, onSet }: { s: Staff; onBack: () => void; onSet: (r: StaffRole) => void }) {
   useClassicDialog();
   const g = useGame()!;
   const roles = cmRolesFor(s, g.date);
@@ -176,10 +176,14 @@ export function ClassicStaffProfile({ id }: { id: number }) {
   // Action (CM 01/02, ejerens billede 52): Approach To Sign · Set Nickname · — · Create Manager Note
   const items: DropItem[] = [];
   if (!mine && g.userClub) items.push({ key: 'approach', label: t('cm.st.approach'), disabled: !cmRolesFor(s, g.date).length, onClick: () => setPanel('role') });
-  if (mine) items.push({ key: 'fire', label: t('staff.fire'), danger: true, onClick: async () => {
-    if (!(await askConfirm(t('staff.fireConfirm', { name, pay: money(s.wage * 12) })))) return;
-    fireStaff(s.id); nav({ name: 'club', id: g.userClub, state: { cview: 'info' } }); // CM 01/02: tilbage til klubbens General Info (Non-Playing Staff)
-  } });
+  // egen stab (0x870650): Offer New Contract (kommando 6 → Set Role At Club 0x4dd0f0 → Offer Contract) og Terminate Contract (kommando 0x1f →
+  // 0x4e53e0: "Terminate X's contract ?" No/Yes) – før stod kun "Fire"
+  if (mine) items.push({ key: 'renew', label: t('cl.pl.offerNew'), disabled: !cmRolesFor(s, g.date).length, onClick: () => setPanel('role') },
+    { key: 'fire', label: t('cm.st.terminate'), danger: true, onClick: async () => {
+      const full = `${s.first} ${s.last}`.trim();
+      if (!(await askConfirm(t('cm.st.terminateQ', { nameS: possessiveName(full) }), { head: t('cm.st.terminate'), ok: t('common.yes'), cancel: t('common.no') }))) return;
+      fireStaff(s.id); nav({ name: 'club', id: g.userClub, state: { cview: 'info' } }); // CM 01/02: tilbage til klubbens General Info (Non-Playing Staff)
+    } });
   items.push({ key: 'nick', label: t('cl.pl.setNick'), onClick: () => setPanel('nick') }, { key: 'sep', sep: true });
   if (g.userClub) items.push({ key: 'note', label: t('cl.pl.note'), onClick: () => setPanel('note') });
   const tabs: [Tab, string][] = [['profile', t('cl.pl.profile')], ['injuries', t('cl.pl.injuries')], ['contract', t('cl.pl.contract')], ['transfer', t('cl.pl.transfer')], ['history', t('cl.pl.history')]];

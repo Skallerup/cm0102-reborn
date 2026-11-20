@@ -19,7 +19,7 @@
 //   0x4cb990 hvilke job en person kan tilbydes (Set Role At Club 0x4dd0f0): Assistant Manager (6) fra 30 år, ellers kun for en manager/
 //            assistent/træner; Coach (8) fra 30 år undtagen fysioterapeuter, ellers kun manager/assistent/træner; Scout (9) kun for en
 //            spejder; Physio (10) kun for en fysioterapeut. Ledige har jobkoden 0 (Unemployed).
-import { addDays, ageOn } from './dates';
+import { addDays, ageOn, daysBetween } from './dates';
 import { econ } from './econ';
 import { addNews } from './state';
 import { regionOf } from './leagues';
@@ -245,7 +245,9 @@ export function cmStaffInterestedIn(g: GameState, s: Staff, role: StaffRole): bo
 let offerCheck: ((g: GameState, s: Staff, clubId: number, job: number) => { interested: boolean } | null) | null = null;
 export function registerStaffOfferCheck(f: typeof offerCheck): void { offerCheck = f; }
 /** cmContractGame.ts registrerer cmStaffContractAnswer (svaret 0x4ce4e0 på menneskets tilbud) */
-let contractAnswer: ((g: GameState, s: Staff, clubId: number, job: number, o: { wage: number; signOn: number; expires: string }) => { accept: boolean } | null) | null = null;
+let contractAnswer: ((g: GameState, s: Staff, clubId: number, job: number, o: { wage: number; signOn: number; expires: string }) => StaffAnswer | null) | null = null;
+/** svaret 0x4ce4e0 + nyhedens inddata (0x4d49a0: 0x846920's grunde, managerposten, rand(3)) */
+export interface StaffAnswer { accept: boolean; reasons?: number; mgr?: boolean; variant?: number }
 export function registerStaffContractAnswer(f: typeof contractAnswer): void { contractAnswer = f; }
 
 /** lønkravet *estimeret* (som spillets staffDemand: lønnen, +10 % for at forlade en klub). En person uden løn i spillet (databasens ekstra
@@ -264,7 +266,8 @@ export interface CmStaffOffer { staff: number; club: number; role: StaffRole; wa
 /** Offer → "Offer contract to X ?" Yes: tilbuddet sendes, svaret kommer som nyhed næste dag (som originalens kontrakttilbud) */
 export function cmOfferStaff(g: GameState, o: Omit<CmStaffOffer, 'club' | 'date'>): string {
   const s = g.staff[o.staff];
-  if (!s || !g.userClub || s.club === g.userClub) return 'error';
+  // egen stab: Offer New Contract (0x870650 kommando 6 → 0x4dd0f0) – samme tilbud og svar 0x4ce4e0 som til andres stab
+  if (!s || !g.userClub) return 'error';
   if (!cmRolesFor(s, g.date).includes(o.role)) return 'error';
   g.cmStaffOffers = (g.cmStaffOffers ?? []).filter((x) => !(x.staff === o.staff && x.club === g.userClub));
   g.cmStaffOffers.push({ ...o, club: g.userClub, date: g.date });
@@ -290,7 +293,8 @@ export function cmStaffOffersDaily(g: GameState): void {
   for (const o of due) {
     const s = g.staff[o.staff];
     const club = g.clubs[o.club];
-    if (!s || !club || s.club === o.club) continue;
+    if (!s || !club) continue;
+    if (s.club === o.club) { ownStaffAnswer(g, s, club, o); continue; }
     const name = `${s.first} ${s.last}`.trim();
     const from = s.club ? g.clubs[s.club] : undefined;
     // svaret = resolve_contract_offers 0x4ce4e0 (cmContractGame.ts cmStaffContractAnswer) – også fra en, der "has no interest in negotiating
@@ -341,6 +345,85 @@ export function cmStaffOffersDaily(g: GameState): void {
   }
 }
 const staffCountFor = (g: GameState, club: number, role: StaffRole) => Object.values(g.staff).filter((x) => x.club === club && x.role === role).length;
+
+/** Svaret på Offer New Contract til egen stab: 0x4ce4e0 (cmStaffContractAnswer, isOwn) og nyheden 0xbb8 (0x4d49a0 → teksten 0x4d4fb0). Ja →
+ *  0x8c38b0 underskriver (jobbet, lønnen, udløbet, signing-on via Finance::add_signing_on 0x5998e0). Nyt job uden plads → Delay-spørgsmålet som
+ *  for andres stab. */
+function ownStaffAnswer(g: GameState, s: Staff, club: import('./types').Club, o: CmStaffOffer): void {
+  const name = `${s.first} ${s.last}`.trim();
+  const expires = `${Number(g.date.slice(0, 4)) + o.years}-06-30`;
+  const ans = cmRolesFor(s, g.date).includes(o.role) ? contractAnswer?.(g, s, o.club, JOB_CODE[o.role], { wage: o.wage, signOn: o.signOn, expires }) ?? null : null;
+  const roomOk = o.role === s.role || staffCountFor(g, o.club, o.role) < STAFF_LIMITS[o.role];
+  if (ans?.accept && !roomOk) {
+    addNews({ cat: 'contract', key: 'cm.staffNoRoom', params: { club: club.name, name, sid: s.id } });
+    g.cmStaffOffers = [...(g.cmStaffOffers ?? []), { ...o, agreed: true, hold: g.news[0]?.id ?? 0 }];
+    return;
+  }
+  const news = cmRenewNews(g, s, club, ans, { wage: o.wage, signOn: o.signOn, expires });
+  if (ans?.accept) {
+    s.role = o.role;
+    s.wage = o.wage;
+    s.expires = expires;
+    if (o.signOn) { club.balance -= o.signOn; club.finance.signOn = (club.finance.signOn ?? 0) + o.signOn; bookBlockEur(g, club, CMK.signOn, o.signOn); }
+  }
+  addNews({ cat: 'contract', key: ans?.accept ? 'cm.staffRenewOk' : 'cm.staffRenewNo', params: news });
+}
+
+/** Brødteksten 0x4d4fb0 for menneskets egen klub (edi = 1), en ikke-spiller (slot 0x1a = 0, "contract rebel" +0xb bit 7 = 0) og en fornyelse
+ *  (slot 0x14 = 1: kontrakten er med klubben og svaret ja). Grundene (0x4d56ca): ud-flag & 8 "stated his love for the club"; & 0x40 med manager
+ *  "revealed his admiration for manager X" (efter kærligheden) eller, uden & 8 og under 24 år, "revealed his belief that X will help his career
+ *  flourish". Værdien ebp = ⌊dage/7⌋ · ugeløn + signing-on (£; ≥ 3 mio. ned til hele mio., > 1 mio. ned til halve), årene ⌊dage/365 + 0,5⌋,
+ *  r = rand(3), id = staff-id:
+ *  - ingen grunde: ebp > 1 mio.·(r+1) → r ≥ id % 3 "pledged his future", ellers "put pen to paper on a lucrative … deal"; ellers "has signed a new
+ *    contract … until {dato}".
+ *  - kun kærligheden: r = 0 "is delighted to have signed …"; r = 1 ebp > 1 mio. "lucrative … love", ellers "put pen to paper on a new N year
+ *    contract … love"; r = 2 "have sealed a new deal … for a further (N years | year)".
+ *  - ellers "has signed a new contract with {Club}.\n\nHe {grunde}."
+ *  Afslag (0x4d6314): "has rejected {Club}'s offer of a new contract." (+ "He {grunde}." – & 0x100 med manager "unhappy with his boss", & 4 "wishes
+ *  to get away …"). */
+export function cmRenewNews(g: GameState, s: Staff, club: import('./types').Club, ans: StaffAnswer | null, o: { wage: number; signOn: number; expires: string }): Record<string, string | number> {
+  const name = `${s.first} ${s.last}`.trim();
+  const base: Record<string, string | number> = { last: s.last, name, club: club.short || club.name, clubFull: club.name, sid: s.id };
+  const fl = ans?.reasons ?? 0, mgr = ans?.mgr ? (g.manager?.name ?? '') : '';
+  const age = ageOn(s.dob, g.date);
+  const rs: string[] = [];
+  if (!ans?.accept) {
+    if (fl & 0x100 && mgr) rs.push('boss');
+    if (fl & 4) rs.push('away');
+    return { ...base, body: rs.length ? 'rejR' : 'rej', r1: rs[0] ?? '', r2: rs[1] ?? '', mgr };
+  }
+  const love = !!(fl & 8);
+  if (love) { rs.push('love'); if (fl & 0x40 && mgr) rs.push('admire'); }
+  else if (fl & 0x40 && age < 24 && mgr) rs.push('belief');
+  const gbp = cmGbp(g, club.id);
+  const days = daysBetween(g.date, o.expires);
+  const years = Math.trunc(days * 0.0027397260273972603 + 0.5);
+  let ebp = Math.trunc(days / 7) * Math.round(o.wage * gbp) + Math.round(o.signOn * gbp);
+  if (ebp >= 3_000_000) ebp = Math.trunc(ebp / 1_000_000) * 1_000_000;
+  else if (ebp > 1_000_000) ebp = Math.trunc(ebp / 500_000) * 500_000;
+  const r = ans.variant ?? 0;
+  let body: string;
+  if (!rs.length) body = ebp > 1_000_000 * (r + 1) ? (r >= s.id % 3 ? 'pledged' : 'putPen') : 'signed';
+  else if (love && rs.length === 1) body = r === 0 ? 'delighted' : r === 1 ? (ebp > 1_000_000 ? 'lucLove' : 'penLove') : years === 1 ? 'sealed1' : 'sealedN';
+  else body = 'reasons';
+  return { ...base, body, years, worth: Math.round(ebp / gbp), date: o.expires, r1: rs[0] ?? '', r2: rs[1] ?? '', mgr };
+}
+
+/** CONTRACT_MANAGER::daily_update 0x4c7ac0 for menneskets ikke-spillende stab (job 6/8/9/10 – 0x53b620 er falsk): påmindelserne kun i båndene
+ *  1, 7 og 13 (0x867d30: 182, 91 og 7 dage før – 0x4d6790 type 5/1/4 = "six months"/"three months"/"next week", bånd 3/5/9/11 og 365/550 dage er
+ *  kun for spillere). Udløbsdagen (0x4c9819): kontrakten får type 1 og nyheden 0xbb9 type 2 (0x4da590(staff, 2, 0) → 0x4daa00 "X's contract
+ *  expires" / "X is now out of contract. He is now free to discuss terms with any other club."); han bliver i klubben – 31 dage efter går kun
+ *  den, der vil væk (0x866f60 – kræver kontraktens flag +0x45, som stabens kontrakter ikke har) eller er sat fri (+0x49), 0x4c8603. */
+export function cmOwnStaffContractsDaily(g: GameState): void {
+  if (!g.userClub) return;
+  for (const s of Object.values(g.staff)) {
+    if (s.club !== g.userClub || s.role === 'manager' || !s.expires) continue;
+    const left = daysBetween(g.date, s.expires);
+    const name = `${s.first} ${s.last}`.trim();
+    if (left === 182 || left === 91 || left === 7) addNews({ cat: 'contract', key: 'scout.contractReminder', params: { scout: name, date: s.expires, days: left } });
+    else if (left === 0) addNews({ cat: 'contract', key: 'cm.staffExpires', params: { name, sid: s.id } });
+  }
+}
 
 /** Nyheden "X rejects Y" har knappen Negotiate (originalens nyhedsknap 0xa6943c) – den åbner kontrakttilbuddet igen */
 export const cmRejectStaff = (g: GameState, n: { key: string; params: Record<string, string | number> }): Staff | null =>

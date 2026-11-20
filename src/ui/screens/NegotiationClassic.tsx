@@ -77,8 +77,10 @@ export function ClassicStaffNegotiation({ staffId, role, onClose }: { staffId: n
   const [wage, setWage] = useState(() => cap(demand));
   const end = (y: number) => `${t('cl.neg.jun')} ${g.season + y}`;
   const from = s.club ? g.clubs[s.club] : undefined;
+  // egen stab (Offer New Contract): ingen kompensation, og uden vilje "does not wish to negotiate a new contract at the current time" (0x9b0964)
+  const own = !!s.club && s.club === g.userClub;
   // 0x4e4b55: kompensationen 0x8d0780 – vises kun, når den er over 0
-  const comp = from ? (cmStaffOn(g) ? cmStaffCompensation(g, s) : poachFee(s)) : 0;
+  const comp = from && !own ? (cmStaffOn(g) ? cmStaffCompensation(g, s) : poachFee(s)) : 0;
   const col = titleColors(s.club || undefined);
   const wageOpts = [...new Set([0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 1, 1.05, 1.1, 1.2, 1.3, 1.5, 1.75, 2].map((f) => cap(r50(demand * f))))];
   const send = () => { act({ t: 'cmStaffOffer', id: s.id, role, wage, years, signOn }); onClose(true); };
@@ -91,7 +93,7 @@ export function ClassicStaffNegotiation({ staffId, role, onClose }: { staffId: n
           {from && comp > 0 && <p className="cx-ts-intro">{t('cm.neg.comp', { club: from.short || from.name, fee: moneyFull(comp) })}</p>}</div>
       ) : (
         <div className="cx-dlg-body">
-          <p className="cx-ts-intro">{interested ? t('cl.neg.wants', { player: name, wage: moneyWage(demand), until: end(2), fee: '' }) : t('cm.neg.noInterest', { name })}</p>
+          <p className="cx-ts-intro">{interested ? t('cl.neg.wants', { player: name, wage: moneyWage(demand), until: end(2), fee: '' }) : own ? t('cm.neg.noRenewNow', { player: name }) : t('cm.neg.noInterest', { name })}</p>
           <p className="cx-ts-intro">{t('cl.neg.allow', { allow: moneyWage(allow) })}</p>
           {<>
           <Row label={t('cl.neg.wage')} value={wage} show={moneyWage} options={wageOpts.includes(wage) ? wageOpts : [...wageOpts, wage].sort((a, b) => a - b)} onSet={setWage} reset={demand} />
