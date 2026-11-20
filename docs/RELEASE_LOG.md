@@ -2,6 +2,7 @@
 
 Flyttet fra CLAUDE.md 17/11-2026 (så CLAUDE.md er kort i hver session). Nyeste først. Tilføj en linje øverst ved hver udgivelse.
 
+- 2026-11-20 – Skudt live (v0.32.0): 2026-11-20 – Hotfix: No i jobtilbuddets dialog afslår (0x6b2790 handling 1) – før sad spilleren fast med grå Continue (TransferStatusClassic.tsx); e2e: Continue-løkken venter på forrige kørsel og svarer på spærrende nyheder (sporadisk fejl = trøjenummerbeskeden + kapløb), diagnose viser nyeste nyheder.
 - 2026-11-20 – Skudt live (v0.32.0): 2026-11-20 – MODERN_PARITY B: cmCmOn = cmActive || (cmLogic && g.cmCmMgr) → CONTRACT_MANAGER (0x4c7560/0x4c7ac0) på 2026/27; forlængelser 464 → 765 (toppe som 2001), klubløse 1/7 312 → 159, PL-lønsum £13,4M/uge. 2001-fingeraftryk uændret. scripts/cm-contracts-2026.ts.
 - 2026-11-20 – Skudt live (v0.32.0): 2026-11-20 – Bosman 0.7.2-tjekliste: 2026/27 fik ingen databasehistorik (nu 74 turneringer/5.805 rækker), prishistorik 25 år forskudt rettet (spillets ur), databasens lejeaftaler ved start (1.502 i spillets klubber, datoer +25 år). 2001-fingeraftryk uændret. Tabel i docs/MODERN_PARITY.md.
 - 2026-11-20 – Skudt live (v0.32.0): 2026-11-20 – cmSlMoved (0x8c9720 0x8c9a58–0x8c9cd2 + slutningen af 0x8c9390/0x84aeb0): pladser med budmærke 6/10 214 → 8 (orakel 9), med mål 37 (40); konverteren beholder kun non-league-talenter i originalens hukommelse (1.785 → 1.696, orakel 1.673). Lejer til 31/12 94/110 → 91/83 (orakel 153) – årsagen ligger andetsteds (backlog). Tests originalRegens/tacticPositions robuste over for world-data.
