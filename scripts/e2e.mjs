@@ -1851,7 +1851,7 @@ async function run(look) {
     if (news.length !== 1) throw new Error('reservenyheden mangler');
     await go({ name: 'squad', tab: 'reserves' });
     await page.waitForTimeout(300);
-    await page.locator('.cx-subrow button', { hasText: 'Fixtures' }).click();
+    await page.locator('.cx-tabrow button', { hasText: 'Fixtures' }).first().click();
     await page.waitForSelector('[data-testid="rsv-fixtures"]', { timeout: 3000 });
     if (!/2:1/.test(await page.locator('[data-testid="rsv-fixtures"]').innerText())) throw new Error('reservekampens resultat mangler i kampprogrammet');
     await page.locator('.cx-subrow button', { hasText: 'Last Match' }).click();
