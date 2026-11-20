@@ -52,4 +52,30 @@ describe('nyheder, der kræver svar', () => {
     o.status = 'rejected';
     expect(newsDue(g)?.id).toBe(unread.id);
   }, 120_000);
+
+  it('jobtilbud midt i sæsonen: No i "Accept the position …?" er et afslag (0x6b2790 handling 1) og frigiver Continue Game', async () => {
+    createGame(w, { managerName: 'T', managerNation: eng, clubId: w.clubs.find((c) => c[1] === 'Manchester United')![0], activeNations: [eng], lang: 'en', masking: true, seed: 3, mode: 'authentic' });
+    const g = gs();
+    for (const n of g.news) n.read = true;
+    g.clubs[g.userClub].sqnDue = undefined;
+    g.jobOffers.length = 0;
+    expect(newsDue(g)).toBeUndefined();
+    const cid = Number(Object.keys(g.clubs).find((c) => Number(c) !== g.userClub && g.clubs[Number(c)].league === g.clubs[g.userClub].league));
+    g.jobOffers.push(cid);
+    const job: NewsItem = { id: g.nextId.news++, date: g.date, read: false, cat: 'job', key: 'news.jobOffer', params: { club: g.clubs[cid].short }, link: { kind: 'club', id: cid } };
+    g.news.unshift(job);
+    // Continue Game åbner tilbuddet (ældste ubesvarede), og det blokerer, til det er besvaret
+    expect(newsDue(g)?.id).toBe(job.id);
+    expect(newsMustRespond(g, job)).toBe(true);
+    // No (JobOfferPanel i ægte tilstand) = declineJob
+    const { act } = await import('../src/game/actions');
+    act({ t: 'declineJob', club: cid });
+    expect(gs().jobOffers).not.toContain(cid);
+    job.read = true;
+    expect(newsMustRespond(gs(), job)).toBe(false);
+    expect(newsDue(gs())).toBeUndefined();
+    // UI: No kalder afslaget (ikke blot luk)
+    const src = readFileSync('src/ui/screens/TransferStatusClassic.tsx', 'utf8');
+    expect(src).toMatch(/className="cx-job-no" onClick=\{decline\}/);
+  }, 120_000);
 });

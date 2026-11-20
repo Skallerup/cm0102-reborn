@@ -2015,6 +2015,9 @@ async function run(look) {
   if (look === 'klassisk') await step('Continue Game til næste kamp', async () => {
     let watched = 0;
     for (let i = 0; i < 200; i++) {
+      // først når forrige Continue Game er færdig (Web Worker): ellers ser svarhjælperen gårsdagens tilstand (fx før Squad Numbers 4/8),
+      // og klikket rammer bagefter en grå Continue Game (den sporadiske fejl 20/11)
+      await page.waitForSelector('.cx-running', { state: 'detached', timeout: 300000 }).catch(() => {});
       const st = await gs(() => { const g = window.__cm.gs(); return { pf: g.pendingFixture, done: g.dayDone, date: g.date }; });
       if (st.pf) break;
       const yes = page.locator('.cx-confirm button.primary');
@@ -2023,9 +2026,11 @@ async function run(look) {
       if (await page.locator('.cx-md-panel').isVisible().catch(() => false) && !st.done) { watched++; if (process.env.SHOTS && watched === 1) await page.screenshot({ path: `${OUT}/klassisk-kampdag-uden-egen.png` }); }
       // (ønskelisterne: en kørsel kan tage et minut i dagens Web Worker – vent, til bjælken er væk, før næste klik)
       await page.waitForSelector('.cx-running', { state: 'detached', timeout: 300000 }).catch(() => {});
+      // grå (en nyhed kræver svar, der først kom med den netop færdige kørsel): svar i næste runde
+      if (await page.locator('.cx-side .cx-continue').first().isDisabled().catch(() => false) && await answerSquadNumbers()) continue;
       try { await page.locator('.cx-side .cx-continue').first().click({ timeout: 10000 }); } catch (e) {
         // hvorfor Continue Game ikke kan trykkes: nyheden på skærmen og menneskets åbne bud
-        const why = await gs(() => { const g = window.__cm.gs(); return JSON.stringify({ date: g.date, news: g.news.slice(-6).map((n) => [n.key, n.read, n.link]), offers: g.offers.filter((o) => o.buyer === g.userClub || o.seller === g.userClub).map((o) => [o.id, o.status, o.buyer, o.seller, o.player, o.cmTalks?.state]) }); }).catch(() => '?');
+        const why = await gs(() => { const g = window.__cm.gs(); return JSON.stringify({ date: g.date, news: g.news.slice(0, 6).map((n) => [n.key, n.read, n.link, n.params?.done ?? n.params?.ans ?? null]), sqnDue: g.clubs[g.userClub]?.sqnDue, euroDue: g.clubs[g.userClub]?.euroDue, jobOffers: g.jobOffers, offers: g.offers.filter((o) => o.buyer === g.userClub || o.seller === g.userClub).map((o) => [o.id, o.status, o.buyer, o.seller, o.player, o.cmTalks?.state]) }); }).catch(() => '?');
         const btn = await page.locator('.cx-side .cx-continue').first().evaluate((b) => b.outerHTML.slice(0, 200)).catch(() => '?');
         const dlg = await page.evaluate(() => [...document.querySelectorAll('[role=dialog], .cx-dlg')].map((d) => d.innerText.replace(/\s+/g, ' ').slice(0, 300)).join(' | ')).catch(() => '?');
         if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-continue-laast.png` });

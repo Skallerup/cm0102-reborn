@@ -487,12 +487,14 @@ export function JobOfferPanel({ cid, onClose }: { cid: number; onClose: () => vo
   const accept = () => { act({ t: 'acceptJob', club: cid }); onClose(); };
   const decline = () => { act({ t: 'declineJob', club: cid }); onClose(); };
   // ægte CM 01/02: Respond giver kun bekræftelsen "Accept the position as manager of {club} ?" (No/Yes) – vilkårene står i nyheden
-  // ("{club} offer you the position of manager." + forventningen og transferpengene); ingen boks med Transfer budget/Wage budget
+  // ("{club} offer you the position of manager." + forventningen og transferpengene); ingen boks med Transfer budget/Wage budget.
+  // 0x6b25e0: No = handling 1, Yes = 2 → 0x6b2790: 1 = afslag (felt 1 = 2 + add_job_vacancy 0x69ba50), 2 = accept (0x69ebc0).
+  // No er altså et afslag (ikke blot luk) – ellers står tilbuddet ubesvaret, og Continue Game forbliver grå
   if (authentic()) return (
     <div className="cx-tstatus cx-job-confirm">
       <div className="cx-ts-body center"><p className="cx-ts-intro">{t('cm.job.acceptQ', { club: c.name })}</p></div>
       <ClassicFoot cols="3fr 1fr">
-        <button onClick={onClose}>{t('common.no')}</button>
+        <button className="cx-job-no" onClick={decline}>{t('common.no')}</button>
         <button className="primary" onClick={accept}>{t('common.yes')}</button>
       </ClassicFoot>
     </div>
