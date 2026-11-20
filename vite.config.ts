@@ -47,6 +47,8 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,json}'],
+        // gamle versioners forhåndscache (hash-nøgler) ryddes ved hver ny service worker – ellers hober de sig op på spillerens disk (fuld disk 20/11)
+        cleanupOutdatedCaches: true,
         // store sekundære datafiler precaches ikke (de hentes ved kørsel, når de vælges):
         // karrierehistorik, den originale 2001-database og den gamle moderne database (kun til tests)
         globIgnores: ['**/data/careers*.json', '**/data/world-original*.json', '**/data/world-modern.json', '**/data/world-cm-staff.json',

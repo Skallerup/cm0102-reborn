@@ -105,7 +105,7 @@ export function GameOptionsMenu({ onSave, onQuit, online, allowed }: { onSave: (
   const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   const cloudSave = async () => {
     try { await saveGame({ cloud: true }); await askNotice(t('cl.go.cloudSaved'), { head: t('cl.go.cloud') }); }
-    catch (e) { await askNotice(t('cl.go.cloudFail', { err: String((e as Error).message ?? e) }), { head: t('cl.go.cloud') }); }
+    catch (e) { if ((e as Error).name === 'StorageFullError') return; await askNotice(t('cl.go.cloudFail', { err: String((e as Error).message ?? e) }), { head: t('cl.go.cloud') }); }
   };
   const items: DropItem[] = [];
   if (!online) items.push({ key: 'save', label: t('cl.go.save'), onClick: onSave });

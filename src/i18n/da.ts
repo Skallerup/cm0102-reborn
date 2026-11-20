@@ -26,7 +26,7 @@ export const da: Record<string, string> = {
   // topbar og menu
   'top.unemployed': 'Arbejdsløs', 'top.balance': 'Saldo', 'top.budget': 'Transferbudget', 'top.next': 'Næste',
   'top.continue': 'Fortsæt', 'top.toTheMatch': 'Til kampen ›', 'top.toMatch': 'Næste kamp »', 'top.toMatchHint': 'Spring frem til næste kamp (stopper ved vigtige nyheder)',
-  'top.fullscreen': 'Fuld skærm', 'top.exitFullscreen': 'Afslut fuld skærm', 'top.running': 'Simulerer…', 'top.saved': 'Spillet er gemt', 'top.quitConfirm': 'Gem og afslut til hovedmenuen?',
+  'top.fullscreen': 'Fuld skærm', 'top.exitFullscreen': 'Afslut fuld skærm', 'top.running': 'Simulerer…', 'top.saved': 'Spillet er gemt', 'storage.full': 'Kan ikke gemme: enhedens lager er fuldt. Frigør plads eller slet gamle gemte spil – spillet fortsætter, men intet gemmes, før der er plads.', 'top.quitConfirm': 'Gem og afslut til hovedmenuen?',
   'nav.inbox': 'Indbakke', 'nav.squad': 'Trup', 'nav.tactics': 'Taktik', 'nav.training': 'Træning', 'nav.fixtures': 'Kampprogram',
   'nav.competitions': 'Turneringer', 'nav.transfers': 'Transfers', 'nav.scouting': 'Scouting', 'nav.assistant': 'Assistent',
   'nav.staff': 'Staff', 'nav.finance': 'Økonomi', 'nav.club': 'Klub', 'nav.history': 'Historik', 'nav.jobs': 'Jobcenter',

@@ -15,6 +15,8 @@ export function reportError(err: unknown, extra?: string) {
   // admin-preview af en spillers spil: fejlen står i konsollen – den skal ikke tælle som en spillers fejl
   if (import.meta.env.DEV || !rankingAvailable() || previewInfo()) return;
   const e = err instanceof Error ? err : new Error(String((err as { message?: string })?.message ?? err));
+  // fuld disk er allerede vist for spilleren og meldt én gang (game/storageGuard.ts) – ikke igen fra window-handlerne
+  if (e.name === 'StorageFullError') return;
   const msg = `${e.name}: ${e.message}`.slice(0, 300);
   const stack = `${e.stack ?? ''}${extra ? `\n--- component stack ---${extra}` : ''}`;
   if (IGNORE.test(msg) || IGNORE.test(stack.split('\n')[1] ?? '')) return;

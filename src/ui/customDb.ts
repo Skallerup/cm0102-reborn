@@ -3,6 +3,7 @@ import { get, set } from 'idb-keyval';
 import { sanitizeDb, type CustomDb } from '../game/dbEdit';
 import { applyDb } from '../game/dbEdit';
 import type { WorldData } from '../game/newgame';
+import { guardWrite } from '../game/storageGuard';
 import { loadOriginalWorld, loadWorld } from './world';
 
 const KEY = 'cm-dbs';
@@ -14,11 +15,11 @@ export async function listDbs(): Promise<CustomDb[]> {
 export async function saveDb(db: CustomDb): Promise<void> {
   const all = await listDbs();
   const next = { ...db, updated: new Date().toISOString() };
-  await set(KEY, [next, ...all.filter((d) => d.id !== db.id)]);
+  await guardWrite(() => set(KEY, [next, ...all.filter((d) => d.id !== db.id)]), true);
 }
 
 export async function deleteDb(id: string): Promise<void> {
-  await set(KEY, (await listDbs()).filter((d) => d.id !== id));
+  await guardWrite(async () => set(KEY, (await listDbs()).filter((d) => d.id !== id)), true);
 }
 
 export async function getDb(id: string): Promise<CustomDb | undefined> {

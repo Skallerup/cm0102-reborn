@@ -1,6 +1,7 @@
 import { del, get, set } from 'idb-keyval';
 import type { WorldData } from '../game/newgame';
 import { CM_REQUIRED, type CMWorld } from '../game/data/cm0102';
+import { guardWrite } from '../game/storageGuard';
 import { approvedEdits } from '../online/hub';
 
 let cache: Promise<WorldData> | null = null;
@@ -104,7 +105,7 @@ export async function importCMFiles(list: FileList | File[]): Promise<CMWorld> {
   }
   const { parseCM0102 } = await import('../game/data/cm0102');
   const world = parseCM0102(files);
-  try { await set(CM_KEY, world); } catch { /* kun i hukommelsen, hvis browseren ikke vil gemme */ }
+  try { await guardWrite(() => set(CM_KEY, world), true); } catch { /* kun i hukommelsen, hvis browseren ikke vil gemme (fuld disk: beskeden er vist) */ }
   cmCache = world;
   return world;
 }

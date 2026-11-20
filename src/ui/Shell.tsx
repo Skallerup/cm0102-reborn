@@ -586,7 +586,7 @@ export function Shell() {
           );
         })()}
         <div className="sep" />
-        {!online && <button onClick={async () => { await saveGame({ cloud: true }); setToast(t('top.saved')); }}><Icon name="save" />{t('nav.save')}</button>}
+        {!online && <button onClick={async () => { try { await saveGame({ cloud: true }); setToast(t('top.saved')); } catch { /* fuld disk: beskeden er vist (storageGuard) */ } }}><Icon name="save" />{t('nav.save')}</button>}
         {online && <div className="muted nav-note" title={t('mp.autosaveHint')}><Icon name="save" />{t('mp.autosave')}</div>}
         <button onClick={async () => {
           if (online) { if (await askConfirm(t('mp.leaveConfirm'))) { void stopVoice(); closeSession(); forgetLast(); setGame(null); } return; }

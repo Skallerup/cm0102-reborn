@@ -12,6 +12,7 @@ import { cmCupName, cmLeagueRules } from './cmCalendar';
 import { cashRound } from './cmTransferBid';
 import { deserializeState, gunzipText, serializeState } from './snapshot';
 import { rng } from './rng';
+import { guardWrite, isQuotaError } from './storageGuard';
 import { legacyExtendedFromText, saveKindFromText, saveKindOf, type SaveKind } from './saveKind';
 import type { GameState, Player } from './types';
 
@@ -70,8 +71,7 @@ export async function saveGame(opts?: { cloud?: boolean; name?: string }): Promi
     kind: saveKindOf(g),
     ext: extOf(g),
   };
-  await set(`save:${id}`, blob);
-  await set(`meta:${id}`, meta);
+  await guardWrite(async () => { await set(`save:${id}`, blob); await set(`meta:${id}`, meta); }, !!opts?.cloud);
   requestPersistentStorage();
   rememberLast({ kind: 'local', id });
   cloudHook?.(meta, blob, !!opts?.cloud);
@@ -87,15 +87,14 @@ export async function storedLegacyExt(meta: SaveMeta): Promise<boolean | null> {
     const blob = await get<Blob>(`save:${meta.id}`);
     if (!blob) return null;
     const ext = legacyExtendedFromText(await gunzipText(blob));
-    if (ext !== null) await set(`meta:${meta.id}`, { ...meta, ext });
+    if (ext !== null) await set(`meta:${meta.id}`, { ...meta, ext }).catch(() => {});
     return ext;
   } catch { return null; }
 }
 
 /** Læg et spil hentet fra skyen i den lokale database (overskriver en ældre lokal kopi) */
 export async function storeSave(meta: SaveMeta, blob: Blob) {
-  await set(`save:${meta.id}`, blob);
-  await set(`meta:${meta.id}`, meta);
+  await guardWrite(async () => { await set(`save:${meta.id}`, blob); await set(`meta:${meta.id}`, meta); }, true);
 }
 
 /** Slags for et lokalt gemt spil uden `kind` i metadata (gemt af en ældre version): den udpakkede tekst læses (uden at bygge spillet) og
@@ -106,7 +105,7 @@ export async function storedSaveKind(meta: SaveMeta): Promise<SaveKind | null> {
     const blob = await get<Blob>(`save:${meta.id}`);
     if (!blob) return null;
     const kind = saveKindFromText(await gunzipText(blob));
-    if (kind) await set(`meta:${meta.id}`, { ...meta, kind });
+    if (kind) await set(`meta:${meta.id}`, { ...meta, kind }).catch(() => {});
     return kind;
   } catch { return null; }
 }
@@ -126,14 +125,14 @@ export async function storeNewGame(g: GameState): Promise<string> {
   rng.state = g.rng;
   const blob = serialize(g);
   rng.state = keep;
-  await set(`save:${g.id}`, await blob);
-  await set(`meta:${g.id}`, meta);
+  const data = await blob;
+  await guardWrite(async () => { await set(`save:${g.id}`, data); await set(`meta:${g.id}`, meta); }, true);
   requestPersistentStorage();
   return g.id;
 }
 
 export async function getSaveMeta(id: string): Promise<SaveMeta | undefined> {
-  return get<SaveMeta>(`meta:${id}`);
+  try { return await get<SaveMeta>(`meta:${id}`); } catch { return undefined; }
 }
 
 // ---------- seneste spil (så en genindlæsning fortsætter hvor man slap) ----------
@@ -163,9 +162,12 @@ export async function flushAutosave() {
 }
 
 export async function listSaves(): Promise<SaveMeta[]> {
-  const all = (await keys()) as string[];
-  const metas = await Promise.all(all.filter((k) => k.startsWith('meta:')).map((k) => get<SaveMeta>(k)));
-  return (metas.filter(Boolean) as SaveMeta[]).sort((a, b) => b.saved.localeCompare(a.saved));
+  // IndexedDB kan ikke åbnes (fuld disk, privat vindue): ingen lokale gemte spil frem for et nedbrud
+  try {
+    const all = (await keys()) as string[];
+    const metas = await Promise.all(all.filter((k) => k.startsWith('meta:')).map((k) => get<SaveMeta>(k)));
+    return (metas.filter(Boolean) as SaveMeta[]).sort((a, b) => b.saved.localeCompare(a.saved));
+  } catch { return []; }
 }
 
 /** Trøjenumre i gemte spil fra før Squad Numbers (og efter et evt. hentet sæt fra databasen) */
@@ -308,7 +310,8 @@ async function repairStadiums(): Promise<void> {
 }
 
 export async function loadGame(id: string): Promise<boolean> {
-  const blob = await get<Blob>(`save:${id}`);
+  let blob: Blob | undefined;
+  try { blob = await get<Blob>(`save:${id}`); } catch { return false; }
   if (!blob) return false;
   const g = await deserializeState(blob);
   // en gammel lokal kopi af et online-spil: åbn ikke den (det rigtige spil ligger på serveren)
@@ -335,8 +338,7 @@ export async function openPreview(blob: Blob, label: string, theme?: string): Pr
 }
 
 export async function deleteSave(id: string) {
-  await del(`save:${id}`);
-  await del(`meta:${id}`);
+  try { await del(`save:${id}`); await del(`meta:${id}`); } catch (e) { if (!isQuotaError(e)) throw e; }
 }
 
 export async function exportSave(): Promise<void> {

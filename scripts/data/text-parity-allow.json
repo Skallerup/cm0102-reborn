@@ -14,6 +14,10 @@
       "reason": "Game Options → Game Settings → CM Reborn: egne visningstilvalg (ikke i originalen) – CM Reborn-område"
     },
     {
+      "prefix": "storage.",
+      "reason": "Besked ved fuld disk/lagerkvote ved gemning (IndexedDB QuotaExceededError) – CM Reborn-system, ikke en original skærm"
+    },
+    {
       "prefix": "land.",
       "reason": "Forside/landing (uden for spillet)"
     },
