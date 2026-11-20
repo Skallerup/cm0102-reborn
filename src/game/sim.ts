@@ -225,10 +225,15 @@ export function prepareMatch(f: Fixture, userAuto = false): { home: EngineTeam; 
     aggregate: aggregateFor(f),
     pitch: pitchFor(f),
     referee: refereeFor(f),
-    ...(cmDatabase(gs()) === 'original' ? ORIGINAL : MODERN),
-    ...(cmDatabase(gs()) === 'original' && origLogic() ? ORIGINAL_LOWER : {}),
+    // zonemotorens konstanter: originalens (ORIGINAL) for den originale database og (20/11, "Altid som originalen") spil startet med originalens
+    // kampregler (g.cmMatch – også 2026/27 i ægte tilstand); MODERN kun for den moderne database og ældre 2026/27-spil
+    ...(origMatch() ? ORIGINAL : MODERN),
+    ...(origMatch() && origLogic() ? ORIGINAL_LOWER : {}),
   };
 }
+
+/** originalens kampkonstanter (ORIGINAL/ORIGINAL_LOWER): den originale database eller et spil startet med originalens kampregler (g.cmMatch) */
+const origMatch = (): boolean => { const g = gs(); return cmDatabase(g) === 'original' || (g.cmMatch === 1 && g.dbKind === 'cm0102'); };
 
 /** Kalibrering af den moderne database mod virkeligheden (scripts/benchmark.ts; MODERN_JSON='{…}' overskriver ved målinger) */
 // genkalibreret 9/11-2026, da egenskaberne blev rettet (før var de oppustede og SQUASH 0,76 dæmpede dem): 3 sæsoner 2,69 mål, H/U/B 44/25,5/30,6

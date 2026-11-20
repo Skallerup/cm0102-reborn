@@ -2,7 +2,7 @@
 // Titelbjælke med "Navn (Klub)" og en Action-menu, fanerne Profil · Skader & karantæner · Kontrakt · Transfer · Historik.
 // Profil-fanen viser alle synlige egenskaber i fire alfabetiske kolonner, statistik pr. turnering og positionen nederst.
 // Alle handlinger (bud, forespørgsel, liste, forlængelse, udlejning, scout, sammenligning …) ligger i Action-menuen.
-import { isOriginal2001, loanBlocked } from '../../game/rules2001';
+import { loanBlocked, loanRecallOn } from '../../game/rules2001';
 import { useEffect, useState, type ReactNode } from 'react';
 import { A, GROUPS, POSITIONS_LABEL, type AttrKey } from '../../game/attributes';
 import { act as dispatch } from '../../game/actions';
@@ -554,7 +554,7 @@ export function ClassicPlayer({ id }: { id: number }) {
     );
   }
   // CM 01/02 (kun den originale database): kald en udlejet spiller hjem
-  if (p.loan?.from === g.userClub && isOriginal2001()) items.push({ key: 'recall', label: t('loan.recall'), onClick: () => setMsg(t(dispatch<string>({ t: 'recallLoan', pid: p.id }))) });
+  if (p.loan?.from === g.userClub && loanRecallOn()) items.push({ key: 'recall', label: t('loan.recall'), onClick: () => setMsg(t(dispatch<string>({ t: 'recallLoan', pid: p.id }))) });
   if (!g.draft && !mine && g.userClub > 0) {
     // CM 01/02: Add To Shortlist · Approach To Buy · Approach To Loan · Scout Player · Set Nickname · — · Create Manager Note · Compare Players
     items.push({ key: 'short', label: shortlisted ? t('cl.pl.unshortlist') : t('cl.pl.shortlist'), onClick: () => dispatch({ t: 'shortlist', pid: p.id, on: !shortlisted }) });

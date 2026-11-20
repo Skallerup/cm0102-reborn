@@ -4,7 +4,7 @@ import { cmActive, cmLogic, cmMarketOn, cmMediaOn, cmRand, setRequestHooks, setS
 import { cmBidChance, cmInterested, cmRequestNews } from './cmTransferList';
 import { transferNewsToMe } from './cmNewsScope';
 import { cmSignContractMorale } from './cmMedia';
-import { isOriginal2001, loanBlocked, noteLoan, permitOk } from './rules2001';
+import { isOriginal2001, loanBlocked, loanRecallOn, noteLoan, permitOk } from './rules2001';
 import { A, naturalRole } from './attributes';
 import { addDays, ageOn, daysBetween, month, year } from './dates';
 import { makePlayer, randomDob, randomName, roundValue, wageFor } from './data/generate';
@@ -2405,13 +2405,13 @@ export function counterPackages(o: TransferOffer): { kind: 'cash' | 'addOn' | 's
 }
 
 /**
- * Kald en udlejet spiller hjem (CM 01/02: "Recall from loan" – kun den originale database). Tidligst 28 dage efter
+ * Kald en udlejet spiller hjem (CM 01/02: "Recall from loan" – loanRecallOn: CM-databaserne i ægte tilstand). Tidligst 28 dage efter
  * lejeaftalen (*estimeret*: originalens frist er ikke fundet). Lejeklubben får besked.
  */
 export function recallLoan(pid: number): string {
   const g = gs();
   const p = g.players[pid];
-  if (!p || !p.loan || p.loan.from !== g.userClub || !isOriginal2001()) return 'error';
+  if (!p || !p.loan || p.loan.from !== g.userClub || !loanRecallOn()) return 'error';
   if (p.joined && daysBetween(p.joined, g.date) < 28) return 'loan.recallTooSoon';
   const at = g.clubs[p.club];
   setClub(p, g.userClub);

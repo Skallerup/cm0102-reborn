@@ -29,9 +29,9 @@ men på en databaseuafhængig markør sat af newgame.ts for nye spil (cmLogic + 
 | `cmResOn` / `bTeamsOn` / `cmWxOn` / `cmFriendlyOn` / `cmAwOn` / `cmRetireOn` | cmLogic + `g.cmRes`/`cmBTeams`/`cmWxTab`/`cmNationFr`/`cmAw`/`cmRet` | baggrundskampe, B-hold, vejr, venskabskampe, priser, pensioneringer | til |
 | `cmPermitOn` | `g.cmWp` | arbejdstilladelser | til |
 | `cmTalksOn`, `gridEngineOn` | cmLogic (+ `options.engine`) | transferforhandlingen, gittermotoren | til |
-| `classicRules` (rules.ts) | `options.rules` + dbYear < 2020 | 3 udskiftninger/5 på bænken | fra – åbent punkt C |
-| `isOriginal2001` (rules2001.ts, season.ts, transfers.ts) | dbYear < 2020 (ikke tilstanden) | udeblivelse, lejestop, appel, cmRep-stien, afbrudt leje | fra – åbent punkt D |
-| `cmDatabase === 'original'` (sim.ts, save.ts, saveKind.ts) | dbYear < 2020 | kampkonstanterne ORIGINAL/ORIGINAL_LOWER, world-filen ved indlæsning | data (world-filen) – kampkonstanterne: åbent punkt D |
+| `classicRules` (rules.ts) | `options.rules` + (dbYear < 2020 **eller `g.cmMatch`**) (20/11) | 3 udskiftninger/5 på bænken | **til (20/11)** – punkt C |
+| `isOriginal2001` (rules2001.ts, season.ts, transfers.ts) | dbYear < 2020 (ikke tilstanden) | kun udvidet tilstands egne tilføjelser (udeblivelse, bestyrelsens pengebegivenheder, appel) og databasens navne/data i UI'et; afbrudt leje → `loanRecallOn` (cmLogic) | punkt D lukket (20/11) |
+| `cmDatabase === 'original'` (save.ts, saveKind.ts) / `origMatch` (sim.ts) | dbYear < 2020 / original **eller `g.cmMatch`** | world-filen ved indlæsning (data); zonemotorens kampkonstanter ORIGINAL/ORIGINAL_LOWER | data (world-filen) – kampkonstanterne **til (20/11)** |
 | `g.econ` (newgame.ts 17 ×, finance.ts, training.ts …) | sat kun for dbYear < 2020 | 2001-priser/lønniveau/kalibreringer | data (2001-tal – skal ikke overføres; beløb via cmMoney) |
 
 Løse `cmActive(`-kald uden for en kontakt (agentens optælling 20/11, 84 i alt): international.ts 11 (punkt A), transfers.ts 10 (vinduerne pr. klubs
@@ -45,8 +45,24 @@ state.ts:306 (nyhedsfilteret), competitions.ts (split-nyheden), cmOfferCheck.ts:
   landshold (nationalTeams kun i world-original), 2026's slutrunder (VM 2026 i USA – originalen kender kun sine egne år: hvad exe'en gør med
   året 2026, skal afkodes) og FIFA_RANKINGS' data.
 - **B. CONTRACT_MANAGER** (cmCmOn): det daglige udløb/forlængelser for computerklubberne – kræver hukommelsens omfang (cmCmScope) på 2026/27.
-- **C. Udskiftningsreglerne** (classicRules): originalen har 3 udskiftninger/5 på bænken uanset database – 2026/27 spiller i dag 5/9.
-- **D. isOriginal2001 / cmDatabase-kampkonstanterne**: rules2001.ts' regler og sim.ts' ORIGINAL/ORIGINAL_LOWER gennemgås én for én (regel eller data).
+- **C. Udskiftningsreglerne – lukket 20/11.** Originalen tager ikke tallene fra databasen: hver turnerings konstruktør sætter dem fast i koden
+  (konkurrenceobjektets +0x49 = bænk, +0x4a = udskiftninger; 0x5bb100/0x48f2d0 kopierer dem til kampens +0x4d – lav nibble bænk, høj
+  udskiftninger; 0x6dbac0 bruger min(+0x4d >> 4, bænkens antal)). Ny markør `g.cmMatch` (newgame.ts, nye spil med en CM-database i ægte tilstand)
+  → classicRules: 2026/27 spiller 3/5 som 2001; ældre 2026/27-spil beholder 5/9. Intet valg i Game Options (standard = originalens; et moderne
+  5/9-valg kan lægges dér, hvis ejeren ønsker det). **Rest:** værdierne pr. turnering er ikke porteret – konstruktørerne sætter bænk 7 (88
+  steder), 5 (39), 4 (7), 6 (5) og udskiftninger 3 (57) eller 5 (2: 0x56d3ed, 0x63ad25); begge databaser bruger i dag 3/5 overalt. At porte dem
+  ændrer 2001-fingeraftrykket (kræver turnering → konstruktør-afbildning og en måling mod oraklet).
+- **D. isOriginal2001 / kampkonstanterne – lukket 20/11.** sim.ts' ORIGINAL/ORIGINAL_LOWER (zonemotoren: Europa uden mennesket, de ikke-aktive
+  landes kampe, venskabs-/landskampe) gælder nu `origMatch()` = den originale database eller `g.cmMatch` – 2026/27 får originalens konstanter i
+  stedet for MODERN (kalibreret mod virkeligheden). isOriginal2001: awolMonthly/boardEventsSeason/appealBan er udvidet tilstands egne
+  tilføjelser (vender om ved cmActive – originalens modstykker er cmFine/cmFinEvents/cmDiscipline med egne markører), needsWorkPermit har
+  cmPermitOn først, originalRegens har cmRetireOn, transfers.ts' cmRep-sti har !cmLogic; UI'ets setCompEra/kitBrand/compLine/'INTER' er
+  databasens navne (data). "Recall from loan" (originalens strenge "… recalled from loan") → `loanRecallOn` = 2001 eller cmLogic.
+  Målt 20/11: 2001-fingeraftrykket uændret (perf-fingerprint 2001-08-20 ad5335f7de084fef før/efter, measure 745ee6b414e5/8a013f7340fa).
+  2026/27 til 31/12-2026, frø 1 (`scripts/cm-match-2026.ts`; measure 7431b0354952 Brentford, 90453b2a253d Leeds): 3/5, ingen nedbrud; ligaen
+  (gitter) 2,77/2,79 mål, 1,93/2,07 gule, 0,13/0,19 røde, 0,54/0,58 skader pr. kamp; Europa (zone, nu ORIGINAL) 3,36/3,18 mål – 2001 Brentford
+  (c7fcd1105ac4): liga 3,06 mål, 1,34 gule, 0,12 røde, 0,62 skader; Europa 3,24.
+  **Rest:** recallLoan's frist (28 dage) er stadig *estimeret* (originalen: "cannot be recalled until 15th November", vinduet, samme land).
 - **E. De løse cmActive-kald** i transfers.ts/season.ts/cmVirtual.ts/training.ts/cmValueGame.ts/aiTeam.ts – hver flyttes til den kontakt, modulet
   hører til (cmMarketOn, cmRetireOn, cmBodyOn …), eller en ny markør.
 - **F. Kalenderens rester på 2026/27**: spilstarten 0x830520 er kun afkodet for England (Date(10, 7, år, 5)); de øvrige nøglelandes +0x2a bruger

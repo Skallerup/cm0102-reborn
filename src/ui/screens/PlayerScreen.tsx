@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { authentic } from '../../game/rules';
-import { isOriginal2001 } from '../../game/rules2001';
+import { loanRecallOn } from '../../game/rules2001';
 import { trialOf } from '../../game/trials';
 import { bidClauseWorth } from '../../game/clauses';
 import { IncomingOffersFor } from './Transfers';
@@ -226,7 +226,7 @@ function ModernPlayer({ id }: { id: number }) {
       <div style={{ marginTop: 14 }}><CareerPanel pid={p.id} /></div>
       {bid !== false && <BidModal pid={p.id} offerId={typeof bid === 'number' ? bid : undefined} onClose={() => setBid(false)} onDone={(r) => { setBid(false); act(r); }} />}
       {listOpen && <ListModal pid={p.id} onClose={() => setListOpen(false)} />}
-      {p.loan?.from === g.userClub && isOriginal2001() && (
+      {p.loan?.from === g.userClub && loanRecallOn() && (
         <div className="insight" style={{ marginTop: 8 }}>{t('loan.onLoanAt', { club: g.clubs[p.club]?.name ?? '' })} <button className="small" onClick={() => setMsg(t(dispatch<string>({ t: 'recallLoan', pid: p.id })))}>{t('loan.recall')}</button></div>
       )}
       {loanOutOpen && <LoanOutModal pid={p.id} onClose={() => setLoanOut(false)} onDone={(r) => { setLoanOut(false); act(r); }} />}

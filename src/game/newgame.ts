@@ -231,6 +231,8 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     // (20/11, "Altid som originalen") originalens kalender – ligaernes skemaer, pokalerne, sæsonskiftet pr. land og Europas turneringer (cmCalendarOn,
     // cmEurope.ts) – med databasens koefficienter, euro.cfg og sidste sæsons vindere (world-cm.json `euro`)
     g.cmCal = 1;
+    // (20/11, MODERN_PARITY §0 C+D) originalens kampregler – 3 udskiftninger/5 på bænken (rules.ts) og zonemotorens kampkonstanter (sim.ts ORIGINAL)
+    g.cmMatch = 1;
     if (raw.euro) g.cmEuroDb = JSON.parse(JSON.stringify(raw.euro)) as GameState['cmEuroDb'];
   }
   if (cm?.cmRaw && season < 2020) {

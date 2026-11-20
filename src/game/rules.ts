@@ -2,12 +2,14 @@
 import { gs, hasGame } from './state';
 import type { GameState } from './types';
 
-// 2001-reglerne (3 udskiftninger, 5 på bænken) kun med den originale 2001/02-database – en nutidig sæson (fx 2026/27-
-// opdateringen i CM-format) spiller efter nutidens regler (5 og 9), også i "Ægte CM 01/02"
+// Originalens regler (3 udskiftninger, 5 på bænken): den originale 2001/02-database og (20/11, "Altid som originalen") alle spil startet med
+// originalens kampregler (g.cmMatch – nye spil med en CM-database i ægte tilstand, også 2026/27). Originalen har tallene fast i koden pr. turnering
+// (konkurrenceobjektets +0x49 bænk/+0x4a udskiftninger, kopieret til kampen +0x4d af 0x5bb100/0x48f2d0 – ikke fra databasen). Ældre 2026/27-spil
+// beholder nutidens 5 og 9.
 export function classicRules(): boolean {
   if (!hasGame()) return false;
   const g = gs();
-  return g.options.rules === 'classic' && (g.dbKind !== 'cm0102' || (g.dbYear ?? g.season) < 2020);
+  return g.options.rules === 'classic' && (g.dbKind !== 'cm0102' || (g.dbYear ?? g.season) < 2020 || g.cmMatch === 1);
 }
 export const maxSubs = () => (classicRules() ? 3 : 5);
 

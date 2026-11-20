@@ -2,7 +2,7 @@
 import { addNews, gs, onGameSwitch, squad } from './state';
 import { rng } from './rng';
 import { econ } from './econ';
-import { cmActive } from './cmPlayerData';
+import { cmActive, cmLogic } from './cmPlayerData';
 import { cmNeedsPermit, cmPermitOn, cmWorkPermit, type PermitOffer } from './cmPermit';
 import { asOwner, isHumanClub } from './humans';
 import type { Club, Player } from './types';
@@ -16,6 +16,10 @@ export const isOriginal2001 = () => {
   if (g.dbKind !== 'cm0102') return false;
   return (g.dbYear ?? g.seasonHistory?.[0]?.season ?? g.season) < 2020;
 };
+
+/** "Recall from loan" (originalens "… recalled from loan"): den originale database og (20/11, "Altid som originalen") alle CM-databaser i ægte
+ *  tilstand – også 2026/27 (cmLogic). Udvidet tilstand med den moderne database: ikke. */
+export const loanRecallOn = () => isOriginal2001() || cmLogic(gs());
 
 /** EU (15 lande i 2001) + EØS – spillere herfra behøver ingen arbejdstilladelse i Storbritannien */
 export const EU_EEA = new Set(['England', 'Scotland', 'Wales', 'Northern Ireland', 'Republic of Ireland', 'France', 'Germany', 'Italy', 'Spain',
