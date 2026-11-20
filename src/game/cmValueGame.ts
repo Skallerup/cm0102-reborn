@@ -1,4 +1,4 @@
-// Spillernes værdi som originalen (kun den originale database i ægte tilstand – cmActive): staff +0x52 = 0x4d0c60(staff, kontraktens klub, 0, −1, …)
+// Spillernes værdi som originalen (cmValueOn – CONTRACT_MANAGER-delen, alle CM-databaser i ægte tilstand, MODERN_PARITY §0 E): staff +0x52 = 0x4d0c60(staff, kontraktens klub, 0, −1, …)
 // som CONTRACT_MANAGER::daily_update's 0x4c7ec5 (cmContract.ts staffStep) – håndporteret i cmValue.ts (kontrolleret mod den oversatte) og her kørt på
 // posterne bygget af spillets data (cmContractGame.ts buildWantMem); resultatet står i Player.value (€).
 //
@@ -20,11 +20,13 @@ import { playerValue_4d0c60, seenRep_5407e0, judge_6e86d0 } from './cmValue';
 import { hasActiveReleaseClause_867b50 } from './cmContractWant';
 import { clubAt, getContract } from './cmMem';
 import { humanClub_600a50 } from './cmWageGame';
-import { cmActive } from './cmPlayerData';
+import { cmActive, cmLogic } from './cmPlayerData';
 import { isHumanClub } from './humans';
 import { cmGbp } from './cmMoney';
 
-const GBP = 0.86;
+/** (MODERN_PARITY §0 E) originalens +0x52 (CONTRACT_MANAGER::daily_update 0x4c7ec5): 2001-verdenen, eller en CM-database i ægte tilstand fra et
+ *  spil startet med CONTRACT_MANAGER (g.cmCmMgr – newgame.ts). Ældre 2026/27-spil beholder spillets egen værdimodel (training.ts). */
+export const cmValueOn = (g: GameState): boolean => cmActive(g) || (cmLogic(g) && !g.draft && g.cmCmMgr === 1);
 /** CM_VALUE_MGR=sel (målinger mod oraklet, databasestørrelse 2): kun de valgte landes managere er i hukommelsen (Staff.cmMem er Maximum's) */
 const MGR_SEL = typeof process !== 'undefined' && process.env?.CM_VALUE_MGR === 'sel';
 /** menneskets managers ikke-spillerpost +0x00..+0x22 i oraklet (14/7-2001: CA 3, PA 151, omdømmet 4410/5282/4582, de 21 egenskaber fra +0x0e) */
@@ -97,14 +99,16 @@ export function cmValuesGbp(g: GameState, players?: Iterable<Player>): Map<numbe
 /** Player.value = originalens +0x52 for spillerne (menneskets spillere med egen udbudspris cmAsk beholder den). Værdien 0 (kontrakten udløbet)
  *  skrives ikke – spillet viser ellers £0 for en spiller, der stadig er i klubben. */
 export function cmValuesApply(g: GameState, players?: Iterable<Player>): number {
-  if (!cmActive(g)) return 0;
+  if (!cmValueOn(g)) return 0;
   const vals = cmValuesGbp(g, players);
   let n = 0;
   for (const [id, v] of vals) {
     const p = g.players[id];
     if (!p || v <= 0) continue;
-    if (p.cmAsk && p.cmAsk.club === p.club) { p.cmAsk.f = v / GBP; continue; }
-    p.value = v / GBP; n++;
+    // £ → € med faktoren for kontraktens klub (cmMoney.ts – den originale database: 0,86)
+    const k = cmGbp(g, p.loan?.from ?? p.club);
+    if (p.cmAsk && p.cmAsk.club === p.club) { p.cmAsk.f = v / k; continue; }
+    p.value = v / k; n++;
   }
   return n;
 }
@@ -114,7 +118,7 @@ const dayOfYear = (iso: string) => { const y = +iso.slice(0, 4); return Math.rou
 /** Dagens 0x4c7ec5 (sim.ts, lige efter CONTRACT_MANAGER-porten): menneskets spillere hver dag, computerens på ulige dage i året – for hastighedens
  *  skyld kun klubberne i de valgte lande (resten den 1. i måneden, training.ts monthlyValues – *estimeret*: originalen regner dem også på ulige dage) */
 export function cmValuesDaily(g: GameState): number {
-  if (!cmActive(g) || g.date.slice(8, 10) === '01') return 0;
+  if (!cmValueOn(g) || g.date.slice(8, 10) === '01') return 0;
   const odd = dayOfYear(g.date) % 2 !== 0;
   const active = new Set(g.activeNations ?? []);
   const ps: Player[] = [];

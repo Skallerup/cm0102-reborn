@@ -7,12 +7,12 @@ import { gs } from './state';
 import type { CoachArea, Player, Role, Staff } from './types';
 import { valueFromCA } from './data/generate';
 import { formulaValueGbp, originalValueGbp, repTriple } from './originalValue';
-import { cmValuesApply } from './cmValueGame';
+import { cmValueOn, cmValuesApply } from './cmValueGame';
 import { ROLE_WEIGHTS, naturalRole } from './attributes';
 import { isHumanClub } from './humans';
 import { squad } from './state';
 import { cmIntSync } from './cmTraining';
-import { cmActive, cmBodyOn } from './cmPlayerData';
+import { cmBodyOn } from './cmPlayerData';
 
 export interface Schedule {
   key: string;
@@ -183,7 +183,7 @@ export function valueTarget(p: Player): number {
   const g = gs();
   // ægte tilstand: originalens 0x4d0c60 regnes for alle med kontrakt (cmValueGame.ts) og står i Player.value – eller ved siden af menneskets
   // udbudspris (cmAsk.f)
-  if (p.club && p.contract && p.value > 0 && cmActive(g)) { if (!(p.cmAsk && p.cmAsk.club === p.club)) return p.value; if (p.cmAsk.f) return p.cmAsk.f; }
+  if (p.club && p.contract && p.value > 0 && cmValueOn(g)) { if (!(p.cmAsk && p.cmAsk.club === p.club)) return p.value; if (p.cmAsk.f) return p.cmAsk.f; }
   const original = !!g.econ && g.dbKind === 'cm0102';
   const age = ageOn(p.dob, g.date);
   // den originale database: originalens værdiformel (klubbens omdømme, løn og liga tæller med – originalValue.ts)
@@ -205,7 +205,7 @@ export function monthlyValues() {
     // originalen regner +0x52 om hver måned, vides ikke)
     if (p.cmAsk && p.cmAsk.club === p.club && isHumanClub(p.club)) { p.value = p.cmAsk.v; continue; }
     // ægte tilstand (original DB): spillere med kontrakt får originalens +0x52 nedenfor (cmValueGame.ts); de klubløse (originalen: 0) spillets formel
-    if (cmActive(g)) { if (!p.club || !p.contract) p.value = cashRound(Math.max(1000, valueTarget(p))); continue; }
+    if (cmValueOn(g)) { if (!p.club || !p.contract) p.value = cashRound(Math.max(1000, valueTarget(p))); continue; }
     const target = valueTarget(p);
     // glid mod modelværdien og påvirkes af form
     const form = p.form.length ? p.form.reduce((s, x) => s + x, 0) / p.form.length : 6.5;
@@ -219,7 +219,7 @@ export function monthlyValues() {
     p.rep = Math.max(1, Math.min(100, p.rep * 0.97 + ((p.ca - 40) * 0.55) * 0.03));
   }
   // originalens værdi 0x4d0c60 for alle med kontrakt (de valgte landes klubber også på ulige dage – cmValuesDaily)
-  if (cmActive(g)) cmValuesApply(g);
+  if (cmValueOn(g)) cmValuesApply(g);
 }
 
 function roundV(v: number) {
