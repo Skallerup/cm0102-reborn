@@ -104,6 +104,10 @@ export interface CMWorld extends WorldData {
     wx?: { r: [number, string, number[][]][]; c: Record<number, [number, number, number, number, number]> };
     /** (2026/27, MODERN_PARITY 12) prisernes tidligere vindere (staff_comp_history.dat): [år, [1., 2., 3.]] pr. pris-id, nyeste først */
     awHist?: Record<number, [number, (string | null)[]][]>;
+    /** (20/11, Bosman 0.7.2-tjeklisten) 2026/27: turneringernes tidligere vindere (club_comp_history.dat, som CMWorld.compHist for den originale
+     *  database – årene skubbet til spillets ur) og navnene på klubberne uden for spillet [kort navn, nationsindeks] */
+    compHist?: Record<string, [number, number, number][]>;
+    histNames?: Record<number, [string, number]>;
     /** (2026/27, MODERN_PARITY 12) venskabskampene (Friendly 0x5c4680/0x5c4cb0/0x5c5040): nation.dat [+0x86, +0x84, +0x7e, +0x8e, +0x75, +0x71,
      *  +0x110, +0x114, +0x118] pr. nation-id – som scripts/build-preseason.mts' CM_NATION_FR for 3.9.60 */
     nationFr?: Record<number, number[]>;
@@ -246,7 +250,7 @@ const hashRand = (key: string) => { let k = 0; return (n: number) => hashStr(`${
  *  ligaer får liga-id `CMX<division>` (uden liga-post); byggescriptet afgør, hvad der beholdes. */
 /** `staffMem` (MODERN_PARITY 13, 2026/27): kun stabens hukommelse 0x524d70 ([15]/[16] og staffX til Staff Search) – uden cmMem's øvrige følger
  *  (kontraktdatoer, compHist, cmTrim, spillernes tm/tf), så world.json er uændret. */
-export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers?: number; allClubs?: boolean; cmMem?: boolean; staffMem?: boolean } = {}): CMWorld {
+export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers?: number; allClubs?: boolean; cmMem?: boolean; staffMem?: boolean; compHist?: boolean } = {}): CMWorld {
   const MAX_TIERS = opts.maxTiers ?? DEFAULT_TIERS;
   const missing = CM_REQUIRED.filter((f) => !files[f]);
   if (missing.length) throw new Error(`missing:${missing.join(',')}`);
@@ -458,7 +462,7 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
   }
   // tidligere vindere (club_comp_history.dat) for ligaerne, landspokalerne og de europæiske turneringer
   const compHist: Record<string, [number, number, number][]> = {};
-  if (opts.cmMem && files['club_comp_history.dat']) {
+  if ((opts.cmMem || opts.compHist) && files['club_comp_history.dat']) {
     const H = new Reader(files['club_comp_history.dat']);
     const cupNames = new Set(Object.values(rules).map((r) => r.cup).filter(Boolean));
     const EURO: Record<string, string> = { 'European Champions Cup': 'CL', 'UEFA Cup': 'UEFA', 'European Super Cup': 'ESC' };

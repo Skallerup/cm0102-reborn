@@ -16,8 +16,8 @@ const DBS: Record<string, string> = {
   '3.9.65': `${ROOT}/Original-3.9.65-Database-Swedish_fixed`,
   '3.9.68': `${ROOT}/Original-3.9.68-Database`,
 };
-// (MODERN_PARITY 6) 2026/27: "October 2026 Data Update" har sin egen player_setup.cfg (141 INJURY-linjer) – kun INJURY (startskaderne); LOAN-linjerne
-// (8.490, datoer i 2001/02-uret) hører til lejeaftalerne og er ikke med her. Nøglen er databasens år (cmFitnessGame.ts cmSetupInjuries).
+// (MODERN_PARITY 6) 2026/27: "October 2026 Data Update" har sin egen player_setup.cfg (141 INJURY-linjer, 8.490 LOAN-linjer med datoer i
+// 2001/02-uret – skubbet til spillets ur). Nøglen er databasens år (cmFitnessGame.ts cmSetupInjuries/cmSetupLoans).
 const DB2026 = '/Users/martinskallerup/cm0102/.data-update/October 2026 Data Update';
 const dec = new TextDecoder('windows-1252');
 const buf = (f: string) => { const b = readFileSync(f); return new DataView(b.buffer, b.byteOffset, b.byteLength); };
@@ -111,20 +111,14 @@ function injuries(db: ReturnType<typeof readDb>, players: Set<number>, lines: Re
   }
   return { list, miss };
 }
-for (const [ver, dir] of Object.entries(DBS)) {
-  const db = readDb(dir);
-  if (ver === '3.9.60') nationsOut = db.nations;
-  const players = new Set((JSON.parse(readFileSync(`public/data/${ver === '3.9.60' ? 'world-original' : `world-original-${ver.replace(/\./g, '')}`}.json`, 'utf8')).players as number[][]).map((p) => p[0]));
-  const { list, miss } = injuries(db, players, cfg);
-  out[ver] = list;
-  console.log(ver, `${list.length} fundet, ${miss} ikke fundet`);
-  // LOAN (0x7a4d24–0x7a5011): staff = 0x7a50f0(fornavn, kælenavn, efternavn, moderklub, 1); lejeklubben = den første klub i klubtabellen med
-  // strncmp(navn, felt 5, 0x33) = 0; sscanf(resten, "%d %d %d %d %d %d") = 6 → dag, måned − 1, år (< 10 → +2000, < 100 → +1900) for start og
-  // slut; dag 1..31, måned 0..11, år 1980..2010 – ellers ingen leje. Så 0x8bf400(staff, klub, &start, &slut) – i spillet (cmSetupLoans).
-  const worldClubs = new Set((JSON.parse(readFileSync(`public/data/${ver === '3.9.60' ? 'world-original' : `world-original-${ver.replace(/\./g, '')}`}.json`, 'utf8')).clubs as number[][]).map((c) => c[0]));
+/** LOAN-linjerne (0x7a4d24–0x7a5011) for én database: staff = 0x7a50f0(fornavn, kælenavn, efternavn, moderklub, 1); lejeklubben = den første klub i
+ *  klubtabellen med strncmp(navn, felt 5, 0x33) = 0; sscanf(resten, "%d %d %d %d %d %d") = 6 → dag, måned − 1, år (< 10 → +2000, < 100 → +1900) for
+ *  start og slut; dag 1..31, måned 0..11, år 1980..2010 (databasens ur) – ellers ingen leje. Så 0x8bf400(staff, klub, &start, &slut) – i spillet
+ *  (cmSetupLoans). `shift`: spillets ur − databasens (2026/27: 25 år – datoerne i opdateringens fil står i 2001/02-uret). */
+function loanList(db: ReturnType<typeof readDb>, players: Set<number>, worldClubs: Set<number>, lines: ReturnType<typeof parseCfg>, shift: number, ver: string): { list: [number, number, string, string][]; miss: number } {
   const ll: [number, number, string, string][] = [];
   let lmiss = 0;
-  for (const e of loanCfg) {
+  for (const e of lines) {
     let hit: (typeof db.staff)[number] | undefined;
     if (e.club) { const club = db.clubs.find((c) => strncmpEq(c.name, e.club, 0x33)); if (club) hit = db.staff.find((s) => s.club === club.id && nameOk(s, e)); }
     else hit = db.staff.find((s) => nameOk(s, e));
@@ -139,9 +133,21 @@ for (const [ver, dir] of Object.entries(DBS)) {
     const [d1, m1, y1, d2, m2, y2] = [v[0], v[1] - 1, yy(v[2]), v[3], v[4] - 1, yy(v[5])];
     const ok = (d: number, m: number, y: number) => d >= 1 && d <= 31 && m >= 0 && m <= 11 && y >= 1980 && y <= 2010;
     if (!ok(d1, m1, y1) || !ok(d2, m2, y2)) { lmiss++; continue; }
-    const iso = (d: number, m: number, y: number) => `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const iso = (d: number, m: number, y: number) => `${y + shift}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
     ll.push([hit.id, to.id, iso(d1, m1, y1), iso(d2, m2, y2)]);
   }
+  return { list: ll, miss: lmiss };
+}
+for (const [ver, dir] of Object.entries(DBS)) {
+  const db = readDb(dir);
+  if (ver === '3.9.60') nationsOut = db.nations;
+  const players = new Set((JSON.parse(readFileSync(`public/data/${ver === '3.9.60' ? 'world-original' : `world-original-${ver.replace(/\./g, '')}`}.json`, 'utf8')).players as number[][]).map((p) => p[0]));
+  const { list, miss } = injuries(db, players, cfg);
+  out[ver] = list;
+  console.log(ver, `${list.length} fundet, ${miss} ikke fundet`);
+  // LOAN (0x7a4d24–0x7a5011): loanList
+  const worldClubs = new Set((JSON.parse(readFileSync(`public/data/${ver === '3.9.60' ? 'world-original' : `world-original-${ver.replace(/\./g, '')}`}.json`, 'utf8')).clubs as number[][]).map((c) => c[0]));
+  const { list: ll, miss: lmiss } = loanList(db, players, worldClubs, loanCfg, 0, ver);
   loans[ver] = ll;
   console.log(ver, `LOAN: ${ll.length} fundet, ${lmiss} ikke fundet`);
 }
@@ -151,6 +157,16 @@ for (const [ver, dir] of Object.entries(DBS)) {
   const { list, miss } = injuries(db, players, parseCfg('INJURY', `${DB2026}/player_setup.cfg`));
   out['2026'] = list;
   console.log('2026', `${list.length} fundet, ${miss} ikke fundet`);
+  // (20/11, Bosman 0.7.2-tjeklisten punkt 3) også opdateringens LOAN-linjer (8.490; datoerne i 2001/02-uret → +25 år): spillerne og klubberne i
+  // world.json og de europæiske klubber uden liga (world-cm.json euroClubs – de er i spillet i ægte tilstand)
+  const cmSide = JSON.parse(readFileSync('public/data/world-cm.json', 'utf8')) as { cmRaw?: { euroClubs?: { clubs: number[][]; players: number[][] } } };
+  const ec = cmSide.cmRaw?.euroClubs;
+  const w26 = JSON.parse(readFileSync('public/data/world.json', 'utf8')) as { clubs: number[][]; players: number[][]; season: number };
+  for (const p of ec?.players ?? []) players.add(p[0]);
+  const clubs26 = new Set([...w26.clubs, ...(ec?.clubs ?? [])].map((c) => c[0]));
+  const { list: ll, miss: lmiss } = loanList(db, players, clubs26, parseCfg('LOAN', `${DB2026}/player_setup.cfg`), w26.season - 2001, '2026');
+  loans['2026'] = ll;
+  console.log('2026', `LOAN: ${ll.length} fundet, ${lmiss} ikke fundet`);
 }
 const ts = `// Genereret af scripts/build-preseason.mts – ret ikke i hånden.
 // Originalens player_setup.cfg (INJURY-linjerne, appens Data/ – også brugt med 3.9.60/3.9.65; '2026' = opdateringens egen fil) fundet i databasen som 0x7a50f0:

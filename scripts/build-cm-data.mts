@@ -66,7 +66,9 @@ if (Object.keys(DIV_FIXES).length) {
 
 // moderne: tre rækker læses, så Danmarks 2. division kan komme med (TIERS nedenfor bestemmer, hvad der beholdes)
 // 2026/27 (MODERN_PARITY 13): stabens hukommelse 0x524d70 (staffMem – Staff Search); world.json er uændret (kun world-cm*.json får den)
-const w = parseCM0102(files, ORIGINAL ? { maxTiers: 4, allClubs: true, cmMem: true } : { maxTiers: 3, staffMem: true });
+// (20/11, Bosman 0.7.2-tjeklisten) 2026/27 også turneringernes historik (compHist → world-cm.json; world.json er uændret)
+const w = parseCM0102(files, ORIGINAL ? { maxTiers: 4, allClubs: true, cmMem: true } : { maxTiers: 3, staffMem: true, compHist: true });
+let histNames2026: Record<number, [string, number]> | null = null;
 
 // skub en ISO-dato (yyyy-mm-dd) frem med SHIFT år
 const shift = (iso: string) => {
@@ -410,7 +412,9 @@ if (w.staff) {
     if (w.compHist) {
       const keep = new Set(w.leagues.map((l) => l.id));
       for (const k of Object.keys(w.compHist)) if (k.startsWith('CM') && !keep.has(k)) delete w.compHist[k];
-      for (const rows of Object.values(w.compHist)) for (const [, a, b] of rows) for (const c of [a, b]) if (c >= 0 && !known.has(c) && w.clubNames?.[c]) names[c] = w.clubNames[c];
+      // 2026/27: navnene følger historikken i world-cm.json (histNames), så world-cm-staff.json er uændret
+      const to = ORIGINAL ? names : (histNames2026 = {});
+      for (const rows of Object.values(w.compHist)) for (const [, a, b] of rows) for (const c of [a, b]) if (c >= 0 && !known.has(c) && w.clubNames?.[c]) to[c] = w.clubNames[c];
     }
     w.clubNames = names;
     console.log(`Staff Search: ${w.staff.length} i spillets stab + ${before} andre ikke-spillere (${Object.keys(names).length} klubber uden for spillet)`);
@@ -527,7 +531,8 @@ if (cmSide && files['staff_comp_history.dat'] && files['staff_comp.dat']) {
       places.push(snd.has(s2) ? [fst.get(f) ?? '', snd.get(s2)!].filter(Boolean).join(' ') : (com.get(c) || fst.get(f) || ''));
     }
     while (places.length && places[places.length - 1] === null) places.pop();
-    (hist[aid] ??= []).push([H.getUint16(o + 8, true), places]);
+    // (20/11) året skubbes til spillets ur som club_comp_history.dat/staff_history.dat (databasens 2001 = 2026 – før stod 2025/26's priser som 2001)
+    (hist[aid] ??= []).push([H.getUint16(o + 8, true) + SHIFT, places]);
   }
   for (const v of Object.values(hist)) v.sort((a, b) => b[0] - a[0]);
   cmSide.awHist = hist;
@@ -568,6 +573,19 @@ if (cmSide && files['nation.dat'] && files['club_comp_history.dat']) {
   cmSide.euro = { coef, cfg, last };
   if (euroClubs?.clubs.length) cmSide.euroClubs = euroClubs;
   console.error(`Europa: ${Object.keys(coef).length} lande med koefficienter, euro.cfg ${Object.keys(cfg).length} lande, ${Object.keys(last).length} turneringer med vindere`);
+}
+// (20/11, Bosman 0.7.2-tjeklisten punkt 4) turneringernes tidligere vindere på 2026/27 (club_comp_history.dat): opdateringens årstal følger
+// originalens konvention (sæsonens slutår – 3.9.60: Premier League 2000/01 = 2001; kalenderårsligaer = året), så kun urets SHIFT lægges til
+// (2001 → 2026 = 2025/26: Arsenal; Norge 2000 → 2025: Viking). Før havde 2026/27-spil ingen historik før spillets første sæson.
+if (w.compHist) {
+  if (cmSide) {
+    // kun landspokalerne for ligaerne i spillet (parseren tager alle landes pokaler)
+    const cups = new Set(Object.values(w.rules).map((r) => r.cup).filter(Boolean));
+    cmSide.compHist = Object.fromEntries(Object.entries(w.compHist).filter(([k]) => !k.startsWith('cup:') || cups.has(k.slice(4))).map(([k, rows]) => [k, rows.map(([y, a, b]) => [y + SHIFT, a, b] as [number, number, number])]));
+    if (histNames2026 && Object.keys(histNames2026).length) cmSide.histNames = histNames2026;
+    console.error(`historik: ${Object.keys(cmSide.compHist).length} turneringer, ${Object.values(cmSide.compHist).reduce((n, r) => n + r.length, 0)} rækker`);
+  }
+  if (!ORIGINAL) delete w.compHist;
 }
 if (cmSide && nationLang2026) cmSide.nationLang = nationLang2026;
 if (cmSide && clubFin2026 && Object.keys(clubFin2026).length) cmSide.clubFin = clubFin2026;

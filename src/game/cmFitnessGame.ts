@@ -213,9 +213,10 @@ export function cmSetupInjuries(g: GameState, start: number): void {
  *  Ingen klubskifte-følger (0x8c9720 kaldes ikke: indkøringsbyten og klubbernes omdømme uændrede). Bagefter 0x62a920 (cmFitSetupDay) – også for
  *  de lejede (lejeklubbens sæson). Ikke porteret: 0x5563f0 (Discipline), 0x540980(staff, 1) (+0x5e), staff +0x6d 2 → 0x10. */
 export function cmSetupLoans(g: GameState): number {
-  // 2001-verdenen: 2026/27-filens LOAN-linjer (8.490, datoer i 2001/02) er ikke fundet i databasen endnu (scripts/build-preseason.mts)
-  if (!cmActive(g) || g.draft) return 0;
-  const list = CM_SETUP_LOANS[g.dbVersion ?? '3.9.60'] ?? [];
+  // (20/11, Bosman 0.7.2-tjeklisten punkt 3) også 2026/27 i ægte tilstand (nye spil med originalens kalender, g.cmCal): opdateringens egne LOAN-linjer
+  // (scripts/build-preseason.mts – datoerne skubbet fra 2001/02-uret til spillets) under databasens år, som startskaderne
+  if (!(cmActive(g) || (cmLogic(g) && g.cmCal === 1)) || g.draft) return 0;
+  const list = CM_SETUP_LOANS[g.dbVersion ?? ((g.dbYear ?? 0) >= 2020 ? String(g.dbYear) : '3.9.60')] ?? [];
   const moved: Player[] = [];
   for (const [id, to, start, end] of list) {
     const p = g.players[id], club = g.clubs[to];

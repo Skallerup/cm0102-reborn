@@ -627,6 +627,16 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
       if (c >= 0 && !g.clubs[c] && cm.clubNames?.[c]) (g.cmClubNames ??= {})[c] = cm.clubNames[c];
     }
   }
+  // (20/11, Bosman 0.7.2-tjeklisten punkt 4) 2026/27 i ægte tilstand (nye spil): databasens tidligere vindere på samme måde – world-cm.json
+  // compHist (årene i spillets ur) og navnene på klubberne uden for spillet (histNames)
+  const rawHist = cmRawLogic ? cm!.cmRaw!.compHist : undefined;
+  if (rawHist) {
+    g.cmCompHist = rawHist;
+    const names = cm!.cmRaw!.histNames ?? {};
+    for (const rows of Object.values(rawHist)) for (const [, a, b] of rows) for (const c of [a, b]) {
+      if (c >= 0 && !g.clubs[c] && names[c]) (g.cmClubNames ??= {})[c] = names[c];
+    }
+  }
   for (let i = 0; i < 160; i++) {
     const r = new Rng(hash(seed, 5000 + i));
     const nation = rng.pick(o.activeNations.length ? o.activeNations : [0]);
