@@ -25,8 +25,11 @@ describe('regens som i originalen', () => {
     const gone = [...before].filter((id) => !g.players[id]);
     const fresh = Object.values(g.players).filter((p) => !before.has(p.id));
     expect(gone.length).toBeGreaterThanOrEqual(40);
-    // hver forsvundet spiller har en regen (aiFillSquads kan lægge udfyldninger oveni)
-    expect(fresh.length).toBeGreaterThanOrEqual(gone.length);
+    for (const p of old) expect(g.players[p.id]).toBeUndefined();
+    // hver forsvundet spiller har en regen (aiFillSquads kan lægge udfyldninger oveni) – undtagen dem, der samme dag stopper fra startlisten
+    // og bliver stab med deres ikke-spillerpost (0x7a62c2: samme person, ingen regen – hvem det er, afhænger af world-filen)
+    const toStaff = new Set(Object.values(g.staff).map((s) => s.exPlayer?.pid).filter((x): x is number => x !== undefined));
+    expect(fresh.length).toBeGreaterThanOrEqual(gone.filter((id) => !toStaff.has(id)).length);
     const pas = fresh.map((p) => p.pa);
     for (const p of old) { const i = pas.indexOf(Math.max(20, p.pa)); // makePlayer: PA mindst 20
       expect(i).toBeGreaterThanOrEqual(0); pas.splice(i, 1); }
