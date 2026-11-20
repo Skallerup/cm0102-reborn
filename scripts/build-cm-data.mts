@@ -176,6 +176,11 @@ if (ORIGINAL) {
   if (hasTc) {
     for (const l of w.leagues) if (keptLeagues.has(l.id)) playableNat.add(l.nation);
     for (const c of w.clubs) if (!keptLeagues.has(c[4] as string) && playableNat.has(c[3] as number)) keep.add(c[0] as number);
+    // de spilbare landes inaktive divisioner har ingen talentudvalg (HIDDEN_SQUAD): også deres talenter er kun med, når 0x524d70 har dem i
+    // hukommelsen for de valgte lande (tc) – før beholdt udvalget op til 16 pr. klub uden for hukommelsen (størrelse 2: 2.215 spillere i Englands
+    // non-league mod oraklets 1.673 15/7-01, fx Bromsgrove Rovers 16 mod 3, Grantham Town 16 mod 1), så trupperne var for store og klubberne
+    // søgte færre spillere (lejeaftaler)
+    for (const c of w.clubs) if (playableNat.has(c[3] as number)) notableClubs.delete(c[0] as number);
   }
   const realLeague = new Map(w.leagues.map((l) => [l.id, l]));
   const hid = new Map<string, (typeof w.leagues)[number]>();
