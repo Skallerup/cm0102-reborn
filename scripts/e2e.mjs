@@ -1862,6 +1862,8 @@ async function run(look) {
     const ok = await page.evaluate(async () => {
       const g = window.__cm.gs();
       if (!g.cmRsv) return false;
+      // ægte reservekampe kan allerede have givet nyheden "Reserves win" (afhænger af forløbet) – kun den indlagte kamp tælles
+      g.news = g.news.filter((n) => !n.key.startsWith('res.'));
       const m = await import('/cm0102-reborn/src/game/cmReserveMatches.ts');
       const opp = Object.values(g.clubs).find((c) => c.league === g.clubs[g.userClub].league && c.id !== g.userClub);
       m.cmRsvRecord(g, { id: -1999999999, date: g.date, home: g.userClub, away: opp.id }, 2, 1);
