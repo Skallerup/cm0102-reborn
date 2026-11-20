@@ -122,7 +122,8 @@ describe('Manager Score', () => {
 describe('problembørn', () => {
   it('kan rehabiliteres over tid med gode forhold', () => {
     const g = gs();
-    const p = squad(g.userClub).find((x) => g.tactic!.lineup.includes(x.id))!;
+    // en spiller i truppen – helst fra opstillingen (den er tom, hvis taktiktesten ovenfor satte en ny taktik, og ingen kamp har fyldt den)
+    const p = squad(g.userClub).find((x) => g.tactic!.lineup.includes(x.id)) ?? squad(g.userClub)[0];
     p.attrs[A.temperament] = 5;
     p.attrs[A.professionalism] = 14;
     p.morale = 15;
