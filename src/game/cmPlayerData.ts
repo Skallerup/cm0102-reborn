@@ -37,6 +37,12 @@ export function cmBodyOn(g: GameState): boolean {
   return cmActive(g) || (cmLogic(g) && !g.draft && g.cmFitStart !== undefined);
 }
 
+/** (MODERN_PARITY §0 C+D+E) originalens kampregler og taktikkens forvalg (udskiftningerne, kampkonstanterne, formationernes preset-instruktioner ved
+ *  overtagelse og formationsskift): 2001-verdenen, eller en CM-database i ægte tilstand fra et spil startet med dem (g.cmMatch – newgame.ts) */
+export function cmMatchOn(g: GameState): boolean {
+  return cmActive(g) || (cmLogic(g) && g.cmMatch === 1);
+}
+
 /** (MODERN_PARITY 3) computerens marked – trupplanen 0x83cb40, ønskelisterne 0x83b6e0/0x84a020, buddene 0x8e5d60 og svarene 0x8c8090/0x8c63a0:
  *  2001-verdenen, eller en CM-database i ægte tilstand fra et spil, hvis spilstart kørte trupplanen 0x83a1b0 (g.cmPlan – cmSquadPlanGame.ts).
  *  Ældre 2026/27-spil uden trupplanen beholder spillets eget marked. For den originale database = cmActive. */

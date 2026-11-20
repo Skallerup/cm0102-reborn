@@ -36,7 +36,7 @@ import { monthlyDevelopment, recordDevelopment } from './training';
 import { cmRand, fillReputation } from './cmPlayerData';
 import { npFromWorld, npTemplate, staffConvert, staffInitRecord, type NpTemplate } from './cmStaffInit';
 import { initialLanguages } from './cmLanguage';
-import { cmActive, cmLogic, cmMarketOn, cmMediaOn } from './cmPlayerData';
+import { cmActive, cmLogic, cmMarketOn, cmMatchOn, cmMediaOn } from './cmPlayerData';
 import { cmAwNewGame } from './cmAwards';
 import { cmResNewGame } from './cmReserves';
 import { cmRsvNewGame } from './cmReserveMatches';
@@ -879,7 +879,7 @@ export function takeOverClub(club: Club, viaJob = false) {
   // ægte CM 01/02: ingen er udtaget fra start – manageren (eller assistenten, før kampen) udtager holdet; formationen passer til truppen
   // den originale database i ægte tilstand: taktikken hører til manageren (0x5fbd00) – ved spilstart forudindstillingen "4-4-2" (442_default,
   // human_manager.dat i oraklets gemte spil – tacticTable.ts cmLoadPreset), ved et jobskifte hans egen taktik uden udtagelse
-  if (cmActive(g)) g.tactic = viaJob && g.tactic ? { ...g.tactic, lineup: g.tactic.lineup.map(() => 0), bench: [] } : cmLoadPreset(newTactic('4-4-2'), neutralPlayerInstructions);
+  if (cmMatchOn(g)) g.tactic = viaJob && g.tactic ? { ...g.tactic, lineup: g.tactic.lineup.map(() => 0), bench: [] } : cmLoadPreset(newTactic('4-4-2'), neutralPlayerInstructions);
   else g.tactic = origLogic(g) ? newTactic(best.formation) : best;
   for (const p of sq) recordDevelopment(p);
   g.board = { confidence: 65, expectation: 'mid', expectedPos: 10, warnings: 0 };
