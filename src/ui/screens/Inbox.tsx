@@ -13,11 +13,12 @@ import { ClassicFoot, useClassicDialog } from '../classic';
 import { useHotkeys } from '../hotkeys';
 import { dateFmt, money, t } from '../../i18n';
 import { Empty, Modal, Panel } from '../components';
-import { notify } from '../../game/state';
+import { gs, notify } from '../../game/state';
 import { cmUltimatumReq } from '../../game/cmBoardGame';
 import { cmStaffDelayOpen } from '../../game/cmStaff';
 import { ultimatumConfirm } from '../../game/cmBoardText';
-import { askConfirm } from '../confirm';
+import { askConfirm, askNotice } from '../confirm';
+import { cmSquadAnswerOpen, cmSquadAsk } from '../../game/cmIntlSquad';
 import { useGame, useNav, useRouteState } from '../core';
 import { cmActive, cmStaffOn, cmRejectStaff } from '../../game/cmStaff';
 import { authentic } from '../../game/rules';
@@ -202,6 +203,8 @@ export function Inbox() {
           {agreeOffer && cmConfirmOpen(g, agreeOffer) && <button className="cx-grey cx-respond cx-confirm-transfer" onClick={() => setConfirmOpen(agreeOffer.id)}>{t('cl.bid.respond')}</button>}
           {rejPlayer !== undefined && <button className="cx-grey cx-respond cx-negotiate" onClick={() => setRenewOpen(rejPlayer)}>{t('cl.negotiate')}</button>}
           {/* CM 01/02 (0x782b70 → 0x55e620): karantænenyheden har knappen Appeal → "Appeal against the 3 game ban …" (0x55ea10) → 0x6ab800 */}
+          {/* CM 01/02 (0x782fc3/0x782ff4): landsholdets trupudtagelse (0x1e) og en erstatning for et afbud (0x22) – Respond → 0x7798c0/0x77a140 */}
+          {cmSquadAnswerOpen(g, item) && item && <button className="cx-grey cx-respond cx-squad-respond" onClick={() => void squadRespond(item, nav)}>{t('cl.bid.respond')}</button>}
           {cmAppealOpen(g, item) && item && <button className="cx-grey cx-respond cx-appeal" onClick={() => {
             const id = item.id, ask = cmAppealAsk(item);
             void askConfirm(t(ask.key, { n: ask.n, player: ask.player }), { head: t('cl.mt.confirm') })
@@ -269,12 +272,32 @@ export function Inbox() {
               <AppealBox item={item} />
               <AiArticle item={item} />
               {item.link && <div><button onClick={() => open(item)}>{t('inbox.open')}</button></div>}
+              {cmSquadAnswerOpen(g, item) && <div><button className="primary" onClick={() => void squadRespond(item, nav)}>{t('cl.bid.respond')}</button></div>}
             </div>
           ) : <Empty text={t('inbox.select')} />}
         </Panel>
       </div>
     </div>
   );
+}
+
+/** 0x7798c0/0x77a140 → dialogen 0x779a50/0x77a270: antallet i listen inden for 0x775520..0x7754c0 → "Confirm Squad Selection" (No/Yes – Yes
+ *  0x779df0/0x77a610); ellers "Squad Invalid" med størrelserne (OK) og derefter landsholdets trup (0x7615d0/0x7643d0) */
+async function squadRespond(item: NewsItem, nav: (r: { name: 'international'; id: number }) => void): Promise<void> {
+  const g = gs();
+  const a = cmSquadAsk(g, item);
+  if (!a) return;
+  if (a.ok) {
+    const yes = await askConfirm(t('cmint.ask.q', { squad: a.nation }), { head: t('cmint.ask.head'), ok: t('common.yes'), cancel: t('common.no') });
+    if (yes) act({ t: 'cmSquadConfirm', news: item.id });
+    return;
+  }
+  const one = a.count === 1;
+  const text = a.min === a.max ? t(one ? 'cmint.ask.eq1' : 'cmint.ask.eq', { squad: a.nation, n: a.max, c: a.count })
+    : t(one ? 'cmint.ask.rng1' : 'cmint.ask.rng', { squad: a.nation, min: a.min, max: a.max, c: a.count });
+  await askNotice(text, { head: t('cmint.ask.invalid') });
+  const n = g.manager.national?.nation;
+  if (n !== undefined) nav({ name: 'international', id: n });
 }
 
 /** Budkrig: hæv dit bud én gang – blindt – før afsløringen */

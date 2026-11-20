@@ -44,6 +44,7 @@ import { addScoutRequest, scoutRequestStatus } from './cmScout';
 import { answerNationalOffer, resignNational, selectNationalSquad } from './international';
 import { appealBan } from './rules2001';
 import { cmAppeal } from './cmDiscipline';
+import { cmSquadConfirm } from './cmIntlSquad';
 import { origLogic } from './rules';
 import { A } from './attributes';
 import { rng } from './rng';
@@ -80,6 +81,7 @@ export type Action =
   | { t: 'appealBan'; pid: number }
   /** CM 01/02: knappen "Appeal" på karantænenyheden (0x55e620 → 0x55ed00 → 0x6ab800 – cmDiscipline.ts) */
   | { t: 'cmAppeal'; news: number }
+  | { t: 'cmSquadConfirm'; news: number }
   | { t: 'bid'; pid: number; fee: number; loan: boolean; loanUntil?: string; loanShare?: number; loanNoCup?: boolean; loanNoAgainst?: boolean; sellOn?: number; addOn?: number; swap?: number[]; terms?: import('./cmTransferBid').BidTerms; change?: boolean }
   | { t: 'enquire'; pid: number }
   | { t: 'preContract'; pid: number }
@@ -260,6 +262,7 @@ export function applyAction(a: Action): unknown {
     case 'faRequest': return faRequest(a.kind);
     case 'appealBan': return appealBan(a.pid);
     case 'cmAppeal': return cmAppeal(g, a.news) ? 'ok' : 'blocked';
+    case 'cmSquadConfirm': { const it = g.news.find((x) => x.id === a.news); return it && cmSquadConfirm(g, it) ? 'ok' : 'blocked'; }
     case 'enquire': return enquire(a.pid);
     case 'bid': return makeBid(a.pid, a.fee, a.loan, { loanUntil: a.loanUntil, loanShare: a.loanShare, loanNoCup: a.loanNoCup, loanNoAgainst: a.loanNoAgainst, sellOn: a.sellOn, addOn: a.addOn, swap: a.swap, terms: a.terms, change: a.change });
     case 'preContract': return startPreContract(a.pid);

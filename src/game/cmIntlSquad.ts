@@ -35,6 +35,7 @@ import { assignSquad } from './engine/grid/pickTeam';
 import { naturalMask } from './engine/grid/aiTacticChoice';
 import { msvcQsort } from './engine/grid/subs';
 import { INJ_TYPES } from './cmFitness';
+import { onHoliday } from './cmHoliday';
 
 /** skadetypernes kategori (0x9e7ad9 +0 – 0x62ec00) */
 const INJ_CAT = INJ_TYPES.map((t) => t[0]);
@@ -44,7 +45,9 @@ export type SquadSlot = 0 | 1 | 2;
 /** squad slot-posten (0x14 bytes ved nation +0x32 + slot·0x14): +0x32 udtaget, +0x3a slutdato, +0x42/+0x43 størrelserne (0x76d430) */
 export interface CmSquad { ids: number[]; from: string; until: string; max: number; second: number;
   /** slutrundens trup (0x76c304: landsholdsopholdet – 0x775cd0 trækker ingen ud undervejs) */
-  finals?: 1 }
+  finals?: 1;
+  /** +0x45: afbud, der venter på menneskets erstatning (0x775f5a ++, 0x76d7b0 læser, 0x76d7e0 nulstiller) */
+  wd?: number }
 export interface CmIntlSquads {
   /** puljerne (0x76abf0) pr. land: [A-grupper, U21-grupper], hver gruppe spiller-id'er efter hjemmeomdømmet */
   pool?: Record<number, [number[][], number[][]]>;
@@ -289,7 +292,8 @@ export function selectForFixture(g: GameState, f: SelFixture, opps: (n: number) 
       if (cur.until < f.d) cur.until = f.d;
       continue;
     }
-    if (humanNational(g, n)) { squadRequestNews(g, n, f, opps(n), tour); continue; }
+    // 0x76c58b/0x76c6bb: kun A-holdet – 'B' og U21 vælger mennesket kun med "Control All Teams" (0x5fd6b0 = HUMAN_MANAGER +0x9a06, ikke porteret: 0)
+    if (f.slot === 0 && humanNational(g, n)) { squadRequestNews(g, n, f, opps(n), tour); continue; }
     const q = selectSquad(g, n, f.slot, f);
     callUpNews(g, n, f.slot, q, opps(n), tour);
   }
@@ -340,15 +344,96 @@ function callUpNews(g: GameState, n: number, slot: SquadSlot, q: CmSquad, opps: 
   }
 }
 
-/** 0x76f1a0 (nyhed 0x1e): menneskets landshold – "You have been requested to select a Scotland squad …" */
-function squadRequestNews(g: GameState, n: number, f: SelFixture, opps: number[], tour?: string): void {
+/** 0x76f1a0 (nyhed 0x1e): menneskets landshold – "You have been requested to select a Scotland squad …". Felterne: 2 = besvaret (0 → knappen
+ *  Respond 0x782fc3 og Continue Game spærret, 0x779df0/0x784100 sætter 1), 3 = slutrunde, 5–7 kampen, 8.. modstanderne (0x76d560). Truppen er
+ *  landsholdets liste (club +0xd7) – den forrige udtagelse står der stadig; 0x76c614 tager skadede med mere end 10 dage tilbage ud af den.
+ *  På ferie (deliver 0x785d40 → auto_respond 0x784100, 0x7844c9) udtager assistenten truppen med det samme (0x76c120 + 0x76c0f0). */
+function squadRequestNews(g: GameState, n: number, f: SelFixture, opps: number[], tour?: string, until?: string): void {
   forEachHuman(() => {
-    if (g.manager.national?.nation !== n) return;
+    const nj = g.manager.national;
+    if (nj?.nation !== n) return;
     const nat = g.nations[n]?.name ?? '';
-    addNews({ cat: 'general', key: 'cmint.h.req', params: { body: tour ? 'rt' : opps.length === 1 ? 'ro' : opps.length > 1 ? 'rl' : 'rf', nation: nat,
-      opp: opps.length === 1 ? g.nations[opps[0]]?.name ?? '' : '', opps: opps.map((o) => g.nations[o]?.name ?? '').join(' & '), ...(tour ? { tour } : {}) } });
+    // 0x76c614: skadet (0x62c400 = 2) og mere end 10 dage tilbage (0x62ed70 +0x2e > 10) → ud af listen
+    const list = humanList(g, n).filter((id) => { const p = g.players[id]; return !!p && !(p.injury && p.injury.days > 10); });
+    nj.picks = list;
+    const [max, min] = sizes(f, 0);
+    const base = { body: tour ? 'rt' : opps.length === 1 ? 'ro' : opps.length > 1 ? 'rl' : 'rf', nation: nat,
+      opp: opps.length === 1 ? g.nations[opps[0]]?.name ?? '' : '', opps: opps.map((o) => g.nations[o]?.name ?? '').join(' & '), ...(tour ? { tour } : {}),
+      ans: 0, max, min, fd: f.d, fin: f.finals ? 1 : 0, until: until ?? f.d, oi: opps.join(',') };
+    addNews({ cat: 'general', key: 'cmint.h.req', params: base });
+    const item = g.news[0]?.key === 'cmint.h.req' ? g.news[0] : undefined;
+    if (onHoliday(g) && item) {
+      const q = selectSquad(g, n, 0, f);
+      if (f.finals) { q.until = until ?? f.d; q.finals = 1; }
+      nj.picks = q.ids.slice();
+      callUpNews(g, n, 0, q, opps, tour);
+      item.params.ans = 1;
+    }
   });
-  void f;
+}
+
+/** landsholdets liste (club +0xd7): menneskets udtagelse – ellers den seneste udtagelse */
+function humanList(g: GameState, n: number): number[] {
+  const nj = g.manager?.national;
+  if (nj?.nation === n && nj.picks) return nj.picks.slice();
+  return (st(g).sq[n]?.[0]?.ids ?? []).slice();
+}
+
+/** truppens dialog 0x779a50/0x77a270: antallet (0x7798c0 tæller listen) mod størrelserne 0x775520 (mindst) og 0x7754c0 (højst) */
+export interface CmSquadAsk { nation: string; count: number; min: number; max: number; ok: boolean }
+
+/** 0x782fc3 (0x1e, felt 2 = 0) og 0x782ff4 (0x22, felt 7 = 0, kun samme dag, 0x76d7b0 ≠ 0): nyheden har knappen Respond og skal besvares */
+export function cmSquadAnswerOpen(g: GameState, item: { key: string; date: string; params: Record<string, string | number> } | undefined): boolean {
+  if (!item) return false;
+  const nj = g.manager?.national;
+  if (item.key === 'cmint.h.req') return item.params.ans === 0 && !!nj && g.nations[nj.nation]?.name === item.params.nation;
+  if (item.key === 'cmint.rq') {
+    if (item.params.ans !== 0 || !nj || item.date !== g.date) return false;     // 0x783025: en anden dag → felt 7 = 1 (ingen knap)
+    return (st(g).sq[nj.nation]?.[0]?.wd ?? 0) > 0;                              // 0x76d7b0
+  }
+  return false;
+}
+
+/** dialogens indhold (0x779a50/0x77a270) */
+export function cmSquadAsk(g: GameState, item: { key: string; params: Record<string, string | number> }): CmSquadAsk | null {
+  const nj = g.manager?.national;
+  if (!nj) return null;
+  const n = nj.nation;
+  const q = st(g).sq[n]?.[0];
+  const max = Number(item.params.max ?? q?.max ?? 26), min = Number(item.params.min ?? q?.second ?? 22);
+  const count = humanList(g, n).length;
+  return { nation: g.nations[n]?.name ?? '', count, min, max, ok: count >= min && count <= max };
+}
+
+/** Yes i dialogen: 0x779df0 (0x1e) – truppen bekræftes (0x76c0f0), felt 2 = 1 og indkaldelsesnyhederne 0x76e0b0 til klubberne; 0x77a610 (0x22) –
+ *  nyheden 0x21 (0x76fd10) til klubberne for de spillere, der kom ind i dag, felt 7 = 1 og afbuddene nulstilles (0x76d7e0) */
+export function cmSquadConfirm(g: GameState, item: { key: string; params: Record<string, string | number> }): boolean {
+  const a = cmSquadAsk(g, item);
+  if (!a?.ok) return false;
+  const nj = g.manager.national!;
+  const n = nj.nation;
+  const ids = humanList(g, n);
+  const l = (st(g).sq[n] ??= [null, null, null]);
+  if (item.key === 'cmint.h.req') {
+    const fin = item.params.fin === 1;
+    const q: CmSquad = { ids, from: g.date, until: String(item.params.until || item.params.fd || g.date), max: a.max, second: a.min, ...(fin ? { finals: 1 as const } : {}) };
+    l[0] = q;
+    item.params.ans = 1;
+    const opps = String(item.params.oi ?? '').split(',').filter(Boolean).map(Number);
+    callUpNews(g, n, 0, q, opps, typeof item.params.tour === 'string' ? item.params.tour : undefined);
+    return true;
+  }
+  if (item.key === 'cmint.rq') {
+    const q = l[0];
+    if (q) {
+      for (const id of ids) if (!q.ids.includes(id)) { const p = g.players[id]; if (p) calledUpNews(g, p, n, 0); }
+      q.ids = ids;
+      q.wd = 0;
+    }
+    item.params.ans = 1;
+    return true;
+  }
+  return false;
 }
 
 // ---------------------------------------------------------------- 0x7706c0/0x770d20: klubbernes nyhed efter kampen
@@ -430,7 +515,7 @@ export function cmIntlMatchReport(g: GameState, rep: MatchReport, home: number, 
 /** slutrundens trupper (0x76c120 med en slutrundekamp: 23/23) – kaldt ved lodtrækningen; `until` = finaledagen */
 export function selectFinals(g: GameState, field: number[], tour: string, first: string, until: string): void {
   for (const n of field) {
-    if (humanNational(g, n)) { squadRequestNews(g, n, { d: first, h: n, a: n, kind: tour, slot: 0, finals: true }, [], tour); continue; }
+    if (humanNational(g, n)) { squadRequestNews(g, n, { d: first, h: n, a: n, kind: tour, slot: 0, finals: true }, [], tour, until); continue; }
     const q = selectSquad(g, n, 0, { d: first, h: n, a: n, kind: tour, slot: 0, finals: true });
     q.until = until;
     q.finals = 1;
@@ -462,7 +547,7 @@ export function cmWithdrawInjured(g: GameState, p: Player, days: number, type: n
       withdrawnNews(g, p, n, slot, ill);
       drop();
       const human = humanNational(g, n) && slot === 0;
-      if (human) { replacementNeededNews(g, p, n, slot, ill); continue; }           // 0x775f68 (menneskets A-hold)
+      if (human) { q.wd = (q.wd ?? 0) + 1; replacementNeededNews(g, p, n, slot, ill, q); continue; }  // 0x775f5a +0x45++, 0x775f68 (menneskets A-hold)
       callUpReplacement(g, n, slot, p, q);
     }
   }
@@ -520,10 +605,20 @@ function calledUpNews(g: GameState, p: Player, n: number, slot: SquadSlot): void
   if (!p.club || !isHumanClub(p.club)) return;
   asOwner(p.club, () => addNews({ cat: 'general', key: 'cmint.ci', params: { body: `cin${sqSfx(slot)}`, player: fullName(p), nation: g.nations[n]?.name ?? '' }, link: { kind: 'player', id: p.id } }));
 }
-/** 0x7701f0/0x7703f0 (nyhed 0x22) til landstræneren (mennesket): "X removed from Nation squad" – "A replacement player must be called up instead." */
-function replacementNeededNews(g: GameState, p: Player, n: number, slot: SquadSlot, ill: boolean): void {
+/** 0x7701f0/0x7703f0 (nyhed 0x22) til landstræneren (mennesket): "X removed from Nation squad" – "A replacement player must be called up instead."
+ *  Felt 7 = 0 → Respond (kun samme dag). På ferie (auto_respond 0x7846d0) kalder assistenten en erstatning ind (0x775f90). */
+function replacementNeededNews(g: GameState, p: Player, n: number, slot: SquadSlot, ill: boolean, q: CmSquad): void {
   forEachHuman(() => {
-    if (g.manager.national?.nation !== n) return;
-    addNews({ cat: 'general', key: 'cmint.rq', params: { body: `${ill ? 'xill' : 'xinj'}${sqSfx(slot)}`, player: fullName(p), nation: g.nations[n]?.name ?? '' }, link: { kind: 'player', id: p.id } });
+    const nj = g.manager.national;
+    if (nj?.nation !== n) return;
+    if (nj.picks) nj.picks = nj.picks.filter((id) => id !== p.id);
+    addNews({ cat: 'general', key: 'cmint.rq', params: { body: `${ill ? 'xill' : 'xinj'}${sqSfx(slot)}`, player: fullName(p), nation: g.nations[n]?.name ?? '', ans: 0 }, link: { kind: 'player', id: p.id } });
+    const item = g.news[0]?.key === 'cmint.rq' ? g.news[0] : undefined;
+    if (onHoliday(g) && item) {
+      callUpReplacement(g, n, slot, p, q);
+      nj.picks = q.ids.slice();
+      q.wd = 0;
+      item.params.ans = 1;
+    }
   });
 }

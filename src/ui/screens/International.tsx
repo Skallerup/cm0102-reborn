@@ -15,6 +15,7 @@ import type { Player } from '../../game/types';
 import { gs } from '../../game/state';
 import type { JSX } from 'react';
 import { isRetro } from '../theme';
+import { cmActive } from '../../game/cmStaff';
 import { Head } from './common';
 import { ClassicSub, CxDrop, CxLink, clubRoute, type Item } from '../classic';
 import { ClassicClubSquad } from './SquadClassic';
@@ -167,7 +168,7 @@ function SquadPicker({ n }: { n: number }) {
   const [msg, setMsg] = useState('');
   const toggle = (id: number) => setSel((s) => { const x = new Set(s); if (x.has(id)) x.delete(id); else x.add(id); return x; });
   return (
-    <Panel title={t('intl.pickTitle', { n: sel.size })} right={<button className="small primary" disabled={sel.size < 20 || sel.size > 24} onClick={() => setMsg(t(act<string>({ t: 'nationalSquad', pids: [...sel] })))}>{t('intl.pickSave')}</button>}>
+    <Panel title={t('intl.pickTitle', { n: sel.size })} right={<button className="small primary" disabled={cmActive(g) && !g.draft ? sel.size > 50 : sel.size < 20 || sel.size > 24} onClick={() => setMsg(t(act<string>({ t: 'nationalSquad', pids: [...sel] })))}>{t('intl.pickSave')}</button>}>
       <div className="muted" style={{ marginBottom: 6 }}>{msg || t('intl.pickHint')}</div>
       <div className="grid-choices" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))' }}>
         {nationPool(n).map((p) => (

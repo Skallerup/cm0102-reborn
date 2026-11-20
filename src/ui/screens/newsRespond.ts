@@ -22,6 +22,7 @@ import { requestOpen } from '../../game/cmTransferList';
 import { cmConfirmOpen, cmTalksOpen } from '../../game/cmTransferTalks';
 import { cmActive, cmStaffDelayOpen, cmStaffOn } from '../../game/cmStaff';
 import { cmFrProposalOpen } from '../../game/cmFriendlyOffers';
+import { cmSquadAnswerOpen } from '../../game/cmIntlSquad';
 
 const offerOf = (g: GameState, n: NewsItem) => n.link?.kind === 'offer' ? g.offers.find((o) => o.id === Number(n.link!.id)) : undefined;
 
@@ -38,6 +39,8 @@ export function newsMustRespond(g: GameState, n: NewsItem | undefined): boolean 
   if (n.key === 'eur.request' && euroDue(g.userClub)) return true;
   // medienyhederne (Select Media Response) og transferønsket 0xbbf
   if (cmRumourOpen(g, n) || requestOpen(g, n)) return true;
+  // 0x1e landsholdets trupudtagelse (felt 2 = 0) og 0x22 erstatningen for et afbud (felt 7 = 0, samme dag)
+  if (cmSquadAnswerOpen(g, n)) return true;
   // 0x1774: jobtilbuddet (felt 1 = 0, ikke besvaret)
   if (n.key === 'news.jobOffer' && n.link?.kind === 'club' && g.jobOffers.includes(Number(n.link.id))) return true;
   // 0xfa5 Confirm Transfer Offer (også stabens "Delay Transfer Offer")

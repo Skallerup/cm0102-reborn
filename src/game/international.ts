@@ -188,7 +188,7 @@ function prepareFillers(g: GameState, nations: number[], u21: boolean, kind: Int
   const m = new Map<number, Player[]>();
   for (const n of nations) {
     let q = cmSquadOf(g, n, slot);
-    const human = g.manager?.national?.nation === n;
+    const human = slot === 0 && g.manager?.national?.nation === n;   // 0x76c58b: U21 vælges af computeren (uden "Control All Teams")
     if (!human && (!q || q.until < g.date)) q = selectSquad(g, n, slot, { d: g.date, h: nations[0], a: nations[1], kind: finals ? kind : kind === 'euroq' ? 'euroq' : 'friendly', slot, finals });
     const real = human ? nationSquad(n) : (q?.ids ?? []).map((id) => g.players[id]).filter((p): p is Player => !!p);
     const list = cmNationalFillers(g, n, u21, real, q?.max ?? (finals ? 23 : u21 ? 22 : 26), human, g.intl?.info?.[n]?.rep ?? g.cmNationRep?.[n] ?? 0);
@@ -685,7 +685,9 @@ export function selectNationalSquad(pids: number[]): string {
   const nj = g.manager.national;
   if (!nj) return 'error';
   const ok = [...new Set(pids)].filter((id) => g.players[id]?.nation === nj.nation);
-  if (ok.length < 20 || ok.length > 24) return 'intl.squadSize';
+  // ægte tilstand: listen (club +0xd7, 50 pladser) må have et hvilket som helst antal – størrelsen kontrolleres først i Respond-dialogen
+  // (0x779a50: "Squad Invalid" uden for 0x775520..0x7754c0)
+  if (cmActive(g) && !g.draft ? ok.length > 50 : ok.length < 20 || ok.length > 24) return 'intl.squadSize';
   nj.picks = ok;
   return 'intl.squadSaved';
 }
