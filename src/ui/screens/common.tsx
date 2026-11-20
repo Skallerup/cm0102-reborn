@@ -228,6 +228,8 @@ function bodyKey(n: NewsItem): string {
   if (n.key.startsWith('cm.stm.')) return n.params?.from ? 'cm.stm.bodyFrom' : 'cm.stm.body';
   // budet på menneskets stab: kompensationslinjen 0xa8f6ec kun med et beløb (+0x1b ≠ 0)
   if (n.key === 'cm.stBid') return n.params?.fee ? 'cm.stBid.body' : 'cm.stBid.body0';
+  // 0xfaf (0x8d8af0): "The transfer fee will be adjusted to …" kun, når beløbet steg
+  if (n.key === 'transfer.cmSwapOut') return n.params?.adj ? 'transfer.cmSwapOut.bodyFee' : 'transfer.cmSwapOut.body';
   return `${n.key}.body`;
 }
 
@@ -247,6 +249,13 @@ function offerAnswer(n: NewsItem): string {
     const o = g.offers.find((x) => x.id === Number(n.link!.id));
     const st = !o ? 0 : (o.cmTalks?.state === 1 || o.cmTalks?.state === 5) && (o.status === 'negotiating' || o.status === 'completed') ? 1 : o.cmTalks?.state === 4 || o.status === 'collapsed' || o.status === 'withdrawn' ? 4 : 0;
     return st === 1 ? `\n\n${t('transfer.cmTalks.offered', { buyer: String(n.params.buyer ?? '') })}` : st === 4 ? `\n\n${t('transfer.cmTalks.withdrawn', { buyer: String(n.params.buyer ?? '') })}` : '';
+  }
+  // bytte-spilleren (flaget 0xa = 1): 1 "have offered a contract", 4 (handlen lukket uden tilbud) "have decided not to offer a contract" (0xa94b98)
+  if (n.key === 'transfer.cmSwapTalks') {
+    const o = g.offers.find((x) => x.id === Number(n.link!.id));
+    const tk = o?.cmSwapTalks?.[Number(n.params.pid ?? -1)];
+    const st = tk && tk.state !== 0 ? 1 : !o || o.status !== 'negotiating' || !tk ? (o?.status === 'completed' ? 0 : 4) : 0;
+    return st === 1 ? `\n\n${t('transfer.cmSwapTalks.offered', { buyer: String(n.params.buyer ?? '') })}` : st === 4 ? `\n\n${t('transfer.cmSwapTalks.notOffered', { buyer: String(n.params.buyer ?? '') })}` : '';
   }
   const o = g.offers.find((x) => x.id === Number(n.link!.id));
   if (!o || o.seller !== g.userClub || o.status === 'pending') return '';

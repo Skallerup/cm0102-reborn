@@ -246,3 +246,121 @@ export function cmConfirmAnswer(o: TransferOffer, answer: 'yes' | 'no' | 'delay'
   o.status = 'withdrawn';
   return 'withdrawn';
 }
+
+// ---------------------------------------------------------------- bytte-spillerne til menneskets sælger (0x8c0080, 0x8d7cd0, 0x8c63a0, 0x8c28c0, 0x8c2f50)
+//
+// Computerens bud på menneskets spiller med bytte-spillere (typisk efter menneskets modbud "ask for player in exchange" → 0x8c0810's endelige bud):
+// når mennesket accepterer (accept_transfer_bid 0x8c0080), gennemgås hver bytte-spiller: hans ønskede løn hos sælgeren (0x85fc50) over 1,5 ×
+// sælgerens lønloft (0x5968d0) → han afviser skiftet (0x8d8910, nyheden 0xfaf "<X> removed from transfer deal"), ud af listen, fee += hans værdi.
+// Er mennesket med i handlen, sender 0x8d7cd0 én nyhed 0xfac pr. bytte-spiller til menneskets sælger ("Offer contract to <X>" – "{Køber} have given
+// {Sælger} permission to discuss a contract with <X>.", flaget 0xa = 1: andet afsnit "have offered a contract" / "have decided not to offer a
+// contract"). process_due_offer 0x8c63a0, tilstand 7 med menneskets sælger: tilstand 8 og +10 dage – tilstand 8 behandles ikke, når den forfalder,
+// så der er ingen frist. Mennesket tilbyder hver bytte-spiller en kontrakt (Offer Contract → add_contract_offer 0x4cc490); svaret efter 1–5 dage
+// (0x4cd230, 0x4ce4e0). Ja → 0xfa4 "<X> accepts {Sælger} offer" og flaget = 2 (0x8c2180). Nej (0x8c28c0, bytte-grenen) → ud af handlen, fee +=
+// hans værdi (0x4d0c60), nyheden 0xfa4 ("… He is removed from {Køber}'s offer for <spiller> with the transfer fee being increased to …"), og
+// computerens køber vurderer buddet igen på stedet (0x8c0810 med keep_existing = 1: trækker det eller justerer beløbet). Når hovedspilleren og alle
+// bytte-spillere er enige (0x8c2f50), gennemføres handlen (computerens køber bekræfter 0x8c3310).
+// Ikke porteret: hovedspillerens eget kontraktforløb hos computerens køber (tilstand 5 → 0x8c1e40) – han afgøres som før ved accepten.
+
+/** Gælder bytte-forhandlingen? Menneskets sælger, computerens køber, transfer med bytte-spillere (spil med originalens marked) */
+export function cmSwapOn(o: TransferOffer, marketOn: boolean): boolean {
+  return marketOn && !o.loan && !!o.seller && !!o.swap?.length && isHumanClub(o.seller) && !isHumanClub(o.buyer);
+}
+
+/** 0x8c0080 (bytte-delen) + 0x8d7cd0. `tooDear` = bytte-spillerne, hvis lønkrav er over 1,5 × sælgerens loft (cmExchangeCheck); `valueOf` = værdien
+ *  0x4d0c60. Returnerer true, når handlen venter på menneskets forhandlinger (ellers gennemføres den som uden bytte). */
+export function cmSwapAccept(o: TransferOffer, p: Player, tooDear: Set<number>, valueOf: (x: Player) => number): boolean {
+  const g = gs();
+  const ids = (o.swap ?? []).filter((id) => g.players[id]?.club === o.buyer);
+  const params = (x: Player) => ({ player: pname(x), last: x.last || pname(x), seller: short(g, o.buyer), buyer: short(g, o.seller), player2: pname(p) });
+  for (const id of ids.slice()) {
+    if (!tooDear.has(id)) continue;
+    const x = g.players[id];
+    const old = o.fee;
+    o.fee += valueOf(x);
+    ids.splice(ids.indexOf(id), 1);
+    asOwner(o.seller, () => addNews({ cat: 'transfer', key: 'transfer.cmSwapOut', params: { ...params(x), fee: o.fee, ...(o.fee > old ? { adj: 1 } : {}) }, link: { kind: 'player', id: x.id } }));
+  }
+  o.swap = ids.length ? ids : undefined;
+  if (!ids.length) return false;
+  o.status = 'negotiating';
+  o.respondBy = addDays(g.date, 3650);
+  o.cmSwapTalks = Object.fromEntries(ids.map((id) => [id, { rounds: 0, state: 0 as const }]));
+  for (const id of ids) {
+    const x = g.players[id];
+    asOwner(o.seller, () => addNews({ cat: 'transfer', key: 'transfer.cmSwapTalks', params: { ...params(x), pid: x.id }, link: { kind: 'offer', id: o.id } }));
+  }
+  return true;
+}
+
+/** Knappen Offer Contract i "Offer contract to <X>" (bytte-spilleren): handlen er åben, og der er endnu intet tilbud (eller han har ikke svaret nej) */
+export function cmSwapOpen(g: GameState, o: TransferOffer | undefined, pid: number): o is TransferOffer {
+  const t = o?.cmSwapTalks?.[pid];
+  return !!o && !!t && t.state === 0 && o.status === 'negotiating' && o.seller === g.userClub && g.players[pid]?.club === o.buyer
+    && g.players[o.player]?.club === o.seller;
+}
+
+/** Offer Contract-skærmens syn på forhandlingen med bytte-spilleren: han er "spilleren", menneskets sælger "køberen" */
+export function cmSwapView(o: TransferOffer, pid: number): TransferOffer {
+  const t = o.cmSwapTalks?.[pid];
+  return { ...o, player: pid, buyer: o.seller, seller: o.buyer, fee: 0, swap: undefined, cmTalks: t ? { rounds: t.rounds, state: t.state, agreed: t.agreed, terms: t.terms, due: t.due } : { rounds: 0, state: 0 }, cmRole: t?.role, cmSwapTalks: undefined };
+}
+
+/** Set Role At Club for bytte-spilleren */
+export function cmSwapRole(o: TransferOffer, pid: number, role: SquadStatus): boolean {
+  const t = o.cmSwapTalks?.[pid];
+  if (!t) return false;
+  t.role = role;
+  return true;
+}
+
+/** Offer (0x4cc490): tilbuddet til bytte-spilleren gemmes, svaret om 1–5 dage (0x4cd230) */
+export function cmSwapOffer(o: TransferOffer, pid: number, wage: number, years: number, clauses?: ContractClauses): 'cmSent' | 'refused' {
+  const g = gs();
+  if (!cmSwapOpen(g, o, pid)) return 'refused';
+  const t = o.cmSwapTalks![pid];
+  const r = cmRand(g.seed ?? 0, pid, o.seller, o.id, (t.rounds + 1) * 7919, 0x4cd230);
+  o.cmSwapTalks![pid] = { ...t, state: 1, due: addDays(g.date, r(5) + 1), terms: { wage, years, clauses } };
+  return 'cmSent';
+}
+
+/** Dagligt: bytte-spillernes svar (0x4ce4e0 → 0x8c2180/0x8c28c0) og, når alle er enige, handlen (0x8c2f50). `review` = 0x8c0810(keep_existing = 1):
+ *  false = køberen trak buddet. */
+export function cmSwapDaily(o: TransferOffer, complete: (o: TransferOffer) => void, review: (o: TransferOffer) => boolean, valueOf: (x: Player) => number): void {
+  const g = gs();
+  const talks = o.cmSwapTalks;
+  if (!talks || o.status !== 'negotiating') return;
+  const p = g.players[o.player];
+  if (!p || p.club !== o.seller) { o.status = 'collapsed'; return; }
+  // bytte-spillere, der ikke længere er i køberens trup, er ude af handlen
+  // (remove_exchange_player 0x8c41c0: hans værdi lægges til beløbet)
+  for (const k of Object.keys(talks)) {
+    const x = g.players[+k];
+    if (x?.club === o.buyer || !o.swap?.includes(+k)) continue;
+    delete talks[+k];
+    o.swap = o.swap.filter((id) => id !== +k);
+    if (x) o.fee += valueOf(x);
+  }
+  if (!o.swap?.length) o.swap = undefined;
+  for (const k of Object.keys(talks)) {
+    const id = +k, t = talks[id], x = g.players[id];
+    if (t.state !== 1 || !o.swap?.includes(id) || !t.due || g.date < t.due || !t.terms || !x) continue;
+    const { wage, years, clauses } = t.terms;
+    const ans = cmContractAnswer(g, x, o.seller, offerTerms(g, wage, years, clauses, o.seller), t.role);
+    const params = { player: pname(x), last: x.last || pname(x), seller: short(g, o.buyer), buyer: short(g, o.seller), club: short(g, o.buyer), player2: pname(p) };
+    if (ans?.accept) {
+      talks[id] = { ...t, state: 5, agreed: { wage, years, clauses } };
+      asOwner(o.seller, () => addNews({ cat: 'transfer', key: 'transfer.cmAgrees', params, link: { kind: 'player', id } }));
+      continue;
+    }
+    // 0x8c28c0 (bytte-grenen): ud af handlen (tilstand 4 – nyhedens "have offered a contract" står), fee += hans værdi
+    talks[id] = { ...t, state: 4 };
+    o.swap = o.swap?.filter((s) => s !== id);
+    if (!o.swap?.length) o.swap = undefined;
+    o.fee += valueOf(x);
+    asOwner(o.seller, () => addNews({ cat: 'transfer', key: 'transfer.cmSwapRejects', params: { ...params, fee: o.fee }, link: { kind: 'player', id } }));
+    if (!review(o)) return;
+  }
+  // 0x8c2f50: alle (tilbageværende) bytte-spillere er enige
+  if (o.status === 'negotiating' && (o.swap ?? []).every((id) => talks[id]?.state === 5)) complete(o);
+}

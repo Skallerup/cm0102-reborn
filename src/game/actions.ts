@@ -1,5 +1,5 @@
 import { cmStaffDelayAnswer } from './cmStaff';
-import { cmConfirmAnswer } from './cmTransferTalks';
+import { cmConfirmAnswer, cmSwapOffer, cmSwapOpen, cmSwapRole } from './cmTransferTalks';
 import { cmFinePlayer, FINE_REASONS } from './cmFine';
 // Alle ændringer en manager kan lave, som serialiserbare handlinger.
 // Singleplayer: anvendes direkte. Online: anvendes lokalt med det samme (optimistisk) og sendes
@@ -174,6 +174,12 @@ function startLeague() {
 const ACTIVE: TransferOffer['status'][] = ['pending', 'negotiating', 'countered'];
 
 /** Find det aktive tilbud hvor den aktive manager er køber */
+/** CM 01/02: computerens accepterede bud på menneskets spiller, hvor `pid` er en bytte-spiller, mennesket forhandler med (cmSwapTalks) */
+function mySwapTalk(pid: number): TransferOffer | undefined {
+  const g = gs();
+  return g.offers.find((o) => cmSwapOpen(g, o, pid));
+}
+
 function myOffer(pid: number): TransferOffer | undefined {
   const g = gs();
   return g.offers.slice().reverse().find((o) => o.player === pid && o.buyer === g.userClub && ACTIVE.includes(o.status));
@@ -284,8 +290,8 @@ export function applyAction(a: Action): unknown {
       addScoutRequest(g, p);
       return 'ok';
     }
-    case 'cmOfferRole': { const o = myOffer(a.pid); if (!o) return 'error'; o.cmRole = a.role; return 'ok'; }
-    case 'negotiate': { const o = myOffer(a.pid); return o ? negotiate(o.id, a.wage, a.years, a.clauses) : 'refused'; }
+    case 'cmOfferRole': { const o = myOffer(a.pid); if (o) { o.cmRole = a.role; return 'ok'; } const so = mySwapTalk(a.pid); return so && cmSwapRole(so, a.pid, a.role) ? 'ok' : 'error'; }
+    case 'negotiate': { const o = myOffer(a.pid); if (o) return negotiate(o.id, a.wage, a.years, a.clauses); const so = mySwapTalk(a.pid); return so ? cmSwapOffer(so, a.pid, a.wage, a.years, a.clauses) : 'refused'; }
     case 'cmConfirm': { const o = gs().offers.find((x) => x.id === a.offer); return o ? cmConfirmAnswer(o, a.answer, completeTransfer) : 'refused'; }
     case 'renew': return renewContract(a.pid, a.wage, a.years, a.clauses);
     case 'nickname': return setNickname(a.pid, a.nick);

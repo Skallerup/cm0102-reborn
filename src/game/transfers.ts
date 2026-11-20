@@ -24,7 +24,7 @@ import type { Club, Contract, ContractClauses, Player, Role, TransferOffer } fro
 import { aiContract, cmAiTerms, cmMoveInterest } from './cmContractGame';
 import { cmBoardWageAllow } from './cmBudget';
 import { cmCmOn, cmCmScope } from './cmContractManager';
-import { cmAcceptBid, cmOfferContract, cmTalksDaily, cmTalksOn } from './cmTransferTalks';
+import { cmAcceptBid, cmOfferContract, cmSwapAccept, cmSwapDaily, cmSwapOn, cmTalksDaily, cmTalksOn } from './cmTransferTalks';
 import { cmLoanRefuses } from './cmLoan';
 import { cmBuildBid } from './cmAiBid';
 import { cmWindowOpen } from './cmOfferCheck';
@@ -620,8 +620,36 @@ function cmRespond(o: TransferOffer, p: Player, buyer: Club, action: 'accept' | 
   }
   // 0x8c0660: mennesket accepterer computerens lejebud → spillerens svar 0x4cc930
   if (o.loan && cmLogic(g) && cmLoanRefuses(g, p, buyer.id)) { cmLoanRejectsMove(o, p); return null; }
+  // 0x8c0080 + 0x8d7cd0: bytte-spillerne til mennesket – lønkravet (1,5 × loftet) og derefter menneskets kontraktforhandling med hver af dem
+  if (cmSwapOn(o, true)) {
+    const xs = (o.swap ?? []).map((id) => g.players[id]).filter((x): x is Player => !!x && x.club === buyer.id);
+    const chk = cmExchangeCheck(g, buyer.id, o.seller, xs);
+    const tooDear = new Set(chk ? xs.filter((x) => !chk.ok.has(x.id)).map((x) => x.id) : []);
+    if (cmSwapAccept(o, p, tooDear, (x) => x.value)) return null;
+  }
   completeTransfer(o, wageDemand(p, buyer), preferredYears(p));
   return null;
+}
+
+/** 0x8c0810 med keep_existing = 1 (efter at en bytte-spiller afviste menneskets kontrakt, 0x8c28c0): computerens køber vurderer buddet på stedet –
+ *  trækker det (W > M eller over transferbudgettet) eller justerer beløbet/bytte-spillerne; intet nyt bud. False = trukket. */
+function cmReviewKeep(o: TransferOffer): boolean {
+  const g = gs();
+  const p = g.players[o.player], buyer = g.clubs[o.buyer];
+  if (!p || !buyer) { o.status = 'withdrawn'; return false; }
+  const c = valueCtx(g, p, buyer.id);
+  const M = toK(o.maxFee ?? Math.min(buyer.transferBudget, Math.round(o.fee * 1.25)), buyer.id);
+  const r = aiReview(termsOf(o), c, M, (id) => (g.players[id] ? toK(askingPrice(g.players[id]), g.players[id].club) : 0), toK(buyer.transferBudget, buyer.id));
+  if (r.kind === 'withdraw') {
+    o.status = 'withdrawn';
+    asOwner(o.seller, () => addNews({ cat: 'transfer', key: 'transfer.aiWithdrew', params: { club: buyer.name, player: pname(p) } }));
+    return false;
+  }
+  putTerms(o, r.terms);
+  o.final = true;
+  // bytte-spillere, køberen droppede (0x8c0810), er ude af forhandlingen
+  if (o.cmSwapTalks) for (const k of Object.keys(o.cmSwapTalks)) if (!o.swap?.includes(+k) && o.cmSwapTalks[+k].state !== 4) delete o.cmSwapTalks[+k];
+  return true;
 }
 
 /** 0x8c0810 (process_due_offer, tilstand 1): computerens køber vurderer menneskets modbud mod sin værdisætning M (0x840d80 – hos os buddets
@@ -857,8 +885,14 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
       if (x.stats.apps + x.stats.subs > 0) pushCareerLine(x, x.club, false);
       fansOnDeparture(x, buyer, 'sold', swapWorth(x.id, seller.id));
       recordMove(x, seller.id, swapWorth(x.id, seller.id), false, true);
-      x.contract = aiNewContract(x, seller, () => ({ wage: wageDemand(x, seller), expires: `${year(g.date) + preferredYears(x)}-06-30` }));
-      x.sellOn = undefined; x.addOn = undefined; x.listed = false; x.listPrice = undefined; x.squadStatus = undefined; x.loanListed = undefined; x.renewal = undefined; x.complaint = undefined;
+      // CM 01/02: den kontrakt, mennesket aftalte med bytte-spilleren (cmSwapTalks – 0x8c38b0 underskriver den; Signing On Fee betales af sælgeren)
+      const ag = o.cmSwapTalks?.[id]?.agreed;
+      if (ag) {
+        x.contract = { wage: ag.wage, expires: `${year(g.date) + Math.max(1, ag.years)}-06-30`, ...(ag.clauses ?? {}) };
+        if (ag.clauses?.signOn) { seller.balance -= ag.clauses.signOn; seller.finance.signOn = (seller.finance.signOn ?? 0) + ag.clauses.signOn; bookBlockEur(g, seller, CMK.signOn, ag.clauses.signOn); }
+      } else x.contract = aiNewContract(x, seller, () => ({ wage: wageDemand(x, seller), expires: `${year(g.date) + preferredYears(x)}-06-30` }));
+      x.sellOn = undefined; x.addOn = undefined; x.listed = false; x.listPrice = undefined; x.squadStatus = ag ? o.cmSwapTalks?.[id]?.role : undefined; x.loanListed = undefined; x.renewal = undefined; x.complaint = undefined;
+      if (x.squadStatus) setStatusCode(x);
       cmSlMoved(g, x, seller.id, 0);   // (0x8c9579: kun 0x8c9720 – halens 0x84aeb0 for byttespillerne står i hovedspillerens kald)
       setClub(x, seller.id);
       cmMovedToClub(g, x);
@@ -1056,9 +1090,11 @@ export function startPreContract(pid: number): TransferOffer | string {
 
 export function processOffers() {
   const g = gs();
-  const skip = (o: TransferOffer) => !!o.signing || !!o.cmTalks || !!o.cmAi;
+  const skip = (o: TransferOffer) => !!o.signing || !!o.cmTalks || !!o.cmAi || !!o.cmSwapTalks;
   // CM 01/02: forhandlingerne efter et accepteret bud (svarene, fristerne)
   for (const o of g.offers.slice()) if (o.cmTalks) cmTalksDaily(o, (x, w, y, c) => (x.preContract ? completePreContract(x, w, y, c ?? {}) : completeTransfer(x, w, y, c)));
+  // CM 01/02: menneskets forhandlinger med bytte-spillerne i et accepteret computerbud (0x8c63a0 tilstand 8)
+  for (const o of g.offers.slice()) if (o.cmSwapTalks) cmSwapDaily(o, (x) => { const p = g.players[x.player], b = g.clubs[x.buyer]; if (p && b) completeTransfer(x, wageDemand(p, b), preferredYears(p)); }, cmReviewKeep, (x) => x.value);
   // ældre saves: flere åbne bud fra samme AI-klub på samme spiller → behold kun det højeste
   const best = new Map<string, TransferOffer>();
   for (const o of g.offers) {

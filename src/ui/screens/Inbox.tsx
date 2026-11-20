@@ -33,7 +33,7 @@ import { ClassicSub, cxShortDate } from '../classic';
 import { IncomingBidPanel, JobOfferPanel, MediaResponsePanel, TransferRequestPanel } from './TransferStatusClassic';
 import { cmRumourOpen } from '../../game/cmRumours';
 import { requestOpen } from '../../game/cmTransferList';
-import { cmConfirmOpen, cmConfirmScreen, cmTalksOpen } from '../../game/cmTransferTalks';
+import { cmConfirmOpen, cmConfirmScreen, cmSwapOpen, cmSwapView, cmTalksOpen } from '../../game/cmTransferTalks';
 import { cmAppealAsk, cmAppealOpen } from '../../game/cmDiscipline';
 import { newsMustRespond } from './newsRespond';
 
@@ -76,6 +76,7 @@ export function Inbox() {
   const [rumOpen, setRumOpen] = useState(false);
   const [renewOpen, setRenewOpen] = useState<number | null>(null);
   const [talkOpen, setTalkOpen] = useState<number | null>(null);
+  const [swapOpen, setSwapOpen] = useState<{ offer: number; pid: number } | null>(null);
   const [confirmOpen, setConfirmOpen] = useState<number | null>(null);
   const { nav } = useNav();
   const item = g.news.find((n) => n.id === sel);
@@ -136,6 +137,11 @@ export function Inbox() {
   const acceptedBid = item && !cmActive(g) && (item.key === 'transfer.bidAccepted' || item.key === 'transfer.releaseMet') && item.link?.kind === 'offer'
     ? g.offers.find((o) => o.id === Number(item.link!.id) && o.status === 'negotiating' && o.buyer === g.userClub) : undefined;
   const talkLive = talkOpen !== null ? g.offers.find((o) => o.id === talkOpen) : undefined;
+  // CM 01/02 "Offer contract to X" for en bytte-spiller i computerens accepterede bud (0x8d7cd0, flaget 0xa = 1): Offer Contract med ham
+  const swapTalk = item?.key === 'transfer.cmSwapTalks' && item.link?.kind === 'offer' ? g.offers.find((o) => o.id === Number(item.link!.id)) : undefined;
+  const swapPid = Number(item?.params?.pid ?? -1);
+  const swapOffer = cmSwapOpen(g, swapTalk, swapPid) ? swapTalk : undefined;
+  const swapLive = swapOpen ? g.offers.find((o) => o.id === swapOpen.offer) : undefined;
   // CM 01/02 "X accepts {Club} offer": Respond → Confirm Transfer Offer (0x8f2ec0)
   const agreeOffer = item?.key === 'transfer.cmAgrees' && item.link?.kind === 'offer' ? g.offers.find((o) => o.id === Number(item.link!.id)) : undefined;
   const confirmLive = confirmOpen !== null ? g.offers.find((o) => o.id === confirmOpen) : undefined;
@@ -167,6 +173,7 @@ export function Inbox() {
     }
     if (talkLive && talkLive.status === 'negotiating' && !cmActive(g)) return <div><ClassicNegotiation offer={talkLive} onClose={() => setTalkOpen(null)} /></div>;
     if (cmTalksOpen(g, talkLive)) return <div><ClassicNegotiation offer={talkLive} onClose={() => setTalkOpen(null)} /></div>;
+    if (swapOpen && cmSwapOpen(g, swapLive, swapOpen.pid)) return <div><ClassicNegotiation key={`sw${swapOpen.pid}`} offer={cmSwapView(swapLive, swapOpen.pid)} onClose={() => setSwapOpen(null)} /></div>;
     if (renewOpen !== null && g.players[renewOpen]?.club === g.userClub) return <div><ClassicNegotiation renewPid={renewOpen} onClose={() => setRenewOpen(null)} /></div>;
     if (respondOffer) return <div><Head title={g.clubs[g.userClub]?.short ?? ''} /><IncomingBidPanel offer={respondOffer} onClose={() => setRespond(null)} /></div>;
     const pick = (k: CxGroup) => { setGrp(k); setCat('all'); const first = g.news.find((n) => k === 'all' ? !n.muted : CX_CATS[k].includes(n.cat)); setSel(first?.id ?? null); };
@@ -199,6 +206,7 @@ export function Inbox() {
           {delayOpen && item && <button className="cx-grey cx-respond" onClick={() => setDelayFor(item.id)}>{t('cl.bid.respond')}</button>}
           {rejStaff && item && <button className="cx-grey cx-respond cx-negotiate" onClick={() => nav({ name: 'staff', id: rejStaff.id, state: { stoffer: String(item.params.role ?? rejStaff.role) } })}>{t('cl.negotiate')}</button>}
           {talkOffer && <button className={`cx-grey cx-respond ${item?.key === 'transfer.cmTalks' ? 'cx-offer-contract' : 'cx-negotiate'}`} onClick={() => setTalkOpen(talkOffer.id)}>{t(item?.key === 'transfer.cmTalks' ? 'cl.offerContract' : 'cl.negotiate')}</button>}
+          {swapOffer && <button className="cx-grey cx-respond cx-offer-contract" onClick={() => setSwapOpen({ offer: swapOffer.id, pid: swapPid })}>{t('cl.offerContract')}</button>}
           {acceptedBid && <button className="cx-grey cx-respond cx-offer-contract" onClick={() => setTalkOpen(acceptedBid.id)}>{t('cl.offerContract')}</button>}
           {agreeOffer && cmConfirmOpen(g, agreeOffer) && <button className="cx-grey cx-respond cx-confirm-transfer" onClick={() => setConfirmOpen(agreeOffer.id)}>{t('cl.bid.respond')}</button>}
           {rejPlayer !== undefined && <button className="cx-grey cx-respond cx-negotiate" onClick={() => setRenewOpen(rejPlayer)}>{t('cl.negotiate')}</button>}

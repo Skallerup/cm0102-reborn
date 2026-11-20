@@ -19,7 +19,7 @@ import { squadNumbersDue } from '../../game/squadNumbers';
 import { euroDue } from '../../game/euroSquad';
 import { cmRumourOpen } from '../../game/cmRumours';
 import { requestOpen } from '../../game/cmTransferList';
-import { cmConfirmOpen, cmTalksOpen } from '../../game/cmTransferTalks';
+import { cmConfirmOpen, cmSwapOpen, cmTalksOpen } from '../../game/cmTransferTalks';
 import { cmActive, cmStaffDelayOpen, cmStaffOn } from '../../game/cmStaff';
 import { cmFrProposalOpen } from '../../game/cmFriendlyOffers';
 import { cmSquadAnswerOpen } from '../../game/cmIntlSquad';
@@ -49,6 +49,8 @@ export function newsMustRespond(g: GameState, n: NewsItem | undefined): boolean 
   // 0xfac Offer Contract (de andre databaser i ægte tilstand: "X have accepted your offer" → Offer Contract)
   // kun indtil kontrakten er tilbudt (cmTalks.state 0) – efter Offer Contract (state 1) venter vi på spillerens svar, og spillet skal kunne gå videre
   if (n.key === 'transfer.cmTalks' && cmTalksOpen(g, o) && o.cmTalks!.state === 0) return true;
+  // 0xfac for en bytte-spiller (menneskets sælger): indtil kontrakten er tilbudt
+  if (n.key === 'transfer.cmSwapTalks' && cmSwapOpen(g, o, Number(n.params.pid ?? -1)) && o.cmSwapTalks![Number(n.params.pid)].state === 0) return true;
   if (!cmActive(g) && (n.key === 'transfer.bidAccepted' || n.key === 'transfer.releaseMet') && o && o.status === 'negotiating' && o.buyer === g.userClub) return true;
   return false;
 }
