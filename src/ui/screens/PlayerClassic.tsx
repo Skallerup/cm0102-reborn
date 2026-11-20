@@ -16,7 +16,7 @@ import { authentic, extended } from '../../game/rules';
 import { avgRating } from '../../game/season';
 import { SCHEDULES } from '../../game/training';
 import { askingPrice, canPreContract, interestedClubs, myPendingBid, nextWindow, releaseCost, windowOpen } from '../../game/transfers';
-import { cmActive, cmLogic, cmMarketOn, statCell, statColumns } from '../../game/cmPlayerData';
+import { cmActive, cmLogic, cmMarketOn, cmMediaOn, statCell, statColumns } from '../../game/cmPlayerData';
 import { squadMoveOption } from '../../game/cmBTeam';
 import { cmTalksOpen } from '../../game/cmTransferTalks';
 import { cmPermitHistory, cmPermitOn } from '../../game/cmPermit';
@@ -105,7 +105,7 @@ function StatsBlock({ p, title }: { p: Player; title?: ReactNode }) {
   // CM 01/02 (ejerens billeder 145/149/154, 0x870650): Non Competitive · League · Cup · Continental · International · Senior Club af originalens
   // statistikposter (cmPlayerData: 0x7c0d70), kolonnerne og formaterne fra 0x7c1b20/0x7c2750; de blå pile skifter mellem to sider
   const [page, setPage] = useState(0);
-  if (cmActive(g) && !g.draft) return <CmStatsBlock p={p} title={title} page={page} setPage={setPage} />;
+  if (cmMediaOn(g) && !g.draft) return <CmStatsBlock p={p} title={title} page={page} setPage={setPage} />;
   const statRows: [string, ReactNode[]][] = [
     // liga og øvrige turneringer (pokal/Europa) hver for sig med assists, kampens spiller og snit – som i originalen (ejerens ønske 2026-11-10)
     ...(() => {
@@ -347,9 +347,9 @@ function TransferTab({ p, mine }: { p: Player; mine: boolean }) {
   const k = knowledgeOf(p);
   // den originale database i ægte tilstand: originalens Availability og Future (0x87dd80 – cmTransferList.ts)
   // ægte CM 01/02: originalens Future (0x87dd80) for alle spillere, man kender – aldrig spillets egne, modsigende linjer
-  const cm = cmActive(g) && (mine || k >= 45);
+  const cm = cmMarketOn(g) && (mine || k >= 45);
   // CM 01/02 kender kun "Transfer listed by club/by request", "Listed for loan" og "Unknown" – også for andre klubbers spillere (ingen "Could be bought for")
-  const availability = cmActive(g) && p.club ? t(`cm.av.${cmAvailability(p)}`) : mine
+  const availability = cmMarketOn(g) && p.club ? t(`cm.av.${cmAvailability(p)}`) : mine
     ? p.listed ? `${t('tag.listed')}${p.listPrice ? ` (${money(p.listPrice)})` : ''}` : p.loan ? t('tag.loan') : t('cl.pl.av.notForSale')
     : !p.club ? t('cl.pl.av.free')
     : p.listed ? `${t('tag.listed')}${p.listPrice ? ` (${money(p.listPrice)})` : ''}`
@@ -362,7 +362,7 @@ function TransferTab({ p, mine }: { p: Player; mine: boolean }) {
   const interestIds = interestedClubs(p).map((i) => i.club);
   // hele Future-blokken (0x87ee70–0x8853ba) inkl. den tilfredse blok og "Unknown" (0x8852f9), når intet er skrevet
   const cmFut = cm ? cmFutureLines(g, p, interestIds.length).map((x) => t(`cm.fut.${x.k}`, x.p?.date ? { ...x.p, date: dateFmt(String(x.p.date)) } : x.p?.pos ? { ...x.p, pos: t(`cm.fut.pos.${x.p.pos}`) } : x.p)) : [];
-  const fut = cm ? (cmFut.length ? cmFut : ['-']) : cmActive(g) ? [t('cl.pl.unknown')] : futureLines(p, mine, k);
+  const fut = cm ? (cmFut.length ? cmFut : ['-']) : cmMarketOn(g) ? [t('cl.pl.unknown')] : futureLines(p, mine, k);
   // CM 01/02: Availability, Value, Fluent Languages, Offers, Interested, Future (én linje pr. række)
   const langs = playerLanguages(g, p).map((l: string) => { try { return new Intl.DisplayNames([t('cl.locale')], { type: 'language' }).of(l) ?? l; } catch { return l; } });
   const rows: [string, ReactNode, string?][] = [

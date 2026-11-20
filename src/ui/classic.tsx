@@ -22,7 +22,7 @@ import { matchDayComps } from './screens/MatchDayClassic';
 import { friendlyInvite, friendlyInviteFor } from './screens/FriendlyClassic';
 import { applyJobAsk, canApplyForJob } from './screens/applyJob';
 import { authentic } from '../game/rules';
-import { cmActive } from '../game/cmPlayerData';
+import { cmScoutLogic } from '../game/cmPlayerData';
 import { rebornOn } from './reborn';
 import { cmAwOn } from '../game/cmAwards';
 import { cmResOn } from '../game/cmReserves';
@@ -398,8 +398,8 @@ function itemsFor(keys: Hub['sub'] | ScreenName[] | undefined, g: GameState, rou
     } else if (k === 'clubHistory') {
       const cid = viewed || g.userClub;
       out.push({ key: k, label: t('cl.history'), route: { name: 'clubhistory', id: cid }, on: route.name === 'clubhistory', arrow: true });
-    } else if (k === 'scouting' && cmActive(g)) {
-      // ægte CM 01/02 (den originale database): spejderne styres fra Player & Staff Search → Scout #1 (Assign Scout) – originalen har ingen
+    } else if (k === 'scouting' && cmScoutLogic(g)) {
+      // ægte CM 01/02 (originalens SCOUT_MANAGER – cmScoutLogic, alle CM-databaser): spejderne styres fra Player & Staff Search → Scout #1 (Assign Scout) – originalen har ingen
       // særskilt spejderskærm med intervaller, kriterier og "Send out"
       out.push({ key: k, label: label(k), route: { name: 'transfers', tab: 'scout1' } });
     } else if (k === 'transfers' && keys === CLUB_TABS) {
