@@ -61,6 +61,8 @@ export interface MatchSubsEnv {
   /** klubbernes omdømme (club +0x80) og turneringstypen (+0x3a) til flagene i 0x6e1090 */
   rep: [number, number];
   compType: number;
+  /** reservekampen: hold +0x19 = 1 (genvalgets flag 0x20100 ^ 0x80000) */
+  reserve?: boolean;
   onSub?: (on: GP, off: GP, auto: boolean) => void;
   onCarriedOff?: (p: GP) => void;
   /** sub_6df460 for siden i kampen (0x6e0230's eget kald): tilstanden; r gemmes i engine+0x476a som i originalen */
@@ -244,7 +246,7 @@ export function makeMatchSubs(env: MatchSubsEnv) {
     const res = reselect(rand, {
       players: list.map(toSub), subsLeft: subsLeft[s], benchSize: benchSize[s], keeperOut, clock: m.clock, periodEnd: env.periodEnd(),
       posOf, attOf, slotSpec: specOf(s), score: scoreOf(s),
-      flags: { national: !!env.national?.[s], assisted: false, compType: env.compType, ownRep: env.rep[s], oppRep: env.rep[1 - s], leagueBranch: typeof env.leagueBranch === 'function' ? env.leagueBranch(s) : env.leagueBranch ?? false, b16: env.b16?.(s) ?? false, humanClubOption: false },
+      flags: { national: !!env.national?.[s], assisted: !!env.reserve, compType: env.compType, ownRep: env.rep[s], oppRep: env.rep[1 - s], leagueBranch: typeof env.leagueBranch === 'function' ? env.leagueBranch(s) : env.leagueBranch ?? false, b16: env.b16?.(s) ?? false, humanClubOption: false },
     });
     subsLeft[s] = res.subsLeft;
     const before = new Map(list.map((q) => [q, q.slot]));

@@ -190,6 +190,9 @@ export interface AiTeamInput {
   pick?: AiPickCtx;
   /** kun sammenligning med sporet: flagene fra originalen (ellers trukket med rand, pickFlags) */
   flags?: number;
+  /** reservesiden (hold +0x19 = 1 – cmReserveMatches.ts): flagene 0x20100 ^ 0x80000 uden tilfældige tal (0x6dcdb9); udelukkelsen af de 14
+   *  (reserveExclusion) er gjort af kalderen (squad er uden dem) */
+  reserve?: boolean;
 }
 export interface AiTeamResult {
   index: number; entry: AiTacticEntry; presetIndex: number;
@@ -244,7 +247,7 @@ export function aiTeamSetup(o: AiTeamInput): AiTeamResult {
   const recs = ps.map((p) => playerRecord(p));
   const data = ps.map((p, i) => roleDataOf(p, ctx, ages[i]));
   // 0x6dcd90: flagene (rand)
-  const flags = o.flags ?? pickFlags(rand, { national: !!ctx.national, compType: o.compType ?? 0, ownRep: o.rep, oppRep: o.oppRep ?? o.rep, leagueMember: ctx.leagueMember ?? true });
+  const flags = o.flags ?? pickFlags(rand, { national: !!ctx.national, assisted: !!o.reserve, compType: o.compType ?? 0, ownRep: o.rep, oppRep: o.oppRep ?? o.rep, leagueMember: ctx.leagueMember ?? true });
   // 0x6dced9: anføreren over kandidaterne
   const capIn = ps.map((p, i) => ({ id: p.id, age: ages[i], rec: recs[i], a: 0, clubRep: o.rep, contract: data[i].contract ? { b44: data[i].contract!.b44, b4f: data[i].contract!.b4f } : null,
     days: joinedOf(p) ? Math.max(0, Math.round((Date.parse(date) - Date.parse(joinedOf(p)!)) / 86400000)) : 1000, b59: shAttr(p, 'loyalty'), b5b: shAttr(p, 'professionalism') }));
@@ -295,6 +298,35 @@ export function aiTeamSetup(o: AiTeamInput): AiTeamResult {
     bench: out.slice(11).filter((i): i is number => i !== null).map((i) => ps[i].id),
     captain: capIdx >= 0 ? ps[capIdx].id : null, setPieces: sp.map((i) => ps[i].id),
   };
+}
+
+/** pick_team 0x6dc5b4–0x6dc9ca's 14 pladser for reservesidens udelukkelse (hold +0x1a = 0): målmand, forsvar, midtbane, angreb (listens
+ *  15. ord 0x40 bruges ikke – antallet er 14) */
+const RSV_EXCL_MASKS = [1, 0x804, 0x84, 0x204, 0x204, 0x204, 0x810, 0x90, 0x210, 0x210, 0x210, 0x40, 0x40, 0x40];
+/** pick_team 0x6dbc50 for computerens reserveside (hold +0x19 = 1, +0x1a = 0 – 0x6db7d9; ikke menneske/landshold): de spillere, der IKKE
+ *  må spille reservekampen. Listen (0x6dc6b9): truppens spillere med spillerpost uden skade (0x62c400 = 2), karantæne i turneringen
+ *  (0x55d270) og landsholdsophold (0x7757d0) – spillets kandidater `ps` – og under 16 år kun når turneringens +0x69 ≤ 10 (Reserve: 1);
+ *  anføreren 0x6e1940 over listen (hold +0x3b); 0x6e2000(listen, n, de 14 masker, 14, ingen bænk, flag 0x8520c2, klub, hold, manager) –
+ *  de 14 valgte udelukkes (0x6dcae7). Dødboldsskytterne er ikke valgt endnu (0x6dcf5f kommer efter) – 0. */
+export function reserveExclusion(ps: Player[], ctx: AiPickCtx, rep: number, compRep = 1): Set<number> {
+  const date = ctx.date ?? '2001-08-18';
+  const today = dayOf(date), yearAgo = dayOf(`${+date.slice(0, 4) - 1}${date.slice(4)}`);
+  const mgrJoined = ctx.judge ? (ctx.judge.joined ? dayOf(ctx.judge.joined) : { day: 0, year: 1900 }) : null;
+  const list = ps.filter((p) => compRep <= 10 || ageOn(p.dob, date) >= 16);
+  if (!list.length) return new Set();
+  const ages = list.map((p) => ageOn(p.dob, date));
+  const recs = list.map((p) => playerRecord(p));
+  const data = list.map((p, i) => roleDataOf(p, ctx, ages[i]));
+  const capIn = list.map((p, i) => ({ id: p.id, age: ages[i], rec: recs[i], a: 0, clubRep: rep, contract: data[i].contract ? { b44: data[i].contract!.b44, b4f: data[i].contract!.b4f } : null,
+    days: joinedOf(p) ? Math.max(0, Math.round((Date.parse(date) - Date.parse(joinedOf(p)!)) / 86400000)) : 1000, b59: shAttr(p, 'loyalty'), b5b: shAttr(p, 'professionalism') }));
+  const capIdx = chooseCaptain(capIn, ctx.judge ? { ja: ctx.judge.ja, npMod20: ctx.judge.id % 20 } : null);
+  const joinedDays = list.map((p) => (joinedOf(p) ? dayOf(joinedOf(p)!) : { day: 0, year: 1990 }));
+  const FL = 0x8520c2;
+  const out = assignSquad(list.length, RSV_EXCL_MASKS.length, 0, (j, i) => roleScore({
+    id: list[i].id, age: ages[i], atClub: true, joined: joinedDays[i], realPlayer: !list[i].regen && !list[i].virtual, nationFlag11c: list[i].virtual ? list[i].virtual === 'active' : true,
+    rec: recs[i], pos: RSV_EXCL_MASKS[j], att: 0, lo: 0, hi: 0, tb: 0, tf: 0, flags: FL, mgrJoined, today, yearAgo, captain: i === capIdx, setPiece: 0, data: data[i],
+  }), () => 0, (i) => list[i].pos[0], (j) => (RSV_EXCL_MASKS[j] & 1) === 1);
+  return new Set(out.filter((i): i is number => i !== null).map((i) => list[i].id));
 }
 
 /** AiPickCtx for en klub af spillets tilstand (adapteren): dato, frø, managerens viste Judging Ability/Potential (0x544410 af databasens

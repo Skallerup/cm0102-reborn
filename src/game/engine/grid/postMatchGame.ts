@@ -20,6 +20,7 @@ import type { GP, GridMatch, Rand } from './gridMatch';
 import { matchReport6d1cc0, refereeReport6d4a20, type PmManager, type PmClub, type PmEnv, type PmFixture, type PmPlayer, type PmStaff } from './postMatch';
 import { pmPlayerOf, pmSides, refereeInputs } from './postMatchInputs';
 import { natClubId, natOfClub, nationalManager } from '../../cmVirtual';
+import { RSV_COMP } from '../../cmReserveMatches';
 
 const s8 = (v: number) => (v << 24) >> 24;
 const u16 = (a: Int8Array, o: number) => ((a[o] & 0xff) | ((a[o + 1] & 0xff) << 8));
@@ -58,8 +59,9 @@ export function gamePostReport(gm: GridMatch, o: { home: number; away: number; f
   const comp = o.intl ? undefined : f ? g.comps[f.comp] : g.comps[g.clubs[o.home]?.league ?? ''];
   const home = clubOfGame(o.home), away = clubOfGame(o.away);
   const fx: PmFixture = {
-    id: o.fixtureId ?? 0, home, away, ground: o.neutral ? 0 : home.ground, w30: o.intl?.w30 ?? 0, w32: 0, b3a: info.fx3a, b40: 1,
-    // landsholdsturneringerne: +0x5d = ingen nation; 0x76d940 (de store slutrunder) = major; venskabskampe (0x5c6710) = special
+    id: o.fixtureId ?? 0, home, away, ground: o.neutral ? 0 : home.ground, w30: o.intl?.w30 ?? 0, w32: 0, b3a: info.fx3a, b40: f?.comp === RSV_COMP ? 0 : 1,
+    // reservekampen (cmReserveMatches.ts): +0x40 = 0 → 0x6d26b0/0x6d3610/0x6d3de0 vejer med turneringens +0x69 alene (Reserve)
+  // landsholdsturneringerne: +0x5d = ingen nation; 0x76d940 (de store slutrunder) = major; venskabskampe (0x5c6710) = special
     comp: info.comp ? { rep: info.comp.rep, nation: comp && comp.nation >= 0 ? comp.nation + 1 : 0, major: !!o.intl?.major, special: !!o.intl && o.intl.b3a === 9 && o.intl.compId === FRIENDLY_COMP } : null,
     goals: [gm.m.goals[0] & 0xff, gm.m.goals[1] & 0xff],
   };

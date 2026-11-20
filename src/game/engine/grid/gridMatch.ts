@@ -137,6 +137,8 @@ export interface GridMatchCtx {
   rep?: [number, number];
   /** turneringens type (fixture+0x37 → +0x3a; 1 og 9 = venskabskamp) – sub_6ddab0 */
   compType?: number;
+  /** reservekampen (fixture +0x40 = +0x41 = 0, turneringen Reserve – cmReserveMatches.ts): begge sider er reservesider (hold +0x19 = 1) */
+  reserve?: boolean;
   /** holdene er landshold (0x53b900 – pick_team 0x6dcd90's flag og omrokeringen 0x6e1090) */
   national?: [boolean, boolean];
   /** kampen er en ligakamp mellem to hold i samme række (aiMode: sameDivision/compLink) – standard true; derby = rivaler */
@@ -1250,10 +1252,11 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
       const pre = aiModeOf({ side: side as Side, inMatch: false, strength: [rep(0), rep(1)], rep: [rep(0), rep(1)], territory: [0, 0, 0], clock: 0, periodEnd: 495,
         crowd: [sideByte[0], sideByte[1]], goals: [0, 0], firstLeg: ctx.fixtureInfo?.firstLeg ?? null, fixtureFlags: ctx.fixtureInfo?.flags38 ?? 0, fixtureKind: ctx.fixtureInfo?.code30 ?? 0, onPitch: [11, 11],
         sameDivision: ctx.league !== false, compLink: ctx.league !== false, league: null, mgrAttacking: ctx.managers?.[side]?.tac[0] ?? null, rivals: !!ctx.derby, prevMode: 2, prevR: -1000 });
-      const cands = [...ps.values()].filter((p) => !p.injury && !(p.banned > 0) && !p.reserves);
+      // reservekampen (ctx.reserve – cmReserveMatches.ts): holdet er allerede reservesidens kandidater (sim.ts rsvCands)
+      const cands = [...ps.values()].filter((p) => !p.injury && !(p.banned > 0) && (ctx.reserve || !p.reserves));
       // pick_team 0x6dbc50 (aiTeam.ts): flagenes og bænkpladsernes rand trækkes her – før MATCH_PLAYER::init (initMotivation) som i originalen
       const r = aiTeamSetup({ squad: cands, tac: ctx.managers?.[side]?.tac ?? null, mode: pre.mode, rep: rep(side as Side), oppRep: rep(other(side as Side)),
-        compType: ctx.compType ?? 0, rand, pick: ctx.pick?.[side] ?? undefined });
+        compType: ctx.compType ?? 0, rand, pick: ctx.pick?.[side] ?? undefined, reserve: !!ctx.reserve });
       const pr = PRESET_TACTICS[r.presetIndex];
       if (pr && r.lineup.every((id) => id !== null)) {
         map = maps[side] = { preset: pr, table: presetTable(pr), slotOf: r.entry.masks.map((_, i) => i), masks: r.entry.masks, masks2: r.entry.masks2, flags: r.entry.flags,
@@ -1307,7 +1310,7 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
           raw: { dm: g.src.pos[3], m: g.src.pos[4], am: g.src.pos[5], f: g.src.pos[6], right: g.src.side[2], left: g.src.side[0], central: g.src.side[1], freeRole: 1,
             jumping: at(g.src, 17), technique: at(g.src, 30), stamina: at(g.src, 26), workRate: at(g.src, 31) } })),
         manager: (() => { const g = ctx.managers?.[side]; if (!g) return null; const [attacking, directness, freeRoles, , offside, pressing, tactics] = g.tac;
-          return { id: g.id, ca: g.ca, attacking, directness, freeRoles, offside, pressing, tactics }; })(), ownRep: ctx.rep?.[side] ?? 5000, oppRep: ctx.rep?.[1 - side] ?? 5000, b19: false, compType: ctx.compType ?? 0, homeTeam: side === 0,
+          return { id: g.id, ca: g.ca, attacking, directness, freeRoles, offside, pressing, tactics }; })(), ownRep: ctx.rep?.[side] ?? 5000, oppRep: ctx.rep?.[1 - side] ?? 5000, b19: !!ctx.reserve, compType: ctx.compType ?? 0, homeTeam: side === 0,
         setPieces: aiPicks[side]?.setPieces,
       }, rand);
       for (const g of sideG) { g.instr = res.instr[g.pslot]; g.pos = res.masks[g.pslot]; g.posAttack = res.masks2[g.pslot]; }
@@ -1405,7 +1408,7 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
   };
   const capValue = new Map<GP, number>();
   const subs = makeMatchSubs({ m, gp, rand, ai: isAi, subs: ctx.subs ?? [3, 3], periodEnd: () => m.periodEnd, rep: [ctx.rep?.[0] ?? 5000, ctx.rep?.[1] ?? 5000], national: ctx.national, aiPick: aiPicks,
-    compType: ctx.compType ?? 0, onSub: (a, b, auto) => { if (auto) subComment(a, b); on?.sub?.(a, b, auto); }, onCarriedOff: (p) => on?.carriedOff?.(p), comment: (id, p1, s1, p2, s2, x) => comment(id, p1, s1, p2, s2, x),
+    compType: ctx.compType ?? 0, reserve: !!ctx.reserve, onSub: (a, b, auto) => { if (auto) subComment(a, b); on?.sub?.(a, b, auto); }, onCarriedOff: (p) => on?.carriedOff?.(p), comment: (id, p1, s1, p2, s2, x) => comment(id, p1, s1, p2, s2, x),
     aiModeNow: (s: Side) => { const r = aiModeOf(modeInput(s, true)); aiR[s] = r.r; return r.mode; }, refresh: (q) => recompute(q),
     cohesionOf: ctx.cohesionOf,
     // menneskets anfører (0x897590 = taktikskærmens anfører, Tactic.captain) – computerens er udtagelsens (aiPicks)
@@ -1423,7 +1426,8 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
       return v;
     }),
     // 0x6e1312: hold+0x1a = 3 (pick_teams rotation 0x6dbdc4–0x6dc59f, ikke porteret: 3 = ingen rotation) og turneringen tæller klubben
-    leagueBranch: (s: Side) => (ctx.rotation?.[s] ?? 3) === 3 && ctx.league !== false, b16: (s: Side) => ctx.rotation16?.[s] ?? false });
+    // reservekampen: hold +0x1a = 0 (0x6db7dd)
+    leagueBranch: (s: Side) => (ctx.reserve ? 0 : ctx.rotation?.[s] ?? 3) === 3 && ctx.league !== false, b16: (s: Side) => ctx.rotation16?.[s] ?? false });
   /** sub_6e1090 0x6e1691–0x6e18be (sikker): efter genvalget, før omrokeringen – MAKING_CHANGES (> 2) / DOUBLE_SUBSTITUTION (2) / MAKING_CHANGE (1)
    *  for holdet (p1 −1), så pr. par SUBSTITUTION eller REPLACING_INJURED_PLAYER (den udskiftede har +0x22 = skadet ud > −1) med (ind, ud).
    *  Publikums buh/klapsalver (0x211d/0x211e med rand(+0x31)/rand(+0x33)/rand(30)) kræver engine+0x8ebb ≠ 0 – 0 i kampe uden tilskuer på

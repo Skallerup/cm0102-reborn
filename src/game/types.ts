@@ -1366,6 +1366,8 @@ export interface GameState {
   resTactic?: Tactic;
   /** originalens baggrundskampe (fixture −2, 0x84b940/0x84be20 – cmReserves.ts): grupperne af klubber uden for de spilbare ligaer */
   cmRes?: import('./cmReserves').CmResState;
+  /** (20/11) originalens reservekampe (turneringen Reserve, 0x7e6380 – cmReserveMatches.ts): de oprettede kampe; nye spil, alle databaser */
+  cmRsv?: import('./cmReserveMatches').CmRsvState;
   /** (MODERN_PARITY 12) 2026/27 i ægte tilstand: B-holdene og reserveholdet som originalen (cmBTeam.ts bTeamsOn) */
   cmBTeams?: true;
   /** (MODERN_PARITY 12) 2026/27: nation.dat-felterne, venskabskampene læser (cmFriendly.ts) pr. nation-id – slår originalens venskabskampe til */

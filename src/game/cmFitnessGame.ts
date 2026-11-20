@@ -342,6 +342,8 @@ export function cmFitRead(g: GameState) {
     condition: (p: Player) => condition(c, p),
     fatigue: (p: Player) => fatigue(p),
     injury: (p: Player) => { const e = currentInjury(c, p); return e ? { w28: e.w28, w2c: e.w2c } : null; },
+    /** 0x62c400: 2 = skadet, 1 = genoptræner, 0 = klar */
+    status: (p: Player) => injuryStatus(c, p),
     update: (p: Player) => updateFitness(c, p),
   };
 }

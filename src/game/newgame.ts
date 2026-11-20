@@ -39,6 +39,7 @@ import { initialLanguages } from './cmLanguage';
 import { cmActive, cmLogic, cmMediaOn } from './cmPlayerData';
 import { cmAwNewGame } from './cmAwards';
 import { cmResNewGame } from './cmReserves';
+import { cmRsvNewGame } from './cmReserveMatches';
 import { cmGbpMeasure } from './cmMoney';
 import { cmStartDate } from './cmCalendar';
 import { cmMainNation, cmSeasonOn } from './cmSeason';
@@ -621,6 +622,8 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   progress('comps', 0.55);
   // (19/11) ligaernes kampprogram som originalens League::create_fixtures 0x6835c0 (cmFixtures.ts) – alle databaser og tilstande
   g.cmPairs = true;
+  // (20/11) originalens reservekampe for de spilbare klubber (cmReserveMatches.ts – FIXTURE_MANAGER 0x5aaf00/0x7e6380) – alle databaser og tilstande
+  cmRsvNewGame(g);
   // Turneringer for aktive nationer
   setupSeasonComps(season, {});
   // (16/11) sæsonskiftet pr. land (cmSeason.ts): de spilbare lande med egen sæsondag (Norge, Sverige, Japan …) starter i spillets første år

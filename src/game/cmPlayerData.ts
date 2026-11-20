@@ -582,7 +582,7 @@ export function cmApplyPost(g: GameState, f: Fixture, rep: MatchReport, world200
 
 /** 0x7c0d70 + 0x4ca6d0 for en klubkamp: statistik pr. kategori, formen, karaktersnittet og kontraktens tællere for begge hold. */
 export function cmAfterMatch(g: GameState, f: Fixture, rep: MatchReport, squadOf: (club: number) => Player[],
-  bg?: { cats: [number, number] }): void {
+  bg?: { cats: [number, number]; avg?: boolean; contract?: boolean }): void {
   // 2026/27 i ægte tilstand (cmLogic uden cmActive): ældre spil uden moralmodulet (g.cmMedia) kun kampmotorens omdømme (spillerne +9/+0xb/+0xd,
   // klubben +0x80) – spillets egen moral i sim.ts gælder dér. Med cmMediaOn (MODERN_PARITY 8) som 2001: moralen, managerens omdømme, PlayerStats
   // og kontraktens tællere (0x5ce2d0's kontraktdel læser dem)
@@ -596,12 +596,15 @@ export function cmAfterMatch(g: GameState, f: Fixture, rep: MatchReport, squadOf
     const p = g.players[line.id]; if (!p) continue;
     played.add(p.id);
     const gf = goals[line.team], ga = goals[1 - line.team];
-    recordPlayerMatch(g, p, bg ? bg.cats[line.team] : cat, line, gf, ga, rep.mom === p.id, !bg);
+    recordPlayerMatch(g, p, bg ? bg.cats[line.team] : cat, line, gf, ga, rep.mom === p.id, bg ? !!bg.avg : true);
+    // reservekampene (cmReserveMatches.ts): 0x4ca6d0 gør intet, når fixture +0x40/+0x41 = 0
+    if (bg?.contract === false) continue;
     const club = line.team === 0 ? f.home : f.away;
     const mins = line.sub ? Math.max(0, line.minutes) : line.red || line.injured ? line.minutes : 90;
     contractAfterMatch(g, p, { starter: !line.sub, minutes: mins, injured: line.injured, condition: line.cond ?? 100, won: gf > ga, lost: gf < ga,
       clubRep: clubRepMem(g, club), nationRep: nationRepMem(g, p.nation), seed: f.id, club });
   }
+  if (bg?.contract === false) return;
   for (const club of [f.home, f.away]) {
     for (const p of squadOf(club)) {
       if (played.has(p.id) || p.regen || p.injury || p.banned > 0 || p.loan) continue;

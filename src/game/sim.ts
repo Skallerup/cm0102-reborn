@@ -3,7 +3,7 @@ import { cmBoardAfterMatch, cmBoardDaily, cmBoardOn } from './cmBoardGame';
 import { cmWxDaily, cmWxFix } from './cmWeather';
 import { cmStaffOffersDaily } from './cmStaff';
 import { cmStaffMovesDaily, cmStaffNpDaily } from './cmStaffMove';
-import { cmActive, cmLogic, cmMarketOn, cmMediaOn, cmStaffOn, cmAfterMatch, cmContractDaily, cmFlagSet, cmRand, cmSquadMoraleDaily, MORALE_OFF, withFlagCtx } from './cmPlayerData';
+import { cmActive, cmLogic, cmMarketOn, cmMediaOn, cmStaffOn, cmAfterMatch, clubRepMem, cmContractDaily, cmFlagSet, cmRand, cmSquadMoraleDaily, MORALE_OFF, withFlagCtx } from './cmPlayerData';
 import { cmLoanBar } from './cmLoan';
 import { cmFitAfterMatch, cmFitDay, cmFitMatch, cmFitOn, cmFitPreMatch, setMatchSquad } from './cmFitnessGame';
 import { cmPermitAfterMatch, cmPermitDaily } from './cmPermit';
@@ -80,6 +80,9 @@ import { monthlyAwards, snapshotMonth } from './awards';
 import { asOwner, forEachHuman, isHumanClub, isMultiplayer, ownerOf, withHuman } from './humans';
 import { cmVirtualClear, cmVirtualDrop, cmVirtualHumans, cmVirtualMatch } from './cmVirtual';
 import { cmResDaily, cmResOn, RES_SKIP, setResMatchPlayer } from './cmReserves';
+import { cmRsvDaily, cmRsvOn, cmRsvRecord, cmRsvTake, RSV_CM_ID, RSV_COMP, rsvSenior, type CmRsvFixture } from './cmReserveMatches';
+import { reserveExclusion, aiPickCtx } from './engine/grid/aiTeam';
+import { hasReserveTeam } from './cmBTeam';
 import { botsDaily, isBotClub } from './bots';
 import { botsAfterMatch } from './chat';
 import { recordH2H } from './h2h';
@@ -107,7 +110,7 @@ function cmKeeperConceded(line: PlayerMatchLine, rep: MatchReport): boolean {
   return (line.cmr ? line.cmr[0] : rep.stats[1 - line.team].goals) > 0;
 }
 
-export function aiTactic(clubId: number, oppId?: number, home = true): Tactic {
+export function aiTactic(clubId: number, oppId?: number, home = true, players?: Player[]): Tactic {
   const g = gs();
   const club = g.clubs[clubId];
   const m = g.staff[club.manager];
@@ -123,7 +126,7 @@ export function aiTactic(clubId: number, oppId?: number, home = true): Tactic {
   const base = newTactic(plan.formation ?? formation, mentality);
   if (mentality <= 1) base.team.counter = true;
   base.team = { ...base.team, ...plan.team };
-  const t = autoSelect(base, squad(clubId));
+  const t = autoSelect(base, players ?? squad(clubId));
   // roller: en kreativ midtbanespiller styrer spillet, og en stærk angriber i luften bliver target-angriber
   const xi = t.lineup.map((id) => g.players[id]).filter(Boolean);
   const slotOf = (id: number) => t.slots[t.lineup.indexOf(id)];
@@ -200,15 +203,20 @@ export function prepareMatch(f: Fixture, userAuto = false): { home: EngineTeam; 
   cmBanPreMatch(gs(), f);
   // init_match 0x6b8042/0x6b8055: originalens vejr og bane for kampen (cmWeather.ts; kun den originale database i ægte tilstand)
   cmWxFix(gs(), f);
-  const ht = tacticFor(f.home, f.away, true, userAuto, f.comp, f);
-  const at = tacticFor(f.away, f.home, false, userAuto, f.comp, f);
+  // reservekampene (cmReserveMatches.ts): reservesidernes kandidater – computerens uden de 14 udelukkede (pick_team 0x6dc5b4), menneskets
+  // (assistenten) kun spillerne uden for førsteholdet
+  const rsv = f.comp === RSV_COMP ? [rsvCands(f.home), rsvCands(f.away)] : null;
+  // (zonemotorens udtagelse tæller ikke reserverne som ledige – tactics.ts available) reservesidens kandidater er alle spilleklare
+  const free = (ps: Player[]) => ps.map((p) => (p.reserves ? { ...p, reserves: undefined } : p));
+  const ht = rsv ? aiTactic(f.home, f.away, true, free(rsv[0])) : tacticFor(f.home, f.away, true, userAuto, f.comp, f);
+  const at = rsv ? aiTactic(f.away, f.home, false, free(rsv[1])) : tacticFor(f.away, f.home, false, userAuto, f.comp, f);
   if (cmFitOn(gs())) { setMatchSquad(f.home, [...ht.lineup, ...ht.bench].filter(Boolean)); setMatchSquad(f.away, [...at.lineup, ...at.bench].filter(Boolean)); }
   // MATCH_PLAYER::setup (0x6eb045): træningen 0x8b1750 for begge kamptrupper (cmTraining.ts; kun den originale database i ægte tilstand)
   cmTrainSquads(gs(), [...ht.lineup, ...ht.bench, ...at.lineup, ...at.bench].filter(Boolean) as number[], f.id);
   labHooks.preMatch?.(f);
   return {
-    home: engineTeam(f.home, ht, euroOnly(f.home, f.comp, f)),
-    away: engineTeam(f.away, at, euroOnly(f.away, f.comp, f)),
+    home: engineTeam(f.home, ht, rsv ? new Set(rsv[0].map((p) => p.id)) : euroOnly(f.home, f.comp, f)),
+    away: engineTeam(f.away, at, rsv ? new Set(rsv[1].map((p) => p.id)) : euroOnly(f.away, f.comp, f)),
     neutral: f.cm ? f.cm.b3c === 1 : f.stage === 'F',
     needsWinner: needsWinnerFn(f),
     weather: weatherFor(f),
@@ -375,6 +383,60 @@ function playResMatch(f: Fixture): MatchReport | null {
   return rep;
 }
 setResMatchPlayer(playResMatch);
+
+/** pick_team 0x6dbc50's kandidater til reservesiden (cmReserveMatches.ts): klar (ikke skadet/udelukket i reservekampen – cmBanPreMatch har
+ *  synkroniseret p.banned efter turneringen); menneskets klub (assistenten) kun spillerne uden for førsteholdet (+0x5e & 1 = 0 – seniorerne i
+ *  reserveudtagelsen 0x8972c0 findes ikke i spillet), computerens uden de 14, udelukkelsen 0x6dc5b4–0x6dc9ca vælger (aiTeam.ts reserveExclusion) */
+function rsvCands(club: number): Player[] {
+  const g = gs();
+  const ps = squad(club).filter((p) => !p.injury && !(p.banned > 0));
+  if (isHumanClub(club)) return hasReserveTeam(g, club) ? ps.filter((p) => !rsvSenior(p)) : ps;
+  const ctx = aiPickCtx(club, true);
+  if (!ctx) return ps;
+  const ex = reserveExclusion(ps, ctx, clubRepMem(g, club));
+  return ps.filter((p) => !ex.has(p.id));
+}
+
+/** originalens reservekamp (cmReserveMatches.ts): MATCH_DAY's kamp med reservesiderne (+0x40 = +0x41 = 0, +0x3a = 1, turneringen Reserve)
+ *  og 0x6b5f00's kæde for den – omdømme/moral (0x6b6cc0) og PlayerStats kategori 1 (0x7c0d70), ingen kontrakttællere (0x4ca6d0: +0x40 = 0),
+ *  karantænerne som en venskabskamp (0x55ca00), halv træthed (0x62c080), økonomien uden tilskuere (0x59a5d0) og spejderne (0x7b5be0).
+ *  Kampen ligger kun i g.fixtures, mens den spilles (motoren og kamprapporten slår kampens koder op dér). Spillets egen talrække røres ikke:
+ *  kampens tal af frøet og kampen (som baggrundskampene). */
+function playReserveMatch(r: CmRsvFixture): MatchReport | null {
+  const g = gs();
+  const f: Fixture = { id: r.id, comp: RSV_COMP, date: r.date, home: r.home, away: r.away, round: 0 };
+  g.fixtures[f.id] = f;
+  try {
+    const m = prepareMatch(f);
+    if (m.home.tactic.lineup.filter(Boolean).length < 7 || m.away.tactic.lineup.filter(Boolean).length < 7) { cmVirtualDrop(g, f.home); cmVirtualDrop(g, f.away); return null; }
+    const rr = new RngClass(hash(g.seed ?? 0, -f.id, 0x6b98c0));
+    const opts = { neutral: false, needsWinner: undefined, importance: m.importance, var: false, weather: m.weather, finish: m.finish, homeAdv: m.homeAdv, finSlope: m.finSlope, squash: m.squash, squashAtt: m.squashAtt, squashDef: m.squashDef, ease: m.ease, cards: m.cards, corners: m.corners, countBlocked: m.countBlocked, close: m.close, closeSlope: m.closeSlope, onTarget: m.onTarget, offside: m.offside, shotSpread: m.shotSpread, oneOnOneK: m.oneOnOneK, level: m.level, openDamp: m.openDamp, rules: m.rules, pitch: m.pitch, referee: m.referee, subs: maxSubs(), fixtureId: f.id, date: g.date };
+    const grid = gridEngineOn(g) ? getGridFactory() : null;
+    const rep = grid ? grid(m.home, m.away, { ...opts, commentary: false, aiSubs: [true, true] }, rr).runToEnd() : new MatchSim(m.home, m.away, { ...opts, commentary: false, aiSubs: [true, true] }, rr).runToEnd();
+    cmRsvRecord(g, r, rep.stats[0].goals, rep.stats[1].goals);
+    // 0x6b6cc0 (kamprapportens omdømme/moral) og 0x7c0d70 (kategori 1, karaktersnittet tæller) – ingen kontrakttællere (0x4ca6d0)
+    cmAfterMatch(g, f, rep, squad, { cats: [1, 1], avg: true, contract: false });
+    // 0x55ca00: venskabsgrenen (ligaorganerne uden afsoning) + reservekampens lige røde kort (0x7e8278)
+    cmDiscAfterMatch(g, f, rep);
+    // 0x62c080: halv træthed (fixture +0x40 = 0)
+    cmFitMatch(g, rep, false, f.id, [f.home, f.away]);
+    // 0x59a5d0: ingen tilskuere (init_match 0x6b86c9) – omkostningerne og driften delt (ikke hjemmeklubbens liga), ingen tv-penge
+    if (cmFinOn(g)) cmMatchIncome(g, f, 0, { b3a: 1, b3b: 0xff, b3c: 0, compRep: g.cmCompRep?.[RSV_CM_ID] ?? 0, friendly: true, leagueOfHome: false });
+    // 0x7f8c00 → 0x7b5be0: spejderne ser også reservekampene
+    cmScoutMatch(g, f, rep);
+    cmVirtualDrop(g, f.home); cmVirtualDrop(g, f.away);
+    return rep;
+  } finally {
+    delete g.fixtures[f.id];
+  }
+}
+
+/** dagens reservekampe (efter dagens øvrige kampe – originalens tidspunkt 1, som lørdagens) */
+function playReserveDay(): void {
+  const g = gs();
+  if (!cmRsvOn(g)) return;
+  for (const r of cmRsvTake(g)) playReserveMatch(r);
+}
 
 // ---------- resultatbehandling ----------
 
@@ -634,9 +696,11 @@ function newDay() {
   // kontrakterne og lejeaftalerne udløber dagligt; ellers alle lande 1/7
   if (cmSeasonOn(g)) { cmSeasonDaily(); cmContractsDaily(); } else if (month(d) === 7 && day(d) === 1) seasonRollover();
   intlDaily();
-  // ægte tilstand med den originale database: originalens baggrundskampe (fixture −2, 0x84be20 – cmReserves.ts); originalen har ingen
-  // reservekampe for klubberne i de spilbare ligaer, så spillets egne (reserves.ts – nyhederne findes ikke i exe'en) kun i udvidet spil
-  if (cmResOn(g)) { if (!RES_SKIP.on) cmResDaily(g); } else reservesDaily();
+  // ægte tilstand med den originale database: originalens baggrundskampe (fixture −2, 0x84be20 – cmReserves.ts); spillets egne reserve-
+  // nyheder (reserves.ts – findes ikke i exe'en) kun i ældre spil uden originalens reservekampe (cmReserveMatches.ts)
+  if (cmResOn(g)) { if (!RES_SKIP.on) cmResDaily(g); } else if (!cmRsvOn(g)) reservesDaily();
+  // originalens reservekampe for de spilbare klubber (FIXTURE_MANAGER 0x5aaf00 → 0x7e6380 – cmReserveMatches.ts)
+  if (cmRsvOn(g)) cmRsvDaily(g);
   // vinduerne lukket: frie agenter, ingen ville have, forsvinder til lavere rækker/udlandet
   if (day(d) === 2 && (month(d) === 9 || month(d) === 2)) freeAgentDrift();
   // daglige ting – i ægte tilstand med den originale database styrer originalens konditionsmodul kondition og skader (cmFitness.ts; AWOL er spillets egen)
@@ -807,6 +871,7 @@ function playDay(): DayResult {
     const human = isHumanClub(f.home) || isHumanClub(f.away);
     simulateFixture(f, !human, human);
   }
+  playReserveDay();
   if (userMatch !== undefined) {
     g.pendingFixture = userMatch;
     return { match: userMatch };
@@ -1056,6 +1121,7 @@ export function mpAdvance(): { days: number; reason: string } {
         if (!f || f.result || humanFixtures.includes(id)) continue;
         simulateFixture(f, true, false);
       }
+      playReserveDay();
       for (const h of g.humans ?? []) {
         if (h.bot) continue;
         withHuman(h.pid, () => {
@@ -1080,6 +1146,7 @@ export function mpAdvance(): { days: number; reason: string } {
 /** Kampdagen gøres færdig: kampe uden resultat (manageren nåede ikke at spille) simuleres med assistenten */
 function finishMatchDay() {
   const g = gs();
+  playReserveDay();
   for (const id of fixturesOn(g.date)) {
     const f = g.fixtures[id];
     if (!f || f.result) continue;

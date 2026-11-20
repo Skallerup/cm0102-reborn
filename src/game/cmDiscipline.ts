@@ -38,6 +38,7 @@ import { addNews, squad } from './state';
 import { asOwner, isHumanClub } from './humans';
 import { cmDiscLogic, cmRand, clubRepMem } from './cmPlayerData';
 import { ATTRS } from './attributes';
+import { RSV_COMP } from './cmReserveMatches';
 
 /** 20-byte posten (0x556c70): +0 kampe (−1 = tidsbegrænset), +1 afsonet, +2 dage, +4 start, +0xc omfang (4 organer, −1 = intet),
  *  +0x10 grund, +0x11 antal (advarsler/point), +0x13 bit 0 forlænget, bit 1 (overfald – kan ikke appelleres), bit 2 (kampposten +0x48 = 0) */
@@ -258,7 +259,9 @@ export function cmDiscAfterMatch(g: GameState, f: Fixture, rep: MatchReport) {
       const c = cardOf(line);
       let ban = assault(g, p, c);
       if (!ban) {
-        if (friendly) continue;                                                // 0x7e8270: venskabskamp – ingen kort tæller
+        // 0x7e8270: venskabskamp – ingen kort tæller; i reservekampene (0x7e8278, cmReserveMatches.ts) dømmes et lige rødt kort (under to
+        // gule) med en kode ≥ 10 (0xff = ukendt kode tæller med) af organets regel
+        if (friendly && !(f.comp === RSV_COMP && c.red && c.yel < 2 && (c.codes[0] >= 10 || c.codes[1] >= 10))) continue;
         ban = rb === 9 ? englandCards(g, p, c, f) : rb === 1 ? europeCards(g, p, c) : otherCards(g, p, c, rb);
       }
       if (!ban) continue;

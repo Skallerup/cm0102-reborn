@@ -1,9 +1,8 @@
 // Originalens "reservekampe" – baggrundskampene med fixture −2 (cm0102.exe 3.9.68 0x84b940/0x84be20). Kun den originale database i ægte
 // tilstand (cmActive). Afkodet 16/11-2026 (~/cm0102-engine/notes/reserve-matches.md).
 //
-// Fundet: originalen har INGEN reservekampe for klubber i de spilbare ligaer. "Reserve"-turneringen i club_comp.dat ([0x9cf684]) har hverken
-// klubber eller kampe, og reserveholdets skærme viser altid originalens tomme tekster ("There are no forthcoming reserve matches to be played."
-// 0x45cdff, "No recent reserve matches have been played." 0x467a13). Det, 0x84be20 spiller, er kampe for alle klubber UDEN for de spilbare
+// (RETTET 20/11) Klubberne i de spilbare ligaer har reservekampe – turneringen "Reserve" ([0x9cf684]) får kopier af ligakampene hver uge
+// (reservemanageren 0x7e6380 – cmReserveMatches.ts). Det, 0x84be20 spiller, er kampe for alle klubber UDEN for de spilbare
 // ligaer (baggrundslandene og de ikke-spilbare rækker), så deres spillere får kampe, kondition, statistik og kontrakttællere:
 //
 //   0x84b940  grupperne (ved nyt spil 0x829e1c og på hver sæsonopdatering 0x5d5d58 for et spilbart land, ikke på spilstartens dato):

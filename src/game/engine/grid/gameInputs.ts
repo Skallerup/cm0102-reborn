@@ -43,6 +43,7 @@ import { captainRel, dislikesPerson, matchRelOf, personKey } from '../../cmRelat
 import type { MotivationEnv } from './gridMatch';
 import { natOfClub } from '../../cmVirtual';
 import { NO_CARRY, registerCarry } from '../../carry';
+import { RSV_CM_ID, RSV_COMP } from '../../cmReserveMatches';
 
 /** landskampens fixture-koder (international.ts intlCodes): +0x3a, +0x30, +0x3c (neutral bane) og turneringens id (−1 = ingen) */
 export interface IntlFixtureCodes { b3a: number; w30: number; b3c: number; compId: number }
@@ -90,6 +91,8 @@ export function fixtureInfoOf(compId: string | undefined, homeClub: number, stag
   // sub_6ec010 0x6ec561 læser comp +0x69 uden nul-tjek)
   compId ??= g.clubs[homeClub]?.league;
   if (!compId) return { fx3a: 2, comp: { rep: 0, mls: false }, homeLeagueIsComp: false };
+  // reservekampen (cmReserveMatches.ts): +0x3a = 1, turneringen Reserve (club_comp.dat 87, +0x69)
+  if (compId === RSV_COMP) return { fx3a: 1, comp: { rep: g.cmCompRep?.[RSV_CM_ID] ?? 0, mls: false }, homeLeagueIsComp: false };
   const c = g.comps[compId];
   const m = /^CM(\d+)$/.exec(compId);
   const rep = m && g.cmCompRep ? g.cmCompRep[+m[1]] : undefined;
@@ -258,7 +261,9 @@ export function gameInputsCtx(home: number, away: number, o: { compId?: string; 
     ...(fx.fx3a !== 2 ? { fixtureInfo: { hasComp: !!fx.comp, ownLeague: [false, false] as [boolean, boolean], ownContinental: [false, false] as [boolean, boolean],
       code30: codes?.w30 ?? 0, firstLeg: codes?.firstLeg ?? null, flags38: codes?.flags38 ?? 0 } } : {}),
     // (runde 9) tilskuertallet sub_85cba0 (crowd.ts) med kampens tilfældige tal ved kampstarten, og 0x6df460's ligadel af spillets tabel
-    ...(g && codes && g.cmCrowd ? {
+    // reservekampen: hold +0x19 = 1 på begge sider; ingen tilskuere – init_match 0x6b86c9 kalder ikke 0x85cba0 (engine+0xf634 = 0)
+    ...(fixture?.comp === RSV_COMP ? { reserve: true, crowd: { total: 0, home: 0, away: 0 } } : {}),
+    ...(g && codes && g.cmCrowd && fixture?.comp !== RSV_COMP ? {
       crowdFn: (rand: (n: number) => number) => gameCrowd(g, home, away, codes, rand),
       // tabellen ændres ikke under kampen – regnet én gang pr. side (0x6df460 kaldes ved hver dødbold)
       leagueTable: ((memo: (AiModeInput['league'] | undefined)[]) => (s: 0 | 1) => (memo[s] === undefined ? (memo[s] = gameAiLeague(g, compId, [home, away], s, date)) : memo[s]))([]),
@@ -327,6 +332,8 @@ export function fixtureCodesOf(g: GameState, f: Fixture | undefined, compId: str
   const base = { w30: 0, w32: 0, b34: 0, b3a: 2, b3b: f?.tv ?? 0xff, b3c: 0, firstLeg: null as [number, number] | null, flags38: 0, compId: id, compRep: rep, table: null as GameFixtureCodes['table'] };
   // (forsæsonen) originalens venskabskampe (cmFriendly.ts): fixture +0x14 = NULL, +0x3a = 1 (0x5c6710/0x85cba0 – venskabskamp)
   if (compId === 'FRIENDLY') return { ...base, b3a: 1, compId: -1 };
+  // reservekampen (0x7e6380): +0x3a = 1, +0x3b = 0xff, turneringen Reserve; +0x30/+0x32/+0x34 = 0
+  if (compId === RSV_COMP) return { ...base, b3a: 1, b3b: 0xff, compId: RSV_CM_ID, compRep: g.cmCompRep?.[RSV_CM_ID] ?? 0 };
   if (!c || c.type === 'league') {
     const rounds = (compId && g.customRules?.[compId]?.rounds) || 2;
     return { ...base, b34: Math.max(0, (f?.round ?? 1) - 1), table: { b3c: rounds, b43: 2, rows: true } };
