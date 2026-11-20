@@ -10,7 +10,7 @@ import {
 } from './cmFitness';
 import { addNews, gs, hasGame, onGameSwitch, pickNumber, rebuildIndexes, squad } from './state';
 import { asOwner, isHumanClub } from './humans';
-import { cmRand, statCategory } from './cmPlayerData';
+import { cmRand } from './cmPlayerData';
 import { cmTrainPlayer, humanLevels, setTrainCtx } from './cmTraining';
 import { setDevCtx } from './cmDevelop';
 import { registerPrerun, runPrerun } from './cmPrerun';
@@ -293,7 +293,10 @@ registerCarry('cmFitnessGame', () => ({ sq: [...matchSquads], linked }),
  *  Zonemotorens kampe har ingen knockliste: en skadet spiller får en knock med gittermotorens kategori/sværhed (*estimeret*). */
 export function cmFitAfterMatch(g: GameState, f: Fixture, rep: MatchReport): boolean {
   if (!cmFitOn(g)) return false;
-  cmFitMatch(g, rep, statCategory(g, f) !== 1, f.id, [f.home, f.away]);
+  // 0x62c14b: halv træthed kun når fixture +0x40 (hjemmesidens førsteholdsflag) = 0 – reservesidens kampe, som 2001/02 ikke har for klubberne;
+  // venskabskampe (Friendly 72) har +0x40 ≠ 0: målt i oraklet (daysnap s1-3.9.60-e1, 17–22/7-2001) stiger trætheden med den fulde
+  // (10000 − MC)/100 + minutter (·2 for de unge), ikke det halve
+  cmFitMatch(g, rep, true, f.id, [f.home, f.away]);
   return true;
 }
 

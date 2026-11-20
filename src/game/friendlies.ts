@@ -87,9 +87,9 @@ export function friendliesDaily() {
     const won = gf > ga, lost = gf < ga;
     const morale = fr.kind === 'easy' ? (won ? 1.2 : lost ? -1.2 : 0.2) : won ? 2 : lost ? -0.3 : 0.8;
     const played = new Set(rep.players.filter((l) => l.team === 0 && l.minutes > 0).map((l) => l.id));
-    // 0x62c080 med fixture +0x40 = 0 (venskabskamp: halv træthed) – i stedet for spillets egen kondition og skade nedenfor
+    // 0x62c080 – venskabskampens fixture +0x40 ≠ 0 (fuld træthed, målt i oraklet; cmFitAfterMatch) – i stedet for spillets egen kondition og skade nedenfor
     const cm = cmFitOn(g);
-    if (cm) cmFitMatch(g, rep, false, -1);
+    if (cm) cmFitMatch(g, rep, true, -1);
     for (const p of squad(me.id)) {
       if (!played.has(p.id)) continue;
       p.morale = Math.max(1, Math.min(20, p.morale + morale));
