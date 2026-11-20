@@ -46,6 +46,7 @@ import { cmMainNation, cmSeasonOn } from './cmSeason';
 import { cmEuroOn, cmEuroRestoreNext, cmSetupEurope } from './cmEurope';
 import { compHooks } from './hooks';
 import { cmFitNewGame, cmFitSetupDay, cmSetupLoans } from './cmFitnessGame';
+import { nation01, nation01ByName } from './cmFitness';
 import './cmIntl';                                              // landskampkalenderen i ægte tilstand (intlHooks, registerPrerun 'comps1')
 import './cmNatTeams';                                          // landstrænerne i bestyrelsessystemet (intlHooks.ntStart/ntEnd/boardMatch …)
 import './cmPrerunMatches';                                      // forkørslens konkurrencekampe (registerPrerun 'matches')
@@ -130,10 +131,20 @@ const progress = (step: string, frac: number) => progressCb?.(step, frac);
 export function createGame(world: WorldData, o: NewGameOptions): GameState {
   progress('clubs', 0.02);
   const mode = o.mode ?? 'authentic';
+  // (20/11, "Altid som originalen") 2026/27 i ægte tilstand: de europæiske landes klubber uden liga i world.json (world-cm.json euroClubs) som skjulte
+  // klubber – originalen har dem i hukommelsen, og Europas pladser (cmEurope.ts) går til dem i stedet for de næste klubber fra de store lande
+  const ex = mode === 'authentic' && (world as Partial<CMWorld>).kind === 'cm0102' ? (world as CMWorld).cmRaw?.euroClubs : undefined;
+  if (ex?.clubs.length) {
+    const cw = world as CMWorld;
+    world = { ...cw, leagues: [...cw.leagues, ...ex.leagues], clubs: [...cw.clubs, ...ex.clubs], players: [...cw.players, ...ex.players],
+      ratings: { ...cw.ratings, ...ex.ratings }, clubRep: { ...cw.clubRep, ...ex.clubRep } } as CMWorld as WorldData;
+  }
   const season = world.season;
   // (runde 10A) den originale database i ægte tilstand: originalens spilstart 0x830520 − 4 uger for det først valgte land (England 14/7-2001;
   // cmCalendar.ts) – før 1/7 (Danmark, Polen, Kroatien og forårsligaerne) beholdes spillets 1/7, da sæsonskiftet ligger 1/7
-  const cmStart = (world as Partial<CMWorld>).kind === 'cm0102' && season < 2020 && mode === 'authentic' ? cmStartDate(o.activeNations[0], season) : null;
+  // (20/11, "Altid som originalen") også 2026/27 (en CM-database med world-cm.json): hovedlandets række efter navnet (nation01ByName)
+  const cmCalStart = (world as Partial<CMWorld>).kind === 'cm0102' && mode === 'authentic' && (season < 2020 || !!(world as Partial<CMWorld>).cmRaw);
+  const cmStart = cmCalStart ? cmStartDate(season < 2020 ? o.activeNations[0] : nation01ByName(world.nations[o.activeNations[0]]?.name), season) : null;
   const date = cmStart && cmStart > START_DATE(season) ? cmStart : START_DATE(season);
   const seed = o.seed >>> 0;
   rng.state = seed || 1;
@@ -217,6 +228,10 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     // (MODERN_PARITY 12) sprogene (nation +0x77/+0x78/+0x79 – cmLanguage.ts: PlayerStats 0x7bfd50, kontraktens +0x4f, indlæringen 0x5d2fb3)
     if (raw.nationLang) g.nations = g.nations.map((n, i) => ({ ...n, lang: raw.nationLang![i]?.slice() ?? [0, 0, 0] }));
     if (raw.nationFr) g.cmNationFr = Object.fromEntries(Object.entries(raw.nationFr).map(([k, v]) => [k, v.slice()]));
+    // (20/11, "Altid som originalen") originalens kalender – ligaernes skemaer, pokalerne, sæsonskiftet pr. land og Europas turneringer (cmCalendarOn,
+    // cmEurope.ts) – med databasens koefficienter, euro.cfg og sidste sæsons vindere (world-cm.json `euro`)
+    g.cmCal = 1;
+    if (raw.euro) g.cmEuroDb = JSON.parse(JSON.stringify(raw.euro)) as GameState['cmEuroDb'];
   }
   if (cm?.cmRaw && season < 2020) {
     g.cmClubRep = { ...cm.cmRaw.clubRep }; g.cmNationRep = cm.cmRaw.nationRep.slice();
@@ -775,12 +790,18 @@ export function setupSeasonComps(season: number, prevTables: Record<string, numb
     // (16/11) næste sæsons turneringer blev oprettet i juni (cmEuroNextSeason) – de bruges; ellers som før
     if (!cmEuroRestoreNext(g, season)) cmSetupEurope(season, prevTables, cupWinners);
     // (runde 10D) England: Liga Cup og Charity Shield efter originalens rundetabeller (competitions.ts / cmCups.ts)
-    if (active.has(60) && g.comps.CM7) {
+    // England = 60 i den originale database (nation01 – 2026/27: 61)
+    const eng = [...active].find((n) => nation01(n) === 60);
+    if (eng !== undefined && g.comps.CM7) {
       const inEurope = new Set([...(g.comps.CL?.clubs ?? []), ...(g.comps.UEFA?.clubs ?? [])]);
       setupCmLeagueCup(season, inEurope);
       const byName = (nm: string) => Object.values(g.clubs).find((c) => c.name === nm)?.id;
       const pl = prevTables.CM7;
-      setupCmCharity(season, pl ? pl[0] : byName('Manchester United'), pl ? cupWinners[60] : byName('Liverpool'), pl?.[1]);
+      // første sæson: databasens sidste mester og FA Cup-vinder (club_comp_history.dat: 2000/01 = Manchester United og Liverpool; 2026/27 fra
+      // world-cm.json – turneringerne 7 og 351)
+      const last = g.cmEuroDb?.last;
+      const champ = pl ? pl[0] : last ? last[7]?.[1] : byName('Manchester United');
+      setupCmCharity(season, champ, pl ? cupWinners[eng] : last ? last[351]?.[1] : byName('Liverpool'), pl ? pl[1] : last?.[7]?.[2]);
     }
     return;
   }

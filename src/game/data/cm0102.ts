@@ -107,6 +107,12 @@ export interface CMWorld extends WorldData {
     /** (2026/27, MODERN_PARITY 12) venskabskampene (Friendly 0x5c4680/0x5c4cb0/0x5c5040): nation.dat [+0x86, +0x84, +0x7e, +0x8e, +0x75, +0x71,
      *  +0x110, +0x114, +0x118] pr. nation-id – som scripts/build-preseason.mts' CM_NATION_FR for 3.9.60 */
     nationFr?: Record<number, number[]>;
+    /** (20/11) 2026/27 (world-cm.json): Europas data til cmEurope.ts – nation.dat-koefficienterne, euro.cfg og club_comp_history.dat's seneste sæson
+     *  pr. turnering [år, vinder, nr. 2] (build-cm-data.mts) */
+    euro?: { coef: Record<string, number[]>; cfg: Record<string, string[]>; last: Record<number, [number, number, number]> };
+    /** (20/11) 2026/27: de europæiske landes klubber uden liga i world.json (skjulte ligaer `HE<nation>`, trupperne i world-formatet) – Europas
+     *  pladser (UefaSeeding) som i originalens hukommelse; newgame.ts lægger dem på verdenen i ægte tilstand */
+    euroClubs?: { leagues: CMWorld['leagues']; clubs: CMWorld['clubs']; players: CMWorld['players']; ratings: CMWorld['ratings']; clubRep: Record<number, number> };
     /** (2026/27, MODERN_PARITY 12) nation +0x77/+0x78/+0x79 (sprogene) pr. nationsindeks – originalens sprogtabel (cmLanguage.ts) */
     nationLang?: number[][];
     /** (2026/27, MODERN_PARITY 4) originalens økonomi ved start (£) som CMWorld.clubFinance: [saldo (club.dat 101), gns. tilskuere (115), træningsanlæg (127)] */

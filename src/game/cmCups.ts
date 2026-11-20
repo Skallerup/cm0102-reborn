@@ -17,6 +17,7 @@
 import type { Fixture, GameState } from './types';
 import { CM_CUP_TABLES, type CmCupRound } from './data/cmCupTables';
 import { cmCalendarOn, cmDate } from './cmCalendar';
+import { nation01 } from './cmFitness';
 
 export interface CmCupRoundInfo {
   date: string; slot: number; legs: number; gap: number; replays: number;
@@ -25,10 +26,11 @@ export interface CmCupRoundInfo {
   f0f: number; f11: number; neutral: boolean;
 }
 
-/** pokalens tabel-nøgle for et land ('ENG', 'SCO' …) */
+/** pokalens tabel-nøgle for et land ('ENG', 'SCO' …) – tabellernes land er id'et i den originale database (nation01) */
 export function cmCupKey(g: GameState, nation: number): string | null {
   if (!cmCalendarOn(g)) return null;
-  for (const [k, t] of Object.entries(CM_CUP_TABLES)) if (t.nation === nation && !k.includes('_')) return k;
+  const n01 = nation01(nation);
+  for (const [k, t] of Object.entries(CM_CUP_TABLES)) if (t.nation === n01 && !k.includes('_')) return k;
   return null;
 }
 

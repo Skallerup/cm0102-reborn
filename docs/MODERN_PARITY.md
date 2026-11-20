@@ -4,6 +4,89 @@ Undersøgelse 17/11-2026 (ingen kodeændringer). Ejeren: "Kig ind i alle de ting
 dem på 2026/2027." Regel (CLAUDE.md): 2001-specifikke **tal** (priser, lønniveau, g.econ-kalibreringer) må ikke overføres; originalens **logik**
 (regler, beslutninger, AI, motor) bør gælde for begge databaser, hvor dataene tillader det.
 
+## 0. Kontakterne og hvad de bygger på (kortlagt 20/11)
+
+Regel (CLAUDE.md "Altid som originalen", 18/11): en port gates aldrig på 2001-databasen (`cmActive`/`isOriginal2001`/`cmDatabase === 'original'`),
+men på en databaseuafhængig markør sat af newgame.ts for nye spil (cmLogic + markør; ældre gemte spil uændrede). Grundprædikater: `origLogic`
+(ægte tilstand), `cmLogic` = CM-format + ægte tilstand, `cmActive` = cmLogic + år < 2020 (2001-verdenen). Status = nyt 2026/27-spil i ægte tilstand.
+
+| Kontakt (fil) | Afhænger af | Moduler | 2026/27 |
+|---|---|---|---|
+| `cmCalendarOn` (cmCalendar.ts) | cmActive **eller cmLogic + `g.cmCal`** (20/11) | ligaernes skemaer create_schedule/add_fixture/tv-flytningerne, pokalernes rundetabeller (cmCups.ts), Liga Cup/Charity Shield, spilstarten 0x830520 | **til (20/11)** |
+| `cmEuroOn` (cmEurope.ts) | = cmCalendarOn | CL/UEFA Cup/Intertoto/Super Cup, UefaSeeding (pladser, koefficienter, euro.cfg), lodtrækningerne, Europa-flytningerne 0x5ae9d0 | **til (20/11)** – data: world-cm.json `euro` |
+| `cmSeasonOn` (cmSeason.ts) | = cmCalendarOn | sæsonskiftet pr. land 0x5d5ae0 (Europa 20/6, Norge 27/11 …), kontrakter/lejer dagligt, kampene før starten | **til (20/11)** |
+| `cmIntlOn` (cmIntl.ts) + 11 × `cmActive` i international.ts | kun cmActive | landsholdenes kalender, trupper, U21, slutrunder, FIFA-listen | fra – åbent punkt A |
+| `cmPrerunMatchesOn` (cmPrerunMatches.ts) | kun cmActive (+ PRERUN_YEAR 2001) | forkørslens landskampe (VM-kval. Oceanien, Copa América 2001), Europas kampe dag for dag | fra – 2001-kampe (Europas kampe før starten: cmEuroCatchUp) |
+| `cmCmOn` (cmContractManager.ts) | kun cmActive | CONTRACT_MANAGER 0x4c7ac0 dagligt (computerklubbernes udløb, forlængelser) | fra – åbent punkt B |
+| `cmMarketOn` / `cmShortlistOn` | cmLogic + `g.cmPlan` | trupplan, ønskelister, bud, svar, budskærmen | til (18/11) |
+| `cmBoardLogic` / `cmBoardOn` | cmLogic + `g.cmBoard` | MANAGER_MANAGER, managerjob, bestyrelsens loft | til (landstrænerdelen kun 2001) |
+| `cmMediaOn` | cmLogic + `g.cmMedia` | forhold, medier, rygter, moral, nyhedsomfang | til |
+| `cmScoutLogic` / `cmScoutOn` / `cmKnowOn` | cmLogic + `g.cmScoutStart` | kendskab, SCOUT_MANAGER, spejderopgaver | til |
+| `cmDiscLogic` / `cmDiscOn` | cmLogic + `g.cmDiscStart` | karantæner, appel, bøder | til |
+| `cmStaffOn` | cmLogic + `g.cmStaffMem` | Staff Search, stabskontrakter, stabsskifter | til |
+| `cmFinOn` | cmLogic + `g.cmFin` | finance.cpp, bonusser, Transfer Funds | til |
+| `cmBodyOn` / `cmFitOn` / `cmTrainOn` | cmLogic + `g.cmFitStart` (+ `p.cmInt`) | kondition, skader, udvikling, træning | til |
+| `cmResOn` / `bTeamsOn` / `cmWxOn` / `cmFriendlyOn` / `cmAwOn` / `cmRetireOn` | cmLogic + `g.cmRes`/`cmBTeams`/`cmWxTab`/`cmNationFr`/`cmAw`/`cmRet` | baggrundskampe, B-hold, vejr, venskabskampe, priser, pensioneringer | til |
+| `cmPermitOn` | `g.cmWp` | arbejdstilladelser | til |
+| `cmTalksOn`, `gridEngineOn` | cmLogic (+ `options.engine`) | transferforhandlingen, gittermotoren | til |
+| `classicRules` (rules.ts) | `options.rules` + dbYear < 2020 | 3 udskiftninger/5 på bænken | fra – åbent punkt C |
+| `isOriginal2001` (rules2001.ts, season.ts, transfers.ts) | dbYear < 2020 (ikke tilstanden) | udeblivelse, lejestop, appel, cmRep-stien, afbrudt leje | fra – åbent punkt D |
+| `cmDatabase === 'original'` (sim.ts, save.ts, saveKind.ts) | dbYear < 2020 | kampkonstanterne ORIGINAL/ORIGINAL_LOWER, world-filen ved indlæsning | data (world-filen) – kampkonstanterne: åbent punkt D |
+| `g.econ` (newgame.ts 17 ×, finance.ts, training.ts …) | sat kun for dbYear < 2020 | 2001-priser/lønniveau/kalibreringer | data (2001-tal – skal ikke overføres; beløb via cmMoney) |
+
+Løse `cmActive(`-kald uden for en kontakt (agentens optælling 20/11, 84 i alt): international.ts 11 (punkt A), transfers.ts 10 (vinduerne pr. klubs
+land `cmWindowClub`, inPlayedNation, interestedClubs, vinduesnyhederne – punkt E), season.ts 6 (klubomdømmet fra cm, regens, klubstatus, achievements,
+fyldspillere – punkt E), cmVirtual.ts 6 (fyldspillere 0x90dc66), cmPermit.ts/cmScoutAsg.ts (2001-tabellerne – 2026 har nation7f/76), training.ts 3 og
+cmValueGame.ts 2 (værdien +0x52), cmBudget.ts 3, newgame.ts 3 (markørerne, vinduesnyheden, startformationen), aiTeam.ts:345 (AI-taktik),
+state.ts:306 (nyhedsfilteret), competitions.ts (split-nyheden), cmOfferCheck.ts:116, cmPlayerData.ts:830 (cmStaffStateMove), cmConvert.ts.
+
+Åbne punkter (egne opgaver – hver kræver data/markør + måling på 2001 og 2026/27):
+- **A. Landsholdene** (cmIntlOn + international.ts): originalens landsholdskalender/-trupper/slutrunder/FIFA-liste på 2026/27 – kræver databasens
+  landshold (nationalTeams kun i world-original), 2026's slutrunder (VM 2026 i USA – originalen kender kun sine egne år: hvad exe'en gør med
+  året 2026, skal afkodes) og FIFA_RANKINGS' data.
+- **B. CONTRACT_MANAGER** (cmCmOn): det daglige udløb/forlængelser for computerklubberne – kræver hukommelsens omfang (cmCmScope) på 2026/27.
+- **C. Udskiftningsreglerne** (classicRules): originalen har 3 udskiftninger/5 på bænken uanset database – 2026/27 spiller i dag 5/9.
+- **D. isOriginal2001 / cmDatabase-kampkonstanterne**: rules2001.ts' regler og sim.ts' ORIGINAL/ORIGINAL_LOWER gennemgås én for én (regel eller data).
+- **E. De løse cmActive-kald** i transfers.ts/season.ts/cmVirtual.ts/training.ts/cmValueGame.ts/aiTeam.ts – hver flyttes til den kontakt, modulet
+  hører til (cmMarketOn, cmRetireOn, cmBodyOn …), eller en ny markør.
+- **F. Kalenderens rester på 2026/27**: spilstarten 0x830520 er kun afkodet for England (Date(10, 7, år, 5)); de øvrige nøglelandes +0x2a bruger
+  2001's målte dag i året. Liga Cup'en kræver de 92 ligaklubber (world.json har kun Premier League og Championship → ingen Liga Cup på 2026/27, som
+  før). Forkørslens landskampe (cmPrerunMatches) er 2001-kampe.
+- **G. Europas pladser fra lande uden klubber i world.json** – løst med data 20/11: world.json har kun ~24 europæiske lande, så cmEurope.ts'
+  `spare()` (*afvigelse* fra 13/11) gav de manglende landes pladser til de næste klubber efter rang (England 28 af CL's 71 hold, Brentford i CL Q1,
+  Italien 36 af UEFA Cup'ens 118). Nu bygger build-cm-data.mts de manglende landes klubber ind i world-cm.json (`euroClubs`: 247 klubber, 5.357
+  spillere i 31 lande – landene med koefficienter uden liga i world.json, øverste klubber i euro.cfg-rækkefølgen og så omdømmet, højst 8 pr. land,
+  trupper ≤ 22 spillere ≤ 40 år; en ekstra indlæsning med allClubs, så world.json er bit for bit uændret), og newgame.ts lægger dem på verdenen
+  som skjulte klubber (`HE<nation>`, ingen kampe) i ægte tilstand – som originalens hukommelse. euro.cfg's klubber findes også under et andet land
+  (FC Vaduz står for Liechtenstein, i databasen schweizisk). Rest (åben): Liechtenstein har ingen brugbar klub (Vaduz tages af Schweiz først;
+  de fire klubber fra "Lower Division" har ingen trup), og UEFA Cup'ens 1. runde har en plads mere end båndene – de to pladser går stadig til den
+  næste klub efter rang (England: 3 egne + 2). At give dem til de nærmeste lavere lande (Intertoto-reglen) ændrer 2001-fingeraftrykket (målt: 2001
+  bruger også `spare()`, fordi spilstarten fjerner de skjulte klubber uden spillere i hukommelsen) – kræver en beslutning og en måling mod oraklets
+  2001-deltagere.
+- **H. Venskabskampe på Europa-dage**: add_fixture 0x5aa680 flytter her kun ligakampe med originalens skema (`meta.cmSched`), ikke venskabskampe
+  (målt: 2–3 klubber pr. sæson med venskabskamp og CL samme dag) – 0x5abc30/0x5ab510 for de øvrige kamptyper.
+
+## Status kalender og Europa (20/11): originalens kalender på 2026/27
+
+Ny markør `g.cmCal` (newgame.ts, nye spil med en CM-database i ægte tilstand); `cmCalendarOn` = cmActive eller cmLogic + g.cmCal, og dermed
+cmEuroOn/cmSeasonOn: ligaernes skemaer (Premier League, Championship, Superligaen), FA Cup/Danish Cup's rundetabeller, Charity Shield, spilstarten
+(England 11/7-2026 = lørdagen nærmest 10/8 − 4 uger), sæsonskiftet pr. land (20/6) og CL/UEFA Cup/Intertoto/Super Cup i originalens format.
+Nationernes id'er: originalens tabeller bruger 3.9.60's id'er (England 60) – 2026/27 og 3.9.65/3.9.68 har England 61, så de findes nu på navnet
+(`nation01`, cmFitness.ts); det retter også FA Cup/Liga Cup/Charity Shield for 3.9.65/3.9.68-spil. Data (build-cm-data.mts → world-cm.json `euro`,
+world.json bit for bit uændret): nation.dat +0xe0..+0x108 (54 lande), opdateringens euro.cfg (55 lande) og club_comp_history.dat's seneste sæson
+(titelforsvarerne PSG/Aston Villa, mester Arsenal/FA Cup Manchester City). Præmiepengene som finance.cpp i £ (cmGbp).
+Målt (`scripts/cm-europe-2026.ts`, England + Danmark, frø 1, til 31/12-2026; measure 9e5ea3bc8be1 Brentford, Vejle med Danmark som hovedland):
+CL 71 hold (Q1 18, Q2 19, Q3 18, gruppespil 16; efter G: England 4 – Arsenal, Man City i gruppespillet, Man Utd, Aston Villa i Q3 – før 28),
+UEFA Cup 118 (Q 82, R1 36; England 5 før 16, Italien 3 før 36), Intertoto 60 (40/12/8; England 1 – Newcastle), Super Cup PSG–Aston Villa (21/8, PSG);
+Brentford ikke i Europa (før: CL Q1); measure 9698ca378d1d. Før G:
+Danmark: Aarhus GF (CL Q2), Midtjylland (UEFA R1), København/Brøndby (UEFA Q), Viborg/Nordsjælland (Intertoto). Runderne: Intertoto 27/6 → 25/8 (OGC Nice),
+CL Q1 15/7, Q2 29/7, Q3 12/8, 1. gruppespil 15/9–11/11, 2. gruppespil fra 24/11; UEFA Q 13/8, R1 17/9, R2 22/10, R3 26/11, R4 4/3-27. Dobbeltbookinger
+(alle klubber i de to lande): 2 samme dag (venskabskamp + CL – punkt H), 9 dage efter hinanden (venskabskampe og Championship-skemaets 30/31-8).
+Præmiepenge i Europa til 31/12: £100,6M til 107 klubber, højst £4,5M (Arsenal ≈ €25,9M). Hel sæson (frø 2, til 20/8-2027, measure 820580117e56):
+intet nedbrud, sæsonskiftet 20/6 og næste sæsons Europa (Intertoto 26/6-27, CL Q1 14/7-27) som i 2001. 2001 bit for bit uændret (perf-fingerprint
+2001-08-20 samlet 6e768861dad2bb37 før/efter på 2730b9d0 – measure 219443b36a7f / a8d563413ed4; d7b1a9c891bcaaf3 før/efter på bf8ffd6a med G –
+6366c1eb0948 / 5dc5736dd66e). Kræver et nyt spil.
+
 ## 1. Det vigtigste fund: 2026/27 ER allerede en CM 01/02-database – dataene smides bare væk
 
 - `public/data/world.json` er bygget af "October 2026 Data Update", som er i **CM 01/02-format** (`kind: 'cm0102'`, `attrScale: 'stored'`).

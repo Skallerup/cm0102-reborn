@@ -201,6 +201,83 @@ if (ORIGINAL) {
   }
   console.error(`skjulte klubber: ${keep.size} (heraf ${notableClubs.size} med talenter) i ${hid.size} skjulte ligaer`);
 }
+// (20/11, "Altid som originalen") 2026/27: Europas klubber fra lande uden liga i world.json → world-cm.json `euroClubs` (world.json uændret). Originalen
+// har alle landes klubber i hukommelsen, så UefaSeeding/assign_intertoto_places finder dem; her: landene med koefficienter i nation.dat (+0xe0..+0x108
+// ≠ 0) uden en beholdt liga – deres øverste divisions klubber i rækkefølgen euro.cfg, så omdømmet (+0x80), højst EURO_CLUBS pr. land, som skjulte
+// klubber (ingen kampe) med deres spillere (≤ 40 år, højst EURO_SQUAD efter CA). newgame.ts lægger dem på verdenen i ægte tilstand.
+const EURO_CLUBS = 8, EURO_SQUAD = 22;
+let euroClubs: { leagues: typeof w.leagues; clubs: typeof w.clubs; players: typeof w.players; ratings: typeof w.ratings; clubRep: Record<number, number> } | null = null;
+const euroKeep = new Set<number>();
+if (!ORIGINAL && files['nation.dat']) {
+  const N = new DataView(files['nation.dat']), dec = new TextDecoder('latin1'), coefNat = new Set<string>();
+  for (let o = 0; o + 290 <= N.byteLength; o += 290) {
+    if (!Array.from({ length: 6 }, (_, k) => N.getFloat64(o + 0xe0 + 8 * k, true)).some((x) => x !== 0)) continue;
+    const u = new Uint8Array(files['nation.dat'], o + 4, 51), e = u.indexOf(0);
+    coefNat.add(dec.decode(u.subarray(0, e < 0 ? 51 : e)));
+  }
+  const cfgClubs = new Map<string, string[]>();
+  if (existsSync(join(dir, 'euro.cfg'))) {
+    let cur: string[] | null = null;
+    for (const l of readFileSync(join(dir, 'euro.cfg'), 'latin1').split(/\r?\n/).map((x) => x.trim())) {
+      if (!l) continue;
+      if (l.startsWith('*')) cfgClubs.set(l.slice(1).trim(), (cur = []));
+      else cur?.push(l);
+    }
+  }
+  const keptNat = new Set(w.leagues.filter((l) => keptLeagues.has(l.id)).map((l) => l.nation));
+  const missing = new Set(w.nations.map((n, i) => (coefNat.has(n.name) && !keptNat.has(i) ? i : -1)).filter((i) => i >= 0));
+  // de manglende landes klubber findes kun med allClubs (lande uden divisioner i CM 01/02-forstand): en egen indlæsning, så world.json er uændret
+  const wa = parseCM0102(files, { maxTiers: 3, allClubs: true });
+  if (wa.nations.length !== w.nations.length || wa.nations.some((n, i) => n.name !== w.nations[i].name)) throw new Error('euroClubs: nationerne passer ikke');
+  const Fa = Object.fromEntries(wa.playerFields.map((f, i) => [f, i]));
+  // spillerne, world.json beholder (klub i en beholdt liga eller fri agent) – de øvrige af landenes spillere står i w uden at komme med
+  const keptLg = new Map(w.clubs.map((c) => [c[0] as number, keptLeagues.has(c[4] as string)]));
+  const have = new Set(w.players.filter((p) => !(p[F.club] as number) || keptLg.get(p[F.club] as number)).map((p) => p[F.id] as number));
+  const out = { leagues: [] as typeof w.leagues, clubs: [] as typeof w.clubs, players: [] as typeof w.players, ratings: {} as typeof w.ratings, clubRep: {} as Record<number, number> };
+  const byClub = new Map<number, (typeof w.players)[number][]>();
+  for (const p of wa.players) { const c = p[Fa.club] as number; if (c) (byClub.get(c) ?? byClub.set(c, []).get(c)!).push(p); }
+  const rawRep = wa.cmRaw?.clubRep ?? {};
+  for (const idx of missing) {
+    const nm = wa.nations[idx].name, cfg = cfgClubs.get(nm) ?? [];
+    const clubs = wa.clubs.filter((c) => c[3] === idx).sort((a, b) => {
+      const ia = cfg.indexOf(a[1] as string), ib = cfg.indexOf(b[1] as string);
+      return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib) || (rawRep[b[0] as number] ?? 0) - (rawRep[a[0] as number] ?? 0);
+    });
+    const lid = `HE${idx}`;
+    let n = 0;
+    for (const c of clubs) {
+      if (n >= EURO_CLUBS) break;
+      const ca = (p: (typeof w.players)[number]) => wa.ratings[p[Fa.id] as number]?.ca ?? 0;
+      const squad = (byClub.get(c[0] as number) ?? []).filter((p) => !have.has(p[Fa.id] as number) && ageAt(shift(p[Fa.dob] as string)) <= 40)
+        .sort((a, b) => ca(b) - ca(a)).slice(0, EURO_SQUAD);
+      if (squad.length < 11 || !squad.some((p) => (wa.ratings[p[Fa.id] as number]?.pos?.[0] ?? 0) >= 15)) continue;
+      n++;
+      const row = c.slice() as typeof c; row[4] = lid;
+      out.clubs.push(row); euroKeep.add(c[0] as number);
+      if (wa.clubRep[c[0] as number] !== undefined) out.clubRep[c[0] as number] = wa.clubRep[c[0] as number];
+      for (const p of squad) {
+        const q = w.playerFields.map((f) => p[Fa[f]]) as typeof p;
+        q[F.dob] = shift(q[F.dob] as string);
+        if (q[F.contract]) q[F.contract] = shift(q[F.contract] as string);
+        q[F.value] = 0; q[F.maxValue] = 0;
+        out.players.push(q);
+        const r = wa.ratings[p[Fa.id] as number];
+        if (r) { const rr = { ...r }; delete rr.tc; out.ratings[p[Fa.id] as number] = rr; }
+      }
+    }
+    if (n) out.leagues.push({ id: lid, name: nm, nation: idx, tier: 9, hidden: true });
+  }
+  // klubbernes rå poster (omdømme, tilskuere, økonomi, formand …) fra samme indlæsning – kun til world-cm.json (cmRaw)
+  if (w.cmRaw && wa.cmRaw) {
+    for (const k of ['clubRep', 'clubStat', 'crowd', 'fin', 'chair', 'chairBoard'] as const) {
+      const src = wa.cmRaw[k] as Record<number, unknown> | undefined, dst = (w.cmRaw[k] ??= {} as never) as Record<number, unknown>;
+      if (src) for (const id of euroKeep) if (src[id] !== undefined) dst[id] = src[id];
+    }
+  }
+  for (const id of euroKeep) if (wa.clubFinance?.[id]) (w.clubFinance ??= {})[id] = wa.clubFinance[id];
+  euroClubs = out;
+  console.error(`Europas klubber uden liga i world.json: ${out.clubs.length} klubber, ${out.players.length} spillere i ${out.leagues.length} lande (${[...missing].map((i) => w.nations[i].name).join(', ')}) -> world-cm.json`);
+}
 w.leagues = [...w.leagues.filter((l) => keptLeagues.has(l.id)), ...hiddenLeagues];
 const keptClubs = new Set<number>();
 w.clubs = w.clubs.filter((c) => keptLeagues.has(c[4] as string));
@@ -277,7 +354,7 @@ for (const p of w.players) {
 }
 for (const k of Object.keys(w.clubRep)) if (!keptClubs.has(Number(k))) delete w.clubRep[Number(k)];
 for (const k of Object.keys(w.clubColors)) if (!keptClubs.has(Number(k))) delete w.clubColors[Number(k)];
-if (w.cmRaw) { for (const t of [w.cmRaw.clubRep, w.cmRaw.clubStat ?? {}, w.cmRaw.crowd ?? {}, w.cmRaw.fin ?? {}, w.cmRaw.chair ?? {}, w.cmRaw.chairBoard ?? {}] as Record<number, unknown>[]) for (const k of Object.keys(t)) if (!keptClubs.has(Number(k))) delete t[Number(k)]; }
+if (w.cmRaw) { for (const t of [w.cmRaw.clubRep, w.cmRaw.clubStat ?? {}, w.cmRaw.crowd ?? {}, w.cmRaw.fin ?? {}, w.cmRaw.chair ?? {}, w.cmRaw.chairBoard ?? {}] as Record<number, unknown>[]) for (const k of Object.keys(t)) if (!keptClubs.has(Number(k)) && !euroKeep.has(Number(k))) delete t[Number(k)]; }
 /** 2026/27: stabens ikke-spillerpost pr. person-id → world-cm.json (cmRaw.staffNp) */
 const staffNp2026 = new Map<number, number[]>();
 /** (MODERN_PARITY 7) 2026/27: bestyrelse/managerjob – staff[12] (omdømmerne og de skjulte egenskaber), [13] (ankomstdatoen) og [14] (landsholdet
@@ -357,7 +434,7 @@ if (ORIGINAL && existsSync(new URL('./national-original.json', import.meta.url))
 }
 // originalens økonomi (saldo, tilskuere, træningsanlæg – club.dat +101/+115/+127): world.json kun for den originale database; 2026/27 (MODERN_PARITY 4,
 // originalens økonomi i ægte tilstand) i world-cm.json som cmRaw.clubFin – world.json uændret
-const clubFin2026 = ORIGINAL ? null : Object.fromEntries(Object.entries(w.clubFinance ?? {}).filter(([k]) => keptClubs.has(Number(k))));
+const clubFin2026 = ORIGINAL ? null : Object.fromEntries(Object.entries(w.clubFinance ?? {}).filter(([k]) => keptClubs.has(Number(k)) || euroKeep.has(Number(k))));
 if (!ORIGINAL) delete w.clubFinance;
 else for (const k of Object.keys(w.clubFinance ?? {})) if (!keptClubs.has(Number(k))) delete w.clubFinance![Number(k)];
 
@@ -455,6 +532,37 @@ if (cmSide && files['nation.dat']) {
   const N = new DataView(files['nation.dat']), fr: Record<number, number[]> = {};
   for (let o = 0; o + 290 <= N.byteLength; o += 290) fr[N.getInt32(o, true)] = [N.getInt16(o + 0x86, true), N.getUint8(o + 0x84), N.getUint8(o + 0x7e), N.getInt16(o + 0x8e, true), N.getUint8(o + 0x75), N.getInt32(o + 0x71, true), N.getInt32(o + 0x110, true), N.getInt32(o + 0x114, true), N.getInt32(o + 0x118, true)];
   cmSide.nationFr = fr;
+}
+// (20/11, "Altid som originalen") Europas turneringer på 2026/27 (cmEurope.ts – som src/game/data/cmEuroData.ts for den originale database): landenes
+// seks koefficienter nation.dat +0xe0..+0x108 (UefaSeeding/roll_coefficients 0x903b50; lande med mindst én ≠ 0 – i 3.9.60 de 49), euro.cfg
+// (apply_euro_cfg_order 0x9059e0: "*Land" og klubbernes navne) og den seneste sæson pr. turnering i club_comp_history.dat ([år, vinder, nr. 2] –
+// titelforsvarerne 326/328 og Charity Shield'ens mester 7/FA Cup-vinder 351 i første sæson)
+if (cmSide && files['nation.dat'] && files['club_comp_history.dat']) {
+  const N = new DataView(files['nation.dat']), dec = new TextDecoder('latin1'), coef: Record<string, number[]> = {};
+  for (let o = 0; o + 290 <= N.byteLength; o += 290) {
+    const v = Array.from({ length: 6 }, (_, k) => N.getFloat64(o + 0xe0 + 8 * k, true));
+    if (!v.some((x) => x !== 0)) continue;
+    const u = new Uint8Array(files['nation.dat'], o + 4, 51), e = u.indexOf(0);
+    coef[dec.decode(u.subarray(0, e < 0 ? 51 : e))] = v;
+  }
+  const cfg: Record<string, string[]> = {};
+  if (existsSync(join(dir, 'euro.cfg'))) {
+    let cur: string[] | null = null;
+    for (const l of readFileSync(join(dir, 'euro.cfg'), 'latin1').split(/\r?\n/).map((x) => x.trim())) {
+      if (!l) continue;
+      if (l.startsWith('*')) cfg[l.slice(1).trim()] = cur = [];
+      else cur?.push(l);
+    }
+  }
+  const H = new DataView(files['club_comp_history.dat']), last: Record<number, [number, number, number]> = {};
+  for (let o = 0; o + 26 <= H.byteLength; o += 26) {
+    const cid = H.getInt32(o + 4, true), year = H.getInt16(o + 8, true) + SHIFT, w = H.getInt32(o + 10, true), ru = H.getInt32(o + 14, true);
+    if (w < 0 || year < 1850 + SHIFT) continue;
+    if (!last[cid] || last[cid][0] < year) last[cid] = [year, w, ru];
+  }
+  cmSide.euro = { coef, cfg, last };
+  if (euroClubs?.clubs.length) cmSide.euroClubs = euroClubs;
+  console.error(`Europa: ${Object.keys(coef).length} lande med koefficienter, euro.cfg ${Object.keys(cfg).length} lande, ${Object.keys(last).length} turneringer med vindere`);
 }
 if (cmSide && nationLang2026) cmSide.nationLang = nationLang2026;
 if (cmSide && clubFin2026 && Object.keys(clubFin2026).length) cmSide.clubFin = clubFin2026;

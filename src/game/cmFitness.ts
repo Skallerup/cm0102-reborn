@@ -127,6 +127,17 @@ const SEASON_NAMES: Record<number, string> = {
   154: 'Russia', 160: 'Scotland', 170: 'South Korea', 171: 'Spain', 179: 'Sweden', 192: 'Turkey', 196: 'United States', 207: 'Wales',
 };
 const SEASON_BY_NAME: Record<string, [number, number]> = Object.fromEntries(Object.entries(SEASON_NAMES).map(([id, nm]) => [nm, SEASON[+id]]));
+const ID_BY_NAME: Record<string, number> = Object.fromEntries(Object.entries(SEASON_NAMES).map(([id, nm]) => [nm, +id]));
+/** (20/11, "Altid som originalen") nøglelandets id i den originale database (3.9.60 – originalens tabeller: kalenderen, pokalerne, Europa) for spillets
+ *  nation: på navnet (2026/27-opdateringen og 3.9.65/3.9.68 har England 61, ikke 60); andre lande og uden spil: id'et selv */
+export function nation01(nation: number): number {
+  const nm = hasGame() ? gs().nations[nation]?.name : undefined;
+  return nm !== undefined ? ID_BY_NAME[nm] ?? nation : nation;
+}
+/** nøglelandets id i den originale database efter navnet (undefined: ikke et nøgleland) – spilstarten, før spillet findes */
+export const nation01ByName = (name: string | undefined): number | undefined => (name === undefined ? undefined : ID_BY_NAME[name]);
+/** +0x2a for nøglelandet med id'et `id01` i den originale database (uden opslag i spillet) */
+export const seasonStartDay01 = (id01: number): number | undefined => SEASON[id01]?.[0];
 /** landets række: på navnet i det indlæste spil (samme som id'et i den originale database); uden spil id'et */
 function rowOf(nation: number | undefined): [number, number] | undefined {
   if (nation === undefined) return undefined;

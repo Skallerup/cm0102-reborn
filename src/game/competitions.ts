@@ -12,6 +12,7 @@ import { cmActive } from './cmPlayerData';
 import { CM_LEAGUE_CUT, cmCalendarOn, cmFaCupDate, cmFindNewDate, cmLeagueSchedule, cmPlaceFixture } from './cmCalendar';
 import { cmEuroFinished, cmEuroResult } from './cmEurope';
 import { cmCupKey, cmCupRound, cmFlagsOf, cmLeagueCupStructure } from './cmCups';
+import { nation01 } from './cmFitness';
 import { CM_LEAGUE_FLAGS, cmLeaguePairs } from './cmFixtures';
 
 // ---------- kalender ----------
@@ -281,7 +282,8 @@ export function cupFirstDate(nation: number, n: number, season: number): string 
 export function setupCmLeagueCup(season: number, inEurope: Set<number>) {
   const g = gs();
   const lgs = ['CM7', 'CM8', 'CM9', 'CM10'].map((id) => g.comps[id]);
-  if (lgs.some((c) => !c || c.nation !== 60)) return;
+  // England = 60 i den originale database (nation01 – 2026/27 og 3.9.65/3.9.68: 61)
+  if (lgs.some((c) => !c || nation01(c.nation) !== 60)) return;
   const clubs = lgs.flatMap((c, i) => c.clubs.map((id) => ({ id, tier: i })));
   const euros = clubs.filter((c) => inEurope.has(c.id)).map((c) => c.id);
   const st = cmLeagueCupStructure(season, euros.length);
@@ -289,7 +291,7 @@ export function setupCmLeagueCup(season: number, inEurope: Set<number>) {
   const rest = clubs.filter((c) => !inEurope.has(c.id)).sort((a, b) => a.tier - b.tier || g.clubs[b.id].rep - g.clubs[a.id].rep).map((c) => c.id);
   const r2 = rest.slice(0, st[1][2]);
   const r1 = rng.shuffle(rest.slice(st[1][2]));
-  const comp: Competition = { id: 'LC-60', name: 'Worthington Cup', type: 'cup', nation: 60, tier: 0, clubs: clubs.map((c) => c.id), table: [], ties: [], stage: '', finished: false, pending: 0,
+  const comp: Competition = { id: 'LC-60', name: 'Worthington Cup', type: 'cup', nation: lgs[0].nation, tier: 0, clubs: clubs.map((c) => c.id), table: [], ties: [], stage: '', finished: false, pending: 0,
     meta: { roundsTotal: 7, byes: [], round: 1, cmYear: season, cmCup: 'ENG_LC', cmDirect: true, cmEntry: { 2: r2, 3: euros } } };
   g.comps[comp.id] = comp;
   const pairs: [number, number][] = [];
@@ -302,7 +304,7 @@ export function setupCmCharity(season: number, champion: number | undefined, cup
   const g = gs();
   const b = cupWinner === champion ? runnerUp : cupWinner;
   if (champion === undefined || b === undefined || !g.clubs[champion] || !g.clubs[b]) return;
-  const comp: Competition = { id: 'CS-60', name: 'Charity Shield', type: 'cup', nation: 60, tier: 0, clubs: [champion, b], table: [], ties: [], stage: '', finished: false, pending: 0,
+  const comp: Competition = { id: 'CS-60', name: 'Charity Shield', type: 'cup', nation: g.clubs[champion].nation, tier: 0, clubs: [champion, b], table: [], ties: [], stage: '', finished: false, pending: 0,
     meta: { roundsTotal: 1, byes: [], round: 1, cmYear: season, cmCup: 'ENG_CS', cmDirect: true } };
   g.comps[comp.id] = comp;
   createCupRound(comp, [[champion, b]], 1, calendar(season));

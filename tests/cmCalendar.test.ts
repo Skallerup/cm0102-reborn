@@ -41,6 +41,10 @@ describe('spilstarten 0x830520', () => {
     expect(cmStartDate(27, 2001)).toBe('2001-01-01');
     expect(cmStartDate(5, 2001)).toBeNull();
   });
+  it('(20/11) andre år: England = lørdagen nærmest 10/8 (0x667150 Date(10, 7, år, 5)) − 4 uger – 2026/27: 8/8 → 11/7', () => {
+    expect(cmStartDate(60, 2026)).toBe('2026-07-11');
+    expect(cmStartDate(60, 2002)).toBe('2002-07-13');
+  });
 });
 
 describe('nyt spil med originalens kalender', () => {

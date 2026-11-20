@@ -1268,6 +1268,12 @@ export interface GameState {
   cmUefa?: import('./cmEurope').CmUefaState;
   /** (runde 10C) de europæiske kampe før spillets start skal spilles (forkørslen – cmEurope.ts cmEuroCatchUp) */
   cmEuroCatchUp?: boolean;
+  /** (20/11, "Altid som originalen") spillet er startet med originalens kalender (cmCalendar.ts: ligaernes skemaer, pokalerne, sæsonskiftet pr. land
+   *  og Europas turneringer) – nye spil med en CM-database i ægte tilstand; den originale database har den altid (cmActive), ældre 2026/27-spil ikke */
+  cmCal?: 1;
+  /** (20/11) databasens Europa-data for cmEurope.ts, når det ikke er den originale database: landenes seks koefficienter (nation.dat +0xe0..+0x108),
+   *  euro.cfg og den seneste sæsons vindere i club_comp_history.dat (turnerings-id → [år, vinder, nr. 2]) – world-cm.json `euro` */
+  cmEuroDb?: { coef: Record<string, number[]>; cfg: Record<string, string[]>; last: Record<number, [number, number, number]> };
   /** (16/11) næste sæsons europæiske turneringer er oprettet i juni (cmEurope.ts cmEuroNextSeason): den afsluttede sæsons CL/UEFA/Intertoto/Super Cup
    *  ligger her til sæsonskiftet 1/7 (så historikken, priserne og omdømmet regnes af dem) */
   cmEuroPrev?: Record<string, Competition>;

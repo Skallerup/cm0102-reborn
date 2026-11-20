@@ -29,15 +29,17 @@
 import type { Fixture, GameState } from './types';
 import { addDays, daysBetween, toDate } from './dates';
 import { CM_FA_CUP, CM_SCHEDULES, type SchedRound, type SchedTv, type SchedVar } from './data/cmSchedules';
-import { seasonStartDay } from './cmFitness';
-import { cmActive, cmRand } from './cmPlayerData';
+import { nation01, seasonStartDay01 } from './cmFitness';
+import { cmActive, cmLogic, cmRand } from './cmPlayerData';
 import { addNews, fixturesOn, gs, indexFixture, newsStamp, unindexFixture } from './state';
 import { asOwner } from './humans';
 
-/** kalenderen gælder: den originale database i ægte tilstand (ikke draft-ligaen) */
-export const cmCalendarOn = (g: GameState): boolean => cmActive(g) && !g.draft;
+/** kalenderen gælder (20/11, "Altid som originalen"): den originale database i ægte tilstand, eller en CM-database i ægte tilstand fra et spil, der
+ *  er startet med kalenderen (g.cmCal – newgame.ts; 2026/27). Ældre 2026/27-spil og udvidet tilstand beholder spillets kalender. Ikke draft-ligaen. */
+export const cmCalendarOn = (g: GameState): boolean => (cmActive(g) || (cmLogic(g) && g.cmCal === 1)) && !g.draft;
 
-/** de 27 nøglelande uden for Europa (0x9cfa10 = Europa): Argentina, Australien, Brasilien, Japan, Sydkorea, USA */
+/** de 27 nøglelande uden for Europa (0x9cfa10 = Europa): Argentina, Australien, Brasilien, Japan, Sydkorea, USA (id'erne i den originale database –
+ *  nation01 for de andre databaser) */
 const NON_EUROPE = new Set([8, 11, 27, 97, 170, 196]);
 /** de engelske ligaer med originalens skema (turnerings-id'er i club_comp.dat) */
 const ENGLAND = 60;
@@ -60,11 +62,15 @@ export function cmDate(day: number, month: number, year: number, wd: number): st
 /** 0x54a2d0 på en ISO-dato */
 export const nearestWeekday = (iso: string, wd: number) => cmDate(Number(iso.slice(8, 10)), Number(iso.slice(5, 7)) - 1, Number(iso.slice(0, 4)), wd);
 
-/** Spilstarten 0x830520 − 4 uger (null: hovedlandet har ingen række i nøglelandstabellen). Den originale database starter altid i 2001. */
+/** Spilstarten 0x830520 − 4 uger (null: hovedlandet har ingen række i nøglelandstabellen). `mainNation` = hovedlandets id i den originale
+ *  database (nation01ByName – 2026/27-opdateringen har andre id'er). Den originale database starter altid i 2001. */
 export function cmStartDate(mainNation: number | undefined, season: number): string | null {
-  const A = seasonStartDay(mainNation);
+  const A = mainNation === undefined ? undefined : seasonStartDay01(mainNation);
   if (A === undefined || mainNation === undefined) return null;
   let start = isoOf(Date.UTC(season, 0, 1) + A * 86400000);
+  // (20/11) 0x667150 bygger +0x2a for spillets år: England = Date(10, 7, år, 5) = lørdagen nærmest 10/8 (2001: 11/8 = SEASON-tabellen). De øvrige
+  // rækkers Date-argumenter er ikke afkodet – deres dag i året er målt i 2001 (cmFitness.ts SEASON) og bruges uændret i andre år
+  if (mainNation === ENGLAND) start = cmDate(10, 7, season, 5);
   // 0x83057b–0x830609: Europa og år 2001 – en start efter 1/9-2001 bliver 1/9-2001
   const sep1 = `${season}-09-01`;
   if (!NON_EUROPE.has(mainNation) && season === 2001 && start > sep1) start = sep1;
@@ -132,7 +138,7 @@ export function cmLeagueSchedule(compId: string, year: number): CmRound[] | null
 
 /** FA Cup-rundens kampdato: spillets runde `round` af `total` (sidste = finalen) ↔ originalens runde talt fra finalen */
 export function cmFaCupDate(nation: number, round: number, total: number, year: number): string | null {
-  if (nation !== ENGLAND) return null;
+  if (nation01(nation) !== ENGLAND) return null;
   const r = CM_FA_CUP[CM_FA_CUP.length - 1 - (total - round)];
   return r ? cmDate(r[0], r[1], year + r[2], r[3]) : null;
 }

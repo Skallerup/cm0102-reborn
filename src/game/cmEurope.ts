@@ -1,4 +1,4 @@
-// Europas turneringer i originalens 2001/02-format (kalender runde 10C, 13/11-2026) – kun den originale database i ægte tilstand (cmCalendarOn).
+// Europas turneringer i originalens 2001/02-format (kalender runde 10C, 13/11-2026) – originalens kalender (cmCalendarOn: den originale database og fra 20/11 nye spil med en CM-database i ægte tilstand, g.cmCal).
 //
 //   Rundetabellerne er originalens (data/cmEuroTables.ts, kørt i unicorn med året som eneste inddata – ~/cm0102-engine/tools/sched/gen_euro.py):
 //     Champions League EuropeanCup::create_round_table 0x583c50: stage −1 = de tre kvalifikationsrunder (id 250/260/270), 0–7 = 1. gruppespil
@@ -82,7 +82,8 @@ export interface CmUefaState { year: number; coef: Record<string, number[]>; pts
 
 function uefaState(g: GameState, season: number): CmUefaState {
   let s = g.cmUefa;
-  if (!s) s = g.cmUefa = { year: season, coef: JSON.parse(JSON.stringify(CM_NATION_COEF)), pts: {}, entered: {} };
+  // (20/11) databasens koefficienter (nation.dat +0xe0..+0x108): den originale database = CM_NATION_COEF, ellers world-cm.json (g.cmEuroDb)
+  if (!s) s = g.cmUefa = { year: season, coef: JSON.parse(JSON.stringify(g.cmEuroDb?.coef ?? CM_NATION_COEF)), pts: {}, entered: {} };
   if (s.year !== season) {
     // roll_coefficients 0x903b50: +0xe0..+0x100 ← +0xe8..+0x108, +0x108 ← sæsonens point / deltagere
     for (const [n, v] of Object.entries(s.coef)) {
@@ -119,8 +120,11 @@ function nationOrder(g: GameState, nationName: string, prevTables: Record<string
   clubs.sort((a, b) => tier(a) - tier(b) || pos(a) - pos(b) || b.rep - a.rep);
   let ids = clubs.map((c) => c.id);
   if (first) {
-    const cfg = CM_EURO_CFG[nationName] ?? [];
-    const listed = cfg.map((nm) => clubs.find((c) => c.name === nm)?.id).filter((x): x is number => x !== undefined);
+    const cfg = (g.cmEuroDb?.cfg ?? CM_EURO_CFG)[nationName] ?? [];
+    // (20/11) euro.cfg nævner klubben ved navn under landet – også når databasen har den under et andet land (2026/27: FC Vaduz for Liechtenstein,
+    // i databasen schweizisk); en klub fra landet selv går først
+    const any = (nm: string) => Object.values(g.clubs).find((c) => c.name === nm && c.nation !== nation && g.leagues[c.league] && ok(c.id));
+    const listed = cfg.map((nm) => clubs.find((c) => c.name === nm)?.id ?? any(nm)?.id).filter((x): x is number => x !== undefined);
     ids = [...listed, ...ids.filter((x) => !listed.includes(x))];
   }
   return ids;
@@ -274,10 +278,13 @@ function seedEuro(g: GameState, season: number, prevTables: Record<string, numbe
 export function cmSetupEurope(season: number, prevTables: Record<string, number[]>, cupWinners: Record<number, number>, from?: string): void {
   const g = gs();
   const s = uefaState(g, season);
-  // forrige sæsons vindere (Super Cup og titelforsvarerne); første sæson: databasens 2000/01-vindere
+  // forrige sæsons vindere (Super Cup og titelforsvarerne); første sæson: databasens sidste vindere (club_comp_history.dat, turnering 326/328:
+  // 2000/01 = Bayern München og Liverpool; andre databaser fra world-cm.json – g.cmEuroDb.last)
   const byName = (nm: string) => Object.values(g.clubs).find((c) => c.name === nm)?.id;
-  const clW = g.comps.CL?.meta?.cmEuro ? g.comps.CL.winner : season === 2001 ? byName('FC Bayern München') : undefined;
-  const uW = g.comps.UEFA?.meta?.cmEuro ? g.comps.UEFA.winner : season === 2001 ? byName('Liverpool') : undefined;
+  const last = g.cmEuroDb?.last;
+  const lastW = (comp: number) => { const c = last?.[comp]?.[1]; return c !== undefined && g.clubs[c] ? c : undefined; };
+  const clW = g.comps.CL?.meta?.cmEuro ? g.comps.CL.winner : last ? (season === g.season ? lastW(326) : undefined) : season === 2001 ? byName('FC Bayern München') : undefined;
+  const uW = g.comps.UEFA?.meta?.cmEuro ? g.comps.UEFA.winner : last ? (season === g.season ? lastW(328) : undefined) : season === 2001 ? byName('Liverpool') : undefined;
   s.holders = { cl: clW, uefa: uW };
   for (const id of ['CL', 'UEFA', 'UECL', 'ESC', 'UIC']) delete g.comps[id];
   const ent = seedEuro(g, season, prevTables, cupWinners);
