@@ -220,9 +220,15 @@ function compareDay(v: View) {
       chk('kontrakt: type (+0x35)', (c.cmType ?? 2) === (m.u8(k + 0x35) & 0x3f), lab(`${c.cmType ?? 2} mod ${m.u8(k + 0x35) & 0x3f}`));
       chk('kontrakt: trupstatus (+0x4f høj nibble)' + (/^H/.test(g.clubs[p.club]?.league ?? 'H') ? ' [klub uden for ligaerne]' : ''), ((p.cmContract?.b4f ?? 0) >> 4) === (m.u8(k + 0x4f) >> 4), lab(`${(p.cmContract?.b4f ?? 0) >> 4} mod ${m.u8(k + 0x4f) >> 4}`));
       const b4e = m.u8(k + 0x4e);
-      chk('transferstatus: transferlistet (+0x4e bit 1|8)', !!p.listed === !!(b4e & 9), lab(`${p.listed} mod ${b4e & 9}`));
+      // spillets kontraktbyte (cmContract.b4e) mod hukommelsens: bit 1 = klubbens transferliste (0x842320; 0x5444a0 – Player.listed), bit 8 =
+      // spillerens transferønske (0x4d8610; 0x544520 tester 1|8 = "transfer listed by request"), bit 2 = lejelisten
+      const ob4e = p.cmContract?.b4e ?? (p.listed ? 1 : 0);
+      chk('transferstatus: transferlistet af klubben (+0x4e bit 1)', !!(ob4e & 1) === !!(b4e & 1), lab(`${!!(ob4e & 1)} mod ${!!(b4e & 1)}`));
+      chk('transferstatus: transferønske (+0x4e bit 8)', !!(ob4e & 8) === !!(b4e & 8), lab(`${!!(ob4e & 8)} mod ${!!(b4e & 8)}`));
       chk('transferstatus: lejelistet (+0x4e bit 2)', !!p.loanListed === !!(b4e & 2), lab(`${!!p.loanListed} mod ${!!(b4e & 2)}`));
-      dist('transferstatus: andel transferlistet', p.listed ? 1 : 0, b4e & 9 ? 1 : 0);
+      dist('transferstatus: andel transferlistet (bit 1|8)', ob4e & 9 ? 1 : 0, b4e & 9 ? 1 : 0);
+      dist('transferstatus: andel listet af klubben (bit 1)', ob4e & 1 ? 1 : 0, b4e & 1 ? 1 : 0);
+      dist('transferstatus: andel transferønske (bit 8)', ob4e & 8 ? 1 : 0, b4e & 8 ? 1 : 0);
       dist('transferstatus: andel lejelistet', p.loanListed ? 1 : 0, b4e & 2 ? 1 : 0);
       chk('kontrakt: tællere +0x44 (tilfredshed)', (p.cmContract?.b44 ?? 0) === m.s8(k + 0x44), lab(`${p.cmContract?.b44} mod ${m.s8(k + 0x44)}`));
       chk('kontrakt: flag +0x45', (p.cmContract?.b45 ?? 0) === m.u32(k + 0x45), lab(`${(p.cmContract?.b45 ?? 0).toString(16)} mod ${m.u32(k + 0x45).toString(16)}`));
