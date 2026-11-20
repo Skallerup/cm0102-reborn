@@ -22,6 +22,7 @@ import { dayNum, seasonRow } from './cmFitness';
 import { cmClubEuro } from './cmFitnessGame';
 import { CM_NATION_FR } from './data/cmPreseason';
 import { registerPrerun } from './cmPrerun';
+import { compHooks } from './hooks';
 import { fixturesOn } from './state';
 import { isHumanClub } from './humans';
 import { FRIENDLY_COMP, cmFrAddMatch, cmFrDateStatus, cmFrSend, cmFrUpdate, setFrPrerun } from './cmFriendlyOffers';
@@ -246,6 +247,25 @@ export function cmFriendlyDay(g: GameState, today = dayNum(g.date)): void {
   processPending(g, today);
   cmFrUpdate(g, today);
 }
+
+/** (20/11) forkørslen 0x5cc850: MATCH_DAY 0x6b3c10(dato, tidspunkt) spiller ALLE dagens kampe med tidspunktet (0x5ae6a0(dato, tidspunkt, …)) –
+ *  også venskabskampene, forkørslens planlægning (comps1 nedenfor) har lagt før spillets start. Uden dette stod de uspillede i kampprogrammet,
+ *  når hovedlandets start ligger efter vinduerne (2026/27 med Spanien først: start 5/8, 425 kampe i juli; 2001 med England: første 16/7 > 14/7).
+ *  `play` = sim.ts simulateFixture (som Europas kampe i forkørslen); g.date står på kampdagen under kampen. */
+export function cmFriendlyPrerunDay(g: GameState, iso: string, slot: number, play: (f: import('./types').Fixture) => void): void {
+  if (!cmFriendlyOn(g)) return;
+  const keep = g.date;
+  g.date = iso;
+  try {
+    for (const id of fixturesOn(iso).slice()) {
+      const f = g.fixtures[id];
+      if (f && f.comp === FRIENDLY_COMP && !f.result && (f.slot ?? 0) === slot) play(f);
+    }
+  } finally {
+    g.date = keep;
+  }
+}
+registerPrerun('matches', (g, _day, iso, slot) => compHooks.friendlyPrerunDay?.(g, iso, slot));
 
 // forkørslen 0x5cc850: turneringernes vtbl+0x14(dato, 1) ved tidspunkt 2
 registerPrerun('comps1', (g, day) => { inPrerun = true; setFrPrerun(true); try { cmFriendlyDay(g, day); } finally { inPrerun = false; setFrPrerun(false); } });

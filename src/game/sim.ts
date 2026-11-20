@@ -42,7 +42,7 @@ import { recordsAfterMatch } from './records';
 import { campDaily } from './camp';
 import { trialsDaily } from './trials';
 import { friendliesDaily } from './friendlies';
-import { cmFriendlyDay } from './cmFriendly';
+import { cmFriendlyDay, cmFriendlyPrerunDay } from './cmFriendly';
 import { achievementsAfterMatch } from './achievements';
 import { storyAfterMatch } from './story';
 import { addPrize, gateReceipts, januaryBudgetTopUp, monthlyIncome, snapshotFinanceMonth, sponsorWinBonus, weeklyWages } from './finance';
@@ -1243,6 +1243,7 @@ function holidayDaily() {
 // (runde 10C) forkørslen af Europas kampe før spillets start (newgame.ts kalder krogen; continueGame tager dem, hvis krogen manglede)
 compHooks.euroCatchUp = (g) => cmEuroCatchUp(g, (f) => simulateFixture(f, true, false));
 compHooks.euroPrerunDay = (g, iso) => cmEuroPlayDay(g, iso, (f) => simulateFixture(f, true, false));
+compHooks.friendlyPrerunDay = (g, iso, slot) => cmFriendlyPrerunDay(g, iso, slot, (f) => simulateFixture(f, true, false));
 compHooks.playOverdue = playOverdue;
 // klubøkonomiens begivenheder (cmFinEvents.ts): transferbudgettet 0x598800 og betalingsstandsningens værdier
 finHooks.budget = cmTransferBudgetRaw;

@@ -10,6 +10,8 @@ export const compHooks: {
   euroCatchUp?: (g: GameState) => void;
   /** (forkørslen, cmPrerunMatches.ts) dagens europæiske kampe (Intertoto, CL-kvalifikationen) i forkørslen 0x5cc850 */
   euroPrerunDay?: (g: GameState, iso: string) => void;
+  /** (forkørslen, cmFriendly.ts) dagens venskabskampe med tidspunktet `slot` i forkørslen 0x5cc850 (MATCH_DAY 0x6b3c10) */
+  friendlyPrerunDay?: (g: GameState, iso: string, slot: number) => void;
   /** (sæsonskiftet pr. land, season.ts/cmSeason.ts) turneringernes uspillede kampe før `before` (null = alle) spilles – sim.ts playOverdue */
   playOverdue?: (compIds: string[], before: string | null) => void;
   /** (økonomien, cmFinance.ts) en pokalrunde er afgjort for et par: Cup::process_fixture 0x51a150 → pay_round_prize_money 0x522240 */
