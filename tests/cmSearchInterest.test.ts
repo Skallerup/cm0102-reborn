@@ -41,7 +41,9 @@ describe('Player Search "Interested" (0x807450/0x846920, 3.9.60, ægte tilstand)
     expect(cmSearchInterested(g, find(g, 'Klose', '1.FC Kaiserslautern'))).toBe(false);   // gemt pr. dag – samme svar
 
     g = start('Manchester United');
-    for (const [last, club] of [['Klose', '1.FC Kaiserslautern'], ['Vieri', 'Internazionale'], ['Seedorf', 'Internazionale']] as const)
+    // (20/11) ikke Seedorf: hans svar afhænger af spilstartens tilfældige tal (målt med den gamle world-fil: frø 1/2 → 3,5, frø 3 → 0,21) og
+    // skiftede med Europas skjulte klubber HE<land>; Klose og Vieri er stabile (3,5+ for alle målte frø)
+    for (const [last, club] of [['Klose', '1.FC Kaiserslautern'], ['Vieri', 'Internazionale']] as const)
       expect(cmSearchInterested(g, find(g, last, club)), last).toBe(true);
     expect(cmSearchInterested(g, find(g, 'Zidane', 'Real Madrid C.F.'))).toBe(false);
     const m = count(g);

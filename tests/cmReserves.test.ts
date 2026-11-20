@@ -61,6 +61,11 @@ describe('baggrundskampene som CM 01/02 (original DB, ægte tilstand)', () => {
     g.cmRes = undefined;
     const virt0 = Object.values(g.players).filter((p) => p.virtual).length;
     const before = Object.fromEntries(pool.map((c) => [c, g.clubs[c].balance]));
+    // (20/11) dagens kampe (0x84be20) og hvor mange rigtige spillere hver klub kan stille (højst 11) – Europas klubber uden liga (HE<land>) har ingen
+    // spillere i hukommelsen og spiller kun med fyldspillere, som i originalen
+    const real = new Map<number, number>();
+    for (const p of Object.values(g.players)) if (p.club && !p.virtual) real.set(p.club, (real.get(p.club) ?? 0) + 1);
+    const minReal = cmResPairs(g, cmResBuild(g)).flat().reduce((s, c) => s + Math.min(11, real.get(c) ?? 0), 0);
     const played = cmResDaily(g);
     expect(played).toBeGreaterThan(30);
     expect(Object.keys(g.fixtures).length).toBe(nFix);
@@ -70,7 +75,8 @@ describe('baggrundskampene som CM 01/02 (original DB, ægte tilstand)', () => {
     const withStats = Object.values(g.players).filter((p) => p.cmStats?.[2] || p.cmStats?.[3]);
     // (de inaktive divisioners klubber – Englands non-league – har kun spillerne i hukommelsen og fyldes op med fyldspillere 0x90d2f0 som i
     // originalen, så færre rigtige spillere pr. kamp end en fuld trup)
-    expect(withStats.length).toBeGreaterThan(played * 11);
+    expect(minReal).toBeGreaterThan(1000);
+    expect(withStats.length).toBeGreaterThanOrEqual(minReal);
     expect(Object.values(g.players).filter((p) => p.virtual).length).toBeLessThanOrEqual(virt0);   // 0x90d6b0 efter hver kamp
     // ingen kampindtægt (FinanceTable 0x59a5d0 kaldes ikke) – kun bonusser kan trække penge
     for (const c of pool) expect(g.clubs[c].balance).toBeLessThanOrEqual(before[c]);
