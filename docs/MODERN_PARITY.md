@@ -28,17 +28,14 @@ men på en databaseuafhængig markør sat af newgame.ts for nye spil (cmLogic + 
 | `cmBodyOn` / `cmFitOn` / `cmTrainOn` | cmLogic + `g.cmFitStart` (+ `p.cmInt`) | kondition, skader, udvikling, træning | til |
 | `cmResOn` / `bTeamsOn` / `cmWxOn` / `cmFriendlyOn` / `cmAwOn` / `cmRetireOn` | cmLogic + `g.cmRes`/`cmBTeams`/`cmWxTab`/`cmNationFr`/`cmAw`/`cmRet` | baggrundskampe, B-hold, vejr, venskabskampe, priser, pensioneringer | til |
 | `cmPermitOn` | `g.cmWp` | arbejdstilladelser | til |
+| `cmValueOn` (cmValueGame.ts) / `cmVirtualOn` (cmVirtual.ts) / `cmMatchOn` (cmPlayerData.ts) | cmActive **eller cmLogic + `g.cmCmMgr` / `g.cmVirt` / `g.cmMatch`** (20/11, punkt E) | værdien +0x52, fyldspillerne 0x90dae0, formationernes preset-instruktioner | **til (20/11)** |
 | `cmTalksOn`, `gridEngineOn` | cmLogic (+ `options.engine`) | transferforhandlingen, gittermotoren | til |
 | `classicRules` (rules.ts) | `options.rules` + (dbYear < 2020 **eller `g.cmMatch`**) (20/11) | 3 udskiftninger/5 på bænken | **til (20/11)** – punkt C |
 | `isOriginal2001` (rules2001.ts, season.ts, transfers.ts) | dbYear < 2020 (ikke tilstanden) | kun udvidet tilstands egne tilføjelser (udeblivelse, bestyrelsens pengebegivenheder, appel) og databasens navne/data i UI'et; afbrudt leje → `loanRecallOn` (cmLogic) | punkt D lukket (20/11) |
 | `cmDatabase === 'original'` (save.ts, saveKind.ts) / `origMatch` (sim.ts) | dbYear < 2020 / original **eller `g.cmMatch`** | world-filen ved indlæsning (data); zonemotorens kampkonstanter ORIGINAL/ORIGINAL_LOWER | data (world-filen) – kampkonstanterne **til (20/11)** |
 | `g.econ` (newgame.ts 17 ×, finance.ts, training.ts …) | sat kun for dbYear < 2020 | 2001-priser/lønniveau/kalibreringer | data (2001-tal – skal ikke overføres; beløb via cmMoney) |
 
-Løse `cmActive(`-kald uden for en kontakt (agentens optælling 20/11, 84 i alt): international.ts 11 (punkt A), transfers.ts 10 (vinduerne pr. klubs
-land `cmWindowClub`, inPlayedNation, interestedClubs, vinduesnyhederne – punkt E), season.ts 6 (klubomdømmet fra cm, regens, klubstatus, achievements,
-fyldspillere – punkt E), cmVirtual.ts 6 (fyldspillere 0x90dc66), cmPermit.ts/cmScoutAsg.ts (2001-tabellerne – 2026 har nation7f/76), training.ts 3 og
-cmValueGame.ts 2 (værdien +0x52), cmBudget.ts 3, newgame.ts 3 (markørerne, vinduesnyheden, startformationen), aiTeam.ts:345 (AI-taktik),
-state.ts:306 (nyhedsfilteret), competitions.ts (split-nyheden), cmOfferCheck.ts:116, cmPlayerData.ts:830 (cmStaffStateMove), cmConvert.ts.
+Løse `cmActive(`-kald uden for en kontakt (84 på 14b0259a): gennemgået og fordelt i punkt **E** nedenfor (tabel: rettet/bliver/rest).
 
 Åbne punkter (egne opgaver – hver kræver data/markør + måling på 2001 og 2026/27):
 - **A. Landsholdene** (cmIntlOn + international.ts): originalens landsholdskalender/-trupper/slutrunder/FIFA-liste på 2026/27 – kræver databasens
@@ -75,8 +72,50 @@ state.ts:306 (nyhedsfilteret), competitions.ts (split-nyheden), cmOfferCheck.ts:
   (gitter) 2,77/2,79 mål, 1,93/2,07 gule, 0,13/0,19 røde, 0,54/0,58 skader pr. kamp; Europa (zone, nu ORIGINAL) 3,36/3,18 mål – 2001 Brentford
   (c7fcd1105ac4): liga 3,06 mål, 1,34 gule, 0,12 røde, 0,62 skader; Europa 3,24.
   **Rest:** recallLoan's frist (28 dage) er stadig *estimeret* (originalen: "cannot be recalled until 15th November", vinduet, samme land).
-- **E. De løse cmActive-kald** i transfers.ts/season.ts/cmVirtual.ts/training.ts/cmValueGame.ts/aiTeam.ts – hver flyttes til den kontakt, modulet
-  hører til (cmMarketOn, cmRetireOn, cmBodyOn …), eller en ny markør.
+- **E. De løse cmActive-kald – gennemgået 20/11** (98 `cmActive(` i src/ på 14b0259a, heraf 84 uden for en kontakt). Grupper: (a) originalens logik →
+  databaseuafhængig kontakt, (b) databasens data/navne for 2001 (bliver), (c) CM Reborns egne tilføjelser/udvidet tilstand (bliver), K = allerede en
+  kontakt af formen `cmActive(g) || (cmLogic(g) && markør)` (bliver – cmActive-leddet holder ældre 2001-spil uden markør uændrede). Alle nye kontakter
+  har samme form, så 2001 er uændret pr. konstruktion; målt pr. commit (perf-fingerprint 2001-08-20, samlet 438b6c8c376734d0, uddata-sha
+  6d67ee57d2b2 – ref 1d8d5173b862).
+
+  | Fil (antal) | Hvad | Gruppe | Status |
+  |---|---|---|---|
+  | transfers.ts (10) | vinduerne pr. klubs land (cmWindowClub/windowOpen/nextWindow), inPlayedNation, aiTransferTick/aiClubTurn/aiPursuits/aiReleaseClauses' vindue, interestedClubs (0x842180), windowNews | a | **rettet → cmMarketOn** (956341eb; a438423200a5 ✓) |
+  | cmOfferCheck.ts:116 | check_offer_restrictions' udlændingeloft og vindue (0x8e8800 – konstruktørernes tal står i exe'en) | a | **rettet → cmMarketOn** (956341eb) |
+  | newgame.ts:736 | vinduesnyheden ved spilstart | a | **rettet → cmMarketOn** (956341eb) |
+  | training.ts (3), cmValueGame.ts (2) | værdien +0x52 (CONTRACT_MANAGER 0x4c7ec5/0x4d0c60), £ → € med cmGbp | a | **rettet → cmValueOn** (= cmActive ‖ cmLogic + `g.cmCmMgr`; 5afcac24; 9d3717f90b52 ✓) |
+  | cmVirtual.ts (5 af 6), season.ts:810 | fyldspillerne 0x90dae0 i stedet for reserveholdets fyldSquad | a | **rettet → ny markør `g.cmVirt` (cmVirtualOn)** (ca608982; 39a14277ae47 ✓) |
+  | cmVirtual.ts:393 | landsholdenes fyldspillere 0x90dc66 | a | rest – punkt A (landsholdene) |
+  | season.ts:565/589 | klubomdømmet fra club +0x80 (0x6d3de0) | a | **rettet → cmMediaOn** (a542bea5) |
+  | season.ts:758 | klubbens sidste division/placering club +0x5b/+0x5f | a | **rettet → cmMarketOn** (a542bea5) |
+  | season.ts:786 | ingen præstationer/sæsonfortælling i ægte tilstand | c | **rettet → cmMediaOn** (nyhedsomfanget; a542bea5) |
+  | season.ts:624 | klubløse: kun regens med ønskelister/PLAYER_REGEN | K | bliver (`cmRetireOn && !cmActive` – 2001 dækkes af cmShortlistOn) |
+  | engine/grid/aiTeam.ts:377 | holdudtagelsens PlayerStats/karaktersnit/kontrakt | a | **rettet → cmMediaOn** (d7319be9) |
+  | cmPlayerData.ts:833 | move_player_to_club 0x8c9720: omdømme og staffState | a | **rettet → cmBodyOn + g.cmFitStart** (d7319be9) |
+  | cmBudget.ts:137 | stabens lønloft 0x597db0 | a | **rettet → cmStaffOn** (d7319be9) |
+  | cmBudget.ts:69/160 | Transfer Funds / budskærmens bestyrelseslinje | K | bliver (cmFinOn / cmBoardLogic) |
+  | newgame.ts:880, TacticsClassic.tsx:191 | formationens preset-instruktioner ved overtagelse og formationsskift | a | **rettet → ny kontakt cmMatchOn (`g.cmMatch`)** (M6) |
+  | Shell.tsx:197 | beløbene rundet som Cash 0x4426e0 | a | **rettet → cmActive ‖ cmFinOn** (M7) |
+  | classic.tsx:401 | Scouting-menuen → Scout #1 (ingen særskilt spejderskærm) | a | **rettet → cmScoutLogic** (M7) |
+  | PlayerClassic.tsx:108/350/352/365 | originalens statistikblok (PlayerStats) og Availability/Future 0x87dd80 | a | **rettet → cmMediaOn / cmMarketOn** (M7) |
+  | PlayerClassic.tsx:301, cmScout.ts:177, cmScoutAsg.ts:303, cmPermit.ts:64/82 | arbejdstilladelserne | K | bliver (cmPermitOn/g.cmWp) |
+  | cmPermit.ts:56/61, cmScoutAsg.ts:71/74 | 2001's EU-/britiske tabeller; 2026/27 bruger databasens nation +0x7f/+0x76 | b | bliver (data) |
+  | rules2001.ts:36/134/155, Inbox.tsx:393 | isOriginal2001-grenene (arbejdstilladelse før cmPermitOn, udeblivelse, bestyrelsens pengebegivenheder, appel) | c | bliver (kun udvidet tilstand på 2001) |
+  | Inbox.tsx:136/168, newsRespond.ts:52 | knappen Offer Contract efter spillets eget "accepted your offer" | c | bliver (UI til spillets eget budforløb; originalens går via cmTalks/cmConfirm) |
+  | Board.tsx:103, sim.ts:299/478, cmFitnessGame.ts:218, cmSquadPlanGame.ts:247/250, newgame.ts:721 | kontakter/markørernes spilstart | K | bliver |
+  | cmCalendar/cmReserves/cmWeather/cmRetire/cmAwards/cmBTeam/cmFriendly/cmContractManager (1 hver), cmPlayerData.ts (7 kontakter) | kontakternes definitioner | K | bliver |
+  | cmBoardGame.ts:888 | landstrænerdelen (`world2001`) | a | rest – punkt A |
+  | international.ts (11), cmIntl.ts, International.tsx:171 | landsholdene | a | rest – punkt A (anden agent) |
+  | cmPrerunMatches.ts:26 | forkørslens 2001-landskampe | b | rest – punkt F (kalender, anden agent) |
+  | state.ts:306, competitions.ts:623 | nyhedsfilterets KEEP_2026 og split-nyheden | a | rest – følger landsholdene (A) og ligaformaterne (anden agent) |
+  | cmConvert.ts:283 | konverteren af originalens .sav (2001-databasen) | b | bliver |
+
+  Målt 20/11 (`scripts/cm-loose-2026.ts 2026 2026-12-31 Brentford 1`, før b42124b07273 / efter 7919f0bc91b4): intet nedbrud. Nyt på 2026/27:
+  Englands vindue efter konstruktøren (2/6–26/3: åbent juli–december, før kun juli–august), fyldspillerne før kampene (før ingen; højst 433 på én
+  gang i hele verdenen), originalens værdi +0x52 (Premier Leagues gns. €8,2M → €20,0M ved start: 0x4d0c60 i databasens £ omregnet med ligaens
+  faktor 0,174 som lønningerne – Rice €126M, medianen €12,8M), klubomdømmet fra club +0x80 (ændret for 18 af 20 klubber til 31/12, før 9),
+  startformationen 4-4-2 med preset-instruktionerne (før 4-2-3-1). Kræver et nyt spil (markørerne sættes ved spilstart; `g.cmVirt` er ny).
+  **Rest:** landsholdene (A), kalenderens forkørsel (F) og nyhedsfilterets KEEP_2026/split-nyheden (ligaformaterne).
 - **F. Kalenderens rester på 2026/27**: spilstarten 0x830520 er kun afkodet for England (Date(10, 7, år, 5)); de øvrige nøglelandes +0x2a bruger
   2001's målte dag i året. Liga Cup'en kræver de 92 ligaklubber (world.json har kun Premier League og Championship → ingen Liga Cup på 2026/27, som
   før). Forkørslens landskampe (cmPrerunMatches) er 2001-kampe.
