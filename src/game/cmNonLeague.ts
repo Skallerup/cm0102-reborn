@@ -1,5 +1,6 @@
-// Sæsonskiftet mellem Football League og den inaktive Conference (eng_prm.cpp, cm0102.exe 3.9.68) – alle CM-databaser med originalens
-// sæsonskifte (cmSeasonOn), når databasen har "English Third Division" og "English Conference".
+// Sæsonskiftet mellem den nederste kørende liga og en inaktiv division (cm0102.exe 3.9.68) – alle CM-databaser med originalens sæsonskifte
+// (cmSeasonOn): England (eng_prm.cpp, "English Third Division" ↔ "English Conference") og Danmark ("Danish Second Division" ↔ "A Lower Division",
+// 0x553cb0 – nederst).
 //
 // Premier Divisions nye sæson 0x574c10: først vt+0xb0 (0x5752e0 – ombytningerne Premier ↔ First ↔ Second ↔ Third, 0x689c80: spillets
 // promotionRelegation i season.ts), så [0xadadfc][Conference] ≠ 0 ? 0x5750a0 : 0x574e60. Conference er aldrig en kørende liga hos os
@@ -34,6 +35,9 @@ const THIRD = 'English Third Division';
 const THIRD_CAP = 6000, THIRD_SEATS = 1000;
 /** Third Divisions +0xc1 (0x5780c0): én nedrykker */
 const THIRD_DOWN = 1;
+const DK_SECOND = 'Danish Second Division';
+/** Danish Second Divisions +0xc1 (0x554b60): fire nedrykkere; 0x553cb0 rykker fire op (løkken 0x553de2, 0x4afbd0's 3. argument 4) */
+const DK_DOWN = 4, DK_UP = 4;
 
 /** "English Conference"s id [0x9cf69c]: world-filens cmRaw.confDiv; world-filer bygget før feltet (de tre originale databaser 3.9.60/65/68)
  *  har id 93 – kun når en klub i landets inaktive divisioner har den */
@@ -44,11 +48,12 @@ export function cmConfDiv(g: GameState): number {
   const n = g.leagues[third].nation;
   return Object.values(g.clubs).some((c) => c.nation === n && g.leagues[c.league]?.hidden && g.cmFinRaw?.[c.id]?.[0] === 93) ? 93 : -1;
 }
-/** Third Divisions liga-id (nøgle-id'et [0x9cf5c8], sat på navnet) */
-function thirdId(g: GameState): string | null {
-  for (const [id, l] of Object.entries(g.leagues)) if (l.name === THIRD && !l.hidden) return id;
+/** den kørende ligas id ud fra navnet (nøgle-id'erne [0x9cf5c8] Third Division, [0x9cf5b4] Danish Second Division – sat på navnet 0x60f33e) */
+function leagueId(g: GameState, name: string): string | null {
+  for (const [id, l] of Object.entries(g.leagues)) if (l.name === name && !l.hidden) return id;
   return null;
 }
+const thirdId = (g: GameState) => leagueId(g, THIRD);
 /** klubbens division +0x57: den kørende liga (CM<id>), ellers club.dat's division (cmFinRaw[0] – opdateres af flytningerne her) */
 function divOf(g: GameState, c: Club): number {
   const m = /^CM(\d+)$/.exec(c.league);
@@ -56,10 +61,13 @@ function divOf(g: GameState, c: Club): number {
 }
 const on = (g: GameState) => cmSeasonOn(g) && !g.draft;
 
-/** has_relegation for en liga uden kørende liga under (+0xc1 ≠ 0 – status 3 og add_relegation_record): Third Division 1, ellers 0 */
+/** has_relegation for en liga uden kørende liga under (+0xc1 ≠ 0 – status 3 og add_relegation_record): Third Division 1, Danish Second
+ *  Division 4, ellers 0 */
 export function cmNonLeagueRelegated(g: GameState, compId: string): number {
-  if (!on(g) || compId !== thirdId(g) || cmConfDiv(g) < 0) return 0;
-  return THIRD_DOWN;
+  if (!on(g)) return 0;
+  if (compId === thirdId(g) && cmConfDiv(g) >= 0) return THIRD_DOWN;
+  if (compId === leagueId(g, DK_SECOND) && (g.cmLowerDiv ?? -1) >= 0) return DK_DOWN;
+  return 0;
 }
 
 // ------------------------------------------------------------------------------------------------ stadionet (0x599e00)
@@ -153,9 +161,50 @@ function moveClub(g: GameState, c: Club, league: string, div: number, up: boolea
   cmBoardClubMoved(g, c.id, up);
 }
 
-/** 0x574e60 ved hovedskiftet (season.ts seasonRollover, lige efter promotionRelegation): Conference ↔ Third Division */
+/** sæsonskiftet (season.ts seasonRollover, lige efter promotionRelegation – originalens vt+0xb0-ombytninger): England 0x574e60 og Danmark 0x553cb0 */
 export function cmNonLeagueRollover(g: GameState = gs(), inScope: (cid: number) => boolean = () => true): void {
   if (!on(g)) return;
+  engRollover(g, inScope);
+  dkRollover(g, inScope);
+}
+
+/** 0x4afbd0(arr, n, k): qsort 0x4b07d0 (omdømme +0x80, faldende) og min(3·k, n) ombytninger arr[rand(m)] ↔ arr[rand(m)] (0x90cfc0); n < k → fejlboks
+ *  (0x4afc64) uden sortering */
+function pickByRep(g: GameState, arr: Club[], k: number, rand: (n: number) => number): void {
+  if (arr.length < k) return;
+  msvcQsort(arr, (x, y) => s16(clubRepMem(g, y.id)) - s16(clubRepMem(g, x.id)));
+  const m = Math.min(3 * k, arr.length);
+  for (let n = 0; n < m; n++) {
+    const i = rand(m), j = rand(m);
+    const t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+  }
+}
+
+/** Danish Premier Divisions nye sæson 0x553aa0: vt+0xb0 (ombytningerne Premier ↔ First ↔ Second) og så altid 0x553cb0:
+ *   1. alle klubber med land (+0x53) Denmark og division (+0x57) "A Lower Division" [0x9cf764] (ikke landshold, 0x53b900) i klubrækkefølgen;
+ *      ingen → intet skifte (heller ingen nedrykning)
+ *   2. 0x4afbd0(liste, n, 4) og arr[0..3] → 0x6830b0(→ Second Division [0x9cf5b4], 1) – intet stadionkrav
+ *   3. alle Second Divisions rækker med status 3 (de nederste +0xc1 = 4, 0x554b60) → 0x6831a0(→ A Lower Division, 1)
+ *  (0x553cb0 tjekker ikke, at der er fire: med færre læser løkken uden for listen – her flyttes de, der er.) */
+function dkRollover(g: GameState, inScope: (cid: number) => boolean): void {
+  const second = leagueId(g, DK_SECOND), lower = g.cmLowerDiv ?? -1;
+  if (!second || lower < 0) return;
+  const comp = g.comps[second];
+  if (!comp?.finished || !comp.clubs.length || !inScope(comp.clubs[0])) return;
+  const nation = g.leagues[second].nation;
+  const secondDiv = +(/^CM(\d+)$/.exec(second)?.[1] ?? -1);
+  const arr = Object.values(g.clubs).filter((c) => c.nation === nation && divOf(g, c) === lower).sort((a, b) => a.id - b.id);
+  if (!arr.length) return;
+  const lowerLeague = arr[0].league;
+  pickByRep(g, arr, DK_UP, cmRand(g.seed ?? 0, 0x553cb0, g.season));
+  const order = finalOrder(comp);
+  const down = order.slice(Math.max(0, order.length - DK_DOWN)).map((cid) => g.clubs[cid]).filter((c): c is Club => !!c && c.league === second);
+  for (const c of arr.slice(0, DK_UP)) moveClub(g, c, second, secondDiv, true);
+  for (const c of down) moveClub(g, c, lowerLeague, lower, false);
+}
+
+/** 0x574e60: Conference ↔ Third Division */
+function engRollover(g: GameState, inScope: (cid: number) => boolean): void {
   const third = thirdId(g), conf = cmConfDiv(g);
   if (!third || conf < 0) return;
   const comp = g.comps[third];
@@ -167,12 +216,7 @@ export function cmNonLeagueRollover(g: GameState = gs(), inScope: (cid: number) 
   const confLeague = arr[0].league;
   const rand = cmRand(g.seed ?? 0, 0x574e60, g.season);
   // 2. 0x4afbd0(arr, n, 1)
-  msvcQsort(arr, (x, y) => s16(clubRepMem(g, y.id)) - s16(clubRepMem(g, x.id)));
-  const m = Math.min(3, arr.length);
-  for (let k = 0; k < m; k++) {
-    const i = rand(m), j = rand(m);
-    const t = arr[i]; arr[i] = arr[j]; arr[j] = t;
-  }
+  pickByRep(g, arr, 1, rand);
   const cand = arr[0];
   // 3. stadionet
   if (!expandStadium_599e00(g, cand, THIRD_SEATS, THIRD_CAP, true, rand)) {

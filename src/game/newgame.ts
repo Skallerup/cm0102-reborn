@@ -139,6 +139,20 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     world = { ...cw, leagues: [...cw.leagues, ...ex.leagues], clubs: [...cw.clubs, ...ex.clubs], players: [...cw.players, ...ex.players],
       ratings: { ...cw.ratings, ...ex.ratings }, clubRep: { ...cw.clubRep, ...ex.clubRep } } as CMWorld as WorldData;
   }
+  // ligaer, der kun kører, når landet er valgt (world-filens cmRaw.runWith – Danish Second Division, build-cm-data.mts RUN_HIDDEN): med landet blandt de
+  // valgte bliver den skjulte liga (H<id>) en kørende liga (<id>) med sine regler; ellers forbliver den skjult som før
+  const rw = (world as Partial<CMWorld>).kind === 'cm0102' ? (world as CMWorld).cmRaw?.runWith : undefined;
+  if (rw) {
+    const cw = world as CMWorld;
+    const on = Object.entries(rw).filter(([hid]) => { const l = cw.leagues.find((x) => x.id === hid); return !!l && o.activeNations.includes(l.nation); });
+    if (on.length) {
+      const map = new Map(on.map(([hid, r]) => [hid, r]));
+      const rules = { ...cw.rules } as Record<string, Record<string, unknown>>;
+      for (const [, r] of on) for (const [lid, patch] of Object.entries(r.rules)) rules[lid] = { ...(rules[lid] ?? {}), ...patch };
+      world = { ...cw, rules, leagues: cw.leagues.map((l) => { const r = map.get(l.id); return r ? { id: r.id, name: l.name, nation: l.nation, tier: r.tier } : l; }),
+        clubs: cw.clubs.map((c) => { const r = map.get(c[4] as string); if (!r) return c; const x = c.slice() as typeof c; x[4] = r.id; return x; }) } as CMWorld as WorldData;
+    }
+  }
   const season = world.season;
   // (runde 10A) den originale database i ægte tilstand: originalens spilstart 0x830520 − 4 uger for det først valgte land (England 14/7-2001;
   // cmCalendar.ts) – før 1/7 (Danmark, Polen, Kroatien og forårsligaerne) beholdes spillets 1/7, da sæsonskiftet ligger 1/7

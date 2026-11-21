@@ -98,7 +98,8 @@ const SUPER_TO_CUP: Record<string, string> = { 'Portuguese Super Cup': 'Portugue
 export const cmCupName = (name: string): string => SUPER_TO_CUP[name] ?? name;
 
 /** Op-/nedrykning fra ligaklassernes opsætning (+0xbe automatisk op, +0xbf playoff, +0xc0 nedryknings-playoff, +0xc1 ned): Danish Superliga
- *  0x553a00 (3 runder, +0xc1 = 2 – originalens tabel har stregen efter 10.), 1st Division 0x5523b0 (+0xbe = 2, +0xc1 = 3), England Second
+ *  0x553a00 (3 runder, +0xc1 = 2 – originalens tabel har stregen efter 10.), 1st Division 0x5523b0 (+0xbe = 2, +0xc1 = 3), 2nd Division 0x554b60
+ *  (+0xbe = 3, +0xc1 = 4 – ned i "A Lower Division", cmNonLeague.ts; databasens 3 op passer), England Second
  *  Division 0x576780 (+0xbe 2, +0xbf 4, +0xc1 4) og Third Division 0x5780c0 (+0xbe 3, +0xbf 4, +0xc1 1). Databasens regler (parseren) sagde 3/3 for
  *  alle. Playoffs findes ikke for originalens ligaer i spillet – vinderen tælles med som oprykker (England 3. → 2.: 3 + 1 = 4). */
 const CM_ZONE_RULES: Record<string, { relegated?: number; promoted?: number }> = {

@@ -395,11 +395,27 @@ w.players = w.players.filter((p) => {
 });
 const dropped = before - w.players.length;
 
+// Originalen: ligaer, der kører, når landet er valgt, men hvis klubber/spillere/stab hukommelsen 0x524d70 kun har med landet (bygges som de skjulte
+// ligaer – tc, clubMem, Staff Search – og gøres til en kørende liga til sidst): Danish Second Division – nationens init 0x554e50 (0x833xxx) opretter
+// altid Premier, First og Second Division (0x553e80, 16 klubber), og Premiers nye sæson 0x553aa0 → 0x553cb0 rykker fire op i den fra "A Lower Division"
+const RUN_HIDDEN = ORIGINAL ? ['Danish Second Division'] : [];
+const runHidden = w.leagues.filter((l) => l.hidden && RUN_HIDDEN.includes(l.name) && /^HCM\d+$/.test(l.id));
+for (const l of runHidden) keptLeagues.add(l.id.slice(1));
 // Reglerne: fjern droppede ligaer og hæng ikke op/nedrykning op på en liga der ikke er med
 for (const id of Object.keys(w.rules)) if (!keptLeagues.has(id)) delete w.rules[id];
 for (const r of Object.values(w.rules)) {
   if (r.below && !keptLeagues.has(r.below)) { delete r.below; delete r.relegated; }
   if (r.above && !keptLeagues.has(r.above)) { delete r.above; delete r.promoted; }
+}
+// (RUN_HIDDEN) ligaens regler og ligaen overs nedrykning gemmes i cmRaw.runWith – newgame.ts lægger dem på, når landet er valgt
+for (const l of runHidden) {
+  const id = l.id.slice(1), own = w.rules[id];
+  if (!own || !w.cmRaw) continue;
+  const rules: Record<string, Record<string, unknown>> = { [id]: own };
+  for (const [k, r] of Object.entries(w.rules)) if (r.below === id) { rules[k] = { below: id, relegated: r.relegated }; delete r.below; delete r.relegated; }
+  delete w.rules[id];
+  const tier = Math.max(0, ...w.leagues.filter((x) => !x.hidden && x.nation === l.nation).map((x) => x.tier)) + 1;
+  ((w.cmRaw as { runWith?: Record<string, unknown> }).runWith ??= {})[l.id] = { id, tier, rules };
 }
 // 2026/27: rundeantal og op-/nedrykning fra divisions-2026.json (fx dansk 1./2. division: 12 klubber, 3 runder, 2 op/2 ned)
 for (const [league, fix] of Object.entries(DIV_FIXES)) {

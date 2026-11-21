@@ -126,6 +126,8 @@ export interface CMWorld extends WorldData {
     euro?: { coef: Record<string, number[]>; cfg: Record<string, string[]>; last: Record<number, [number, number, number]> };
     /** (20/11) 2026/27: de europæiske landes klubber uden liga i world.json (skjulte ligaer `HE<nation>`, trupperne i world-formatet) – Europas
      *  pladser (UefaSeeding) som i originalens hukommelse; newgame.ts lægger dem på verdenen i ægte tilstand */
+    /** ligaer, der kun kører med deres land (build-cm-data.mts RUN_HIDDEN): skjult-id → kørende id, niveau og reglerne (også for ligaen over) */
+    runWith?: Record<string, { id: string; tier: number; rules: Record<string, Record<string, unknown>> }>;
     euroClubs?: { leagues: CMWorld['leagues']; clubs: CMWorld['clubs']; players: CMWorld['players']; ratings: CMWorld['ratings']; clubRep: Record<number, number> };
     /** (2026/27, MODERN_PARITY 12) nation +0x77/+0x78/+0x79 (sprogene) pr. nationsindeks – originalens sprogtabel (cmLanguage.ts) */
     nationLang?: number[][];
