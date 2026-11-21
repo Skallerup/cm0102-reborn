@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { useClaimTabSlot } from './classic';
+import { useClaimTabSlot, useScrollMore } from './classic';
 import { crestSvg } from '../game/draft';
 import { positionString } from '../game/attributes';
 import { flagUrl } from './flags';
@@ -124,6 +124,7 @@ export function Tabs({ tabs, value, onChange, disabled, onDropTab }: { tabs: [st
     const box = ref.current, on = box?.querySelector<HTMLElement>('button.on');
     if (box && on && box.scrollWidth > box.clientWidth) box.scrollTo({ left: on.offsetLeft - (box.clientWidth - on.offsetWidth) / 2, behavior: 'smooth' });
   }, [value]);
+  useScrollMore(ref, tabs.length);
   // klassisk tema: den første Tabs på skærmen fylder hovedfanerækken, når hubben ikke har sine egne
   const slot = useClaimTabSlot(useId());
   const row = (

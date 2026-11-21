@@ -242,28 +242,104 @@ async function run(devKey, look) {
   });
 
   // ---------- en kamp ----------
+  // som scripts/e2e.mjs: svar på det, der spærrer Continue Game (trøjenumre, European Squad, bud/rygter/ønsker), og vent på forrige kørsel
+  const answerBlocking = async () => {
+    if (look !== 'klassisk') return false;
+    if (await page.locator('.cx-sqn-list.tall').isVisible().catch(() => false)) {
+      for (let k = 0; k < 6 && await page.locator('.cx-sqn-box:empty').count(); k++) {
+        await page.locator('.cx-sqn-n.free:not([disabled])').first().tap().catch(() => {});
+        await page.locator('.cx-sqn-box:empty').first().tap().catch(() => {});
+      }
+      await shot('trojenumre-foer-kamp');
+      await page.locator('.cx-foot-btns button.primary').tap().catch(() => {});
+      await page.waitForTimeout(300); return true;
+    }
+    const due = await page.evaluate(() => { const g = window.__cm.gs(); const c = g.clubs[g.userClub]; return { sqn: c?.sqnDue === g.season, eur: c?.euroDue === g.season }; });
+    if (due.eur) {
+      if (await page.locator('.cx-eur').isVisible().catch(() => false)) { await page.locator('.cx-eur .cx-sqn-bar .cx-grey').first().tap(); await page.locator('.cx-foot-btns button.primary').tap(); }
+      else if (await page.locator('.cx-respond').isVisible().catch(() => false)) await page.locator('.cx-respond').first().tap();
+      else return false;
+      await page.waitForTimeout(300); return true;
+    }
+    if (await page.locator('.cx-inbox').isVisible().catch(() => false) && await page.locator('.cx-side .cx-continue').isDisabled().catch(() => false) && !due.sqn) {
+      const fixed = await page.evaluate(() => { const g = window.__cm.gs(); let k = 0; for (const o of g.offers) if (o.status === 'pending' && o.seller === g.userClub) { o.status = 'rejected'; k++; } if (g.jobOffers.length) { g.jobOffers.length = 0; k++; } for (const n of g.news) if ((n.key === 'cm.rum' || n.key === 'cm.req') && !n.params.ans) { n.params = { ...n.params, ans: 3 }; k++; } window.__cm.notify(); return k; });
+      if (!fixed && await page.locator('.cx-nbar .cx-respond').isVisible().catch(() => false)) await page.locator('.cx-nbar .cx-respond').first().tap();
+      await page.waitForTimeout(300); return true;
+    }
+    if (!due.sqn) return false;
+    if (await page.locator('.cx-foot-btns button.primary').isVisible().catch(() => false)) await page.locator('.cx-foot-btns button.primary').tap();
+    else if (await page.locator('.cx-respond').isVisible().catch(() => false)) await page.locator('.cx-respond').first().tap();
+    else return false;
+    await page.waitForTimeout(300); return true;
+  };
+  const clearInjuries = () => page.evaluate(() => { const g = window.__cm.gs(); for (const p of Object.values(g.players)) if (p.club === g.userClub) p.injury = null; });
+  const fastForward = () => page.evaluate(async () => { const c = window.__cm; const g = c.gs(); const f = Object.values(g.fixtures).filter((x) => x.home === g.userClub || x.away === g.userClub).sort((a, b) => a.date.localeCompare(b.date))[0]; if (!f) return; const days = Math.round((Date.parse(f.date) - Date.parse(g.date)) / 864e5) - 1; if (days > 0) await c.advance(days); const g2 = c.gs(); const me = g2.clubs[g2.userClub]; me.sqnDue = undefined; me.euroDue = undefined; for (const n of g2.news) n.read = true; });
   await step('kamp', async () => {
-    await page.evaluate(async () => { const c = window.__cm; const g = c.gs(); const f = Object.values(g.fixtures).filter((x) => x.home === g.userClub || x.away === g.userClub).sort((a, b) => a.date.localeCompare(b.date))[0]; if (!f) return; const days = Math.round((Date.parse(f.date) - Date.parse(g.date)) / 864e5) - 1; if (days > 0) await c.advance(days); const me = g.clubs[g.userClub]; me.sqnDue = undefined; me.euroDue = undefined; for (const n of g.news) n.read = true; for (const p of Object.values(g.players)) if (p.club === g.userClub) p.injury = null; });
+    // Continue Game-trinnet ovenfor har startet en kørsel: vent på den, før der spoles (ellers sidder kørslen fast på 2 %)
+    await page.waitForSelector('.cx-running', { state: 'detached', timeout: 180000 }).catch(() => {});
+    await fastForward(); await fastForward(); await clearInjuries();
     const kick = await page.evaluate((l) => window.__cm.t(l ? 'cl.mt.kickoff' : 'match.kickoff'), look === 'klassisk');
     const labels = await page.evaluate(() => [window.__cm.t('top.toTheMatch'), window.__cm.t('top.toMatch'), window.__cm.t('cl.continue'), window.__cm.t('top.continue')].filter(Boolean));
-    for (let i = 0; i < 150; i++) {
+    // klassisk: en skadet spiller giver Team Selection (OK → truppen) – vis den én gang
+    let injured = look === 'klassisk' ? await page.evaluate(() => { const g = window.__cm.gs(); const id = g.tactic?.lineup[3]; if (!id) return 0; g.players[id].injury = { key: 'hamstring', days: 60 }; return id; }) : 0;
+    const selHead = await page.evaluate(() => window.__cm.t('cl.mt.teamSel'));
+    for (let i = 0; i < 120; i++) {
+      await page.waitForSelector('.cx-running', { state: 'detached', timeout: 120000 }).catch(() => {});
       if (await page.getByRole('button', { name: kick }).first().isVisible().catch(() => false)) break;
-      if (await page.locator('.cx-busy').count()) { await page.waitForSelector('.cx-busy', { state: 'detached', timeout: 20000 }).catch(() => {}); if (i % 15 === 0) console.log('    fejl-spor', errors.slice(-2).join(' | ').slice(0, 300)); }
+      await page.locator('.cx-confirm').waitFor({ timeout: 600 }).catch(() => {});
       const yes = page.locator('.cx-confirm button.primary');
-      if (await yes.isVisible().catch(() => false)) { await yes.tap().catch(() => {}); await page.waitForTimeout(400); continue; }
+      if (await yes.isVisible().catch(() => false)) {
+        if (await page.locator('.cx-confirm .cx-subtitle', { hasText: selHead }).isVisible().catch(() => false)) {
+          if (injured) await shot('team-selection');
+          await yes.tap().catch(() => {});
+          await clearInjuries(); injured = 0;
+          await page.waitForTimeout(400); continue;
+        }
+        await yes.tap().catch(() => {}); await page.waitForTimeout(400); continue;
+      }
+      if (await answerBlocking()) continue;
       let clicked = false;
-      for (const l of labels) { const b = page.getByRole('button', { name: l }).first(); if (await b.isVisible().catch(() => false)) { await b.tap().catch(() => {}); clicked = true; break; } }
+      for (const l of labels) { const b = page.getByRole('button', { name: l, exact: false }).first(); if (await b.isVisible().catch(() => false)) { await b.tap().catch(() => {}); clicked = true; break; } }
       if (!clicked) await go({ name: 'match' });
-      if (i % 15 === 0) console.log('    kamp-spor', i, await page.evaluate(() => { const g = window.__cm.gs(); return `${g.date} pending=${!!g.pendingFixture} confirm=${!!document.querySelector('.cx-confirm')} busy=${!!document.querySelector('.cx-busy')} knapper=${[...document.querySelectorAll('button')].filter((b) => b.offsetParent).map((b) => b.innerText.trim().slice(0, 14)).slice(0, 14).join('|')}`; }));
+      if (i % 15 === 14) console.log('    kamp-spor', i, await page.evaluate(() => { const g = window.__cm.gs(); return `${g.date} pending=${!!g.pendingFixture} confirm=${!!document.querySelector('.cx-confirm')} running=${!!document.querySelector('.cx-running')} knapper=${[...document.querySelectorAll('button')].filter((b) => b.offsetParent).map((b) => b.innerText.trim().slice(0, 14)).slice(0, 14).join('|')}`; }));
       await page.waitForTimeout(400);
     }
     await shot('foer-kamp');
     await page.getByRole('button', { name: kick }).first().tap({ timeout: 10000 });
     await page.waitForTimeout(1500);
     await shot('kamp-i-gang');
+    // faner i kampen (klassisk): Tactics og de øvrige visninger
+    if (look === 'klassisk') {
+      for (const n of ['Match Stats', 'Action Zones', 'Match Report', 'Player Ratings', 'Latest Scores', 'League Table']) {
+        const b = page.getByRole('button', { name: n, exact: true }).first();
+        if (await b.isVisible().catch(() => false)) { await b.tap().catch(() => {}); await shot(`kamp-${n}`); }
+      }
+      const tac = page.locator('.cx-side > button.cx-sbtn', { hasText: 'Tactics' }).first();
+      if (await tac.isVisible().catch(() => false)) { await tac.tap().catch(() => {}); await page.waitForSelector('.cx-mt-tools', { timeout: 20000 }).catch(() => {}); await shot('kamp-taktik'); }
+    }
     const toEnd = page.getByRole('button', { name: await page.evaluate(() => window.__cm.t('match.toEnd')) });
-    if (await toEnd.isVisible().catch(() => false)) { await toEnd.tap().catch(() => {}); await page.waitForTimeout(1500); }
-    await shot('kamp-senere');
+    const doneSel = look === 'klassisk' ? page.locator('.cx-side .cx-continue.continue') : page.getByRole('button', { name: await page.evaluate(() => window.__cm.t('match.continue')) }).first();
+    for (let i = 0; i < 60 && !(await doneSel.isVisible().catch(() => false)); i++) {
+      if (await page.locator('.cx-foot .cx-mt-cancel').isVisible().catch(() => false)) { await page.locator('.cx-foot .cx-mt-cancel').tap().catch(() => {}); await page.waitForTimeout(200); const y2 = page.locator('.cx-confirm button.primary'); if (await y2.isVisible().catch(() => false)) await y2.tap().catch(() => {}); }
+      if (look === 'klassisk') await page.keyboard.press('e');
+      if (await toEnd.isVisible().catch(() => false)) await toEnd.tap().catch(() => {});
+      const resume = page.getByRole('button', { name: await page.evaluate(() => window.__cm.t('match.resume')) }).first();
+      if (await resume.isVisible().catch(() => false)) await resume.tap().catch(() => {});
+      await page.waitForTimeout(500);
+    }
+    await shot('kamp-slut');
+    if (look === 'klassisk') await page.locator('.cx-side .cx-continue').tap({ timeout: 10000 });
+    else await page.getByRole('button', { name: await page.evaluate(() => window.__cm.t('match.continue')) }).first().tap({ timeout: 10000 });
+    await page.waitForTimeout(800);
+    await shot('efter-kamp');
+  });
+  await step('kamprapport', async () => {
+    const id = await page.evaluate(() => { const g = window.__cm.gs(); return Object.values(g.fixtures).filter((f) => f.result && (f.home === g.userClub || f.away === g.userClub)).sort((a, b) => b.date.localeCompare(a.date))[0]?.id; });
+    if (!id) throw new Error('ingen spillet kamp');
+    await go({ name: 'report', id });
+    await shot('kamprapport');
+    await page.evaluate(() => { for (const el of document.querySelectorAll('.cx-main, .main, main')) el.scrollTo?.(0, 99999); window.scrollTo(0, 99999); });
+    await shot('kamprapport-bund');
   });
 
   writeFileSync(join(OUT, `report-${tag}.json`), JSON.stringify(report, null, 1));

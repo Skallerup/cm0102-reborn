@@ -2054,3 +2054,25 @@ button.cx-bid-swap.removing { cursor: pointer; color: #fff21f; }
   :root[data-skin='retro'] button.cx-sq-name, :root[data-skin='retro'] button.cx-sq-tag, :root[data-skin='retro'] .cx-take, :root[data-skin='retro'] .cxs-btn.small, :root[data-skin='retro'] .cx-arrows button, :root[data-skin='retro'] .cx-pager button { min-height: 34px; }
   input[type='checkbox'], input[type='radio'] { width: 22px; height: 22px; }
 }
+
+/* ---------- mobil fase 2 (e2e-mobile 21/11): kun ≤ 760 px, desktop uberørt ---------- */
+@media (max-width: 760px) {
+  /* kampens resultatbjælke: holdnavnet får ellipsis i stedet for at blive skåret over midt i et bogstav */
+  .cm-board.cx-board .cm-name { display: block; line-height: 1.2; }
+  .cm-board.cx-board .cm-name .crest { display: inline-block; vertical-align: middle; margin-right: 6px; }
+  /* spillerens statistiktabel: pileknapperne får deres egen kolonne (de lå oven på Apps), kolonnerne smallere */
+  .cx-pl-cmstats th.cx-pl-pager { width: 70px; white-space: nowrap; }
+  .cx-pl-cmstats th { width: 9%; font-size: 10.5px; letter-spacing: -0.2px; padding: 3px 0; }
+  .cx-pl-cmstats th.cx-pl-stitle { width: auto; }
+  .cx-pl-cmstats td { padding: 1px 0; font-size: 12.5px; }
+  .cx-pl-arrow { width: 33px; min-height: 34px; }
+  /* sidenummerlinjen (Transfers/Find), Inj-markeringer og Popular players: større trykflader */
+  .cx-pager-line button { min-width: 38px; min-height: 36px; }
+  .cx-tbl button.cx-inf { min-width: 38px; height: 30px; }
+  .cxs-popbar .cxs-btn { min-height: 36px; }
+  /* faner, der kan rulles vandret: fade i den side, hvor der er mere (sættes af ButtonRow) */
+  .cx-tabrow[data-more], .cx-subrow[data-more], .shell.cx .main .tabs[data-more] { scrollbar-width: none; }
+  .cx-tabrow[data-more='r'], .cx-subrow[data-more='r'], .shell.cx .main .tabs[data-more='r'] { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 34px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 34px), transparent); }
+  .cx-tabrow[data-more='l'], .cx-subrow[data-more='l'], .shell.cx .main .tabs[data-more='l'] { -webkit-mask-image: linear-gradient(270deg, #000 calc(100% - 34px), transparent); mask-image: linear-gradient(270deg, #000 calc(100% - 34px), transparent); }
+  .cx-tabrow[data-more='lr'], .cx-subrow[data-more='lr'], .shell.cx .main .tabs[data-more='lr'] { -webkit-mask-image: linear-gradient(90deg, transparent, #000 34px, #000 calc(100% - 34px), transparent); mask-image: linear-gradient(90deg, transparent, #000 34px, #000 calc(100% - 34px), transparent); }
+}

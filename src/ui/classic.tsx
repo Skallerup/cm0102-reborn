@@ -422,10 +422,28 @@ export function setClassicAllowed(f: (k: ScreenName) => boolean) { allowedFn = f
 
 // ---------- knapperækker ----------
 
+/** mobil: antyd med en fade, at en række kan rulles vandret (data-more = l/r/lr; CSS ≤ 760 px i classic.css) */
+export function useScrollMore(ref: { current: HTMLElement | null }, dep: unknown) {
+  useEffect(() => {
+    const el = ref.current; if (!el) return;
+    const upd = () => {
+      const l = el.scrollLeft > 4, r = el.scrollLeft + el.clientWidth < el.scrollWidth - 4;
+      const v = l && r ? 'lr' : l ? 'l' : r ? 'r' : '';
+      if (v) el.dataset.more = v; else delete el.dataset.more;
+    };
+    upd();
+    el.addEventListener('scroll', upd, { passive: true });
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(upd) : null; ro?.observe(el);
+    return () => { el.removeEventListener('scroll', upd); ro?.disconnect(); };
+  }, [ref, dep]);
+}
+
 export function ButtonRow({ items, className }: { items: Item[]; className: string }) {
   const { nav } = useNav();
+  const ref = useRef<HTMLDivElement>(null);
+  useScrollMore(ref, items.length);
   return (
-    <div className={className}>
+    <div className={className} ref={ref}>
       {items.map((it) => (
         <button key={it.key} className={it.on ? 'on' : ''} disabled={it.disabled}
           {...(it.onDrop ? { onDragOver: (e: React.DragEvent) => e.preventDefault(), onDrop: (e: React.DragEvent) => { e.preventDefault(); it.onDrop!(e.dataTransfer.getData('text/plain')); } } : {})}
