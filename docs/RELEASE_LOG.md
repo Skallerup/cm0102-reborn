@@ -2,6 +2,7 @@
 
 Flyttet fra CLAUDE.md 17/11-2026 (så CLAUDE.md er kort i hver session). Nyeste først. Tilføj en linje øverst ved hver udgivelse.
 
+- 2026-11-21 – Skudt live (v0.33.0): 2026-11-21 – Spillerønske: g.options.modernSubs (Game Options, CM Reborn-zone) → classicRules() falsk → maxSubs 5 / benchSize 9 (eneste brug af classicRules); standard fra. test modernSubs.
 - 2026-11-21 – Skudt live (v0.33.0): 2026-11-21 – Klubtrim 0x5267c0 database_trim_club_table (cmRaw.clubMem): valgte lande beholder alle klubber (England ≤500 omdømme ved størrelse 1/2 undtaget), top 20/15 pr. land, ansættelser, turneringshistorik, staff_history (Maximum). England størrelse 2: 233 → 277 (orakel 282). Lejer til 31/12 91/83 → 95/100. Fingeraftryk 2001-08-20 → 33f9a25f41e075e8.
 - 2026-11-21 – Skudt live (v0.33.0): 2026-11-21 – Ejerens Silkeborg-spil (14 målmænd hos Esbjerg, mange Loa): gemte spil fra før 20/11 manglede cmSlMoved + reservekampe → hængende ønskeliste-pladser (2.940 1/12). Ved indlæsning (cmSlFix, én gang, cmMarketOn): ankomne spillere bliver pladsens indehaver, budmærker ryddes, g.cmRsv slås til. Hængende pladser i maj 2.357 → 18.
 - 2026-11-21 – Skudt live (v0.33.0): 2026-11-21 – K7-1: 0x574e60 (Conference-oprykning efter omdømme, top-3 byttes tilfældigt, stadionkrav 1.000 siddepladser/6.000, udvidelse 0x599e00), nedrykket manager forlader klubben (0x69b790), −500 omdømme (0x86a1c0); cmNonLeague.ts. K7: 0/1 → 1/1 begge sæsonskifter. 2001-fingeraftryk uændret.
