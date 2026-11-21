@@ -9,6 +9,8 @@ import { gs } from '../src/game/state';
 import { cmStaffContractAnswer, cmStaffOfferCheck } from '../src/game/cmContractGame';
 import { cmOfferStaff, cmOwnStaffContractsDaily, cmRenewNews, cmStaffOffersDaily, JOB_CODE } from '../src/game/cmStaff';
 import { addDays } from '../src/game/dates';
+import { expDown, expDownOff, expIso, expUp, expUpOff, ymOf, type YM } from '../src/game/cmContractScreen';
+import { cashStepEur } from '../src/i18n';
 
 describe('Offer New Contract til egen stab (Silkeborg 1.7.01, ægte tilstand)', { timeout: 600_000 }, () => {
   const world = JSON.parse(readFileSync('public/data/world-original.json', 'utf8')) as WorldData;
@@ -24,6 +26,29 @@ describe('Offer New Contract til egen stab (Silkeborg 1.7.01, ægte tilstand)', 
     expect(chk).not.toBeNull();
     expect(chk.allow).toBeGreaterThanOrEqual(Math.round(scout.wage) - 1);
     expect(chk.wage).toBeGreaterThan(0);
+  });
+
+  it('0x527240-genereret spejder (uden databasens ikke-spillerpost) vil forhandle: 0x844780 for c == H = 3,5 (ejerens Danny Albrecht 21/11)', () => {
+    const gen = Object.values(g.staff).filter((x) => x.club === silk && x.role === 'scout' && x.cmMem && !x.cmNp);
+    expect(gen.length).toBeGreaterThan(0);
+    for (const sc of gen) {
+      const c = cmStaffOfferCheck(g, sc, silk, JOB_CODE.scout)!;
+      expect(c.interested).toBe(true);
+      expect(c.key).toBeNull();
+      expect(c.will).toBeCloseTo(3.5, 5);
+      expect(c.wage).toBeLessThan(c.allow * 1.5);
+    }
+  });
+
+  it('udløbet fra skærmen (måned/år, dag = startdagen højst 28) følger med tilbuddet', () => {
+    const sc = Object.values(g.staff).find((x) => x.club === silk && x.role === 'scout' && x.cmMem && !x.cmNp)!;
+    const c = cmStaffOfferCheck(g, sc, silk, JOB_CODE.scout)!;
+    const exp = `${Number(g.date.slice(0, 4)) + 2}-11-01`;
+    expect(cmOfferStaff(g, { staff: sc.id, role: 'scout', wage: c.wage * 1.2, years: 2, signOn: 0, expires: exp })).toBe('ok');
+    g.cmStaffOffers![g.cmStaffOffers!.length - 1].date = addDays(g.date, -1);
+    cmStaffOffersDaily(g);
+    expect(g.news[0]?.key).toBe('cm.staffRenewOk');
+    expect(sc.expires).toBe(exp);
   });
 
   it('afslag (halv løn) → "rejects contract offer", kontrakten uændret; kravet → "accepts contract offer" og ny kontrakt', () => {
@@ -70,5 +95,37 @@ describe('Offer New Contract til egen stab (Silkeborg 1.7.01, ægte tilstand)', 
     expect(scout.club).toBe(silk);
     // efter udløbet kan han stadig tilbydes en ny kontrakt
     expect(cmStaffOfferCheck(g, scout, silk, JOB_CODE.scout)).not.toBeNull();
+  });
+});
+
+describe('Offer Contract-skærmens trin (0x4e2280)', () => {
+  it('ugeløn: Cash::step_up/step_down flag 8 (0x867b70/0x867c50) i £', () => {
+    const gbp = (eur: number) => Math.round(eur * 0.86);
+    expect(gbp(cashStepEur(1500 / 0.86, 8, -1, 'GBP'))).toBe(1400);
+    expect(gbp(cashStepEur(1500 / 0.86, 8, 1, 'GBP'))).toBe(1600);
+    expect(gbp(cashStepEur(1000 / 0.86, 8, 1, 'GBP'))).toBe(1100);   // trinnet over x + 1 = 100
+    expect(gbp(cashStepEur(1000 / 0.86, 8, -1, 'GBP'))).toBe(975);   // ≤ 1000: 25
+    expect(gbp(cashStepEur(0, 4, 1, 'GBP'))).toBe(1000);             // signing on: flag 4, ≤ 10.000: 1000
+  });
+  it('udløbet: måned for måned i det første år, ellers år for år; grænsen er hans nuværende udløb', () => {
+    const today: YM = ymOf('2002-06-23');
+    // egen stab med kontrakt til 30/6-2003: Jun 2004 kan ikke sænkes (det næste, Jun 2003, er på grænsen)
+    const own: YM = ymOf('2003-06-30');
+    expect(expDownOff([2004, 5], today, own)).toBe(true);
+    expect(expUp([2004, 5], today, own)).toEqual([2005, 5]);
+    // en ny: grænsen i dag + 32 dage (jul. 2002); ned år for år til næste år, så måned for måned
+    const min: YM = ymOf('2002-07-25');
+    let cur: YM = [2004, 5];
+    const seq: string[] = [];
+    while (!expDownOff(cur, today, min)) { cur = expDown(cur, today); seq.push(`${cur[1] + 1}/${cur[0]}`); }
+    expect(seq.slice(0, 3)).toEqual(['6/2003', '5/2003', '4/2003']);
+    expect(cur).toEqual([2002, 7]);
+    // op: måned for måned til grænsens måned året efter, derefter år for år; grå når året − 10 ≥ i år
+    cur = [2003, 5];
+    cur = expUp(cur, today, min); expect(cur).toEqual([2003, 6]);
+    cur = expUp(cur, today, min); expect(cur).toEqual([2004, 6]);
+    expect(expUpOff([2012, 0], today)).toBe(true);
+    expect(expUpOff([2011, 11], today)).toBe(false);
+    expect(expIso([2004, 5], '2002-06-30')).toBe('2004-06-28');
   });
 });

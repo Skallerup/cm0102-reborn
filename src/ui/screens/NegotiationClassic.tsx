@@ -8,9 +8,10 @@ import type { ContractClauses, StaffRole, TransferOffer } from '../../game/types
 import { cmRolesFor, cmStaffCompensation, cmStaffDemand, cmStaffInterestedIn, JOB_CODE } from '../../game/cmStaff';
 import { cmStaffOfferCheck } from '../../game/cmContractGame';
 import { cmStaffOn } from '../../game/cmPlayerData';
-import { cmBoardStaffWageAllow, cmBoardWageAllow } from '../../game/cmBudget';
+import { cmBoardStaffWageAllow, cmBoardWageAllow, cmTransferBudgetRaw } from '../../game/cmBudget';
+import { cmGbp } from '../../game/cmMoney';
 import { poachFee } from '../../game/staff';
-import { moneyCm, moneyFull, moneyWage, t } from '../../i18n';
+import { cashRound, cashStepEur, cashUnits, moneyCm, moneyFull, moneyWage, t } from '../../i18n';
 
 // kontraktskærmen 0x4e06e0/0x4deac0/0x4e30f0 (0x441c10): løn via 0x85e750 fuldt (flag 0xA); Signing On Fee og Clause Release Fee flag 6,
 // bonusserne flag 0xA – begge over 8 tegn forkortet (5/9); kompensationen (0x4e4820) og kravet i teksten flag 6
@@ -18,7 +19,8 @@ const fee8 = (v: number) => moneyCm(v, 6, 8);
 const bonus8 = (v: number) => moneyCm(v, 0xa, 8);
 import { CxDrop, CxPm, titleColors, useClassicDialog } from '../classic';
 import { SQUAD_STATUSES, expectedStatus, statusAllowed, type SquadStatus } from '../../game/squadStatus';
-import { ageOn, year } from '../../game/dates';
+import { addDays, ageOn, year } from '../../game/dates';
+import { expDown, expDownOff, expIso, expUp, expUpOff, ymOf, type YM } from '../../game/cmContractScreen';
 import { authentic } from '../../game/rules';
 import { cmNoInterest, cmRoleExpected, cmTalksDemand } from '../../game/cmTransferTalks';
 import { cmWhyText } from './common';
@@ -27,25 +29,51 @@ type Tab = 'basic' | 'bonuses' | 'clauses';
 const r50 = (v: number) => Math.max(0, Math.round(v / 50) * 50);
 
 /** En række: etiket · − · værdi ▾ (grøn liste) · + · = (tilbage til spillerens krav) */
-function Row({ label, value, show, options, onSet, reset, on = true, onToggle, star }: {
+function Row({ label, value, show, options, onSet, reset, on = true, onToggle, star, stepper, upOff, downOff }: {
   label: string; value: number; show: (v: number) => string; options: number[]; onSet: (v: number) => void; reset?: number;
   on?: boolean; onToggle?: () => void; star?: boolean;
+  /** originalens trin (fx Cash::step_up/step_down 0x43f4e0/0x43f580) i stedet for listens næste mulighed, med skærmens grå knapper */
+  stepper?: (d: 1 | -1) => number; upOff?: boolean; downOff?: boolean;
 }) {
-  // − / +: den næste mulighed under eller over den nuværende værdi
-  const step = (d: number) => {
+  // − / +: originalens trin, ellers den næste mulighed under eller over den nuværende værdi
+  const step = (d: 1 | -1) => {
+    if (stepper) { onSet(stepper(d)); return; }
     const next = d > 0 ? options.find((o) => o > value) : [...options].reverse().find((o) => o < value);
     if (next !== undefined) onSet(next);
   };
   return (
     <div className={`cx-neg-row ${on ? '' : 'off'}`}>
       <button className={`cx-neg-label ${onToggle ? 'toggle' : ''}`} onClick={onToggle} disabled={!onToggle}>{star && <span className="cx-neg-star">* </span>}{label}</button>
-      <CxPm disabled={!on} onClick={() => step(-1)}>−</CxPm>
-      <CxDrop className="cx-green cx-neg-val" caret label={show(value)} btn={{ disabled: !on }}
+      <CxPm disabled={!on || downOff} onClick={() => step(-1)}>−</CxPm>
+      <CxDrop className="cx-green cx-neg-val" caret fixed label={show(value)} btn={{ disabled: !on }}
         items={options.map((o) => ({ key: String(o), label: show(o), checked: o === value, onClick: () => onSet(o) }))} />
-      <CxPm disabled={!on} onClick={() => step(1)}>+</CxPm>
+      <CxPm disabled={!on || upOff} onClick={() => step(1)}>+</CxPm>
       <button className="cx-pm" disabled={!on || reset === undefined} onClick={() => reset !== undefined && onSet(reset)}>=</button>
     </div>
   );
+}
+
+/** En række som originalens kontraktskærm (0x4e06e0/0x4e2280): etiket · − · værdi · + · = – grå knapper efter skærmens regler */
+function StepRow({ label, text, onDown, onUp, onEq, downOff, upOff }: {
+  label: string; text: string; onDown: () => void; onUp: () => void; onEq: () => void; downOff?: boolean; upOff?: boolean;
+}) {
+  return (
+    <div className="cx-neg-row">
+      <span className="cx-neg-label">{label}</span>
+      <CxPm disabled={downOff} onClick={onDown}>−</CxPm>
+      <span className="cx-neg-static cx-neg-val">{text}</span>
+      <CxPm disabled={upOff} onClick={onUp}>+</CxPm>
+      <button className="cx-pm" onClick={onEq}>=</button>
+    </div>
+  );
+}
+
+/** måned som originalens 0x54d210 ("Aug") */
+const EN_MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function monthShort(m: number): string {
+  const loc = t('cl.locale');
+  if (!loc || loc.startsWith('en') || loc === 'cl.locale') return EN_MON[m];
+  try { return new Date(Date.UTC(2001, m, 15)).toLocaleDateString(loc, { month: 'short', timeZone: 'UTC' }); } catch { return EN_MON[m]; }
 }
 
 /** "Offer Contract" til en stabsperson (CM 01/02, original DB i ægte tilstand – cmStaff.ts): samme skærm som spillernes uden fanerne –
@@ -60,7 +88,6 @@ export function ClassicStaffNegotiation({ staffId, role, onClose }: { staffId: n
   // originalens krav 0x85fc50 (0x4deac0, cmStaffOfferCheck) i ægte tilstand; ellers spillets eget
   const [chk] = useState(() => (cmRolesFor(s, g.date).includes(role) ? cmStaffOfferCheck(g, s, g.userClub, JOB_CODE[role]) : null));
   const demand = r50(chk?.wage ?? cmStaffDemand(s, role));
-  const [years, setYears] = useState(2);
   const [signOn, setSignOn] = useState(0);
   const [pub, setPub] = useState(false);
   const [ask, setAsk] = useState(false);
@@ -72,18 +99,32 @@ export function ClassicStaffNegotiation({ staffId, role, onClose }: { staffId: n
   // CM 01/02 (ægte tilstand, original DB): bestyrelsens loft for jobbet 0x597db0 (cmBudget.ts); ellers lønbudgettet minus truppens lønsum
   const [cmAllow] = useState(() => cmBoardStaffWageAllow(g, s, role, club.id));
   const allow = cmAllow ?? Math.max(0, club.wageBudget - bill);
-  // 0x4e1329: lønnen klemmes til loftet – tilbuddet starter på min(kravet, loftet), og listen går ikke over loftet
-  const cap = (v: number) => (cmAllow !== null && v > cmAllow ? Math.floor(cmAllow / 50) * 50 : v);
-  const [wage, setWage] = useState(() => cap(demand));
-  const end = (y: number) => `${t('cl.neg.jun')} ${g.season + y}`;
+  // 0x4e1329: tilbuddet starter på min(kravet, loftet)
+  const [wage, setWage] = useState(() => (cmAllow !== null && demand > cmAllow ? cmAllow : demand));
+  // Signing On Fee: loftet = skærmparameter 0x15 = transferbudgettet 0x598800 klemt til 0..£5.000.000 (0x4de3a6; egen klubs folk kendes fuldt)
+  const [signMax] = useState(() => { const b = cmTransferBudgetRaw(g, club.id); return b === null ? Infinity : Math.min(5_000_000, Math.max(0, b)) / cmGbp(g, club.id); });
+  const signReq = Math.min(chk?.signOn ?? 0, signMax);
+  // Contract Expires: måned/år (skærmparameter 0xb/0xc) – startværdien kravets udløb (0x4df090); grænsen (9/0xa) = hans nuværende udløb, når han er
+  // ansat i klubben (0x4defb7), ellers i dag + 32 dage (0x4df000)
+  const today = ymOf(g.date);
+  const wantExp = chk?.expires ?? `${g.season + 2}-06-30`;
+  const own = !!s.club && s.club === g.userClub;
+  const min = ymOf(own && s.expires ? s.expires : addDays(g.date, 32));
+  const [exp, setExp] = useState<YM>(() => ymOf(wantExp));
+  const expTxt = ([y, m]: YM) => `${monthShort(m)} ${y}`;
   const from = s.club ? g.clubs[s.club] : undefined;
   // egen stab (Offer New Contract): ingen kompensation, og uden vilje "does not wish to negotiate a new contract at the current time" (0x9b0964)
-  const own = !!s.club && s.club === g.userClub;
   // 0x4e4b55: kompensationen 0x8d0780 – vises kun, når den er over 0
   const comp = from && !own ? (cmStaffOn(g) ? cmStaffCompensation(g, s) : poachFee(s)) : 0;
   const col = titleColors(s.club || undefined);
-  const wageOpts = [...new Set([0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 1, 1.05, 1.1, 1.2, 1.3, 1.5, 1.75, 2].map((f) => cap(r50(demand * f))))];
-  const send = () => { act({ t: 'cmStaffOffer', id: s.id, role, wage, years, signOn }); onClose(true); };
+  // 0x4e2280: løn + (id 4) = Contract 0x867b70 (Cash::step_up 0x43f4e0, flag 8 – ugeløn), grå når det næste trin (0x43f460 flag 8) er over loftet
+  // (parameter 0x18); − (5) 0x867c50, grå ved £100 eller derunder; = (6) kravets løn. Signing On: + (23) step_up flag 4, grå over parameter 0x15;
+  // − (24) step_down flag 4, grå ved 0; = (22) kravets, højst 0x15. Værdicellerne har ingen handling (ingen liste).
+  const k = cmGbp(g, club.id);
+  const wUp = cashStepEur(wage, 8, 1), wDown = cashStepEur(wage, 8, -1);
+  const wUpOff = cmAllow !== null && cashRound(cashUnits(wUp), 8) > cashRound(cashUnits(cmAllow), 8);
+  const sUp = cashStepEur(signOn, 4, 1);
+  const send = () => { act({ t: 'cmStaffOffer', id: s.id, role, wage, years: Math.max(1, exp[0] - today[0]), signOn, expires: expIso(exp, g.date) }); onClose(true); };
   return (
     <div className="cx-dlg cx-staff-neg">
       <div className="cx-title" style={{ background: col.bg, color: col.fg }}><h2>{name}{from ? ` (${from.short || from.name})` : ''}</h2></div>
@@ -93,12 +134,15 @@ export function ClassicStaffNegotiation({ staffId, role, onClose }: { staffId: n
           {from && comp > 0 && <p className="cx-ts-intro">{t('cm.neg.comp', { club: from.short || from.name, fee: moneyFull(comp) })}</p>}</div>
       ) : (
         <div className="cx-dlg-body">
-          <p className="cx-ts-intro">{interested ? t('cl.neg.wants', { player: name, wage: moneyWage(demand), until: end(2), fee: '' }) : own ? t('cm.neg.noRenewNow', { player: name }) : t('cm.neg.noInterest', { name })}</p>
+          <p className="cx-ts-intro">{interested ? t('cl.neg.wants', { player: name, wage: moneyWage(demand), until: expTxt(ymOf(wantExp)), fee: '' }) : own ? t('cm.neg.noRenewNow', { player: name }) : t('cm.neg.noInterest', { name })}</p>
           <p className="cx-ts-intro">{t('cl.neg.allow', { allow: moneyWage(allow) })}</p>
           {<>
-          <Row label={t('cl.neg.wage')} value={wage} show={moneyWage} options={wageOpts.includes(wage) ? wageOpts : [...wageOpts, wage].sort((a, b) => a - b)} onSet={setWage} reset={demand} />
-          <Row label={t('cl.neg.signOn')} value={signOn} show={fee8} options={[0, 5000, 10000, 25000, 50000, 100000, 250000]} onSet={setSignOn} reset={0} />
-          <Row label={t('cl.neg.expires')} value={years} show={end} options={[1, 2, 3, 4, 5]} onSet={setYears} reset={2} />
+          <StepRow label={t('cl.neg.wage')} text={moneyWage(wage)} onDown={() => setWage(wDown)} downOff={Math.round(wage * k) <= 100}
+            onUp={() => setWage(wUp)} upOff={wUpOff} onEq={() => setWage(demand)} />
+          <StepRow label={t('cl.neg.signOn')} text={fee8(signOn)} onDown={() => setSignOn(cashStepEur(signOn, 4, -1))} downOff={signOn <= 0}
+            onUp={() => setSignOn(sUp)} upOff={Math.round(sUp * k) > Math.round(signMax * k)} onEq={() => setSignOn(signReq)} />
+          <StepRow label={t('cl.neg.expires')} text={expTxt(exp)} onDown={() => setExp(expDown(exp, today))} downOff={expDownOff(exp, today, min)}
+            onUp={() => setExp(expUp(exp, today, min))} upOff={expUpOff(exp, today)} onEq={() => setExp(ymOf(wantExp))} />
           <div className="cx-neg-row"><span className="cx-neg-label">{t('cl.neg.type')}</span><span /><span className="cx-neg-static cx-neg-type">{t('cl.neg.fullTime')}</span></div>
           <div className="cx-neg-row"><span className="cx-neg-label">{t('cm.neg.public')}</span><span />
             <button className="cx-neg-static cx-neg-type cx-neg-public" onClick={() => setPub(!pub)}>{t(pub ? 'common.yes' : 'common.no')}</button></div>
@@ -260,7 +304,9 @@ function NegotiationBody({ offer, renewPid, onClose }: { offer?: TransferOffer; 
                 <p className="cx-ts-intro">{noInt ? t(noInt.key, { player: name, reasons: noInt.reasons })
                   : t(signReq ? 'cl.neg.wantsSign' : 'cl.neg.wants', { player: name, wage: moneyWage(demand), until: end(wantYears), fee: moneyFull(signReq) })}</p>
                 <p className="cx-ts-intro">{t('cl.neg.allow', { allow: moneyWage(allow) })}</p>
-                <Row label={t('cl.neg.wage')} value={wage} show={moneyWage} options={wageOpts.includes(wage) ? wageOpts : [...wageOpts, wage].sort((a, b) => a - b)} onSet={setWage} reset={demand} />
+                <Row label={t('cl.neg.wage')} value={wage} show={moneyWage} options={wageOpts.includes(wage) ? wageOpts : [...wageOpts, wage].sort((a, b) => a - b)} onSet={setWage} reset={demand}
+                  stepper={(d) => cashStepEur(wage, 8, d)} downOff={Math.round(wage * cmGbp(g, club.id)) <= 100}
+                  upOff={cmAllow !== null && cashRound(cashUnits(cashStepEur(wage, 8, 1)), 8) > cashRound(cashUnits(cmAllow), 8)} />
                 <Row label={t('cl.neg.signOn')} value={cl.signOn ?? 0} show={fee8} options={[...new Set([0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 2].map((f) => Math.round(Math.max(signReq, demand * 10) * f / 5000) * 5000))]} onSet={(v) => set('signOn', v)} reset={signReq} />
                 <Row label={t('cl.neg.expires')} value={years} show={end} options={[1, 2, 3, 4, 5]} onSet={setYears} reset={wantYears} />
                 <div className="cx-neg-row"><span className="cx-neg-label">{t('cl.neg.type')}</span><span />

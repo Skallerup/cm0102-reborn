@@ -106,7 +106,7 @@ export type Action =
   | { t: 'acceptCounter'; pid: number }
   | { t: 'withdraw'; pid: number }
   | { t: 'hireStaff'; id: number; wage?: number }
-  | { t: 'cmStaffOffer'; id: number; role: StaffRole; wage: number; years: number; signOn: number }
+  | { t: 'cmStaffOffer'; id: number; role: StaffRole; wage: number; years: number; signOn: number; expires?: string }
   | { t: 'staffNote'; id: number; nick?: string | null; notes?: string }
   | { t: 'fireStaff'; id: number }
   | { t: 'coachAreas'; id: number; areas: CoachArea[] | null }
@@ -221,7 +221,7 @@ export function applyAction(a: Action): unknown {
     }
     case 'cmRequest': return cmMediaOn(g) ? cmAnswerRequest(g, a.news, a.grant) : 'error';
     case 'cmRumour': return cmMediaOn(g) ? cmRumourAnswer(g, a.news, a.answer) : 'error';
-    case 'cmStaffOffer': return cmStaffOn(g) ? cmOfferStaff(g, { staff: a.id, role: a.role, wage: a.wage, years: a.years, signOn: a.signOn }) : 'error';
+    case 'cmStaffOffer': return cmStaffOn(g) ? cmOfferStaff(g, { staff: a.id, role: a.role, wage: a.wage, years: a.years, signOn: a.signOn, ...(a.expires ? { expires: a.expires } : {}) }) : 'error';
     case 'staffNote': {
       const s = g.staff[a.id];
       if (!s) return 'error';

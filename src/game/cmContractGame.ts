@@ -40,7 +40,7 @@ const REC_SCRATCH: number[] = new Array(0x46).fill(0);
 import { nationLanguage } from './engine/grid/nationLanguage';
 import { regionOf } from './leagues';
 import { ATTRS } from './attributes';
-import { ageOn } from './dates';
+import { ageOn, daysBetween } from './dates';
 import { squadIds } from './state';
 import { boardEnv, staffJobInterest } from './cmBoardGame';
 import { leagueClash } from './cmBoardInterest';
@@ -548,7 +548,12 @@ function staffMem(g: GameState, s: import('./types').Staff, clubId: number, job:
       // 0x844780(staff, klub, 0, job, a5): viljen af spillets data (cmBoardInterest.ts) – posterne i hukommelsen har ikke viljens inddata
       if (adr === 0x844780 && (a[0] >>> 0) === stAdr && M.c.m.s32(a[1] >>> 0) === clubId) {
         const env = M.env(), p = env.person(s.id);
-        return p ? staffJobInterest(g, env, p, clubId, a[3] & 0xff) : 0;
+        if (!p) return 0;
+        // egen stab uden databasens ikke-spillerpost (0x527240's genererede trænere/spejdere/fysioterapeuter): i originalen har de posten +0x69
+        // (puljens poster 0x527a85), så 0x844780 springer ikke ud ved 0x8447d8. For c == H (Offer New Contract) returnerer den ved 0x8451ca
+        // med 3,5 (× præferencerne) uden at læse personlighedsfelterne – den værdi er eksakt også uden vores post. For andre klubber som før.
+        const own = s.club === clubId && !p.np;
+        return staffJobInterest(g, env, own ? { ...p, np: true } : p, clubId, a[3] & 0xff);
       }
       return undefined;
     },
@@ -648,7 +653,7 @@ export function cmStaffTerms(g: GameState, s: import('./types').Staff, clubId: n
  *    skriver 0x9b0450 "… has no interest in negotiating terms for this position." (+0x69 ≠ 0). Skærmparameter 0x16 = 0, så grenen 0x4e0f1f
  *    (0x16 > 1,5 · loftet) kommer aldrig. Gælder både ledige og ansatte. Null uden for cmStaffOn. */
 export function cmStaffOfferCheck(g: GameState, s: import('./types').Staff, clubId: number, job: number):
-  { interested: boolean; key: 'cm.neg.noInterest' | 'cm.neg.noRenewNow' | null; wage: number; will: number; allow: number } | null {
+  { interested: boolean; key: 'cm.neg.noInterest' | 'cm.neg.noRenewNow' | null; wage: number; will: number; allow: number; signOn: number; expires: string } | null {
   if (!cmStaffOn(g) || g.draft || !g.clubs[clubId]) return null;
   const X = staffMem(g, s, clubId, job, 0xff);
   if (!X) return null;
@@ -677,7 +682,10 @@ export function cmStaffOfferCheck(g: GameState, s: import('./types').Staff, club
     if (!((job === 8 || job === 10 || job === 9) && wage < 0xc80)) ok = !(age >= 0x18 || wage >= bx + 0xcb2);
   }
   const key = ok ? null : own ? 'cm.neg.noRenewNow' : 'cm.neg.noInterest';
-  return { interested: ok, key, wage: Math.round(wage / cmGbp(g, clubId)), will: f, allow: Math.round(allow / cmGbp(g, clubId)) };
+  // kravets signing-on (+8) og udløb (+0x2d) – skærmens "="-knapper (0x4e2280 id 22/11) og udløbets startværdi (param 0xb/0xc, 0x4df090)
+  const signOn = Math.round(m.s32(LOCAL + 8) / cmGbp(g, clubId));
+  const expires = dayIso(m.s16(LOCAL + 0x2d), m.u16(LOCAL + 0x2f));
+  return { interested: ok, key, wage: Math.round(wage / cmGbp(g, clubId)), will: f, allow: Math.round(allow / cmGbp(g, clubId)), signOn, expires };
 }
 registerStaffOfferCheck(cmStaffOfferCheck);
 
@@ -687,8 +695,7 @@ registerStaffOfferCheck(cmStaffOfferCheck);
  *  - point = 0x866830(tilbud)/0x866830(krav 0x85fc50(staff, klub, −1, 0xf, job)) − (+0x5b − +0x57 + +0x59 − 9)/300; under 0,6 → 0.
  *  - ikke-spillerposten +0x69 ≠ 0 og job ≠ 0xb: x = 0x844780(staff, klub, 0, job, 0) (et spillende job 0x53b620 – 0xb/0xc/0xd/0xf – tager
  *    gennemsnittet med 0x846920; ikke stabens jobs). Er han klubbens egen (Offer New Contract), er isOwn = 1: point ≥ 0,99 og x ≤ 3,15 → x = 3,15.
- *  - 0x4ceae2: point > 0,5, arbejdstilladelse 0x8c7560 og kontraktens udløb +0x2d under 90 dage væk → 0 (kan ikke ske her: udløbet er mindst
- *    30/6 næste år).
+ *  - 0x4ceb0c: point > 0,5, arbejdstilladelse 0x8c7560 og kontraktens udløb +0x2d under 90 dage væk → 0.
  *  - point ≥ 0,9: f = max(x, 3,15); 0,8–0,9 og x > 3,15: x; 0,7–0,8 og x > 3,5: x; ellers intet. Ja, når f·point > 2,75 (`best`'s start).
  *  - 0x4cec5a: +0x69 ≠ 0 og kandidat til et managerjob (0x69fc60 på MANAGER_MANAGER – cmBoard vac.cand) → intet tilbud vælges.
  *  Kun menneskets tilbud vurderes (computerklubbernes samtidige tilbud til samme person indgår ikke – som cmContractAnswer). Null uden for cmStaffOn. */
@@ -725,6 +732,9 @@ export function cmStaffContractAnswer(g: GameState, s: import('./types').Staff, 
   const own = !!s.club && s.club === clubId;
   if (own && !(score < 0.99) && !(x > 3.15)) x = 3.15;
   if (score < 0.6) score = 0;
+  // 0x4ceb0c: point > 0,5, arbejdstilladelsen 0x8c7560(staff, klub) og udløbet +0x2d under 90 dage fra i dag (0x54cdb0) → 0 (som cmContract.ts) –
+  // kontraktskærmens udløb går i måneder (0x4e2280), så et kort tilbud kan nå hertil
+  if (score > 0.5 && c.call(0x8c7560, m.u32(0xde1f54), st, club, 0) && daysBetween(g.date, o.expires) < 0x5a) score = 0;
   let f = 0;
   if (score >= 0.9) f = x > 3.15 ? x : 3.15;
   else if (score > 0.8 && x > 3.15) f = x;

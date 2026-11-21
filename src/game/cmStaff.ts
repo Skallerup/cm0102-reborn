@@ -260,7 +260,8 @@ export function cmStaffDemand(s: Staff, role: StaffRole = s.role): number {
   return Math.round((base * econ() * Math.pow(1.05, level)) / 50) * 50 + Math.round(300 * econ());
 }
 
-export interface CmStaffOffer { staff: number; club: number; role: StaffRole; wage: number; years: number; signOn: number; date: string; /** venter på svar på "Delay Transfer Offer" (nyhedens id) */ hold?: number;
+export interface CmStaffOffer { staff: number; club: number; role: StaffRole; wage: number; years: number; signOn: number; date: string;
+  /** udløbet fra kontraktskærmen (0x4e0180: dag min(startdagen, 28), skærmens måned/år) – ældre tilbud: 30/6 om `years` år */ expires?: string; /** venter på svar på "Delay Transfer Offer" (nyhedens id) */ hold?: number;
   /** personen har sagt ja (nyheden "accepts" er sendt) – venter kun på plads */ agreed?: boolean }
 
 /** Offer → "Offer contract to X ?" Yes: tilbuddet sendes, svaret kommer som nyhed næste dag (som originalens kontrakttilbud) */
@@ -303,7 +304,7 @@ export function cmStaffOffersDaily(g: GameState): void {
     const fee = s.club ? cmStaffCompensation(g, s) : 0;
     const roomOk = staffCountFor(g, o.club, o.role) < STAFF_LIMITS[o.role];
     const ans = cmRolesFor(s, g.date).includes(o.role)
-      ? contractAnswer?.(g, s, o.club, JOB_CODE[o.role], { wage: o.wage, signOn: o.signOn, expires: `${Number(g.date.slice(0, 4)) + o.years}-06-30` }) ?? null
+      ? contractAnswer?.(g, s, o.club, JOB_CODE[o.role], { wage: o.wage, signOn: o.signOn, expires: (o.expires ?? `${Number(g.date.slice(0, 4)) + o.years}-06-30`) }) ?? null
       : null;
     const willing = !!ans?.accept && club.balance >= fee;
     // CM 01/02 (0x…, strengen "… do not currently have enough spaces at their club for this transfer to go through. Delay the transfer for a
@@ -338,7 +339,7 @@ export function cmStaffOffersDaily(g: GameState): void {
     if (s.cmExtra) { delete s.cmExtra; delete s.cmJob; delete s.cmClub; }
     s.assignment = null;
     s.wage = o.wage;
-    s.expires = `${Number(g.date.slice(0, 4)) + o.years}-06-30`;
+    s.expires = (o.expires ?? `${Number(g.date.slice(0, 4)) + o.years}-06-30`);
     // stabens kontrakt underskrives også gennem 0x8c38b0 → Finance::add_signing_on 0x5998e0 (blokken)
     if (o.signOn) { club.balance -= o.signOn; club.finance.signOn = (club.finance.signOn ?? 0) + o.signOn; bookBlockEur(g, club, CMK.signOn, o.signOn); }
     addNews({ cat: 'contract', key: 'cm.staffAccepts', params: { last: s.last, name, club: club.short || club.name } });
@@ -351,7 +352,7 @@ const staffCountFor = (g: GameState, club: number, role: StaffRole) => Object.va
  *  for andres stab. */
 function ownStaffAnswer(g: GameState, s: Staff, club: import('./types').Club, o: CmStaffOffer): void {
   const name = `${s.first} ${s.last}`.trim();
-  const expires = `${Number(g.date.slice(0, 4)) + o.years}-06-30`;
+  const expires = (o.expires ?? `${Number(g.date.slice(0, 4)) + o.years}-06-30`);
   const ans = cmRolesFor(s, g.date).includes(o.role) ? contractAnswer?.(g, s, o.club, JOB_CODE[o.role], { wage: o.wage, signOn: o.signOn, expires }) ?? null : null;
   const roomOk = o.role === s.role || staffCountFor(g, o.club, o.role) < STAFF_LIMITS[o.role];
   if (ans?.accept && !roomOk) {

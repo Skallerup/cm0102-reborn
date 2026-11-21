@@ -149,6 +149,18 @@ export function cashRound(v: number, flags: number, cur: Currency = currency): n
   const st = flags & 4 ? cashStepOf(v / u) * u : flags & 8 ? cashStep8(v / u) * u : 1000;
   return Math.trunc((v + Math.trunc(st / 2)) / st) * st;
 }
+/** Cash::step_up 0x43f4e0 / step_down 0x43f580(flags) for et beløb i €: i den viste valuta (beløbet × kursen 0xad9cb8) rundet til trinnet 0x4426e0
+ *  (bit 4 store beløb, bit 8 små – fx kontraktskærmens ugeløn 0x867b70/0x867c50), så + trinnet over x + 1 / − trinnet (ikke under 0); tilbage i € */
+export function cashStepEur(eur: number, flags: number, dir: 1 | -1, cur: Currency = currency): number {
+  const u = CASH_CUR[cur].unit;
+  const st = (v: number) => (flags & 4 ? cashStepOf(v / u) : flags & 8 ? cashStep8(v / u) : 1000 / u) * u;
+  let x = Math.max(0, Math.round(eur * RATE[cur]));
+  x = Math.trunc((x + Math.trunc(st(x) / 2)) / st(x)) * st(x);
+  x = dir > 0 ? x + st(x + 1) : Math.max(0, x - st(x));
+  return x / RATE[cur];
+}
+/** et beløb i € som den viste valutas heltal (til originalens sammenligninger af Cash-beløb) */
+export const cashUnits = (eur: number, cur: Currency = currency): number => Math.round(eur * RATE[cur]);
 
 /** Et beløb i € som originalen: 0x43f460(flags) + 0x441c10(flags) – flagbit 2 = fuldt. `fit`: originalens mønster "fuldt, men over `fit`
  *  tegn forkortet" (fx kontraktskærmen 0x4e06e0: 6 → 5 / 0xA → 9 over 8 tegn). Negative beløb med '-' foran. */
