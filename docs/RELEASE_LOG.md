@@ -2,6 +2,7 @@
 
 Flyttet fra CLAUDE.md 17/11-2026 (så CLAUDE.md er kort i hver session). Nyeste først. Tilføj en linje øverst ved hver udgivelse.
 
+- 2026-11-21 – Skudt live (v0.33.0): 2026-11-21 – K7-5: cmRegen.ts – pulje (ældste først, også spillere der bliver stab 0x7a6335) + kø; regen 0x7abac0 tager PA/positioner/nationalitet fra puljens første post, klubvalg 0x7ad0e0/0x7ad220/0x7ad590/0x7a6f10, kontrakt. PA≥150 sæson 2: 2 → 16 (orakel 17). Fingeraftryk 2001-08-20 → 47da4b72d96ebf0b.
 - 2026-11-21 – Skudt live (v0.33.0): 2026-11-21 – Spillerønske: g.options.modernSubs (Game Options, CM Reborn-zone) → classicRules() falsk → maxSubs 5 / benchSize 9 (eneste brug af classicRules); standard fra. test modernSubs.
 - 2026-11-21 – Skudt live (v0.33.0): 2026-11-21 – Klubtrim 0x5267c0 database_trim_club_table (cmRaw.clubMem): valgte lande beholder alle klubber (England ≤500 omdømme ved størrelse 1/2 undtaget), top 20/15 pr. land, ansættelser, turneringshistorik, staff_history (Maximum). England størrelse 2: 233 → 277 (orakel 282). Lejer til 31/12 91/83 → 95/100. Fingeraftryk 2001-08-20 → 33f9a25f41e075e8.
 - 2026-11-21 – Skudt live (v0.33.0): 2026-11-21 – Ejerens Silkeborg-spil (14 målmænd hos Esbjerg, mange Loa): gemte spil fra før 20/11 manglede cmSlMoved + reservekampe → hængende ønskeliste-pladser (2.940 1/12). Ved indlæsning (cmSlFix, én gang, cmMarketOn): ankomne spillere bliver pladsens indehaver, budmærker ryddes, g.cmRsv slås til. Hængende pladser i maj 2.357 → 18.
