@@ -9,6 +9,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.33.0',
+    date: '2026-11-21',
+    title: { da: 'Mere af det originale CM 01/02', en: 'More of the original CM 01/02' },
+    items: [
+      { da: "En klubløs spiller viser ikke længere en gammel trupstatus på Contract-fanen.", en: "A free agent no longer shows an old squad status on the Contract tab." },
+    ],
+  },
+  {
     version: '0.32.0',
     date: '2026-11-20',
     title: { da: 'Mere af det originale CM 01/02', en: 'More of the original CM 01/02' },
