@@ -28,7 +28,7 @@ import type { GameState, MatchReport, Player } from './types';
 import { ageOn, addDays } from './dates';
 import { asOwner, forEachHuman, isHumanClub } from './humans';
 import { addNews } from './state';
-import { cmRand, clubRepMem, nationRepMem } from './cmPlayerData';
+import { cmRand, clubRepMem, clubDivRep, nationRepMem, staffJoined } from './cmPlayerData';
 import { aiPickCtx, playerRecord, roleDataOf } from './engine/grid/aiTeam';
 import { roleScore } from './engine/grid/roleScore';
 import { assignSquad } from './engine/grid/pickTeam';
@@ -186,12 +186,6 @@ function onOtherDuty(g: GameState, pid: number, nation: number, slot: SquadSlot,
   return false;
 }
 
-function leagueRepOf(g: GameState, club: number): number | null {
-  const lg = g.clubs[club]?.league;
-  const id = lg ? +(lg.match(/(\d+)$/)?.[1] ?? NaN) : NaN;
-  return Number.isFinite(id) ? g.cmCompRep?.[id] ?? null : null;
-}
-
 /** 0x76c120(nation, slot, dato, kamp) – den nye trup (spiller-id'er) */
 export function selectSquad(g: GameState, n: number, slot: SquadSlot, f: SelFixture | null): CmSquad {
   const s = st(g);
@@ -222,7 +216,7 @@ export function selectSquad(g: GameState, n: number, slot: SquadSlot, f: SelFixt
             const opp = f.h === n ? f.a : f.h;
             if (clubRepMem(g, p.club) * 0.8 > (g.intl?.info?.[opp]?.rep ?? nationRepMem(g, opp))) continue;
           } else {
-            const lr = leagueRepOf(g, p.club), cr = g.cmCompRep?.[COMP_ID[f.kind] ?? -1];
+            const lr = clubDivRep(g, p.club), cr = g.cmCompRep?.[COMP_ID[f.kind] ?? -1];
             if (lr !== null && cr !== undefined && lr * 0.7 > cr) continue;
           }
         }
@@ -252,10 +246,10 @@ export function selectSquad(g: GameState, n: number, slot: SquadSlot, f: SelFixt
       const age = ageOn(p.dob, date);
       const d = roleDataOf(p, ctx as Parameters<typeof roleDataOf>[1], age);
       v = roleScore({
-        id: p.id, age, atClub: false, joined: dayOf(p.joined ?? p.cmJoined ?? date), realPlayer: !p.regen, rec: recs[i], pos: masks[j], att: 0, lo: 0, hi: 0, tb: 0, tf: 0,
+        id: p.id, age, atClub: false, joined: dayOf(staffJoined(p) ?? date), realPlayer: !p.regen, rec: recs[i], pos: masks[j], att: 0, lo: 0, hi: 0, tb: 0, tf: 0,
         flags, mgrJoined: null, today, yearAgo, captain: false, setPiece: 0, nationRep: nationRepMem(g, p.nation),
         data: { ...d, contract: null },
-        tail: { caps: p.caps ?? 0, hasClub: !!p.club, leagueRep: leagueRepOf(g, p.club) },
+        tail: { caps: p.caps ?? 0, hasClub: !!p.club, leagueRep: clubDivRep(g, p.club) },
       });
       memo.set(k, v);
     }

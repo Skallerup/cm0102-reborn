@@ -26,7 +26,7 @@ import { getMaxWage_5968d0, maxStaffWage_597db0, recalcWages_598370 } from './cm
 import { clubInSeason_669bd0, linkedClub_540a50 } from './cmClubLinks';
 import { defaultStaffContract_864550, defaultWageUnset_862720 } from './cmWage';
 import { fillUnsetWage_83a1b0 } from './cmWageFill';
-import { cmLogic, cmStaffOn, clubRepMem } from './cmPlayerData';
+import { cmLogic, cmStaffOn, clubRepMem, staffJoined } from './cmPlayerData';
 import { ageOn } from './dates';
 import { ATTRS } from './attributes';
 import { squad } from './state';
@@ -233,7 +233,7 @@ export function buildWageMem(g: GameState, clubs: Iterable<number>, unset: Set<n
     m.w8(st + 0x22, Math.min(255, p.caps ?? 0));
     m.w32(st + 0x39, club ? clubAdr(club) : 0);
     m.w8(st + 0x3d, 0xb);
-    const j = p.cmJoined ?? p.joined;
+    const j = staffJoined(p);
     if (j) { const [d, y] = isoDay(j); m.w16(st + 0x3e, d); m.w16(st + 0x40, y); }
     m.w8(st + 0x57, attr(p, 'ambition')); m.w8(st + 0x58, attr(p, 'determination')); m.w8(st + 0x59, attr(p, 'loyalty')); m.w8(st + 0x5a, attr(p, 'pressure'));
     m.w32(st + 0x61, pr);

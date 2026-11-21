@@ -17,7 +17,8 @@ import { ATTRS } from './attributes';
 import { ageOn } from './dates';
 import { recordFreeTransfer, setClub, squad } from './state';
 import { isHumanClub } from './humans';
-import { cmActive, cmLogic, cmMarketOn, cmContractOf, cmRand, cmUnhappy, clubRepMem, nationRepMem, squadPlacement, statusCode } from './cmPlayerData';
+import { cmActive, cmLogic, cmMarketOn, cmContractOf, cmRand, cmUnhappy, clubRepMem, clubDivRep, nationRepMem, staffJoined, squadPlacement, statusCode } from './cmPlayerData';
+export { clubDivRep };
 import { cmClubEuro, cmFitRead } from './cmFitnessGame';
 import { clubStrength, dailyGate, financeStatus, newPlanEntry, planSquad, type PlanEntry, type PlanInput, type PlanPlayer, type PlanSlot } from './cmSquadPlan';
 import { aiPickCtx, playerRecord, roleDataOf } from './engine/grid/aiTeam';
@@ -66,7 +67,7 @@ export function storeEntry(g: GameState, cid: number, e: PlanEntry): void {
 function planPlayer(g: GameState, p: Player, fit: ReturnType<typeof cmFitRead>, startCall: boolean): PlanPlayer {
   const c = p.contract ? cmContractOf(p) : null;
   const end = p.contract ? dayOf(p.contract.expires) : { day: 0, year: 0 };
-  const joined = dayOf(p.joined ?? p.cmJoined ?? g.date);   // staff +0x3e: skiftet i spillet går forud for databasens dato
+  const joined = dayOf(staffJoined(p) ?? g.date);   // staff +0x3e: skiftet i spillet går forud for databasens dato
   const inj = fit.injury(p);
   const r = p.cmFit;
   // € → £ med faktoren for klubben, pengene tilhører (cmMoney.ts – den originale database: 0,86)
@@ -97,19 +98,6 @@ function managerNp(g: GameState, cid: number): number[] | null {
 }
 
 // ---------------------------------------------------------------- én klub
-
-/** Klubbens division +0x57's omdømme +0x69 (club_comp.dat +105): den kørende liga (CM<id>), ellers club.dat's division (cmFinRaw[0] – som
- *  hukommelsens +0x57, cmSlMem.ts). Englands non-league-klubber ligger i den skjulte liga «HN60», men har i originalen deres egne divisioner
- *  (357 «A Lower Division» +0x69 = 1, 358–360 = 2, Conference 93 = 3) – før blev tallet i «HN60» læst som turnering 60 (omdømme 12), så
- *  0x7bca90's omdømmemål R og grænsen T for alle non-league-klubber var for høje (Lordswood: T 6.824 mod oraklets 4.900) og 0x83f3a0 fandt
- *  næsten ingen klubløse. null = ingen division. */
-export function clubDivRep(g: GameState, cid: number): number | null {
-  const c = g.clubs[cid];
-  if (!c) return null;
-  const lm = /^CM(\d+)$/.exec(c.league ?? '');
-  const id = lm ? +lm[1] : g.cmFinRaw?.[cid]?.[0];
-  return id === undefined || id < 0 ? null : g.cmCompRep?.[id] ?? 0;
-}
 
 /** 0x83cb40(entry, klub, daily, first) for en klub i vores spil */
 export function cmSquadPlanClub(g: GameState, cid: number, daily: boolean, first: boolean, human?: boolean): import('./cmSquadPlan').PlanResult | null {

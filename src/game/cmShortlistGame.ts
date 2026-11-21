@@ -27,7 +27,7 @@ import { type CmCtx, type CmMem, G, getContract, clubAt, SparseMem } from './cmM
 import { holidayOpt_5fea50 } from './cmHoliday';
 import { buildSlWantMem, slMemPages, SLMEM_DEFER } from './cmSlMem';
 import { buildWantMem, type WantMem } from './cmContractGame';
-import { cmMarketOn, cmRand, clubRepMem, nationRepMem } from './cmPlayerData';
+import { cmMarketOn, cmRand, clubRepMem, nationRepMem, staffJoined } from './cmPlayerData';
 import { cmGbp, payClub } from './cmMoney';
 import { slCall } from './cmShortlist';
 import { playerValue_4d0c60, knowsNation_53d980, seenRep_5407e0, knowledge_5408c0, judge_6e86d0, JUDGE_HI, euCitizen_53d740, keyMemForget } from './cmValue';
@@ -260,10 +260,17 @@ function buildPositionLists(S: SlMem): void {
  *  de aktive landes spillere (også de skjulte ligaer), og af de øvrige alle med CA ≥ 150 (378/378) og de aktive landes egne statsborgere
  *  (70/104); af resten kun 2–3 % (≈ 700 af 31.000 – reglen er ikke fundet; *estimeret*: udeladt). World-filens frie spillere er ikke i
  *  originalen (0/313 parret på navn og fødselsdato) – de frie tæller kun med, når de har forladt en klub i et aktivt land. */
+const MEMK = new WeakMap<GameState, boolean>();
+/** world-filen kender 0x524d70's udvalgte (Player.cmMem – Maximum og størrelse 2 (CM_DBSIZE=2, CMRatings.tm/tf); som cmRetire.ts cmInMemory) */
+function memKnown(g: GameState): boolean {
+  let k = MEMK.get(g);
+  if (k === undefined) { k = Object.values(g.players).some((x) => x.club && x.cmMem === 1); MEMK.set(g, k); }
+  return k;
+}
 function loadedFilter(g: GameState): (p: Player) => boolean {
   const active = new Set(g.activeNations);
   // Databasestørrelsen Maximum (g.cmMaxMem, 0x524d70 for spillerne i parseren): de altid beholdte (Player.cmMem) i stedet for CA ≥ 150-skønnet
-  const max = !!g.cmMaxMem && ENV.CM_SL_MAXMEM !== '0';
+  const max = (!!g.cmMaxMem || memKnown(g)) && ENV.CM_SL_MAXMEM !== '0';
   return (p) => {
     if ((max ? p.cmMem === 1 : p.ca >= 150) || active.has(p.nation) || (p.cmNation2 !== undefined && active.has(p.cmNation2))) return true;
     const home = p.loan?.from ?? p.club;
@@ -665,7 +672,7 @@ function playerBase(S: SlMem, p: Player, mid: number): PlBase {
   const C = S.cache;
   const D = (C.day ??= { today: dayOf(g.date), yearAgo: dayOf(`${+g.date.slice(0, 4) - 1}${g.date.slice(4)}`) });
   let PL = C.pl.get(p.id);
-  if (!PL) { PL = { joined: dayOf(p.joined ?? p.cmJoined ?? g.date), age: ageOn(p.dob, g.date), pLang: nationLanguage(g, p.nation), langs: playerLanguages(g, p) }; C.pl.set(p.id, PL); }
+  if (!PL) { PL = { joined: dayOf(staffJoined(p) ?? g.date), age: ageOn(p.dob, g.date), pLang: nationLanguage(g, p.nation), langs: playerLanguages(g, p) }; C.pl.set(p.id, PL); }
   let rec = C.rec.get(p.id);
   if (!rec) { rec = playerRecord(p); C.rec.set(p.id, rec); }
   const pClub = p.loan ? p.loan.from : p.club;
@@ -673,7 +680,7 @@ function playerBase(S: SlMem, p: Player, mid: number): PlBase {
     id: p.id, nation: p.nation, nation2: p.cmNation2, rel: p.cmRel,
     real: !p.regen, age: PL.age, joined: PL.joined, rec, today: D.today, yearAgo: D.yearAgo,
     nationRep: nationRepMem(g, p.nation), british: BRITISH.has(g.nations[p.nation]?.code ?? ''), caps: p.caps, b56: sh(p, 'adaptability'),
-    pClub, pClubNation: g.clubs[pClub]?.nation ?? -1, stClubRep: clubRepMem(g, pClub), daysNoClub: pClub ? 0 : Math.max(0, dayNum(g.date) - dayNum(p.joined ?? g.date)),
+    pClub, pClubNation: g.clubs[pClub]?.nation ?? -1, stClubRep: clubRepMem(g, pClub), daysNoClub: pClub ? 0 : Math.max(0, dayNum(g.date) - dayNum(staffJoined(p) ?? g.date)),
     pLang: PL.pLang, langs: PL.langs, cc: !!p.cmContract, injV: undefined, rdC: null, rdN: null,
   };
   bases[mid] = B;
@@ -728,7 +735,7 @@ function planValue0(S: SlMem, st: number, mask: number, flags: number, clubAdr: 
   const D = (C.day ??= { today: dayOf(g.date), yearAgo: dayOf(`${+g.date.slice(0, 4) - 1}${g.date.slice(4)}`) });
   const today = D.today, yearAgo = D.yearAgo;
   let P = C.pl.get(p.id);
-  if (!P) { P = { joined: dayOf(p.joined ?? p.cmJoined ?? g.date), age: ageOn(p.dob, g.date), pLang: nationLanguage(g, p.nation), langs: playerLanguages(g, p) }; C.pl.set(p.id, P); }
+  if (!P) { P = { joined: dayOf(staffJoined(p) ?? g.date), age: ageOn(p.dob, g.date), pLang: nationLanguage(g, p.nation), langs: playerLanguages(g, p) }; C.pl.set(p.id, P); }
   const joined = P.joined;
   let ctxPick = club ? C.ctx.get(cid) : null;
   if (club && ctxPick === undefined) { ctxPick = aiPickCtx(cid) ?? {}; C.ctx.set(cid, ctxPick); }
@@ -756,7 +763,7 @@ function planValue0(S: SlMem, st: number, mask: number, flags: number, clubAdr: 
     nationRep: nationRepMem(g, p.nation), british: BRITISH.has(g.nations[p.nation]?.code ?? ''), caps: p.caps, b56: sh(p, 'adaptability'),
     langDiff: !!clubLang && !!pLang && clubLang !== pLang, lang: clubLang && P.langs.includes(clubLang) ? 10 : 0,
     nationOfClub: !!club && (p.nation === club.nation || p.cmNation2 === club.nation),
-    clubRep: club ? clubRepMem(g, cid) : 0, stClubRep: clubRepMem(g, pClub), listed: !!p.listed, daysNoClub: pClub ? 0 : Math.max(0, dayNum(g.date) - dayNum(p.joined ?? g.date)),
+    clubRep: club ? clubRepMem(g, cid) : 0, stClubRep: clubRepMem(g, pClub), listed: !!p.listed, daysNoClub: pClub ? 0 : Math.max(0, dayNum(g.date) - dayNum(staffJoined(p) ?? g.date)),
     league69: club ? clubDivRep(g, cid) : null, mgr,
     data: { ...d, contract: k && cc ? { b3d: s8(m.u8(k + 0x3d)), b3e: s8(m.u8(k + 0x3e)), b3f: s8(m.u8(k + 0x3f)), b44: s8(m.u8(k + 0x44)), b45: m.u32(k + 0x45), b4f: m.u8(k + 0x4f) } : null,
       injury: () => (inj ? { w28: inj.w28, w2c: inj.w2c } : null) },
@@ -824,7 +831,9 @@ function pairFound(m: CmMem, slm: number, id: number, club: number): boolean {
 export const FR_STATS: Record<number, number> = {};
 export const FR_LAST = { k: -1 };
 const rz = (k: number) => { FR_STATS[k] = (FR_STATS[k] ?? 0) + 1; return 0; };
-const rj = (k: number) => { FR_STATS[k] = (FR_STATS[k] ?? 0) + 1; FR_LAST.k = k; return 0x840a81; };
+const rj = (k: number) => { FR_STATS[k] = (FR_STATS[k] ?? 0) + 1; FR_LAST.k = k; if (FR_DIAG.rej) FR_DIAG.rej(k, FR_DIAG.st); return 0x840a81; };
+/** (fejlsøgning) frasorteringens afvisninger og vurderinger pr. kandidat (staff-adressen) – kun med CM_SL_SKIP=0 ses alle */
+export const FR_DIAG: { st: number; club: number; m?: CmMem; rej?: (k: number, st: number) => void; ev?: (st: number, score: number, thr: number, lim: number) => void } = { st: 0, club: 0 };
 /** 0x83fa25 for kandidaterne i, i+1, …: en afvist kandidat går videre som 0x840a81 → 0x83fa1a ([esp+0x40] + 1 mod antallet [esp+0x8c];
  *  edx = [esp+0x90], ecx = i) uden at køre de oversatte instruktioner og springene imellem; listens slutning → 0x840a99 (som 0x840a93).
  *  Kaldene i frasorteringen (slCall – nye processortilstande) får stakken under 0x83f3a0's (før lå den ved `top`, oven i 0x83f3a0's egen
@@ -884,6 +893,7 @@ function evalInLoop(R: X86, f: FrCtx): number {
   const r = stackBelow(SB as X86, () => value_840d80_any(c, self, f.club, st, f.slot, esp + 0x2c, thr, 1));
   const o = m.s32(esp + 0x2c), hi = r < 0 ? -1 : 0;
   m.w32(esp + 0x18, r >>> 0); m.w32(esp + 0x1c, hi >>> 0);
+  if (FR_DIAG.ev) FR_DIAG.ev(st, o, m.s32(esp + 0x68), (thr - 10000) | 0);
   if (o < m.s32(esp + 0x68)) return 0x840a81;
   const lim = (thr - 10000) | 0;
   if (o < lim) return 0x840a81;
@@ -1262,6 +1272,7 @@ function fastReject1(R: X86, f: FrCtx): number {
   const L = R.edx >>> 0, i = R.ecx | 0, entry = (L + 12 * i) >>> 0;
   const id = m.s32(entry), st = (f.staff + 0x6e * id) >>> 0;
   const slot = f.slot, club = f.club;
+  FR_DIAG.st = st; FR_DIAG.club = club; FR_DIAG.m = m;
   if (st === f.self) return rj(0);
   if (id >= f.cnt16) return rj(1);
   // (hastighed) personpostens bytes direkte fra siden, når posten ligger på én side (som m.u8/m.u32 læser – ingen skriver i posten undervejs)

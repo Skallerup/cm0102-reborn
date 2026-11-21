@@ -371,7 +371,10 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
         // oraklet (K8): ankomstdatoen står som databasens, dog højst 5 uger før spilstarten (9/6-2001 for 14/7: databasens senere datoer, fx 27/7,
         // klippes); klubløse får databasens indlæsningsdato (1/1) – før stod de fremtidige datoer og 1996-01-02 uændret
         // (2026/27) databasens ankomstdato står med 2001-uret – skubbes som fødsels- og kontraktdatoerne (build-cm-data.mts SHIFT)
-        if (rt.j) p.cmJoined = cmStartGame ? (club ? (rt.j > addDays(date, -35) ? addDays(date, -35) : rt.j) : `${date.slice(0, 4)}-01-01`)
+        // (oraklet: ALLE 277 klubløse har staff +0x3e = 1/1-2001 – også dem uden dato i databasen; før fik 60 % ingen dato, så 0x7a8050's år uden
+        // klub talte fra spilstarten og hukommelsens +0x3e var 0)
+        if (cmStartGame && !club) p.cmJoined = `${date.slice(0, 4)}-01-01`;
+        else if (rt.j) p.cmJoined = cmStartGame ? (rt.j > addDays(date, -35) ? addDays(date, -35) : rt.j)
           : season >= 2020 ? `${Number(rt.j.slice(0, 4)) + season - 2001}${rt.j.slice(4)}` : rt.j;
       }
       let attrs = rec.attrs;

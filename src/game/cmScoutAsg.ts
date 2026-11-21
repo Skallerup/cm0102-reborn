@@ -41,7 +41,7 @@ import type { GameState, Player, Staff } from './types';
 import { addDays, ageOn } from './dates';
 import { addNews } from './state';
 import { asOwner } from './humans';
-import { clubRepMem, cmActive, cmFormRatings, cmRand, leagueAverage, newCmContract, statAvg, statusCode } from './cmPlayerData';
+import { clubRepMem, cmActive, cmFormRatings, cmRand, leagueAverage, newCmContract, statAvg, statusCode, staffJoined } from './cmPlayerData';
 import { cmClubLevelOf, cmStaffAttr } from './cmStaff';
 import { cmKnowSee } from './cmKnow';
 import { cmNeedsPermit, cmPermitOn, cmWorkPermit, CM_EU } from './cmPermit';
@@ -101,7 +101,7 @@ function repSeen(g: GameState, p: Player, club: number): number {
 function scoutRole(g: GameState, p: Player, s: Staff, club: number, flags: number, age: number, rec: number[]): number {
   const judge = { id: s.cmId ?? s.id, ja: cmStaffAttr(s, 'judgingAbility'), jp: cmStaffAttr(s, 'judgingPotential') };
   const d = { ...roleDataOf(p, { cm: true, date: g.date, gameSeed: g.seed, leagueAvg: leagueAverage(g), judge }, age), repSeen: repSeen(g, p, club) };
-  return roleScore({ id: p.id, age, atClub: !p.club, joined: dayOf(p.joined ?? p.cmJoined ?? g.date), realPlayer: !p.regen, rec, pos: 0, att: 0, lo: 0, hi: 0, tb: 0, tf: 0,
+  return roleScore({ id: p.id, age, atClub: !p.club, joined: dayOf(staffJoined(p) ?? g.date), realPlayer: !p.regen, rec, pos: 0, att: 0, lo: 0, hi: 0, tb: 0, tf: 0,
     flags, mgrJoined: dayOf(s.cmJoined ?? s.career?.[s.career.length - 1]?.from ?? g.date), today: dayOf(g.date), yearAgo: dayOf(`${+g.date.slice(0, 4) - 1}${g.date.slice(4)}`),
     captain: false, setPiece: 0, data: d, hasClub: false });
 }
@@ -484,7 +484,7 @@ export function cmOppKeyRow(g: GameState, p: Player, r: CmAsgRow): CmOppKey {
   if (age < 22 && W(0xb) < 5750) fl |= 0x8000;
   if (age > 34) fl |= 0x10000;
   // 0x54cdb0(i dag, staff +0x3e): under 65 dage i klubben (uden ankomstdato: intet flag)
-  const joined = p.joined ?? p.cmJoined;
+  const joined = staffJoined(p);
   if (joined && dayNo(g.date) - dayNo(joined) < 65) fl |= 0x20000;
   if (p.injury) fl |= 0x40000;                                               // 0x62c400 = 2
   return { est, pid: p.id, fl, ca: W(5) };

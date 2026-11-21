@@ -491,7 +491,7 @@ export function squadPlacement(g: GameState, p: Player, club: number): number {
 }
 
 function unhappyStep(g: GameState, p: Player, c: CmContract, club: number, clubRep: number, age: number, today: string, nationRep: number, rand: (n: number) => number): void {
-  const days = p.joined ?? p.cmJoined;   // staff +0x3e: skiftet i spillet går forud for databasens dato
+  const days = staffJoined(p);   // staff +0x3e: skiftet i spillet går forud for databasens dato
   const rep = p.cmRepMem ?? p.cmRep ?? [p.rep * 2, p.rep * 2, p.rep * 2];
   withFlagCtx(g, p, rand, () => unhappyCore({
     age, amb: sh(p, 'ambition'), loyalty: sh(p, 'loyalty'), caps: p.caps, repCur: curRep(p), repWorld: Math.round(rep[2] * 50), clubRep, nationRep,
@@ -553,6 +553,25 @@ export function contractNotPlayed(g: GameState, p: Player, clubRep: number, nati
 }
 
 // ---------------------------------------------------------------- efter kampen (sim.ts applyMatchResult)
+
+/** staff +0x3e/+0x40 for en spiller: datoen, han kom til klubben (skiftet i spillet – Player.joined – går forud for databasens dato
+ *  Player.cmJoined); uden klub datoen, han blev klubløs (0x53c190 database_remove_staff_from_club – Player.cmFreeSince, cmRetire.ts) */
+export function staffJoined(p: Player): string | undefined {
+  return (p.club ? undefined : p.cmFreeSince) ?? p.joined ?? p.cmJoined;
+}
+
+/** Klubbens division +0x57's omdømme +0x69 (club_comp.dat +105): den kørende liga (CM<id>), ellers club.dat's division (cmFinRaw[0] – som
+ *  hukommelsens +0x57, cmSlMem.ts). Englands non-league-klubber ligger i den skjulte liga «HN60», men har i originalen deres egne divisioner
+ *  (357 «A Lower Division» +0x69 = 1, 358–360 = 2, Conference 93 = 3) – før blev tallet i «HN60» læst som turnering 60 (omdømme 12), så
+ *  0x7bca90's omdømmemål R og grænsen T for alle non-league-klubber var for høje (Lordswood: T 6.824 mod oraklets 4.900) og 0x83f3a0 fandt
+ *  næsten ingen klubløse. null = ingen division. */
+export function clubDivRep(g: GameState, cid: number): number | null {
+  const c = g.clubs[cid];
+  if (!c) return null;
+  const lm = /^CM(\d+)$/.exec(c.league ?? '');
+  const id = lm ? +lm[1] : g.cmFinRaw?.[cid]?.[0];
+  return id === undefined || id < 0 ? null : g.cmCompRep?.[id] ?? 0;
+}
 
 /** Klubbens omdømme i originalens skala (club +0x80): databasens rå værdi, ellers vores 0–100 ×100 (*estimeret*) */
 export function clubRepMem(g: GameState, club: number): number {
@@ -910,7 +929,7 @@ export function cmStaffStateInit(g: GameState, today = g.date): void {
   if (!cmLogic(g) || STAFF_STATE_OFF) return;
   for (const p of Object.values(g.players)) {
     if (p.regen) continue;
-    let jd = p.joined ?? p.cmJoined ?? today;
+    let jd = staffJoined(p) ?? today;
     if (jd > today) jd = today;                                                      // 0x828594: 0x417c10(staff +0x3e, i dag)
     const v = staffStateInitValue({ player: true, club: !!p.club, days: daysBetween(jd, today), adaptability: shi(p, 'adaptability'), ca: p.ca },
       cmRand(g.seed, p.id, 0x828110));

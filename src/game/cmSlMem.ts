@@ -13,7 +13,7 @@ import { getMaxWage_5968d0, recalcWages_598370 } from './cmMaxWage';
 import { getClubFinance_5a0590 } from './cmWage';
 import { genCtx } from './cmGen/impls';
 import { slCall, slmOf } from './cmShortlist';
-import { clubRepMem } from './cmPlayerData';
+import { clubRepMem, staffJoined } from './cmPlayerData';
 import { leagueOf } from './cmContractInit';
 import { formulaValueGbp } from './originalValue';
 import { playerRecordInto } from './engine/grid/aiTeam';
@@ -263,7 +263,8 @@ function writeRec(m: SparseMem, e: Ent, date: string, nNat: number): void {
   m.w8(st + 0x22, Math.min(255, p.caps ?? 0));
   m.w32(st + 0x39, cid ? CLUB0 + 0x245 * cid : 0);
   m.w8(st + 0x3d, 0xb);
-  const j = p.cmJoined ?? p.joined;
+  // staff +0x3e: for de klubløse datoen, han blev klubløs (0x53c190 – Player.cmFreeSince, cmRetire.ts)
+  const j = staffJoined(p);
   if (j) { m.w16(st + 0x3e, isoD(j)); m.w16(st + 0x40, isoY(j)); }
   m.w8(st + 0x57, attrI(p, A_AMB)); m.w8(st + 0x58, attrI(p, A_DET)); m.w8(st + 0x59, attrI(p, A_LOY)); m.w8(st + 0x5a, attrI(p, A_PRE));
   m.w32(st + 0x61, pr);
