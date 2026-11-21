@@ -2,6 +2,7 @@
 
 Flyttet fra CLAUDE.md 17/11-2026 (så CLAUDE.md er kort i hver session). Nyeste først. Tilføj en linje øverst ved hver udgivelse.
 
+- 2026-11-21 – Skudt live (v0.33.0): 2026-11-22 – Mobil fase 2 (klassisk iPhone, 47 skærme inkl. kamp/rapport): utrykbare 5 → 3, små 12 → 3, klip 2 → 0; e2e-mobile venter på forrige Continue-kørsel og svarer på spærrende nyheder.
 - 2026-11-21 – Skudt live (v0.33.0): 2026-11-21 – Karaktersnit: fyldspillere ud (0x7c1032), Europa uden mennesket + venskabskampe på gittermotoren (0x6b66a0 engine+0), landskampe tæller (0x48dd70). Snit 1/9–1/5 6,886 → 6,918 (orakel 6,950); omdømme Δ sæson 1 +47 → +26 (−24). Fingeraftryk 2001-08-20 → 8d30576f57bc3abe.
 - 2026-11-21 – Skudt live (v0.33.0): 2026-11-22 – Hotfix (ejeren, iPhone/Facebook: nyt spil hang på 80 % og gik til forsiden): cmShortlistStart/cmSquadPlanStart deler personliste/kandidater/spejdere (withSharedPersons/sharedScope) i stedet for at bygge 33.000 personer pr. klub (66 s → 16 s, rss 2,3 → ~1,1–2,1 GB); arbejderen slipper databasen før kopi; fællesskabsrettelser kopierer kun rettede rækker; loader med trin + jævn procent; NewGameInterrupted i klassisk forløb + besked med Åbn i Safari/Chrome. Fingeraftryk uændret.
 - 2026-11-21 – Skudt live (v0.33.0): 2026-11-21 – Danmark: Second Division kørende (0x554e50/0x554b60, plan fra 0x554170) når Danmark er valgt (runWith), skiftet 0x553aa0 → 0x553cb0 → 0x4afbd0: 4 op fra A Lower Division efter omdømme, 4 ned. 2001-fingeraftryk uændret. scripts/nonleague-seasons.ts.
