@@ -56,9 +56,10 @@ import { cmClubDataFill_829960, cmFinanceNewGame, cmFinanceWageBills, cmStartBal
 import { cmContractsNewGame } from './cmContractInit';
 import { cmContractEnd } from './cmContractEnd';
 import { cmPermitNewGame } from './cmPermit';
-import { cmSquadPlanStart } from './cmSquadPlanGame';
+import { cmSquadPlanStart, SQUADPLAN_PROGRESS } from './cmSquadPlanGame';
+import { PRERUN_PROGRESS } from './cmPrerun';
 import { cmStaffWageNewGame, cmStaffWagePrepare, cmWageFillNewGame } from './cmWageGame';
-import { cmShortlistStart } from './cmShortlistGame';
+import { cmShortlistStart, SL_START_PROGRESS } from './cmShortlistGame';
 import { cmValuesApply } from './cmValueGame';
 import { cmRefreshTransferBudgets } from './cmBudget';
 import { cmRetireInit } from './cmRetire';
@@ -306,7 +307,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     if (g.clubs[id].colors[0] === g.clubs[id].colors[1]) g.clubs[id].colors[1] = g.clubs[id].colors[0] === '#ffffff' ? '#111111' : '#ffffff';
   }
 
-  progress('players', 0.08);
+  progress('players', 0.02);
   // Spillere (trøjenumrene uddeles samlet, når trupperne er fyldt op)
   setAutoNumbers(false);
   const F = Object.fromEntries(world.playerFields.map((f, i) => [f, i]));
@@ -425,7 +426,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     addPlayer(p);
   }
 
-  progress('squads', 0.3);
+  progress('squads', 0.11);
   // Fyld trupper op
   const leagueLevel = new Map<string, number>();
   for (const l of world.leagues) {
@@ -525,7 +526,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     setEconomy(g.econ);
   }
 
-  progress('economy', 0.4);
+  progress('economy', 0.12);
   // den kalibrerede moderne økonomi (econ26.ts): ligaernes lønkurve måles mod virkelighedens løn/omsætning, før lønningerne sættes
   if (!g.econ) {
     for (const c of Object.values(g.clubs)) {
@@ -581,7 +582,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
 
   // (MODERN_PARITY pengeprincip B) 2026/27 i ægte tilstand: € → originalens £ pr. liga = databasens løn / spillets løn (cmMoney.ts)
   if (cmRawLogic) g.cmGbp = cmGbpMeasure(g, dbWageGbp);
-  progress('staff', 0.45);
+  progress('staff', 0.12);
   // Staff – med den originale/CM-database: de rigtige trænere, spejdere og fysioterapeuter fra databasen (CMWorld.staff)
   const dbStaff = new Map<number, NonNullable<CMWorld['staff']>>();
   for (const row of cm?.staff ?? []) dbStaff.set(row[0], [...(dbStaff.get(row[0]) ?? []), row]);
@@ -679,7 +680,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     g.staff[s.id] = s;
   }
 
-  progress('comps', 0.55);
+  progress('comps', 0.16);
   // (19/11) ligaernes kampprogram som originalens League::create_fixtures 0x6835c0 (cmFixtures.ts) – alle databaser og tilstande
   g.cmPairs = true;
   // (20/11) originalens reservekampe for de spilbare klubber (cmReserveMatches.ts – FIXTURE_MANAGER 0x5aaf00/0x7e6380) – alle databaser og tilstande
@@ -695,7 +696,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   // originalens bestyrelse: init_club_board_records 0x68f130 på databasens dato (cmBoardGame.ts – kun den originale database i ægte tilstand)
   cmBoardInit(g, cm?.cmRaw?.chairBoard, cm?.cmRaw?.nationBoard, natDbGame ?? undefined, cm ? (c) => cmStartBalanceGbp(g, cm, seed, c) : undefined);
 
-  progress('board', 0.62);
+  progress('board', 0.17);
   // Brugerens klub
   const club = g.clubs[o.clubId];
   if (o.preview) previewClub(g, club.id); else takeOverClub(club);
@@ -707,7 +708,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   if (cmMediaOn(g)) for (const p of Object.values(g.players)) if (!p.regen) p.morale = 10;
   // forholdene staff+0x65 og club +0x9b..+0xaf fra databasen (cmRelations.ts – ikke-indlæste id'er bliver 0)
   if (cm?.cmRaw && (season < 2020 || cmRawLogic)) cmRelNewGame(g, cm.cmRaw.prefs, cm.cmRaw.clubPrefs);
-  progress('fitness', 0.7);
+  progress('fitness', 0.17);
   // create_game 0x828110 FØR forkørslen 0x5cc850 (0x829fd9): FinanceTable 0x59a370 (0x82976f – init_for_club 0x5961d0), kontrakterne 0x4c7560
   // (0x829809 – startkontrakterne 0x85e960) og refresh_all_wage_bills 0x59cf50 (0x829852). Forkørslens kampe (Intertoto, CL's 1. kvalifikationsrunde)
   // bogfører derfor kampindtægterne 0x59a5d0 og bonusserne 0x4ca6d0 (FinanceTable::daily_update 0x59b9c0 selv bogfører intet før [0xdd6ec8]).
@@ -724,19 +725,25 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   cmFinanceWageBills(g);
   // PLAYER_REGEN's første pensioneringsliste 0x7a58f0 ved indlæsningen – før forkørslen (cmRetire.ts)
   cmRetireInit(g);
-  cmFitNewGame(g);
+  PRERUN_PROGRESS.cb = (f) => progress('fitness', 0.17 + 0.19 * f);
+  try { cmFitNewGame(g); } finally { PRERUN_PROGRESS.cb = undefined; }
   // originalens arbejdstilladelses-historik (0x8c6e60 – cmPermit.ts)
   cmPermitNewGame(g);
   // computerens trupplan 0x83a1b0 → 0x83cb40 for alle klubber: trupstatus, lejeliste, +0x3d/+0x3e/+0x3f (cmSquadPlanGame.ts)
-  progress('plan', 0.8);
-  cmSquadPlanStart(g);
+  progress('plan', 0.38);
+  SQUADPLAN_PROGRESS.cb = (f) => progress('plan', 0.38 + 0.2 * f);
+  try { cmSquadPlanStart(g); } finally { SQUADPLAN_PROGRESS.cb = undefined; }
   // 0x83a1b0 efter trupplanen: lønnen for kontrakterne uden løn (0x862720 – cmWageGame.ts)
   cmWageFillNewGame(g, unsetWages);
   // staben: 0x83a1b0's udfyldning af lønnen −1 med 0x862720 (cmWageGame.ts)
   cmStaffWageNewGame(g);
   // 0x83a1b0's slutning: positionslisterne 0x83a780 og budgettets fordeling/målene 0x83b6e0 for alle klubber (cmShortlistGame.ts)
   // (nyt spil-forløbets midlertidige verden: ikke – den bruges kun til Select Team, og spillet bygges igen ved Take Control)
-  if (!o.preview) cmShortlistStart(g);
+  if (!o.preview) {
+    progress('shortlists', 0.59);
+    SL_START_PROGRESS.cb = (f) => progress('shortlists', 0.59 + 0.36 * f);
+    try { cmShortlistStart(g); } finally { SL_START_PROGRESS.cb = undefined; }
+  }
   // 0x5ccc9c: player_setup.cfg 0x7a30c0 efter 0x83a1b0 – lejeaftalerne (0x8bf400) og skaderne, så 0x5cccaa: Injury::init_squad_fitness 0x62a920
   // (cmFitnessGame.ts). Trupplanen ovenfor har læst konditionen (0x62c680 op til startdagen – helede skader er slut) før startens skader.
   cmSetupLoans(g);
@@ -747,7 +754,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   cmValuesApply(g);
   // Transfer Funds = Finance::get_transfer_budget 0x598800 for alle klubber (cmBudget.ts) – erstatter skønnet originalTransferFunds
   cmRefreshTransferBudgets(g);
-  progress('scouting', 0.9);
+  progress('scouting', 0.95);
   // (MODERN_PARITY 9+10) 2026/27 i ægte tilstand: originalens kendskab 0x5aff00 og SCOUT_MANAGER (cmScoutLogic) samt karantæner/appel og bøder
   // (discipline.cpp/Fine.cpp – cmDiscLogic) for nye spil; den originale database har dem altid (cmActive)
   if (cmRawLogic && cmLogic(g) && !cmActive(g) && !g.draft) { g.cmScoutStart = g.date; g.cmDiscStart = g.date; }
@@ -785,7 +792,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     if (lg) addNews({ cat: 'match', key: 'comp.fixturesOut', params: { season: `${season}/${String(season + 1).slice(2)}`, comp: lg.name, ...games }, link: { kind: 'comp', id: club.league } });
   }
   rebuildIndexes();
-  progress('done', 0.98);
+  progress('done', 0.97);
   initialTransferList();
   // runde 8: originalens kampmotor (gittermotoren) som standard i ægte tilstand med en CM-database (cmLogic – 2026/27 fra 17/11) – én konstant (liveSim.ts)
   if (GRID_ENGINE_DEFAULT && cmLogic(g)) g.options.engine = 'original';

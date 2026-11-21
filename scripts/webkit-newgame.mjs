@@ -16,14 +16,15 @@ process.on('exit', stop);
 for (let i = 0; i < 60; i++) { try { if ((await fetch(URL)).ok) break; } catch { /* */ } await new Promise((r) => setTimeout(r, 500)); }
 const START_PIDS = execSync('ps -A -o pid=,command=', { encoding: 'utf8', maxBuffer: 1 << 24 }).split('\n').filter((l) => l.includes('ms-playwright')).map((l) => l.trim().split(/\s+/)[0]);
 const browser = await (kind === 'chromium' ? chromium : webkit).launch();
-const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+// UA=<user agent>: fx Facebook-appens browser på iPhone (FBAN/FBIOS)
+const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, ...(process.env.UA ? { userAgent: process.env.UA } : {}) });
 const page = await ctx.newPage();
 await page.route(/\/api\//, (r) => r.fulfill({ json: { ok: true, mail: true } }));
 const errs = [];
 page.on('console', (m) => { const t = m.text(); if (/memory|fejlede|error|RangeError/i.test(t)) { console.log('  console: ' + t.slice(0, 400)); errs.push(t); } });
 page.on('pageerror', (e) => { console.log('PAGEERROR ' + e.message + '\n' + (e.stack ?? '').slice(0, 1200)); errs.push(e.message); });
 page.on('crash', () => { console.log('CRASH'); errs.push('crash'); });
-await page.addInitScript(() => { localStorage.setItem('cm0102.lang', 'en'); localStorage.setItem('cm0102.forceLogin', '1'); localStorage.setItem('cm-theme', 'retro'); localStorage.setItem('cm0102.mode', 'authentic'); localStorage.setItem('cm0102.db', 'original'); localStorage.setItem('cm0102.engine', 'original'); sessionStorage.setItem('cm0102.play', '1'); });
+await page.addInitScript(() => { localStorage.setItem('cm0102.lang', 'en'); localStorage.setItem('cm0102.forceLogin', '1'); localStorage.setItem('cm-theme', 'retro'); localStorage.setItem('cm0102.mode', 'authentic'); localStorage.setItem('cm0102.db', 'original'); localStorage.setItem('cm0102.engine', 'original'); localStorage.setItem('cm0102.inapp.seen', String(Date.now())); sessionStorage.setItem('cm0102.play', '1'); });
 // NOWORKER=1: uden Web Workers (som når dagens arbejder fejler – alt i hovedtråden)
 if (process.env.NOWORKER) await page.addInitScript(() => { Object.defineProperty(window, 'Worker', { value: undefined, configurable: true }); });
 // Chromium: hovedtrådens levende V8-heap efter en GC (CDP) ved hvert trin

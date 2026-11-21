@@ -3,6 +3,7 @@
 // Fejlen "Error invoking postMessage: Java object is gone" i admin kom fra netop den slags browsere (ejerens ønske 2026-11-10).
 import { useEffect, useState } from 'react';
 import { t } from '../i18n';
+import { dismissNewGameInterrupted, newGameInterrupted } from '../online/errors';
 
 const UA = typeof navigator === 'undefined' ? '' : navigator.userAgent;
 /** Android WebView har "; wv)" i user agent; iOS-apps sætter deres eget navn */
@@ -14,21 +15,24 @@ const seen = () => { try { return Number(localStorage.getItem(KEY) ?? 0) > Date.
 export function showInAppHelp() { window.dispatchEvent(new Event('cm-inapp-help')); }
 
 export function InAppBanner() {
-  const [open, setOpen] = useState(() => inAppBrowser() && !seen());
+  // (21/11) siden blev lukket under oprettelsen af et nyt spil (for lidt hukommelse – Facebooks browser på iPhone): sig det, i stedet for bare forsiden
+  const [killed] = useState(() => newGameInterrupted());
+  const [open, setOpen] = useState(() => killed || (inAppBrowser() && !seen()));
   useEffect(() => {
     const on = () => setOpen(true);
     window.addEventListener('cm-inapp-help', on);
     return () => window.removeEventListener('cm-inapp-help', on);
   }, []);
   if (!open) return null;
-  const close = () => { try { localStorage.setItem(KEY, String(Date.now())); } catch { /* privat vindue */ } setOpen(false); };
+  const close = () => { dismissNewGameInterrupted(); try { localStorage.setItem(KEY, String(Date.now())); } catch { /* privat vindue */ } setOpen(false); };
   const android = /Android/i.test(UA);
   // Android: intent-link åbner siden i Chrome; iOS 17+: x-safari-https:// åbner den i Safari (ældre iOS: vejledningen om menuen)
   const chrome = `intent://${location.host}${location.pathname}#Intent;scheme=https;package=com.android.chrome;end`;
   const safari = `x-safari-https://${location.host}${location.pathname}`;
   return (
     <div className="consent inapp" role="dialog" aria-live="polite">
-      <p><b>{t('inapp.title')}</b><br />{t(android ? 'inapp.textAndroid' : 'inapp.textIos')}</p>
+      {killed ? <p data-ng-killed><b>{t('inapp.killedTitle')}</b><br />{t('inapp.killedText')}</p>
+        : <p><b>{t('inapp.title')}</b><br />{t(android ? 'inapp.textAndroid' : 'inapp.textIos')}</p>}
       <div className="consent-btns">
         <button className="consent-no" onClick={close}>{t('inapp.ok')}</button>
         {android

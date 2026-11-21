@@ -304,14 +304,33 @@ const tempManager = new Map<number, Person | null>();
 registerCarry('cmBoardGame.caches', () => NO_CARRY, () => {}, () => { tempManager.clear(); });
 
 /** `lazy` (ønskelisternes og kontraktportenes kortlivede hukommelser): rangeringen og klublisten regnes først, når de bruges */
+/** Personlisten (alle med ikke-spillerpost + menneskene) bygges ellers forfra i hvert boardEnv – i ønskelisternes klubløkke ét pr. klub (≈33.000 personer
+ *  × ~3.500 klubber ved spilstarten: ~40 s og ~1,5 GB affald – Facebook-appens browser på iPhone dræbte fanen, 21/11). Personerne er levende
+ *  (getters/setters på staben) bortset fra dagens øjebliksbilleder (alder, CA/PA, skjulte egenskaber, nation), som ingen ændrer inden for løkken. */
+export interface PersonsScope { g: GameState; day: number; year: number; persons: Person[] | null; byId: Map<number, Person>;
+  /** andre modulers mellemregninger for samme løkke (fx cmStaffMove.ts' kandidater og spejdere) */
+  memo: Record<string, unknown> }
+let personsScope: PersonsScope | null = null;
+/** den åbne løkkes fælles mellemlager for spillet (null uden for withSharedPersons) */
+export const sharedScope = (g: GameState): PersonsScope | null => (personsScope && personsScope.g === g && ((d) => d.day === personsScope!.day && d.year === personsScope!.year)(isoToCm(g.date)) ? personsScope : null);
+export function withSharedPersons<T>(g: GameState, fn: () => T): T {
+  const prev = personsScope, d = isoToCm(g.date);
+  personsScope = { g, day: d.day, year: d.year, persons: null, byId: new Map(), memo: {} };
+  try { return fn(); } finally { personsScope = prev; }
+}
 export function boardEnv(g: GameState, todayIso = g.date, startIso?: string, lazy = false): BoardEnv {
   const today = isoToCm(todayIso);
   const gameStart = isoToCm(startIso ?? g.cmBoardStart ?? g.date);
   let persons: Person[] | null = null;
-  const byId = new Map<number, Person>();
+  let byId = new Map<number, Person>();
   const allPersons = () => {
     if (persons) return persons;
+    // (hukommelse/hastighed, 21/11) inden for én klubløkke (withSharedPersons) deles personlisten af alle miljøerne – samme dag, samme stab
+    const sh = personsScope && personsScope.g === g && personsScope.day === today.day && personsScope.year === today.year ? personsScope : null;
+    if (sh?.persons) { byId = sh.byId; return (persons = sh.persons); }
+    if (sh) byId = sh.byId;
     persons = [];
+    if (sh) sh.persons = persons;
     // landstrænerne er med, også når de kun er i hukommelsen (cmExtra: uden klub i spillet) – originalens landshold har dem som manager
     const natM = new Set(Object.values(g.cmBoard?.nm ?? {}));
     for (const s of Object.values(g.staff).sort((a, b) => a.id - b.id)) if (s.cmNp && (!s.cmExtra || natM.has(s.id))) { const p = staffPerson(g, s, today); persons.push(p); byId.set(p.id, p); }

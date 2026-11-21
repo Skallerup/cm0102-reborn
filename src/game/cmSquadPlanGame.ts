@@ -31,6 +31,7 @@ import { dislikesClub, dislikesPerson, favoursClub, favoursPerson, managerStaff 
 import { targetRep } from './cmBoardInterest';
 import { cmShortlistDaily, cmShortlistOn } from './cmShortlistGame';
 import { cmGbp } from './cmMoney';
+import { withSharedPersons } from './cmBoardGame';
 
 const dayNum = (iso: string) => Math.round(Date.parse(iso + 'T00:00:00Z') / 86400000);
 const dayOf = (iso: string): Day => { const d = new Date(iso + 'T00:00:00Z'), y = d.getUTCFullYear(); return { day: Math.round((d.getTime() - Date.UTC(y, 0, 1)) / 86400000), year: y }; };
@@ -242,16 +243,24 @@ function syncBack(p: Player, pp: PlanPlayer): void {
 
 /** 0x83a1b0 (newgame, efter trupperne og konditionsmodulets start): ALLE klubber i [0xae2d1c] – også dem uden aktiv liga (de skjulte/udenlandske):
  *  0x83cb40's første trin giver dem porten rand(omd + 1000) < rand(5000) → ud (planSquad, activeLeague = 0) */
+/** spilstartens fremdrift (0..1) gennem klubberne – sat af newgame.ts */
+export const SQUADPLAN_PROGRESS: { cb?: (frac: number) => void } = {};
 export function cmSquadPlanStart(g: GameState): void {
   // spilstarten (newgame.ts/cmConvert.ts): enhver CM-database i ægte tilstand – trupplanen g.cmPlan slår markedet til (cmMarketOn, MODERN_PARITY 3)
   if (!cmActive(g) && (g.draft || !cmLogic(g))) return;
   g.cmStart = g.date;
   // (2026/27) cmMarketOn kræver posten fra første klub; den originale database som før (nøglernes rækkefølge i gemte spil uændret)
   if (!cmActive(g)) g.cmPlan ??= {};
-  for (const c of Object.values(g.clubs)) {
-    cmSquadPlanClub(g, c.id, false, true, false);
-    if (isHumanClub(c.id)) cmSquadPlanClub(g, c.id, false, true, true);   // overtagelsen 0x84abe0 (P1 = P2 = 1)
-  }
+  const clubs = Object.values(g.clubs), prog = SQUADPLAN_PROGRESS.cb;
+  // stabens hale (cmStaffMove.ts staffTail) deler personlisten for hele løkken (cmBoardGame.ts withSharedPersons – ingen fyringer ved starten)
+  withSharedPersons(g, () => {
+    for (let i = 0; i < clubs.length; i++) {
+      const c = clubs[i];
+      if (prog && (i & 63) === 0) prog(i / clubs.length);                          // fremdriftsbjælken ved nyt spil (rører intet i spillet)
+      cmSquadPlanClub(g, c.id, false, true, false);
+      if (isHumanClub(c.id)) cmSquadPlanClub(g, c.id, false, true, true); // overtagelsen 0x84abe0 (P1 = P2 = 1)
+    }
+  });
 }
 
 /** 0x5cccd0 (hver dag, efter datoskiftet – sim.ts newDay før konditionsmodulet): +8-tælleren og 0x83a730 for de klubber, porten åbner */

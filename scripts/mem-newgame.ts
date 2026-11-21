@@ -45,10 +45,10 @@ let world: WorldData | null = JSON.parse(readFileSync(file, 'utf8')) as WorldDat
 report('world parset');
 const eng = world.nations.findIndex((x) => x.name === 'England');
 const act = nats.map((nm) => world!.nations.findIndex((x) => x.name === nm)).filter((i) => i >= 0);
-const user = world.clubs.find((c) => c[3] === eng)![0];
-let stepPeak = 0, stepName = 'start';
+const user = world.clubs.find((c) => c[3] === (act[0] ?? eng))![0];
+let stepPeak = 0, stepName = 'start', stepT0 = Date.now();
 const stepT = setInterval(() => { stepPeak = Math.max(stepPeak, process.memoryUsage().heapUsed); }, 20);
-setNewGameProgress((st) => { gc(); const u0 = process.memoryUsage(); console.log(`  efter ${stepName.padEnd(10)} levende heap ${MB(u0.heapUsed)} MB ab ${MB(u0.arrayBuffers)} MB`); stepPeak = Math.max(stepPeak, process.memoryUsage().heapUsed); console.log(`  trin ${stepName.padEnd(10)} top heap ${MB(stepPeak)} MB (nu ${MB(process.memoryUsage().heapUsed)})`); stepName = st; stepPeak = 0; });
+setNewGameProgress((st) => { if (st === stepName) return; gc(); const u0 = process.memoryUsage(); console.log(`  efter ${stepName.padEnd(10)} levende heap ${MB(u0.heapUsed)} MB ab ${MB(u0.arrayBuffers)} MB`); stepPeak = Math.max(stepPeak, process.memoryUsage().heapUsed); console.log(`  trin ${stepName.padEnd(10)} top heap ${MB(stepPeak)} MB (nu ${MB(process.memoryUsage().heapUsed)}) ${Date.now() - stepT0} ms`); stepName = st; stepPeak = 0; stepT0 = Date.now(); });
 createGame(world, { managerName: 'Mem', managerNation: eng, clubId: user, activeNations: act, lang: 'en', masking: true, seed: 1, mode: 'authentic' });
 world = null;
 setNewGameProgress(null); clearInterval(stepT); console.log(`  trin ${stepName.padEnd(10)} top heap ${MB(stepPeak)} MB`);

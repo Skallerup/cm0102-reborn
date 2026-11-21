@@ -24,6 +24,8 @@ self.onmessage = (e: MessageEvent<NewGameJob>) => {
       const fresh = gs();
       report = cv.kind === 'convert' ? convertOriginal(cv.old, fresh, e.data.world as CMWorld) : restartInOriginal(cv.old, fresh, e.data.world as CMWorld, !!cv.picked);
     }
+    // (hukommelse, 21/11) arbejderens kopi af databasen slippes, før spillet kopieres tilbage – ellers lever begge under kopieringen
+    (e.data as Partial<NewGameJob>).world = undefined;
     post({ type: 'progress', step: 'done', frac: 1 });
     // modulernes tilstand (carry.ts) og indeksernes rækkefølge med – hovedtråden fortsætter præcis som spillet bygget her
     packCarry(gs());

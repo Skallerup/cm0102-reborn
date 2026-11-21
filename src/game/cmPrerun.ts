@@ -50,8 +50,11 @@ const run = (stage: PrerunStage, g: GameState, day: number, iso: string, slot: n
 
 /** 0x5cc850's løkke over dagene [from, to) (dagnumre) – g.date står på spillets startdato hele vejen (originalens [0xae2c90] er forkørslens dato:
  *  trinene får den som argument) */
+/** fremdriftsbjælken ved nyt spil (0..1 gennem forkørslens dage) – sat af newgame.ts, rører intet i spillet */
+export const PRERUN_PROGRESS: { cb?: (frac: number) => void } = {};
 export function runPrerun(g: GameState, from: number, to: number): void {
   for (let d = from; d < to; d++) {
+    PRERUN_PROGRESS.cb?.((d - from) / Math.max(1, to - from));
     const iso = isoOf(d);
     for (let slot = 0; slot <= 2; slot++) {
       for (const s of SLOT_STAGES) run(s, g, d, iso, slot);

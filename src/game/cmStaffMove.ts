@@ -53,7 +53,7 @@
 import type { Club, GameState, Staff, StaffRole } from './types';
 import { addNews } from './state';
 import { cmStaffOn, cmRand, clubRepMem, cmPlanKick } from './cmPlayerData';
-import { boardEnv, staffJobInterest } from './cmBoardGame';
+import { boardEnv, sharedScope, staffJobInterest } from './cmBoardGame';
 import { repFor, scoreStaffForJob, type BoardEnv, type Person } from './cmBoard';
 import { bookBlockEur, K as CMK } from './cmFinance';
 import { cmStaffDemand, cmStaffRestGbp, cmStaffCompensation } from './cmStaff';
@@ -91,7 +91,7 @@ const KK50 = new Set(['Belgium', 'Holland', 'Sweden', 'Denmark', 'Norway']);
 function scoutKnow(g: GameState, club: Club): number {
   const rep = s16(clubRepMem(g, club.id));
   let k = rep < 0xdac ? (0x1789 - rep) * 4 : KK50.has(g.nations[club.nation]?.name ?? '') ? 0x32 : 0x64;
-  const scouts = Object.values(g.staff).filter((s) => s.club === club.id && s.role === 'scout').slice(0, 7);
+  const scouts = scoutsOf(g, club.id);
   const shown = (ca: number, b: number) => { const x = (s16(ca) + 2 * b) * 0.05 + 10.0, y = (x * x * 0.1 + x) * 0.3333333333333333 + 0.5; return ftol(y > 1.0 ? (y < 20.0 ? y : 20.0) : 1.0); };
   for (let i = 0; i < 7; i++) {
     const s = scouts[i];
@@ -100,6 +100,39 @@ function scoutKnow(g: GameState, club: Club): number {
   }
   k = Math.trunc(s16(k) / 10);
   return s16(k) < 2 ? 2 : k;
+}
+
+/** klubbens første 7 spejdere (stabens rækkefølge); i en fælles løkke (withSharedPersons – staben flytter sig ikke undervejs) én gang for alle klubber */
+function scoutsOf(g: GameState, cid: number): Staff[] {
+  const sc = sharedScope(g);
+  if (!sc) return Object.values(g.staff).filter((s) => s.club === cid && s.role === 'scout').slice(0, 7);
+  let m = sc.memo.scouts as Map<number, Staff[]> | undefined;
+  if (!m) {
+    m = new Map();
+    for (const s of Object.values(g.staff)) if (s.role === 'scout' && s.club) { const l = m.get(s.club); if (!l) m.set(s.club, [s]); else if (l.length < 7) l.push(s); }
+    sc.memo.scouts = m;
+  }
+  return m.get(cid) ?? [];
+}
+
+/** findStaffTarget's personer efter de faste prøver (ikke-spillerpost, ikke klubbens manager, personposten, ikke manager-jobkode 5) med restkontrakten –
+ *  i stabens rækkefølge; i en fælles løkke én gang for alle klubbens pladser (dato, kontrakter og jobs ændres ikke undervejs) */
+interface StaffCand { s: Staff; p: Person; w: number }
+function staffCands(g: GameState, env: BoardEnv): StaffCand[] {
+  const sc = sharedScope(g);
+  const cached = sc?.memo.staffCands as StaffCand[] | undefined;
+  if (cached) return cached;
+  const out: StaffCand[] = [];
+  for (const s of Object.values(g.staff)) {
+    if (!s.cmNp || s.cmExtra) continue;                                             // 0x83fbdf: uden ikke-spillerpost
+    if (s.role === 'manager' && s.club) continue;                                   // (klubbens manager – managerjobbet er MANAGER_MANAGER's)
+    const p = env.person(s.id);
+    if (!p || !p.np) continue;
+    if (p.job === 5 || p.natJob === 5) continue;                                    // 0x83fa68/0x83fa72: +0x3d = 5 eller +0x28 = 5 (managere)
+    out.push({ s, p, w: cmStaffRestGbp(g, s, false) });
+  }
+  if (sc) sc.memo.staffCands = out;
+  return out;
 }
 
 /** EU-borger 0x53d740(staff, 0): landets +0x7f = 2 eller Schweiz ([0x9cf4ac]) – (anden nationalitet +0x1e findes ikke i spillet) */
@@ -115,21 +148,16 @@ function findStaffTarget(g: GameState, env: BoardEnv, club: Club, job: number, b
   const uk = (g.cmNation76?.[club.nation] ?? 0) === 0xe;
   const kk = scoutKnow(g, club);
   let best: Staff | null = null, bestV = T;                                        // 0x83f8b3: [esp+0x58] (bedste hidtil) = pladsens grænse T
-  for (const s of Object.values(g.staff)) {
-    if (!s.cmNp || s.cmExtra) continue;                                             // 0x83fbdf: uden ikke-spillerpost
-    if (s.role === 'manager' && s.club) continue;                                   // (klubbens manager – managerjobbet er MANAGER_MANAGER's)
-    const p = env.person(s.id);
-    if (!p || !p.np) continue;
+  // (de faste prøver og restkontrakten: staffCands – samme rækkefølge, rene prøver uden talrække, så udfaldet er det samme)
+  const wMax = (crep + 500) * 10;
+  for (const { s, p, w } of staffCands(g, env)) {
+    if (w >= budget || w > wMax || s.club === cid) continue;                        // 0x83fc56–0x83fcbb
     // 0x84b180 (permitFails, 0x83fc1c): britisk klub (+0x76 = 0xe) og hverken landets eller EU-borger og uden landshold +0x24/landskampe +0x22
     if (uk && s.nation !== club.nation && !euStaff(g, s) && !p.nat && !(p.b22 & 0xff)) continue;
     if (vac.has(s.id)) continue;                                                    // 0x69fc60: kandidat til et managerjob
-    const w = cmStaffRestGbp(g, s, false);
-    if (w >= budget || w > (crep + 500) * 10) continue;                             // 0x83fc56–0x83fcb5
-    if (s.club === cid) continue;                                                   // 0x83fcbb
     if ((lists.get(s.id) ?? 0) >= 0xa || mine.has(s.id)) continue;                  // rækkens tæller ≥ 10 / allerede på klubbens liste
     // 0x83fd2x: britisk klub og ikke EU-borger – stabens pladser (gruppe 5) er ikke blandt 2/4/6
     if (uk && !euStaff(g, s)) continue;
-    if (p.job === 5 || p.natJob === 5) continue;                                    // 0x83fa68/0x83fa72: +0x3d = 5 eller +0x28 = 5 (managere)
     if (!((s.id + cid) % kk === 0) && !passesScouting(g, env, p, s, club, mgr, youth, rand)) continue;
     // 0x840112–0x840153: v = 0x69d1b0 ≥ T ([esp+0x68]) og ≥ bedste − 10.000
     const v = scoreStaffForJob(env, p, cid, job, mgr);

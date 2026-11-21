@@ -40,14 +40,21 @@ const CREATING = 'cm0102.creating';
 export function markNewGame(on: boolean) {
   try { if (on) localStorage.setItem(CREATING, String(Date.now())); else localStorage.removeItem(CREATING); } catch { /* ingen lagring */ }
 }
-function reportInterruptedNewGame() {
+let interrupted: boolean | null = null;
+/** Siden blev lukket under et nyt spil (læst én gang ved sidens start): forsiden og spillet viser beskeden (ui/InAppBanner.tsx) */
+export function newGameInterrupted(): boolean {
+  if (interrupted !== null) return interrupted;
   let at = 0;
-  try { at = Number(localStorage.getItem(CREATING)) || 0; if (at) localStorage.removeItem(CREATING); } catch { return; }
-  if (at && Date.now() - at < 15 * 60_000) reportError(new Error(`NewGameInterrupted: the page was reloaded ${Math.round((Date.now() - at) / 1000)} s into creating a new game`));
+  try { at = Number(localStorage.getItem(CREATING)) || 0; if (at) localStorage.removeItem(CREATING); } catch { /* ingen lagring */ }
+  interrupted = !!at && Date.now() - at < 15 * 60_000;
+  if (interrupted) reportError(new Error(`NewGameInterrupted: the page was reloaded ${Math.round((Date.now() - at) / 1000)} s into creating a new game`));
+  return interrupted;
 }
+/** beskeden er lukket – vises ikke igen i samme besøg */
+export function dismissNewGameInterrupted() { interrupted = false; }
 
 export function startErrorReport() {
-  reportInterruptedNewGame();
+  newGameInterrupted();
   window.addEventListener('vite:preloadError', (ev) => { if (reloadOnce()) ev.preventDefault(); });
   window.addEventListener('unhandledrejection', (ev) => { if (STALE.test(String((ev.reason as Error)?.message ?? ev.reason))) reloadOnce(); });
   window.addEventListener('error', (ev) => reportError(ev.error ?? ev.message));

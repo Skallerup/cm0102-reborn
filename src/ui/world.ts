@@ -13,23 +13,37 @@ let cache: Promise<WorldData> | null = null;
 export async function withCommunityEdits(base: WorldData, db: 'cm' | 'original'): Promise<WorldData> {
   const res = await Promise.race([approvedEdits(db), new Promise<null>((r) => setTimeout(() => r(null), 2500))]).catch(() => null);
   if (!res?.edits.length) return base;
-  // en kopi: den delte database (bl.a. draft-ligaens spillerpulje) skal være ens hos alle klienter
-  const w = structuredClone(base);
-  const cm = w as WorldData & Partial<CMWorld>;
+  // en kopi: den delte database (bl.a. draft-ligaens spillerpulje) skal være ens hos alle klienter. (Hukommelse, 21/11) kun de rettede rækker
+  // kopieres – før var det hele databasen (structuredClone), så hovedtråden holdt to databaser under et nyt spil (iPhone/Facebook-appen)
+  const src = base as WorldData & Partial<CMWorld>;
+  const cm = { ...src, players: src.players.slice(), clubs: src.clubs.slice(), ...(src.ratings ? { ratings: { ...src.ratings } } : {}),
+    ...(src.clubColors ? { clubColors: { ...src.clubColors } } : {}) } as WorldData & Partial<CMWorld>;
+  const w = cm as WorldData;
   const F = Object.fromEntries((cm.playerFields ?? []).map((f, i) => [f, i]));
-  const players = new Map((w.players as unknown as unknown[][]).map((p) => [Number(p[0]), p]));
-  const clubs = new Map(w.clubs.map((c) => [c[0], c as unknown as unknown[]]));
+  const pRows = w.players as unknown as unknown[][], cRows = w.clubs as unknown as unknown[][];
+  const players = new Map(pRows.map((p, i) => [Number(p[0]), i]));
+  const clubs = new Map(cRows.map((c, i) => [Number(c[0]), i]));
+  const copied = new Set<unknown[]>(), copiedR = new Set<number>();
+  const own = (rows: unknown[][], i: number) => { if (!copied.has(rows[i])) { rows[i] = rows[i].slice(); copied.add(rows[i]); } return rows[i]; };
   for (const e of res.edits) {
     const id = Number(e.target);
     if (e.kind === 'player') {
-      const p = players.get(id);
-      if (!p) continue;
+      const pi = players.get(id);
+      if (pi === undefined) continue;
+      const p = own(pRows, pi);
       if (e.field === 'first' && F.first !== undefined) p[F.first] = e.value;
       if (e.field === 'last' && F.last !== undefined) p[F.last] = e.value;
-      if (e.field === 'attr' && cm.ratings?.[id]) { const [i, v] = e.value.split(':').map(Number); if (cm.ratings[id].attrs[i] !== undefined) cm.ratings[id].attrs[i] = v; }
+      if (e.field === 'attr' && cm.ratings?.[id]) {
+        const [i, v] = e.value.split(':').map(Number);
+        if (cm.ratings[id].attrs[i] !== undefined) {
+          if (!copiedR.has(id)) { cm.ratings[id] = structuredClone(cm.ratings[id]); copiedR.add(id); }
+          cm.ratings[id].attrs[i] = v;
+        }
+      }
     } else {
-      const c = clubs.get(id);
-      if (!c) continue;
+      const ci = clubs.get(id);
+      if (ci === undefined) continue;
+      const c = own(cRows, ci);
       if (e.field === 'name') c[1] = e.value;
       if (e.field === 'short') c[2] = e.value;
       if (e.field === 'color' && cm.clubColors) { const [a, b] = e.value.split(','); cm.clubColors[id] = [a, b ?? cm.clubColors[id]?.[1] ?? '#ffffff']; }

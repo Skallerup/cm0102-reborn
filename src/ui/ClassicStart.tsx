@@ -32,6 +32,7 @@ import { changeCount, type CustomDb } from '../game/dbEdit';
 import { setTheme, getTheme, modernOn, setStartSkin } from './theme';
 import { ORIGINAL_VERSIONS, type OriginalVersion } from './world';
 import { createOnlineGame } from '../online/client';
+import { markNewGame } from '../online/errors';
 import { createGameAsync, loadStartWorld, LANG_NATION, ORIG_LANG_NATION, prepareConversion, readDb, readVer, runConversion, writeDb, writeVer, type ConvertPrep, type Db } from './startGame';
 
 export type Step = 'menu' | 'db' | 'leagues' | 'season' | 'name' | 'deadline' | 'nation' | 'team' | 'club' | 'confirm' | 'restore' | 'delete' | 'settings' | 'opts' | 'extras' | 'account' | 'convpick' | 'convdone';
@@ -131,8 +132,9 @@ export function Frame({ step, version, title, sub, children, onBack, onNext, bac
       <footer className="cx-foot">
         {prog ? (
           <div className="cx-running" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-label={prog.label}>
-            <span className="cx-run-l">{prog.label}</span>
+            <span className="cx-run-l">{prog.label}{prog.step && <small className="cx-run-step" data-ng-step={prog.step}>{t(`ng.step.${prog.step}`)}</small>}</span>
             <span className="cx-run-bar"><i style={{ width: `${pct}%` }} /><b className="cx-run-pct">{pct}%</b></span>
+            {prog.step && <small className="cx-running-hint">{t('ng.slowHint')}</small>}
           </div>
         ) : (
           <div className="cx-backnext">
@@ -285,7 +287,8 @@ export function ClassicStart({ onLang, onHome, onGo, onLook, online }: { onLang:
       build.current = { sig, ctl };
       setBp({ sig, frac: 0.02, done: false });
       const opts = { managerName: 'Manager', managerNation: selected[0], clubId: p.clubs[0].id, activeNations: [...selected, ...background], lang: getLang(), masking, seed: seed.current, preview: true };
-      createGameAsync(w, opts, (pr) => setBp((cur) => (cur && cur.sig === sig ? { ...cur, frac: pr.frac } : cur)), ctl.signal).then(() => {
+      markNewGame(true);
+      createGameAsync(w, opts, (pr) => setBp((cur) => (cur && cur.sig === sig ? { ...cur, frac: pr.frac } : cur)), ctl.signal).finally(() => markNewGame(false)).then(() => {
         if (build.current?.ctl !== ctl || ctl.signal.aborted) return;
         setBp({ sig, frac: 1, done: true });
       }).catch((e) => { if (build.current?.ctl === ctl) { setErr(String((e as Error).message ?? e)); setBp(null); build.current = null; } });
@@ -334,7 +337,9 @@ export function ClassicStart({ onLang, onHome, onGo, onLook, online }: { onLang:
         setProg(null);
         return;
       }
-      await createGameAsync(world, opts, (p) => setProg({ label: t('cxs.initGame'), frac: p.frac, step: p.step }));
+      // (21/11) lukker browseren siden undervejs (for lidt hukommelse), meldes det og vises ved næste start (online/errors.ts)
+      markNewGame(true);
+      try { await createGameAsync(world, opts, (p) => setProg({ label: t('cxs.initGame'), frac: p.frac, step: p.step })); } finally { markNewGame(false); }
       notify();
       const lg = world.leagues.find((l) => l.id === club.league);
       notifyNewCareer({ manager: opts.managerName, club: club.short, league: lg?.name, nation: natName(world.nations[club.nation]?.name), bots: 0, db: db.startsWith('custom:') ? 'custom' : db, lang: opts.lang });

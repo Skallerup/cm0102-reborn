@@ -57,6 +57,7 @@ import { planScore, type ManagerBlockIn } from './engine/grid/planScore';
 import { judgeAbility, type Day } from './engine/grid/roleScore';
 import { nationLanguage, playerLanguages } from './languages';
 import { dislikesClub, dislikesPerson, favoursClub, favoursPerson, managerStaff, relHas, DIS_CLUB, FAV_CLUB } from './cmRelations';
+import { withSharedPersons } from './cmBoardGame';
 
 const SLOTS0 = 0x5f100000, OFFERS0 = 0x5e800000, OREC0 = 0x5e900000, RIV0 = 0x5eb00000, T86E0 = 0x5ec00000, INJ0 = 0x5e780000, LISTS0 = 0x61000000;
 const SLOT = 0x25, NSLOT = 40;
@@ -2171,12 +2172,22 @@ export function cmExchangeCheck(g: GameState, giver: number, receiver: number, c
 
 export { isoOf };
 
+/** spilstartens fremdrift (0..1) gennem klubløkken – sat af newgame.ts (rører intet i spillet) */
+export const SL_START_PROGRESS: { cb?: (frac: number) => void } = {};
+
 /** 0x83a1b0's slutning (spilstarten, efter trupplanen, lønnen og værdierne): 0x83a780 og 0x83b6e0 for alle klubber med plan */
 export function cmShortlistStart(g: GameState): SlEvent[] {
   if (!cmShortlistOn(g) || !g.cmPlan || ENV.CM_SL_START === '0') return [];
   const t0 = typeof performance !== 'undefined' ? performance.now() : 0;
   const S = buildSlMem(g);
-  for (const c of Object.values(g.clubs)) if (g.cmPlan[c.id]) afterPlan(S, c.id, []);
+  // stabens mål (cmStaffMove.ts afterBudget → staffSearch) deler personlisten for hele løkken (cmBoardGame.ts withSharedPersons)
+  const clubs = Object.values(g.clubs), prog = SL_START_PROGRESS.cb;
+  withSharedPersons(g, () => {
+    for (let i = 0; i < clubs.length; i++) {
+      if (prog && (i & 63) === 0) prog(i / clubs.length);                          // fremdriftsbjælken ved nyt spil (rører intet i spillet)
+      if (g.cmPlan![clubs[i].id]) afterPlan(S, clubs[i].id, []);
+    }
+  });
   const ev = finishSl(S);
   (S.m as SparseMem).release();
   if (t0) SL_STATS.startMs += performance.now() - t0;

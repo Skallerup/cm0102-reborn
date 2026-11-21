@@ -50,4 +50,13 @@ describe('indbygget browser (Facebook)', () => {
     markNewGame(false);
     expect(h.ls.has('cm0102.creating')).toBe(false);
   });
+  it('lukket af browseren under nyt spil: næste start viser beskeden (ikke bare forsiden) og rydder markøren', async () => {
+    h.ls.set('cm0102.creating', String(Date.now() - 40_000));
+    vi.resetModules();
+    const m = await import('../src/ui/InAppBanner');
+    const html = renderToStaticMarkup(createElement(m.InAppBanner));
+    expect(html).toContain('data-ng-killed');
+    expect(html).toContain('x-safari-https://cm0102reborn.com/');
+    expect(h.ls.has('cm0102.creating')).toBe(false);
+  });
 });
