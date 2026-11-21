@@ -1541,7 +1541,7 @@ export const en: Record<string, string> = {
 
   'news.welcome': 'Welcome to {club}, {manager}!', 'news.welcome.body': 'The board have handed you the keys. Check the squad, set your tactics and press Continue. Good luck!',
   'news.champions': '{club} are {comp} champions!', 'news.cupWin': '{club} win the {comp}!', 'news.playoffWin': '{club} win the {comp}',
-  'news.split': '{comp} has split into championship and relegation groups', 'news.promoted': '{club} win promotion', 'news.relegated': '{club} relegated',
+  'news.split': '{comp} has split into championship and relegation groups', 'news.promoted': '{club} win promotion', 'news.relegated': '{club} relegated', 'news.cmNotPromoted': '{club} not promoted', 'news.cmNotPromoted.body': 'The promotion of {club} to the {comp} has been cancelled their stadium does not meet the required capacity.',
   'news.retired': '{player} retires at {age}', 'news.newSeason': 'The {season} season begins',
   'news.injury': '{player} is injured: {injury} ({days} days)', 'news.recovered': "{last} resumes full training",
   'news.reservesPromoted': 'The squad was too small – {n} players promoted from the reserves', 'news.reservesPromoted.body': 'Remember to renew contracts and sign new players so the squad is strong enough.',

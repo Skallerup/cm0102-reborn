@@ -20,6 +20,7 @@ import { finalOrder, promotionOrder, leagueRows } from './competitions';
 import { ageOn } from './dates';
 import { emptyStats, makePlayer, randomDob, randomName, randomSub, type SubPos } from './data/generate';
 import { LEAGUE_RULES } from './leagues';
+import { cmNonLeagueRollover } from './cmNonLeague';
 import { Rng, hash, hash01, rng } from './rng';
 import { addNews, addPlayer, newsRelevant, gs, pushCareerLine, rebuildIndexes, removePlayer, setClub, squad } from './state';
 export { pushCareerLine };
@@ -774,6 +775,8 @@ export function seasonRollover(sc: Scope | null = null) {
   recordsSeasonEnd((c) => (prevTables[c.league] ?? []).indexOf(c.id) + 1, inClub);
   const tierBefore = new Map(Object.values(g.clubs).map((c) => [c.id, g.leagues[c.league]?.tier ?? 9]));
   promotionRelegation(sc);
+  // originalens sæsonskifte: Conference ↔ Third Division (eng_prm.cpp 0x574e60, efter ombytningerne 0x5752e0)
+  cmNonLeagueRollover(g, inClub);
   // udfordringer tjekkes efter op/nedrykning (så "ryk op" tæller i oprykningssæsonen)
   forEachHuman(() => {
     if (!g.challenge || g.challenge.done || !humanIn()) return;

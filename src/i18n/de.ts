@@ -4951,4 +4951,6 @@ Object.assign(de, {
   "cmsn.a75a74": "{club} hat einen schnellen Angriff und wird, wenn möglich, die Verteidiger direkt attackieren.",
   "cmsn.a759b4": "Leider konnte ich ihr Trainingsgelände nicht finden, weil meine Frau keine Karte lesen kann. Deshalb stützt sich mein Bericht auf ihren Spielbericht vom letzten Spiel in der Sunday Times.",
   'mode.legacy': "Dieses Spiel wurde im alten erweiterten Modus gestartet und behält seine Regeln. Neue Spiele folgen immer der Logik von CM 01/02.",
+  'news.cmNotPromoted': "{club} steigt nicht auf",
+  'news.cmNotPromoted.body': "Der Aufstieg von {club} in die {comp} wurde abgesagt, da ihr Stadion nicht die erforderliche Kapazität hat.",
 });

@@ -8377,4 +8377,6 @@ Object.assign(sv, {
   "cmsn.a75a74": "{club} har ett snabbt anfall och kommer att försöka springa på försvararna när det går.",
   "cmsn.a759b4": "Tyvärr hittade jag inte deras träningsanläggning, eftersom min fru inte kan läsa en karta. Därför har jag baserat min rapport på matchreferatet från deras senaste match i Sunday Times.",
   'mode.legacy': "Det här spelet startades i det gamla utökade läget och behåller sina regler. Nya spel följer alltid CM 01/02:s egen logik.",
+  'news.cmNotPromoted': "{club} flyttas inte upp",
+  'news.cmNotPromoted.body': "Uppflyttningen av {club} till {comp} har ställts in eftersom deras arena inte har den kapacitet som krävs.",
 });

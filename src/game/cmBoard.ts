@@ -826,7 +826,7 @@ function jobOfferToHuman(env: BoardEnv, st: CmBoardState, c: number, h: Person, 
 
 // ---------------------------------------------------------------- 0x69b650 / 0x69b790
 
-function removeClubManager(env: BoardEnv, st: CmBoardState, c: number, type: number, reason: number, keep: boolean): void {
+export function removeClubManager(env: BoardEnv, st: CmBoardState, c: number, type: number, reason: number, keep: boolean): void {
   const m = env.manager(c);
   if (!m) return;
   m.joined = { ...env.today };

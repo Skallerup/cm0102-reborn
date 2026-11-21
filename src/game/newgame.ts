@@ -214,6 +214,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     // (MODERN_PARITY 9) nation +0x7f (EU/EØS) – spejdernes dækning 0x7b7490 (cmScout.ts)
     if (raw.nation7f) g.cmNation7f = raw.nation7f.slice();
     g.cmLowerDiv = raw.lowerDiv ?? -1;
+    if (raw.confDiv !== undefined) g.cmConfDiv = raw.confDiv;
     // (MODERN_PARITY 7) bestyrelse/managerjob – viljen 0x844780: nation +0x71 (verdensdelen), "Europe"s id og byernes +0x33
     if (raw.nationCont) { g.cmNationCont = raw.nationCont.slice(); g.cmEurope = raw.europe ?? -1; }
     if (raw.city33) g.cmCity33 = raw.city33.slice();

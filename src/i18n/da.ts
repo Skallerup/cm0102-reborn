@@ -1566,7 +1566,7 @@ export const da: Record<string, string> = {
   // nyheder
   'news.welcome': 'Velkommen til {club}, {manager}!', 'news.welcome.body': 'Bestyrelsen har givet dig nøglerne. Tjek truppen, sæt din taktik og tryk Fortsæt. Held og lykke!',
   'news.champions': '{club} er mestre i {comp}!', 'news.cupWin': '{club} vinder {comp}!', 'news.playoffWin': '{club} vinder {comp}',
-  'news.split': '{comp} er delt i mesterskabs- og nedrykningsspil', 'news.promoted': '{club} rykker op', 'news.relegated': '{club} rykker ned',
+  'news.split': '{comp} er delt i mesterskabs- og nedrykningsspil', 'news.promoted': '{club} rykker op', 'news.relegated': '{club} rykker ned', 'news.cmNotPromoted': '{club} rykker ikke op', 'news.cmNotPromoted.body': 'Oprykningen af {club} til {comp} er annulleret, da deres stadion ikke har den krævede kapacitet.',
   'news.retired': '{player} stopper karrieren som {age}-årig', 'news.newSeason': 'Sæsonen {season} begynder',
   'news.injury': '{player} er skadet: {injury} ({days} dage)', 'news.recovered': "{last} træner fuldt igen",
   'news.reservesPromoted': 'Truppen var for lille – {n} spillere er rykket op fra reserveholdet', 'news.reservesPromoted.body': 'Husk at forlænge kontrakter og hente nye spillere, så truppen er stærk nok.',

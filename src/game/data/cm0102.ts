@@ -85,6 +85,8 @@ export interface CMWorld extends WorldData {
     chair?: Record<number, number[]>;
     /** (økonomien) turnerings-id'et for "A Lower Division" (nøgle-id'et [0x9cf764]; −1 = findes ikke) */
     lowerDiv?: number
+    /** (sæsonskiftet, cmNonLeague.ts) turnerings-id'et for "English Conference" (nøgle-id'et [0x9cf69c], sat på navnet 0x60fac6; −1 = findes ikke) */
+    confDiv?: number
     /** (MODERN_PARITY 5+6, kun 2026/27's world-cm.json – byggescriptet) stabens hele ikke-spillerpost (CMWorld.staff[11]) pr. person-id (staff[9]):
      *  originalens spilstart cmStaffInit.ts → Staff.cmNp/ca, som træningen 0x8b2880, udviklingen 0x5ce2d0 og fysioterapeuterne i injury.cpp læser.
      *  (Den originale database har posten i staff[11] i world-filen.) */
@@ -968,6 +970,7 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
     }
   }
   const lowerDiv = [...comps.entries()].find(([, c]) => c.name === 'A Lower Division')?.[0] ?? -1;
+  const confDiv = [...comps.entries()].find(([, c]) => c.name === 'English Conference')?.[0] ?? -1;
   const finClubs = rawClubs.filter((c) => clubRep[c.id] !== undefined && inGame.has(c.id));
   const fin = Object.fromEntries(finClubs.map((c) => {
     const sf = stadiumFlags.get(c.stadium) ?? [0, 0];
@@ -993,7 +996,7 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
       nation7e: [...nationIdx.keys()].map((id) => nationVal.get(id)![0]),
       nation85: [...nationIdx.keys()].map((id) => nationVal.get(id)![2]),
       nation76, nation7f,
-      fin, chair, chairBoard, nationBoard, lowerDiv, nationCont, europe, ...(city33.length ? { city33 } : {}), ...(Object.keys(prefs).length ? { prefs, clubPrefs } : {}) }, ...(officials.length ? { officials } : {}), ...(cmTrim ? { cmTrim } : {}), ...(Object.keys(compHist).length ? { compHist } : {}), ...(staff.length ? { staff } : {}), ...(staffX.length ? { staffX, clubNames: Object.fromEntries(rawClubs.filter((c) => nationIdx.has(c.nation)).map((c) => [c.id, [c.short || c.name, nationIdx.get(c.nation)!]])) } : {}), rules,
+      fin, chair, chairBoard, nationBoard, lowerDiv, ...(confDiv >= 0 ? { confDiv } : {}), nationCont, europe, ...(city33.length ? { city33 } : {}), ...(Object.keys(prefs).length ? { prefs, clubPrefs } : {}) }, ...(officials.length ? { officials } : {}), ...(cmTrim ? { cmTrim } : {}), ...(Object.keys(compHist).length ? { compHist } : {}), ...(staff.length ? { staff } : {}), ...(staffX.length ? { staffX, clubNames: Object.fromEntries(rawClubs.filter((c) => nationIdx.has(c.nation)).map((c) => [c.id, [c.short || c.name, nationIdx.get(c.nation)!]])) } : {}), rules,
   };
 }
 

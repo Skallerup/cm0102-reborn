@@ -31,7 +31,7 @@ import { fixtureCodesOf } from './engine/grid/gameInputs';
 import {
   type BoardEnv, type BoardNews, type BoardRec, type CmBoardState, type CmDate, type LeagueInfo, type MatchIn, type Person, type StatsEntry,
   HUMAN0, addVacancy, after, afterMatch, currentRun, daysSince, leagueBand, s8, applyForJob, boardDaily, cmToIso, confidenceBand, initRecords, initStaffRep, humanAppointRep, isoToCm, resetForNewManager,
-  setSeasonExpectations, s16, weeklyUpdate, managerRepAfterMatch, newRec, reviewNational,
+  setSeasonExpectations, s16, weeklyUpdate, managerRepAfterMatch, newRec, reviewNational, removeClubManager,
 } from './cmBoard';
 import type { CMWorld } from './data/cm0102';
 import { appointText, boardCmText, confidenceText, type BoardCmDesc, type ConfidenceIn } from './cmBoardText';
@@ -975,6 +975,17 @@ export function cmBoardResign(g: GameState, cid: number): void {
   const h = env.persons().find((p) => p.human && p.id === HUMAN0) ?? null;
   recOfG(g, cid).w6 = 3500;
   if (env.canBeManaged(cid)) addVacancy(env, st, cid, h, rnd(g, dayNum(g.date), 0x6b204e, cid));
+}
+
+/** sæsonskiftets flytning til/fra en inaktiv division (cmNonLeague.ts): op (League 0x6830b0, 3. argument 1) – klubben uden manager
+ *  (+0xcf = 0) får en ledig stilling (0x69ba50(klub, 0)); ned i en division uden kørende liga (0x6831a0) – et menneske i klubben (0x600a50)
+ *  forlader den (0x69b790(klub, 1, 7, 0)) */
+export function cmBoardClubMoved(g: GameState, cid: number, up: boolean): void {
+  if (!cmBoardOn(g)) return;
+  const st = stateOf(g), env = boardEnv(g);
+  const m = env.manager(cid);
+  if (up) { if (!m) addVacancy(env, st, cid, null, rnd(g, dayNum(g.date), 0x69ba50, cid)); }
+  else if (m?.human) removeClubManager(env, st, cid, 1, 7, false);
 }
 
 /** sim.ts newDay (før datoskiftet): 0x68f9c0 for dagen, der er spillet */

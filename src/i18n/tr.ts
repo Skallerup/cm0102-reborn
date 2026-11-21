@@ -4951,4 +4951,6 @@ Object.assign(tr, {
   "cmsn.a75a74": "{club} takımının hızlı bir hücumu var ve fırsat buldukça savunmacıların üzerine koşmaya çalışacak.",
   "cmsn.a759b4": "Ne yazık ki eşimin harita okuyamaması yüzünden antrenman sahalarını bulamadım. Bu yüzden raporumu Sunday Times'ta yayımlanan son maç raporlarına dayandırdım.",
   'mode.legacy': "Bu oyun eski genişletilmiş modda başlatıldı ve kurallarını korur. Yeni oyunlar her zaman CM 01/02'nin mantığını izler.",
+  'news.cmNotPromoted': "{club} yükselemedi",
+  'news.cmNotPromoted.body': "{club} takımının {comp} ligine yükselmesi, stadyumu gerekli kapasiteyi karşılamadığı için iptal edildi.",
 });

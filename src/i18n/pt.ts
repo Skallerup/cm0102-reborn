@@ -4951,4 +4951,6 @@ Object.assign(pt, {
   "cmsn.a75a74": "O {club} tem um ataque rápido e procurará enfrentar os defesas sempre que possível.",
   "cmsn.a759b4": "Infelizmente não consegui encontrar o campo de treinos deles, porque a minha mulher não sabe ler um mapa. Por isso baseei o meu relatório na crónica do último jogo deles, publicada no Sunday Times.",
   'mode.legacy': "Este jogo foi iniciado no antigo modo alargado e mantém as suas regras. Os jogos novos seguem sempre a lógica do CM 01/02.",
+  'news.cmNotPromoted': "{club} não sobe de divisão",
+  'news.cmNotPromoted.body': "A subida do {club} à {comp} foi cancelada porque o seu estádio não tem a capacidade exigida.",
 });

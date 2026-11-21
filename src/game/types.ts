@@ -1258,6 +1258,8 @@ export interface GameState {
   /** (19/11) ligaernes kampprogram er originalens (League::create_fixtures 0x6835c0, cmFixtures.ts) – nye spil, alle databaser */
   cmPairs?: boolean;
   cmLowerDiv?: number;
+  /** (sæsonskiftet, cmNonLeague.ts) "English Conference"s turnerings-id [0x9cf69c] (world-filens cmRaw.confDiv; −1 = findes ikke) */
+  cmConfDiv?: number;
   /** viljen 0x844780 (cmBoardInterest.ts): nation +0x71 (verdensdelens id) pr. nationsindeks, "Europe"s id, byernes +0x33 og klubbernes
    *  mål-omdømme Shortlist_Manager +0xdc[9·klub]+5 (0x83bf40, skrevet når computerens trupplan 0x83cb40 kører) */
   cmNationCont?: number[]; cmEurope?: number; cmCity33?: number[]; cmTargetRep?: Record<number, number>;

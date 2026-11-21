@@ -4951,4 +4951,6 @@ Object.assign(fr, {
   "cmsn.a75a74": "{club} possède une attaque rapide et cherchera à prendre les défenseurs de vitesse dès que possible.",
   "cmsn.a759b4": "Malheureusement, je n'ai pas trouvé leur terrain d'entraînement, car ma femme est incapable de lire une carte. J'ai donc basé mon rapport sur le compte rendu de leur dernier match paru dans le Sunday Times.",
   'mode.legacy': "Cette partie a été lancée dans l'ancien mode étendu et garde ses règles. Les nouvelles parties suivent toujours la logique de CM 01/02.",
+  'news.cmNotPromoted': "{club} n'est pas promu",
+  'news.cmNotPromoted.body': "La promotion de {club} en {comp} a été annulée car leur stade n'a pas la capacité requise.",
 });

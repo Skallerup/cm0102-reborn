@@ -25,6 +25,7 @@ import type { Competition as Comp, GameState, Player } from './types';
 import { cmMediaOn, cmAdjustMorale, cmRand, repMemOf, statAvg, statusCode } from './cmPlayerData';
 import { finalOrder, promotionOrder } from './competitions';
 import { LEAGUE_RULES } from './leagues';
+import { cmNonLeagueRelegated } from './cmNonLeague';
 import { CM_COMP_ID } from './engine/grid/gameInputs';
 import { signHooks } from './state';
 
@@ -137,7 +138,9 @@ export function cmRecordsDaily(g: GameState, squadOf: (c: number) => Player[]): 
       const order = finalOrder(comp);
       if (order[0]) recChampions(g, order[0], comp, squadOf);
       const rules = LEAGUE_RULES[comp.id];
-      if (rules?.below && rules.relegated) for (const c of order.slice(order.length - rules.relegated)) recRelegation(g, c, comp, squadOf);
+      // has_relegation (+0xc1 ≠ 0): også uden kørende liga under (Third Division → Conference, cmNonLeague.ts)
+      const down = rules?.below && rules.relegated ? rules.relegated : cmNonLeagueRelegated(g, comp.id);
+      if (down) for (const c of order.slice(order.length - down)) recRelegation(g, c, comp, squadOf);
       if (rules?.promoted && Object.values(LEAGUE_RULES).some((r) => r.below === comp.id)) {
         for (const c of promotionOrder(comp).slice(0, rules.promoted)) recPromotion(g, c, comp, squadOf);
       }

@@ -8377,4 +8377,6 @@ Object.assign(nb, {
   "cmsn.a75a74": "{club} har et raskt angrep og vil forsøke å løpe på forsvarerne når det er mulig.",
   "cmsn.a759b4": "Dessverre fant jeg ikke treningsfeltet deres, siden kona mi ikke kan lese et kart. Derfor har jeg basert rapporten på kamprapporten fra deres siste kamp i Sunday Times.",
   'mode.legacy': "Dette spillet ble startet i den gamle utvidede modusen og beholder reglene sine. Nye spill følger alltid CM 01/02s egen logikk.",
+  'news.cmNotPromoted': "{club} rykker ikke opp",
+  'news.cmNotPromoted.body': "Opprykket til {club} til {comp} er avlyst fordi stadionet deres ikke har den påkrevde kapasiteten.",
 });
