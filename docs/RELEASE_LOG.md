@@ -2,6 +2,7 @@
 
 Flyttet fra CLAUDE.md 17/11-2026 (så CLAUDE.md er kort i hver session). Nyeste først. Tilføj en linje øverst ved hver udgivelse.
 
+- 2026-11-21 – Skudt live (v0.33.0): 2026-11-21 – K7-2 rest: positionslister 0x839e60 efter originalens udvalg (0x524d70) også ved størrelse 2; staff +0x3e = 1/1-2001 for klubløse ved start (staffJoined(), 7 steder) → pension efter et år uden klub (0x7a8050); leagueRepOf → clubDivRep. Klubløse i hukommelsen slut sæson 1 268 → 167 (orakel 104).
 - 2026-11-21 – Skudt live (v0.33.0): 2026-11-21 – K7-7: to karakterpuljer [0xb74350]+0x10/+0x18 og +0x20/+0x28 valgt af engine+0 (0x6b66a0, cmQuickMatch.ts), brugt i 0x6ec55f/0x6d26b0/0x6d3610/0x6d3de0; g.cmRatingAvgQ. Omdømme Δ sæson 1 +72 → +47 (orakel −24). Rest: ligakarakterer ~0,06 lavere.
 - 2026-11-21 – Skudt live (v0.33.0): 2026-11-21 – Ejerens scout: genererede stab (0x527240) uden ikke-spillerpost gav vilje 0 → krav £250.000 og afslag; for egen klub returnerer 0x844780 3,5 (eksakt). Forhandlingsskærmens −/+/= som 0x4e2280 (løntrin, signing-on-trin, udløb måned/år), afslag ved udløb <90 dage (0x4ceb0c); cmContractScreen.ts.
 - 2026-11-21 – Skudt live (v0.33.0): 2026-11-21 – K7-2: clubDivRep (non-league-klubbers division fra club.dat 357/358–360/93 i stedet for HN60 som turnering 60) i trupplan/ønskeliste; bud på klubløs = kontrakt straks, beslutning efter 4–14 dage. Klubløse skriver under halv sæson 33/39 → 40/47 (orakel 71).
