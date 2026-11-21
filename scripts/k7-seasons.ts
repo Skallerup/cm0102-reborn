@@ -59,7 +59,9 @@ function oracleWorld(m: SparseMem): World {
   const squad = new Map<number, number>();
   for (let id = 0; id < n; id++) {
     const st = S + 0x6e * id, pr = m.u32(st + 0x61);
-    if (!pr) continue;
+    // job 16 (+0x3d) = pensioneret spiller (0x7aace0): spillerposten +0x61 står, til regen'en tager den (puljen, 0x7a87d0 – i dag + 1 + rand(65)
+    // dage), men personen er ikke længere spiller – vores spil fjerner ham på pensionsdagen (cmRetire.ts retire)
+    if (!pr || m.u8(st + 0x3d) === 16) continue;
     const common = str(m, m.u32(st + 0xc)), f = str(m, m.u32(st + 4)), l = str(m, m.u32(st + 8));
     const dob = dayIso(m.s16(st + 0x10), m.u16(st + 0x12)) || `${m.s16(st + 0x18)}-07-01`;
     const cadr = m.u32(st + 0x39), cix = cadr ? (cadr - C) / 0x245 : -1;
@@ -184,6 +186,15 @@ if (!ONLY_ORACLE) {
   g = gs();
 }
 const sacked: string[] = [];
+// pensioner pr. billede (30+ i hukommelsen ved forrige billede, væk ved dette) – fordelt på måneder (billedets dato)
+const perMonth = { o: new Map<string, number>(), u: new Map<string, number>() };
+const prevMem: { o?: Map<string, number>; u?: Map<string, number> } = {};
+const tally = (side: 'o' | 'u', iso: string, w: World) => {
+  const cur = new Map(w.players.filter((p) => p.mem).map((p) => [p.key, p.age] as const));
+  const prev = prevMem[side];
+  if (prev) { let n = 0; for (const [k, age] of prev) if (age >= 30 && !cur.has(k)) n++; const mk = iso.slice(0, 7); perMonth[side].set(mk, (perMonth[side].get(mk) ?? 0) + n); }
+  prevMem[side] = cur;
+};
 for (const s of snaps) {
   if (!ONLY_ORACLE) {
     const prev = new Date(Date.parse(s.iso) - 86400000).toISOString().slice(0, 10);
@@ -198,9 +209,11 @@ for (const s of snaps) {
       const r = continueGame(); if (r?.match) quickPlayUserMatch();
     }
     const uw = ourWorld(s.iso);
+    tally('u', s.iso, uw);
     if (isKey(s.iso)) uWorlds.set(s.iso, uw);
   }
   const ow = oracleWorld(s.load());
+  tally('o', s.iso, ow);
   for (const r of ow.league) { const k = `${seasonOf(s.iso)}|${r.div}`; const old = oLeague.get(k) ?? []; const sum = (xs: LRow[]) => xs.reduce((t, x) => t + x.p, 0); if (sum(ow.league.filter((x) => x.div === r.div)) >= sum(old)) oLeague.set(k, ow.league.filter((x) => x.div === r.div)); }
   if (isKey(s.iso)) oWorlds.set(s.iso, { ...ow, league: [] });
   console.log(`  ${s.iso}: billedets dato ${ow.date}${ONLY_ORACLE ? '' : `, spillets ${g.date}`}; ${ow.players.length} spillere i hukommelsen (${((Date.now() - t0) / 1000).toFixed(0)} s)`);
@@ -367,6 +380,13 @@ for (const area of [...new Set(metrics.map((x) => x.area))]) {
   out(`| mål | ${sKeys.map((s) => `${s}/${String(s + 1).slice(2)}`).join(' | ')} |`);
   out(`|---|${sKeys.map(() => '---').join('|')}|`);
   for (const x of metrics.filter((y) => y.area === area)) out(`| ${x.name} | ${sKeys.map((_, i) => { const r = rel(x.ours[i], x.theirs[i]); return `${fmt(x.ours[i])} / ${fmt(x.theirs[i])}${r === null || !Number.isFinite(r) ? '' : ` (${r >= 0 ? '+' : ''}${Math.round(r * 100)} %)`}`; }).join(' | ')} |`);
+}
+out('\n## pensioner pr. måned maj–august (30+ væk fra hukommelsen mellem to billeder; måned = billedets dato)');
+out('| måned | vores / oraklet |');
+out('|---|---|');
+for (const mk of [...new Set([...perMonth.o.keys(), ...perMonth.u.keys()])].sort()) {
+  if (!['05', '06', '07', '08'].includes(mk.slice(5))) continue;
+  out(`| ${mk} | ${ONLY_ORACLE ? '–' : perMonth.u.get(mk) ?? 0} / ${perMonth.o.get(mk) ?? 0} |`);
 }
 if (names.length) {
   out('\n## Op/ned i Premier League');
