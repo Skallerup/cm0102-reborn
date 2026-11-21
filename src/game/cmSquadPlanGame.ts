@@ -98,6 +98,19 @@ function managerNp(g: GameState, cid: number): number[] | null {
 
 // ---------------------------------------------------------------- én klub
 
+/** Klubbens division +0x57's omdømme +0x69 (club_comp.dat +105): den kørende liga (CM<id>), ellers club.dat's division (cmFinRaw[0] – som
+ *  hukommelsens +0x57, cmSlMem.ts). Englands non-league-klubber ligger i den skjulte liga «HN60», men har i originalen deres egne divisioner
+ *  (357 «A Lower Division» +0x69 = 1, 358–360 = 2, Conference 93 = 3) – før blev tallet i «HN60» læst som turnering 60 (omdømme 12), så
+ *  0x7bca90's omdømmemål R og grænsen T for alle non-league-klubber var for høje (Lordswood: T 6.824 mod oraklets 4.900) og 0x83f3a0 fandt
+ *  næsten ingen klubløse. null = ingen division. */
+export function clubDivRep(g: GameState, cid: number): number | null {
+  const c = g.clubs[cid];
+  if (!c) return null;
+  const lm = /^CM(\d+)$/.exec(c.league ?? '');
+  const id = lm ? +lm[1] : g.cmFinRaw?.[cid]?.[0];
+  return id === undefined || id < 0 ? null : g.cmCompRep?.[id] ?? 0;
+}
+
 /** 0x83cb40(entry, klub, daily, first) for en klub i vores spil */
 export function cmSquadPlanClub(g: GameState, cid: number, daily: boolean, first: boolean, human?: boolean): import('./cmSquadPlan').PlanResult | null {
   if (!cmMarketOn(g)) return null;
@@ -113,8 +126,7 @@ export function cmSquadPlanClub(g: GameState, cid: number, daily: boolean, first
   const [status, minAtt] = g.cmClubStat?.[cid] ?? [1, 0];
   // en aktiv liga (nation +0x11c / [0xadadfc]): ligaen spilles – lande uden simulerede ligaer har ingen turnering (0x83cb40 springer dem oftest over)
   const lg = g.leagues[club.league];
-  const compId = (id?: string) => (id ? +(id.match(/(\d+)$/)?.[1] ?? NaN) : NaN);
-  const leagueRep = lg ? g.cmCompRep?.[compId(club.league)] ?? null : null;
+  const leagueRep = clubDivRep(g, cid);
   const euro = cmClubEuro(g, cid);
   const euroRep = euro > -1 ? g.cmCompRep?.[euro] ?? EURO_REP[euro] ?? null : null;
   const count = all.filter((p) => !p.regen).length;
@@ -294,9 +306,7 @@ export function cmClubPredictValue(g: GameState, cid: number, money: number | nu
   const today = dayOf(g.date);
   const yearAgo = dayOf(`${+g.date.slice(0, 4) - 1}${g.date.slice(4)}`);
   const clubLang = nationLanguage(g, club.nation);
-  const lg = g.leagues[club.league];
-  const compId = (id?: string) => (id ? +(id.match(/(\d+)$/)?.[1] ?? NaN) : NaN);
-  const leagueRep = lg ? g.cmCompRep?.[compId(club.league)] ?? null : null;
+  const leagueRep = clubDivRep(g, cid);
   const data = pl.map((pp, i) => roleDataOf(all[i], ctxPick, pp.age));
   const role = (i: number, mask: number) => {
     const p = all[i], pp = pl[i], d = data[i], c = pp.contract;

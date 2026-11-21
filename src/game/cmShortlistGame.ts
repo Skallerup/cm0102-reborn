@@ -34,7 +34,7 @@ import { playerValue_4d0c60, knowsNation_53d980, seenRep_5407e0, knowledge_5408c
 import { contractForClub_4cf5f0, expiryBand_867d30, setToDesiredContract_85fc50, hasActiveReleaseClause_867b50, constructContract_85e410, calcContractValue_866830 } from './cmContractWant';
 import { getMaxWage_5968d0 } from './cmMaxWage';
 import { addDays_54c5b0, subDays_54c8e0, listRemove_68d1f0, offerContract_4cda70, daysSince_54cdb0 } from './cmContract';
-import { entryOf, storeEntry, fromRow, staffTailed, afterBudgetHooks } from './cmSquadPlanGame';
+import { entryOf, storeEntry, fromRow, staffTailed, afterBudgetHooks, clubDivRep } from './cmSquadPlanGame';
 import { newPlanEntry, type PlanEntry } from './cmSquadPlan';
 import { registerImpl, enter, QSORT_CMP, QSORT_CMP8, SHARED, PC_HOOK, FASTHOST, stackBelow, FAKE_RET, type X86 } from './cmGen/x86';
 import { getClubFinance_5a0590 } from './cmWage';
@@ -95,6 +95,10 @@ export interface SlBid {
   days: number;
   /** lejebud (make_loan_offer 0x8bed60 fra 0x842740): lejekontraktens udløb og lønprocent (lejeklubbens andel, 0/50/100) */
   loanUntil?: string; loanShare?: number;
+  /** build_bid 0x8e5d60 til en klubløs (+0x2f = 1 → add_transfer_offer 0x8be857: tilstand 7): kontrakten tilbydes straks (0x84a75c
+   *  add_contract_offer 0x4cc490 – `k` = kontraktens 0x50 bytes), og beslutningen planlægges (0x4cd230): `dd` = rand(5) + 1 (personens nye
+   *  beslutningspost), `bl` = 0x8cc5b0's svartid (dage), `r4` = rand(2) + 4 (+0x2f-reglen 0x4cd4xx: under 4 dage frem → i dag + 4–5) */
+  free7?: boolean; k?: number[]; dd?: number; bl?: number; r4?: number;
 }
 export interface SlFree { kind: 'free'; buyer: number; player: number }
 /** add_rumour 0x754740(staff, klub, beløb £, vilje) fra 0x83f3a0 (0x84079d/0x840c4b): mediernes kø (cmRumours.ts) */
@@ -688,7 +692,7 @@ function clubBase(S: SlMem, cid: number): ClBase {
   ctxPick ??= {};
   const mg = club ? managerStaff(g, cid) : null;
   B = { club, nation: club?.nation, mgDis: (id: number) => dislikesPerson(mg, id), mgFav: (id: number) => favoursPerson(mg, id), ctx: ctxPick as PickCtx, lang: club ? nationLanguage(g, club.nation) : null, mg: club ? managerStaff(g, cid) : null, np: mgNp(g, cid),
-    clubRep: club ? clubRepMem(g, cid) : 0, league69: club ? g.cmCompRep?.[+(club.league?.match(/(\d+)$/)?.[1] ?? NaN)] ?? null : null };
+    clubRep: club ? clubRepMem(g, cid) : 0, league69: club ? clubDivRep(g, cid) : null };
   if (cid >= 0) cb[cid] = B;
   return B;
 }
@@ -753,7 +757,7 @@ function planValue0(S: SlMem, st: number, mask: number, flags: number, clubAdr: 
     langDiff: !!clubLang && !!pLang && clubLang !== pLang, lang: clubLang && P.langs.includes(clubLang) ? 10 : 0,
     nationOfClub: !!club && (p.nation === club.nation || p.cmNation2 === club.nation),
     clubRep: club ? clubRepMem(g, cid) : 0, stClubRep: clubRepMem(g, pClub), listed: !!p.listed, daysNoClub: pClub ? 0 : Math.max(0, dayNum(g.date) - dayNum(p.joined ?? g.date)),
-    league69: club ? g.cmCompRep?.[+(club.league?.match(/(\d+)$/)?.[1] ?? NaN)] ?? null : null, mgr,
+    league69: club ? clubDivRep(g, cid) : null, mgr,
     data: { ...d, contract: k && cc ? { b3d: s8(m.u8(k + 0x3d)), b3e: s8(m.u8(k + 0x3e)), b3f: s8(m.u8(k + 0x3f)), b44: s8(m.u8(k + 0x44)), b45: m.u32(k + 0x45), b4f: m.u8(k + 0x4f) } : null,
       injury: () => (inj ? { w28: inj.w28, w2c: inj.w2c } : null) },
   });
@@ -1645,7 +1649,14 @@ export function buildSlMem(g: GameState, opts: { noStale?: boolean } = {}): SlMe
         if (p && g.clubs[club]) S.events.push({ kind: 'rumour', club, player: p.id, amt: a[n - 3] | 0, will: Math.trunc(dv.getFloat64(0, true) * 100) });
         return 0;
       }
-      case 0x4cc490: case 0x4cd230: case 0x4cd6d0: case 0x587220: case 0x6181d0: case 0x5a8f60: case 0x5cc7d0:
+      case 0x4cc490: {
+        // CONTRACT_MANAGER::add_contract_offer(kontrakt, buddets indeks, …, job, 0, 1, 0) fra 0x84a75c: build_bid 0x8e5d60's kontrakt til en
+        // klubløs (ud-parameteren [esp+0x34], 0x4cda70 måde 2) tilbydes STRAKS – buddet (tilstand 7, +0x2f = 1) får kontraktens 0x50 bytes
+        const L = a[1] >>> 0, ev = S.events[S.events.length - 1];
+        if (L && ev?.kind === 'bid' && ev.free7 && S.memOf.get(ev.player) === m.s32(L)) { const k: number[] = []; for (let i = 0; i < 0x50; i++) k.push(m.u8(L + i)); ev.k = k; }
+        return 0;
+      }
+      case 0x4cd230: case 0x4cd6d0: case 0x587220: case 0x6181d0: case 0x5a8f60: case 0x5cc7d0:
       case 0x690890: case 0x8c1f80: case 0x8c2060: case 0x4cc9e0:
         return 0;
     }
@@ -1797,9 +1808,13 @@ function addBid(S: SlMem, r: number, loan: boolean, lt?: { until: string; share:
   const st = (m.u32(G.STAFF) + 0x6e * m.s32(r + 0xc)) >>> 0, k = getContract(m, st);
   const sellerHuman = !!k && (m.u8(k + 0x35) & 0x3f) !== 5 && isHumanClub(m.s32(k + 4));
   const days = sellerHuman ? 28 : responseDelay(S, r);
+  // (cmMarketOn) build_bid's klubløse (+0x2f = 1): tilstand 7 – 0x4cd230's tal (egen talrække pr. spiller, køber og dag som cx.rand)
+  const free7 = !loan && m.u8(r + 0x2f) !== 0 && !k;
+  let f7 = {};
+  if (free7) { const rr = cmRand(g.seed ?? 0, p.id, buyer, dayNum(g.date), 0x4cd230); const dd = rr(5) + 1; f7 = { free7: true, dd, bl: days, r4: rr(2) + 4 }; }
   S.events.push({ kind: 'bid', id, buyer, player: p.id, fee: loan ? 0 : eur(m.s32(r + 0x1b)), loan: loan || m.u8(r + 0x1f) === 1,
     months: Math.max(0, s8(m.u8(r + 0x40))), sellOn: Math.max(0, s8(m.u8(r + 0x3f))), lgFee: eur(m.s32(r + 0x35)), lgApps: m.u8(r + 0x39) || 10,
-    intFee: eur(m.s32(r + 0x3a)), intApps: m.u8(r + 0x3e) || 10, pub: m.u8(r + 0x2d), max: maxOf(S, buyer, p), days, ...(lt ? { loanUntil: lt.until, loanShare: lt.share } : {}) });
+    intFee: eur(m.s32(r + 0x3a)), intApps: m.u8(r + 0x3e) || 10, pub: m.u8(r + 0x2d), max: maxOf(S, buyer, p), days, ...(lt ? { loanUntil: lt.until, loanShare: lt.share } : {}), ...f7 });
   return id;
 }
 

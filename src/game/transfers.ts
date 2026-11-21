@@ -1943,6 +1943,23 @@ export function cmShortlistApply(events: SlEvent[]) {
     }
     o.cmAi = true;
     o.respondBy = addDays(g.date, e.days ?? 0);
+    if (e.free7 && e.k && !p.club) {
+      // build_bid 0x8e5d60 til en klubløs: buddet får tilstand 7 (0x8be857 – ingen accept_transfer_bid 0x8c0080, ingen vilje-kontrol), og
+      // 0x84a75c tilbyder build_bid's kontrakt straks (add_contract_offer 0x4cc490). Beslutningen 0x4cd230: personens post (eksisterende,
+      // ellers i dag + rand(5) + 1) trækkes frem til 0x8cc5b0's svartid, højst 14 dage; +0x2f: under 4 dage frem → i dag + rand(2) + 4.
+      // Han beslutter sig for alle sine tilbud på postens dag (0x4ce4e0 – cmAiAiDue).
+      CM_AIAI.free++;
+      o.status = 'negotiating';
+      o.cmK = e.k;
+      const mine = g.offers.filter((x) => x.cmAi && x.player === p.id && x.status === 'negotiating' && x.cmK && !x.loan);
+      const days = (iso: string) => Math.round((Date.parse(iso.slice(0, 10)) - Date.parse(g.date.slice(0, 10))) / 86400000);
+      let v = mine.length ? Math.max(1, Math.min(...mine.map((x) => days(x.respondBy)))) : e.dd ?? 1;
+      v = Math.min(v, Math.max(1, e.bl ?? v));
+      if (v < 4) v = e.r4 ?? 4;
+      if (v > 14) v = 14;
+      o.respondBy = addDays(g.date, v);
+      for (const x of mine) x.respondBy = o.respondBy;
+    }
     // add_transfer_offer 0x8be300: køberens gamle (lukkede) bud på ham i tabellen fjernes (remove_offer 0x8d0f60), det nye tager pladsen
     if (g.cmTmKept?.length) g.cmTmKept = g.cmTmKept.filter((k) => k.buyer !== o.buyer || k.player !== o.player);
     g.offers.push(o);
