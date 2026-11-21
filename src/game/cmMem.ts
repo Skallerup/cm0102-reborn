@@ -158,6 +158,13 @@ export interface CmCtx {
   useLog?(adr: number): boolean;
 }
 
+/** Månedstabellerne 0x9b8448 (almindeligt år) og 0x9b8460 (skudår) som i exe'ens data: dagen i året (0 = 1/1), måneden begynder, MINUS 1
+ *  (s16) – 0x54cf70 (dagen i måneden = dagen i året − tabellen, 1..31), 0x54cfb0 (måneden: første post < dagen i året), 0x549f70 (Date(dag 1..31,
+ *  måned, år): tabellen + dagen). Tidligere stod tabellen 1 for højt (0, 31, 59 …): dagen i måneden blev 1 for lav, månedens 1. hørte til
+ *  måneden før, og lejeaftalernes slutdag (0x842740: min(dagen, 28)) blev den 29., når buddet kom den 29.–31. */
+export function writeMonthTables(m: CmMem) {
+  [-1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333].forEach((d, i) => { m.w16(0x9b8448 + 2 * i, d); m.w16(0x9b8460 + 2 * i, d + (i >= 2 ? 1 : 0)); });
+}
 /** staff-post af id */
 export const staffAt = (m: CmMem, id: number) => (m.u32(G.STAFF) + 0x6e * id) >>> 0;
 /** klub-post af id */

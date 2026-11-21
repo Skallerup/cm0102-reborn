@@ -23,7 +23,7 @@
 //   [0xa83608] = 10 (største antal år). Transferlisterne i TRANSFER_MANAGER, forhandlingslisterne og skadeposten [0xb63d28] er tomme (0).
 // rand: 0x85fc50 trækker rand(0x1c) (dagen i udløbsmåneden) – af spillets frø, personen og datoen (cmRand – rører ikke spillets rng).
 import type { Club, Contract, ContractClauses, GameState, Player } from './types';
-import { type CmCtx, G } from './cmMem';
+import { type CmCtx, G, writeMonthTables } from './cmMem';
 import { buildWageMem, cmMemCall, type WageMem } from './cmWageGame';
 import { setToDesiredContract_85fc50, constructContract_85e410, calcContractValue_866830 } from './cmContractWant';
 import { offerContract_4cda70 } from './cmContract';
@@ -147,7 +147,7 @@ export function buildWantMem(g: GameState, clubs: Iterable<number>, opts: { full
   const m = W.c.m;
   m.w8(0xa83608, 10);
   // månedstabellerne 0x9b8448 (almindeligt år) og 0x9b8460 (skudår): dagen i året, måneden begynder (s16) – 0x54cfb0, 0x85fc50
-  [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334].forEach((d, i) => { m.w16(0x9b8448 + 2 * i, d); m.w16(0x9b8460 + 2 * i, d + (i >= 2 ? 1 : 0)); });
+  writeMonthTables(m);
   // verdensdelene og sæsontabellen
   const contOf = (name: string | undefined) => {
     if (!name) return 0;

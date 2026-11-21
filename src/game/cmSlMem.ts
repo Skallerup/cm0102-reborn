@@ -5,7 +5,7 @@
 // sammenligner alle sider med de to oprindelige byggere (og cmShortlistGame.ts gør det selv med CM_SL_MEMCHECK=1). Ændres buildWageMem/
 // buildWantMem, skal denne følge med (kontrollen fanger det).
 import type { GameState, Player, Staff } from './types';
-import { type CmCtx, G, SparseMem } from './cmMem';
+import { type CmCtx, G, SparseMem, writeMonthTables } from './cmMem';
 import { writeHolidayMem } from './cmHoliday';
 import { cmMemCall, scanOf, writeKeyIds, KEY_NATIONS, OTHER_GLOBALS, NAT7F, STAFF0, PREC0, CLUB0, NAT0, DIV0, FIN0, K0, ROWS0, TM0, PTRS, type WageMem } from './cmWageGame';
 import type { WantMem } from './cmContractGame';
@@ -582,7 +582,7 @@ export function buildSlWantMem(g: GameState, clubs: Iterable<number>, opts: { ca
   SLMEM_T.b += tnow() - tq; tq = tnow();
   // ---------------------------------------------------------------- buildWantMem's felter (uden personerne)
   m.w8(0xa83608, 10);
-  [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334].forEach((d, i) => { m.w16(0x9b8448 + 2 * i, d); m.w16(0x9b8460 + 2 * i, d + (i >= 2 ? 1 : 0)); });
+  writeMonthTables(m);
   const contOf = (name: string | undefined) => {
     if (!name) return 0;
     if (OCEANIA.has(name)) return CONT0 + 0x100 * 4;
