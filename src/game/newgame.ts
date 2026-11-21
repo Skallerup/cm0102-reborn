@@ -270,11 +270,15 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   const tcOk = (id: number) => { const tc = cm?.ratings[id]?.tc; return tc === undefined || tc === 1 || (Array.isArray(tc) && tc.some((n) => o.activeNations.includes(n))); };
   const hiddenWithPlayers = new Set<number>();
   if (cm) { const Fp = Object.fromEntries(world.playerFields.map((f, i) => [f, i])); for (const r of world.players) if (r[Fp.club] && tcOk(r[Fp.id] as number)) hiddenWithPlayers.add(r[Fp.club] as number); }
+  // 0x5267c0 database_trim_club_table (world-filens cmRaw.clubMem: 1 = altid, ellers de nationer, hvis valg beholder klubben) – de spilbare
+  // landes skjulte klubber også uden spillere i hukommelsen (fx Englands non-league med omdømme over 500)
+  const clubMem = cm?.cmRaw?.clubMem;
+  const memKeep = (id: number) => { const v = clubMem?.[id]; return v === undefined ? hiddenWithPlayers.has(id) : v === 1 || v.some((n) => o.activeNations.includes(n)); };
   // Klubber
   for (const [id, name, short, nation, league, stadium, seats] of world.clubs) {
     // (20/11, UEFA-pladserne 0x904580) undtagen Europas lande uden spillet liga (HE<land>, build-cm-data.mts): originalen har deres klubber i
     // hukommelsen også uden spillere, og Europas pladser går til dem (fyldspillerne 0x90d2f0 stiller holdet)
-    if (cm && leagueById.get(league)?.hidden && !hiddenWithPlayers.has(id) && !(mode === 'authentic' && league.startsWith('HE'))) continue;
+    if (cm && leagueById.get(league)?.hidden && !memKeep(id) && !(mode === 'authentic' && league.startsWith('HE'))) continue;
     const h = hash(id);
     g.clubs[id] = {
       id, name, short, nation, league, stadium: stadium || `${short} Stadium`, seats: seats || 5000,

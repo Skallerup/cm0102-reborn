@@ -24,7 +24,7 @@ beforeAll(() => {
 
 describe('0x4d1600 håndporteret = oversat', () => {
   it('engelske spillere i 12 klubber × (ingen køber, to købere), med og uden &ud', () => {
-    const clubs = Object.values(g.clubs).filter((c) => g.nations[c.nation]?.name === 'England' && !c.hidden).slice(0, 12);
+    const clubs = Object.values(g.clubs).filter((c) => g.nations[c.nation]?.name === 'England' && !g.leagues[c.league]?.hidden).slice(0, 12);   // ligaklubberne (de skjulte non-league-klubber har få spillere)
     const OUT = 0x5ff00000;
     let n = 0, nz = 0;
     for (const cl of clubs) {

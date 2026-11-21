@@ -188,7 +188,7 @@ describe('i spillet (3.9.60, ægte tilstand)', { timeout: 120_000 }, () => {
     expect(ks()).toEqual(['angryMove']);
     set('temperament', 12); c.b45 = 0;
     // et aftalt skifte (0x8cca10 → 0x884e12): ingen tilfreds linje; Pressure ≥ 10 og intet andet → "Unknown"
-    p.contract!.futureClub = squad(mu).length ? Number(Object.keys(g.clubs).find((id) => Number(id) !== mu)) : 0;
+    p.contract!.futureClub = squad(mu).length ? Number(Object.keys(g.clubs).find((id) => Number(id) !== mu && Number(id) > 0)) : 0;
     expect(ks()).toEqual(['unknown']);
     set('pressure', 4); p.dob = `${Number(g.date.slice(0, 4)) - 20}-01-01`;
     expect(ks()).toEqual(['insecure']);

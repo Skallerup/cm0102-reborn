@@ -314,8 +314,21 @@ if (playableNat.size) {
     const tc = r?.tc;
     if (hiddenKeep.has(p[F.id] as number) || tc === undefined || tc === 1 || (Array.isArray(tc) && tc.some((n) => playableNat.has(n)))) withP.add(club);
   }
-  w.clubs = w.clubs.filter((c) => !lgOf.get(c[4] as string)?.hidden || withP.has(c[0] as number));
-}
+  // 0x5267c0 database_trim_club_table (cm0102.ts clubMem): de spilbare landes skjulte klubber, som originalen kan have i hukommelsen for et valg
+  // af spilbare lande – også uden spillere (fx Englands non-league: alle med omdømme over 500, de øvrige med en beholdt person)
+  const cmem = w.cmRaw?.clubMem;
+  const memOk = (id: number) => { const v = cmem?.[id]; return v === 1 || (Array.isArray(v) && v.some((n) => playableNat.has(n))); };
+  // klub-id 0 (club.dat's første klub, 3.9.60: 1.FC Bocholt) kan ikke være med: spillets klub 0 = ingen klub (spillernes klub 0 = klubløs i world-filen)
+  w.clubs = w.clubs.filter((c) => !lgOf.get(c[4] as string)?.hidden || (cmem && playableNat.has(c[3] as number) ? (c[0] as number) !== 0 && memOk(c[0] as number) : withP.has(c[0] as number)));
+  if (cmem) {
+    const keepMem = new Set(w.clubs.filter((c) => lgOf.get(c[4] as string)?.hidden && playableNat.has(c[3] as number)).map((c) => c[0] as number));
+    for (const k of Object.keys(cmem)) {
+      const id = Number(k), v = cmem[id];
+      if (!keepMem.has(id)) delete cmem[id];
+      else if (Array.isArray(v)) cmem[id] = v.filter((n) => playableNat.has(n));
+    }
+  }
+} else if (w.cmRaw?.clubMem) delete w.cmRaw.clubMem;
 // (20/11, UEFA-pladserne 0x904580/0x902b90) den originale database: originalens hukommelse har ALLE de europæiske landes klubber – også uden
 // spillere (oraklet 14/7-01, størrelse 2: Albaniens, Færøernes, Liechtensteins … klubber i UEFA Cup'en med 0 spillere; fyldspillerne 0x90d2f0 stiller
 // holdet før kampen). Lande med verdensdelen Europa (nation +0x71 = "Europe") uden klubber i world-filen: op til EURO_CLUBS_ORIG klubber (omdømmet

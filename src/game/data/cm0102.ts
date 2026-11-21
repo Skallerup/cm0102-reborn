@@ -87,6 +87,9 @@ export interface CMWorld extends WorldData {
     lowerDiv?: number
     /** (sæsonskiftet, cmNonLeague.ts) turnerings-id'et for "English Conference" (nøgle-id'et [0x9cf69c], sat på navnet 0x60fac6; −1 = findes ikke) */
     confDiv?: number
+    /** 0x5267c0 database_trim_club_table: pr. klub-id 1 = altid i hukommelsen, ellers de nationer (indeks), hvis valg beholder den (cm0102.ts) –
+     *  byggescriptet beholder kun de skjulte klubber i de spilbare lande; newgame.ts lægger dem på verdenen efter de valgte lande */
+    clubMem?: Record<number, 1 | number[]>;
     /** (MODERN_PARITY 5+6, kun 2026/27's world-cm.json – byggescriptet) stabens hele ikke-spillerpost (CMWorld.staff[11]) pr. person-id (staff[9]):
      *  originalens spilstart cmStaffInit.ts → Staff.cmNp/ca, som træningen 0x8b2880, udviklingen 0x5ce2d0 og fysioterapeuterne i injury.cpp læser.
      *  (Den originale database har posten i staff[11] i world-filen.) */
@@ -814,6 +817,82 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
     }
   }
 
+  /** 0x5267c0 database_trim_club_table (efter 0x524d70; `size12` = databasestørrelse 1/2, Maximum ikke): hvilke klubber originalen har i
+   *  hukommelsen ved et nyt spil. Pr. klub (club.dat-id): 1 = altid, ellers de nationer (world-indeks), hvis valg beholder den. Reglerne:
+   *  (a) landet valgt (+0x11c) – undtagen engelske klubber med omdømme +0x80 ≤ 500 ved størrelse 1/2 (0x526df0–0x526e1c);
+   *  (b) pr. land en liste (0x5269ea–0x526bc9, tabellens rækkefølge inkl. landsholdene i nat_club.dat): op til 20 (størrelse 2: 15) efter
+   *      omdømme (fuld liste → erstat den første laveste, når strengt højere); ved størrelse 2 for et ikke-valgt land uden for de 15
+   *      nøglelande (England, Italien, … 0x526a14–0x526a94) kun de første 5 i tabellen;
+   *  (c) en beholdt persons klub +0x39 eller landshold +0x24 (0x526c53), (d) klub_comp_history +10/+14/+18 (0x526c95),
+   *  (e) kun Maximum: staff_history +10, når personen er beholdt og hans nationalitet er valgt (0x526cfd – klubbens eget land er (a)). */
+  let clubMem: Record<number, 1 | number[]> | undefined;
+  if (opts.cmMem && cmTrim) {
+    const size12 = cmTrim.pct === 0.02;
+    const KEY = new Set(['England', 'Italy', 'Germany', 'Spain', 'France', 'Norway', 'Brazil', 'Argentina', 'Denmark', 'Belgium', 'Holland', 'Japan', 'Portugal', 'Scotland', 'Sweden']);
+    const engId = [...natName.entries()].find(([, v]) => v === 'England')?.[0];
+    const acc = new Map<number, true | Set<number>>();
+    const add = (club: number, nat: number | true) => {
+      const cur = acc.get(club);
+      if (cur === true) return;
+      if (nat === true) { acc.set(club, true); return; }
+      (cur ?? acc.set(club, new Set()).get(club) as Set<number>).add(nat);
+    };
+    // tabellen: club.dat + nat_club.dat (landsholdene står sidst og har land +0x53 som klubberne)
+    const table: { id: number; nation: number; rep: number }[] = rawClubs.map((c) => ({ id: c.id, nation: c.nation, rep: c.rep }));
+    if (files['nat_club.dat']) { const NC = new Reader(files['nat_club.dat']); for (let o = 0; o + 581 <= files['nat_club.dat'].byteLength; o += 581) table.push({ id: NC.i32(o), nation: NC.i32(o + 83), rep: NC.i16(o + 128) }); }
+    // (a)
+    for (const c of rawClubs) { const x = nationIdx.get(c.nation); if (x !== undefined && !(size12 && c.nation === engId && c.rep <= 500)) add(c.id, x); }
+    // (b) – for et valgt land er klubberne med i forvejen (a), kun Englands under 501 kan afhænge af listen (nøgleland: listen er ens)
+    const lists = new Map<number, { l: { id: number; rep: number }[]; min: number; first5: boolean }>();
+    for (const c of table) {
+      if (c.nation < 0) continue;
+      let L = lists.get(c.nation);
+      if (!L) lists.set(c.nation, (L = { l: [], min: 0, first5: size12 && !KEY.has(natName.get(c.nation) ?? '') }));
+      if (L.first5 && L.l.length > 4) continue;
+      const N2 = size12 ? 15 : 20;
+      if (L.l.length < N2) {
+        L.l.push(c);
+        if (L.l.length === 1 || c.rep < L.l[L.min].rep) L.min = L.l.length - 1;
+      } else if (c.rep > L.l[L.min].rep) {
+        L.l[L.min] = c;
+        L.min = 0;
+        for (let k = 0; k < L.l.length; k++) if (L.l[k].rep < L.l[L.min].rep) L.min = k;
+      }
+    }
+    for (const L of lists.values()) for (const c of L.l) add(c.id, true);
+    // (c) de beholdte personer (størrelse 2: clubTc; Maximum: mem)
+    const memOf = (i: number, o: number): 0 | 1 | number[] => (size12 || !mem ? clubTc[i] ?? 0 : mem(o));
+    const memIdx = new Map<number, number>();
+    for (let i = 0; i < tStaff.count; i++) {
+      const o = tStaff.offset + i * staffSize;
+      if (o + staffSize > files['staff.dat'].byteLength) break;
+      memIdx.set(S.i32(o), i);
+      const m = memOf(i, o);
+      if (!m) continue;
+      for (const club of [S.i32(o + 57), S.i32(o + 0x24)]) {
+        if (club < 0) continue;
+        if (m === 1) add(club, true); else for (const x of m) add(club, x);
+      }
+    }
+    // (d)
+    if (files['club_comp_history.dat']) {
+      const H = new Reader(files['club_comp_history.dat']);
+      for (let o = 0; o + 26 <= files['club_comp_history.dat'].byteLength; o += 26) for (const k of [10, 14, 18]) { const c = H.i32(o + k); if (c >= 0 && c < table.length) add(c, true); }
+    }
+    // (e)
+    if (!size12 && files['staff_history.dat']) {
+      const H = new DataView(files['staff_history.dat']);
+      for (let o = 0; o + 17 <= files['staff_history.dat'].byteLength; o += 17) {
+        const i = memIdx.get(H.getInt32(o + 4, true)), club = H.getInt32(o + 10, true);
+        if (i === undefined || club < 0) continue;
+        const so = tStaff.offset + i * staffSize, m = memOf(i, so), x = nationIdx.get(S.i32(so + 26));
+        if (x !== undefined && (m === 1 || (Array.isArray(m) && m.includes(x)))) add(club, x);
+      }
+    }
+    clubMem = {};
+    for (const c of rawClubs) { const v = acc.get(c.id); if (v && nationIdx.has(c.nation)) clubMem[c.id] = v === true ? 1 : [...v].sort((a, b) => a - b); }
+  }
+
   // spillere
   const fields = ['id', 'first', 'last', 'dob', 'nation', 'club', 'pos', 'foot', 'height', 'value', 'maxValue', 'caps', 'intGoals', 'contract', 'apps', 'minutes', 'goals', 'assists', 'yellows', 'reds', 'number', 'wage'];
   const players: WorldData['players'] = [];
@@ -996,7 +1075,7 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
       nation7e: [...nationIdx.keys()].map((id) => nationVal.get(id)![0]),
       nation85: [...nationIdx.keys()].map((id) => nationVal.get(id)![2]),
       nation76, nation7f,
-      fin, chair, chairBoard, nationBoard, lowerDiv, ...(confDiv >= 0 ? { confDiv } : {}), nationCont, europe, ...(city33.length ? { city33 } : {}), ...(Object.keys(prefs).length ? { prefs, clubPrefs } : {}) }, ...(officials.length ? { officials } : {}), ...(cmTrim ? { cmTrim } : {}), ...(Object.keys(compHist).length ? { compHist } : {}), ...(staff.length ? { staff } : {}), ...(staffX.length ? { staffX, clubNames: Object.fromEntries(rawClubs.filter((c) => nationIdx.has(c.nation)).map((c) => [c.id, [c.short || c.name, nationIdx.get(c.nation)!]])) } : {}), rules,
+      fin, chair, chairBoard, nationBoard, lowerDiv, ...(confDiv >= 0 ? { confDiv } : {}), nationCont, europe, ...(clubMem ? { clubMem } : {}), ...(city33.length ? { city33 } : {}), ...(Object.keys(prefs).length ? { prefs, clubPrefs } : {}) }, ...(officials.length ? { officials } : {}), ...(cmTrim ? { cmTrim } : {}), ...(Object.keys(compHist).length ? { compHist } : {}), ...(staff.length ? { staff } : {}), ...(staffX.length ? { staffX, clubNames: Object.fromEntries(rawClubs.filter((c) => nationIdx.has(c.nation)).map((c) => [c.id, [c.short || c.name, nationIdx.get(c.nation)!]])) } : {}), rules,
   };
 }
 
