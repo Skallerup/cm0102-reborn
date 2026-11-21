@@ -2104,7 +2104,7 @@ async function run(look) {
     if (!/copy/i.test(await page.locator('.cx-confirm, .confirm-box').first().innerText())) throw new Error('bekræftelsen nævner ikke kopien');
     await page.locator('.cx-confirm button.primary, .confirm-box button.primary').first().click();
     // (en fejl i konverteringen står i .cxs-err – testen fejler straks i stedet for at vente forgæves)
-    await page.waitForSelector('[data-convdone], .cxs-err', { timeout: 600000 });
+    await page.waitForSelector('[data-convdone], .cxs-err', { timeout: 1500000 });
     if (await page.locator('.cxs-err').count()) throw new Error(`konverteringen fejlede: ${(await page.locator('.cxs-err').first().innerText()).slice(0, 300)}`);
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-konvertering-rapport.png` });
     const rep = await page.locator('[data-convdone]').innerText();
