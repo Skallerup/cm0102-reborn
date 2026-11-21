@@ -1414,6 +1414,9 @@ export interface GameState {
   supporterRegens?: { first: string; last: string; by: string; used?: boolean }[];
   /** pensionerede stjerner, der "genopstår" som regens ved næste ungdomsårgang (CM 01/02) */
   regenQueue?: RegenSeed[];
+  /** (cmRegen.ts) PLAYER_REGEN's pulje af de pensionerede spilleres poster (+0x3c, FIFO) og regen-køen (+0x10: forfaldsdag, person) */
+  cmRegenPool?: RegenSeed[];
+  cmRegenQ?: import('./cmRegen').CmRegenQ[];
   /** (den originale database i ægte tilstand) PLAYER_REGEN's pensioneringsliste (cmRetire.ts) */
   cmRet?: import('./cmRetire').CmRetState;
   /** (den originale database i ægte tilstand) de gennemførte pensioneringer: [dato, alder, årsag, klubben (0 klubløs), nationalitet] */
@@ -1588,7 +1591,9 @@ export interface RegenSeed { from: string; nation: number; pos: number[]; side: 
   /** (cmRetire.ts) queue_staff_for_regen 0x7a87d0's dato – regen'en laves den dag (uden: ved næste kø-gennemløb) */
   due?: string;
   /** (cmRetire.ts) den pensionerede spillers id – regen'en får hans spillerpost (0x7abac0: staff +0x61 = posten fra køens indgang) */
-  fromId?: number }
+  fromId?: number;
+  /** (cmRegen.ts) puljepostens anden nation (+8, staff +0x1e) */
+  n2?: number }
 
 /** Den moderne økonomis kalibrering (econ26.ts) */
 export interface Modern26 { kw: Record<string, number> }

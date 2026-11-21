@@ -5,6 +5,7 @@ import { cmActive, cmMarketOn, cmMediaOn } from './cmPlayerData';
 import { cmVirtualOn } from './cmVirtual';
 import { cmShortlistOn } from './cmShortlistGame';
 import { cmRetireOn } from './cmRetire';
+import { cmRegenDue, cmRegenPlan, repMem as cmRegenRepMem } from './cmRegen';
 import { cmCmOn, cmCmScope } from './cmContractManager';
 import { cmRegenWage } from './cmWageGame';
 import { cmGbp } from './cmMoney';
@@ -324,6 +325,45 @@ function spawnRegenQueue() {
 export function spawnDueRegens() {
   const g = gs();
   if (originalRegens() && g.regenQueue?.some((s) => !s.due || s.due <= g.date)) spawnRegenQueue();
+  // (cmRegen.ts) køens forfaldne poster med puljens første spillerpost (0x7a65d0 → 0x7abac0)
+  if (originalRegens() && g.cmRegenQ?.length) for (const { q, rec } of cmRegenDue(g)) spawnCmRegen(rec, q.id);
+}
+
+/** 0x7abac0: en regen af puljens spillerpost rec på den pensioneredes plads (cmRegen.ts cmRegenPlan) – egenskaberne efter forbilledet som spawnRegen */
+function spawnCmRegen(rec: RegenSeed, slot: number) {
+  const g = gs();
+  const plan = cmRegenPlan(g, rec, slot);
+  const r = new Rng(hash(g.seed, slot, dayNo(g.date), rec.pa, 0x7abac0));
+  const club = plan.club;
+  const [first, last] = randomName(g.names, plan.nation, r);
+  const sub = subPos(rec.pos, rec.side) as SubPos;
+  const pa = rec.pa;
+  const p = makePlayer({
+    id: g.nextId.player++, first, last, dob: plan.dob, nation: plan.nation, club: club?.id ?? 0, sub,
+    foot: rec.foot === 'L' ? 'L' : 'R', height: 0, ca: Math.max(1, Math.min(plan.ca, pa)), pa, date: g.date, seed: g.seed, regen: true, contractEnd: plan.contractEnd,
+  });
+  regenProfile(p, rec, r);
+  p.cmMem = 1;                                                     // posten er i originalens hukommelse
+  p.cmRepMem = cmRegenRepMem(plan.rep);
+  if (plan.n2 >= 0) p.cmNation2 = plan.n2;
+  if (!club) { p.cmFreeSince = g.date; }
+  const cmW = p.contract && club ? cmRegenWage(g, p, club) : null;
+  if (p.contract) p.contract.wage = cmW !== null ? cmW / cmGbp(g, club!.id) : Math.max(150, Math.round(p.contract.wage * 0.3 / 50) * 50);
+  addPlayer(p);
+  if (p.club && isHumanClub(p.club)) asOwner(p.club, () => knowFull(p.id));
+}
+const dayNo = (iso: string) => Math.round(Date.parse(iso + 'T00:00:00Z') / 86400000);
+
+/** samme profil som forbilledet (spillets egen – 0x7abac0's egenskaber 0x7ac7c5–0x7ace62 er ikke porteret): hans relative styrker og svagheder
+ *  går igen på regen'ens eget niveau, positionerne er de samme, og personligheden ligner hans med lidt støj */
+function regenProfile(p: Player, old: RegenSeed, r: Rng) {
+  const mean = (xs: number[]) => xs.reduce((s2, v) => s2 + v, 0) / Math.max(1, xs.length);
+  const mOld = mean(old.attrs.slice(0, 33)), mNew = mean(p.attrs.slice(0, 33));
+  for (let i = 0; i < 33; i++) p.attrs[i] = Math.max(1, Math.min(20, mNew + 0.4 * (p.attrs[i] - mNew) + 0.6 * (old.attrs[i] - mOld)));
+  for (let i = 36; i < p.attrs.length && i < old.attrs.length; i++) p.attrs[i] = Math.max(1, Math.min(20, Math.round(old.attrs[i] + r.normal(0, 2))));
+  p.pos = old.pos.slice(); p.side = old.side.slice();
+  if (old.fromId !== undefined) p.regenOf = old.fromId;
+  p.value = Math.max(10_000, p.value);
 }
 
 /** Originalens alder og CA for en regen (sub_7abac0, "sti 2"): PA arves uændret, CA = rand(PA·k)+PA·b med loft efter alder */
@@ -365,13 +405,7 @@ function spawnRegen(old: RegenSeed, n: number) {
   });
   // samme profil som forbilledet: hans relative styrker og svagheder (teknik, mentalt, fysik) går igen på regen'ens
   // eget niveau, positionerne er de samme, og personligheden (skjulte egenskaber) ligner hans med lidt støj
-  const mean = (xs: number[]) => xs.reduce((s2, v) => s2 + v, 0) / Math.max(1, xs.length);
-  const mOld = mean(old.attrs.slice(0, 33)), mNew = mean(p.attrs.slice(0, 33));
-  for (let i = 0; i < 33; i++) p.attrs[i] = Math.max(1, Math.min(20, mNew + 0.4 * (p.attrs[i] - mNew) + 0.6 * (old.attrs[i] - mOld)));
-  for (let i = 36; i < p.attrs.length && i < old.attrs.length; i++) p.attrs[i] = Math.max(1, Math.min(20, Math.round(old.attrs[i] + r.normal(0, 2))));
-  p.pos = old.pos.slice(); p.side = old.side.slice();
-  if (old.fromId !== undefined) p.regenOf = old.fromId;
-  p.value = Math.max(10_000, p.value);
+  regenProfile(p, old, r);
   // ægte CM 01/02 med den originale database: player_regen_sign_for_club 0x7a6f10 → set_default_wage 0x8626e0 (0x862720 – cmWageGame.ts)
   const cmW = p.contract && club ? cmRegenWage(g, p, club) : null;
   if (p.contract) p.contract.wage = cmW !== null ? cmW / cmGbp(g, club!.id) : Math.max(150, Math.round(p.contract.wage * 0.3 / 50) * 50);

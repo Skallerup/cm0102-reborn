@@ -21,7 +21,8 @@
 // spilstarten og 2 fra dag 1, så grenen er død; process_regen_queue 0x7a65d0's tildeling af ledige poster til ældre spillere er ikke porteret –
 // oraklet: 8 spillere på dag 1 og 14 mere i sæson 1, som stabens pensioneringer frigiver); forsikringsnyheden 0x58a980; staffState +0xb's lave bits (0); personerne uden for originalens hukommelse (0x524d70) får
 // samme regler på en egen liste (st.ext), så de ikke blokerer originalens kø; for world-filer uden hukommelsesoplysningen = de ikke indlæste lande.
-import type { Club, GameState, Player, Staff, StaffRole } from './types';
+import type { Club, GameState, Player, RegenSeed, Staff, StaffRole } from './types';
+import { cmRegenRetired, cmRegenSortQueue } from './cmRegen';
 import { cmActive, cmLogic, cmRand, newCmContract, statusCode, type CmContract } from './cmPlayerData';
 import { nationLoaded } from './cmFinance';
 import { seasonRow } from './cmFitness';
@@ -417,7 +418,7 @@ function dropFromTactic(g: GameState, p: Player, club: number): void {
   });
 }
 
-function retire(g: GameState, p: Player, e: CmRetEntry, today: string, rand: Rand): void {
+function retire(g: GameState, p: Player, e: CmRetEntry, today: string, rand: Rand, mem: boolean): void {
   const s = npStaffOf(g, p);
   const job = playerJob(p, s), after = afterPlaying(job);
   // 0x7a92e0's job: 15 → 8, 13 → 6 (de to tekstfunktioner kender kun de to)
@@ -438,7 +439,11 @@ function retire(g: GameState, p: Player, e: CmRetEntry, today: string, rand: Ran
     if (d > 365) { d = rand(35); y++; }
     due = new Date((D0(y) + d) * 86400000).toISOString().slice(0, 10);
   }
-  if (!s && p.pa > 0) (g.regenQueue ??= []).push({ from: pname(p), nation: p.nation, pos: p.pos.slice(), side: p.side.slice(), foot: p.foot === 'L' ? 'L' : p.foot === 'B' ? 'B' : 'R', pa: p.pa, attrs: p.attrs.map((a) => Math.round(a)), due, fromId: p.id });
+  const seed: RegenSeed = { from: pname(p), nation: p.nation, pos: p.pos.slice(), side: p.side.slice(), foot: p.foot === 'L' ? 'L' : p.foot === 'B' ? 'B' : 'R', pa: p.pa, attrs: p.attrs.map((a) => Math.round(a)), fromId: p.id };
+  // (cmRegen.ts) i originalens hukommelse: posten i puljen (0x7a6335 – også når han bliver stab) og uden ikke-spillerpost en kø-post (0x7a64e2);
+  // de øvrige (uden for hukommelsen – findes ikke i originalen): som før – regen'en af hans egen post på datoen
+  if (mem) cmRegenRetired(g, { ...seed, ...(p.cmNation2 !== undefined && p.cmNation2 >= 0 ? { n2: p.cmNation2 } : {}) }, !s, due, p.id);
+  else if (!s && p.pa > 0) (g.regenQueue ??= []).push({ ...seed, due });
   removePlayer(p);
   const st = stateOf(g);
   st.n = (st.n ?? 0) + 1;
@@ -465,7 +470,7 @@ function settle(g: GameState, L: CmRetEntry[], i: number, today: number, rand: R
     if (daysBetween(today, joinedPair(g, p)) < 210 && age < 38 && k && !p.listed && !p.loanListed && !k.b45) { p.cmRetire = undefined; return; }
   }
   if (!p.club) e.club = 0;
-  retire(g, p, e, g.date, rand);
+  retire(g, p, e, g.date, rand, L === stateOf(g).list);
 }
 
 function process(g: GameState): void {
@@ -491,6 +496,7 @@ function process(g: GameState): void {
     if (today > e.r) settle(g, X, k, today, rand);
     else if (!e.ann && today > e.a) { e.ann = 1; const p = g.players[e.id]; if (p) p.cmRetire = true; }
   }
+  cmRegenSortQueue(g);                                                                      // 0x7a65a2
 }
 
 /** PLAYER_REGEN's dag i 0x5cccd0: process_retirements, så (på dag 0/80/173/250) find_new_retirements; de klubløses dato (staff +0x3e) */
