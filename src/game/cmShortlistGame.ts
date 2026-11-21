@@ -1994,6 +1994,29 @@ export function cmSlMoved(g: GameState, p: Player, to: number, buyer: number, sw
   }
 }
 
+/** De hængende pladser i spil spillet før cmSlMoved (20/11): en computerklubs spillerplads (rolle 0xb), hvis mål (+0xf) allerede er i klubben, men
+ *  ikke er blevet pladsens indehaver (+0x13) eller stadig har budmærket (+0x17). Trupplanen 0x83cb40 regner ikke målene med i truppen
+ *  (0x849ce0 – 0x83d1c7) og springer pladser med budmærke over, så klubben blev ved med at købe til den samme position (ejerens Esbjerg 20/11:
+ *  14 målmænd). Her køres originalens del af skiftet 0x8c9720/0x8c9390 (cmSlMoved), som det skulle have været kørt ved ankomsten.
+ *  Svar: antallet af rettede pladser. */
+export function cmSlRepairHung(g: GameState): number {
+  if (!cmShortlistOn(g) || !g.cmPlan) return 0;
+  const hung: [Player, number][] = [];
+  for (const [k, e] of Object.entries(g.cmPlan)) {
+    const cid = +k;
+    if (isHumanClub(cid)) continue;
+    for (const s of e.s) {
+      const p = s[0] === 0xb && s[3] > -1 ? g.players[s[3]] : undefined;
+      if (p && p.club === cid && (s[4] !== s[3] || s[5] > -1)) hung.push([p, cid]);
+    }
+  }
+  if (!hung.length) return 0;
+  const S = buildSlMem(g);
+  DUE_S = S;
+  try { for (const [p, cid] of hung) cmSlMoved(g, p, cid, cid); } finally { DUE_S = null; (S.m as SparseMem).release(); }
+  return hung.length;
+}
+
 /** TRANSFER_MANAGER::move_player_to_club 0x8c9720 (fra finalise_transfer 0x8c9390 – køb, leje, klubløse og bytte-spillere), 0x8ca0a4–0x8ca0ce:
  *  har spilleren en klub efter skiftet (+0x39) og er han ikke transferlistet der (0x5444a0: kontrakten 0x4cf5a0's +0x4e bit 1 – efter et køb den
  *  nye kontrakt, ved leje moderklubbens), sættes klubbens trupplanstæller +8 = 100: 0x84a020 byder ikke (+8 ≥ 100), før 0x5cccd0 har kørt

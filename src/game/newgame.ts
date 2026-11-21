@@ -663,6 +663,8 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   g.cmPairs = true;
   // (20/11) originalens reservekampe for de spilbare klubber (cmReserveMatches.ts – FIXTURE_MANAGER 0x5aaf00/0x7e6380) – alle databaser og tilstande
   cmRsvNewGame(g);
+  // (21/11) ønskelisterne har fra start originalens del af klubskiftet 0x8c9720 (cmSlMoved) – save.ts repairOldMarket er for ældre spil
+  g.cmSlFix = 1;
   // Turneringer for aktive nationer
   setupSeasonComps(season, {});
   // (16/11) sæsonskiftet pr. land (cmSeason.ts): de spilbare lande med egen sæsondag (Norge, Sverige, Japan …) starter i spillets første år

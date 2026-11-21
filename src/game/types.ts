@@ -1466,6 +1466,8 @@ export interface GameState {
   /** Databasen spillet er startet fra (udeladt = den moderne) og dens ligaregler */
   /** originalens systemer ved spilstarten (newgame.ts CM_SAVE_VER) – mangler i gamle gemte spil, der kan konverteres (cmConvert.ts) */
   cmSaveVer?: number;
+  /** (21/11) ønskelisternes hængende pladser og reservekampene er rettet/slået til (save.ts repairOldMarket; nye spil fra start) */
+  cmSlFix?: 1;
   /** originalens vejr (cmWeather.ts, Weather 0x922810/0x922ee0): sidste opdaterede dag (dagnummer) og byernes fire bytes pakket (by-id → b0|b1<<8|b2<<16|b3<<24) */
   cmWx?: { d: number; c: Record<number, number> };
   /** (MODERN_PARITY 12) 2026/27 i ægte tilstand: databasens vejrtabeller (world-cm.json `wx` – weather.cfg's områder og pr. klub [by, område,

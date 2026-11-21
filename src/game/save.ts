@@ -15,6 +15,9 @@ import { rng } from './rng';
 import { guardWrite, isQuotaError } from './storageGuard';
 import { legacyExtendedFromText, saveKindFromText, saveKindOf, type SaveKind } from './saveKind';
 import type { GameState, Player } from './types';
+import { cmSlRepairHung } from './cmShortlistGame';
+import { cmRsvNewGame } from './cmReserveMatches';
+import { cmMarketOn } from './cmPlayerData';
 
 export interface SaveMeta {
   id: string;
@@ -171,6 +174,21 @@ export async function listSaves(): Promise<SaveMeta[]> {
 }
 
 /** Trøjenumre i gemte spil fra før Squad Numbers (og efter et evt. hentet sæt fra databasen) */
+/** (21/11) gemte spil fra før 20/11 med computerens transfers som originalen (cmMarketOn – ejerens Silkeborg-spil: 14 målmænd i Esbjerg, mange
+ *  "Loa"): én gang ved indlæsningen (g.cmSlFix – nye spil har den fra start)
+ *   – ønskelisternes hængende pladser (cmSlRepairHung): den ankomne spiller blev ikke pladsens indehaver (0x8c9720/0x8c9390 – porteret 20/11),
+ *     så trupplanen 0x83cb40 ikke regnede ham med og klubben blev ved med at købe til pladsen;
+ *   – reservekampene (cmReserveMatches.ts, porteret 20/11 – før kun i nye spil): uden dem falder reservernes kampform under −1000, og
+ *     trupplanens gruppe B/C sætter dem til leje (+0x4e bit 2); bitten ryddes ved hver trupplan (0x83d281), så listen retter sig selv. */
+export function repairOldMarket(): void {
+  const g = gs();
+  if (g.cmSlFix || g.draft) return;
+  g.cmSlFix = 1;
+  if (!cmMarketOn(g)) return;
+  cmSlRepairHung(g);
+  if (!g.cmRsv) cmRsvNewGame(g);
+}
+
 export function ensureAllNumbers() {
   const g = gs();
   // et spil fra den nuværende kode har sine numre (dubletter, fx fyldspillerne og lejespillere, er spillets egne – en omnummerering ved
@@ -321,6 +339,7 @@ export async function loadGame(id: string): Promise<boolean> {
   repairClubNames();
   await repairStadiums();
   ensureAllNumbers();
+  repairOldMarket();
   rememberLast({ kind: 'local', id });
   return true;
 }
@@ -334,6 +353,7 @@ export async function openPreview(blob: Blob, label: string, theme?: string): Pr
   repairClubNames();
   await repairStadiums();
   ensureAllNumbers();
+  repairOldMarket();
   notify();
 }
 
@@ -361,6 +381,7 @@ export async function importSave(file: File): Promise<boolean> {
     setGame(g);
     upgradeLoaded();
     ensureAllNumbers();
+    repairOldMarket();
     await saveGame();
     return true;
   } catch {
