@@ -423,6 +423,7 @@ export const en: Record<string, string> = {
   'cm.feedbackBug': 'Feedback and bugs', 'cm.feedbackType': 'Type',
   'cl.go.whatsNew': "What's new in v{v}", 'cl.go.feedback': 'Send feedback',
   'cl.go.save': 'Save Game', 'cl.go.status': 'Manager Status', 'cl.go.settings': 'Game Settings', 'cl.go.hall': 'Hall of Fame', 'cl.go.web': 'Web Sites', 'cl.go.all': 'All Options…', 'cl.go.exit': 'Exit Game',
+  'cl.rb.modernSubs': 'Modern substitution rules (5 substitutions, 9 on the bench)',
   'cl.rb.bgMatch': 'Continue the match in a background browser tab', 'cl.rb.title': 'CM Reborn (not in the original game)', 'cl.rb.achievements': 'Achievement news', 'cl.rb.matchExtras': 'xG and Analysis tab in match reports', 'cl.rb.firstDay': 'First-day guide', 'cl.rb.articles': 'AI news articles', 'cl.rb.menus': 'Awards, Help, coefficients and Select all menus', 'cl.rb.searchPresets': 'Search presets', 'cl.rb.helpTexts': 'Hints and empty-screen texts',
   'cl.set.version': 'Version: {v}', 'cl.set.reset': 'Reset', 'cl.set.skin': 'Skin', 'cl.set.classic': 'Classic', 'cl.set.bg': 'Background Changes', 'cl.set.flash': 'Flashing Text', 'cl.set.goalFlash': 'Goal flash',
   'cl.set.on': 'On', 'cl.set.off': 'Off', 'cl.set.save.changes': 'Always', 'cl.set.save.daily': 'Daily', 'cl.set.save.weekly': 'Weekly', 'cl.set.save.monthly': 'Monthly', 'cl.set.save.off': 'Never',

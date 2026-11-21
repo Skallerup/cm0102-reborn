@@ -148,7 +148,7 @@ export function GameOptionsMenu({ onSave, onQuit, online, allowed }: { onSave: (
 
 // ---------- Game Settings ----------
 
-type Draft = { lang: Lang; cur: Currency; theme: Theme; bg: boolean; flash: boolean; goalFlash: number; pixel: PixelLevel; font: CxFont; logo: boolean; stadium: boolean; sound: boolean; bgset: BgSet; realism: boolean; bgMatch: boolean; save: string; notif: boolean; reborn: Record<RebornKey, boolean> };
+type Draft = { lang: Lang; cur: Currency; theme: Theme; bg: boolean; flash: boolean; goalFlash: number; pixel: PixelLevel; font: CxFont; logo: boolean; stadium: boolean; sound: boolean; bgset: BgSet; realism: boolean; bgMatch: boolean; modernSubs: boolean; save: string; notif: boolean; reborn: Record<RebornKey, boolean> };
 
 export function Seg<T extends string | boolean | number>({ value, opts, onChange }: { value: T; opts: [T, string][]; onChange: (v: T) => void }) {
   return <div className="cx-set-seg">{opts.map(([v, l]) => <button key={String(v)} className={v === value ? 'on' : ''} onClick={() => onChange(v)}>{l}</button>)}</div>;
@@ -159,7 +159,7 @@ function GameSettings({ onClose }: { onClose: () => void }) {
   const { nav } = useNav();
   const [pack, setPack] = useState(bgPack());
   const initial: Draft = {
-    lang: getLang(), cur: getCurrency(), theme: getTheme(), bg: bgChanges(), flash: flashingText(), goalFlash: goalFlashMs(), pixel: pixelLook(), font: classicFont(), logo: titleLogo(), stadium: stadiumBackgrounds(), sound: matchSound(), bgset: bgSet(), realism: showRealism(), bgMatch: !!g.options.bgMatch,
+    lang: getLang(), cur: getCurrency(), theme: getTheme(), bg: bgChanges(), flash: flashingText(), goalFlash: goalFlashMs(), pixel: pixelLook(), font: classicFont(), logo: titleLogo(), stadium: stadiumBackgrounds(), sound: matchSound(), bgset: bgSet(), realism: showRealism(), bgMatch: !!g.options.bgMatch, modernSubs: !!g.options.modernSubs,
     save: g.options.autosaveMode ?? (g.options.autosave === false ? 'off' : 'changes'), notif: notifyEnabled(),
     reborn: Object.fromEntries(REBORN_KEYS.map((k) => [k, rebornOn(k)])) as Record<RebornKey, boolean>,
   };
@@ -173,6 +173,7 @@ function GameSettings({ onClose }: { onClose: () => void }) {
     write(PREF.bg, d.bg); write(PREF.flash, d.flash); try { localStorage.setItem(PREF.goalFlash, String(d.goalFlash)); } catch { /* ignorér */ } try { localStorage.setItem(PREF.pixel, d.pixel); } catch { /* ignorér */ } try { localStorage.setItem(PREF.fontKind, d.font); } catch { /* ignorér */ } write(PREF.logo, d.logo); write(PREF.stadium, d.stadium); if (d.realism !== initial.realism) write(PREF.realism, d.realism); setMatchSound(d.sound); setBgSet(d.bgset); applyFlash();
     if (REBORN_KEYS.some((k) => d.reborn[k] !== initial.reborn[k])) g.options.reborn = { ...g.options.reborn, ...d.reborn }; // CM Reborn-tilvalg (kun visning)
     if (d.bgMatch !== initial.bgMatch) g.options.bgMatch = d.bgMatch;
+    if (d.modernSubs !== initial.modernSubs) g.options.modernSubs = d.modernSubs; // gælder fra næste kamp
     if (d.notif !== initial.notif) await setNotify(d.notif);
     notify();
     if (d.theme !== initial.theme) setTheme(d.theme); // kun udseendet – logikken er altid originalens (docs/ALWAYS_ORIGINAL.md)
@@ -215,6 +216,7 @@ function GameSettings({ onClose }: { onClose: () => void }) {
           <div className="cx-set-grid">
             {row(t('cl.set.realism'), onOff(d.realism, (v) => up({ realism: v })))}
             {row(t('cl.rb.bgMatch'), onOff(d.bgMatch, (v) => up({ bgMatch: v })))}
+            {row(t('cl.rb.modernSubs'), onOff(d.modernSubs, (v) => up({ modernSubs: v })))}
             {REBORN_KEYS.map((k) => <Fragment key={k}>{row(t(`cl.rb.${k}`), onOff(d.reborn[k], (v) => up({ reborn: { ...d.reborn, [k]: v } })))}</Fragment>)}
           </div>
         </div>

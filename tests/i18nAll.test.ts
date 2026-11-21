@@ -26,7 +26,7 @@ const RB = ['title', 'achievements', 'matchExtras', 'firstDay', 'articles', 'men
   .concat(['tag', 'title', 'q.convert', 'q.new', 'convert', 'new', 'keep'].map((k) => `legacyExt.${k}`))
   .concat(['start.loadFailed', 'start.reloadBtn']) // nødskærm ved mislykket hentning af spillet (kun en + da)
   .concat(['storage.full']) // fuld disk ved gemning (kun en + da)
-  .concat(['cm.feedbackBug', 'cm.feedbackType']); // + Game Options: samlet feedback/fejl-knap (CM Reborn)
+  .concat(['cm.feedbackBug', 'cm.feedbackType', 'cl.rb.modernSubs']); // + Game Options: samlet feedback/fejl-knap (CM Reborn)
 const EXCEPT: Record<string, string[]> = { de: RB, es: RB, fr: RB, it: RB, pt: RB, tr: RB, sv: RB, nb: RB };
 /** nøgler, hvor sproget med vilje bruger andre pladsholdere (dansk bruger {nation}/{fromDa} i stedet for {adj}/{fromEn}) */
 const PH_EXCEPT: Record<string, string[]> = { da: ['scout.doneOne.body', 'cm.fut.adjustLifestyle', 'cm.staffRejects.body', 'cm.rum.r.r1', 'cm.rum.r.r2', 'cm.fut.fellowHelp'] };

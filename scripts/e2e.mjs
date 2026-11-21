@@ -694,6 +694,7 @@ async function run(look) {
     await page.waitForSelector('.cx-settings .cx-set-sec');
     const on = await page.locator('.cx-settings .cx-set-sec ~ .cx-set-grid .cx-set-seg button.on', { hasText: /^On$/ }).count();
     if (on) throw new Error(`CM Reborn-valgene skal være fra som standard (${on} til)`);
+    if (!(await page.locator('.cx-settings', { hasText: 'Modern substitution rules' }).count())) throw new Error('Game Settings mangler "Modern substitution rules"');
     await page.locator('.cx-settings .modal-foot button', { hasText: 'Cancel' }).click();
   });
   // Game Options: rød prik ved ny ændringslog (forsvinder, når loggen er åbnet) og én samlet feedback/fejl-knap med typevalg

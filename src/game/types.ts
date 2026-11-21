@@ -1146,6 +1146,8 @@ export interface Options {
   matchSpeed: number; // ms pr. kommentarlinje
   /** CM Reborn (Game Options): kampen fortsætter i en skjult browserfane (standard fra) */
   bgMatch?: boolean;
+  /** CM Reborn-valg (Game Options): moderne udskiftningsregler (5 udskiftninger, 9 på bænken) i stedet for originalens 3/5. Fra som standard. */
+  modernSubs?: boolean;
   fullCommentary: boolean;
   /** Hvilke nyheder om andre klubber man får (standard: kun eget land) */
   newsScope?: 'league' | 'nation' | 'world';

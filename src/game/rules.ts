@@ -9,7 +9,7 @@ import type { GameState } from './types';
 export function classicRules(): boolean {
   if (!hasGame()) return false;
   const g = gs();
-  return g.options.rules === 'classic' && (g.dbKind !== 'cm0102' || (g.dbYear ?? g.season) < 2020 || g.cmMatch === 1);
+  return g.options.rules === 'classic' && !g.options.modernSubs && (g.dbKind !== 'cm0102' || (g.dbYear ?? g.season) < 2020 || g.cmMatch === 1);
 }
 export const maxSubs = () => (classicRules() ? 3 : 5);
 
