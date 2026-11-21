@@ -97,4 +97,36 @@ describe('online multiplayer (server)', () => {
     await post('ready', { ...A, ready: true });
     expect((await post('lock', { ...A, version: 2 })).body.ok).toBe(true);
   });
+
+  it('"intet nyt": uændret rev giver { unchanged } (kun to Redis-kald); en skrivning, online-skift eller ukendt rev giver hele rummet', async () => {
+    const h = (await post('create', { name: 'Host', club: 3826, settings: {} })).body;
+    const A = { code: h.code, pid: h.pid, token: h.token };
+    const get = async (q: string) => (await api.GET(new Request(`http://x/api/mp?code=${h.code}${q}`, { headers: H }))).json();
+    const full = await get(`&pid=${h.pid}`);
+    expect(full.rev).toBeGreaterThan(0);
+    // uændret
+    expect(await get(`&pid=${h.pid}&rev=${full.rev}`)).toEqual({ unchanged: true, rev: full.rev });
+    // forkert rev → hele rummet
+    expect((await get(`&pid=${h.pid}&rev=${full.rev - 1}`)).code).toBe(h.code);
+    // en skrivning hæver tælleren
+    await post('ready', { ...A, ready: true });
+    const after = await get(`&pid=${h.pid}&rev=${full.rev}`);
+    expect(after.unchanged).toBeUndefined();
+    expect(after.rev).toBeGreaterThan(full.rev);
+    expect(after.players[0].ready).toBe(true);
+    expect(await get(`&pid=${h.pid}&rev=${after.rev}`)).toEqual({ unchanged: true, rev: after.rev });
+    // en mislykket skrivning (forkert token) ændrer ikke tælleren
+    await post('ready', { ...A, token: 'x', ready: false });
+    expect((await get(`&pid=${h.pid}&rev=${after.rev}`)).unchanged).toBe(true);
+    // en anden spiller, der kommer online, hæver tælleren
+    const g = (await post('join', { code: h.code, name: 'Guest', club: 1920, nation: 53 })).body;
+    const r2 = await get(`&pid=${h.pid}`);
+    expect(r2.players.find((x: { pid: string; online?: boolean }) => x.pid === g.pid).online).toBe(false);
+    await get(`&pid=${g.pid}`);   // gæstens første hjerteslag: hun er nu online
+    const again = await get(`&pid=${h.pid}&rev=${r2.rev}`);
+    expect(again.unchanged).toBeUndefined();
+    expect(again.players.find((x: { pid: string; online?: boolean }) => x.pid === g.pid).online).toBe(true);
+    // uden pid (anonym læsning) kan tælleren stadig bruges
+    expect((await get(`&rev=${again.rev}`)).unchanged).toBe(true);
+  });
 });

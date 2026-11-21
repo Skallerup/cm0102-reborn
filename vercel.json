@@ -1,4 +1,8 @@
 {
+  "ignoreCommand": "bash scripts/vercel-ignore.sh",
+  "functions": {
+    "api/**/*.ts": { "memory": 1024 }
+  },
   "crons": [
     {
       "path": "/api/digest",

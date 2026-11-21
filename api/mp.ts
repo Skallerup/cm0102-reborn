@@ -188,6 +188,13 @@ function rid(len: number, alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789') {
   return [...bytes].map((b) => alphabet[b % alphabet.length]).join('');
 }
 
+/** Rummets ændringstæller: stiger ved hver skrivning (POST), når en spiller bliver online, og når trækket låses. GET svarer { unchanged } ud fra den. */
+const revKey = (code: string) => `room:${code}:rev`;
+async function bumpRev(code: string) {
+  await redis.incr(revKey(code));
+  await redis.expire(revKey(code), TTL);
+}
+
 async function touch(code: string) {
   const keys = k(code);
   await Promise.all([redis.expire(keys.room, TTL), redis.expire(keys.players, TTL), redis.expire(keys.actions, TTL), redis.expire(keys.chat, TTL)]);
@@ -217,8 +224,11 @@ async function savePlayer(code: string, p: PlayerRec) {
 }
 
 async function publicRoom(code: string, seenPid = '') {
+  // tælleren læses FØR data, så svaret mindst er så nyt som tallet (værste fald: en ekstra fuld hentning)
+  let rev = Number(await redis.get<number | string>(revKey(code)) ?? 0);
   const room = await getRoom(code);
   if (!room) return null;
+  if (!rev) { rev = Number(await redis.incr(revKey(code))); await redis.expire(revKey(code), TTL); }
   const players = await getPlayers(code);
   const lock = await redis.get<string>(k(code).lock);
   const actionCount = await redis.llen(k(code).actions);
@@ -233,11 +243,14 @@ async function publicRoom(code: string, seenPid = '') {
   const now = Date.now();
   // hjerteslag: kun en skrivning, når det forrige er over 15 s gammelt (SEEN_MS er 30 s) – og expire kun samtidig
   if (seenPid && !(seen[seenPid] != null && now - Number(seen[seenPid]) < 15_000)) {
+    const wasOnline = seen[seenPid] != null && now - Number(seen[seenPid]) < SEEN_MS;
     seen[seenPid] = now;
     await redis.hset(`room:${code}:seen`, { [seenPid]: now });
     await redis.expire(`room:${code}:seen`, TTL);
+    if (!wasOnline) { await bumpRev(code); rev++; }   // de andre skal se, at spilleren er online
   }
   return {
+    rev,
     code: room.code, host: room.host, status: room.status, version: room.version, snapshot: room.snapshot, date: room.date,
     lastApplied: room.lastApplied, actionCount, settings: typeof room.settings === 'string' ? JSON.parse(room.settings || '{}') : (room.settings ?? {}), lastTurn: room.lastTurn,
     processing: lock ?? null,
@@ -294,11 +307,30 @@ export async function GET(request: Request) {
   if (old) return old;
   // hjerteslag: hvem har rummet åbent (værten kan se, hvem der er offline)
   const seenPid = (url.searchParams.get('pid') ?? '').replace(/[^a-z0-9]/g, '').slice(0, 20);
+  // "intet nyt": klienten sender sidste tæller; er den uændret (og spilleren stadig online), koster svaret kun to Redis-kald
+  const clientRev = Number(url.searchParams.get('rev') ?? 0);
+  if (clientRev > 0 && Number(await redis.get<number | string>(revKey(code)) ?? 0) === clientRev) {
+    const last = seenPid ? Number(await redis.hget<number | string>(`room:${code}:seen`, seenPid) ?? 0) : Date.now();
+    if (Date.now() - last < 15_000) return json({ unchanged: true, rev: clientRev });
+  }
   const room = await publicRoom(code, seenPid);
   return room ? json(room) : json({ error: 'not-found' }, 404);
 }
 
 export async function POST(request: Request) {
+  const copy = new URL(request.url).searchParams.get('op') === 'upload' ? null : request.clone();
+  const res = await handlePost(request);
+  // hver skrivende handling ændrer rummet: hæv tælleren, så GET-pollingen henter igen
+  try {
+    if (copy) {
+      const code = String((await copy.json().catch(() => ({})) as Record<string, unknown>).code ?? '').toUpperCase();
+      if (code && res.status < 400) await bumpRev(code);
+    }
+  } catch { /* tælleren er en optimering */ }
+  return res;
+}
+
+async function handlePost(request: Request) {
   const url = new URL(request.url);
   const op = url.searchParams.get('op');
   // (upload kaldes også af Vercel Blobs egne servere uden headeren)
@@ -480,6 +512,7 @@ export async function POST(request: Request) {
       if (!active.length || !active.every((p) => p.ready)) return json({ error: 'not-ready' }, 409);
       const ok = await redis.set(keys.lock, me.pid, { nx: true, ex: LOCK_SECONDS });
       if (!ok) return json({ error: 'locked' }, 409);
+      await bumpRev(code);   // "processing" skal ses af de andre med det samme
       const raw = await redis.lrange<string | { pid: string; a: unknown }>(keys.actions, room.lastApplied, -1);
       const actions = raw.map((x, i) => ({ idx: room.lastApplied + i + 1, ...(typeof x === 'string' ? JSON.parse(x) : x) }));
       return json({ ok: true, actions });

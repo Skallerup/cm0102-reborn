@@ -24,6 +24,8 @@ import { getLang } from '../i18n';
 import { loadWorld } from '../ui/world';
 
 export interface RoomInfo {
+  /** Rummets ændringstæller (api/mp.ts): uændret → serveren svarer { unchanged } */
+  rev?: number;
   code: string;
   host: string;
   status: 'setup' | 'playing';
@@ -157,10 +159,14 @@ async function post<T>(op: string, body: Record<string, unknown>): Promise<T> {
   return data as T;
 }
 
-export async function fetchRoom(code: string, pid?: string): Promise<RoomInfo> {
-  const r = await mpFetch(`${API}?code=${encodeURIComponent(code.toUpperCase())}${pid ? `&pid=${encodeURIComponent(pid)}` : ''}`, { cache: 'no-store' });
+export async function fetchRoom(code: string, pid?: string): Promise<RoomInfo>;
+/** Med `rev`: null, hvis rummet er uændret siden tælleren (spar serverkald) */
+export async function fetchRoom(code: string, pid: string | undefined, rev: number): Promise<RoomInfo | null>;
+export async function fetchRoom(code: string, pid?: string, rev?: number): Promise<RoomInfo | null> {
+  const r = await mpFetch(`${API}?code=${encodeURIComponent(code.toUpperCase())}${pid ? `&pid=${encodeURIComponent(pid)}` : ''}${rev ? `&rev=${rev}` : ''}`, { cache: 'no-store' });
   const data = await r.json();
   if (!r.ok) throw new Error(data.error ?? `http ${r.status}`);
+  if (data.unchanged) return null;
   return data as RoomInfo;
 }
 
@@ -245,6 +251,7 @@ export class OnlineSession {
   }
 
   private lastRefresh = 0;
+  private lastFull = 0;
   private onVis = () => { if (document.visibilityState === 'visible' && Date.now() - this.lastRefresh >= 3400) void this.refresh(false); };
   /** Pauser mellem opdateringer (sparer serverkald): 3,4 s ved aktivt arbejde, længere når fanen er skjult eller man er alene i rummet */
   private pollGap(): number {
@@ -540,7 +547,13 @@ export class OnlineSession {
     this.lastRefresh = Date.now();
     try {
       const t0 = Date.now();
-      const room = await fetchRoom(this.creds.code, this.creds.pid);
+      // "intet nyt"-genvej: kun når den sidste fulde hentning er under 10 s gammel, og rummet ikke er en draft eller har voice (tidsstyret indhold)
+      const r0 = this.room;
+      const quick = !force && !!r0?.rev && !r0.draft && !r0.voice?.length && t0 - this.lastFull < 10_000;
+      const got = quick ? await fetchRoom(this.creds.code, this.creds.pid, r0!.rev!) : await fetchRoom(this.creds.code, this.creds.pid);
+      if (!got) { this.lastRefresh = Date.now(); if (this.error && !this.busy) { this.error = ''; this.emit(); } void Promise.resolve().then(() => this.maybeProcess()); return; }
+      const room = got;
+      this.lastFull = t0;
       if (room.draft) this.clockSkew = room.draft.now - (t0 + Date.now()) / 2;
       // processen kan have committet en nyere version, mens vi hentede
       if (this.busy || room.version < this.version) return;
