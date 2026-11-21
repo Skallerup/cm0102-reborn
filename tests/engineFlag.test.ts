@@ -42,7 +42,7 @@ describe('kampmotoren bag et flag', () => {
     expect(gridEngineOn(gs())).toBe(false);
   }, 240_000);
 
-  it('gittermotoren spiller alle hjemlige kampe i menneskets land – ikke Europa eller venskabskampe uden mennesket', () => {
+  it('gittermotoren spiller alle hjemlige kampe i menneskets land – og (21/11, som originalen) Europa og venskabskampe uden mennesket', () => {
     const g = start(load('world-original.json'), 'Arsenal', 'authentic');
     const eng = g.comps[g.clubs[g.userClub].league].nation;
     const fx = Object.values(g.fixtures).filter((f) => f.home !== g.userClub && f.away !== g.userClub);
@@ -52,9 +52,9 @@ describe('kampmotoren bag et flag', () => {
     const cup = fx.find((f) => g.comps[f.comp]?.type === 'cup' && g.comps[f.comp].nation === eng);
     if (cup) expect(gridFixture(cup.home, cup.away, cup.id)).toBe(true);
     const euro = fx.find((f) => g.comps[f.comp]?.type === 'continental');
-    if (euro) expect(gridFixture(euro.home, euro.away, euro.id)).toBe(false);
+    if (euro) expect(gridFixture(euro.home, euro.away, euro.id)).toBe(true);
     const friendly = fx.find((f) => !g.comps[f.comp]);
-    if (friendly) expect(gridFixture(friendly.home, friendly.away, friendly.id)).toBe(false);
+    if (friendly) expect(gridFixture(friendly.home, friendly.away, friendly.id)).toBe(true);
   }, 300_000);
 
   it('(14/11) også de andre valgte landes hjemlige kampe – uden en menneskeklub i landet', () => {

@@ -252,12 +252,19 @@ export function playNation(home: number, away: number, kind: IntlResult['kind'],
   const cmRep = cmIntlOn(g) && !u21;
   // 0x62c080 også for landskampe: kampkondition, træthed og skader (venskabskampe halvt) – i stedet for spillets egne nedenfor
   if (cm) cmFitMatch(g, rep, kind !== 'friendly', -1);
+  // engine+0 for landskampen (0x6b66a0 → 0x48dd70: et landshold → række 1 → 0, fuld kamp) – undtagen init_match 0x6b8ade: færre end 5
+  // databasespillere (ikke fyldspillere/genererede) i de to trupper (11 + bænken). Karaktererne tæller i spillets snit [0xb74350]+0x10/+0x18
+  // (engine+0 = 0) eller +0x20/+0x28 (0x7c1061 – resultatposten +0x4c); før talte landskampene slet ikke med.
+  const intlQuick = (() => {
+    const ids = [...rep.players.map((l) => l.id), ...(rep.bench?.[0] ?? []), ...(rep.bench?.[1] ?? [])];
+    return ids.filter((id) => { const p = g.players[id]; return !!p && !p.virtual && !p.regen; }).length < 5;
+  })();
   for (const line of rep.players) {
     const p = g.players[line.id];
     if (!p || line.minutes <= 0 || u21) continue;
     p.caps = (p.caps ?? 0) + 1;
-    // originalens spillerstatistik 0x7c0d70: landskampe i kategori 5 (International – tæller ikke i Senior Club og ikke i spillets karaktersnit)
-    if (cmIntlOn(g)) recordPlayerMatch(g, p, 5, line, line.team === 0 ? hs.goals : as.goals, line.team === 0 ? as.goals : hs.goals, rep.mom === p.id, false);
+    // originalens spillerstatistik 0x7c0d70: landskampe i kategori 5 (International – tæller ikke i Senior Club)
+    if (cmIntlOn(g)) recordPlayerMatch(g, p, 5, line, line.team === 0 ? hs.goals : as.goals, line.team === 0 ? as.goals : hs.goals, rep.mom === p.id, true, intlQuick);
     // CM 01/02 0x8c39f0: "Fee after N International Apps." tæller landskampe
     if (p.cmApps) cmAppsAfterMatch(p, 'int');
     p.intGoals = (p.intGoals ?? 0) + line.goals;

@@ -301,15 +301,21 @@ export function gridEngineOn(g: GameState): boolean {
 }
 
 /** Hvilke kampe spiller gittermotoren? Menneskets egne kampe og alle hjemlige kampe (liga, pokal, play-off) i de spilbare (valgte) lande –
- *  som originalen, der spiller alle kampe i de indlæste ligaer med den fulde motor. Resten (Europa uden mennesket, venskabskampe, landskampe)
- *  går stadig på zonemotoren. (14/11) Før kun lande med en menneskeklub (og slet ikke, når mennesket var uden job): målt med fem valgte lande
+ *  som originalen, der spiller alle kampe i de indlæste ligaer med den fulde motor – og (21/11) også Europa uden mennesket og venskabskampene
+ *  (landskampene: international.ts). (14/11) Før kun lande med en menneskeklub (og slet ikke, når mennesket var uden job): målt med fem valgte lande
  *  (Man Utd + Spanien, Italien, Tyskland, Frankrig) og alle hjemlige kampe på gittermotoren tager en lørdag (54–68 kampe) 2,6–4,0 s efter
  *  ydelsesrunden (søndagens lønsum i cmFinance.ts, managerens personer i cmBoardGame.ts, motoren) – før 2,8–4,9 s, søndage 5,5–9,3 s → 1,1–2,7 s. */
 export function gridFixture(home: number, away: number, fixtureId?: number): boolean {
   const g = gs();
   if (isHumanClub(home) || isHumanClub(away)) return true;
-  const comp = fixtureId !== undefined ? g.comps[g.fixtures[fixtureId]?.comp] : undefined;
-  if (!comp || comp.type === 'continental' || comp.nation < 0) return false;
+  // (21/11) originalen spiller ALLE kampe med den fulde motor (MATCH_DAY 0x6b4360 → init_match/run_match_steps); 0x6b66a0 vælger kun engine+0
+  // (cmQuickMatch.ts). Venskabskampe og Europa uden mennesket gik på zonemotoren af hensyn til tiden – deres karakterer (≈ 0,3–0,4 lavere) trak
+  // spillets karaktersnit [0xb74350]+0x10/+0x18 ned og dermed klubbernes omdømme op (0x6d3de0). Kun hjemlige kampe i ikke-spillede lande (findes
+  // ikke i den originale database – baggrundskampene er cmReserves.ts) bliver på zonemotoren.
+  const f = fixtureId !== undefined ? g.fixtures[fixtureId] : undefined;
+  if (!f) return false;                                                       // kampe uden for kampprogrammet (analysen, laboratoriet)
+  const comp = g.comps[f.comp];
+  if (!comp || comp.type === 'continental' || comp.nation < 0) return true;
   return g.activeNations.includes(comp.nation);
 }
 

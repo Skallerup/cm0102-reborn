@@ -145,7 +145,9 @@ function lineFields(line: StatLine, ga: number, keeper: boolean): number[] {
 
 /** 0x7c0d70 for én spiller i én kamp (kaldt for begge hold, alle 20 i kamptruppen der spillede). `res` = holdets mål / modstanderens. */
 export function recordPlayerMatch(g: GameState, p: Player, cat: number, line: StatLine, gf: number, ga: number, mom: boolean, avgOk = true, quick = false): void {
-  if (p.regen) return;                                                       // 0x7c1032: genererede spillere (id ≥ [0xae2364]) får ingen statistik
+  // 0x7c1032: genererede spillere (staff-id ≥ [0xae2364]) får ingen statistik og tæller ikke i karaktersnittet – også fyldspillerne (0x90d2f0,
+  // cmVirtual.ts), der ligger i staffposter efter de rigtige
+  if (p.regen || p.virtual) return;
   const r = ratingByte(line.rating);
   // spillets karaktersnit (double, 680/100 ved spilstart 0x7c0073): resultatposten +0x4c = engine+0 (0x729ff0) = 0 → +0x10/+0x18 (cmRatingAvg –
   // 0x6e2f20 læser det for spillere over 33, 0x6e41a8), ellers +0x20/+0x28 (cmRatingAvgQ) – de «hurtige» kampe (cmQuickMatch.ts 0x6b66a0:
