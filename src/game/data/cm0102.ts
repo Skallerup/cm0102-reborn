@@ -10,6 +10,8 @@ export const CM_REQUIRED = ['index.dat', 'staff.dat', 'club.dat', 'nation.dat', 
 
 /** Spillerevner fra CM-databasen (overskriver de afledte evner ved spilstart) */
 export interface CMRatings { ca: number; pa: number; attrs: number[]; pos: number[]; side: number[]; /** databasens rå PA, når `pa` er et skøn (negativ: -2/-1 = tilfældig, 0 = mangler, eller under CA) – originalens regler køres i newgame.ts (playerInit.ts) */ paRaw?: number;
+  /** databasens rå CA, når den er under 1 (ikke sat) for en klubspiller – newgame.ts kører originalens 0x536c72 (missingCA) */
+  caRaw?: number;
   /** omdømme fra spillerposten (byte 9/11/13, 0-10000): hjemme, nuværende, verden – originalens værdi følger dem */
   rep?: [number, number, number];
   /** fødderne fra spillerposten (venstre, højre; 1-20) – bruges i originalens afbalancering (sub_538ec0) */
@@ -774,6 +776,13 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
       for (let i = 0; i < tStaff.count; i++) if (t.keep[i] === 2 && !none.keep[i]) { const cur = clubTc[i]; if (Array.isArray(cur)) cur.push(x); else clubTc[i] = [x]; }
     }
     for (let i = 0; i < tStaff.count; i++) if (none.keep[i]) clubTc[i] = 1;
+    // stabens hukommelse [15] ved størrelse 2: samme 0x524d70 (trim2) som spillerne – ellers fik staben Maximum-udvalget (fx Atalantas/Bolognas
+    // stab i hukommelsen, som oraklet med størrelse 2 ikke har; udviklingens trænere 0x5d43b0 – cmDevelop.ts clubOf)
+    if (dbSize2) {
+      const ixOf = new Map<number, number>();
+      for (let i = 0; i < tStaff.count; i++) ixOf.set(S.i32(tStaff.offset + i * staffSize), i);
+      for (const row of [...staff, ...staffX]) if (row.length > 15) { const i = ixOf.get(row[9]); row[15] = i === undefined ? [] : clubTc[i] ?? []; }
+    }
     for (let i = 0; i < tStaff.count; i++) {
       const o = tStaff.offset + i * staffSize;
       if (S.i32(o + 57) !== -1 || !playerAt.has(S.i32(o + PLAYER_REF))) continue;
@@ -964,7 +973,10 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
     const feet: [number, number] = [Math.max(0, Math.min(20, lf)), Math.max(0, Math.min(20, rf))];
     const fr = Math.max(1, Math.min(20, get('FreeRole')));
     const n2 = nationIdx.get(S.i32(o + 30)), joined = S.date(o + 62);
-    ratings[id] = { ca: tf !== undefined && S.i16(po + 5) < 1 ? 0 : ca, pa, attrs, pos, side, ...(paRaw !== undefined ? { paRaw } : {}), rep, feet, ...(fr !== 1 ? { fr } : {}),
+    // databasens CA under 1 (ikke sat) for en klubspiller: caRaw – originalens 0x536c72 (sub_535a80, CA uden for 1..200) finder på en (newgame.ts
+    // missingCA); oraklet 14/7-01: 338 med CA 1 i hukommelsen mod vores 1.228, da den blev klemt til 1 (de klubløse har ca 0 – tf)
+    const caRaw = S.i16(po + 5) < 1 && tf === undefined && opts.cmMem ? S.i16(po + 5) : undefined;
+    ratings[id] = { ca: tf !== undefined && S.i16(po + 5) < 1 ? 0 : ca, pa, attrs, pos, side, ...(paRaw !== undefined ? { paRaw } : {}), ...(caRaw !== undefined ? { caRaw } : {}), rep, feet, ...(fr !== 1 ? { fr } : {}),
       ...(rdob ? { rd: 1 as const } : {}), ...(n2 !== undefined && n2 !== nation ? { n2 } : {}), ...(joined ? { j: joined } : {}), ...(histLang.has(id) ? { lg: histLang.get(id) } : {}),
       ...(opts.cmMem && !club ? { tf: tf ?? 0 } : {}), ...(club && (mem && !dbSize2 ? mem(o) === 1 : clubTc[i] === 1) ? { tm: 1 as const } : {}),
       ...(opts.cmMem && club && cmTrim ? { tc: dbSize2 || !mem ? clubTc[i] ?? 0 : mem(o) } : {}) };

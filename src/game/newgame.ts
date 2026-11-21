@@ -349,7 +349,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
       const pa = initialisePA(rt.paRaw ?? rt.pa, rt.ca, age, clubLevel, rand);
       // ægte tilstand: CA mangler (0x536c72 – reserveposterne) og klubløses CA (0x536e19) før CA over PA
       let ca0 = rt.ca;
-      if (cmStartGame && ca0 < 1) ca0 = missingCA(pa, age, clubLevel, rand);
+      if (cmStartGame && (rt.caRaw ?? ca0) < 1) ca0 = missingCA(pa, age, clubLevel, rand);
       if (cmStartGame && !club) ca0 = freeAgentCA(ca0, p.caps, age, rand);
       const ca = capCA(ca0, pa, rand);
       const stored = cm!.attrScale === 'stored';

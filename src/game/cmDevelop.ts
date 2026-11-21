@@ -352,13 +352,19 @@ function coachOf(s: Staff | undefined): DevCoach | null {
 function clubOf(g: GameState, cid: number, byClub: Map<number, Staff[]>): DevClub | null {
   const c = g.clubs[cid];
   if (!c) return null;
-  const st = byClub.get(cid) ?? [];
-  const mgr = g.staff[c.manager ?? -1];
+  // klubbens manager (+0xcf), assistent (+0xd3) og trænere (+0x19f…) peger kun på personer i originalens hukommelse (0x524d70/0x527240 –
+  // Staff.cmMem, når spilstarten byggede stabens hukommelse): de øvrige findes ikke i originalen, så pladsen er tom (oraklet dv2: Real Madrid,
+  // Barcelona, Dulwich Hamlet … uden manager og trænere; uden manager ganges K med 1,31 som for mennesket)
+  const inMem = (s: Staff | undefined) => (s && (!g.cmStaffMem || s.cmMem) ? s : undefined);
+  const st = (byClub.get(cid) ?? []).filter((s) => inMem(s));
+  const mgr = inMem(g.staff[c.manager ?? -1]);
   const asst = st.find((s) => s.role === 'assistant');
   const coaches = st.filter((s) => s.role === 'coach').slice(0, 5);
-  const lg = g.leagues[c.league];
-  const compId = c.league ? +(c.league.match(/(\d+)$/)?.[1] ?? NaN) : NaN;
-  const div = lg && !lg.hidden ? g.cmCompRep?.[compId] ?? null : null;
+  // klubbens division +0x57 og dens omdømme +0x69: den kørende liga (CM<id>), ellers club.dat's division (cmFinRaw[0] – som cmNonLeague.ts
+  // divOf): de engelske klubber uden for ligaerne har deres division i originalen (Conference 93 m.fl., oraklet dv2: omdømme 1–3), ikke "ingen"
+  const m = /^CM(\d+)$/.exec(c.league ?? '');
+  const divId = m && !g.leagues[c.league]?.hidden ? +m[1] : g.cmFinRaw?.[cid]?.[0] ?? -1;
+  const div = divId >= 0 ? g.cmCompRep?.[divId] ?? null : null;
   const mc = coachOf(mgr);
   return { fac: c.facilities | 0, rep: clubRepMem(g, cid), div, human: isHumanClub(cid), mgr22: mc ? mc.b22 : null,
     coaches: [coachOf(asst), ...[0, 1, 2, 3, 4].map((k) => coachOf(coaches[k]))] };
