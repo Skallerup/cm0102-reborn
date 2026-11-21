@@ -51,7 +51,7 @@ function staffOfGame(q: GP): PmStaff | null {
 }
 
 /** kamprapporten for gittermotorens kamp (efter slutfløjtet) med kampens egne tal (rand) – null uden spil */
-export function gamePostReport(gm: GridMatch, o: { home: number; away: number; fixtureId?: number; neutral?: boolean; intl?: { b3a: number; w30: number; compId: number; major: boolean } }, rand: Rand): CmPostResult | null {
+export function gamePostReport(gm: GridMatch, o: { home: number; away: number; fixtureId?: number; neutral?: boolean; intl?: { b3a: number; w30: number; compId: number; major: boolean }; quick?: number }, rand: Rand): CmPostResult | null {
   if (!hasGame()) return null;
   const g = gs();
   const f = o.fixtureId !== undefined ? g.fixtures[o.fixtureId] : undefined;
@@ -70,7 +70,8 @@ export function gamePostReport(gm: GridMatch, o: { home: number; away: number; f
   const byIdx: [Player[], Player[]] = [[], []];
   for (const s of [0, 1] as const) sides[s].forEach((q, i) => { if (i < 20) { players[s][i] = pmPlayerOf(gm, q, staffOfGame(q)); byIdx[s][i] = q.src; } });
   const env: PmEnv = {
-    b0: 0, avg: [...(g.cmRatingAvg ?? [680, 100]), 0, 0] as [number, number, number, number], clock: gm.m.clock, momSet: !!gm.manOfTheMatch(),
+    // engine+0 (cmQuickMatch.ts) og spillets to karaktersnit [0xb74350]+0x10/+0x18 og +0x20/+0x28 (cmPlayerData.ts recordPlayerMatch)
+    b0: o.quick ?? 0, avg: [...(g.cmRatingAvg ?? [680, 100]), ...(g.cmRatingAvgQ ?? [680, 100])] as [number, number, number, number], clock: gm.m.clock, momSet: !!gm.manOfTheMatch(),
     staffLimit: Infinity, list: true, trials: null,
     contract: (st, club) => {
       const p = g.players[st.id];

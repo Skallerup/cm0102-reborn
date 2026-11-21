@@ -1,5 +1,6 @@
 // Spillets dag-for-dag-løkke.
 import { cmBoardAfterMatch, cmBoardDaily, cmBoardOn } from './cmBoardGame';
+import './cmQuickMatch';   // engine+0 (0x6b66a0) – registrerer postHooks.quick
 import { cmWxDaily, cmWxFix } from './cmWeather';
 import { cmOwnStaffContractsDaily, cmStaffOffersDaily } from './cmStaff';
 import { cmStaffMovesDaily, cmStaffNpDaily } from './cmStaffMove';

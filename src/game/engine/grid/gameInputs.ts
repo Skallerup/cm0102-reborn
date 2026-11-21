@@ -118,12 +118,12 @@ const nationIndex = (name: string) => (hasGame() ? gs().nations.findIndex((n) =>
 export interface GameMatchSide { club: number; human: boolean; manager: { n0e: number; rating: number } | null; clubRep: number; national?: boolean }
 
 /** sub_6ec010's omgivelser for en spiller af spillets tilstand. De dynamiske felter (publikum, samspil, taktikkens ord, anføreren) sætter limen. */
-export function matchValuesEnvOf(p: Player, side: GameMatchSide, fx: GameFixtureInfo, keys: MatchValuesEnv['keys'], opp = 0): MatchValuesEnv {
+export function matchValuesEnvOf(p: Player, side: GameMatchSide, fx: GameFixtureInfo, keys: MatchValuesEnv['keys'], opp = 0, engByte0 = 0): MatchValuesEnv {
   const rec = playerRecord(p);
   const ownContract = p.contract && p.club === side.club && !p.loan;
   const c = p.cmContract;
   return {
-    engByte0: 0, engByte1: 0, crowd: 0, cohesion: 0, fx40: 1, fx3a: fx.fx3a, comp: fx.comp, homeLeagueIsComp: fx.homeLeagueIsComp,
+    engByte0, engByte1: 0, crowd: 0, cohesion: 0, fx40: 1, fx3a: fx.fx3a, comp: fx.comp, homeLeagueIsComp: fx.homeLeagueIsComp,
     ownClubRep: side.clubRep, captain: null, natOwn: !!side.national, natF9: !!side.national,
     contract: ownContract ? { b44: s8(c?.b44 ?? 0), flags: (c?.b45 ?? 0) >>> 0, d0c: Math.round((p.contract!.wage ?? 0) * 0.86), d10: p.contract!.cmBonusGbp?.[0] ?? -1, d14: p.contract!.cmBonusGbp?.[1] ?? -1 } : null,
     // 0x53ce90: (+0x4f & 0xf) − 10 for en spiller i databasen med kontrakt med klubben
@@ -231,7 +231,8 @@ export function captainEnvOfPlayer(p: Player, pos: number, ctx: AiPickCtx, clubR
 /** GridMatchCtx-delen med spillets inddata for kampen mellem to klubber (adapteren og grid-stats.ts) */
 /** `ai`: holdene, motoren styrer (ctx.ai). En menneskeklub, motoren styrer (ferien), er ikke "menneskets" for 0x6ec010 (0x600a50(klub, 0, 1, 0, 0)
  *  med ferietjekket 0x5fe040 – oraklets HU-linje: 0 for Arsenal på ferie) og har menneskets managerpost (aiTeam.ts engineManager) */
-export function gameInputsCtx(home: number, away: number, o: { compId?: string; stage?: string; date?: string; human?: [boolean, boolean]; fixtureId?: number; ai?: [boolean, boolean]; intl?: IntlFixtureCodes } = {}) {
+export function gameInputsCtx(home: number, away: number, o: { compId?: string; stage?: string; date?: string; human?: [boolean, boolean]; fixtureId?: number; ai?: [boolean, boolean]; intl?: IntlFixtureCodes;
+  /** engine+0 (cmQuickMatch.ts – 0x6b66a0), regnet når holdene er udtaget */ quick?: () => number } = {}) {
   const g = hasGame() ? gs() : null;
   const date = o.date ?? g?.date ?? '2001-08-18';
   const fixture = g && o.fixtureId !== undefined ? g.fixtures[o.fixtureId] : undefined;
@@ -276,7 +277,7 @@ export function gameInputsCtx(home: number, away: number, o: { compId?: string; 
     matchValuesEnv: (q: { side: number; src: Player }) => {
       const k = `${q.side},${q.src.id}`;
       let e = envs.get(k);
-      if (!e) { e = matchValuesEnvOf(q.src, sides[q.side], fx, keys, sides[1 - q.side].club); envs.set(k, e); }
+      if (!e) { e = matchValuesEnvOf(q.src, sides[q.side], fx, keys, sides[1 - q.side].club, o.quick?.() ?? 0); envs.set(k, e); }
       return e;
     },
     // MATCH_PLAYER::init's motivation 0x6eb54b–0x6ebcb0 (gridMatch.ts initMotivation) af spillets data

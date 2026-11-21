@@ -22,13 +22,15 @@ import type { CommentaryLine, MatchEvent, MatchReport, MatchStatsSide, Player, S
 import type { EngineOptions, EngineTeam } from '../match';
 import type { LiveSim, LiveSimPlayer, LiveSimTeam, LiveTeamView, PitchSnap } from '../liveSim';
 import { createGridMatch, randOf, randOfRng, type GP, type GridManager, type GridMatch, type GridSideStats } from './gridMatch';
-import { gs } from '../../state';
+import { gs, hasGame } from '../../state';
 import { aiPickCtx, engineManager, type AiPickCtx } from './aiTeam';
 import { EVENT_NAMES } from './eventTable';
 import { gameInputsCtx } from './gameInputs';
 import { gridTacOf } from '../../cmStaffInit';
 import { gamePostReport } from './postMatchGame';
 import { natOfClub } from '../../cmVirtual';
+import { cmQuickMatch } from '../../cmQuickMatch';
+import { cmMediaOn } from '../../cmPlayerData';
 import type { CmPostResult } from '../../types';
 
 /** originalens begivenheder → UI'ets linjetype (fremhævning/lyd/mål-blink); resten er spil-for-spil ('pl-o', kun klassisk + playByPlay) */
@@ -90,6 +92,9 @@ export class GridSim implements LiveSim {
   private on: [LiveSimPlayer[], LiveSimPlayer[]] = [[], []];
   private off = new Set<number>();
   private bench: [number[], number[]] = [[], []];
+  /** engine+0 (cmQuickMatch.ts 0x6b66a0 + init_match 0x6b8ade) – regnet første gang, den bruges */
+  private quick?: 0 | 1;
+  private quickOf!: () => 0 | 1;
   private pens?: [number, number];
   private extra = false;
   /** ctx.ai – samme array hele kampen, så UI'ets ændring af opts.aiSubs (fællesspil) når motoren */
@@ -111,6 +116,15 @@ export class GridSim implements LiveSim {
 
   constructor(home: EngineTeam, away: EngineTeam, opts: EngineOptions, r: Rng) {
     this.opts = opts;
+    // engine+0: kun klubkampe i spillet med originalens omdømme/moral (cmMediaOn); trupperne = prepareMatch's udtagelse (11 + bænken)
+    const watchedFlag = !!opts.commentary && !((opts.aiSubs?.[0] ?? true) && (opts.aiSubs?.[1] ?? true));
+    const quickOf = () => {
+      if (this.quick !== undefined) return this.quick;
+      const g = hasGame() ? gs() : null, f = g && opts.fixtureId !== undefined ? g.fixtures[opts.fixtureId] : undefined;
+      const sq = (t: EngineTeam) => [...t.tactic.lineup, ...(t.tactic.bench ?? [])].map((id) => t.players.get(id)).filter((p): p is Player => !!p);
+      return (this.quick = g && f && !opts.intl && cmMediaOn(g) ? cmQuickMatch(g, f, [sq(home), sq(away)], watchedFlag) : 0);
+    };
+    this.quickOf = quickOf;
     const mk = (t: EngineTeam, idx: number): LiveSimTeam => {
       const all: LiveSimPlayer[] = [];
       t.tactic.lineup.forEach((id, slot) => {
@@ -144,7 +158,7 @@ export class GridSim implements LiveSim {
       watched: !!opts.commentary && !(this.ai[0] && this.ai[1]),
       // spillets egne inddata (gameInputs.ts): spiller-/staffposterne, sub_6ec010's omgivelser, klubbernes omdømme club +0x80, fixture-posten
       ...(() => { const f = opts.fixtureId !== undefined ? gs().fixtures[opts.fixtureId] : undefined;
-        return gameInputsCtx(home.club, away.club, { compId: f?.comp, stage: f?.stage, date: gs().date, fixtureId: opts.fixtureId, ai: [this.ai[0], this.ai[1]], intl: opts.intl }); })(),
+        return gameInputsCtx(home.club, away.club, { compId: f?.comp, stage: f?.stage, date: gs().date, fixtureId: opts.fixtureId, ai: [this.ai[0], this.ai[1]], intl: opts.intl, quick: quickOf }); })(),
       on: {
         goal: (p, assister, pen) => {
           const s = this.byId.get(p.src.id), a = assister ? this.byId.get(assister.src.id) : undefined;
@@ -364,7 +378,7 @@ export class GridSim implements LiveSim {
       // WIN_THE_SHOOTOUT (0x2004, sub_6be710 0x6bee52) står i køen – ingen *estimeret* slutlinje
     }
     // 0x6b98c0 ved slutfløjtet (efter 0x6d0f80): kamprapporten 0x6d1cc0 (moral, omdømme) og dommerens karakter 0x6d4a20 med kampens tal
-    this.post = gamePostReport(this.g, { home: this.teams[0].club, away: this.teams[1].club, fixtureId: this.opts.fixtureId, neutral: this.opts.neutral, ...(this.opts.intl ? { intl: { ...this.opts.intl, major: this.opts.intl.b3a === 10 && MAJOR_COMPS.has(this.opts.intl.compId) } } : {}) }, this.rand);
+    this.post = gamePostReport(this.g, { home: this.teams[0].club, away: this.teams[1].club, fixtureId: this.opts.fixtureId, neutral: this.opts.neutral, quick: this.quickOf(), ...(this.opts.intl ? { intl: { ...this.opts.intl, major: this.opts.intl.b3a === 10 && MAJOR_COMPS.has(this.opts.intl.compId) } } : {}) }, this.rand);
     this.finished = true;
   }
 
@@ -401,6 +415,7 @@ export class GridSim implements LiveSim {
       bench: [this.bench[0].slice(), this.bench[1].slice()],
       ...(this.g.crowdTotal !== null ? { crowd: this.g.crowdTotal } : {}),
       ...(this.post ? { cmPost: this.post } : {}),
+      ...(this.quick ? { cmQuick: true } : {}),
     };
   }
 

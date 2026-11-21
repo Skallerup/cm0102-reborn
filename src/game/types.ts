@@ -1093,6 +1093,8 @@ export interface MatchReport {
   engine?: 'zone' | 'original';
   /** gittermotorens kamprapport efter slutfløjt (originalens 0x6d1cc0/0x6d26b0, engine/grid/postMatch.ts) – cmPlayerData.ts cmApplyPost */
   cmPost?: CmPostResult;
+  /** engine+0 = 1: kampen var «hurtig» (cmQuickMatch.ts 0x6b66a0) – resultatposten +0x4c, 0x7c0d70's karaktersnit */
+  cmQuick?: boolean;
   /** udskiftere, der ikke kom på (CM 01/02 Player Ratings viser dem grå), og anføreren pr. hold – ikke i ældre rapporter */
   bench?: [number[], number[]];
   capt?: [number, number];
@@ -1207,6 +1209,8 @@ export interface GameState {
   /** originalens tilstand til computerens holdudtagelse (cmPlayerData.ts): spillets karaktersnit [sum, antal] (PlayerStats +0x10/+0x18),
    *  klubbernes og landenes rå omdømme fra databasen (club +0x80, nation +0x8e) og taktiklistens statistik (0x896290, 45 poster) */
   cmRatingAvg?: [number, number];
+  /** [0xb74350]+0x20/+0x28: karaktersummen og -antallet for kampene med engine+0 ≠ 0 (cmQuickMatch.ts) – 680/100 ved spilstart (0x7c0073) */
+  cmRatingAvgQ?: [number, number];
   /** [0xae2d14] + 6·klub + 4: klubbens stemning (0x5cd61d, ugentligt – cmPlayerData.ts clubMood) */
   cmClubMood?: Record<number, number>;
   /** TRAINING_MANAGER +0x688d: ugetælleren (0x8b1730 – dag-i-året % 7 = 0) */

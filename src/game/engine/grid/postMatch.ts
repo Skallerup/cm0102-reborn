@@ -131,9 +131,9 @@ export interface PmItem {
 }
 
 export interface PmEnv {
-  /** engine+0: øjeblikkeligt resultat (ingen simulering) – 0 i gittermotoren */
+  /** engine+0: kampen er «hurtig» (0x6b66a0 – cmQuickMatch.ts) */
   b0: number;
-  /** [0xb74350] +0x10/+0x18/+0x20/+0x28: spillets karaktersum og -antal (klubkampe; landskampe) – cmPlayerData.ts cmRatingAvg */
+  /** [0xb74350] +0x10/+0x18/+0x20/+0x28: spillets karaktersum og -antal for kampene med engine+0 = 0 / ≠ 0 – cmRatingAvg / cmRatingAvgQ */
   avg: [number, number, number, number];
   /** engine+0x8ed0 (uret ved slutfløjtet) */
   clock: number;
