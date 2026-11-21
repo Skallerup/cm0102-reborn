@@ -19,6 +19,8 @@ import type { HubTab } from './CommunityHub';
 import { loadLogos } from './logos';
 import { ConsentBanner } from './ConsentBanner';
 import { InAppBanner } from './InAppBanner';
+import { clearPlay, markPlay, playMarked } from './playFlag';
+import { reportError } from '../online/errors';
 import { UpdateToast } from './UpdateToast';
 import { ConfirmHost } from './confirm'; // bekræftelsesdialogerne bruges kun i spillet (og confirm.tsx trækker det klassiske tema med)
 import '../online/cloudSync'; // gemte spil i skyen, når man er logget ind
@@ -65,16 +67,17 @@ function AppInner() {
   const roomQ = new URLSearchParams(location.search).get('room')?.toUpperCase();
   const [resuming, setResuming] = useState(() => (roomQ ? savedRooms().some((r) => r.code === roomQ) : !!getLast()));
   // forsiden vises for nye besøgende (ikke ved invitationslinks eller når man har trykket "Spil" i denne fane)
+  // (sessionStorage kan kaste i indbyggede browsere – playFlag.ts har en hukommelseskopi, så Spil ikke fører tilbage til forsiden)
   const [landing, setLanding] = useState(() => {
-    try { const q = new URLSearchParams(location.search); return !q.get('room') && !q.get('modern') && sessionStorage.getItem('cm0102.play') !== '1'; } catch { return true; }
+    const q = new URLSearchParams(location.search); return !q.get('room') && !q.get('modern') && !playMarked();
   });
   const play = () => {
-    try { sessionStorage.setItem('cm0102.play', '1'); } catch { /* ignorer */ }
+    markPlay();
     setLanding(false);
     window.scrollTo(0, 0);
   };
   const home = () => {
-    try { sessionStorage.removeItem('cm0102.play'); } catch { /* ignorer */ }
+    clearPlay();
     setLanding(true);
   };
 
@@ -92,6 +95,8 @@ function AppInner() {
           else if (room) forgetRoom(mine.code);
         } else if (last?.kind === 'local') {
           if (!(await loadGame(last.id))) {
+            // det gemte spil er væk (fx ryddet af en indbygget browser) – spilleren lander i menuen uden spil: meld det til admin
+            reportError(new Error('ResumeMissing: the last local game was not found in storage'));
             forgetLast();
             // var det en lokal kopi af et online-spil, så åbn det seneste online-spil i stedet
             const room = savedRooms()[0];
@@ -102,7 +107,8 @@ function AppInner() {
           if (creds) await openSession(creds);
           else forgetLast();
         }
-      } catch {
+      } catch (e) {
+        reportError(e instanceof Error ? new Error(`ResumeFailed: ${e.message}`) : e);
         forgetLast();
       }
       setResuming(false);

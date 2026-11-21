@@ -24,6 +24,7 @@ import { Flag, Panel } from './components';
 import { OnlineMenu } from './Online';
 import { createOnlineGame } from '../online/client';
 import { notifyNewCareer } from '../online/notify';
+import { markNewGame } from '../online/errors';
 import { loadOriginalWorld, loadWorld, ORIGINAL_VERSIONS, withCommunityEdits, type OriginalVersion } from './world';
 import { GROUP_KEY, NAV_CLOSED_DEFAULT } from './Shell';
 import { Editor } from './Editor';
@@ -345,7 +346,8 @@ function NewGame({ challenge, onBack, setBusy, setProg, online, onDraft, initial
         try { await createOnlineGame(world, { ...opts, deadlineHours: deadline }, { count: bots, scope: botScope }); } catch (e) { setErr(String((e as Error).message)); }
       } else {
         if (setProg) setProg({ step: 'clubs', frac: 0 });
-        await createGameAsync(world, opts, (p) => setProg?.(p));
+        markNewGame(true);
+        try { await createGameAsync(world, opts, (p) => setProg?.(p)); } finally { markNewGame(false); }
         if (bots > 0) {
           // lokalt spil mod AI-managere: samme multiplayer-regler, men du spiller dine kampe live
           enableMultiplayer('host', opts.managerName);

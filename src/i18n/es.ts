@@ -2218,6 +2218,7 @@ Object.assign(es, {
   "inapp.textIos": "Las partidas guardadas pueden desaparecer al cerrar esa aplicación y el juego no se puede instalar desde aquí. Pulsa el menú ··· o de compartir y elige \"Abrir en Safari\" (o \"Abrir en el navegador\").",
   "inapp.ok": "OK",
   "inapp.openChrome": "Abrir en Chrome",
+  "inapp.openSafari": "Abrir en Safari",
   "news.title": "Guarda tu carrera y mantente al día",
   "news.titleAcct": "Mantente al día",
   "news.intro": "¡Has terminado tu primera temporada! Una cuenta gratuita solo necesita tu correo electrónico, sin contraseña:",

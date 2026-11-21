@@ -6742,6 +6742,7 @@ Object.assign(nb, {
   "inapp.textIos": "Lagrede spill kan forsvinne når appen lukkes, og spillet kan ikke installeres herfra. Trykk på ···- eller delingsmenyen og velg \"Åpne i Safari\" (eller \"Åpne i nettleser\").",
   "inapp.ok": "OK",
   "inapp.openChrome": "Åpne i Chrome",
+  "inapp.openSafari": "Åpne i Safari",
   "ed.version": "Databaseversjon",
   "ed.otherVer": "Ikke i denne databaseversjonen – prøv {v}",
   "cmaw.mh.0": "{last} tar prisen",

@@ -2218,6 +2218,7 @@ Object.assign(fr, {
   "inapp.textIos": "Les parties sauvegardées peuvent disparaître à la fermeture de cette application, et le jeu ne peut pas être installé d'ici. Appuyez sur le menu ··· ou Partager et choisissez « Ouvrir dans Safari » (ou « Ouvrir dans le navigateur »).",
   "inapp.ok": "OK",
   "inapp.openChrome": "Ouvrir dans Chrome",
+  "inapp.openSafari": "Ouvrir dans Safari",
   "news.title": "Sauvegardez votre carrière – et restez informé",
   "news.titleAcct": "Restez informé",
   "news.intro": "Vous avez terminé votre première saison ! Un compte gratuit ne demande que votre adresse e-mail – pas de mot de passe :",

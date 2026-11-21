@@ -6742,6 +6742,7 @@ Object.assign(sv, {
   "inapp.textIos": "Sparade spel kan försvinna när appen stängs, och spelet kan inte installeras härifrån. Tryck på ··· eller delningsmenyn och välj \"Öppna i Safari\" (eller \"Öppna i webbläsare\").",
   "inapp.ok": "OK",
   "inapp.openChrome": "Öppna i Chrome",
+  "inapp.openSafari": "Öppna i Safari",
   "ed.version": "Databasversion",
   "ed.otherVer": "Finns inte i den här databasversionen – prova {v}",
   "cmaw.mh.0": "{last} tar utmärkelsen",

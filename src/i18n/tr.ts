@@ -2218,6 +2218,7 @@ Object.assign(tr, {
   "inapp.textIos": "O uygulama kapanınca kayıtlı oyunların silinebilir ve oyun buradan yüklenemez. ··· veya paylaş menüsüne dokun ve “Safari'de Aç” (veya “Tarayıcıda Aç”) seçeneğini seç.",
   "inapp.ok": "Tamam",
   "inapp.openChrome": "Chrome'da Aç",
+  "inapp.openSafari": "Safari'de Aç",
   "news.title": "Kariyerini kaydet – ve haberdar ol",
   "news.titleAcct": "Haberdar ol",
   "news.intro": "İlk sezonunu tamamladın! Ücretsiz bir hesap için sadece e-postan yeterli – şifre yok:",

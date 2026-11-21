@@ -24,12 +24,14 @@ function LoadFailed() {
       createElement('button', { className: 'small primary', onClick: () => location.reload() }, t('start.reloadBtn'))));
 }
 
-function failed(): Promise<{ default: ComponentType<any> }> {
+function failed(err?: unknown): Promise<{ default: ComponentType<any> }> {
+  // spillet kunne ikke hentes – genindlæsningen fører tilbage til forsiden: meld det til admin (kun fejltypen – selve teksten, fx "Load failed", filtreres fra som støj i errors.ts)
+  void import('../online/errors').then(({ reportError }) => reportError(new Error(`LazyLoadFailed: ${err ? (err as Error).name ?? 'error' : 'no module'}`))).catch(() => {});
   if (reloadOnce()) return new Promise<never>(() => {}); // siden genindlæses – vent
   return Promise.resolve({ default: LoadFailed });
 }
 
 /** lazy(), der aldrig lader React læse undefined.default */
 export function lazyRetry<T extends ComponentType<any>>(load: () => Promise<{ default: T } | undefined | null>) {
-  return lazy<T>(() => load().then((m) => m ?? (failed() as Promise<{ default: T }>), () => failed() as Promise<{ default: T }>));
+  return lazy<T>(() => load().then((m) => m ?? (failed() as Promise<{ default: T }>), (e) => failed(e) as Promise<{ default: T }>));
 }

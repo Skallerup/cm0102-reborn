@@ -2218,6 +2218,7 @@ Object.assign(pt, {
   "inapp.textIos": "Os jogos salvos podem desaparecer quando esse aplicativo for fechado, e o jogo não pode ser instalado daqui. Toque no menu ··· ou de compartilhamento e escolha \"Abrir no Safari\" (ou \"Abrir no navegador\").",
   "inapp.ok": "OK",
   "inapp.openChrome": "Abrir no Chrome",
+  "inapp.openSafari": "Abrir no Safari",
   "news.title": "Salve sua carreira – e fique por dentro",
   "news.titleAcct": "Fique por dentro",
   "news.intro": "Você terminou sua primeira temporada! Uma conta gratuita precisa só do seu e-mail – sem senha:",

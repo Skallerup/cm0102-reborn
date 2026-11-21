@@ -2218,6 +2218,7 @@ Object.assign(it, {
   "inapp.textIos": "Le partite salvate possono sparire quando quell'app si chiude e da qui non è possibile installare il gioco. Tocca il menu ··· o Condividi e scegli \"Apri in Safari\" (o \"Apri nel browser\").",
   "inapp.ok": "OK",
   "inapp.openChrome": "Apri in Chrome",
+  "inapp.openSafari": "Apri in Safari",
   "news.title": "Salva la tua carriera – e resta aggiornato",
   "news.titleAcct": "Resta aggiornato",
   "news.intro": "Hai finito la tua prima stagione! Un account gratuito richiede solo la tua email – nessuna password:",

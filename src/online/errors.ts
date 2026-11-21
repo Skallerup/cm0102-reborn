@@ -34,7 +34,20 @@ export function reportError(err: unknown, extra?: string) {
 // efter en ny udgivelse hænger en gammel side på filer, der er væk: genindlæs højst én gang pr. minut (vagten ligger i ui/lazyLoad.ts)
 const STALE = /Importing a module script failed|Unable to preload CSS|Failed to fetch dynamically imported module|error loading dynamically imported module/i;
 
+// Genindlæses siden, mens et nyt spil oprettes (ingen JS-fejl: browseren/appen har lukket siden – typisk for lidt hukommelse i en
+// indbygget browser som Facebooks), ender spilleren på forsiden uden spil. Det meldes til admin ved næste start (21/11).
+const CREATING = 'cm0102.creating';
+export function markNewGame(on: boolean) {
+  try { if (on) localStorage.setItem(CREATING, String(Date.now())); else localStorage.removeItem(CREATING); } catch { /* ingen lagring */ }
+}
+function reportInterruptedNewGame() {
+  let at = 0;
+  try { at = Number(localStorage.getItem(CREATING)) || 0; if (at) localStorage.removeItem(CREATING); } catch { return; }
+  if (at && Date.now() - at < 15 * 60_000) reportError(new Error(`NewGameInterrupted: the page was reloaded ${Math.round((Date.now() - at) / 1000)} s into creating a new game`));
+}
+
 export function startErrorReport() {
+  reportInterruptedNewGame();
   window.addEventListener('vite:preloadError', (ev) => { if (reloadOnce()) ev.preventDefault(); });
   window.addEventListener('unhandledrejection', (ev) => { if (STALE.test(String((ev.reason as Error)?.message ?? ev.reason))) reloadOnce(); });
   window.addEventListener('error', (ev) => reportError(ev.error ?? ev.message));

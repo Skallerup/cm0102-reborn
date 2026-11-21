@@ -8,6 +8,7 @@ import { InAppBanner } from './InAppBanner';
 import { UpdateToast } from './UpdateToast';
 import { trackPage } from '../analytics';
 import { lazyRetry } from './lazyLoad';
+import { markPlay, playMarked } from './playFlag';
 
 // Forsiden for nye besøgende tegnes med det samme fra en lille bundle; selve spillet (motoren, alle skærme, draft,
 // admin og fællesskabet – ui/AppPage.tsx) hentes først, når der trykkes Spil, eller når der er noget at genoptage.
@@ -16,10 +17,11 @@ import { lazyRetry } from './lazyLoad';
 const AppPage = lazyRetry(() => import('./AppPage'));
 const loadAppPage = () => import('./AppPage');
 
-/** Kan forsiden vises uden spillet? Ikke ved links med parametre (?room, ?login, ?draft, ?community …), et spil der skal genoptages, eller efter tryk på Spil i denne fane */
+/** Kan forsiden vises uden spillet? Ikke ved links med parametre (?room, ?login, ?draft, ?community …), et spil der skal genoptages,
+ *  efter tryk på Spil i denne fane eller i det installerede spil (playFlag.ts) */
 function fastLanding(): boolean {
   if (location.search) return false;
-  try { if (sessionStorage.getItem('cm0102.play') === '1') return false; } catch { /* ignorer */ }
+  if (playMarked()) return false;
   return !getLast();
 }
 
@@ -35,7 +37,7 @@ export default function App() {
   useEffect(() => { if (fast) trackPage('landing', ''); }, [fast]);
   if (!fast) return <Suspense fallback={<div className="progress"><div>{t('start.resuming')}</div></div>}><AppPage /></Suspense>;
   const play = () => {
-    try { sessionStorage.setItem('cm0102.play', '1'); } catch { /* ignorer */ }
+    markPlay();
     setFast(false);
     window.scrollTo(0, 0);
   };

@@ -2218,6 +2218,7 @@ Object.assign(de, {
   "inapp.textIos": "Gespeicherte Spiele können verschwinden, wenn diese App geschlossen wird, und das Spiel kann von hier aus nicht installiert werden. Tippe auf das Menü ··· oder Teilen und wähle „In Safari öffnen“ (oder „Im Browser öffnen“).",
   "inapp.ok": "OK",
   "inapp.openChrome": "In Chrome öffnen",
+  "inapp.openSafari": "In Safari öffnen",
   "news.title": "Sichere deine Karriere – und bleib auf dem Laufenden",
   "news.titleAcct": "Bleib auf dem Laufenden",
   "news.intro": "Du hast deine erste Saison abgeschlossen! Ein kostenloses Konto braucht nur deine E-Mail-Adresse – kein Passwort:",
