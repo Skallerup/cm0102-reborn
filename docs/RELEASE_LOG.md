@@ -2,6 +2,7 @@
 
 Flyttet fra CLAUDE.md 17/11-2026 (så CLAUDE.md er kort i hver session). Nyeste først. Tilføj en linje øverst ved hver udgivelse.
 
+- 2026-11-21 – Skudt live (v0.33.0): 2026-11-21 – Byttehandel (0x8c0080/0x8d7cd0/0x8c28c0/0x8c0810/0x8c2f50), cmTransferTalks.ts; test cmSwapTalks.
 - 2026-11-21 – Skudt live (v0.33.0): 2026-11-21 – setClub(p, 0) nulstiller squadStatus; Contract-fanen viser kun Squad Status med klub.
 - 2026-11-20 – Skudt live (v0.32.0): 2026-11-20 – Spillerfejl QuotaExceededError (Edge/Windows, fuld disk): storageGuard.ts (guardWrite → StorageFullError, besked én gang ved autosave, rapport én gang pr. session), læsninger returnerer tomt i stedet for at kaste, cleanupOutdatedCaches i vite.config.ts.
 - 2026-11-20 – Skudt live (v0.32.0): 2026-11-20 – MODERN_PARITY E: løse cmActive-kald → cmMarketOn (transfervinduer 0x8e8800, bud/jagt/klausuler), cmValueOn/g.cmCmMgr (værdi +0x52 0x4c7ec5/0x4d0c60), g.cmVirt (fyldspillere 0x90dae0), cmMediaOn (omdømme club +0x80, holdudtagelse), cmBodyOn/cmStaffOn, cmMatchOn (preset-instruktioner), skærme. 2001-fingeraftryk uændret. Tabel i docs/MODERN_PARITY.md §0 E.

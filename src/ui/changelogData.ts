@@ -13,6 +13,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '2026-11-21',
     title: { da: 'Mere af det originale CM 01/02', en: 'More of the original CM 01/02' },
     items: [
+      { da: "Byttehandler som i CM 01/02: når du accepterer et bud med en spiller i bytte, skal du nu tilbyde ham en kontrakt ('Offer contract to …'), og handlen gennemføres først, når han siger ja – siger han nej, ryger han ud af handlen, og transfersummen hæves.", en: "Swap deals as in CM 01/02: when you accept a bid with a player in exchange, you now have to offer him a contract ('Offer contract to …'), and the deal only goes through once he agrees – if he refuses, he is removed from the deal and the transfer fee is increased." },
       { da: "En klubløs spiller viser ikke længere en gammel trupstatus på Contract-fanen.", en: "A free agent no longer shows an old squad status on the Contract tab." },
     ],
   },
