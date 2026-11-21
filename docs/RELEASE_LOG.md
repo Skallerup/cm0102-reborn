@@ -2,6 +2,7 @@
 
 Flyttet fra CLAUDE.md 17/11-2026 (så CLAUDE.md er kort i hver session). Nyeste først. Tilføj en linje øverst ved hver udgivelse.
 
+- 2026-11-21 – Skudt live (v0.33.0): 2026-11-21 – K7-1: 0x574e60 (Conference-oprykning efter omdømme, top-3 byttes tilfældigt, stadionkrav 1.000 siddepladser/6.000, udvidelse 0x599e00), nedrykket manager forlader klubben (0x69b790), −500 omdømme (0x86a1c0); cmNonLeague.ts. K7: 0/1 → 1/1 begge sæsonskifter. 2001-fingeraftryk uændret.
 - 2026-11-21 – Skudt live (v0.33.0): 2026-11-21 – MODERN_PARITY A: cmIntlOn = 2001 || g.cmIntl → international.ts, fyldspillere, trupgrænse; world-cm.json: landshold; EM-kvalifikation alle år. 2001-fingeraftryk uændret.
 - 2026-11-21 – Skudt live (v0.33.0): 2026-11-21 – UEFA Cup-seeding (cmEurope.ts): fair play 3 tilfældige lande (0x904580), loft 118, plads tabt/fyld (0x902b90/0x903360/0x9059e0), R1's 36. plads; alle Europas lande som skjulte klubber. 2001 lande-afvigelser 24 → 7.
 - 2026-11-21 – Skudt live (v0.33.0): 2026-11-21 – Egen stab: Offer New Contract/Terminate Contract (exe-menu), svar som nyhed, påmindelser 6/3 mdr./1 uge, udløbsnyhed – bliver i klubben uden kontrakt (originalens 31-dages regel kræver markeringer, staben ikke har). test staffRenew.
