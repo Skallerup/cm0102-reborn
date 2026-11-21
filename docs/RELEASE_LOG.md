@@ -2,6 +2,7 @@
 
 Flyttet fra CLAUDE.md 17/11-2026 (så CLAUDE.md er kort i hver session). Nyeste først. Tilføj en linje øverst ved hver udgivelse.
 
+- 2026-11-21 – Skudt live (v0.33.0): 2026-11-21 – Egen stab: Offer New Contract/Terminate Contract (exe-menu), svar som nyhed, påmindelser 6/3 mdr./1 uge, udløbsnyhed – bliver i klubben uden kontrakt (originalens 31-dages regel kræver markeringer, staben ikke har). test staffRenew.
 - 2026-11-21 – Skudt live (v0.33.0): 2026-11-21 – Byttehandel (0x8c0080/0x8d7cd0/0x8c28c0/0x8c0810/0x8c2f50), cmTransferTalks.ts; test cmSwapTalks.
 - 2026-11-21 – Skudt live (v0.33.0): 2026-11-21 – setClub(p, 0) nulstiller squadStatus; Contract-fanen viser kun Squad Status med klub.
 - 2026-11-20 – Skudt live (v0.32.0): 2026-11-20 – Spillerfejl QuotaExceededError (Edge/Windows, fuld disk): storageGuard.ts (guardWrite → StorageFullError, besked én gang ved autosave, rapport én gang pr. session), læsninger returnerer tomt i stedet for at kaste, cleanupOutdatedCaches i vite.config.ts.
