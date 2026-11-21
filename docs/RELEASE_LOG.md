@@ -2,6 +2,7 @@
 
 Flyttet fra CLAUDE.md 17/11-2026 (så CLAUDE.md er kort i hver session). Nyeste først. Tilføj en linje øverst ved hver udgivelse.
 
+- 2026-11-21 – Skudt live (v0.33.0): 2026-11-21 – Ejerens scout: genererede stab (0x527240) uden ikke-spillerpost gav vilje 0 → krav £250.000 og afslag; for egen klub returnerer 0x844780 3,5 (eksakt). Forhandlingsskærmens −/+/= som 0x4e2280 (løntrin, signing-on-trin, udløb måned/år), afslag ved udløb <90 dage (0x4ceb0c); cmContractScreen.ts.
 - 2026-11-21 – Skudt live (v0.33.0): 2026-11-21 – K7-2: clubDivRep (non-league-klubbers division fra club.dat 357/358–360/93 i stedet for HN60 som turnering 60) i trupplan/ønskeliste; bud på klubløs = kontrakt straks, beslutning efter 4–14 dage. Klubløse skriver under halv sæson 33/39 → 40/47 (orakel 71).
 - 2026-11-21 – Skudt live (v0.33.0): 2026-11-21 – Omkostninger: vercel.json ignoreCommand (scripts/vercel-ignore.sh: docs/tests/noter-commits bygges ikke), functions memory 1024, mp-polling med room:{code}:rev (uændret → 2 Redis-kald i stedet for 8–10). Deployment retention sat til 7 dage (prod) via API.
 - 2026-11-21 – Skudt live (v0.33.0): 2026-11-21 – K7-8: udviklingens input – caRaw (missingCA 0x536c72; CA 1/2/3 1.228/39/24 → 362/223/130, orakel 338/192/117), non-league-division fra club.dat til CA-loft/divisionsfaktor, stab filtreret på cmMem. ΔCA 18–20 år 2,42 → 2,70 (orakel 3,22). Fingeraftryk 2001-08-20 → dfd61abaa62f196a.
