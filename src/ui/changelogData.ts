@@ -13,6 +13,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '2026-11-22',
     title: { da: 'Mere af det originale CM 01/02', en: 'More of the original CM 01/02' },
     items: [
+      { da: "Nyt spil på mobil bruger endnu lidt mindre hukommelse.", en: "Starting a new game on mobile uses a little less memory again." },
       { da: "Nyt spil på mobil: spilstarten bruger langt mindre hukommelse (bygges trin for trin i baggrunden), og telefoner og apps' indbyggede browsere bruger originalens databasestørrelse Normal (Preferences → Database) – lukker browseren et nyt spil, vælges Normal automatisk næste gang.", en: "New game on mobile: starting a game uses far less memory (built step by step in the background), and phones and in-app browsers use the original's Normal database size (Preferences → Database) – if the browser closes a new game, Normal is chosen automatically next time." },
     ],
   },
