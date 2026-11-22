@@ -32,6 +32,8 @@ const NOPAGES: (Uint8Array | null)[] = new Array(1024).fill(null);
 /** genbrugte sider (SparseMem.release) – nulstilles, før de bruges igen */
 const POOL: Uint8Array[] = [];
 const POOL_MAX = 24000;
+/** sider, der er udsnit af en importeret tabel (SparseMem.importPages): tabellen og sidens plads i den */
+const VIEWS = new WeakMap<Uint8Array, { seg: Uint8Array; i: number }>();
 /** (hukommelse, 22/11) puljens sider slippes – nyt spils arbejder før den sidste kopi til hovedtråden (op til ~100 MB). Puljen er kun genbrug: en ny side
  *  nulstilles altid (page), så indholdet er det samme med og uden puljen. */
 export function releasePagePool(): void { POOL.length = 0; }
@@ -104,29 +106,56 @@ export class SparseMem implements CmMem {
   wf64(a: number, v: number): void { this.dv.setFloat64(0, v, true); this.w32(a, this.dv.getUint32(0, true)); this.w32(a + 4, this.dv.getUint32(4, true)); }
   /** de byggede sider (sidenummer, indhold) – kontrollen af to byggere (scripts/cm-sl-memcheck.ts) */
   pageList(): [number, Uint8Array][] { return [...this.pages]; }
-  /** (hukommelse, 22/11) hukommelsens egne sider som to typede tabeller (sidenumrene i rækkefølgen, de blev lavet, og indholdet efter hinanden) –
-   *  til at sende hukommelsen til en anden Web Worker (Transferable) og fortsætte dér (importPages) */
-  exportPages(): { nums: Int32Array; data: Uint8Array } {
-    const nums = new Int32Array(this.pages.size), data = new Uint8Array(this.pages.size << PAGE);
+  /** (hukommelse, 22/11) hukommelsens egne sider: sidenumrene i rækkefølgen, de blev lavet, og indholdet efter hinanden i en eller flere tabeller
+   *  (`data`, sider à 4 KB i samme rækkefølge) – til at sende hukommelsen til en anden Web Worker (Transferable) og fortsætte dér (importPages).
+   *  Sider, der stadig er udsnit af en importeret tabel på deres plads, gives videre som den tabel (ingen kopi – ønskelisternes portioner ændrer
+   *  indholdet i den, og kun portionens nye sider kopieres): før blev hele hukommelsen (~95 MB) kopieret ved hver overdragelse, mens den gamle
+   *  stadig levede. */
+  exportPages(): { nums: Int32Array; data: Uint8Array[] } {
+    const nums = new Int32Array(this.pages.size), data: Uint8Array[] = [];
     let i = 0;
-    for (const [p, b] of this.pages) { nums[i] = p; data.set(b, i << PAGE); i++; }
+    // løbende stykke: et udsnit af en importeret tabel (seg, fra … til) eller nye sider, der kopieres
+    let seg: Uint8Array | null = null, from = 0, to = 0;
+    let fresh: Uint8Array[] = [];
+    const flush = () => {
+      if (seg) { data.push(from === 0 && to << PAGE === seg.length ? seg : seg.subarray(from << PAGE, to << PAGE)); seg = null; }
+      if (fresh.length) { const d = new Uint8Array(fresh.length << PAGE); for (let k = 0; k < fresh.length; k++) d.set(fresh[k], k << PAGE); data.push(d); fresh = []; }
+    };
+    for (const [p, b] of this.pages) {
+      nums[i++] = p;
+      const v = VIEWS.get(b);
+      if (v && seg === v.seg && v.i === to) { to++; continue; }
+      if (!v && !seg) { fresh.push(b); continue; }
+      flush();
+      if (v) { seg = v.seg; from = v.i; to = v.i + 1; } else fresh.push(b);
+    }
+    flush();
     return { nums, data };
   }
   /** hukommelsens sider erstattes af de eksporterede (samme rækkefølge i sidetabellen; `miss` kaldes ikke – indholdet er færdigt). Siderne er
-   *  udsnit af den modtagne tabel (ingen kopi pr. side) */
-  importPages(x: { nums: Int32Array; data: Uint8Array }): void {
-    this.release();
-    for (let i = 0; i < x.nums.length; i++) {
-      const p = x.nums[i], nb = x.data.subarray(i << PAGE, (i + 1) << PAGE);
-      let t = this.dir[p >>> 10];
-      if (t === NOPAGES) { t = new Array(1024).fill(null); this.dir[p >>> 10] = t; }
-      t[p & 1023] = nb;
-      this.pages.set(p, nb);
+   *  udsnit af de modtagne tabeller (ingen kopi pr. side). De hidtidige sider går ikke til puljen (hukommelse: de bygges forfra i en ny
+   *  arbejder og erstattes straks – ~95 MB, der ellers lå i puljen hele portionen). */
+  importPages(x: { nums: Int32Array; data: Uint8Array[] }): void {
+    this.pages.clear(); this.dir.fill(NOPAGES);
+    let n = 0;
+    for (const d of x.data) n += d.length >>> PAGE;
+    if (n !== x.nums.length) throw new Error('importPages: sider og indhold passer ikke');
+    let i = 0;
+    for (const d of x.data) {
+      for (let k = 0; k < d.length >>> PAGE; k++, i++) {
+        const p = x.nums[i], nb = d.subarray(k << PAGE, (k + 1) << PAGE);
+        VIEWS.set(nb, { seg: d, i: k });
+        let t = this.dir[p >>> 10];
+        if (t === NOPAGES) { t = new Array(1024).fill(null); this.dir[p >>> 10] = t; }
+        t[p & 1023] = nb;
+        this.pages.set(p, nb);
+      }
     }
   }
   /** siderne tilbage til puljen (hukommelsen bruges ikke mere – ønskelisternes dag bygger 18.000 sider à 4 KB hver dag) */
   release(): void {
-    for (const b of this.pages.values()) if (POOL.length < POOL_MAX) POOL.push(b);
+    // udsnit af en importeret tabel genbruges ikke: tabellen gives videre (exportPages) og må ikke nulstilles som en ny side
+    for (const b of this.pages.values()) if (POOL.length < POOL_MAX && !VIEWS.has(b)) POOL.push(b);
     this.pages.clear(); this.dir.fill(NOPAGES);
   }
   /** skriv en række bytes (sporets hex-dump) */

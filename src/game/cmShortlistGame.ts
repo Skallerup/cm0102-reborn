@@ -2264,7 +2264,8 @@ export function cmShortlistStartPart(g: GameState, part: number, parts: number, 
 /** de typede tabeller i en portions tilstand (postMessage's Transferable-liste) */
 export function slResumeTransfer(r: SlResume | null): ArrayBuffer[] {
   if (!r) return [];
-  return [r.want.P.nums, r.want.P.data, r.want.m.nums, r.want.m.data, r.want.natInit, r.values.v, r.values.skipped, r.values.lazy].map((a) => a.buffer as ArrayBuffer);
+  // (hukommelsernes tabeller kan være udsnit af samme modtagne tabel – hver buffer kun én gang)
+  return [...new Set([r.want.P.nums, ...r.want.P.data, r.want.m.nums, ...r.want.m.data, r.want.natInit, r.values.v, r.values.skipped, r.values.lazy].map((a) => a.buffer as ArrayBuffer))];
 }
 
 // ---------------------------------------------------------------- dagen (0x5cccd0's klubløkke) – erstatter cmSquadPlanDaily

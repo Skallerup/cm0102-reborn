@@ -13,5 +13,5 @@ for (let k = 0; k < Number(nS); k++) {
   const t = performance.now();
   createGamePhase(`shortlists:${k}/${nS}` as NewGamePhase, ctx);
   const r = ctx.sl;
-  console.log(`portion ${k}: ${((performance.now() - t) / 1000).toFixed(1)} s` + (r ? `  P ${mb(r.want.P.data.length)} MB  m ${mb(r.want.m.data.length)} MB  v ${mb(r.values.v.byteLength)} lazy ${mb(r.values.lazy.byteLength)} hændelser ${r.events.length}` : ''));
+  console.log(`portion ${k}: ${((performance.now() - t) / 1000).toFixed(1)} s` + (r ? `  P ${mb(r.want.P.data.reduce((a, d) => a + d.length, 0))} MB  m ${mb(r.want.m.data.reduce((a, d) => a + d.length, 0))} MB  v ${mb(r.values.v.byteLength)} lazy ${mb(r.values.lazy.byteLength)} hændelser ${r.events.length}  tabeller P ${r.want.P.data.length} m ${r.want.m.data.length}` : ''));
 }

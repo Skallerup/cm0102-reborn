@@ -734,4 +734,4 @@ export function buildSlWantMem(g: GameState, clubs: Iterable<number>, opts: { ca
     pidStaff: (pid: number) => byPid.get(pid), staffMemId: (sid: number) => staffMemIds.get(sid), slState, slRestore };
 }
 /** buildSlWantMem's tilstand mellem to portioner af spilstartens klubløkke (typede tabeller – Transferable) */
-export interface SlWantState { divs: [number, number][]; natInit: Uint8Array; gen: number; genPid: [number, number][]; P: { nums: Int32Array; data: Uint8Array }; m: { nums: Int32Array; data: Uint8Array } }
+export interface SlWantState { divs: [number, number][]; natInit: Uint8Array; gen: number; genPid: [number, number][]; P: { nums: Int32Array; data: Uint8Array[] }; m: { nums: Int32Array; data: Uint8Array[] } }
