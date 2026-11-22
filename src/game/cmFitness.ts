@@ -175,7 +175,7 @@ const ageAt = (p: Player, today: number) => ageOn(p.dob, isoOf(today));        /
 
 /** spilleren har en post (de genererede – id ≥ [0xae2364] – har ingen; 0x62edee m.fl.). Regens med PLAYER_REGEN har den pensioneredes
  *  staffpost (0x7abac0) under tælleren – cmGenerated */
-const real = (p: Player | undefined): p is Player => !!p && !cmGeneratedNow(p);
+const real = (p: Player | undefined): p is Player => !!p && !(p.regen && cmGeneratedNow(p));   // (fyldspillerne: som før – se NOTES)
 export const newFit = (today: number): CmFit => ({ d: today, f: 10000, mc: 10000, fat: 0, inj: null, rt: -1, rl: 0, b1c: 0, lt: -1, load: 50 });
 function fitOf(g: GameState, p: Player): CmFit {
   return (p.cmFit ??= newFit(dayNum(g.cmFitStart ?? g.date)));
