@@ -17,7 +17,7 @@ import { ATTRS } from './attributes';
 import { ageOn } from './dates';
 import { recordFreeTransfer, setClub, squad } from './state';
 import { isHumanClub } from './humans';
-import { cmActive, cmLogic, cmMarketOn, cmContractOf, cmRand, cmUnhappy, clubRepMem, clubDivRep, nationRepMem, staffJoined, squadPlacement, statusCode } from './cmPlayerData';
+import { cmActive, cmGenerated, cmLogic, cmMarketOn, cmContractOf, cmRand, cmUnhappy, clubRepMem, clubDivRep, nationRepMem, staffJoined, squadPlacement, statusCode } from './cmPlayerData';
 export { clubDivRep };
 import { cmClubEuro, cmFitRead } from './cmFitnessGame';
 import { clubStrength, dailyGate, financeStatus, newPlanEntry, planSquad, type PlanEntry, type PlanInput, type PlanPlayer, type PlanSlot } from './cmSquadPlan';
@@ -75,7 +75,7 @@ function planPlayer(g: GameState, p: Player, fit: ReturnType<typeof cmFitRead>, 
   // € → £ med faktoren for klubben, pengene tilhører (cmMoney.ts – den originale database: 0,86)
   const GBP = cmGbp(g, p.loan ? p.loan.from : p.club);
   return {
-    id: p.id, generated: !!p.regen, job: 0xb, age: ageOn(p.dob, g.date), clubId: p.loan ? p.loan.from : p.club,
+    id: p.id, generated: cmGenerated(g, p), job: 0xb, age: ageOn(p.dob, g.date), clubId: p.loan ? p.loan.from : p.club,
     b5a: sh(p, 'pressure'), b5b: sh(p, 'professionalism'), value: Math.round(p.value * GBP), joinedDay: joined.day, joinedYear: joined.year,
     rec: playerRecord(p),
     contract: c ? { b3d: c.b3d, b3e: c.b3e, b3f: c.b3f, b45: c.b45, b49: 0, b4e: c.b4e ?? 0, b4f: c.b4f ?? ((statusCode(p) << 4) | 10),
@@ -123,7 +123,7 @@ export function cmSquadPlanClub(g: GameState, cid: number, daily: boolean, first
   const leagueRep = clubDivRep(g, cid);
   const euro = cmClubEuro(g, cid);
   const euroRep = euro > -1 ? g.cmCompRep?.[euro] ?? EURO_REP[euro] ?? null : null;
-  const count = all.filter((p) => !p.regen).length;
+  const count = all.filter((p) => !cmGenerated(g, p)).length;
   const { T, R } = clubStrength({ rep, minAtt, status, leagueRep, leagueActive: !!lg && !lg.hidden && !!g.comps[club.league], euroRep, squadCount: count,
     finance: financeStatus(Math.round(club.balance * cmGbp(g, cid)), rep) });
   const st = g.staff[club.manager ?? -1];
@@ -158,7 +158,7 @@ export function cmSquadPlanClub(g: GameState, cid: number, daily: boolean, first
       const inj = pp.injW2c !== null ? fit.injury(p) : null;
       const pLang = nationLanguage(g, p.nation);
       return planScore({
-        id: p.id, real: !p.regen, age: pp.age, joined: { day: pp.joinedDay, year: pp.joinedYear }, rec: pp.rec!, pos: mask, flags,
+        id: p.id, real: !cmGenerated(g, p), age: pp.age, joined: { day: pp.joinedDay, year: pp.joinedYear }, rec: pp.rec!, pos: mask, flags,
         hasClub: true, atClub: pp.clubId === cid, stHasClub: pp.clubId > 0, sameNationClub: (g.clubs[pp.clubId]?.nation ?? -1) === club.nation,
         mgrJoined: hum ? mj : null, today, yearAgo,
         nationRep: nationRepMem(g, p.nation), british: BRITISH.has(g.nations[p.nation]?.code ?? ''), caps: p.caps, b56: sh(p, 'adaptability'),
@@ -173,7 +173,7 @@ export function cmSquadPlanClub(g: GameState, cid: number, daily: boolean, first
     role: (pp, mask, flags) => {
       const p = byId.get(pp.id)!, d = dataOf(p), c = pp.contract;
       return roleScore({
-        id: p.id, age: pp.age, atClub: pp.clubId === cid, joined: { day: pp.joinedDay, year: pp.joinedYear }, realPlayer: !p.regen, nationFlag11c: true,
+        id: p.id, age: pp.age, atClub: pp.clubId === cid, joined: { day: pp.joinedDay, year: pp.joinedYear }, realPlayer: !cmGenerated(g, p), nationFlag11c: true,
         rec: pp.rec!, pos: mask, att: 0, lo: 0, hi: 0, tb: 0, tf: 0, flags,
         mgrJoined: st ? mj : null, today, yearAgo, captain: false, setPiece: 0,
         data: { ...d, contract: c ? { b3e: c.b3e, b3f: c.b3f, b44: p.cmContract?.b44 ?? 0, b45: c.b45, b4f: c.b4f } : null },
@@ -313,7 +313,7 @@ export function cmClubPredictValue(g: GameState, cid: number, money: number | nu
   const role = (i: number, mask: number) => {
     const p = all[i], pp = pl[i], d = data[i], c = pp.contract;
     return roleScore({
-      id: p.id, age: pp.age, atClub: pp.clubId === cid, joined: { day: pp.joinedDay, year: pp.joinedYear }, realPlayer: !p.regen, nationFlag11c: true,
+      id: p.id, age: pp.age, atClub: pp.clubId === cid, joined: { day: pp.joinedDay, year: pp.joinedYear }, realPlayer: !cmGenerated(g, p), nationFlag11c: true,
       rec: pp.rec!, pos: mask, att: 0, lo: 0, hi: 0, tb: 0, tf: 0, flags: 0x840,
       mgrJoined: null, today, yearAgo, captain: false, setPiece: 0,
       data: { ...d, contract: c ? { b3e: c.b3e, b3f: c.b3f, b44: p.cmContract?.b44 ?? 0, b45: c.b45, b4f: c.b4f } : null },
@@ -329,7 +329,7 @@ export function cmClubPredictValue(g: GameState, cid: number, money: number | nu
     const inj = pp.injW2c !== null ? fit.injury(p) : null;
     const pLang = nationLanguage(g, p.nation);
     v += planScore({
-      id: p.id, real: !p.regen, age: pp.age, joined: { day: pp.joinedDay, year: pp.joinedYear }, rec: pp.rec!, pos: PREDICT_MASKS[j], flags: 0x840,
+      id: p.id, real: !cmGenerated(g, p), age: pp.age, joined: { day: pp.joinedDay, year: pp.joinedYear }, rec: pp.rec!, pos: PREDICT_MASKS[j], flags: 0x840,
       hasClub: true, atClub: pp.clubId === cid, stHasClub: pp.clubId > 0, sameNationClub: (g.clubs[pp.clubId]?.nation ?? -1) === club.nation,
       mgrJoined: null, today, yearAgo,
       nationRep: nationRepMem(g, p.nation), british: BRITISH.has(g.nations[p.nation]?.code ?? ''), caps: p.caps, b56: sh(p, 'adaptability'),

@@ -145,9 +145,9 @@ function lineFields(line: StatLine, ga: number, keeper: boolean): number[] {
 
 /** 0x7c0d70 for én spiller i én kamp (kaldt for begge hold, alle 20 i kamptruppen der spillede). `res` = holdets mål / modstanderens. */
 export function recordPlayerMatch(g: GameState, p: Player, cat: number, line: StatLine, gf: number, ga: number, mom: boolean, avgOk = true, quick = false): void {
-  // 0x7c1032: genererede spillere (staff-id ≥ [0xae2364]) får ingen statistik og tæller ikke i karaktersnittet – også fyldspillerne (0x90d2f0,
-  // cmVirtual.ts), der ligger i staffposter efter de rigtige
-  if (p.regen || p.virtual) return;
+  // 0x7c1032: genererede spillere (staff-id ≥ [0xae2364]) får ingen statistik og tæller ikke i karaktersnittet – fyldspillerne (0x90d2f0,
+  // cmVirtual.ts), der ligger i staffposter efter de rigtige (cmGenerated: ikke regens med PLAYER_REGEN)
+  if (cmGenerated(g, p)) return;
   const r = ratingByte(line.rating);
   // spillets karaktersnit (double, 680/100 ved spilstart 0x7c0073): resultatposten +0x4c = engine+0 (0x729ff0) = 0 → +0x10/+0x18 (cmRatingAvg –
   // 0x6e2f20 læser det for spillere over 33, 0x6e41a8), ellers +0x20/+0x28 (cmRatingAvgQ) – de «hurtige» kampe (cmQuickMatch.ts 0x6b66a0:
@@ -244,8 +244,19 @@ export function statCell(e: readonly number[] | undefined, kind: number): string
 }
 
 /** 0x7c1e30(spillerpost, kategori, art, standard) – kategori 1..6 (100–102 = sammenvejninger af 2–5, ikke brugt af udvælgelsen) */
+/** genererede personer (staff-id ≥ [0xae2364], spillerpost ≥ [0xae236c] – 0x7c1032/0x7c1ec7): fyldspillerne (cmVirtual.ts). En regen er det
+ *  ikke, når spillet kører PLAYER_REGEN (cmRetire.ts cmRetireOn): 0x7abac0 genføder den pensioneredes staffpost (esi, +0x39 = 0) og lægger
+ *  regen-køens spillerpost i +0x61 – begge under tællerne, så regens får statistik og karakterer som alle andre (udviklingen 0x5d3eba).
+ *  Uden modulet (udvidet spil, ældre spil): vores regens som hidtil (ingen statistik). */
+export function cmGenerated(g: GameState, p: Player): boolean {
+  if (p.virtual) return true;
+  if (!p.regen) return false;
+  return !(!g.draft && (cmActive(g) || (cmLogic(g) && g.cmRet !== undefined)));
+}
+/** cmGenerated i det aktive spil (uden spil: regens som genererede) */
+export const cmGeneratedNow = (p: Player): boolean => !!p.virtual || (!!p.regen && (!hasGame() || cmGenerated(gs(), p)));
 export function statAvg(p: Player, cat: number, kind: number, def: number): number {
-  if (p.regen) return 0;                                                     // 0x7c1ec7: genererede spillere → 0
+  if (cmGeneratedNow(p)) return 0;   // 0x7c1ec7: genererede spillere → 0
   return statValue(p.cmStats?.[cat], kind, def);
 }
 

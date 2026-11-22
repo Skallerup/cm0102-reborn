@@ -15,7 +15,7 @@ import type { CmSchedule, CoachArea, GameState, Player, Staff } from './types';
 import { staffShown } from './engine/grid/roleScore';
 import { ATTRS } from './attributes';
 import { shownFromInternal, CM_INT_OFFSETS, normaliseInternals } from './playerInit';
-import { cmBodyOn, cmLogic } from './cmPlayerData';
+import { cmBodyOn, cmGenerated, cmLogic } from './cmPlayerData';
 
 /** De 18 viste af Player.cmInt og CA (originalens invariant); intet uden cmInt eller uden for en CM-database i ægte tilstand (cmLogic – på 2026/27
  *  følger de viste CA'en fra vores udvikling, som på den originale database før 0x5ce2d0 blev porteret). */
@@ -278,7 +278,8 @@ export function setTrainCtx(c: TrainCtx | null): void { tctx = c; }
 
 export function cmTrainOn(g: GameState, p: Player): boolean {
   // fyldspillerne (cmVirtual.ts) har ingen TRAINING_MANAGER-post – de laves på ny til hver kamp (*estimeret*)
-  return !!p.cmInt && !p.regen && !p.virtual && cmBodyOn(g);
+  // regens med PLAYER_REGEN er den pensioneredes genfødte staffpost (0x7abac0) – under [0xae2364] som alle, 0x8b1750 træner dem (cmGenerated)
+  return !!p.cmInt && !cmGenerated(g, p) && cmBodyOn(g);
 }
 /** træningsbelastningen (0x8b1bb1: 0x8b4f60 af pladsens skema): menneskets spiller → niveauerne (null = computerens) */
 export function humanLevels(g: GameState, p: Player): number[] | null {

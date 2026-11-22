@@ -24,7 +24,7 @@ import { AI_TACTIC_LIST, chooseAiTactic, type AiTacticEntry, type ChoiceManager,
 import { assignSquad, benchSlots, pickFlags, setPieceTakers, type Rand } from './pickTeam';
 import { gs, hasGame } from '../../state';
 import { benchSize } from '../../rules';
-import { cmLogic, cmMediaOn, cmContractOf, cmFormRatings, leagueAverage, statAvg, statusCode } from '../../cmPlayerData';
+import { cmGeneratedNow, cmLogic, cmMediaOn, cmContractOf, cmFormRatings, leagueAverage, statAvg, statusCode } from '../../cmPlayerData';
 import { cmFitOn, cmFitRead, setMatchSquad } from '../../cmFitnessGame';
 import { cmPermitHistory } from '../../cmPermit';
 import { newTacticStats, recordTacticResult } from './aiTacticChoice';
@@ -256,11 +256,11 @@ export function aiTeamSetup(o: AiTeamInput): AiTeamResult {
   const judgeJa = ctx.judge ? { ja: ctx.judge.ja, npMod20: ctx.judge.id % 20 } : null;
   let capIdx = chooseCaptain(capIn, judgeJa);
   // 0x6dcf5f: dødboldsskytterne
-  const sp = flags & 0x80000 ? setPieceTakers(recs.map((r, i) => ({ worldRep: (r[0xd] | (r[0xe] << 8)), curRep: (r[0xb] | (r[0xc] << 8)), real: !ps[i].regen && !ps[i].virtual }))) : [];
+  const sp = flags & 0x80000 ? setPieceTakers(recs.map((r, i) => ({ worldRep: (r[0xd] | (r[0xe] << 8)), curRep: (r[0xb] | (r[0xc] << 8)), real: !cmGeneratedNow(ps[i]) }))) : [];
   // (runde 10B) ankomstdatoen pr. spiller regnes én gang (roleScore læser den kun)
   const joinedDays = ps.map((p) => (joinedOf(p) ? dayOf(joinedOf(p)!) : { day: 0, year: 1990 }));
   const input = (i: number, slot: { pos: number; att: number; lo: number; hi: number; tb: number; tf: number }, fl: number): RoleInput => ({
-    id: ps[i].id, age: ages[i], atClub: true, joined: joinedDays[i], realPlayer: !ps[i].regen && !ps[i].virtual, nationFlag11c: ps[i].virtual ? ps[i].virtual === 'active' : true,
+    id: ps[i].id, age: ages[i], atClub: true, joined: joinedDays[i], realPlayer: !cmGeneratedNow(ps[i]), nationFlag11c: ps[i].virtual ? ps[i].virtual === 'active' : true,
     rec: recs[i], pos: slot.pos, att: slot.att, lo: slot.lo, hi: slot.hi, tb: slot.tb, tf: slot.tf, flags: fl, mgrJoined, today, yearAgo, captain: i === capIdx, setPiece: sp.indexOf(i) + 1, data: data[i],
   });
   // 0x6dd057: taktikken
@@ -325,7 +325,7 @@ export function reserveExclusion(ps: Player[], ctx: AiPickCtx, rep: number, comp
   const joinedDays = list.map((p) => (joinedOf(p) ? dayOf(joinedOf(p)!) : { day: 0, year: 1990 }));
   const FL = 0x8520c2;
   const out = assignSquad(list.length, RSV_EXCL_MASKS.length, 0, (j, i) => roleScore({
-    id: list[i].id, age: ages[i], atClub: true, joined: joinedDays[i], realPlayer: !list[i].regen && !list[i].virtual, nationFlag11c: list[i].virtual ? list[i].virtual === 'active' : true,
+    id: list[i].id, age: ages[i], atClub: true, joined: joinedDays[i], realPlayer: !cmGeneratedNow(list[i]), nationFlag11c: list[i].virtual ? list[i].virtual === 'active' : true,
     rec: recs[i], pos: RSV_EXCL_MASKS[j], att: 0, lo: 0, hi: 0, tb: 0, tf: 0, flags: FL, mgrJoined, today, yearAgo, captain: i === capIdx, setPiece: 0, data: data[i],
   }), () => 0, (i) => list[i].pos[0], (j) => (RSV_EXCL_MASKS[j] & 1) === 1);
   return new Set(out.filter((i): i is number => i !== null).map((i) => list[i].id));
@@ -430,7 +430,7 @@ export function matchRoleScore(p: Player, ctx: AiPickCtx, slot: { pos: number; a
       mgrJoined: ctx.judge ? (ctx.judge.joined ? dayOf(ctx.judge.joined) : { day: 0, year: 1900 }) : null, today: dayOf(date), yearAgo: dayOf(`${+date.slice(0, 4) - 1}${date.slice(4)}`) };
     cache?.set(p.id, c);
   }
-  return roleScore({ id: p.id, age: c.age, atClub: true, joined: c.joined!, realPlayer: !p.regen && !p.virtual, nationFlag11c: p.virtual ? p.virtual === 'active' : true,
+  return roleScore({ id: p.id, age: c.age, atClub: true, joined: c.joined!, realPlayer: !cmGeneratedNow(p), nationFlag11c: p.virtual ? p.virtual === 'active' : true,
     rec: c.rec, pos: slot.pos, att: slot.att, lo: slot.lo, hi: slot.hi, tb: slot.tb, tf: slot.tf, flags, mgrJoined: c.mgrJoined!,
     today: c.today!, yearAgo: c.yearAgo!, captain, setPiece, match, data: c.data });
 }

@@ -3,7 +3,7 @@
 
 import { registerCarry } from './carry';
 import type { Fixture, GameState, MatchReport, Player } from './types';
-import { cmActive, cmBodyOn, cmLogic, cmStaffStateInit, setCmPlayerCtx } from './cmPlayerData';
+import { cmActive, cmBodyOn, cmGenerated, cmLogic, cmStaffStateInit, setCmPlayerCtx } from './cmPlayerData';
 import {
   applyMatchEffects, clearKnocks, clubSeason, condition, currentInjury, dayNum, fatigue, fitIso, fitRand, hasSeasonRow, initRecords, initSquadFitness, injuryDaily, injuryStatus,
   HURT, newFit, recordKnock, recoverFatigue, setKnockHook, syncPlayer, trainingLoad, updateFitness, type CmInjury, type FitCtx, type MatchEntry,
@@ -137,7 +137,8 @@ function linkPlayerCtx(g0: GameState): void {
 
 /** de rigtige spillere i "staff-tabellens" rækkefølge (id – heltalsnøgler kommer i stigende orden) */
 function realPlayers(g: GameState): Player[] {
-  return Object.values(g.players).filter((p) => !p.regen);
+  // regens med PLAYER_REGEN har den pensioneredes staffpost (0x7abac0) – under [0xae2364] som de andre (0x62c2f0/0x62c3d0; cmGenerated)
+  return Object.values(g.players).filter((p) => !p.regen || !cmGenerated(g, p));
 }
 
 /** Nyt spil: Injury::Injury (0x62cf70) på databasens dato (1/1) og dagene frem til spillets start (0x5cc850 kører 0x62b7b0 hver dag – uden
