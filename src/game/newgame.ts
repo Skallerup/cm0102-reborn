@@ -219,7 +219,7 @@ export function createGameBase(world: WorldData, o: NewGameOptions): NewGameCtx 
     jobOffers: [],
   };
   const cm = (world as Partial<CMWorld>).kind === 'cm0102' ? (world as CMWorld) : null;
-  if (cm) { g.dbKind = 'cm0102'; g.dbYear = season; if (season < 2020) g.dbVersion = world.source.match(/3\.9\.6\d/)?.[0] ?? '3.9.60'; g.cmPlayoff = 1; g.customRules = cmPlayoffRules(cmLeagueRules(cm.rules as GameState['customRules'])); if (cm.officials?.length) g.officials = cm.officials; }
+  if (cm) { g.dbKind = 'cm0102'; g.dbYear = season; if (season < 2020) g.dbVersion = world.source.match(/3\.9\.6\d/)?.[0] ?? '3.9.60'; g.cmPlayoff = 1; g.cmCupPort = 1; g.customRules = cmPlayoffRules(cmLeagueRules(cm.rules as GameState['customRules'])); if (cm.officials?.length) g.officials = cm.officials; }
   if (world.nationalTeams) g.intl = { results: [], history: [], info: world.nationalTeams.nations, past: world.nationalTeams.history };
   // den originale 01/02-database spilles i 2001-priser (econ.ts); ligaernes niveau måles, når trupperne er klar
   if (cm && season < 2020) g.econ = { k: 0.5, leagues: {} };
@@ -885,7 +885,8 @@ export function setupSeasonComps(season: number, prevTables: Record<string, numb
     // England = 60 i den originale database (nation01 – 2026/27: 61)
     const eng = [...active].find((n) => nation01(n) === 60);
     if (eng !== undefined && g.comps.CM7) {
-      const inEurope = new Set([...(g.comps.CL?.clubs ?? []), ...(g.comps.UEFA?.clubs ?? [])]);
+      // EngCcCup::collect_entrants 0x56ccc0: club +0x1db ≠ −1 – også Intertoto (spil med g.cmCupPort; oraklet 2001: 8 = Villa og Newcastle med)
+      const inEurope = new Set([...(g.comps.CL?.clubs ?? []), ...(g.comps.UEFA?.clubs ?? []), ...(g.cmCupPort ? g.comps.UIC?.clubs ?? [] : [])]);
       setupCmLeagueCup(season, inEurope);
       const byName = (nm: string) => Object.values(g.clubs).find((c) => c.name === nm)?.id;
       const pl = prevTables.CM7;

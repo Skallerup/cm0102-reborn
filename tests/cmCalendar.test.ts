@@ -57,7 +57,9 @@ describe('nyt spil med originalens kalender', () => {
     const first = (comp: string) => Object.values(g.fixtures).filter((f) => f.comp === comp).map((f) => f.date).sort()[0];
     expect(first('CM7')).toBe('2001-08-18');
     expect(first('CM8')).toBe('2001-08-11');
-    expect(first('CUP-60')).toBe('2001-12-08');
+    // (22/11) FA Cup'en som originalen (cmFaCupDay): ingen kampe før deltagerne samles 3/10; 4. kvalifikationsrunde lørdag 13/10
+    expect(first('CUP-60')).toBeUndefined();
+    expect(g.comps['CUP-60'].meta?.cmFa).toBe(1);
     // PL-runde 26 (skemaets række 25) ligger på 2/2-2002 som runde 25 – add_fixture flytter den til onsdag 6/2 (som i oraklets sæson crowd1)
     const r25 = Object.values(g.fixtures).filter((f) => f.comp === 'CM7' && f.round === 26);
     expect(r25.every((f) => f.date === '2002-02-06')).toBe(true);

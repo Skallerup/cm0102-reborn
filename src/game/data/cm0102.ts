@@ -262,6 +262,9 @@ const hashRand = (key: string) => { let k = 0; return (n: number) => hashStr(`${
  *  ligaer får liga-id `CMX<division>` (uden liga-post); byggescriptet afgør, hvad der beholdes. */
 /** `staffMem` (MODERN_PARITY 13, 2026/27): kun stabens hukommelse 0x524d70 ([15]/[16] og staffX til Staff Search) – uden cmMem's øvrige følger
  *  (kontraktdatoer, compHist, cmTrim, spillernes tm/tf), så world.json er uændret. */
+/** EngFaCup::collect_entrants' FA Trophy (club_comp.dat-navnet, nøgle-id [0x9cf6a0]) – cmCups.ts cmFaCupEntrants */
+export const FA_TROPHY = 'English FA Trophy';
+
 export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers?: number; allClubs?: boolean; cmMem?: boolean; staffMem?: boolean; compHist?: boolean } = {}): CMWorld {
   const MAX_TIERS = opts.maxTiers ?? DEFAULT_TIERS;
   const missing = CM_REQUIRED.filter((f) => !files[f]);
@@ -482,7 +485,8 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
       const cid = H.i32(o + 4), year = H.i16(o + 8), w = H.i32(o + 10), ru = H.i32(o + 14);
       const c = comps.get(cid);
       if (!c || year < 1850 || w < 0) continue;
-      const key = rules[lid(cid)] ? lid(cid) : EURO[c.name] ?? (cupNames.has(c.name) ? `cup:${c.name}` : '');
+      // (22/11) English FA Trophy [0x9cf6a0]: EngFaCup::collect_entrants 0x56fab0 tager i 2001 sidste vinder og nr. 2 (0x4afd80) med i FA Cup'en
+      const key = rules[lid(cid)] ? lid(cid) : EURO[c.name] ?? (cupNames.has(c.name) || (opts.cmMem && c.name === FA_TROPHY) ? `cup:${c.name}` : '');
       // samme sæson, vinder og nr. 2 to gange = en dobbeltpost (Swedish_fixed-udgaven af 3.9.60 har Allsvenskan 1999 to gange)
       if (key && !compHist[key]?.some((r) => r[0] === year && r[1] === w && r[2] === ru)) (compHist[key] ??= []).push([year, w, ru]);
     }

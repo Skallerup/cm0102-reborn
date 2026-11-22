@@ -31,7 +31,7 @@ import { draftDay, draftInjuryDays, draftSeasonCheck } from './draft';
 import { boardAfterMatch, boardMonthly, aiSackings, completeProjects, fillVacancies, processJobTalks, summerManagerChanges, applyForJob } from './board';
 import { A } from './attributes';
 import { cmDatabase, cmPlayStartOverdue } from './newgame';
-import { aggregateFor, needsWinnerFn, recordResult, setupLeague, leagueRows } from './competitions';
+import { aggregateFor, cmFaCupDay, needsWinnerFn, recordResult, setupLeague, leagueRows } from './competitions';
 import { t } from '../i18n';
 import { addDays, ageOn, day, month, weekday, daysBetween } from './dates';
 import { MatchSim, type EngineOptions, type EngineTeam } from './engine/match';
@@ -728,6 +728,8 @@ function newDay() {
   // lodtrækning i juni (CL-kvalifikationen 26/6 – før sæsonskiftet)
   cmEuroNextSeason(g);
   cmEuroDay(g);
+  // (22/11) FA Cup'en som originalen: deltagerne 3/10 og runderne på deres lodtrækningsdato (competitions.ts)
+  cmFaCupDay(g);
   cmFitDay(g);
   cmPermitDaily(g);
   // Staff_Records ved turneringernes afslutning (mester/op-/nedrykning/pokal – gårsdagens sidste kampe, cmMedia.ts)

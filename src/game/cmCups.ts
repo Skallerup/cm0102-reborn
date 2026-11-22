@@ -16,10 +16,13 @@
 // i runde 10A). Liga Cup'en har originalens deltagerstruktur (de 92 ligaklubber; de europæiske klubber fra 3. runde – tabellens byes-nøgle =
 // antallet). IKKE porteret: lodtrækningsdatoerne (spillets lodtrækning sker, når forrige runde er afgjort), EngCcCup::collect_entrants'
 // rækkefølge ud over division/placering, 0x4000-reglens udebanemål i forlænget spilletid (her: ingen udebanemål), pokalernes præmier.
-import type { Fixture, GameState } from './types';
+import type { Club, Fixture, GameState } from './types';
 import { CM_CUP_TABLES, type CmCupRound } from './data/cmCupTables';
 import { cmCalendarOn, cmDate } from './cmCalendar';
 import { nation01 } from './cmFitness';
+import { clubRepMem } from './cmPlayerData';
+import { msvcQsort } from './engine/grid/subs';
+import { FA_TROPHY } from './data/cm0102';
 
 export interface CmCupRoundInfo {
   date: string; slot: number; legs: number; gap: number; replays: number;
@@ -74,4 +77,164 @@ export function cmFlagsOf(g: GameState, f: Fixture): number | null {
     return k.f38 | (f1?.result ? k.f38dec ?? 0 : 0);
   }
   return k.f38;
+}
+
+// ------------------------------------------------------------------------------------------------ FA Cup'en som originalen (22/11)
+// EngFaCup (eng_fa_cup.cpp) i spil startet med modulet (g.cmCupPort – newgame.ts): 9 runder fra 4. kvalifikationsrunde (rundetabellen ENG,
+// create_round_table 0x56f320), 152 deltagere inkl. ikke-ligaklubberne. EngFaCup::update_for_date 0x570550: den 3/10 (Date(3, 9, år) –
+// 0x570667) hvert år: listen +0xa7, rundetabellen og kamptræet frigives, +0x45 = 1, collect_entrants 0x56fab0, set_up_rounds (+0x8c) og
+// map_fixture_tree (+0x94). Cup::draw_round 0x51c410 trækker en runde på dens lodtrækningsdato (+0x00), når alle rundens hold kendes – ellers
+// flyttes datoen én dag (og senere runders datoer med, 0x51c557); ikke-seedet (+0x0d & 0x400 = 0) og uden landsregel (+0x0b & 4 = 0) →
+// randomize_round_teams 0x51e220 og set_home_teams_for_round 0x51e870(r, −1) (FA Cup: +0x0b = 0 og +0x24 = −1 → ingen ombytning: side a er
+// hjemme). Omkampene (+0x20 = 1, +0x22 = 10 dage) som de øvrige pokaler (competitions.ts resolveTie).
+// IKKE porteret: map_fixture_tree 0x518790's pladser i træet – rundens hold samles i rækkefølgen [forrige rundes vindere i kampenes
+// rækkefølge, de nye deltagere fra +0x1e] før randomize_round_teams (som blander dem alle); lodtrækningsnyheden 0x51c6cf.
+
+// cmNonLeague.ts' hjælpere (ikke importeret: cmNonLeague → cmFinance/cmBoardGame giver en importcyklus fra competitions.ts)
+const s16 = (v: number) => (v << 16) >> 16;
+const leagueId = (g: GameState, name: string): string | null => { for (const [id, l] of Object.entries(g.leagues)) if (l.name === name && !l.hidden) return id; return null; };
+/** klubbens division +0x57 (= cmNonLeague.divOf) */
+const divOf = (g: GameState, c: Club): number => { const m = /^CM(\d+)$/.exec(c.league); return m && !g.leagues[c.league]?.hidden ? +m[1] : g.cmFinRaw?.[c.id]?.[0] ?? -1; };
+/** "English Conference" [0x9cf69c] (= cmNonLeague.cmConfDiv) */
+function cmConfDiv(g: GameState): number {
+  if (g.cmConfDiv !== undefined) return g.cmConfDiv;
+  const third = leagueId(g, 'English Third Division');
+  if (!third) return -1;
+  const n = g.leagues[third].nation;
+  return Object.values(g.clubs).some((c) => c.nation === n && g.leagues[c.league]?.hidden && g.cmFinRaw?.[c.id]?.[0] === 93) ? 93 : -1;
+}
+/** 0x4afbd0 (= cmNonLeague.pickByRep) */
+function pickByRep(g: GameState, arr: Club[], k: number, rand: (n: number) => number): void {
+  if (arr.length < k || k < 1) return;
+  msvcQsort(arr, (x, y) => s16(clubRepMem(g, y.id)) - s16(clubRepMem(g, x.id)));
+  const m = Math.min(3 * k, arr.length);
+  for (let n = 0; n < m; n++) { const i = rand(m), j = rand(m); const t = arr[i]; arr[i] = arr[j]; arr[j] = t; }
+}
+
+/** FA Cup'ens antal deltagere (+0x3e = 0x98, 0x56fbc1) */
+export const FA_ENTRANTS = 152;
+const ENG_DIVS = ['English Premier Division', 'English First Division', 'English Second Division', 'English Third Division'];
+
+/** EngFaCup::collect_entrants 0x56fab0 → +0xa7 (klub-id'erne i listens rækkefølge). `nation` = Englands id i spillet, `year` = +0x40. Klubberne i
+ *  klubtabellens rækkefølge (id'erne stiger som originalens 0xae23b4); divisionen +0x57 = cmNonLeague.divOf (club.dat's division for klubber
+ *  uden kørende liga).
+ *   - 0x56faf4–0x56fb85: FIFA Club World Championship [0x9cf7bc] i samme år → op til 2 engelske deltagere (+0xb3 – de springes over i
+ *     divisionerne og lægges sidst). Spillet har ingen den turnering: altid 0 (rundetabellen ENG er lavet med +0xb3 = +0xb4 = 0).
+ *   - FA Trophy [0x9cf6a0]: nation +0x11c & 4 (Conference kører – aldrig hos os) eller år 2001 → vinder/nr. 2 fra historikken
+ *     (comp_util_get_latest_placed_club 0x4afd80, sted 0/1 – world-filens compHist 'cup:English FA Trophy', seneste år); ellers "vinderen" =
+ *     klub 0, hvis den er i Conference (løkken 0x56fc81 går aldrig videre fra klub 0 – originalens fejl), og ingen nr. 2.
+ *   - alle klubber: division ∈ {A Lower Division [0x9cf764], Premier, First, Second, Third} → springes over; Conference [0x9cf69c] → C;
+ *     ellers landet England (+0x53) og højst 300 → A ("andre").
+ *   - vinderen/nr. 2: i Conference → fjernes fra C (byttes med den sidste) og C's kvote 22 − 1; uden for ligaerne → fjernes fra A (findes
+ *     den ikke: A's sidste → A[0] / A[1], 0x56fe91/0x56ff84) og A's kvote 38 − 1.
+ *   - C: rand(n − 2) ↔ C[n − 1], rand(n − 2) ↔ C[n − 2] (0x56ffa7); A: 0x4afbd0(A, n, kvote) (qsort efter omdømme + min(3·kvote, n) ombytninger)
+ *   - listen: A[0..kvote), C[0..kvote), vinderen, nr. 2, Third (ikke vinderen/nr. 2), Second, First (+ 60 ombytninger rand(24) ↔ rand(24)
+ *     blandt de sidste 24, 0x570249), Premier – hver til listen har 152. */
+export function cmFaCupEntrants(g: GameState, nation: number, year: number, rand: (n: number) => number): number[] {
+  const ids = ENG_DIVS.map((n) => { const id = leagueId(g, n); return id ? +(/^CM(\d+)$/.exec(id)?.[1] ?? -1) : -1; });
+  const [prm, first, second, third] = ids;
+  const conf = cmConfDiv(g), lower = g.cmLowerDiv ?? -1;
+  const skip = new Set([lower, prm, first, second, third]);
+  const clubs = Object.values(g.clubs).sort((a, b) => a.id - b.id);
+  const div = (c: Club | undefined) => (c ? divOf(g, c) : -1);
+  let w: Club | undefined, ru: Club | undefined;
+  if (year === 2001) {
+    const h = g.cmCompHist?.[`cup:${FA_TROPHY}`]?.[0];
+    if (h) { w = g.clubs[h[1]]; ru = h[2] >= 0 ? g.clubs[h[2]] : undefined; }
+  } else {
+    const c0 = g.clubs[0];
+    if (c0 && div(c0) === conf) w = c0;
+  }
+  const A: Club[] = [], C: Club[] = [];
+  for (const c of clubs) {
+    const d = div(c);
+    if (d < 0 || skip.has(d)) continue;
+    if (d === conf) C.push(c);
+    else if (c.nation === nation && A.length < 300) A.push(c);
+  }
+  let qC = 0x16, qA = 0x26;
+  const remove = (arr: Club[], c: Club, at: number): void => {
+    let found = false;
+    for (let i = 0; i < arr.length; i++) if (arr[i] === c) { arr[i] = arr[arr.length - 1]; arr.pop(); found = true; }
+    if (!found && arr.length) { const last = arr.pop()!; if (at < arr.length) arr[at] = last; else arr.push(last); }
+  };
+  const isConf = (c: Club) => div(c) === conf;
+  const isOther = (c: Club) => { const d = div(c); return d >= 0 && !skip.has(d) && d !== conf; };
+  if (w && isConf(w)) { const i = C.indexOf(w); if (i >= 0) { C[i] = C[C.length - 1]; C.pop(); } qC = 0x15; }
+  else if (w && isOther(w)) { remove(A, w, 0); qA = 0x25; }
+  if (ru && isConf(ru)) { const i = C.indexOf(ru); if (i >= 0) { C[i] = C[C.length - 1]; C.pop(); } qC--; }
+  else if (ru && isOther(ru)) { remove(A, ru, 1); qA--; }
+  // 0x56ffa7: to tilfældige Conference-klubber byttes om på de to sidste pladser
+  const n = C.length;
+  if (n >= 2) {
+    const r1 = rand(n - 2), r2 = rand(n - 2);
+    let t = C[r1]; C[r1] = C[n - 1]; C[n - 1] = t;
+    t = C[r2]; C[r2] = C[n - 2]; C[n - 2] = t;
+  }
+  pickByRep(g, A, qA, rand);
+  const out: number[] = [];
+  for (const c of A.slice(0, Math.max(0, qA))) out.push(c.id);
+  for (const c of C.slice(0, Math.max(0, qC))) out.push(c.id);
+  if (w) out.push(w.id);
+  if (ru) out.push(ru.id);
+  const addDiv = (d: number, not: (Club | undefined)[]) => {
+    for (const c of clubs) {
+      if (out.length >= FA_ENTRANTS) return;
+      if (div(c) === d && !not.includes(c)) out.push(c.id);
+    }
+  };
+  addDiv(third, [w, ru]);
+  addDiv(second, []);
+  addDiv(first, []);
+  for (let k = 0; k < 60 && out.length >= 24; k++) {
+    const a = rand(24), b = rand(24);
+    const i = out.length - 1 - a, j = out.length - 1 - b;
+    const t = out[i]; out[i] = out[j]; out[j] = t;
+  }
+  addDiv(prm, []);
+  return out;
+}
+
+/** Cup::randomize_round_teams 0x51e220 for en runde med `ties` kampe: holdene (`teams` – alle kendte, ingen tomme pladser) blandes
+ *  (for hver plads i: rand(n) ↔ i, 0x51e491), og hvert hold får en tilfældig kamp: start rand(ties), videre fremad (rundt), første gennemgang
+ *  kun kampe uden hold, så kampe med en ledig side (gennemgangen bliver stående, 0x51e60f); begge sider ledige → rand(2) ≠ 0 = side a.
+ *  Resultatet [a, b] pr. kamp (set_home_teams_for_round: a hjemme). */
+export function cmRandomizeRound(teams: number[], ties: number, rand: (n: number) => number): [number, number][] {
+  const L = teams.slice();
+  for (let i = 0; i < L.length; i++) { const j = rand(L.length); const t = L[j]; L[j] = L[i]; L[i] = t; }
+  const A: (number | null)[] = new Array(ties).fill(null), B: (number | null)[] = new Array(ties).fill(null);
+  let pass = 0;
+  for (const club of L) {
+    const start = rand(ties);
+    let k = start;
+    for (;;) {
+      const aFree = A[k] === null, bFree = B[k] === null;
+      if ((pass === 1 || (aFree && bFree)) && (aFree || bFree)) {
+        if (aFree && (!bFree || rand(2) !== 0)) A[k] = club; else B[k] = club;
+        break;
+      }
+      k = k + 1 >= ties ? 0 : k + 1;
+      if (k === start) {
+        if (pass) throw new Error('cmRandomizeRound: ingen ledig plads');
+        pass = 1;
+      }
+    }
+  }
+  const out: [number, number][] = [];
+  for (let k = 0; k < ties; k++) if (A[k] !== null && B[k] !== null) out.push([A[k]!, B[k]!]);
+  return out;
+}
+
+/** rundens lodtrækningsdato (+0x00/+0x02: dag, årstillæg – 0x521e60) */
+export function cmCupDrawDate(key: string, year: number, round: number): string | null {
+  const r = roundsOf(key, year)?.[round - 1];
+  if (!r) return null;
+  const d = r[0];
+  return cmDate(d[0], d[1], year + d[2], d[3]);
+}
+
+/** rundens [hold, kampe, nye, første nye] (+0x18/+0x1a/+0x1c/+0x1e) */
+export function cmCupRoundShape(key: string, year: number, round: number): [number, number, number, number] | null {
+  const r = roundsOf(key, year)?.[round - 1];
+  return r ? [r[10], r[11], r[12], r[13]] : null;
 }

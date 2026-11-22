@@ -2,7 +2,7 @@
   "world-original-3965.json": {
     "source": "/Applications/CM 01-02 Bosman Edition.app/Contents/Resources/game/Data-3.9.65",
     "season": 2001,
-    "sha256": "d24f7d06376261dbe59a23cce567e89f8240c7f1577a957485d3afc570d7f478",
+    "sha256": "07a2fd168532a3e67c2abf388d63c3ac0dd91c1d46f23603176c8432b59ac433",
     "careers": "careers-original-3965.json",
     "careersSha256": "ebfbf2718d8c2a699aa68b1d6eb7d77577024857bd2fd7847611ad528f5818cd",
     "reproducible": true
@@ -11,7 +11,7 @@
     "source": ".orig-db/Original-3.9.68-Database",
     "season": 2001,
     "noLegacy": true,
-    "sha256": "9ac8683bfb4902a8a4eb00ee9b3a2446a1020d5cea8678550dbebc6a17e4b6f8",
+    "sha256": "0b5aa7f61691dba220afdfbf8eed06786d90bd6d87666292a09a4c542d4f3518",
     "careers": "careers-original-3968.json",
     "careersSha256": "c2aef848c54bf5522e37bdb0a9db6b0407b645da55e4db891b451938c476f369",
     "reproducible": true
@@ -20,13 +20,13 @@
     "source": ".orig-db/Original-3.9.60-Database-Swedish_fixed",
     "season": 2001,
     "dbSize": 2,
-    "sha256": "e2c82c612538de8954b630a451c34a90898be9c1482755bfe77f5b0c7f4ddbd9",
+    "sha256": "1eb024757b46f5e9688485b8266c395235861d08b4c08de07158cf44a5ffb223",
     "reproducible": true
   },
   "world-original.json": {
     "source": ".orig-db/Original-3.9.60-Database-Swedish_fixed",
     "season": 2001,
-    "sha256": "58561c4a70bb1ecccb72f8e25dca749f0a3704a766097d1e81e6834eff9c83fe",
+    "sha256": "5c91ccdd6421347d0b211287a192e16561645229b9144e00ed5eeb18a086891e",
     "careers": "careers-original.json",
     "careersSha256": "bad00bea0bf6b65ab42577ac78281629dd4109afcbe11ee7d0cdca6735b74cea",
     "reproducible": true

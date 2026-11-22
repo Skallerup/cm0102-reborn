@@ -6,12 +6,12 @@ import { rng } from './rng';
 import { addNews, gs, indexFixture, newsRelevant } from './state';
 import { asOwner, forEachHuman } from './humans';
 import { celebrateTrophy } from './fans';
-import type { Competition, Fixture, MatchResultShort, TableRow, Tie } from './types';
+import type { Competition, Fixture, GameState, MatchResultShort, TableRow, Tie } from './types';
 import { econIncome } from './econ';
 import { cmActive, cmRand } from './cmPlayerData';
 import { CM_LEAGUE_CUT, cmCalendarOn, cmFaCupDate, cmFindNewDate, cmLeagueSchedule, cmPlaceFixture } from './cmCalendar';
 import { cmEuroFinished, cmEuroResult } from './cmEurope';
-import { cmCupKey, cmCupRound, cmFlagsOf, cmLeagueCupStructure } from './cmCups';
+import { FA_ENTRANTS, cmCupDrawDate, cmCupKey, cmCupRound, cmCupRoundShape, cmFaCupEntrants, cmFlagsOf, cmLeagueCupStructure, cmRandomizeRound } from './cmCups';
 import { nation01 } from './cmFitness';
 import { CM_LEAGUE_FLAGS, cmLeaguePairs } from './cmFixtures';
 
@@ -248,6 +248,12 @@ export function setupCup(nation: number, name: string, clubs: number[], season: 
   const g = gs();
   const id = `CUP-${nation}`;
   const cal = calendar(season);
+  // (22/11) FA Cup'en som originalen (cmCups.ts cmFaCupEntrants): ingen kampe før deltagerne samles den 3/10 (cmFaCupDay)
+  if (cmFaOn(g, nation)) {
+    g.comps[id] = { id, name, type: 'cup', nation, tier: 0, clubs: [], table: [], ties: [], stage: '', finished: false, pending: 0,
+      meta: { roundsTotal: 9, byes: [], round: 0, cmYear: season, cmCup: 'ENG', cmDirect: true, cmFa: 1, cmDraw: {} } };
+    return;
+  }
   const comp: Competition = { id, name, type: 'cup', nation, tier: 0, clubs: clubs.slice(), table: [], ties: [], stage: '', finished: false, pending: 0 };
   g.comps[id] = comp;
   const sorted = clubs.slice().sort((a, b) => g.clubs[b].rep - g.clubs[a].rep);
@@ -273,6 +279,8 @@ export function setupCup(nation: number, name: string, clubs: number[], season: 
 /** (16/11) Datoen for pokalens første kamp i sæsonen `season` (som setupCup/createCupRound) – sæsonskiftet pr. land vælger pokalens år efter den */
 export function cupFirstDate(nation: number, n: number, season: number): string {
   const g = gs();
+  const fa = cmFaOn(g, nation) ? cmCupRound('ENG', season, 1, 9, true)?.date : undefined;
+  if (fa) return fa;
   let size = 1;
   while (size < n) size *= 2;
   const round = n - (size - n) >= 2 ? 1 : 2, total = Math.log2(size);
@@ -357,8 +365,8 @@ function createCupRound(comp: Competition, pairs: [number, number][], round: num
   comp.stage = stage;
   comp.meta!.round = round;
   for (const [a, b] of pairs) {
-    // lavere rangeret hold får hjemmebane
-    const [h, aw] = g.clubs[a].rep < g.clubs[b].rep ? [a, b] : [b, a];
+    // lavere rangeret hold får hjemmebane (FA Cup'en som originalen: lodtrækningens side a – set_home_teams_for_round 0x51e870)
+    const [h, aw] = comp.meta?.cmFa || g.clubs[a].rep < g.clubs[b].rep ? [a, b] : [b, a];
     if (info) {
       const tie: Tie = { id: g.nextId.tie++, a: h, b: aw, legs: info.legs, stage, fx: [] };
       comp.ties.push(tie);
@@ -379,6 +387,48 @@ function drawCupRound(comp: Competition, clubs: number[], round: number, cal: Se
   const pairs: [number, number][] = [];
   for (let i = 0; i + 1 < list.length; i += 2) pairs.push([list[i], list[i + 1]]);
   createCupRound(comp, pairs, round, cal);
+}
+
+/** (22/11) FA Cup'en som originalen: spil startet med modulet (g.cmCupPort), originalens kalender og Englands pokal (rundetabellen ENG) */
+export function cmFaOn(g: GameState, nation: number): boolean {
+  return g.cmCupPort === 1 && cmCalendarOn(g) && cmCupKey(g, nation) === 'ENG';
+}
+
+/** (22/11) FA Cup'ens dag (EngFaCup::update_for_date 0x570550 + Cup::update_for_date 0x51f890 – cmCups.ts):
+ *   - 3/10 i pokalens år: deltagerne (collect_entrants 0x56fab0) → comp.clubs/meta.cmEnt
+ *   - rundens lodtrækningsdato (+0x00): alle rundens hold kendt (forrige rundes kampe afgjort) → randomize_round_teams 0x51e220 og rundens
+ *     kampe; ellers lodtrækningen i morgen, og senere runders datoer flyttes med, når de ligger før (Cup::draw_round 0x51c4e9–0x51c5cf). */
+export function cmFaCupDay(g: GameState): void {
+  for (const comp of Object.values(g.comps)) {
+    const m = comp.meta;
+    if (!m?.cmFa || comp.finished) continue;
+    const year = m.cmYear as number;
+    if (!m.cmEnt) {
+      if (g.date < `${year}-10-03`) continue;
+      const ent = cmFaCupEntrants(g, comp.nation, year, cmRand(g.seed ?? 0, 0x56fab0, year));
+      m.cmEnt = ent;
+      comp.clubs = ent.slice();
+      if (ent.length !== FA_ENTRANTS) console.warn(`FA Cup ${year}: ${ent.length} deltagere (originalen ${FA_ENTRANTS})`);
+    }
+    const r = (m.round as number) + 1;
+    if (r > (m.roundsTotal as number)) continue;
+    const draws = m.cmDraw as Record<number, string>;
+    const due = draws[r] ?? cmCupDrawDate('ENG', year, r);
+    if (!due || g.date < due) continue;
+    const prev = r > 1 ? comp.ties.filter((t) => t.stage === comp.stage) : [];
+    if (prev.some((t) => !t.winner)) {
+      const next = addDays(g.date, 1);
+      draws[r] = next;
+      for (let k = r + 1; k <= (m.roundsTotal as number); k++) if ((draws[k] ?? cmCupDrawDate('ENG', year, k) ?? '') < next) draws[k] = next;
+      continue;
+    }
+    const shape = cmCupRoundShape('ENG', year, r);
+    if (!shape) continue;
+    const ent = m.cmEnt as number[];
+    const pool = [...prev.map((t) => t.winner!), ...ent.slice(shape[3], shape[3] + shape[2])].filter((c) => g.clubs[c]);
+    const pairs = cmRandomizeRound(pool, Math.floor(pool.length / 2), cmRand(g.seed ?? 0, 0x51e220, year, r));
+    createCupRound(comp, pairs, r, calendar(g.season));
+  }
 }
 
 // ---------- europæiske turneringer ----------
@@ -874,8 +924,8 @@ function advance(comp: Competition, stage: string) {
     if (comp.meta?.cmEuro) cmEuroFinished(comp);
     return;
   }
-  // (runde 10C) næste runde trækkes på sin dato (cmEurope.ts)
-  if (comp.meta?.cmEuro) return;
+  // (runde 10C) næste runde trækkes på sin dato (cmEurope.ts); FA Cup'en på rundens lodtrækningsdato (cmFaCupDay)
+  if (comp.meta?.cmEuro || comp.meta?.cmFa) return;
   if (comp.type === 'cup') {
     const round = (comp.meta!.round as number) + 1;
     const byes = (comp.meta!.byes as number[]) ?? [];
