@@ -23,6 +23,7 @@ if (import.meta.env.DEV) {
 }
 
 applyTheme();
+try { const u = new URL(location.href); if (u.searchParams.has('_r')) { u.searchParams.delete('_r'); history.replaceState(null, '', u.pathname + u.search + u.hash); } } catch { /* ingen */ } // cache-brydende parameter fra hardReload (ui/lazyLoad.ts)
 // ny version: ingen automatisk genindlæsning – knappen "Ny version klar" (eller næste besøg)
 const updateSW = registerSW({ immediate: true, onNeedRefresh() { swUpdateReady(updateSW); } });
 startPresence(); // "online" i admin
