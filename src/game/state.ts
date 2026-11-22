@@ -52,7 +52,7 @@ export function onGameSwitch(reset: () => void): void { (GAME_SWITCH ??= []).pus
 /** `keepCarry`: modulernes tilstand (carry.ts) røres ikke, selvom spillet er et nyt objekt (konverteringen bygger videre på createGame's tilstand) */
 export function setGame(g: GameState | null, opts?: { keepCarry?: boolean }) {
   preview = null;
-  const other = !!g && g !== G;
+  const other = !!g && g !== G, prevG = G;
   if (g !== G && GAME_SWITCH) for (const f of GAME_SWITCH) f();
   // ligaregler fra en importeret database (CM 01/02) skal kendes, før spillet simuleres – forrige spils regler følger ikke med
   if (other && !opts?.keepCarry) { for (const k of Object.keys(LEAGUE_RULES)) if (!(k in BASE_RULES)) delete LEAGUE_RULES[k]; Object.assign(LEAGUE_RULES, BASE_RULES); }
@@ -68,6 +68,10 @@ export function setGame(g: GameState | null, opts?: { keepCarry?: boolean }) {
   // modulernes tilstand: den gemte (kopi/gem af et spil i gang) eller en ny proces' (nyt spil, gamle gemte spil) – carry.ts
   if (g?.cmCarry) { const c = g.cmCarry; delete g.cmCarry; restoreCarry(c); }
   else if (other && !opts?.keepCarry) restoreCarry(undefined);
+  // (hukommelse, iPhone 22/11) intet spil: modulernes tilstand nulstilles – den holdt ellers det forrige spil (cmFitnessGame's kroge lukker om
+  // spilobjektet), så nyt-spil-forløbets midlertidige verden levede videre i hovedtråden under Take Control. Et senere spil får altid en ny
+  // tilstand (`other`), så intet resultat ændres.
+  else if (!g && prevG) restoreCarry(undefined);
   notify();
 }
 /** modulernes tilstand lagt i spillet (til en kopi, der skal fortsætte præcis som dette spil: gem, Web Worker) – kun det aktive spil */

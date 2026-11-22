@@ -86,6 +86,11 @@ try {
   await page.waitForSelector('[data-confirm]');
   await page.locator('.cx-foot .cx-next').click();
   await page.waitForTimeout(3000);
+  // hovedtråden UNDER Take Control (Chromium): hvad der stadig holdes, mens det rigtige spil bygges i arbejderne; TCSNAP=<fil>: heap-snapshot dér
+  if (cdp) {
+    console.log(`Take Control (under) ${T()} fp nu ${rssNow().toFixed(0)} MB${await mainHeap()}`);
+    if (process.env.TCSNAP) { const fs = await import('node:fs'); const fd = fs.openSync(process.env.TCSNAP, 'w'); const h = (e) => fs.writeSync(fd, e.chunk); cdp.on('HeapProfiler.addHeapSnapshotChunk', h); await cdp.send('HeapProfiler.takeHeapSnapshot', { reportProgress: false }); cdp.off('HeapProfiler.addHeapSnapshotChunk', h); fs.closeSync(fd); }
+  }
   await page.waitForSelector('.cx-running', { state: 'detached', timeout: 600000 }).catch(() => {});
   await page.waitForSelector('.cx-side .cx-continue', { timeout: 600000 });
   await page.waitForTimeout(3000); console.log(`nyt spil ${T()} fp-top ${peakRss.toFixed(0)} MB (${peakAt}) nu ${rssNow().toFixed(0)} MB${await mainHeap()}`); phase = 'continue';

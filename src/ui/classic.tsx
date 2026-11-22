@@ -7,7 +7,7 @@ import './classic.css';
 // så de enkelte skærme ikke skal kende til layoutet.
 import { createContext, useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore, type ButtonHTMLAttributes, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { gs, inSetup } from '../game/state';
+import { gs, inSetup, onGameSwitch } from '../game/state';
 import { hasMatchView } from '../game/miniReport';
 import { useSetup } from './setupCtx';
 import type { GameState, Staff } from '../game/types';
@@ -419,6 +419,9 @@ function itemsFor(keys: Hub['sub'] | ScreenName[] | undefined, g: GameState, rou
 
 let allowedFn: (k: ScreenName) => boolean = () => true;
 export function setClassicAllowed(f: (k: ScreenName) => boolean) { allowedFn = f; }
+// (hukommelse, iPhone 22/11) Shells lukning holder spillet, den blev tegnet med – nyt-spil-forløbets midlertidige verden levede ellers videre i
+// hovedtråden under Take Control (heap-snapshot). Den næste Shell sætter den igen ved første tegning.
+onGameSwitch(() => { allowedFn = () => true; });
 
 // ---------- knapperækker ----------
 
