@@ -251,10 +251,13 @@ export function statCell(e: readonly number[] | undefined, kind: number): string
 export function cmGenerated(g: GameState, p: Player): boolean {
   if (p.virtual) return true;
   if (!p.regen) return false;
+  // kun 0x7abac0's regens (den pensioneredes post: regenOf, cmRetire.ts RegenSeed.fromId) – spillets egne opdigtede spillere med regen-flaget
+  // (fillSquad's trupfyld ved spilstarten, ungdomsårgange, nødmålmænd) findes ikke i originalens staff-tabel og forbliver genererede
+  if (p.regenOf === undefined) return true;
   return !(!g.draft && (cmActive(g) || (cmLogic(g) && g.cmRet !== undefined)));
 }
 /** cmGenerated i det aktive spil (uden spil: regens som genererede) */
-export const cmGeneratedNow = (p: Player): boolean => !!p.virtual || (!!p.regen && (!hasGame() || cmGenerated(gs(), p)));
+export const cmGeneratedNow = (p: Player): boolean => !!p.virtual || (!!p.regen && (p.regenOf === undefined || !hasGame() || cmGenerated(gs(), p)));
 export function statAvg(p: Player, cat: number, kind: number, def: number): number {
   if (cmGeneratedNow(p)) return 0;   // 0x7c1ec7: genererede spillere → 0
   return statValue(p.cmStats?.[cat], kind, def);
