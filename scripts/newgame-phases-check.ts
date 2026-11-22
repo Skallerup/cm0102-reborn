@@ -1,12 +1,14 @@
 // Kontrol (22/11): spilstarten i trin – hvert trin i sin egen arbejder (ui/newGameWorker.ts, startGame.ts newGameStages) – giver bit for bit det
 // samme spil som createGame i ét forløb: spillets sha efter oprettelsen og efter N dage (spillet fortsat i en frisk arbejder som hovedtråden).
-// Brug: npx tsx scripts/newgame-phases-check.ts [world-fil] [land=England] [dage=2] [preview=0]
+// Brug: npx tsx scripts/newgame-phases-check.ts [world-fil] [land=England] [dage=2] [preview=0] [portioner=0]
+// (portioner = n > 0: ønskelisternes klubløkke i n arbejdere – 'shortlists:k/n', cmShortlistGame.ts cmShortlistStartPart)
 import { Worker } from 'node:worker_threads';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import type { WorldData } from '../src/game/newgame';
 
-const [file = 'public/data/world-original.json', nat = 'England', daysS = '2', previewS = '0'] = process.argv.slice(2);
+const [file = 'public/data/world-original.json', nat = 'England', daysS = '2', previewS = '0', partsS = '0'] = process.argv.slice(2);
+const parts = Number(partsS);
 const days = Number(daysS), preview = previewS === '1';
 const w0 = JSON.parse(readFileSync(file, 'utf8')) as WorldData;
 const act = [w0.nations.findIndex((x) => x.name === nat)];
@@ -32,7 +34,8 @@ const allSha = shaGame(all.game);
 const allDays = (await run({ kind: 'continue', days }, { game: all.game })).days;
 console.log(`ét forløb:  ${allSha}  ${allDays.join('  ')}`);
 
-const stages: string[][] = preview ? [['base'], ['fitness'], ['plan', 'shortlists', 'rest']] : [['base'], ['fitness'], ['plan'], ['shortlists', 'rest']];
+const stages: string[][] = preview ? [['base'], ['fitness'], ['plan', 'shortlists', 'rest']] : !parts ? [['base'], ['fitness'], ['plan'], ['shortlists', 'rest']]
+  : [['base'], ['fitness'], ['plan'], ...Array.from({ length: parts }, (_, k) => (k === parts - 1 ? [`shortlists:${k}/${parts}`, 'rest'] : [`shortlists:${k}/${parts}`]))];
 let h: any = {};
 for (let i = 0; i < stages.length; i++) h = await run({ kind: 'phases', phases: stages[i], file: i === 0 ? file : undefined, opts, last: i === stages.length - 1 }, h);
 const phSha = shaGame(h.game);

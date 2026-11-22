@@ -337,7 +337,7 @@ function zeroId(m: SparseMem, id: number): void {
 export function buildSlWantMem(g: GameState, clubs: Iterable<number>, opts: { call?: (adr: number, a: number[]) => number | undefined; useLog?: (adr: number) => boolean;
   /** (hastighed) spillere, hvis poster ingen læser, før deres klubs trupplan eller bud kører (cmShortlistGame.ts staleOk): beholder gårsdagens
    *  poster (når id, klub og kontrakt er de samme), indtil `refreshClub(klub)` skriver dem (WantMem.refreshClub) */
-  stale?: (p: Player, cid: number) => boolean }): WantMem & { refreshClub?: (cid: number, pids?: Set<number>) => number[]; deferredPids?: { has(pid: number): boolean }; pidStaff?: (pid: number) => number | undefined; staffMemId?: (sid: number) => number | undefined } {
+  stale?: (p: Player, cid: number) => boolean }): WantMem & { refreshClub?: (cid: number, pids?: Set<number>) => number[]; deferredPids?: { has(pid: number): boolean }; pidStaff?: (pid: number) => number | undefined; staffMemId?: (sid: number) => number | undefined; slState?: () => SlWantState; slRestore?: (s: SlWantState) => void } {
   let tq = tnow();
   gbpOf = (cid) => cmGbp(g, cid);
   const incr = ENV.CM_SL_INCR !== '0';
@@ -717,6 +717,21 @@ export function buildSlWantMem(g: GameState, clubs: Iterable<number>, opts: { ca
   // (stabens pladser, cmShortlistGame.ts writeSlots) stabens id i spillet → personens id i hukommelsen
   const staffMemIds = new Map<number, number>();
   for (const ss of staffIds.values()) for (const [s, id] of ss) staffMemIds.set(s.id, id);
+  // (hukommelse, 22/11) spilstartens klubløkke i portioner (cmShortlistGame.ts cmShortlistStartPart): lukningernes tilstand, der ændres efter
+  // opbygningen (divisionerne i den rækkefølge, de blev set, landenes init-mærker, de genererede personer) og begge hukommelsers sider – så en ny
+  // arbejder kan bygge det samme af det samme spil og fortsætte præcis hvor den forrige slap
+  const slState = (): SlWantState => {
+    if (deferred.size || done.size) throw new Error('buildSlWantMem: udskudte spillere i en portion');
+    return { divs: [...divs], natInit: natInit.slice(), gen, genPid: [...genPid], P: P.exportPages(), m: m.exportPages() };
+  };
+  const slRestore = (s: SlWantState): void => {
+    divs.clear(); for (const [k, v] of s.divs) divs.set(k, v);
+    natInit.set(s.natInit); gen = s.gen;
+    genPid.clear(); for (const [k, v] of s.genPid) genPid.set(k, v);
+    P.importPages(s.P); m.importPages(s.m);
+  };
   return { W, c: gc, g, env: envOf, setRand: (f) => { rand = f; }, get byStaff() { return byStaffOf(); }, refreshClub, deferredPids,
-    pidStaff: (pid: number) => byPid.get(pid), staffMemId: (sid: number) => staffMemIds.get(sid) };
+    pidStaff: (pid: number) => byPid.get(pid), staffMemId: (sid: number) => staffMemIds.get(sid), slState, slRestore };
 }
+/** buildSlWantMem's tilstand mellem to portioner af spilstartens klubløkke (typede tabeller – Transferable) */
+export interface SlWantState { divs: [number, number][]; natInit: Uint8Array; gen: number; genPid: [number, number][]; P: { nums: Int32Array; data: Uint8Array }; m: { nums: Int32Array; data: Uint8Array } }

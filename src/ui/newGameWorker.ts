@@ -9,6 +9,7 @@ import { createGame, createGameBase, createGamePhase, setNewGameProgress, type N
 import { gs, packCarry, setGame } from '../game/state';
 import { rng } from '../game/rng';
 import { releasePagePool } from '../game/cmMem';
+import { slResumeTransfer } from '../game/cmShortlistGame';
 import { convertOriginal, restartInOriginal, type ConvertReport } from '../game/cmConvert';
 import type { CMWorld } from '../game/data/cm0102';
 import type { GameState } from '../game/types';
@@ -75,7 +76,8 @@ self.onmessage = async (e: MessageEvent<NewGameJob | LoadJob>) => {
         const g = gs();
         packCarry(g);
         releasePagePool();
-        job.to.postMessage({ game: g, ctx: ctx!, rng: rng.state } satisfies PhaseHandoff);
+        // (ønskelisternes portioner) hukommelsens sider og tabellerne flyttes (Transferable) – ingen kopi
+        job.to.postMessage({ game: g, ctx: ctx!, rng: rng.state } satisfies PhaseHandoff, slResumeTransfer(ctx!.sl ?? null));
         job.to.close();
         setGame(null);
         post({ type: 'handed' });

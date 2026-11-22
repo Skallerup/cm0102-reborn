@@ -3,13 +3,14 @@ import { setTheme, modernOn } from './theme';
 import { useLegacyBg } from './legacyBg';
 import { LangMenu } from './LangMenu';
 import { track } from '../analytics';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { DraftCreate } from './Draft';
 import { askConfirm } from './confirm';
 import { Select } from './select';
 import { CHALLENGES, challengeClub } from '../game/challenges';
 import type { WorldData } from '../game/newgame';
-import { createGameAsync, LANG_NATION, ORIG_LANG_NATION } from './startGame';
+import { createGameAsync, openStartWorld, LANG_NATION, ORIG_LANG_NATION, type StartWorld } from './startGame';
+import { DB_SIZES, dbSizeReason, readDbSize, writeDbSize, type DbSize } from './dbSize';
 import { NewGameLoader, type NewGameProgress } from './NewGameLoader';
 import { setupBots, type BotScope } from '../game/bots';
 import { enableMultiplayer } from '../game/humans';
@@ -25,10 +26,10 @@ import { OnlineMenu } from './Online';
 import { createOnlineGame } from '../online/client';
 import { notifyNewCareer } from '../online/notify';
 import { markNewGame } from '../online/errors';
-import { loadOriginalWorld, loadWorld, ORIGINAL_VERSIONS, withCommunityEdits, type OriginalVersion } from './world';
+import { ORIGINAL_VERSIONS, type OriginalVersion } from './world';
 import { GROUP_KEY, NAV_CLOSED_DEFAULT } from './Shell';
 import { Editor } from './Editor';
-import { listDbs, loadCustomWorld } from './customDb';
+import { listDbs } from './customDb';
 import { changeCount, type CustomDb } from '../game/dbEdit';
 import { ClassicStart } from './ClassicStart';
 import { ClassicJoin } from './ClassicJoin';
@@ -246,6 +247,13 @@ function NewGame({ challenge, onBack, setBusy, setProg, online, onDraft, initial
   // den originale databases udgave (3.9.60 = standard)
   const [ver, setVerState] = useState<OriginalVersion>(() => { try { const v = localStorage.getItem('cm0102.dbver'); return (ORIGINAL_VERSIONS as readonly string[]).includes(v ?? '') ? v as OriginalVersion : '3.9.60'; } catch { return '3.9.60'; } });
   const setVer = (v: OriginalVersion) => { if (v === ver) return; setVerState(v); setWorld(null); setClub(0); try { localStorage.setItem('cm0102.dbver', v); } catch { /* ignorer */ } };
+  // originalens databasestørrelse (ui/dbSize.ts – som det klassiske forløb): Normal på telefoner, ellers Maximum
+  const [dbSize, setDbSizeState] = useState<DbSize>(readDbSize);
+  const setDbSize = (z: DbSize) => { writeDbSize(z); if (z === dbSize) return; setDbSizeState(z); setWorld(null); setClub(0); };
+  // (hukommelse, iPhone 21–22/11 – som ClassicStart) hele databasen ligger i nyt spils arbejder (startGame.ts openStartWorld); `world` = listerne
+  const startWorld = useRef<StartWorld | null>(null);
+  const dropStart = () => { startWorld.current?.worker?.terminate(); startWorld.current = null; };
+  useEffect(() => () => dropStart(), []);
   const [mine, setMine] = useState<CustomDb[]>([]);
   // nyt spil starter øverst ved databasevalget (før scrollede autofokus på navnefeltet forbi det – ejerens fejl 9/11)
   useEffect(() => { if (!ch) window.scrollTo(0, 0); }, []);
@@ -256,15 +264,13 @@ function NewGame({ challenge, onBack, setBusy, setProg, online, onDraft, initial
   useEffect(() => {
     let live = true;
     setErr('');
-    const load = customId ? listDbs().then((all) => {
-      const d = all.find((x) => x.id === customId);
-      // databasen findes ikke længere (slettet): tilbage til standard
-      if (!d) { setDb('modern'); return null; }
-      return loadCustomWorld(customId).then((w) => (d.base === 'original' && d.ver && d.ver !== '3.9.60' ? w : withCommunityEdits(w, d.base === 'original' ? 'original' : 'cm')));
-    // fællesskabets rettelser gælder 3.9.60 (de andre udgaver bruges præcis som originalen)
-    }) : db === 'original' ? loadOriginalWorld(ver).then((w) => (ver === '3.9.60' ? withCommunityEdits(w, 'original') : w)) : loadWorld().then((w) => withCommunityEdits(w, 'cm'));
-    load.then((w) => {
-      if (!live || !w) return;
+    dropStart();
+    // (fællesskabets rettelser og egne databaser: startGame.ts startWorldSrc; en slettet egen database → null → tilbage til standard)
+    openStartWorld(db, ver, dbSize).then((sw) => {
+      if (!live) { sw?.worker?.terminate(); return; }
+      if (!sw) { setDb('modern'); return; }
+      startWorld.current = sw;
+      const w = sw.slim;
       setWorld(w);
       const own = (db === 'original' ? ORIG_LANG_NATION : LANG_NATION)[getLang()];
       const names = ch ? ch.nations : [w.leagues.some((l) => !l.hidden && w.nations[l.nation]?.name === own) ? own : 'England'];
@@ -276,7 +282,8 @@ function NewGame({ challenge, onBack, setBusy, setProg, online, onDraft, initial
       if (ch) { const cid = challengeClub(ch, w); setClub(cid); const lg = w.clubs.find((c) => c[0] === cid)?.[4]; if (lg) setLeague(lg); }
     }).catch((e) => { if (live) setErr(String(e)); });
     return () => { live = false; };
-  }, [ch, db, ver]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ch, db, ver, dbSize]);
 
   const leagueNations = useMemo(() => {
     if (!world) return [];
@@ -302,6 +309,13 @@ function NewGame({ challenge, onBack, setBusy, setProg, online, onDraft, initial
               </button>
             ))}
           </div>
+        )}
+        {db === 'original' && (
+          <label className="db-ver" data-dbsize-row>
+            <div className="db-ver-h">{t('cxs.dbSize')}</div>
+            <select value={dbSize} data-dbsize onChange={(e) => setDbSize(e.target.value as DbSize)}>{DB_SIZES.map((z) => <option key={z} value={z}>{t(`cxs.dbSize.${z}`)}</option>)}</select>
+            <span className="muted" data-dbsize-hint>{t(dbSizeReason() === 'interrupted' ? 'cxs.dbSize.whyKilled' : dbSizeReason() === 'device' ? 'cxs.dbSize.whyPhone' : 'cxs.dbSize.hint')}</span>
+          </label>
         )}
         {mine.map((d) => (
           <button key={d.id} className={`db-opt ${db === `custom:${d.id}` ? 'on' : ''}`} onClick={() => setDb(`custom:${d.id}`)}>
@@ -343,11 +357,13 @@ function NewGame({ challenge, onBack, setBusy, setProg, online, onDraft, initial
     track('start_game', { mode: online ? 'online' : bots > 0 ? 'local_ai' : 'single', db: dbKind, challenge: !!challenge, lang: opts.lang });
     setTimeout(async () => {
       if (online) {
-        try { await createOnlineGame(world, { ...opts, deadlineHours: deadline }, { count: bots, scope: botScope }); } catch (e) { setErr(String((e as Error).message)); }
+        // (spillet bygges i nyt spils arbejder af databasen dér – hovedtråden har kun listerne)
+        const src = startWorld.current ?? world;
+        try { await createOnlineGame(world, { ...opts, deadlineHours: deadline }, { count: bots, scope: botScope }, (_w, o) => createGameAsync(src, o, () => {})); } catch (e) { setErr(String((e as Error).message)); }
       } else {
         if (setProg) setProg({ step: 'clubs', frac: 0 });
         markNewGame(true);
-        try { await createGameAsync(world, opts, (p) => setProg?.(p)); } finally { markNewGame(false); }
+        try { await createGameAsync(startWorld.current ?? world, opts, (p) => setProg?.(p)); } finally { markNewGame(false); }
         if (bots > 0) {
           // lokalt spil mod AI-managere: samme multiplayer-regler, men du spiller dine kampe live
           enableMultiplayer('host', opts.managerName);

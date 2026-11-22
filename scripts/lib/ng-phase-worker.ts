@@ -7,6 +7,7 @@ import { createGame, createGameBase, createGamePhase, type NewGameCtx, type NewG
 import { gs, packCarry, setGame } from '../../src/game/state';
 import { rng } from '../../src/game/rng';
 import type { GameState } from '../../src/game/types';
+import { slResumeTransfer } from '../../src/game/cmShortlistGame';
 
 const wd = workerData as { kind: 'phases' | 'all' | 'continue'; phases?: ('base' | NewGamePhase)[]; file?: string; opts?: NewGameOptions; days?: number; last?: boolean };
 const port = parentPort!;
@@ -35,5 +36,5 @@ port.once('message', async (msg: { game?: GameState; ctx?: NewGameCtx; rng?: num
   }
   const g = gs();
   packCarry(g);
-  port.postMessage({ game: g, ctx, rng: rng.state });
+  port.postMessage({ game: g, ctx, rng: rng.state }, slResumeTransfer(ctx?.sl ?? null));
 });

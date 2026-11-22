@@ -104,6 +104,26 @@ export class SparseMem implements CmMem {
   wf64(a: number, v: number): void { this.dv.setFloat64(0, v, true); this.w32(a, this.dv.getUint32(0, true)); this.w32(a + 4, this.dv.getUint32(4, true)); }
   /** de byggede sider (sidenummer, indhold) – kontrollen af to byggere (scripts/cm-sl-memcheck.ts) */
   pageList(): [number, Uint8Array][] { return [...this.pages]; }
+  /** (hukommelse, 22/11) hukommelsens egne sider som to typede tabeller (sidenumrene i rækkefølgen, de blev lavet, og indholdet efter hinanden) –
+   *  til at sende hukommelsen til en anden Web Worker (Transferable) og fortsætte dér (importPages) */
+  exportPages(): { nums: Int32Array; data: Uint8Array } {
+    const nums = new Int32Array(this.pages.size), data = new Uint8Array(this.pages.size << PAGE);
+    let i = 0;
+    for (const [p, b] of this.pages) { nums[i] = p; data.set(b, i << PAGE); i++; }
+    return { nums, data };
+  }
+  /** hukommelsens sider erstattes af de eksporterede (samme rækkefølge i sidetabellen; `miss` kaldes ikke – indholdet er færdigt). Siderne er
+   *  udsnit af den modtagne tabel (ingen kopi pr. side) */
+  importPages(x: { nums: Int32Array; data: Uint8Array }): void {
+    this.release();
+    for (let i = 0; i < x.nums.length; i++) {
+      const p = x.nums[i], nb = x.data.subarray(i << PAGE, (i + 1) << PAGE);
+      let t = this.dir[p >>> 10];
+      if (t === NOPAGES) { t = new Array(1024).fill(null); this.dir[p >>> 10] = t; }
+      t[p & 1023] = nb;
+      this.pages.set(p, nb);
+    }
+  }
   /** siderne tilbage til puljen (hukommelsen bruges ikke mere – ønskelisternes dag bygger 18.000 sider à 4 KB hver dag) */
   release(): void {
     for (const b of this.pages.values()) if (POOL.length < POOL_MAX) POOL.push(b);

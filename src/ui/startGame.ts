@@ -1,6 +1,6 @@
 // Fælles for startsiderne (moderne Start.tsx og det klassiske nye-spil-flow i ClassicStart.tsx):
 // valg af database, indlæsning af verdenen og oprettelse af spillet i en Web Worker.
-import { createGame, type NewGameOptions, type WorldData } from '../game/newgame';
+import { createGame, type NewGameOptions, type NewGamePhase, type WorldData } from '../game/newgame';
 import type { GameState, Lang } from '../game/types';
 import { gs, setGame, setSetupGame } from '../game/state';
 import { getLang } from '../i18n';
@@ -97,11 +97,21 @@ export async function openStartWorld(db: Db, ver: OriginalVersion, size: DbSize 
  *  ønskelisterne – levende ~0,3–0,65 GB, kapaciteten op til 2,4 GB), og en afsluttet arbejders heap frigives helt. Spillet går fra arbejder til
  *  arbejder uden om hovedtråden (MessageChannel). `localStorage['cm0102.ngSplit'] = '0'`: alt i én arbejder som før (til målinger). */
 export function newGameStages(opts: Pick<NewGameOptions, 'preview'>): NewGameJob['phases'][] {
-  let split = true;
-  try { split = localStorage.getItem('cm0102.ngSplit') !== '0'; } catch { /* ingen lagring */ }
+  let split = true, parts = SL_PARTS;
+  try {
+    split = localStorage.getItem('cm0102.ngSplit') !== '0';
+    const n = Number(localStorage.getItem('cm0102.ngSlParts'));
+    if (Number.isInteger(n) && n >= 1 && n <= 64) parts = n;
+  } catch { /* ingen lagring */ }
   if (!split) return [undefined];
-  return opts.preview ? [['base'], ['fitness'], ['plan', 'shortlists', 'rest']] : [['base'], ['fitness'], ['plan'], ['shortlists', 'rest']];
+  if (opts.preview) return [['base'], ['fitness'], ['plan', 'shortlists', 'rest']];
+  // (22/11) ønskelisternes klubløkke i `parts` portioner – hver i sin egen arbejder (cmShortlistGame.ts cmShortlistStartPart: bit for bit som én løkke)
+  return [['base'], ['fitness'], ['plan'], ...Array.from({ length: parts }, (_, k): NewGamePhase[] => (k === parts - 1 ? [`shortlists:${k}/${parts}`, 'rest'] : [`shortlists:${k}/${parts}`]))];
 }
+/** ønskelisternes portioner ved nyt spil (localStorage['cm0102.ngSlParts'] overstyrer – til målinger) */
+const SL_PARTS = 12;
+/** pause mellem to trins arbejdere (ms) */
+const PHASE_GAP_MS = 400;
 const newWorker = () => new Worker(new URL('./newGameWorker.ts', import.meta.url), { type: 'module' });
 /** kører trinene i hver sin arbejder; den sidste svarer med spillet */
 function runPhases(first: NewGameJob, stages: NewGameJob['phases'][], pre: Worker | null, onProgress: (p: NewGameProgress) => void, signal?: AbortSignal): Promise<GameState> {
@@ -118,7 +128,12 @@ function runPhases(first: NewGameJob, stages: NewGameJob['phases'][], pre: Worke
         const m = e.data;
         if (done) return;
         if (m.type === 'progress') onProgress({ step: m.step, frac: m.frac });
-        else if (m.type === 'handed' && ch) { w.terminate(); start(i + 1, newWorker(), { opts: job.opts, from: ch.port2 }); }
+        else if (m.type === 'handed' && ch) {
+          // (hukommelse) Safari frigiver en afsluttet arbejders heap lidt efter terminate – næste arbejder startes først efter en kort pause, så de
+          // to ikke er i hukommelsen samtidig (målt i WebKit: toppen ved skiftet)
+          w.terminate(); cur = null;
+          setTimeout(() => { if (!done) start(i + 1, newWorker(), { opts: job.opts, from: ch.port2 }); }, PHASE_GAP_MS);
+        }
         else if (m.type === 'done') { done = true; w.terminate(); cur = null; resolve(m.game as GameState); }
         else if (m.type === 'error') fail(new Error(m.message));
       };

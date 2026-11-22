@@ -25,7 +25,7 @@
 import type { GameState, Player } from './types';
 import { type CmCtx, type CmMem, G, getContract, clubAt, SparseMem } from './cmMem';
 import { holidayOpt_5fea50 } from './cmHoliday';
-import { buildSlWantMem, slMemPages, SLMEM_DEFER } from './cmSlMem';
+import { buildSlWantMem, resetSlBase, slMemPages, SLMEM_DEFER, type SlWantState } from './cmSlMem';
 import { buildWantMem, type WantMem } from './cmContractGame';
 import { cmMarketOn, cmRand, clubRepMem, nationRepMem, staffJoined } from './cmPlayerData';
 import { cmGbp, payClub } from './cmMoney';
@@ -130,6 +130,25 @@ export interface SlMem {
   byClub?: Map<number, [Player, number][]>;
   /** (runde 13) frasorteringens faste dele pr. person og liste for dagens hukommelse (frBits, skipRun) */
   frDay?: FrDay;
+  /** (spilstartens portioner) skadeposternes tæller (0x62ed70) og den aktuelle talrække (slRand: frøet og antal træk; null = sat uden for slRand) */
+  inj?: { n: number }; rnd?: { args: number[]; n: number } | null;
+}
+
+/** (hukommelse, 22/11) spilstartens klubløkke (cmShortlistStart) i portioner – hver i sin egen Web Worker: alt, hvad der lever fra klub til klub
+ *  uden for spillet (hukommelserne, buddene/rygterne, de skrevne klubber, værdierne +0x52, skadetælleren, talrækken). De afledte mellemlagre
+ *  (pbase/cbase/cache/frDay/byClub, stabens fælles personliste) regnes igen af de samme data – spillets data står stille i løkken, og de læser
+ *  ikke hukommelsen, løkken skriver. Typede tabeller, så de kan sendes som Transferable. */
+export interface SlResume {
+  /** næste klubs indeks i Object.values(g.clubs) */
+  next: number;
+  want: SlWantState; inj: number; events: SlEvent[]; slotted: number[]; rnd: { args: number[]; n: number };
+  values: { date: string; v: Int32Array; skipped: Int32Array; lazy: Int32Array };
+}
+/** M.setRand med en talrække, hvis tilstand kan gives videre (frøet + antal træk) */
+function slRand(S: SlMem, set: (f: (n: number) => number) => void, ...args: number[]): void {
+  const f = cmRand(...args), r = { args, n: 0 };
+  set((k) => { r.n++; return f(k); });
+  S.rnd = r;
 }
 
 /** 0x844300 shortlist_staff_fits_slot_position: spillerposten (+0x61) har ≥ 15 på positionen/siden; 15 = en ikke-spiller med post */
@@ -1578,11 +1597,13 @@ function smallWantMem(g: GameState, clubs: number[], hold: { S?: SlMem }): WantM
 }
 
 /** Bygger dagens hukommelse (alle klubber, de klubløse, pladserne, parrene, buddene, positionslisterne) */
-export function buildSlMem(g: GameState, opts: { noStale?: boolean } = {}): SlMem {
+export function buildSlMem(g: GameState, opts: { noStale?: boolean; resume?: SlResume } = {}): SlMem {
   ensureCmp();
+  // (portionerne) som en ny arbejder: ingen varig hukommelse fra forrige portion (ellers udskydes spillerne – cmSlMem.ts stale)
+  if (opts.resume) resetSlBase(g);
   let S!: SlMem;
   const fit = cmFitRead(g);
-  let injN = 0;
+  const injC = { n: 0 };
   const call = (adr: number, a: number[]): number | undefined => {
     const m = S.M.c.m;
     switch (adr) {
@@ -1597,7 +1618,7 @@ export function buildSlMem(g: GameState, opts: { noStale?: boolean } = {}): SlMe
         const p = S.byMem.get(m.s32(a[a.length - 1] >>> 0));
         const inj = p ? fit.injury(p) : null;
         if (!inj) return 0;
-        const r = INJ0 + 0x40 * (injN++ % 0x1000);
+        const r = INJ0 + 0x40 * (injC.n++ % 0x1000);
         for (let i = 0; i < 0x40; i++) m.w8(r + i, 0);
         m.w16(r + 0x28, inj.w28); m.w16(r + 0x2c, inj.w2c);
         return r;
@@ -1698,9 +1719,30 @@ export function buildSlMem(g: GameState, opts: { noStale?: boolean } = {}): SlMe
   for (const [p, st] of M.W.players) { const id = pidStaff ? (st - base0) / 0x6e : m.s32(st); if (!pidStaff) memOfM.set(p.id, id); byMemA[id] = p; }
   const memOf = pidStaff ? { get: (pid: number) => { const st = pidStaff(pid); return st === undefined ? undefined : (st - base0) / 0x6e; } } : memOfM;
   const byMem = { get: (id: number) => (id >= 0 ? byMemA[id] : undefined) };
-  S = { M, m, c: M.c, g, slm: m.u32(m.u32(0xde1f54) + 0x856), memOf, byMem, clubAdr: (cid) => M.W.clubOf(cid), events: [], slotted: new Set() };
+  S = { M, m, c: M.c, g, slm: m.u32(m.u32(0xde1f54) + 0x856), memOf, byMem, clubAdr: (cid) => M.W.clubOf(cid), events: [], slotted: new Set(), inj: injC, rnd: null };
   if (ENV.CM_SL_PVDIRECT !== '0') { const S0 = S; PV_DIRECT.c = M.c; PV_DIRECT.f = (st, a1, mask, club, a4) => planValue(S0, st >>> 0, a1, mask, club >>> 0, a4); }
-  M.setRand(cmRand(g.seed ?? 0, dayNum(g.date), 0x842e10));
+  // (portionerne) M.setRand uden for slRand: talrækkens tilstand kendes ikke (en portion kan da ikke gives videre)
+  const rawSet = M.setRand;
+  M.setRand = (f) => { S.rnd = null; rawSet(f); };
+  const R = opts.resume;
+  if (R) {
+    // en ny arbejder fortsætter forrige portion: hukommelserne og lukningernes tilstand som da den slap (buildSlWantMem's opbygning af det samme
+    // spil giver de samme id'er og adresser – siderne erstattes), resten af løkkens tilstand og talrækken
+    const sw = (M as { slRestore?: (s: SlWantState) => void }).slRestore;
+    if (!sw) throw new Error('buildSlMem: ingen slRestore');
+    sw(R.want);
+    injC.n = R.inj; S.events = R.events; S.slotted = new Set(R.slotted);
+    const v = new Map<number, number>(), lazy = new Map<number, [number, number, number]>();
+    for (let i = 0; i < R.values.v.length; i += 2) v.set(R.values.v[i], R.values.v[i + 1]);
+    for (let i = 0; i < R.values.lazy.length; i += 4) lazy.set(R.values.lazy[i], [R.values.lazy[i + 1] >>> 0, R.values.lazy[i + 2] >>> 0, R.values.lazy[i + 3] >>> 0]);
+    const dp = (M as { deferredPids?: { has(pid: number): boolean } }).deferredPids;
+    VALUES.set(g, { date: R.values.date, v, skipped: new Set(R.values.skipped), lazy, dp });
+    // (talrækken spoles frem gennem lukningen – tælleren følger med)
+    slRand(S, rawSet, ...R.rnd.args);
+    for (let i = 0; i < R.rnd.n; i++) M.c.rand(1);
+    return S;
+  }
+  slRand(S, rawSet, g.seed ?? 0, dayNum(g.date), 0x842e10);
   // CONTRACT_MANAGER's faste datoer (0x4c7ac0 tidspunkt 0) – 0x867d30
   for (const [adr, n] of [[0xae1048, 7], [0xae1030, 0x1e], [0xae1058, 0x3c], [0xae1010, 0x5b], [0xae1060, 0x79], [0xae1040, 0x98],
     [0xae1090, 0xb6], [0xae1068, 0x16d], [0xae1008, 0x226], [0xae1020, 0x447]] as const) {
@@ -1887,7 +1929,7 @@ export function afterPlan(S: SlMem, cid: number, dropped: number[]): void {
     if (id === undefined) continue;
     if (onList(S, id, cid)) shared(() => slCall(S.c, 0x843e10, S.slm, (S.m.u32(G.STAFF) + 0x6e * id) >>> 0, club, 3, 0));
   }
-  S.M.setRand(cmRand(S.g.seed ?? 0, cid, dayNum(S.g.date), 0x83b6e0));
+  slRand(S, (f) => S.M.setRand(f), S.g.seed ?? 0, cid, dayNum(S.g.date), 0x83b6e0);
   shared(() => slCall(S.c, 0x83b6e0, S.slm, club), S);
   readSlots(S, cid);
   for (const h of afterBudgetHooks) h(S.g, cid);
@@ -2177,21 +2219,52 @@ export const SL_START_PROGRESS: { cb?: (frac: number) => void } = {};
 
 /** 0x83a1b0's slutning (spilstarten, efter trupplanen, lønnen og værdierne): 0x83a780 og 0x83b6e0 for alle klubber med plan */
 export function cmShortlistStart(g: GameState): SlEvent[] {
-  if (!cmShortlistOn(g) || !g.cmPlan || ENV.CM_SL_START === '0') return [];
+  return cmShortlistStartPart(g, 0, 1, null).events ?? [];
+}
+
+/** (hukommelse, 22/11) cmShortlistStart i `parts` portioner af klubløkken, portion `part` (0 … parts − 1): den første bygger hukommelsen, de
+ *  følgende fortsætter med forrige portions tilstand (`resume`, SlResume) – i alt bit for bit som én løkke (scripts/newgame-phases-check.ts). Giver
+ *  tilstanden til næste portion, eller (den sidste, eller når ønskelisterne ikke kører) `resume` null og løkkens bud/rygter. */
+export function cmShortlistStartPart(g: GameState, part: number, parts: number, resume: SlResume | null): { resume: SlResume | null; events?: SlEvent[] } {
+  if (!cmShortlistOn(g) || !g.cmPlan || ENV.CM_SL_START === '0') return { resume: null, events: [] };
+  if (part > 0 && !resume) throw new Error('cmShortlistStartPart: ingen tilstand fra forrige portion');
   const t0 = typeof performance !== 'undefined' ? performance.now() : 0;
-  const S = buildSlMem(g);
+  const S = buildSlMem(g, resume ? { resume } : {});
   // stabens mål (cmStaffMove.ts afterBudget → staffSearch) deler personlisten for hele løkken (cmBoardGame.ts withSharedPersons)
   const clubs = Object.values(g.clubs), prog = SL_START_PROGRESS.cb;
+  const from = resume ? resume.next : 0, to = part >= parts - 1 ? clubs.length : Math.trunc((clubs.length * (part + 1)) / parts);
   withSharedPersons(g, () => {
-    for (let i = 0; i < clubs.length; i++) {
+    for (let i = from; i < to; i++) {
       if (prog && (i & 63) === 0) prog(i / clubs.length);                          // fremdriftsbjælken ved nyt spil (rører intet i spillet)
       if (g.cmPlan![clubs[i].id]) afterPlan(S, clubs[i].id, []);
     }
   });
+  if (to < clubs.length) {
+    const st = (S.M as { slState?: () => SlWantState }).slState;
+    if (!st || !S.rnd) throw new Error('cmShortlistStartPart: tilstanden kan ikke gives videre');
+    const e = VALUES.get(g);
+    if (!e) throw new Error('cmShortlistStartPart: ingen værdier');
+    const v = new Int32Array(2 * e.v.size), lazy = new Int32Array(4 * e.lazy.size);
+    let i = 0;
+    for (const [k, x] of e.v) { v[i++] = k; v[i++] = x; }
+    i = 0;
+    for (const [k, [a, b, c]] of e.lazy) { lazy[i++] = k; lazy[i++] = a; lazy[i++] = b; lazy[i++] = c; }
+    const out: SlResume = { next: to, want: st(), inj: S.inj!.n, events: S.events, slotted: [...S.slotted], rnd: { args: S.rnd.args, n: S.rnd.n },
+      values: { date: e.date, v, skipped: Int32Array.from(e.skipped), lazy } };
+    (S.m as SparseMem).release();
+    VALUES.delete(g);
+    if (t0) SL_STATS.startMs += performance.now() - t0;
+    return { resume: out };
+  }
   const ev = finishSl(S);
   (S.m as SparseMem).release();
   if (t0) SL_STATS.startMs += performance.now() - t0;
-  return ev;
+  return { resume: null, events: ev };
+}
+/** de typede tabeller i en portions tilstand (postMessage's Transferable-liste) */
+export function slResumeTransfer(r: SlResume | null): ArrayBuffer[] {
+  if (!r) return [];
+  return [r.want.P.nums, r.want.P.data, r.want.m.nums, r.want.m.data, r.want.natInit, r.values.v, r.values.skipped, r.values.lazy].map((a) => a.buffer as ArrayBuffer);
 }
 
 // ---------------------------------------------------------------- dagen (0x5cccd0's klubløkke) – erstatter cmSquadPlanDaily

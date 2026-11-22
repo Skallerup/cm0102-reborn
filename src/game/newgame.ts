@@ -59,7 +59,7 @@ import { cmPermitNewGame } from './cmPermit';
 import { cmSquadPlanStart, SQUADPLAN_PROGRESS } from './cmSquadPlanGame';
 import { PRERUN_PROGRESS } from './cmPrerun';
 import { cmStaffWageNewGame, cmStaffWagePrepare, cmWageFillNewGame } from './cmWageGame';
-import { cmShortlistStart, SL_START_PROGRESS } from './cmShortlistGame';
+import { cmShortlistStart, cmShortlistStartPart, SL_START_PROGRESS, type SlResume } from './cmShortlistGame';
 import { cmValuesApply } from './cmValueGame';
 import { cmRefreshTransferBudgets } from './cmBudget';
 import { cmRetireInit } from './cmRetire';
@@ -138,9 +138,12 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
 /** (hukommelse, iPhone 22/11) spilstarten i trin: ui/newGameWorker.ts kører hvert tungt trin i sin egen kortlivede Web Worker (Safaris heap
  *  fragmenteres – levende ~0,3–0,65 GB, men kapaciteten voksede til 2,4 GB). Mellem trinene følger spillet med modulernes tilstand (carry.ts) og
  *  talrækken (g.rng); `ctx` er de lokale værdier, de senere trin bruger. createGame = samme trin i ét forløb. */
-export interface NewGameCtx { o: NewGameOptions; season: number; cmRawLogic: boolean; unsetWages: number[] }
+export interface NewGameCtx { o: NewGameOptions; season: number; cmRawLogic: boolean; unsetWages: number[];
+  /** ønskelisternes klubløkke i portioner ('shortlists:k/n'): tilstanden fra forrige portion (cmShortlistGame.ts SlResume) */
+  sl?: SlResume | null }
 export const NEW_GAME_PHASES = ['fitness', 'plan', 'shortlists', 'rest'] as const;
-export type NewGamePhase = (typeof NEW_GAME_PHASES)[number];
+/** 'shortlists:k/n' = portion k (0 … n − 1) af ønskelisternes klubløkke – alle n efter hinanden = 'shortlists' (hver i sin egen Web Worker) */
+export type NewGamePhase = (typeof NEW_GAME_PHASES)[number] | `shortlists:${number}/${number}`;
 export function createGameBase(world: WorldData, o: NewGameOptions): NewGameCtx {
   progress('clubs', 0.02);
   const mode = o.mode ?? 'authentic';
@@ -760,13 +763,17 @@ export function createGamePhase(phase: NewGamePhase, ctx: NewGameCtx): void {
   cmStaffWageNewGame(g);
   return;
   }
-  if (phase === 'shortlists') {
+  if (phase === 'shortlists' || phase.startsWith('shortlists:')) {
   // 0x83a1b0's slutning: positionslisterne 0x83a780 og budgettets fordeling/målene 0x83b6e0 for alle klubber (cmShortlistGame.ts)
   // (nyt spil-forløbets midlertidige verden: ikke – den bruges kun til Select Team, og spillet bygges igen ved Take Control)
   if (!o.preview) {
-    progress('shortlists', 0.59);
+    const pm = /^shortlists:(\d+)\/(\d+)$/.exec(phase);
+    if (!pm || pm[1] === '0') progress('shortlists', 0.59);
     SL_START_PROGRESS.cb = (f) => progress('shortlists', 0.59 + 0.36 * f);
-    try { cmShortlistStart(g); } finally { SL_START_PROGRESS.cb = undefined; }
+    try {
+      if (!pm) cmShortlistStart(g);
+      else { const r = cmShortlistStartPart(g, +pm[1], +pm[2], ctx.sl ?? null); ctx.sl = r.resume; }
+    } finally { SL_START_PROGRESS.cb = undefined; }
   }
   return;
   }
