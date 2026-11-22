@@ -8,6 +8,7 @@
 import { createGame, createGameBase, createGamePhase, setNewGameProgress, type NewGameCtx, type NewGameOptions, type NewGamePhase, type WorldData } from '../game/newgame';
 import { gs, packCarry, setGame } from '../game/state';
 import { rng } from '../game/rng';
+import { releasePagePool } from '../game/cmMem';
 import { convertOriginal, restartInOriginal, type ConvertReport } from '../game/cmConvert';
 import type { CMWorld } from '../game/data/cm0102';
 import type { GameState } from '../game/types';
@@ -73,6 +74,7 @@ self.onmessage = async (e: MessageEvent<NewGameJob | LoadJob>) => {
       if (job.to) {
         const g = gs();
         packCarry(g);
+        releasePagePool();
         job.to.postMessage({ game: g, ctx: ctx!, rng: rng.state } satisfies PhaseHandoff);
         job.to.close();
         setGame(null);
@@ -91,6 +93,7 @@ self.onmessage = async (e: MessageEvent<NewGameJob | LoadJob>) => {
     }
     // (hukommelse, 21/11) arbejderens kopi af databasen slippes, før spillet kopieres tilbage – ellers lever begge under kopieringen
     job.world = undefined;
+    releasePagePool();
     post({ type: 'progress', step: 'done', frac: 1 });
     // modulernes tilstand (carry.ts) og indeksernes rækkefølge med – hovedtråden fortsætter præcis som spillet bygget her
     const g = gs();

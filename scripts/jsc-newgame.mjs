@@ -24,7 +24,8 @@ await build({ entryPoints: ['scripts/jsc-newgame-entry.ts'], bundle: true, forma
   define: { 'import.meta.env.BASE_URL': '"/"', 'import.meta.env': '{}' }, logLevel: 'error', mainFields: ['module', 'main'],
   banner: { js: POLY + 'var console = { log: (...a) => print(...a), warn: (...a) => print(...a), error: (...a) => print(...a), info: () => {}, debug: () => {} }; var process = undefined;' } });
 const JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Helpers/jsc';
-const p = spawn(JSC, [out, '--', file, nat, gcStep], { stdio: ['ignore', 'pipe', 'inherit'] });
+// JSCFLAGS='--useFTLJIT=false …': jsc-skallens flag (fx for at se, om JIT-oversættelsen bruger hukommelsen)
+const p = spawn(JSC, [...(process.env.JSCFLAGS ? process.env.JSCFLAGS.split(' ') : []), out, '--', file, nat, gcStep], { stdio: ['ignore', 'pipe', 'inherit'] });
 let peak = 0, line = '';
 const fp = () => { try { const o = execSync(`footprint --noCategories -f bytes -p ${p.pid}`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }); const m = o.match(/phys_footprint: (\d+) B/); return m ? Number(m[1]) / 1048576 : 0; } catch { return 0; } };
 p.stdout.on('data', (d) => { for (const l of String(d).split('\n').filter(Boolean)) { line = l; console.log(`${l}  | fp ${fp().toFixed(0)} MB`); } });

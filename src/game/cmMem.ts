@@ -32,6 +32,9 @@ const NOPAGES: (Uint8Array | null)[] = new Array(1024).fill(null);
 /** genbrugte sider (SparseMem.release) – nulstilles, før de bruges igen */
 const POOL: Uint8Array[] = [];
 const POOL_MAX = 24000;
+/** (hukommelse, 22/11) puljens sider slippes – nyt spils arbejder før den sidste kopi til hovedtråden (op til ~100 MB). Puljen er kun genbrug: en ny side
+ *  nulstilles altid (page), så indholdet er det samme med og uden puljen. */
+export function releasePagePool(): void { POOL.length = 0; }
 
 /** Spredt hukommelse i sider à 4 KB; ulæste bytes er 0. `miss` kan fylde en side første gang, den læses (spillets dovne poster). */
 export class SparseMem implements CmMem {

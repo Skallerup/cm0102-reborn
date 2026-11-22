@@ -290,8 +290,12 @@ export const QSORT_CMP8: Record<number, { cmp: (a0: number, a1: number, b0: numb
 export const QSORT_STATS = { fast: 0, slow: 0 };
 /** qsort af 8-bytes-poster: er posterne 0..n−2 strengt sorterede (og alle uden jokertegn), er den sorterede rækkefølge entydig – den sidste
  *  post sættes ind ved binær søgning (8423f0 tilføjer ét par og sorterer). Ellers MSVC-qsort'en med de samme sammenligninger på tallene. */
+// (hukommelse, 22/11) genbrugte buffere – qsort8 kaldes for hver liste i ønskelisternes klubløkke (nye typed arrays pr. kald fragmenterede Safaris
+// hukommelse). Sammenligningerne kalder ikke qsort igen, så én buffer er nok.
+let Q8A = new Int32Array(1024), Q8B = new Int32Array(1024);
 function qsort8(m: CmMem, base: number, n: number, vc: (typeof QSORT_CMP8)[number]): void {
-  const A0 = new Int32Array(n), A1 = new Int32Array(n);
+  if (Q8A.length < n) { Q8A = new Int32Array(n * 2); Q8B = new Int32Array(n * 2); }
+  const A0 = Q8A, A1 = Q8B;
   for (let i = 0; i < n; i++) { A0[i] = m.s32(base + 8 * i); A1[i] = m.s32(base + 8 * i + 4); }
   let ok = true;
   for (let i = 0; i < n && ok; i++) if (!vc.strict(A0[i], A1[i])) ok = false;
@@ -343,8 +347,10 @@ const CRT: Record<number, (R: X86) => void> = {
     if (n < 2) return;
     const vc = w === 8 && QSORT_CMP8[cmpA];
     if (vc) { qsort8(m, base >>> 0, n, vc); return; }
+    // (hukommelse) posterne i én buffer i stedet for en Uint8Array pr. post
+    const all = new Uint8Array(n * w);
     const recs: Uint8Array[] = [];
-    for (let i = 0; i < n; i++) { const r = new Uint8Array(w); for (let k = 0; k < w; k++) r[k] = m.u8(base + i * w + k); recs.push(r); }
+    for (let i = 0; i < n; i++) { const r = all.subarray(i * w, i * w + w); for (let k = 0; k < w; k++) r[k] = m.u8(base + i * w + k); recs.push(r); }
     // sammenligningen læser posterne i hukommelsen: to skrabeposter
     const SA = 0x5fff0000, SB = SA + 0x400;
     const ix = recs.map((_, i) => i);
