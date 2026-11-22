@@ -10,7 +10,7 @@
 //             godkender, kopieres: turneringen = Reserve, +0x3a = 1, +0x40 = +0x41 = 0 (reservesiderne), dato R, hjemme- og udeholdet BYTTET
 //             (undtagen i Tyrkiet [0x9cf4dc]), stadion = den nye hjemmeklubs +0x6e (aldrig sat i databasen) ellers +0x69 – er det optaget den
 //             dag (0x5ae870), oprettes kampen ikke. add_fixture 0x5aa680(kopien, 1): et sammenstød (0x5ad780: en anden kamp for et af holdene
-//             dagen før, samme dag eller dagen efter) med type ≥ 1 → en 0x7e6f20-turnering (Reserve) droppes (0x5aa951).
+//             samme dag – 0x5adba0 springer dag ±1/±2 over for +0x3a = 1) med type ≥ 1 → en 0x7e6f20-turnering (Reserve) droppes (0x5aa951).
 //   0x7e6ba0  (kamp, 1): runde-/navnekoderne +0x30 ≠ 0 / +0x32 ∈ {0x418, 0x419, 0xa0} → nej (ligakampe har 0); hjemmeklubben i Tyrkiet kun
 //             i divisionen [0x9cf8d4] (−1 i databasen → aldrig); 26/12 → nej; hjemmeklubben i Scottish Premier [0x9cf5dc] eller Tyrkiet: hvert
 //             hold skal have mindst 15 spillere ≤ 21 år; begge klubber reservehold (0x542740); pr. klub over truppens 50 pladser: tom plads → t,
@@ -129,15 +129,12 @@ function stadiumBusy(g: GameState, st: CmRsvState, home: number, date: string): 
   return st.fx.some((r) => r.date === date && stadiumOf(g, r.home) === s);
 }
 
-/** 0x5ad780: en anden kamp for et af holdene dagen før, samme dag eller dagen efter */
+/** 0x5ad780: en anden kamp for et af holdene samme dag. 0x5ad780 kalder 0x5adba0 for dagene −1, 0, +1 (og ±2), men 0x5adba0 returnerer
+ *  straks for en kamp med +0x3a = 1 (reservekampen) og en forskydning ≠ 0 (0x5adc3b–0x5adc41) – kun dagen selv tæller */
 function clash(g: GameState, st: CmRsvState, home: number, away: number, date: string): boolean {
   const hit = (h: number, a: number) => h === home || h === away || a === home || a === away;
-  for (let k = -1; k <= 1; k++) {
-    const d = addDays(date, k);
-    for (const id of fixturesOn(d)) { const f = g.fixtures[id]; if (f && hit(f.home, f.away)) return true; }
-    if (st.fx.some((r) => r.date === d && hit(r.home, r.away))) return true;
-  }
-  return false;
+  for (const id of fixturesOn(date)) { const f = g.fixtures[id]; if (f && hit(f.home, f.away)) return true; }
+  return st.fx.some((r) => r.date === date && hit(r.home, r.away));
 }
 
 /** 0x7e6380(D): reservekampene for førsteholdenes ligakampe på D */

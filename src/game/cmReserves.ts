@@ -16,8 +16,8 @@
 //             skadet (0x62c400 = 2) og ikke hos landsholdet (0x7757d0). Ombytningssortering faldende; klar = antal > 0; er klar > 2: klar²
 //             ombytninger af rand(klar), rand(klar). Parvis 0–1, 2–3 …, så længe den første har > 0 og den anden > −1.
 //   kampen    fixture −2 (+0x3a = 2, +0x40/+0x41 = 1, intet stadion/turnering): fyldspillerne 0x90d2f0, hele kampmotoren (init_match 0x6b7f20,
-//             run_match_steps 0x6b98c0), resultatposten 0x729ff0, PlayerStats 0x7c0d70 (kategori pr. hold rand(9) ? 2 : 3 – liga/pokal; ikke
-//             spillets karaktersnit), kontraktens tællere og bonusserne 0x4ca6d0 (+0x3a ≠ 1: ikke venskabskamp), konditionen/skaderne 0x62c080,
+//             run_match_steps 0x6b98c0), resultatposten 0x729ff0, PlayerStats 0x7c0d70 (kategori pr. hold rand(9) ? 2 : 3 – liga/pokal; karaktererne
+//             i de «hurtige» kampes snit +0x20/+0x28 – engine+0 = 1 fra init_match(…, 1, 0, 0) 0x84c3e8), kontraktens tællere og bonusserne 0x4ca6d0 (+0x3a ≠ 1: ikke venskabskamp), konditionen/skaderne 0x62c080,
 //             AWARD_MANAGER 0x4134c0 (ingen turnering → ingen priser), arbejdstilladelsen 0x8c39f0; fyldspillerne ud igen 0x90d6b0.
 //             Ingen tabel, ingen økonomi (FinanceTable 0x59a5d0 kaldes ikke), ingen karantæner (Discipline 0x55ca00 kaldes ikke), ingen
 //             bestyrelse, ingen nyheder.

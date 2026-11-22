@@ -69,7 +69,7 @@ import { cmReceivershipValues, cmValuesDaily } from './cmValueGame';
 import { cmContractsDaily, cmExpireOutsideDaily, cmSeasonDaily, endDueLoansDaily, freeAgentDrift, monthlyClubReps, seasonRollover, spawnDueRegens, youthIntake, youthPreview } from './season';
 import { cmMainNation, cmSeasonForNewNation, cmSeasonOn } from './cmSeason';
 import { cmRefreshTransferBudgets, cmTransferBudgetRaw, humanClubIds as cmHumanClubIds } from './cmBudget';
-import { cmRetireDaily } from './cmRetire';
+import { cmInMemory, cmRetireDaily } from './cmRetire';
 import { cmShortlistOn } from './cmShortlistGame';
 import { squadStrength } from './board';
 import { chemistryMorale, monthlyPersonality } from './personality';
@@ -387,7 +387,8 @@ function playResMatch(f: Fixture): MatchReport | null {
     // 0x4ca6d0: +0x3a = 2 (ikke venskabskamp) – bonusserne betales
     if (p.contract?.goalBonus || p.contract?.cleanSheetBonus || p.contract?.cmAssistBonus || p.addOn) afterAppearance(p, line.goals, cmKeeperConceded(line, rep), { assists: line.assists, pay: true });
   }
-  cmAfterMatch(g, f, rep, squad, { cats });
+  // 0x7c0d70 i de «hurtige» kampes snit (engine+0 = 1) – kun personer i hukommelsen (id < [0xae2364]; databasestørrelsens udvalg, cmInMemory)
+  cmAfterMatch(g, f, rep, squad, { cats, avg: true, quick: true, avgOf: (p) => cmInMemory(g, p) });
   cmPermitAfterMatch(g, f, rep, (p) => !!p.injury || p.banned > 0);
   cmFitMatch(g, rep, true, f.id, [f.home, f.away]);
   cmScoutMatch(g, f, rep);

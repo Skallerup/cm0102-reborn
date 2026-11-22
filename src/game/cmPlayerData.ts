@@ -151,7 +151,7 @@ export function recordPlayerMatch(g: GameState, p: Player, cat: number, line: St
   const r = ratingByte(line.rating);
   // spillets karaktersnit (double, 680/100 ved spilstart 0x7c0073): resultatposten +0x4c = engine+0 (0x729ff0) = 0 → +0x10/+0x18 (cmRatingAvg –
   // 0x6e2f20 læser det for spillere over 33, 0x6e41a8), ellers +0x20/+0x28 (cmRatingAvgQ) – de «hurtige» kampe (cmQuickMatch.ts 0x6b66a0:
-  // reservekampene, de fleste venskabskampe og Intertoto-kampe uden menneske). Baggrundskampene (−2, 0x84be20) tæller ikke (avgOk).
+  // reservekampene, de fleste venskabskampe og Intertoto-kampe uden menneske) og baggrundskampene (−2, 0x84be20: init_match(…, 1, …) 0x84c3e8).
   if (avgOk) { const avg = quick ? (g.cmRatingAvgQ ??= [680, 100]) : (g.cmRatingAvg ??= [680, 100]); avg[0] += r; avg[1] += 1; }
   const [con, pens, penGoals, asts, shots, on, drb, yel, red] = lineFields(line, ga, (p.pos?.[0] ?? 0) >= 20);
   const stats = (p.cmStats ??= {});
@@ -614,18 +614,19 @@ export function cmApplyPost(g: GameState, f: Fixture, rep: MatchReport, world200
 
 /** 0x7c0d70 + 0x4ca6d0 for en klubkamp: statistik pr. kategori, formen, karaktersnittet og kontraktens tællere for begge hold. */
 export function cmAfterMatch(g: GameState, f: Fixture, rep: MatchReport, squadOf: (club: number) => Player[],
-  bg?: { cats: [number, number]; avg?: boolean; contract?: boolean }): void {
+  bg?: { cats: [number, number]; avg?: boolean; contract?: boolean; quick?: boolean; avgOf?: (p: Player) => boolean }): void {
   // 2026/27 i ægte tilstand (cmLogic uden cmActive): ældre spil uden moralmodulet (g.cmMedia) kun kampmotorens omdømme (spillerne +9/+0xb/+0xd,
   // klubben +0x80) – spillets egen moral i sim.ts gælder dér. Med cmMediaOn (MODERN_PARITY 8) som 2001: moralen, managerens omdømme, PlayerStats
   // og kontraktens tællere (0x5ce2d0's kontraktdel læser dem)
   if (!cmMediaOn(g)) { if (cmLogic(g) && !g.draft) cmApplyPost(g, f, rep, false); return; }
   cmApplyPost(g, f, rep);
-  // baggrundskampene (fixture −2, 0x84be20 – cmReserves.ts): kategorien pr. hold rand(9) ? 2 : 3, og spillets karaktersnit tæller dem ikke
+  // baggrundskampene (fixture −2, 0x84be20 – cmReserves.ts): kategorien pr. hold rand(9) ? 2 : 3; init_match(kampen, 1, 0, 0) 0x84c3e8 giver
+  // engine+0 = 1, så 0x729ff0's +0x4c = 1 og 0x7c0d70 lægger karaktererne i de «hurtige» kampes snit +0x20/+0x28 (bg.quick)
   const cat = statCategory(g, f);
   const goals = [rep.stats[0].goals, rep.stats[1].goals];
   // engine+0 (resultatposten +0x4c): gittermotoren har regnet den før kampen (adapter.ts); zonemotorens kampe (venskabskampe, Europa uden
   // menneske) af de udtagne – spillerne i rapporten og bænken
-  const quick = rep.engine === 'original' ? !!rep.cmQuick : !(bg ? bg.avg : true) ? false : (() => {
+  const quick = bg?.quick ? true : rep.engine === 'original' ? !!rep.cmQuick : !(bg ? bg.avg : true) ? false : (() => {
     const pick = (s: 0 | 1) => [...rep.players.filter((l) => l.team === s).map((l) => l.id), ...(rep.bench?.[s] ?? [])].map((id) => g.players[id]).filter((p): p is Player => !!p);
     return postHooks.quick?.(g, f, [pick(0), pick(1)], false) === 1;
   })();
@@ -634,7 +635,7 @@ export function cmAfterMatch(g: GameState, f: Fixture, rep: MatchReport, squadOf
     const p = g.players[line.id]; if (!p) continue;
     played.add(p.id);
     const gf = goals[line.team], ga = goals[1 - line.team];
-    recordPlayerMatch(g, p, bg ? bg.cats[line.team] : cat, line, gf, ga, rep.mom === p.id, bg ? !!bg.avg : true, quick);
+    recordPlayerMatch(g, p, bg ? bg.cats[line.team] : cat, line, gf, ga, rep.mom === p.id, bg ? !!bg.avg && (bg.avgOf?.(p) ?? true) : true, quick);
     // reservekampene (cmReserveMatches.ts): 0x4ca6d0 gør intet, når fixture +0x40/+0x41 = 0
     if (bg?.contract === false) continue;
     const club = line.team === 0 ? f.home : f.away;
