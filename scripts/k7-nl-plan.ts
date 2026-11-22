@@ -13,11 +13,12 @@ import { gs } from '../src/game/state';
 import { fromRow } from '../src/game/cmSquadPlanGame';
 import { cmInMemory } from '../src/game/cmRetire';
 import type { GameState } from '../src/game/types';
+import { cmGbp } from '../src/game/cmMoney';
 
 const DATES = (process.env.DATES ?? '2001-07-21,2002-09-08,2002-12-29').split(',');
 const Y23 = `${homedir()}/cm0102-engine/oracle/daysnap/s1-3.9.60-y23-e14`;
 const LEAGUE = new Set(['English Premier Division', 'English First Division', 'English Second Division', 'English Third Division']);
-interface CRow { name: string; div: string; rep: number; entry: boolean; st: number; cnt: number; slots: number; tgt: number; ext: number; free: number; own: number; open: number; b7: number; sq: number; staffT: number }
+interface CRow { name: string; div: string; rep: number; entry: boolean; st: number; cnt: number; slots: number; tgt: number; ext: number; free: number; own: number; open: number; b7: number; sq: number; staffT: number; bal?: number; wb?: number; tb?: number }
 const str = (m: SparseMem, a: number, n = 54) => { let s = ''; if (!a) return s; for (let i = 0; i < n; i++) { const c = m.u8(a + i); if (!c) break; s += String.fromCharCode(c); } return s.trim(); };
 
 function oracle(m: SparseMem): CRow[] {
@@ -37,7 +38,9 @@ function oracle(m: SparseMem): CRow[] {
     const dv = m.u32(a + 0x57), div = dv ? str(m, dv + 4) : '';
     if (LEAGUE.has(div)) continue;
     const ent = m.u32(slm + 0xdc) + 9 * ix, base = m.u32(ent);
-    const r: CRow = { name: str(m, a + 4), div, rep: m.s16(a + 0x80), entry: !!base, st: m.u8(ent + 4), cnt: m.u8(ent + 8), slots: 0, tgt: 0, ext: 0, free: 0, own: 0, open: 0, b7: 0, sq: sq.get(ix) ?? 0, staffT: 0 };
+    const f = m.u32(m.u32(0xae2a38)) + 0x167 * ix;
+    const r: CRow = { name: str(m, a + 4), div, rep: m.s16(a + 0x80), entry: !!base, st: m.u8(ent + 4), cnt: m.u8(ent + 8), slots: 0, tgt: 0, ext: 0, free: 0, own: 0, open: 0, b7: 0, sq: sq.get(ix) ?? 0, staffT: 0,
+      bal: m.u32(f) + m.s32(f + 4) * 4294967296, wb: m.s32(f + 0xc) };
     if (base) for (let i = 0; i < 40; i++) {
       const s = base + 0x25 * i, role = m.u8(s);
       if (role === 0 || role === 0xff) continue;
@@ -68,7 +71,8 @@ function ours(): CRow[] {
     const div = lg?.hidden ? (lg?.name ?? '') : g.comps[c.league]?.name ?? lg?.name ?? '';
     if (LEAGUE.has(div)) continue;
     const st = g.cmPlan?.[c.id];
-    const r: CRow = { name: c.name, div, rep: g.cmClubRep?.[c.id] ?? Math.round(c.rep * 100), entry: !!st, st: st?.st ?? 0, cnt: st?.c ?? 0, slots: 0, tgt: 0, ext: 0, free: 0, own: 0, open: 0, b7: 0, sq: sq.get(c.id) ?? 0, staffT: 0 };
+    const r: CRow = { name: c.name, div, rep: g.cmClubRep?.[c.id] ?? Math.round(c.rep * 100), entry: !!st, st: st?.st ?? 0, cnt: st?.c ?? 0, slots: 0, tgt: 0, ext: 0, free: 0, own: 0, open: 0, b7: 0, sq: sq.get(c.id) ?? 0, staffT: 0,
+      bal: Math.round(c.balance * cmGbp(g, c.id)), wb: g.cmFin?.[c.id]?.wb ?? 0, tb: Math.round((c.transferBudget ?? 0) * cmGbp(g, c.id)) };
     if (st) for (const s of st.s.map(fromRow)) {
       if (s.role === 0 || s.role === 0xff) continue;
       if (s.role !== 0xb) { if (s.f >= 0) r.staffT++; continue; }
@@ -91,7 +95,7 @@ function summary(tag: string, rows: CRow[]): string {
   const lines = [`${tag}: klubber ${rows.length}, med post ${rows.filter((r) => r.entry).length}`];
   for (const [div, rs] of [...by].sort((a, b) => b[1].length - a[1].length)) {
     const s = (f: (r: CRow) => number) => rs.reduce((x, r) => x + f(r), 0);
-    lines.push(`  ${div || '(ingen)'}: n=${rs.length} post=${s((r) => +r.entry)} st0/1/2=${s((r) => +(r.st === 0))}/${s((r) => +(r.st === 1))}/${s((r) => +(r.st === 2))} pladser=${s((r) => r.slots)} mål=${s((r) => r.tgt)} (egen ${s((r) => r.own)} ude ${s((r) => r.ext)} klubløs ${s((r) => r.free)}) åbne=${s((r) => r.open)} stabsmål=${s((r) => r.staffT)} b7=${s((r) => r.b7)} trup=${s((r) => r.sq)} rep∅=${Math.round(s((r) => r.rep) / rs.length)}`);
+    lines.push(`  ${div || '(ingen)'}: n=${rs.length} post=${s((r) => +r.entry)} st0/1/2=${s((r) => +(r.st === 0))}/${s((r) => +(r.st === 1))}/${s((r) => +(r.st === 2))} pladser=${s((r) => r.slots)} mål=${s((r) => r.tgt)} (egen ${s((r) => r.own)} ude ${s((r) => r.ext)} klubløs ${s((r) => r.free)}) åbne=${s((r) => r.open)} stabsmål=${s((r) => r.staffT)} b7=${s((r) => r.b7)} trup=${s((r) => r.sq)} rep∅=${Math.round(s((r) => r.rep) / rs.length)} saldo∅=${Math.round(s((r) => r.bal ?? 0) / rs.length)} wb∅=${Math.round(s((r) => r.wb ?? 0) / rs.length)}`);
   }
   return lines.join('\n');
 }

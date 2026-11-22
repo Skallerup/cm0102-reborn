@@ -350,9 +350,13 @@ export function updateWageBill(g: GameState, c: Club, r: CmFinRec, idx?: WageIdx
   }
   // udlejede spillere: moderklubben betaler resten (spillets lejemodel)
   for (const p of idx ? idx.loanOut.get(c.id) ?? [] : Object.values(g.players)) if (p.loan?.from === c.id && p.contract && (all || inMemory(g, c, p))) wb += Math.round(p.contract.wage * (1 - (p.loan.share ?? 1)) * k0);
-  // stabens kontrakter (+0x19f/+0x1b3/+0x1cf)
+  // stabens kontrakter (+0x19f/+0x1b3/+0x1cf): kun personerne i hukommelsen (Staff.cmMem – databasens, som 0x524d70 beholder, og 0x527240's
+  // genererede) – også i de indlæste lande: spillets egen stab uden for hukommelsen (manager/assistent uden databasens, Englands klubber med
+  // omdømme ≤ 500, størrelse 2's fravalgte) findes ikke i originalen og har ingen kontrakt dér. Før talte de med i et indlæst land: oraklet
+  // 1/9-01 har 578 stabspersoner i Englands non-league (371 med kontrakt, £104.725/uge), vi 945 (760 med løn, £235.025/uge) – lønsummen
+  // trak saldoen og transferbudgettet 0x598800 ned (pladsernes +7 i NPL ∅ 1.836 mod 44.331 29/12-02)
   for (const s of idx ? idx.staff.get(c.id) ?? [] : Object.values(g.staff)) {
-    if (s.club !== c.id || !s.wage || (!all && g.cmStaffMem && !s.cmMem)) continue;
+    if (s.club !== c.id || !s.wage || (g.cmStaffMem && !s.cmMem)) continue;
     const w = Math.round(s.wage * k0);
     if (w > top) top = w;
     wb += w;
