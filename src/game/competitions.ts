@@ -8,7 +8,7 @@ import { asOwner, forEachHuman } from './humans';
 import { celebrateTrophy } from './fans';
 import type { Competition, Fixture, MatchResultShort, TableRow, Tie } from './types';
 import { econIncome } from './econ';
-import { cmActive } from './cmPlayerData';
+import { cmActive, cmRand } from './cmPlayerData';
 import { CM_LEAGUE_CUT, cmCalendarOn, cmFaCupDate, cmFindNewDate, cmLeagueSchedule, cmPlaceFixture } from './cmCalendar';
 import { cmEuroFinished, cmEuroResult } from './cmEurope';
 import { cmCupKey, cmCupRound, cmFlagsOf, cmLeagueCupStructure } from './cmCups';
@@ -489,21 +489,23 @@ function createTwoLegRound(comp: Competition, pairs: [number, number][], stage: 
   }
 }
 
-function createFinal(comp: Competition, a: number, b: number, date: string) {
+function createFinal(comp: Competition, a: number, b: number, date: string, extra: Partial<Fixture> = {}): Fixture {
   const g = gs();
   const tie: Tie = { id: g.nextId.tie++, a, b, legs: 1, stage: 'F', fx: [] };
   comp.ties.push(tie);
   comp.stage = 'F';
-  newFixture(comp.id, date, a, b, 1, { stage: 'F', tieId: tie.id, leg: 1 });
+  const f = newFixture(comp.id, date, a, b, 1, { stage: 'F', tieId: tie.id, leg: 1, ...extra });
   // "[klub] through to final"
   for (const [me, opp] of [[a, b], [b, a]]) asOwner(me, () => addNews({ cat: 'match', key: 'comp.final', params: { club: g.clubs[me]?.name ?? '', comp: comp.name, opp: g.clubs[opp]?.name ?? '', date }, link: { kind: 'comp', id: comp.id } }));
+  return f;
 }
 
 // ---------- playoffs ----------
 
-export function setupPlayoff(id: string, spec: { seeds: [string, number][]; format: 'semis' | 'final2'; winnerTo: string; loserTo?: string }, season: number) {
+export function setupPlayoff(id: string, spec: { seeds: [string, number][]; format: 'semis' | 'final2'; winnerTo: string; loserTo?: string; cm?: string }, season: number) {
   const g = gs();
   const cal = calendar(season);
+  if (spec.cm) { setupCmPlayoff(id, spec as typeof spec & { cm: string }, season, cal); return; }
   const clubs: number[] = [];
   for (const [lg, pos] of spec.seeds) {
     const comp = g.comps[lg];
@@ -521,6 +523,60 @@ export function setupPlayoff(id: string, spec: { seeds: [string, number][]; form
   } else {
     createTwoLegRound(comp, [[clubs[1], clubs[0]], [clubs[3], clubs[2]]], 'SF', cal.playoff.sf);
   }
+}
+
+/** (22/11) Originalens play-off for de engelske divisioner (cmCalendar.ts cmPlayoffRules): 0x573080/0x5783c0 lægger deltagerne fra tabellen +0xb1
+ *  (tabellens rækkefølge, `spec.seeds`) i en Cup 0x522e00 med rundetabellen create_schedule(stage 0) (data/cmCupTables.ts ENG_PO1/2/3: semifinale
+ *  2 ben, +0xd 0x204 = ingen udebanemål, +0xf 3 = forlænget/straffe i andet ben, 4 dage imellem; finale 1 kamp på neutral bane, +0xd 3).
+ *  Pladserne 0x518790 (0x519265–0x519509): semifinalen har +0xd & 0x200 (ingen lodtrækning) – deltager j søger fra kamp 0, og for hver kamp
+ *  rand(2) (0x90cfc0): ≠ 0 → hjemmepladsen først, 0 → udepladsen først (den første ledige; fuld kamp → næste). Ingen nyheder ved oprettelsen
+ *  (0x51c410's lodtrækningsnyhed 0x27 kun uden 0x200). Turneringen er ligaen selv i originalen (fixture +0 = ligaens id – gameInputs.ts). */
+function setupCmPlayoff(id: string, spec: { seeds: [string, number][]; winnerTo: string; cm: string }, season: number, cal: SeasonCalendar) {
+  const g = gs();
+  const lg = g.comps[spec.seeds[0][0]];
+  if (!lg) return;
+  const order = finalOrder(lg);
+  const clubs = spec.seeds.map(([, pos]) => order[pos - 1]).filter((c): c is number => c !== undefined);
+  if (clubs.length < 4) return;
+  const sf = cmCupRound(spec.cm, season, 1, 2, true), fi = cmCupRound(spec.cm, season, 2, 2, true);
+  if (!sf || !fi) return;
+  // originalens datoer med originalens kalender; ellers spillets (udvidet tilstand), og aldrig i fortiden
+  const own = cmCalendarOn(g) && sf.date > g.date;
+  const d1 = own ? sf.date : cal.playoff.sf[0], d2 = own ? addDays(sf.date, sf.gap) : cal.playoff.sf[1];
+  const comp: Competition = { id, name: `${lg.name} Playoff`, type: 'playoff', nation: lg.nation, tier: 0, clubs, table: [], ties: [], stage: 'SF', finished: false,
+    playoffFor: spec.winnerTo, meta: { spec, cmPo: spec.cm, cmYear: season, roundsTotal: 2, finalDate: own ? fi.date : cal.playoff.final }, pending: 0 };
+  g.comps[id] = comp;
+  // 0x518790: pladserne (hjemme, ude) pr. kamp
+  const r = cmRand(g.seed ?? 0, 0x518790, Date.parse(g.date + 'T00:00:00Z') / 86400000);
+  const slots: [number, number][] = [[-1, -1], [-1, -1]];
+  for (const c of clubs) {
+    for (let t = 0; ; t = (t + 1) % slots.length) {
+      const T = slots[t], home = r(2) !== 0;
+      const k: number = home ? (T[0] < 0 ? 0 : T[1] < 0 ? 1 : -1) : (T[1] < 0 ? 1 : T[0] < 0 ? 0 : -1);
+      if (k >= 0) { T[k] = c; break; }
+    }
+  }
+  const codes = { ...sf.cm, w32: 160 };
+  for (const [h, a] of slots) {
+    const tie: Tie = { id: g.nextId.tie++, a: h, b: a, legs: 2, stage: 'SF', fx: [] };
+    comp.ties.push(tie);
+    const f1 = newFixture(id, d1, h, a, 1, { stage: 'SF', tieId: tie.id, leg: 1, slot: sf.slot, cm: codes });
+    const f2 = newFixture(id, d2, a, h, 1, { stage: 'SF', tieId: tie.id, leg: 2, slot: sf.slot, cm: { ...codes, w30: codes.w30 + 1 } });
+    if (cmCalendarOn(g)) { cmPlaceFixture(g, f1); cmPlaceFixture(g, f2); }
+  }
+}
+
+/** (22/11) play-off-finalen (rundetabellens anden post): Cup::draw_round 0x51c410 → 0x51e220 (lodtrækning – ingen 0x200); én kamp på neutral
+ *  bane (+0x3c = 1), forlænget/straffe (+0x38 = 3), originalens dato/tidspunkt. IKKE porteret: lodtrækningsdatoen (her: når semifinalerne er
+ *  afgjort) og lodtrækningsnyheden 0x27. */
+function cmPlayoffFinal(comp: Competition, winners: number[], cal: SeasonCalendar) {
+  const g = gs();
+  const fi = cmCupRound(comp.meta!.cmPo as string, comp.meta!.cmYear as number, 2, 2, true);
+  const r = cmRand(g.seed ?? 0, 0x51e220, Date.parse(g.date + 'T00:00:00Z') / 86400000);
+  const [a, b] = r(2) ? [winners[1], winners[0]] : [winners[0], winners[1]];
+  const date = (comp.meta?.finalDate as string | undefined) ?? cal.playoff.final;
+  const f = createFinal(comp, a, b, date > g.date ? date : addDays(g.date, 2), fi ? { slot: fi.slot, cm: { ...fi.cm, w32: 160 } } : {});
+  if (cmCalendarOn(g)) cmPlaceFixture(g, f);
 }
 
 /** Reservehold (fx "Real Sociedad B") må ikke rykke op i samme liga som førsteholdet */
@@ -836,7 +892,8 @@ function advance(comp: Competition, stage: string) {
     return;
   }
   if (comp.type === 'playoff') {
-    if (winners.length === 2) createFinal(comp, winners[0], winners[1], (comp.meta?.finalDate as string | undefined) ?? cal.playoff.final);
+    if (winners.length === 2 && comp.meta?.cmPo) cmPlayoffFinal(comp, winners, cal);
+    else if (winners.length === 2) createFinal(comp, winners[0], winners[1], (comp.meta?.finalDate as string | undefined) ?? cal.playoff.final);
     return;
   }
   // kontinental

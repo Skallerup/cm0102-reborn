@@ -8,6 +8,9 @@ export interface PlayoffSpec {
   /** Hvilken liga vinderen spiller i næste sæson */
   winnerTo: string;
   loserTo?: string;
+  /** (22/11) originalens play-off (de engelske divisioner, cmPlayoffRules i cmCalendar.ts): rundetabellens nøgle i data/cmCupTables.ts
+   *  (ENG_PO1/2/3) – seeds er da originalens deltagerliste i rækkefølge (0x573080/0x5783c0), ikke parrene */
+  cm?: string;
 }
 
 export interface LeagueRules {

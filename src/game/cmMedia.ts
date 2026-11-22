@@ -159,6 +159,9 @@ export function cmRecordsDaily(g: GameState, squadOf: (c: number) => Player[]): 
         for (const c of promotionOrder(comp).slice(0, rules.promoted)) recPromotion(g, c, comp, squadOf);
       }
     } else if (comp.type === 'playoff') {
+      // (22/11) originalens engelske play-off (competitions.ts setupCmPlayoff): vinderen får ingen oprykningsrekord – 0x869480 kaldes kun af
+      // 0x684cd0's status 0 (de automatiske pladser); oraklet (frø 1): Coventry/Chesterfield/Lincoln uden +500 i omdømme
+      if (comp.meta?.cmPo) continue;
       // oprykningsplayoff PO-<lavere liga> (playoffFor = ligaen over): vinderen rykker op fra den lavere liga (season.ts promotionRelegation)
       const from = comp.id.startsWith('PO-') ? comp.id.slice(3) : '';
       if (comp.winner && g.comps[from] && LEAGUE_RULES[comp.playoffFor ?? '']?.below === from) recPromotion(g, comp.winner, g.comps[from], squadOf);

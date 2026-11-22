@@ -352,6 +352,14 @@ export function fixtureCodesOf(g: GameState, f: Fixture | undefined, compId: str
   // (runde 10C) kampen er oprettet efter originalens rundetabel: dens egne koder (andet ben: +0x0f OR'es ind, når første ben er spillet)
   if (f?.cm) {
     const k = f.cm;
+    // (22/11) originalens play-off er ligaens egen Cup (0x522e00 med ligaen som turnering): fixture +0 = ligaens id, tabelposten ligaens
+    if (c.type === 'playoff') {
+      const lg = c.playoffFor ? CM_COMP_ID(g, c.playoffFor) : -1;
+      const own = (c.meta?.spec as { seeds?: [string, number][] } | undefined)?.seeds?.[0]?.[0];
+      const lid = own ? CM_COMP_ID(g, own) : lg;
+      return { ...base, w30: k.w30, w32: k.w32 ?? 0, b34: k.b34, b3a: k.b3a, b3c: k.b3c ?? 0, firstLeg, flags38: k.f38 | (firstLeg ? k.f38dec ?? 0 : 0),
+        compId: lid, compRep: lid >= 0 ? g.cmCompRep?.[lid] ?? 0 : 0, table: { b3c: (own && g.customRules?.[own]?.rounds) || 2, b43: 2, rows: true } };
+    }
     return { ...base, w30: k.w30, w32: k.w32 ?? 0, b34: k.b34, b3a: k.b3a, b3c: k.b3c ?? 0, firstLeg, flags38: k.f38 | (firstLeg ? k.f38dec ?? 0 : 0),
       table: (c.meta?.cmTable as GameFixtureCodes['table'] | undefined) ?? { b3c: (c.meta?.roundsTotal as number | undefined) ?? 1, b43: 1, rows: true } };
   }

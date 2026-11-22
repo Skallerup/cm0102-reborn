@@ -321,7 +321,7 @@ function leagueInfo(g: GameState, lid: string): LeagueInfo | null {
   if (!comp) return null;
   const rules = g.customRules?.[lid] ?? rulesFor(lid, comp.clubs.length);
   const lp = compNum(lid);
-  // de engelske ligaklassers egne tal (spillet har ingen play-off – vinderen tælles med i rules.promoted, cmCalendar.ts CM_ZONE_RULES)
+  // de engelske ligaklassers egne tal (spil med play-off'en: cmCalendar.ts cmPlayoffRules; ældre spil tæller vinderen med i rules.promoted)
   const z = ENG_ZONES[g.leagues[lid]?.name ?? ''];
   if (z) return { teams: comp.clubs.length, autoPromo: z[0] > 0, promo: z[0], playoff: z[1], relegation: z[2], rep: lp >= 0 ? g.cmCompRep?.[lp] ?? 0 : 0 };
   const promo = rules.promoted ?? 0;

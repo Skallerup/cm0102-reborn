@@ -1285,6 +1285,9 @@ export interface GameState {
   /** (20/11, "Altid som originalen") spillet er startet med originalens kalender (cmCalendar.ts: ligaernes skemaer, pokalerne, sæsonskiftet pr. land
    *  og Europas turneringer) – nye spil med en CM-database i ægte tilstand; den originale database har den altid (cmActive), ældre 2026/27-spil ikke */
   cmCal?: 1;
+  /** (22/11) spillet er startet med originalens engelske play-off (cmCalendar.ts cmPlayoffRules, competitions.ts setupPlayoff) – nye spil med en
+   *  CM-database; ældre spil beholder den direkte oprykning af play-off-pladsen */
+  cmPlayoff?: 1;
   /** (20/11, "Altid som originalen", MODERN_PARITY §0 C+D) spillet er startet med originalens kampregler: turneringernes udskiftninger/bænk
    *  (rules.ts classicRules – 3/5 som 2001) og zonemotorens originale kampkonstanter (sim.ts ORIGINAL/ORIGINAL_LOWER) – nye spil med en CM-database
    *  i ægte tilstand; den originale database har dem altid, ældre 2026/27-spil ikke (5/9 og MODERN) */

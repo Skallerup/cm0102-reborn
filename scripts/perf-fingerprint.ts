@@ -9,6 +9,9 @@ import { gs } from '../src/game/state';
 import { rng } from '../src/game/rng';
 import { continueGame, quickPlayUserMatch } from '../src/game/sim';
 import { cachedCreateGame, GAME_CACHE_STATS } from '../tests/helpers/gameCache';
+import { cmLeagueRules } from '../src/game/cmCalendar';
+import { LEAGUE_RULES } from '../src/game/leagues';
+import type { GameState } from '../src/game/types';
 
 const until = process.argv[2] ?? '2002-05-20', seed = Number(process.argv[3] ?? 1), clubName = process.argv[4] ?? 'Wrexham';
 const t0 = performance.now();
@@ -17,6 +20,8 @@ const t1 = performance.now();
 const eng = world.nations.findIndex((x) => x.name === 'England');
 (process.env.CM_GAME_CACHE_USE === '1' ? (w: WorldData, o: Parameters<typeof createGame>[1]) => cachedCreateGame(createGame, w, o) : createGame)(world, { managerName: 'Lab', managerNation: eng, clubId: world.clubs.find((c) => c[1] === clubName)![0], activeNations: [eng], lang: 'en', masking: true, seed, mode: 'authentic' });
 gs().options.engine = 'original';
+// PO_OFF=1: spillet uden play-off-modulet (g.cmPlayoff/cmPlayoffRules, 22/11) – som et spil fra før modulet (kontrol: intet flytter sig før maj)
+if (process.env.PO_OFF === '1') { const g = gs(); delete g.cmPlayoff; g.customRules = cmLeagueRules((world as unknown as { rules: GameState['customRules'] }).rules); Object.assign(LEAGUE_RULES, g.customRules); }
 const t2 = performance.now();
 // g.id (save-<Date.now>) er ikke en del af spillet
 // CANON=1: felterne i hvert objekt sorteret (spillets JSON-gem bevarer ikke rækkefølgen af felter, der har været sat til undefined, fx
@@ -30,7 +35,9 @@ const sortKeys = (v: unknown): unknown => {
 };
 // NONEWS=1: alle felter med navnet `news` udelades (g.news, humans[].news, nextId.news) – en nyhedsport skal give samme hashes som før
 const NONEWS = process.env.NONEWS === '1';
-const rep = function (this: unknown, k: string, v: unknown) { if (NONEWS && k === 'news') return undefined; return this === gs() && k === 'id' ? 0 : v instanceof Map ? { __map: [...v] } : v instanceof Set ? { __set: [...v] } : sortKeys(v); };
+// OMIT=a,b: GameState's felter a og b udelades (fx OMIT=cmPlayoff,customRules – et nyt modul, der kun tilføjer tilstand)
+const OMIT = new Set((process.env.OMIT ?? '').split(',').filter(Boolean));
+const rep = function (this: unknown, k: string, v: unknown) { if (NONEWS && k === 'news') return undefined; if (this === gs() && OMIT.has(k)) return undefined; return this === gs() && k === 'id' ? 0 : v instanceof Map ? { __map: [...v] } : v instanceof Set ? { __set: [...v] } : sortKeys(v); };
 const hash = () => createHash('sha256').update(`${rng.state}\n`).update(JSON.stringify(gs(), rep)).digest('hex').slice(0, 16);
 const doHash = process.env.HASH !== '0';
 const all = createHash('sha256');

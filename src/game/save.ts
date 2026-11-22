@@ -8,7 +8,7 @@ import { cmDatabase } from './newgame';
 import { del, get, keys, set } from 'idb-keyval';
 import { gs, setGame, addNews, notify, ensureNumbers, previewInfo, setPreview } from './state';
 import { splitReserves } from './reserves';
-import { cmCupName, cmLeagueRules } from './cmCalendar';
+import { cmCupName, cmLeagueRules, cmPlayoffRules } from './cmCalendar';
 import { cashRound } from './cmTransferBid';
 import { deserializeState, gunzipText, serializeState } from './snapshot';
 import { rng } from './rng';
@@ -213,6 +213,8 @@ function repairCupNames() {
   if (g.dbKind !== 'cm0102') return;
   for (const c of Object.values(g.comps)) if (c.type === 'cup' && cmCupName(c.name) !== c.name) c.name = cmCupName(c.name);
   if (g.customRules) g.customRules = cmLeagueRules(g.customRules);
+  // (22/11) cmLeagueRules sætter Third Division til 4 op igen – spil med play-off'en får originalens +0xbe (cmPlayoffRules)
+  if (g.customRules && g.cmPlayoff) g.customRules = cmPlayoffRules(g.customRules);
 }
 
 /** fællesspil er altid det originale (classic + ægte tilstand) – også et rum, der blev oprettet i udvidet tilstand (kaldes for hvert øjebliksbillede, alle klienter ens) */

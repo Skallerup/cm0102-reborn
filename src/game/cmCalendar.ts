@@ -101,7 +101,8 @@ export const cmCupName = (name: string): string => SUPER_TO_CUP[name] ?? name;
  *  0x553a00 (3 runder, +0xc1 = 2 – originalens tabel har stregen efter 10.), 1st Division 0x5523b0 (+0xbe = 2, +0xc1 = 3), 2nd Division 0x554b60
  *  (+0xbe = 3, +0xc1 = 4 – ned i "A Lower Division", cmNonLeague.ts; databasens 3 op passer), England Second
  *  Division 0x576780 (+0xbe 2, +0xbf 4, +0xc1 4) og Third Division 0x5780c0 (+0xbe 3, +0xbf 4, +0xc1 1). Databasens regler (parseren) sagde 3/3 for
- *  alle. Playoffs findes ikke for originalens ligaer i spillet – vinderen tælles med som oprykker (England 3. → 2.: 3 + 1 = 4). */
+ *  alle. England: play-off-vinderen tælles med som oprykker (3. → 2.: 3 + 1 = 4) i ældre spil; spil startet med play-off'en (g.cmPlayoff) får
+ *  originalens +0xbe og play-off'en (cmPlayoffRules nedenfor). */
 const CM_ZONE_RULES: Record<string, { relegated?: number; promoted?: number }> = {
   CM4: { relegated: 2 }, CM5: { promoted: 2 }, CM9: { relegated: 4 }, CM10: { promoted: 4 },
 };
@@ -116,6 +117,25 @@ export function cmLeagueRules<T extends Record<string, any> | undefined>(rules: 
     if (o.relegated !== undefined && r.relegated) r.relegated = o.relegated;
     if (o.promoted !== undefined && r.promoted) r.promoted = o.promoted;
     out[id] = r;
+  }
+  return out as T;
+}
+
+/** (22/11) De engelske divisioners play-off (League stage 0): advance_stage vt+0x28 (First 0x572ff0, Second 0x5769e0, Third 0x578330) går fra
+ *  stage −1 til 0, når ligaen er spillet færdig, og kalder 0x573080 / 0x576a70 / 0x5783c0: (s8)+0xbf = 4 deltagere fra tabellen +0xb1 i rækkefølgen
+ *  First/Second [6., 3., 5., 4.], Third [7., 4., 6., 5.], rundetabellen create_schedule(stage 0) (data/cmCupTables.ts ENG_PO1/2/3) og en Cup
+ *  0x522e00 med ligaen som turnering. Ligaklassernes +0xbe (automatisk op) = First/Second 2, Third 3 (cmBoardGame.ts ENG_ZONES) – play-off-vinderen
+ *  er den sidste oprykker (season.ts promotionRelegation, PO-<liga>). Kun spil startet med modulet (g.cmPlayoff – newgame.ts; save.ts). */
+const CM_PLAYOFF: Record<string, { promoted: number; seeds: number[]; cm: string }> = {
+  CM8: { promoted: 2, seeds: [6, 3, 5, 4], cm: 'ENG_PO1' }, CM9: { promoted: 2, seeds: [6, 3, 5, 4], cm: 'ENG_PO2' }, CM10: { promoted: 3, seeds: [7, 4, 6, 5], cm: 'ENG_PO3' },
+};
+export function cmPlayoffRules<T extends Record<string, any> | undefined>(rules: T): T {
+  if (!rules) return rules;
+  const out: Record<string, any> = { ...rules };
+  for (const [id, o] of Object.entries(CM_PLAYOFF)) {
+    const r = out[id];
+    if (!r?.above || !out[r.above]) continue;
+    out[id] = { ...r, promoted: o.promoted, playoff: { seeds: o.seeds.map((p) => [id, p]), format: 'semis', winnerTo: r.above, cm: o.cm } };
   }
   return out as T;
 }

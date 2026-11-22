@@ -2,7 +2,9 @@
 // originale database i ægte tilstand (cmCalendarOn). Tabellerne: data/cmCupTables.ts (create_round_table pr. klasse kørt i unicorn,
 // ~/cm0102-engine/tools/sched/gen_cups.py): EngFaCup 0x56f320, EngCcCup 0x56c570, EngCharity 0x56d640, ScoFaCup 0x7ed5d0, GerCup 0x5d8ee0,
 // FraCup 0x5ba3f0, SpaCup 0x84d220, PorCup 0x7cdc40, BelFaCup 0x41d310, TurCup 0x8fc670, RusCup 0x7e9530, NorCup 0x78f2e0, SweCup 0x88cf40
-// (stage 7), DenCup 0x550c70, CroCup 0x517740, PolCup 0x7c8040, KorFaCup 0x66a720, JapEmpCup 0x661ff0, BraCup 0x427700, UsaOpenCup 0x90b170.
+// (stage 7), DenCup 0x550c70, CroCup 0x517740, PolCup 0x7c8040, KorFaCup 0x66a720, JapEmpCup 0x661ff0, BraCup 0x427700, UsaOpenCup 0x90b170
+// og (22/11) de engelske divisioners play-off ENG_PO1/2/3 = League::create_schedule stage 0 (EngFirst 0x571980, EngSecond 0x5757a0, EngThird
+// 0x5770e0 – competitions.ts setupCmPlayoff).
 //
 //   Rundeposten (cup-round-record §1/§3): kampdato +3 (0x521eb0), tidspunkt +6, runde-id +7 → fixture +0x30 (+3/+4 første/andet ben, +1/+2 omkamp
 //   – Cup::process_fixture 0x51a150: "code + 1 to + 5 name the replays, legs and decider"), indeks +9 → +0x34, +0xb → +0x36, +0xd → +0x38 (første
