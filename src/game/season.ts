@@ -1,7 +1,8 @@
 // Sæsonskifte: priser, historik, op/nedrykning, kontrakter, pensioneringer, regens.
 import { cmDiscSeason } from './cmDiscipline';
 import { cmBoardOn, cmBoardSeasonSetup } from './cmBoardGame';
-import { cmActive, cmMarketOn, cmMediaOn } from './cmPlayerData';
+import { cmActive, cmLogic, cmMarketOn, cmMediaOn } from './cmPlayerData';
+import { initContractBytes } from './cmContractInit';
 import { cmVirtualOn } from './cmVirtual';
 import { cmShortlistOn } from './cmShortlistGame';
 import { cmRetireOn } from './cmRetire';
@@ -349,6 +350,13 @@ function spawnCmRegen(rec: RegenSeed, slot: number) {
   if (!club) { p.cmFreeSince = g.date; }
   const cmW = p.contract && club ? cmRegenWage(g, p, club) : null;
   if (p.contract) p.contract.wage = cmW !== null ? cmW / cmGbp(g, club!.id) : Math.max(150, Math.round(p.contract.wage * 0.3 / 50) * 50);
+  // 0x7a6f10: kontrakten oprettes af 0x4c7950 → STAFF_CONTRACT 0x85e960 (+0x4f høj nibble 2 = trupstatus 2, +0x4e = 4, sprogets nibble –
+  // cmContractInit.ts initContractBytes); menneskets klub (0x600a50, 0x7a70a9): trupstatus 6. Før stod regens' trupstatus på 0, og CONTRACT_MANAGER
+  // 0x4c7ac0 forlængede dem aldrig (tilbuddet kræver trupstatus 1–3/5) – K7b: sæson 3's udløbende regens 0 forlænget af 204
+  if (p.contract && club && cmLogic(g)) {
+    initContractBytes(g, p);
+    if (isHumanClub(club.id)) { const c = p.cmContract!; c.b4f = 0x60 | ((c.b4f ?? 0) & 0xf); }
+  }
   addPlayer(p);
   if (p.club && isHumanClub(p.club)) asOwner(p.club, () => knowFull(p.id));
 }

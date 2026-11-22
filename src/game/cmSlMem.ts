@@ -5,7 +5,7 @@
 // sammenligner alle sider med de to oprindelige byggere (og cmShortlistGame.ts gør det selv med CM_SL_MEMCHECK=1). Ændres buildWageMem/
 // buildWantMem, skal denne følge med (kontrollen fanger det).
 import type { GameState, Player, Staff } from './types';
-import { type CmCtx, G, SparseMem, writeMonthTables } from './cmMem';
+import { type CmCtx, G, SparseMem, writeMonthTables, cmAfter2330 } from './cmMem';
 import { writeHolidayMem } from './cmHoliday';
 import { cmMemCall, scanOf, writeKeyIds, KEY_NATIONS, OTHER_GLOBALS, NAT7F, STAFF0, PREC0, CLUB0, NAT0, DIV0, FIN0, K0, ROWS0, TM0, PTRS, type WageMem } from './cmWageGame';
 import type { WantMem } from './cmContractGame';
@@ -475,7 +475,7 @@ export function buildSlWantMem(g: GameState, clubs: Iterable<number>, opts: { ca
   m.w32(0xde1f54, TM0); m.w32(TM0 + 0x856, TM0 + 0x1000); m.w32(TM0 + 0x1000 + 0xdc, TM0 + 0x10000);
   const day = isoD(date), year = isoY(date);
   m.w16(G.TODAY, day); m.w16(G.TODAY + 2, year);
-  m.w8(G.B_AE233C, 0);
+  m.w8(G.B_AE233C, cmAfter2330(date));
   for (const a of OTHER_GLOBALS) m.w32(a, -1);
   for (let a = 0x9d0120; a <= 0x9d0524; a += 4) m.w32(a, -1);
   for (let a = 0xb63c9c; a <= 0xb63d00; a += 4) m.w32(a, -1);

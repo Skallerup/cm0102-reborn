@@ -5,10 +5,11 @@
 // gemmes i GameState.cmCm og spillets kontrakter mellem dagene.
 //
 // Hvad funktionen gør for en computerklubs spiller (notes/contract-manager.md; dagen kører tidspunkterne 0, 1 og 2 som 0x5cccd0):
-//   – [0xae2330] (31/8 – *estimeret* opdatering: 31/8 i sæsonens startår) − i dag ∈ {7, 30, 42, 60, 70, 91}: forlængelsestilbud (0x4cda70, faktor
+//   – [0xae2330] (exe-konstanten 31/8-2001) − i dag ∈ {7, 30, 42, 60, 70, 91}: forlængelsestilbud (0x4cda70, faktor
 //     1,0) efter 180 dage med kontrakten, når den udløber inden 1095 dage (trupstatus 1; 2/3 med omdømme > 6750 eller under 24 år og PA > 100;
 //     5 med PA > 100; under 32 år, ikke uven med klubben/manageren).
-//   – mere end 182 dage tilbage: intet mere – 0x868210 svarer 1, fordi [0xae233c] = 0 (målt i originalen), så båndene 550/365 nås aldrig.
+//   – mere end 182 dage tilbage: intet mere – 0x868210 svarer 1, fordi [0xae233c] = 0 (til 1/9-2001) eller kontrakten startede før [0xae2330];
+//     ellers kun på FIFA-periodens slutdag (2/3 år efter starten), så båndene 550/365 nås aldrig.
 //   – højst 182 dage tilbage: på båndenes dage (182, 152, 121, 91, 60, 30, 7 dage før) tilbud med faktor 1,0–1,4 efter trupstatus og klubbens
 //     plan (0x849ce0); gode spillere (omdømme > 3750, Loyalty < 15, 19–30 år), der vil væk (0x866f60), sættes fri (+0x49 = 1).
 //   – udløbsdagen: type 1 (udløbet); sat fri (+0x49) → fri transfer 0x8c1af0; trupstatus 7 og transferlistet → fri transfer 0x8c16b0; ellers bliver
@@ -21,12 +22,12 @@
 // 31 dage, Bosman-tjekkets betingelser, forfaldne beslutninger); værdien +0x52 regnes for de byggede spillere (originalen fornyer den hver
 // anden dag – 0x4c7ec5). Kun spillere i klubber i de spilbare lande (originalens indlæste personer); udlejede spillere og menneskets klubber
 // har spillets eget system.
-// *Estimeret*: [0xae2330]'s opdatering, ingen nyheder (0x4d6790/0x4da590/0x4d49a0/0x4d6d70 går kun til mennesket), transfertilbuddene/
+// *Estimeret*: ingen nyheder (0x4d6790/0x4da590/0x4d49a0/0x4d6d70 går kun til mennesket), transfertilbuddene/
 // forhandlingerne (TRANSFER_MANAGER 0x8c5cf0/0x8c5e40/0x8c1870 = spillets åbne bud på spilleren), karrierens slut 0x7a7eb0 = Player.cmRetire,
 // ønskelisterne 0x842c00 (intet), sign_contract 0x4cf720's felter (+0x3d.. som cmPlayerData newCmContract).
 import { bookBlock, K as FK } from './cmFinance';
 import type { Contract, GameState, Player } from './types';
-import { G, clubAt, getContract, type CmMem } from './cmMem';
+import { G, clubAt, getContract, cmAfter2330, DATE_2330, type CmMem } from './cmMem';
 import { buildWantMem, applyCmTerms, type CmTerms, type WantMem } from './cmContractGame';
 import { contractDailyUpdate_4c7ac0, listAdd_68d0d0, listInit_68d020, listNext_68d1b0 } from './cmContract';
 import { humanClub_600a50 } from './cmWageGame';
@@ -84,11 +85,8 @@ const FOREIGN = ENV.CM_CM_FOREIGN !== '0';
  *  der er startet med CONTRACT_MANAGER (g.cmCmMgr – newgame.ts; 2026/27 fra 20/11). Ældre 2026/27-spil beholder spillets egne forlængelser. */
 export const cmCmOn = (g: GameState) => !OFF && (cmActive(g) || (cmLogic(g) && g.cmCmMgr === 1)) && !g.draft;
 
-/** [0xae2330]: 31/8 i sæsonens startår (*estimeret*) */
-function date2330(iso: string): number {
-  const y = +iso.slice(0, 4), m = +iso.slice(5, 7);
-  return dayNum(`${m >= 7 ? y : y - 1}-08-31`);
-}
+/** [0xae2330]: exe-konstanten 31/8-2001 (cmMem.ts DATE_2330) – blok 0x4c81a3 kører derfor kun i den første sommer af et spil fra 2001 */
+const date2330 = (): number => dayNum(DATE_2330);
 
 /** kan personløkken gøre noget for spilleren i dag? (en overmængde af 0x4c7dea–0x4c9d26's betingelser) */
 function candidate(g: GameState, p: Player, T: number, A: number): boolean {
@@ -99,7 +97,15 @@ function candidate(g: GameState, p: Player, T: number, A: number): boolean {
   if (A > T && BLOCK_A.has(A - T) && E < T + 1095) return true;
   if (type === 1) return T > E + 31;
   const due = E - T;
-  if (due > 182) return false;
+  if (due > 182) {
+    // 0x868210 med [0xae233c] = 1 og en kontrakt, der startede efter [0xae2330]: FIFA-perioden (3 år under 28, ellers 2) – udløser tilbud
+    // på dagen, hvor den slutter (en overmængde: samme dag og måned som starten ± 1 dag)
+    const st = k.cmStart ?? p.joined ?? p.cmJoined;
+    if (!st || !cmAfter2330(g.date) || st.slice(0, 10) <= DATE_2330) return false;
+    const md = (n: number) => isoOf(n).slice(5);
+    const s0 = dayNum(st), sm = md(s0);
+    return [T - 1, T, T + 1].some((x) => md(x) === sm) && T - s0 > 700;
+  }
   if (due <= 0 || BANDS.has(due) || k.cmB49) return true;
   // 0x4c88b5's Bosman-tjek: omdømme +0xb > 3750 og +0xd > 1750, Loyalty < 15, 19–30 år (som buildWageMem skriver dem)
   const rep = p.cmRepMem ?? p.cmRep ?? [p.rep * 2, p.rep * 2, p.rep * 2];
@@ -143,7 +149,7 @@ export function cmContractManagerDay(g: GameState): void {
   if (!cmCmOn(g)) return;
   const t0 = typeof performance !== 'undefined' ? performance.now() : 0;
   const S: CmCmState = (g.cmCm ??= { dec: [], off: [], row: {} });
-  const T = dayNum(g.date), A = date2330(g.date);
+  const T = dayNum(g.date), A = date2330();
   // kandidaterne og de forfaldne beslutninger
   const cands: Player[] = [];
   for (const p of Object.values(g.players)) if (cmCmScope(g, p) && candidate(g, p, T, A)) cands.push(p);
@@ -246,6 +252,7 @@ export function cmContractManagerDay(g: GameState): void {
   const only = cands.map((p) => W.staffOf(p)).filter((st) => st).sort((a, b) => m.s32(a) - m.s32(b));
   for (let slice = 0; slice <= 2; slice++) {
     m.w8(G.SLICE, slice);
+    m.w8(G.B_AE233C, cmAfter2330(g.date, slice === 0));
     contractDailyUpdate_4c7ac0(c, G.TODAY, slice, 1, slice === 2 ? only : []);
   }
   // tilbage i spillet: kontrakterne (type, +0x49, +0x4e), rækkerne, tilbuddene og beslutningerne

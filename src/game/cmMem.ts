@@ -151,9 +151,20 @@ export const G = {
   ROWS: 0xae2d0c,
   /** [0xae1080] den sidst slåede kontrakt (0x864550 og 0x4c7ac0 skriver den) */
   LAST_CONTRACT: 0xae1080,
-  /** [0xae233c] spillets indstilling (0x864550 0x8650cd: = 1 …) */
+  /** [0xae233c] = 1, når i dag er efter [0xae2330] (cmAfter2330) */
   B_AE233C: 0xae233c,
 } as const;
+
+/** [0xae2330]: en fast dato i exe-filen – den statiske initialisering 0x524cd0 (push 0x7d1/7/0x1f → Date 0x549f70) = 31/8-2001; intet skriver
+ *  den igen (målt i oraklet: 31/8-2001 fra 14/7-2001 til 27/6-2004). Samme dato på alle databaser (exe-konstanten). */
+export const DATE_2330 = '2001-08-31';
+/** [0xae233c]: 0x5cccd0 (0x5cdb2c–0x5cdb64) sætter den til 1 – og aldrig tilbage – i den første tidsskive, hvor i dag > [0xae2330], EFTER
+ *  dagens 0x4c7ac0-kald (oraklet: 0 på billedet 1/9-2001, 1 fra 2/9). `slice0` = 0x4c7ac0's tidsskive 0 på dagen (den ser endnu 0). */
+export function cmAfter2330(iso: string, slice0 = false): number {
+  const d = iso.slice(0, 10);
+  if (d <= DATE_2330) return 0;
+  return slice0 && d === '2001-09-01' ? 0 : 1;
+}
 
 export const f32 = Math.fround;
 export const s8 = (v: number) => (v << 24) >> 24;

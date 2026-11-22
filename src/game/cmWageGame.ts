@@ -20,7 +20,7 @@
 // *Estimeret*: ingen relationer (+0x65 – formandens yndlingsspillere), lejede spillere regnes i moderklubben (spillets lejemodel), menneskets
 // manager uden ikke-spillerpost, ferietjekket 0x5fe040 i 0x600a50 ikke porteret.
 import type { Club, GameState, Player } from './types';
-import { type CmCtx, G, SparseMem } from './cmMem';
+import { type CmCtx, G, SparseMem, cmAfter2330 } from './cmMem';
 import { holidayOpt_5fea50, onHoliday_5fd210, writeHolidayMem } from './cmHoliday';
 import { getMaxWage_5968d0, maxStaffWage_597db0, recalcWages_598370 } from './cmMaxWage';
 import { clubInSeason_669bd0, linkedClub_540a50 } from './cmClubLinks';
@@ -187,7 +187,7 @@ export function buildWageMem(g: GameState, clubs: Iterable<number>, unset: Set<n
   m.w32(0xde1f54, TM0); m.w32(TM0 + 0x856, TM0 + 0x1000); m.w32(TM0 + 0x1000 + 0xdc, TM0 + 0x10000);
   const [day, year] = isoDay(g.date);
   m.w16(G.TODAY, day); m.w16(G.TODAY + 2, year);
-  m.w8(G.B_AE233C, 0);
+  m.w8(G.B_AE233C, cmAfter2330(g.date));
   for (const a of OTHER_GLOBALS) m.w32(a, -1);
   // B-hold-parrene (0x540a50) og Spaniens 23 klubber (0x53d7f0): ingen (−1)
   for (let a = 0x9d0120; a <= 0x9d0524; a += 4) m.w32(a, -1);

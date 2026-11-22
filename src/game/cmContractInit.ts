@@ -180,7 +180,7 @@ export function applyInitialContract(c: Contract, o: InitContractOut, gbp = GBP)
 /** 0x85e960's start (0x85e9a6–0x85ea3f) for kontraktens bytes: +0x4f høj nibble = 2 (trupstatus 2 for alle – trupplanen 0x83a1b0 skriver
  *  den bagefter for klubberne, den når), +0x4e = 4, +0x44/+0x45/+0x3e/+0x3f = 0; den lave nibble = min(10, 0x7c6830(staff, klub, sprog))
  *  med klub og klubbens land (ellers uændret). +0x3d skrives ikke (0x85e410 heller ikke). */
-function initContractBytes(g: GameState, p: Player): void {
+export function initContractBytes(g: GameState, p: Player): void {
   const c = cmContractOf(p);
   const club = p.loan?.from ?? p.club;
   const lo = club && g.clubs[club] && g.nations[g.clubs[club].nation] ? contractLanguageNibble(g, p, club) & 0xf : (c.b4f ?? 0) & 0xf;
