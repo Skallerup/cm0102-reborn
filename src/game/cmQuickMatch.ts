@@ -37,7 +37,7 @@ import { linkedClub } from './cmBTeam';
 import { RSV_COMP } from './cmReserveMatches';
 import { cmLoanBar } from './cmLoan';
 import { CM_COMP_ID } from './engine/grid/gameInputs';
-import { postHooks } from './cmPlayerData';
+import { cmGenerated, postHooks } from './cmPlayerData';
 
 const s16 = (v: number) => (v << 16) >> 16;
 const isFriendly = (c: string) => c === 'FRIENDLY' || c.startsWith('FR');
@@ -61,7 +61,7 @@ export function cmQuickMatch(g: GameState, f: Fixture, picked: [Player[], Player
   const q = quick6b66a0(g, f) ? 1 : 0;
   if (q) return 1;
   // init_match 0x6b8ade: færre end 5 databasespillere i de to trupper og kampen vises ikke
-  const real = (ps: Player[]) => ps.filter((p) => !p.regen && !p.virtual).length;
+  const real = (ps: Player[]) => ps.filter((p) => !cmGenerated(g, p)).length;          // staff-id < [0xae2364] (regens med PLAYER_REGEN tæller)
   if (real(picked[0]) + real(picked[1]) < 5 && !watched) return 1;
   return 0;
 }

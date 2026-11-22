@@ -36,7 +36,7 @@ import { shootoutStep, type ShootoutKickRec, type ShootoutState } from './shooto
 import { MatchEvents } from './matchEvents';
 import { repTriple } from '../../originalValue';
 import { ageOn as ageAt } from '../../dates';
-import { statAvg } from '../../cmPlayerData';
+import { cmGeneratedNow, statAvg } from '../../cmPlayerData';
 import { cmFitOn, cmFitRead } from '../../cmFitnessGame';
 import { INJ_TYPES } from '../../cmFitness';
 import { CM_INT_OFFSETS, INTRINSIC_KEYS } from '../../playerInit';
@@ -1044,7 +1044,7 @@ function makePlayer(p: Player, side: Side, slot: number, tactic: Tactic, base?: 
     nationName: undefined, lang: undefined, favoured: p.cmRel ? relPersons(p, FAV_PERSON) : undefined, disliked: p.cmRel ? relPersons(p, DIS_PERSON) : undefined,
     side, slot, _act: true, x: bx, y: side === 0 ? by : 11 - by, action: L.ACT.none, rating: 6100, _cond: kickFit && p.cmFit ? kickFit(p) : 100 * Math.max(60, p.condition ?? 100), _pcond: 0, busy: 0,
     // +0x17 moralen: MATCH_PLAYER::setup 0x6eaf46–0x6eaf64 = spillerpostens +0x45 (Player.morale – playerRecord), 10 for spillere uden for databasen
-    matchCA: mc.K, form, morale: p.regen ? 10 : ((Math.trunc(p.morale ?? 10) << 24) >> 24), injury: 0, _agit: 2 * (25 - sh('temperament')), agFloor: 2 * (25 - sh('temperament')), pos, tacticByte, _instr: instr, _ilo: Number(instr & 0xffffffffn), _ihi: Number(instr >> 32n), freeRoleRating: p.cmFree ?? 1, a,   // spillerpost +0x1a (0x714286)
+    matchCA: mc.K, form, morale: cmGeneratedNow(p) ? 10 : ((Math.trunc(p.morale ?? 10) << 24) >> 24), injury: 0, _agit: 2 * (25 - sh('temperament')), agFloor: 2 * (25 - sh('temperament')), pos, tacticByte, _instr: instr, _ilo: Number(instr & 0xffffffffn), _ihi: Number(instr >> 32n), freeRoleRating: p.cmFree ?? 1, a,   // spillerpost +0x1a (0x714286)
     cap: undefined as unknown as L.Caps, roll: { pace: 0, anticipation: 0, decisions: 0, offTheBall: 0, marking: 0, flair: 0, positioning: 0, creativity: 0, agility: 0, workRate: 0 },
     marks: null, markers: [], ref: p.id, src: p, f, posAttack, facing: side === 0 ? 0 : 180, strongFoot: rf >= lf ? 1 : 0, weakFootPenalty: 20 - Math.min(lf, rf),
     leftFoot: lf, rightFoot: rf, baseX: bx, baseY: by, gkRating: p.pos[0], tbl: null, pslot: slot, posR: r,
@@ -1222,7 +1222,7 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
     if (g && cmFitOn(g)) {
       const fr = cmFitRead(g); kickFit = (p) => fr.condition(p); kickFat = (p) => fr.fatigue(p);
       kickInj = (p) => {
-        if (p.regen || !p.cmFit) return { cat: -1, s: 0 };
+        if (cmGeneratedNow(p) || !p.cmFit) return { cat: -1, s: 0 };                       // 0x62edee: staff-id ≥ [0xae2364] (cmGenerated)
         fr.update(p);                                                                          // 0x62ed70 opdaterer posten (0x62c680) før læsningen
         const e = p.cmFit.inj, rt = (p.cmFit.rt << 24) >> 24, rl = (p.cmFit.rl << 24) >> 24;
         return { cat: e ? INJ_TYPES[e.t][0] : -1, s: rt > -1 ? (rl <= 1 ? 1 : rl) : 0 };
@@ -2353,7 +2353,7 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
   /** sub_6f09f0 0x6f17c2–0x6f1950 (sikker, ingen kommentar): avisens historie om en udvisning – sub_68d0d0 på kampens historieliste
    *  (engine+0x478e, altid oprettet i init_match 0x6b8d2c) med type 0x19 og posten {synderens stab-id, hans klub, offerets stab-id, 0, offerets
    *  side, 0, −1, 0x82, 0}. Tallene trækkes kun, når kortets kode er 4/5 (rødt/professionelt), jC (judge_tackle's art, [esp+0x44]) ∈ {5, 10, 11},
-   *  begge er databasens spillere (stab-id < [0xae2364] – ikke regens), synderens klub (+0xf9) ikke styres af et menneske (sub_600a50(klub, 0, 1,
+   *  begge er databasens spillere (stab-id < [0xae2364] – cmGenerated: regens med PLAYER_REGEN er det), synderens klub (+0xf9) ikke styres af et menneske (sub_600a50(klub, 0, 1,
    *  0, 0): klubbens manager +0xcf blandt de 16 menneskepladser [0xae2364]−16..) og Professionalism (stab +0x5b) < v + 10, hvor
    *  v = byte(ftol(sub_7c1e30(post, 0xb, 2, 6,5))) – kategori 0xb er sammenvejningsgrenen 0x7c1f59, som cmPlayerData ikke har (statAvg giver 0).
    *  Så rand(5) + 15 − v < Aggression (post +0x1c), rand(5) + 15 − v < Dirtiness (+0x25), rand(3500) + 3000 < omdømmet (post +0xb, word =
@@ -2363,7 +2363,7 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
     const v = (Math.trunc(statAvg(d.src, 0xb, 2, 6.5)) << 24) >> 24;                       // 0x6f17df–0x6f17e9
     if (outcome !== 5 && outcome !== 4) return;                                             // 0x6f180b–0x6f1815
     if (jC !== 0xa && jC !== 5 && jC !== 0xb) return;                                       // 0x6f181b–0x6f1829
-    if (d.src.regen || p.src.regen) return;                                                 // 0x6f182f–0x6f1853
+    if (cmGeneratedNow(d.src) || cmGeneratedNow(p.src)) return;                                                 // 0x6f182f–0x6f1853
     if (!isAi(d.side)) return;                                                              // 0x6f1859–0x6f187a sub_600a50 ≠ 0
     const raw = (k: string, q: GP) => q.src.attrs[ATTRS.indexOf(k as never)] || 10;         // postfelterne som limens øvrige (vist værdi)
     if (raw('professionalism', d) >= v + 10) return;                                        // 0x6f1886–0x6f188f
@@ -3360,7 +3360,7 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
       inOwnContinental: (sd: Side) => ctx.fixtureInfo?.ownContinental[sd] ?? false, stillInContention: () => true, runs: (sd: Side) => ctx.teamRuns?.(sd) ?? null,
       code30: ctx.fixtureInfo?.code30 ?? 0, firstLeg: ctx.fixtureInfo?.firstLeg ?? null, flags38: ctx.fixtureInfo?.flags38 ?? 0, flags: ctx.fixtureInfo?.flags38 ?? 0, kind: ctx.fixtureInfo?.code30 ?? 0 },
     setEvFlag: (s, id) => { if (s === 0 || s === 1) events.happened[s].add(id); },
-    isDatabasePlayer: (q) => !q.src.regen,
+    isDatabasePlayer: (q) => !cmGeneratedNow(q.src),
     daysAtClub: (q) => { const d = ctx.date ?? ctx.pick?.[q.side]?.date; const j = joinedOf(q.src); return d && j ? Math.round((Date.parse(d) - Date.parse(j)) / 86400000) : 9999; },
     hasResponseTwo: () => false,
     victimSide: () => { const i = m.inc; return i && i.res && i.d ? (i.d.side === 0 ? 1 : 0) : -1; },

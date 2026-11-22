@@ -657,7 +657,7 @@ export function cmAfterMatch(g: GameState, f: Fixture, rep: MatchReport, squadOf
   if (bg?.contract === false) return;
   for (const club of [f.home, f.away]) {
     for (const p of squadOf(club)) {
-      if (played.has(p.id) || p.regen || p.injury || p.banned > 0 || p.loan) continue;
+      if (played.has(p.id) || cmGenerated(g, p) || p.injury || p.banned > 0 || p.loan) continue;
       contractNotPlayed(g, p, clubRepMem(g, club), nationRepMem(g, p.nation), club, f.id);
     }
   }
@@ -727,7 +727,7 @@ function clubGrievanceCounts(g: GameState, squadOf: (club: number) => Player[]):
     let n = 0;
     for (const p of squadOf(c.id)) {
       const k = p.cmContract;
-      if (!k || !k.b45 || p.regen || p.loan) continue;
+      if (!k || !k.b45 || cmGenerated(g, p) || p.loan) continue;                 // 0x5cd794: staff-id < [0xae2364]
       const st = statusCode(p);
       const wr = Math.round((p.cmRepMem ?? p.cmRep ?? [0, 0, p.rep * 2])[2] * 50);
       if (st === 1 || st === 2 || st === 3 || wr > 4750 || s8(k.b3d) > 65) n = (n + 1) & 0xff;
@@ -832,7 +832,7 @@ export function cmContractDaily(g: GameState, squadOf: (club: number) => Player[
   if (doy % 7 === 0 || !g.cmClubUnhappy) clubGrievanceCounts(g, squadOf);
   const day = dayNum(g.date);
   for (const p of Object.values(g.players)) {
-    if (p.regen || !p.club || !p.contract) continue;
+    if (cmGenerated(g, p) || !p.club || !p.contract) continue;                       // 0x5ce306: staffposterne 0..[0xae2364]
     const c = p.cmContract; if (!c) continue;
     const cl = g.clubs[p.club];
     const active = !!cl?.league && !g.leagues[cl.league]?.hidden;
@@ -881,7 +881,7 @@ export function cmSquadMoraleDaily(g: GameState, squadOf: (club: number) => Play
     if (!cl) continue;
     const rand = cmRand(g.seed, cl.id, day, 0x5ce0b0);
     if (rand(7) !== 0) continue;
-    const ps = squadOf(cl.id).filter((p) => !p.regen).slice(0, 50);
+    const ps = squadOf(cl.id).filter((p) => !cmGenerated(g, p)).slice(0, 50);   // 0x5ce124: id < [0xae2364]
     let I = 0, S = 0, n = 0;
     for (const p of ps) { const c = p.contract ? p.cmContract : undefined; if (!c) continue; const inf = s8(sh(p, 'influence')); I += inf; S += s8(c.b44) * inf; n++; }
     if (n < 16) I += 10 * (16 - n);
@@ -935,7 +935,8 @@ export function cmStaffStateMove(g: GameState, p: Player, from: number, to: numb
   // 0x8ca0a4–0x8ca0ce: den nye klubs trupplan-tæller +8 = 100 (Shortlist_Manager [+0xdc] + 9·klub), medmindre 0x5444a0 (kontrakten +0x4e & 1 –
   // en ny kontrakt er ikke transferlistet) – så åbner 0x5cccd0's port (rand(70) + 30 < +8) og klubben planlægger igen inden for få dage
   cmPlanKick(g, to);
-  if (p.regen) return;
+  // 0x8ca23e: kun spillerposten (+0x61) – en regen med PLAYER_REGEN har puljens post (0x7abac0; cmGenerated)
+  if (cmGenerated(g, p)) return;
   const world = s16(Math.round((p.cmRepMem ?? p.cmRep ?? [p.rep * 2, p.rep * 2, p.rep * 2])[2] * 50));
   const reps = g.cmClubRep;
   if (reps) {

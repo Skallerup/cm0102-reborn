@@ -5,7 +5,7 @@ import { cmWxDaily, cmWxFix } from './cmWeather';
 import { cmClubRepWeekly } from './cmClubRepWeek';
 import { cmOwnStaffContractsDaily, cmStaffOffersDaily } from './cmStaff';
 import { cmStaffMovesDaily, cmStaffNpDaily } from './cmStaffMove';
-import { cmActive, cmLogic, cmMarketOn, cmMediaOn, cmStaffOn, cmAfterMatch, clubRepMem, cmContractDaily, cmFlagSet, cmRand, cmSquadMoraleDaily, MORALE_OFF, withFlagCtx } from './cmPlayerData';
+import { cmActive, cmGenerated, cmLogic, cmMarketOn, cmMediaOn, cmStaffOn, cmAfterMatch, clubRepMem, cmContractDaily, cmFlagSet, cmRand, cmSquadMoraleDaily, MORALE_OFF, withFlagCtx } from './cmPlayerData';
 import { cmLoanBar } from './cmLoan';
 import { cmFitAfterMatch, cmFitDay, cmFitMatch, cmFitOn, cmFitPreMatch, setMatchSquad } from './cmFitnessGame';
 import { cmPermitAfterMatch, cmPermitDaily } from './cmPermit';
@@ -789,7 +789,7 @@ function newDay() {
     // Før +4 + NF/4: med to kampe om ugen startede holdene trætte, og originalens knock-regel (< 40 % = sikkert knock) gav op til 10 skader i én kamp
     if (p.condition < 100 && !cmFit) p.condition = Math.min(100, p.condition + 9 + p.attrs[29] / 2);
     // (runde 10A) original DB i ægte tilstand: originalens daglige moral 0x5cf4c8 (cmPlayerData.ts moraleDay) i stedet for glidningen mod 13
-    if (p.morale !== 13 && !(cmMorale && p.contract && p.cmContract && p.club && !p.regen)) p.morale += (13 - p.morale) * 0.02;
+    if (p.morale !== 13 && !(cmMorale && p.contract && p.cmContract && p.club && !cmGenerated(g, p))) p.morale += (13 - p.morale) * 0.02;
   }
   if (g.humans) { resolveAuctions(); resolveSignings(); resolveStaffBids(); }
   forEachHuman(windowNews);

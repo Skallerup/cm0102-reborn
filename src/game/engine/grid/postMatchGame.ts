@@ -14,7 +14,7 @@
 // omdømme i ikke-spillerposten (+8/+0xa/+0xc – Staff har det ikke: 0x6d3610 springes over).
 import type { CmPostResult, Player } from '../../types';
 import { gs, hasGame } from '../../state';
-import { clubRepMem, newCmContract, statusCode } from '../../cmPlayerData';
+import { clubRepMem, cmGeneratedNow, newCmContract, statusCode } from '../../cmPlayerData';
 import { fixtureInfoOf } from './gameInputs';
 import type { GP, GridMatch, Rand } from './gridMatch';
 import { matchReport6d1cc0, refereeReport6d4a20, type PmManager, type PmClub, type PmEnv, type PmFixture, type PmPlayer, type PmStaff } from './postMatch';
@@ -42,7 +42,7 @@ function clubOfGame(id: number): PmClub {
 
 function staffOfGame(q: GP): PmStaff | null {
   const p = q.src;
-  if (p.regen || !q.staffRaw || !q.recRaw) return null;                    // 0x6d20d6: genererede spillere (id ≥ [0xae2364]) får ingen rapport
+  if (cmGeneratedNow(p) || !q.staffRaw || !q.recRaw) return null;                    // 0x6d20d6: genererede spillere (id ≥ [0xae2364]) får ingen rapport
   const S = q.staffRaw, R = q.recRaw;
   return { key: p.id + 1, id: p.id, age: s8(S[0x18]), nation: (p.nation ?? -1) + 1, ambition: S[0x57], determination: S[0x58], pressure: S[0x5a],
     professionalism: S[0x5b], temperament: S[0x5d], rec: { ca: s16a(R, 5), r9: s16a(R, 9), rb: s16a(R, 0xb), rd: s16a(R, 0xd) },

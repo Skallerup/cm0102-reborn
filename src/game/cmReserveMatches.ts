@@ -38,6 +38,7 @@ import { hasReserveTeam } from './cmBTeam';
 import { asOwner, isHumanClub } from './humans';
 import { addNews } from './state';
 import { cmFitOn, cmFitRead } from './cmFitnessGame';
+import { cmGeneratedNow } from './cmPlayerData';
 
 /** spillets turnerings-id for reservekampene (ikke i g.comps – som venskabskampene en "turnering uden tabel") */
 export const RSV_COMP = 'RSV';
@@ -85,7 +86,8 @@ function hurt(g: GameState, p: Player): boolean {
 }
 /** +0x5e & 1: førsteholdet (spillets Player.reserves / cmPlace 1 = reserverne) */
 export const rsvSenior = (p: Player) => !(p.cmPlace === 1 || (p.cmPlace === undefined && p.reserves));
-const real = (p: Player) => !p.regen && !p.virtual;
+// id < [0xae2364] (0x7e6d5e m.fl.): cmGenerated – regens med PLAYER_REGEN har den pensioneredes staffpost (0x7abac0)
+const real = (p: Player) => !cmGeneratedNow(p);
 
 /** 0x7e6ba0's optælling for én klub; null = afvist */
 function clubOk(g: GameState, cid: number, date: string, young: number): boolean {

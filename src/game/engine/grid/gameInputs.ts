@@ -26,7 +26,7 @@ import { ageOn } from '../../dates';
 import { ATTRS } from '../../attributes';
 import { gs, hasGame } from '../../state';
 import { isHumanClub } from '../../humans';
-import { clubRepMem, statusCode } from '../../cmPlayerData';
+import { clubRepMem, cmGeneratedNow, statusCode } from '../../cmPlayerData';
 import { NATION_7F } from '../../cmKeyIds';
 import { playerRecord, captainInputOf, engineManager, joinedOf, type AiPickCtx } from './aiTeam';
 import type { Staff } from '../../types';
@@ -128,13 +128,15 @@ export function matchValuesEnvOf(p: Player, side: GameMatchSide, fx: GameFixture
   const rec = playerRecord(p);
   const ownContract = p.contract && p.club === side.club && !p.loan;
   const c = p.cmContract;
+  // staff-id < [0xae2364] (0x53ceb4, 0x6ec665): cmGenerated – regens med PLAYER_REGEN har den pensioneredes staffpost (0x7abac0)
+  const inDb = !cmGeneratedNow(p);
   return {
     engByte0, engByte1: 0, crowd: 0, cohesion: 0, fx40: 1, fx3a: fx.fx3a, comp: fx.comp, homeLeagueIsComp: fx.homeLeagueIsComp,
     ownClubRep: side.clubRep, captain: null, natOwn: !!side.national, natF9: !!side.national,
     contract: ownContract ? { b44: s8(c?.b44 ?? 0), flags: (c?.b45 ?? 0) >>> 0, d0c: Math.round((p.contract!.wage ?? 0) * 0.86), d10: p.contract!.cmBonusGbp?.[0] ?? -1, d14: p.contract!.cmBonusGbp?.[1] ?? -1 } : null,
     // 0x53ce90: (+0x4f & 0xf) − 10 for en spiller i databasen med kontrakt med klubben
-    contractMod: ownContract && !p.regen && c?.b4f !== undefined ? (c.b4f & 0xf) - 10 : 0,
-    inDb: !p.regen, staffState: (p.cmStaffState ?? 0) & 0xff, human: side.human, manager: side.manager,
+    contractMod: ownContract && inDb && c?.b4f !== undefined ? (c.b4f & 0xf) - 10 : 0,
+    inDb, staffState: (p.cmStaffState ?? 0) & 0xff, human: side.human, manager: side.manager,
     // staff+0x65 (cmRelations.ts – databasens præferencer og spillets skrivere; anføreren sættes af limen: GridMatchCtx.captainRel)
     rel: hasGame() && p.cmRel && !side.national ? matchRelOf(gs(), p, side.club, opp) : { dislikesOpp: false, favoursOpp: false, oppMgrDislikes: false, oppMgrFavours: false, favoursOwn: false, dislikesOwn: false,
       ownMgrDislikes: false, ownMgrFavours: false, capDislikes: false, capFavours: false },
