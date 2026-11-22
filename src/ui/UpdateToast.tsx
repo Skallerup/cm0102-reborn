@@ -5,6 +5,12 @@ import { useEffect, useState } from 'react';
 import { t } from '../i18n';
 
 let pending: ((reload?: boolean) => Promise<void>) | null = null;
+let stale = false;
+/** en fil fra en ældre udgivelse findes ikke mere (fx dayWorker-scriptet i en fane åben over en deploy): vis "ny version – genindlæs" */
+export function staleBuildNotice() {
+  stale = true;
+  window.dispatchEvent(new Event('cm-sw-update'));
+}
 /** main.tsx: en ny service worker venter – vis knappen */
 export function swUpdateReady(update: (reload?: boolean) => Promise<void>) {
   pending = update;
@@ -22,14 +28,14 @@ function reloadNow() {
 }
 
 export function UpdateToast() {
-  const [ready, setReady] = useState(() => !!pending);
+  const [ready, setReady] = useState(() => !!pending || stale);
   const [hidden, setHidden] = useState(false);
   useEffect(() => {
     const on = () => setReady(true);
     window.addEventListener('cm-sw-update', on);
     return () => window.removeEventListener('cm-sw-update', on);
   }, []);
-  if (!ready || hidden || !pending) return null;
+  if (!ready || hidden || (!pending && !stale)) return null;
   return (
     <div className="acc-toast sw-toast" role="status">
       {t('update.ready')}{' '}

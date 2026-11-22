@@ -18,6 +18,28 @@ export class GameRunError extends Error {
   constructor(message: string, date: string) { super(message); this.name = 'GameRunError'; this.date = date; }
 }
 
+/** arbejderens script kunne ikke hentes, og filen findes ikke længere på serveren (ny udgivelse over en åben fane) */
+class WorkerStaleError extends Error {}
+
+/** onerror uden besked og placering = scriptet blev ikke hentet/startet. Tjek, om filen er væk (404/html) → ældre udgivelse; ellers ægte fejl med detaljer. */
+async function classifyWorkerError(e: ErrorEvent): Promise<Error> {
+  const where = e.filename ? ` (${e.filename.split('/').pop()}:${e.lineno ?? 0}:${e.colno ?? 0})` : '';
+  if (e.message) {
+    const err = new Error(`dayWorker: ${e.message}${where}`);
+    const st = (e.error as Error | undefined)?.stack;
+    if (st) err.stack = st;
+    return err;
+  }
+  try {
+    // (new URL(..) må stå bogstaveligt i new Worker for Vite) – i stedet: peger den udgivne forside på et andet hovedscript end siden her?
+    const html = await (await fetch('/', { cache: 'no-store' })).text();
+    const mine = [...document.querySelectorAll<HTMLScriptElement>('script[type=module][src]')].map((x) => new URL(x.src).pathname);
+    const live = [...html.matchAll(/<script[^>]+type="module"[^>]+src="([^"]+)"/g)].map((m) => m[1]);
+    if (mine.length && live.length && !live.some((u) => mine.includes(u))) return new WorkerStaleError('dayWorker script gone (new build)');
+  } catch { /* offline: som før */ }
+  return new Error(`dayWorker: script failed to load or start without a message${where}`);
+}
+
 type Opts = Parameters<typeof runUntil>[0] & {
   /** brøkdelen af dagen undervejs (0..1) – kun fra arbejderen */
   onFrac?: (date: string, frac: number) => void;
@@ -45,6 +67,13 @@ export async function runDays(opts: Opts): Promise<DayResult> {
     return await inWorker(opts);
   } catch (e) {
     if (e instanceof GameRunError) throw e;
+    if (e instanceof WorkerStaleError) {
+      // arbejder-scriptet fra en ældre udgivelse er væk – ikke en fejl i spillet: kør i hovedtråden og bed om en genindlæsning
+      void import('./UpdateToast').then((m) => m.staleBuildNotice());
+      broken = true;
+      worker?.terminate(); worker = null;
+      return runUntil(opts);
+    }
     reportError(e, '\n--- dayWorker (infrastruktur) – kører i hovedtråden ---');
     console.warn('Continue Game i en Worker fejlede – kører i hovedtråden', e);
     broken = true;
@@ -87,7 +116,7 @@ function inWorker(opts: Opts): Promise<DayResult> {
       (globalThis as { __cmDayRun?: typeof STATS }).__cmDayRun = { ...STATS };
       resolve(m.result);
     };
-    w.onerror = (e) => { done(); reject(new Error(e.message || 'dayWorker')); };
+    w.onerror = (e) => { done(); void classifyWorkerError(e).then(reject); };
     const t1 = performance.now();
     // tilfældighedernes tilstand med (hovedtrådens notify gør det samme)
     gs().rng = rng.state;

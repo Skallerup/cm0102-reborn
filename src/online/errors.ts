@@ -19,7 +19,8 @@ export function reportError(err: unknown, extra?: string) {
   // fuld disk er allerede vist for spilleren og meldt én gang (game/storageGuard.ts) – ikke igen fra window-handlerne
   if (e.name === 'StorageFullError') return;
   const msg = `${e.name}: ${e.message}`.slice(0, 300);
-  const stack = `${e.stack ?? ''}${extra ? `\n--- component stack ---${extra}` : ''}`;
+  // stakken først (højst 1800 tegn), så komponentstakken stadig er med inden for de 3000 tegn, adminlisten gemmer
+  const stack = `${(e.stack ?? '').slice(0, extra ? 1800 : 3000)}${extra ? `\n--- component stack ---${extra}` : ''}`;
   if (IGNORE.test(msg) || IGNORE.test(stack.split('\n')[1] ?? '')) return;
   const n = sent.get(msg) ?? 0;
   if (n >= 3 || total >= 20) return;

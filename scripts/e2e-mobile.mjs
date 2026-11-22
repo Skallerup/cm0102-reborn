@@ -105,6 +105,21 @@ async function run(devKey, look) {
   const cdp = await ctx.newCDPSession(page);
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
+  // fejlgrænsen ("Something went wrong"): React skriver fejlen + komponentstakken til konsollen (dev) – gem de sidste og log dem, når siden vises
+  const consoleErrs = [];
+  page.on('console', (m) => { if (m.type() === 'error') { consoleErrs.push(m.text()); if (consoleErrs.length > 12) consoleErrs.shift(); } });
+  page.on('pageerror', (e) => consoleErrs.push(`pageerror: ${e.message}\n${e.stack ?? ''}`));
+  let crashSeen = false;
+  const crashCheck = async (where) => {
+    if (crashSeen || !(await page.locator('.crash-box').first().isVisible().catch(() => false))) return false;
+    crashSeen = true;
+    const msg = `FEJLGRÆNSEN vist (${where})`;
+    console.log(`  ✗ ${tag}: ${msg}\n${consoleErrs.join('\n---\n').slice(0, 6000)}`);
+    failures.push(`${tag}: ${msg}`);
+    await page.screenshot({ path: join(OUT, `${tag}-fejlgraense-${slug(where)}.png`) }).catch(() => {});
+    writeFileSync(join(OUT, `${tag}-fejlgraense-${slug(where)}.txt`), consoleErrs.join('\n---\n'));
+    return true;
+  };
   await page.route(/\/api\/account\?op=(config|prompt)/, (r) => r.fulfill({ json: r.request().url().includes('op=prompt') ? { ok: true } : { mail: true } }));
   await page.addInitScript(({ theme }) => {
     localStorage.setItem('cm0102.lang', 'en'); localStorage.setItem('cm0102.forceLogin', '1'); localStorage.setItem('cm-theme', theme);
@@ -150,8 +165,9 @@ async function run(devKey, look) {
   };
   const step = async (name, fn) => {
     const before = errors.length;
-    try { await fn(); if (errors.length > before) throw new Error(`sidefejl: ${errors.slice(before).join(' | ')}`); }
-    catch (e) { failures.push(`${tag}: ${name}: ${e.message.split('\n')[0]}`); console.log(`  ✗ ${tag}: ${name}: ${e.message.split('\n')[0]}`); await page.screenshot({ path: join(OUT, `${tag}-fejl-${slug(name)}.png`) }).catch(() => {}); }
+    try { await fn(); await crashCheck(name); if (errors.length > before) throw new Error(`sidefejl: ${errors.slice(before).join(' | ')}`); }
+    catch (e) {
+      await crashCheck(name); failures.push(`${tag}: ${name}: ${e.message.split('\n')[0]}`); console.log(`  ✗ ${tag}: ${name}: ${e.message.split('\n')[0]}`); await page.screenshot({ path: join(OUT, `${tag}-fejl-${slug(name)}.png`) }).catch(() => {}); }
   };
 
   // ---------- forsiden ----------
