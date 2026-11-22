@@ -42,10 +42,11 @@ const DRIVER = `(() => {
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.webp': 'image/webp', '.jpg': 'image/jpeg', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json', '.m4a': 'audio/mp4' };
 let finish;
 const finished = new Promise((r) => { finish = r; });
-let phase = 'start', peak = 0, peakAt = '';
+// fasens top: siden forrige MARK (fasen, der slutter ved mærket)
+let phase = 'start', peak = 0, peakAt = '', phPeak = 0;
 const srv = http.createServer((req, res) => {
   const u = new URL(req.url, 'http://x');
-  if (u.pathname === '/__log') { const s = u.searchParams.get('s'); res.end('ok'); if (s.startsWith('MARK ')) { console.log(`${s.slice(5)} ${T()} top ${peak.toFixed(0)} MB (${peakAt}) nu ${fp('phys_footprint').toFixed(0)} MB`); phase = s.slice(5); } else if (s === 'SLUT') finish(); else console.log(`  t ${T()} ${s} fp ${fp('phys_footprint').toFixed(0)} MB`); return; }
+  if (u.pathname === '/__log') { const s = u.searchParams.get('s'); res.end('ok'); if (s.startsWith('MARK ')) { console.log(`${s.slice(5)} ${T()} top ${peak.toFixed(0)} MB (${peakAt}) fasens top ${phPeak.toFixed(0)} MB nu ${fp('phys_footprint').toFixed(0)} MB`); phase = s.slice(5); phPeak = 0; } else if (s === 'SLUT') finish(); else console.log(`  t ${T()} ${s} fp ${fp('phys_footprint').toFixed(0)} MB`); return; }
   if (u.pathname.startsWith('/api/')) { res.setHeader('content-type', 'application/json'); res.end('{"ok":true,"mail":true}'); return; }
   let p = u.pathname.startsWith(BASE) ? u.pathname.slice(BASE.length) : u.pathname.slice(1);
   let f = join(PROD, decodeURIComponent(p));
@@ -60,7 +61,7 @@ const pids = () => execSync('ps -A -o pid=,command=', { encoding: 'utf8' }).spli
 const fp = (key) => { try { const ps = pids(); if (!ps.length) return 0; const o = execSync(`footprint --noCategories -f bytes ${ps.map((x) => `-p ${x}`).join(' ')}`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }); return Math.max(0, ...[...o.matchAll(new RegExp(`${key}: (\\d+) B`, 'g'))].map((m) => Number(m[1]) / 1048576)); } catch { return 0; } };
 const pw = spawn(`${homedir()}/Library/Caches/ms-playwright/webkit-2370/pw_run.sh`, // en frisk profil pr. kørsel (ellers genoptager siden det sidste spil); HEADLESS=1 uden vindue
   [`--user-data-dir=${mkdtempSync(join(process.env.TMPDIR ?? tmpdir(), 'wkraw-'))}`, ...(process.env.HEADLESS ? ['--headless'] : []), `http://localhost:${PORT}${BASE}`], { stdio: 'ignore' });
-const tm = setInterval(() => { const v = fp('phys_footprint'); if (process.env.TIMELINE) console.log(`  t ${T()} ${phase} fp ${v.toFixed(0)} MB`); if (v > peak) { peak = v; peakAt = phase; } }, Number(process.env.TICK) || 150);
+const tm = setInterval(() => { const v = fp('phys_footprint'); if (process.env.TIMELINE) console.log(`  t ${T()} ${phase} fp ${v.toFixed(0)} MB`); if (v > peak) { peak = v; peakAt = phase; } if (v > phPeak) phPeak = v; }, Number(process.env.TICK) || 150);
 await Promise.race([finished, new Promise((r) => setTimeout(r, 600000))]);
 clearInterval(tm);
 console.log(`phys_footprint_peak (fanens proces): ${fp('phys_footprint_peak').toFixed(0)} MB; prøvernes top ${peak.toFixed(0)} MB (${peakAt}) – ${T()}`);
