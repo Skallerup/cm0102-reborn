@@ -4958,4 +4958,5 @@ Object.assign(fr, {
   'mode.legacy': "Cette partie a été lancée dans l'ancien mode étendu et garde ses règles. Les nouvelles parties suivent toujours la logique de CM 01/02.",
   'news.cmNotPromoted': "{club} n'est pas promu",
   'news.cmNotPromoted.body': "La promotion de {club} en {comp} a été annulée car leur stade n'a pas la capacité requise.",
+  'storage.saveFailed': "Impossible d'enregistrer la partie sur cet appareil (le navigateur refuse de la stocker – le mode privé, un navigateur intégré ou des données de site effacées peuvent en être la cause). Ouvrez le jeu dans une fenêtre de navigateur normale ou utilisez Exporter pour garder une copie.",
 });

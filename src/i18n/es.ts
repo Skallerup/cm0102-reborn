@@ -4958,4 +4958,5 @@ Object.assign(es, {
   'mode.legacy': "Esta partida se empezó en el antiguo modo ampliado y mantiene sus reglas. Las partidas nuevas siguen siempre la lógica de CM 01/02.",
   'news.cmNotPromoted': "{club} no asciende",
   'news.cmNotPromoted.body': "El ascenso de {club} a la {comp} ha sido cancelado porque su estadio no cumple la capacidad exigida.",
+  'storage.saveFailed': "No se puede guardar la partida en este dispositivo (el navegador se niega a almacenarla – el modo privado, un navegador integrado o datos del sitio borrados pueden causarlo). Abre el juego en una ventana normal del navegador o usa Exportar para conservar una copia.",
 });

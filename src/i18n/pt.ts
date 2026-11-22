@@ -4958,4 +4958,5 @@ Object.assign(pt, {
   'mode.legacy': "Este jogo foi iniciado no antigo modo alargado e mantém as suas regras. Os jogos novos seguem sempre a lógica do CM 01/02.",
   'news.cmNotPromoted': "{club} não sobe de divisão",
   'news.cmNotPromoted.body': "A subida do {club} à {comp} foi cancelada porque o seu estádio não tem a capacidade exigida.",
+  'storage.saveFailed': "Não é possível guardar o jogo neste dispositivo (o navegador recusa-se a armazená-lo – o modo privado, um navegador integrado ou dados do site apagados podem causar isto). Abra o jogo numa janela normal do navegador ou use Exportar para guardar uma cópia.",
 });

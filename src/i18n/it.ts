@@ -4958,4 +4958,5 @@ Object.assign(it, {
   'mode.legacy': "Questa partita è stata avviata nella vecchia modalità estesa e mantiene le sue regole. Le nuove partite seguono sempre la logica di CM 01/02.",
   'news.cmNotPromoted': "{club} non promosso",
   'news.cmNotPromoted.body': "La promozione del {club} in {comp} è stata annullata perché il loro stadio non ha la capienza richiesta.",
+  'storage.saveFailed': "Impossibile salvare la partita su questo dispositivo (il browser si rifiuta di memorizzarla – la modalità privata, un browser integrato o i dati del sito cancellati possono esserne la causa). Apri il gioco in una normale finestra del browser oppure usa Esporta per conservarne una copia.",
 });

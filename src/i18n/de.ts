@@ -4958,4 +4958,5 @@ Object.assign(de, {
   'mode.legacy': "Dieses Spiel wurde im alten erweiterten Modus gestartet und behält seine Regeln. Neue Spiele folgen immer der Logik von CM 01/02.",
   'news.cmNotPromoted': "{club} steigt nicht auf",
   'news.cmNotPromoted.body': "Der Aufstieg von {club} in die {comp} wurde abgesagt, da ihr Stadion nicht die erforderliche Kapazität hat.",
+  'storage.saveFailed': "Das Spiel kann auf diesem Gerät nicht gespeichert werden (der Browser verweigert das Speichern – privater Modus, ein In-App-Browser oder gelöschte Websitedaten können die Ursache sein). Öffne das Spiel in einem normalen Browserfenster oder nutze Export, um eine Kopie zu behalten.",
 });

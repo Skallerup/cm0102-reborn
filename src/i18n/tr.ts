@@ -4958,4 +4958,5 @@ Object.assign(tr, {
   'mode.legacy': "Bu oyun eski genişletilmiş modda başlatıldı ve kurallarını korur. Yeni oyunlar her zaman CM 01/02'nin mantığını izler.",
   'news.cmNotPromoted': "{club} yükselemedi",
   'news.cmNotPromoted.body': "{club} takımının {comp} ligine yükselmesi, stadyumu gerekli kapasiteyi karşılamadığı için iptal edildi.",
+  'storage.saveFailed': "Oyun bu cihazda kaydedilemiyor (tarayıcı kaydetmeyi reddediyor – gizli mod, uygulama içi tarayıcı veya silinmiş site verileri buna neden olabilir). Oyunu normal bir tarayıcı penceresinde açın veya bir kopya saklamak için Dışa Aktar'ı kullanın.",
 });
