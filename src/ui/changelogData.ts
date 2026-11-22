@@ -13,6 +13,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '2026-11-22',
     title: { da: 'Mere af det originale CM 01/02', en: 'More of the original CM 01/02' },
     items: [
+      { da: "Gemte spil fra før 9/11: spillere uden en side (Left/Right/Centre = 1, fx Johan Mangfors) får originalens positioner ved indlæsning og kan stilles op igen.", en: "Saves from before 9 Nov: players with no side rating (Left/Right/Centre all 1, e.g. Johan Mangfors) now get their positions the way the original sets them at game start, so they can be picked again." },
       { da: "Klubbernes omdømme som originalen: det følger ligaplaceringen hver uge, og mester, oprykning og nedrykning giver omdømme, så snart det er afgjort – ikke først ved sæsonslut.", en: "Club reputation as in the original: it follows the league position every week, and titles, promotion and relegation change reputation as soon as they are decided – not at the end of the season." },
       { da: "Kontrakter og lejer som originalen: lejeaftaler slutter på slutdatoen, og spillere med udløbet kontrakt bliver utilfredse og bliver sat fri efter originalens regler.", en: "Contracts and loans as in the original: loans end on their end date, and players with an expired contract become unhappy and are released by the original's rules." },
       { da: "Nyt spil på mobil: mindre hukommelse, mens holdlisten bygges (Select Team) – færre lukkede faner på iPhone.", en: "New game on mobile: less memory while the team list is built (Select Team) – fewer closed tabs on iPhone." },
