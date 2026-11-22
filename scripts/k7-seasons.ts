@@ -30,12 +30,14 @@ const E = `${homedir()}/cm0102-engine`;
 const SEASONS = Number(process.env.SEASONS ?? 3);
 const Y23 = process.env.Y23 ?? `${E}/oracle/daysnap/s1-3.9.60-y23-e14`;
 const ONLY_ORACLE = !!process.env.ONLY_ORACLE;
+const LOANS = process.env.LOANS;   // fil: lejeaftalerne (begge sider) + lejelisten pr. billede (engelske klubber) – k7-loans-analyse
+const llSeries: { o: { iso: string; keys: string[] }[]; u: { iso: string; keys: string[] }[] } = { o: [], u: [] };
 const CLUB = 'Arsenal';
 
 // ------------------------------------------------------------------ normaliseret verden (begge sider)
-interface PRow { key: string; id: number; age: number; ca: number; pa: number; club: string; eng: boolean; div: string; nat: string; exp: string; wage: number; loan: boolean; loanFromEng: boolean; mem: boolean }
+interface PRow { key: string; id: number; age: number; ca: number; pa: number; club: string; eng: boolean; div: string; nat: string; exp: string; wage: number; loan: boolean; loanFromEng: boolean; mem: boolean; ll?: boolean }
 interface CRow { name: string; div: string; bal: number; wb: number; rep: number; mgr: string; squad: number }
-interface TRow { key: string; date: string; from: string; to: string; fee: number; loan: boolean; free: boolean; eng: boolean; staff?: boolean }
+interface TRow { key: string; date: string; from: string; to: string; fee: number; loan: boolean; free: boolean; eng: boolean; staff?: boolean; pkey?: string; age?: number; ca?: number; fromNat?: string; toNat?: string; fromDiv?: string; toDiv?: string }
 interface LRow { div: string; club: string; p: number; gf: number; ga: number; pos: number }
 interface World { date: string; players: PRow[]; clubs: CRow[]; league: LRow[] }
 
@@ -69,7 +71,7 @@ function oracleWorld(m: SparseMem): World {
     const row = rowOf(id), k = contractAt(m.s32(row)), kl = contractAt(m.s32(row + 4));
     const parent = k ? m.s32(k + 4) : -1;
     players.push({ key: `${common || f + ' ' + l}|${dob}`, id, age: yrs(date, dob), ca: m.s16(pr + 5), pa: m.s16(pr + 7), club: cName(cix), eng: cEng(cix), div: cix >= 0 ? cDiv(cix) : '',
-      nat: str(m, m.u32(st + 0x1a) + 4, 51), exp: k ? dayIso(m.s16(k + 0x2d), m.u16(k + 0x2f)) : '', wage: k ? m.s32(k + 0xc) : 0, loan: !!kl, loanFromEng: !!kl && cEng(parent), mem: true });
+      nat: str(m, m.u32(st + 0x1a) + 4, 51), exp: k ? dayIso(m.s16(k + 0x2d), m.u16(k + 0x2f)) : '', wage: k ? m.s32(k + 0xc) : 0, loan: !!kl, loanFromEng: !!kl && cEng(parent), mem: true, ll: k ? !!(m.u8(k + 0x4e) & 2) : false });
   }
   const clubs: CRow[] = [];
   const league: LRow[] = [];
@@ -100,7 +102,10 @@ function oracleWorld(m: SparseMem): World {
     const to = m.s32(r + 0x10), from = m.s32(r + 0x14), pid = m.s32(r);
     const key = `${byId.get(pid)?.key ?? pid}|${d}|${to}|${art}`;
     if (oTransfers.has(key)) continue;
-    oTransfers.set(key, { key, date: d, from: from >= 0 ? cName(from) : '', to: to >= 0 ? cName(to) : '', fee: m.s32(r + 0x18), loan: art === 2, free: art === 3 || from < 0, eng: cEng(to) || cEng(from), staff: art === 5 });
+    const cNat = (ix: number) => (ix >= 0 && ix < nc ? str(m, m.u32(C + 0x245 * ix + 0x53) + 4, 51) : '');
+    const pp = byId.get(pid);
+    oTransfers.set(key, { key, date: d, from: from >= 0 ? cName(from) : '', to: to >= 0 ? cName(to) : '', fee: m.s32(r + 0x18), loan: art === 2, free: art === 3 || from < 0, eng: cEng(to) || cEng(from), staff: art === 5,
+      ...(LOANS && art === 2 ? { pkey: pp?.key, age: pp ? yrs(d, pp.key.split('|')[1]) : undefined, ca: pp?.ca, fromNat: cNat(from), toNat: cNat(to), fromDiv: from >= 0 ? cDiv(from) : '', toDiv: to >= 0 ? cDiv(to) : '' } : {}) });
   }
   return { date, players, clubs, league };
 }
@@ -120,12 +125,14 @@ function ourWorld(date: string): World {
     if (p.club) squad.set(p.club, (squad.get(p.club) ?? 0) + 1);
     players.push({ key: `${p.first} ${p.last}|${p.dob}`, id: p.id, age: yrs(date, p.dob), ca: p.ca, pa: p.pa, club: c?.name ?? '', eng: !!c && c.nation === eng, div: p.club ? divOf(p.club) : '',
       nat: g.nations[p.nation]?.name ?? '', exp: p.contract?.expires.slice(0, 10) ?? '', wage: p.contract ? Math.round(p.contract.wage * GBP) : 0, loan: !!p.loan,
-      loanFromEng: !!p.loan && g.clubs[p.loan.from]?.nation === eng, mem: cmInMemory(g, p) });
+      loanFromEng: !!p.loan && g.clubs[p.loan.from]?.nation === eng, mem: cmInMemory(g, p), ll: !!p.loanListed });
     for (const mv of p.moves ?? []) {
       const key = `${p.id}|${mv.date}|${mv.to}`;
       if (uTransfers.has(key)) continue;
       const fe = g.clubs[mv.from]?.nation === eng, te = g.clubs[mv.to]?.nation === eng;
-      uTransfers.set(key, { key, date: mv.date, from: g.clubs[mv.from]?.name ?? '', to: g.clubs[mv.to]?.name ?? '', fee: Math.round(mv.fee * GBP), loan: !!mv.loan, free: !mv.from || !mv.to, eng: fe || te });
+      const cDivU = (cid: number) => { const c = g.clubs[cid]; return c ? g.comps[c.league]?.name ?? g.leagues[c.league]?.name ?? '' : ''; };
+      uTransfers.set(key, { key, date: mv.date, from: g.clubs[mv.from]?.name ?? '', to: g.clubs[mv.to]?.name ?? '', fee: Math.round(mv.fee * GBP), loan: !!mv.loan, free: !mv.from || !mv.to, eng: fe || te,
+        ...(LOANS && mv.loan ? { pkey: `${p.first} ${p.last}|${p.dob}`, age: yrs(mv.date, p.dob), ca: p.ca, fromNat: g.nations[g.clubs[mv.from]?.nation ?? -1]?.name ?? '', toNat: g.nations[g.clubs[mv.to]?.nation ?? -1]?.name ?? '', fromDiv: cDivU(mv.from), toDiv: cDivU(mv.to) } : {}) });
     }
   }
   for (const s of Object.values(g.staff)) for (const mv of s.moves ?? []) {
@@ -210,10 +217,12 @@ for (const s of snaps) {
     }
     const uw = ourWorld(s.iso);
     tally('u', s.iso, uw);
+    if (LOANS) llSeries.u.push({ iso: s.iso, keys: uw.players.filter((p) => p.ll && p.eng).map((p) => `${p.key}|${p.club}|${p.div}|${Math.round(p.age)}|${p.ca}|${p.loan ? 1 : 0}`) });
     if (isKey(s.iso)) uWorlds.set(s.iso, uw);
   }
   const ow = oracleWorld(s.load());
   tally('o', s.iso, ow);
+  if (LOANS) llSeries.o.push({ iso: s.iso, keys: ow.players.filter((p) => p.ll && p.eng).map((p) => `${p.key}|${p.club}|${p.div}|${Math.round(p.age)}|${p.ca}|${p.loan ? 1 : 0}`) });
   for (const r of ow.league) { const k = `${seasonOf(s.iso)}|${r.div}`; const old = oLeague.get(k) ?? []; const sum = (xs: LRow[]) => xs.reduce((t, x) => t + x.p, 0); if (sum(ow.league.filter((x) => x.div === r.div)) >= sum(old)) oLeague.set(k, ow.league.filter((x) => x.div === r.div)); }
   if (isKey(s.iso)) oWorlds.set(s.iso, { ...ow, league: [] });
   console.log(`  ${s.iso}: billedets dato ${ow.date}${ONLY_ORACLE ? '' : `, spillets ${g.date}`}; ${ow.players.length} spillere i hukommelsen (${((Date.now() - t0) / 1000).toFixed(0)} s)`);
@@ -396,3 +405,4 @@ out(`\n${((Date.now() - t0) / 1000).toFixed(0)} s`);
 if (process.env.REPORT) writeFileSync(process.env.REPORT, lines.join('\n') + '\n');
 if (process.env.JSON) writeFileSync(process.env.JSON, JSON.stringify({ keyDates: Object.fromEntries(keyDates), metrics, names }, null, 1));
 if (!existsSync(Y23)) process.exitCode = 0;
+if (LOANS) writeFileSync(LOANS, JSON.stringify({ keyDates: Object.fromEntries(keyDates), o: { loans: [...oTransfers.values()].filter((t) => t.loan), ll: llSeries.o }, u: { loans: [...uTransfers.values()].filter((t) => t.loan), ll: llSeries.u } }));

@@ -158,7 +158,9 @@ export interface PlanResult { ran: boolean; groups: { A: number[]; B: number[]; 
 export function planSquad(e: PlanEntry, ind: PlanInput, ctx: PlanCtx): PlanResult {
   const res: PlanResult = { ran: false, groups: { A: [], B: [], C: [] }, dropped: [] };
   let first = ind.first;
-  if (e.slots[0].idx === -1) first = true;                                     // 0x83cbb4: +0x23 = 0xff
+  // 0x83cbb4: byten +0x23 = 0xff – også når pladserne har været gennem ønskelisternes hukommelse (readSlots læser +0x23 som 255, ikke −1);
+  // før 22/11 blev en klub, hvis første plan faldt ud ved porten 0x83cc88 (inaktive divisioner, fx Englands non-league), aldrig planlagt igen
+  if ((e.slots[0].idx & 0xff) === 0xff) first = true;
   e.counter = 0;
   const exit = () => { e.state = 0; return res; };
   if (ind.national || !ind.hasNation) return exit();                           // 0x83cbc3
