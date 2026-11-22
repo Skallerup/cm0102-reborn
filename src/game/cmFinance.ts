@@ -120,10 +120,10 @@ export function nationLoaded(g: GameState, n: number): boolean {
 function inMemory(g: GameState, c: Club, p: Player): boolean {
   return !memKnown(g) || p.cmMem === 1 || nationLoaded(g, c.nation);
 }
-/** spillet har hukommelsens udvalgte i klubberne (world-filen med `tm` – spil startet før 15/11-2026 har kun de klubløse) */
+/** spillet har hukommelsens udvalgte i klubberne (world-filen med `tm` – Maximum og databasestørrelsen 2/Normal; spil startet før 15/11-2026 har
+ *  kun de klubløse). Før kun Maximum (g.cmMaxMem): ved størrelse 2 talte alle udenlandske klubbers kontrakter med i lønsummen */
 const MEM_KNOWN = new WeakMap<GameState, boolean>();
-function memKnown(g: GameState): boolean {
-  if (!g.cmMaxMem) return false;
+export function memKnown(g: GameState): boolean {
   let v = MEM_KNOWN.get(g);
   if (v === undefined) { v = Object.values(g.players).some((p) => p.club && p.cmMem === 1); MEM_KNOWN.set(g, v); }
   return v;

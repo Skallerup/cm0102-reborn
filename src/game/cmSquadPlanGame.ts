@@ -30,6 +30,7 @@ import { SQUAD_STATUSES } from './squadStatus';
 import { dislikesClub, dislikesPerson, favoursClub, favoursPerson, managerStaff } from './cmRelations';
 import { targetRep } from './cmBoardInterest';
 import { cmShortlistDaily, cmShortlistOn } from './cmShortlistGame';
+import { memKnown, nationLoaded } from './cmFinance';
 import { cmGbp } from './cmMoney';
 import { withSharedPersons } from './cmBoardGame';
 
@@ -108,7 +109,11 @@ export function cmSquadPlanClub(g: GameState, cid: number, daily: boolean, first
   const e = entryOf(g, cid);
   const fit = cmFitRead(g);
   const hum = human ?? isHumanClub(cid);
-  const all = squad(cid);
+  // truppen i hukommelsen (0x524d70): i et ikke-indlæst land kun de udvalgte (Player.cmMem) – resten findes ikke i originalen. Før så planen hele
+  // truppen: oraklet 21/7-01 har 1.695 udenlandske klubber uden spillere i hukommelsen med 7 mål i alt (ingen indehavere +0x13); vi havde
+  // 12.205 indehavere og 7.198 mål, og de hentede de unge engelske klubløse (sæson 1: 52 underskrifter i udlandet mod oraklets 7)
+  const mem = !memKnown(g) || nationLoaded(g, club.nation);
+  const all = mem ? squad(cid) : squad(cid).filter((p) => p.cmMem === 1);
   const pl = all.map((p) => planPlayer(g, p, fit, first && !daily && !g.cmPlan?.[cid]));
   const byId = new Map(all.map((p) => [p.id, p]));
   const rep = clubRepMem(g, cid);

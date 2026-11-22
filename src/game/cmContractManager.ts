@@ -25,7 +25,7 @@
 // *Estimeret*: ingen nyheder (0x4d6790/0x4da590/0x4d49a0/0x4d6d70 går kun til mennesket), transfertilbuddene/
 // forhandlingerne (TRANSFER_MANAGER 0x8c5cf0/0x8c5e40/0x8c1870 = spillets åbne bud på spilleren), karrierens slut 0x7a7eb0 = Player.cmRetire,
 // ønskelisterne 0x842c00 (intet), sign_contract 0x4cf720's felter (+0x3d.. som cmPlayerData newCmContract).
-import { bookBlock, K as FK } from './cmFinance';
+import { bookBlock, K as FK, memKnown } from './cmFinance';
 import type { Contract, GameState, Player } from './types';
 import { G, clubAt, getContract, cmAfter2330, DATE_2330, type CmMem } from './cmMem';
 import { buildWantMem, applyCmTerms, type CmTerms, type WantMem } from './cmContractGame';
@@ -75,9 +75,11 @@ export function cmCmScope(g: GameState, p: Player): boolean {
   // 0x4c7ac0's personløkke går over alle personer i hukommelsen, og 0x83a1b0/0x83cb40 giver dem trupplanen (cmSquadPlanStart). Før stod de uden
   // for porten, og cmExpireOutsideDaily (*estimeret*) satte dem fri dagen efter udløbet – klubløse 30/6 918 mod oraklets 202
   if (g.activeNations?.includes(c.nation) ?? true) return true;
-  // de andre lande: originalens personløkke går over ALLE personer i hukommelsen – med databasestørrelsen Maximum også de udvalgte i
-  // klubber uden for de valgte lande (0x524d70, Player.cmMem)
-  return FOREIGN && !!g.cmMaxMem && p.cmMem === 1;
+  // de andre lande: originalens personløkke går over ALLE personer i hukommelsen – også de udvalgte i klubber uden for de valgte lande
+  // (0x524d70, Player.cmMem) – ved enhver databasestørrelse: før kun Maximum (g.cmMaxMem), så Normal/størrelse 2's 1.107 udenlandske i
+  // hukommelsen stod uden for porten, og cmExpireOutsideDaily satte dem fri dagen efter udløbet (K7 sæson 1: 41 klubløse fra udenlandske
+  // klubber mod oraklets 4; oraklet forlænger 192 af de 269 udløbende)
+  return FOREIGN && p.cmMem === 1 && memKnown(g);
 }
 /** CM_CM_FOREIGN=0: kun de valgte lande (målinger) */
 const FOREIGN = ENV.CM_CM_FOREIGN !== '0';
