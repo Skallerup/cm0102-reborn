@@ -3601,7 +3601,7 @@ Object.assign(de, {
   "cxs.playerInit": "Spielerinitialisierung",
   "cxs.initGame": "Spieldaten werden initialisiert",
   "cxs.loadingSave": "Gespeichertes Spiel wird geladen",
-  "cxs.look": "Aussehen",
+  "cxs.look": "Aussehen", 'cxs.dbSize': "Datenbank", 'cxs.dbSize.normal': "Normal", 'cxs.dbSize.maximum': "Maximum", 'cxs.dbSize.hint': "Die Datenbankgröße des Originals: Maximum hält alle Spieler im Speicher, Normal weniger (weniger Speicher – für Handys). Nur die 2001/02-Datenbank 3.9.60 gibt es in Normal.", 'cxs.dbSize.whyPhone': "Normal ist auf Handys und in den eingebauten Browsern von Apps gewählt: Ein neues Spiel mit Maximum braucht mehr Speicher, als sie erlauben.", 'cxs.dbSize.whyKilled': "Normal ist gewählt, weil dein Browser das letzte neue Spiel geschlossen hat (zu wenig Speicher).",
   "cxs.account": "Konto",
   "start.classicMenu": "Klassischer Startbildschirm",
   "cxs.selectLeagues": "Liga(en) wählen",

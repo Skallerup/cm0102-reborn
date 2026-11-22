@@ -19,6 +19,8 @@ const TARGETS: { file: string; source: string; env?: Record<string, string> }[] 
   { file: 'world-original.json', source: `${ORIG}/Original-3.9.60-Database-Swedish_fixed` },
   { file: 'world-original-3965.json', source: process.env.CM_DATA_3965 ?? APP65 },
   { file: 'world-original-3968.json', source: `${ORIG}/Original-3.9.68-Database`, env: { NO_LEGACY: '1' } },
+  // databasestørrelsen Normal (originalens Preferences → Database; 0x524d70 med størrelse 2) – mobilernes standard
+  { file: 'world-original-normal.json', source: `${ORIG}/Original-3.9.60-Database-Swedish_fixed`, env: { CM_DBSIZE: '2' } },
 ];
 
 const args = process.argv.slice(2);

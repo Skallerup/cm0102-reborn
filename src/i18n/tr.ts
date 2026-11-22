@@ -3601,7 +3601,7 @@ Object.assign(tr, {
   "cxs.playerInit": "Oyuncular Hazırlanıyor",
   "cxs.initGame": "Oyun verileri hazırlanıyor",
   "cxs.loadingSave": "Kayıtlı oyun yükleniyor",
-  "cxs.look": "Görünüm",
+  "cxs.look": "Görünüm", 'cxs.dbSize': "Veritabanı", 'cxs.dbSize.normal': "Normal", 'cxs.dbSize.maximum': "Maksimum", 'cxs.dbSize.hint': "Orijinalin veritabanı boyutu: Maksimum tüm oyuncuları bellekte tutar, Normal daha azını (daha az bellek – telefonlar için). Normal yalnızca 2001/02 veritabanı 3.9.60 için var.", 'cxs.dbSize.whyPhone': "Telefonlarda ve uygulamaların yerleşik tarayıcılarında Normal seçilir: Maksimum ile yeni bir oyun, izin verdiklerinden fazla bellek ister.", 'cxs.dbSize.whyKilled': "Tarayıcın son yeni oyunu kapattığı için Normal seçildi (yetersiz bellek).",
   "cxs.account": "Hesap",
   "start.classicMenu": "Klasik başlangıç ekranı",
   "cxs.selectLeagues": "Lig(ler) Seç",

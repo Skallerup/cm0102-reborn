@@ -7013,7 +7013,7 @@ Object.assign(sv, {
   "cxs.playerInit": "Spelarinitiering",
   "cxs.initGame": "Initierar speldata",
   "cxs.loadingSave": "Laddar sparat spel",
-  "cxs.look": "Utseende",
+  "cxs.look": "Utseende", 'cxs.dbSize': "Databas", 'cxs.dbSize.normal': "Normal", 'cxs.dbSize.maximum': "Maximal", 'cxs.dbSize.hint': "Originalets databasstorlek: Maximal håller alla spelare i minnet, Normal färre (mindre minne – för mobiler). Bara 2001/02-databasen 3.9.60 finns i Normal.", 'cxs.dbSize.whyPhone': "Normal är vald på mobiler och i appars inbyggda webbläsare: ett nytt spel med Maximal kräver mer minne än de tillåter.", 'cxs.dbSize.whyKilled': "Normal är vald eftersom webbläsaren stängde det senaste nya spelet (för lite minne).",
   "cxs.account": "Konto",
   "start.classicMenu": "Klassisk startskärm",
   "cxs.selectLeagues": "Välj liga(or)",

@@ -6,10 +6,12 @@ import { gs, setGame, setSetupGame } from '../game/state';
 import { getLang } from '../i18n';
 import type { CMWorld } from '../game/data/cm0102';
 import type { ConvertReport } from '../game/cmConvert';
-import type { NewGameJob } from './newGameWorker';
+import type { LoadJob, NewGameJob, WorldSrc } from './newGameWorker';
 import type { NewGameProgress } from './NewGameLoader';
 import { listDbs, loadCustomWorld } from './customDb';
-import { loadOriginalWorld, loadWorld, ORIGINAL_VERSIONS, releaseWorldCaches, withCommunityEdits, type OriginalVersion } from './world';
+import { communityEdits, loadOriginalWorld, loadWorld, ORIGINAL_VERSIONS, releaseWorldCaches, withCommunityEdits, type OriginalVersion } from './world';
+import { applyCommunityEdits } from './worldFetch';
+import type { DbSize } from './dbSize';
 
 /** 'custom:<id>' = en database fra editoren (ændringer oven på den originale eller den moderne) */
 export type Db = 'modern' | 'original' | `custom:${string}`;
@@ -44,31 +46,111 @@ export async function loadStartWorld(db: Db, ver: OriginalVersion): Promise<Worl
   return withCommunityEdits(await loadWorld(), 'cm');
 }
 
-/** nyt spil i en Web Worker (ui/newGameWorker.ts) med status undervejs – siden fryser ikke; uden Worker (eller ved fejl) i hovedtråden.
- *  `opts.preview` = nyt-spil-forløbets midlertidige verden (setSetupGame); `signal` afbryder arbejderen (en ny liga-/databasevalg). */
-export async function createGameAsync(world: WorldData, opts: NewGameOptions, onProgress: (p: NewGameProgress) => void, signal?: AbortSignal): Promise<void> {
-  // (hukommelse) det rigtige spil: databasen behøves ikke længere i hovedtråden (world.ts releaseWorldCaches)
-  const put = (g: GameState) => { if (opts.preview) setSetupGame(g); else { setGame(g); releaseWorldCaches(); } };
-  if (typeof Worker === 'undefined') { createGame(world, opts); if (opts.preview) setSetupGame(gs()); else releaseWorldCaches(); return; }
+/** Hvor databasen kommer fra (arbejderen henter den selv): null, hvis en egen database ikke findes længere */
+export async function startWorldSrc(db: Db, ver: OriginalVersion, size: DbSize = 'maximum'): Promise<WorldSrc | null> {
+  if (db.startsWith('custom:')) {
+    const id = db.slice(7);
+    const d = (await listDbs()).find((x) => x.id === id);
+    if (!d) return null;
+    const v = (d.ver ?? '3.9.60') as OriginalVersion;
+    const edits = d.base === 'original' && v !== '3.9.60' ? null : await communityEdits(d.base === 'original' ? 'original' : 'cm');
+    return { base: d.base === 'original' ? 'original' : 'modern', ver: v, custom: d, edits };
+  }
+  // fællesskabets rettelser gælder 3.9.60 (de andre udgaver bruges præcis som originalen)
+  if (db === 'original') return { base: 'original', ver, size, edits: ver === '3.9.60' ? await communityEdits('original') : null };
+  return { base: 'modern', ver, edits: await communityEdits('cm') };
+}
+
+/** Hele databasen i hovedtråden (uden Web Worker, fællesspil) – som loadStartWorld */
+export async function worldOfSrc(src: WorldSrc): Promise<WorldData> {
+  let w = src.base === 'original' ? await loadOriginalWorld(src.ver, src.size) : await loadWorld();
+  if (src.custom) { const { applyDb } = await import('../game/dbEdit'); w = applyDb(w, src.custom); }
+  return applyCommunityEdits(w, src.edits);
+}
+
+/**
+ * (Hukommelse, iPhone 21/11) Startforløbets database: en Web Worker henter og parser den og sender kun listerne (slimWorld) – hovedtråden holder
+ * aldrig hele databasen. Arbejderen beholder den til det første spil, der bygges (`worker` til createGameAsync); senere spil får en ny arbejder,
+ * der henter den igen (fra browserens cache). Uden Web Worker: hele databasen i hovedtråden som før.
+ */
+export interface StartWorld { src: WorldSrc; slim: WorldData; worker: Worker | null; full?: WorldData }
+export async function openStartWorld(db: Db, ver: OriginalVersion, size: DbSize = 'maximum'): Promise<StartWorld | null> {
+  const src = await startWorldSrc(db, ver, size);
+  if (!src) return null;
+  const local = async (): Promise<StartWorld> => { const full = await worldOfSrc(src); return { src, slim: full, worker: null, full }; };
+  if (typeof Worker === 'undefined') return local();
   try {
-    const game = await new Promise<GameState>((resolve, reject) => {
-      const w = new Worker(new URL('./newGameWorker.ts', import.meta.url), { type: 'module' });
-      signal?.addEventListener('abort', () => { w.terminate(); reject(new DOMException('aborted', 'AbortError')); });
+    const w = new Worker(new URL('./newGameWorker.ts', import.meta.url), { type: 'module' });
+    const slim = await new Promise<WorldData>((resolve, reject) => {
+      w.onmessage = (e: MessageEvent<import('./newGameWorker').NewGameMsg>) => { if (e.data.type === 'slim') resolve(e.data.slim); else if (e.data.type === 'error') reject(new Error(e.data.message)); };
+      w.onerror = (e) => reject(new Error(e.message || 'worker'));
+      w.postMessage({ type: 'load', src } satisfies LoadJob);
+    });
+    w.onmessage = null; w.onerror = null;
+    return { src, slim, worker: w };
+  } catch (e) {
+    console.warn('Databasen i en Worker fejlede – i hovedtråden', e);
+    return local();
+  }
+}
+/** (hukommelse, iPhone 22/11) spilstartens trin pr. kortlivet Web Worker: Safaris heap fragmenteres under de tunge trin (forkørslen, trupplanen,
+ *  ønskelisterne – levende ~0,3–0,65 GB, kapaciteten op til 2,4 GB), og en afsluttet arbejders heap frigives helt. Spillet går fra arbejder til
+ *  arbejder uden om hovedtråden (MessageChannel). `localStorage['cm0102.ngSplit'] = '0'`: alt i én arbejder som før (til målinger). */
+export function newGameStages(opts: Pick<NewGameOptions, 'preview'>): NewGameJob['phases'][] {
+  let split = true;
+  try { split = localStorage.getItem('cm0102.ngSplit') !== '0'; } catch { /* ingen lagring */ }
+  if (!split) return [undefined];
+  return opts.preview ? [['base'], ['fitness'], ['plan', 'shortlists', 'rest']] : [['base'], ['fitness'], ['plan'], ['shortlists', 'rest']];
+}
+const newWorker = () => new Worker(new URL('./newGameWorker.ts', import.meta.url), { type: 'module' });
+/** kører trinene i hver sin arbejder; den sidste svarer med spillet */
+function runPhases(first: NewGameJob, stages: NewGameJob['phases'][], pre: Worker | null, onProgress: (p: NewGameProgress) => void, signal?: AbortSignal): Promise<GameState> {
+  return new Promise<GameState>((resolve, reject) => {
+    let cur: Worker | null = null, done = false;
+    const fail = (e: Error) => { if (done) return; done = true; cur?.terminate(); cur = null; reject(e); };
+    signal?.addEventListener('abort', () => fail(new DOMException('aborted', 'AbortError')));
+    const start = (i: number, w: Worker, job: NewGameJob) => {
+      cur = w;
+      const last = i === stages.length - 1;
+      // næste trins arbejder startes først, når denne er færdig og lukket: spillet venter imens i kanalen (uden om hovedtråden)
+      const ch = last ? null : new MessageChannel();
       w.onmessage = (e: MessageEvent<import('./newGameWorker').NewGameMsg>) => {
         const m = e.data;
+        if (done) return;
         if (m.type === 'progress') onProgress({ step: m.step, frac: m.frac });
-        else if (m.type === 'done') { w.terminate(); resolve(m.game as GameState); }
-        else { w.terminate(); reject(new Error(m.message)); }
+        else if (m.type === 'handed' && ch) { w.terminate(); start(i + 1, newWorker(), { opts: job.opts, from: ch.port2 }); }
+        else if (m.type === 'done') { done = true; w.terminate(); cur = null; resolve(m.game as GameState); }
+        else if (m.type === 'error') fail(new Error(m.message));
       };
-      w.onerror = (e) => { w.terminate(); reject(new Error(e.message || 'worker')); };
-      w.postMessage({ world, opts });
-    });
+      w.onerror = (e) => fail(new Error(e.message || 'worker'));
+      const ports = [...(ch ? [ch.port1] : []), ...(job.from ? [job.from] : [])];
+      w.postMessage({ ...job, phases: stages[i], ...(ch ? { to: ch.port1 } : {}) } satisfies NewGameJob, ports);
+    };
+    start(0, pre ?? newWorker(), first);
+  });
+}
+
+/** nyt spil i en Web Worker (ui/newGameWorker.ts) med status undervejs – siden fryser ikke; uden Worker (eller ved fejl) i hovedtråden.
+ *  `opts.preview` = nyt-spil-forløbets midlertidige verden (setSetupGame); `signal` afbryder arbejderen (en ny liga-/databasevalg). */
+export async function createGameAsync(world: WorldData | StartWorld, opts: NewGameOptions, onProgress: (p: NewGameProgress) => void, signal?: AbortSignal): Promise<void> {
+  // StartWorld: arbejderen henter selv databasen (eller bruger den, den allerede har indlæst – kun én gang)
+  const sw = 'src' in world ? world : null;
+  if (sw?.full) world = sw.full;
+  const pre = sw && !sw.full ? sw.worker : null;
+  if (sw) sw.worker = null;
+  const full = async () => (sw ? sw.full ?? await worldOfSrc(sw.src) : world as WorldData);
+  // (hukommelse) det rigtige spil: databasen behøves ikke længere i hovedtråden (world.ts releaseWorldCaches)
+  const put = (g: GameState) => { if (opts.preview) setSetupGame(g); else { setGame(g); releaseWorldCaches(); } };
+  if (typeof Worker === 'undefined') { createGame(await full(), opts); if (opts.preview) setSetupGame(gs()); else releaseWorldCaches(); return; }
+  try {
+    const first: NewGameJob = sw && !sw.full ? { src: sw.src, opts } : { world: world as WorldData, opts };
+    const game = await runPhases(first, newGameStages(opts), pre, onProgress, signal);
     if (signal?.aborted) return;
     put(game);
   } catch (e) {
     if ((e as Error).name === 'AbortError') return;
     console.warn('Nyt spil i en Worker fejlede – opretter i hovedtråden', e);
-    createGame(world, opts);
+    createGame(await full(), opts);
     if (opts.preview) setSetupGame(gs()); else releaseWorldCaches();
   }
 }
@@ -133,7 +215,7 @@ export async function runConversion(prep: ConvertPrep, clubId: number | null, on
         const m = e.data;
         if (m.type === 'progress') onProgress({ step: m.step, frac: m.frac });
         else if (m.type === 'done') { w.terminate(); resolve({ game: m.game as GameState, report: m.report! }); }
-        else { w.terminate(); reject(Object.assign(new Error(m.message), { inJob: true })); }
+        else if (m.type === 'error') { w.terminate(); reject(Object.assign(new Error(m.message), { inJob: true })); }
       };
       w.onerror = (e) => { w.terminate(); reject(new Error(e.message || 'worker')); };
       w.postMessage(job);

@@ -1,5 +1,6 @@
 // Fejl i spillernes browsere → admin (fanen "Errors"): window-fejl, afviste promises og React-nedbrud. Samme fejl sendes
 // højst 3 gange pr. side, højst 20 i alt, og kun fra den rigtige side (ikke udvikling/tests). Ingen personlige data.
+import { dbSizeAfterInterrupt, readDbSize } from '../ui/dbSize';
 import { APP_VERSION } from '../version';
 import { rankingAvailable } from './rank';
 import { previewInfo } from '../game/state';
@@ -47,7 +48,11 @@ export function newGameInterrupted(): boolean {
   let at = 0;
   try { at = Number(localStorage.getItem(CREATING)) || 0; if (at) localStorage.removeItem(CREATING); } catch { /* ingen lagring */ }
   interrupted = !!at && Date.now() - at < 15 * 60_000;
-  if (interrupted) reportError(new Error(`NewGameInterrupted: the page was reloaded ${Math.round((Date.now() - at) / 1000)} s into creating a new game`));
+  if (interrupted) {
+    reportError(new Error(`NewGameInterrupted: the page was reloaded ${Math.round((Date.now() - at) / 1000)} s into creating a new game (database ${readDbSize()})`));
+    // (22/11) næste nye spil med originalens mindre databasestørrelse (Normal) – spilleren skal ikke prøve igen og igen med den samme
+    dbSizeAfterInterrupt();
+  }
   return interrupted;
 }
 /** beskeden er lukket – vises ikke igen i samme besøg */

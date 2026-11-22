@@ -25,6 +25,8 @@ page.on('console', (m) => { const t = m.text(); if (/memory|fejlede|error|RangeE
 page.on('pageerror', (e) => { console.log('PAGEERROR ' + e.message + '\n' + (e.stack ?? '').slice(0, 1200)); errs.push(e.message); });
 page.on('crash', () => { console.log('CRASH'); errs.push('crash'); });
 await page.addInitScript(() => { localStorage.setItem('cm0102.lang', 'en'); localStorage.setItem('cm0102.forceLogin', '1'); localStorage.setItem('cm-theme', 'retro'); localStorage.setItem('cm0102.mode', 'authentic'); localStorage.setItem('cm0102.db', 'original'); localStorage.setItem('cm0102.engine', 'original'); localStorage.setItem('cm0102.inapp.seen', String(Date.now())); sessionStorage.setItem('cm0102.play', '1'); });
+// DBSIZE=normal|maximum: originalens databasestørrelse (ui/dbSize.ts); NGSPLIT=0: spilstarten i én arbejder (startGame.ts newGameStages)
+if (process.env.DBSIZE || process.env.NGSPLIT) await page.addInitScript(([z, sp]) => { if (z) localStorage.setItem('cm0102.dbsize', z); if (sp) localStorage.setItem('cm0102.ngSplit', sp); }, [process.env.DBSIZE ?? '', process.env.NGSPLIT ?? '']);
 // NOWORKER=1: uden Web Workers (som når dagens arbejder fejler – alt i hovedtråden)
 if (process.env.NOWORKER) await page.addInitScript(() => { Object.defineProperty(window, 'Worker', { value: undefined, configurable: true }); });
 // Chromium: hovedtrådens levende V8-heap efter en GC (CDP) ved hvert trin
@@ -45,7 +47,10 @@ const tabPids = () => allTabPids().filter((x) => !oldPids.has(x));
 const foot = (key) => { try { const ps = tabPids(); if (!ps.length) return 0; const out = execSync(`footprint --noCategories -f bytes ${ps.map((x) => `-p ${x}`).join(' ')}`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }); return Math.max(0, ...[...out.matchAll(new RegExp(`${key}: (\\d+) B`, 'g'))].map((m) => Number(m[1]) / 1048576)); } catch { return 0; } };
 const rssNow = () => foot('phys_footprint');
 let phase = 'start';
-const rssT = setInterval(() => { const r = rssNow(); if (r > peakRss) { peakRss = r; peakAt = phase; } }, 1000);
+// TIMELINE=1: fanens footprint hvert sekund med trinnet under fremdriftsbjælken ([data-ng-step])
+let ngStep = '';
+const stepT = process.env.TIMELINE ? setInterval(() => { page.evaluate(() => document.querySelector('[data-ng-step]')?.getAttribute('data-ng-step') ?? '').then((s) => { ngStep = s; }).catch(() => {}); }, 500) : null;
+const rssT = setInterval(() => { const r = rssNow(); if (process.env.TIMELINE) console.log(`  t ${T()} ${phase}/${ngStep} fp ${r.toFixed(0)} MB`); if (r > peakRss) { peakRss = r; peakAt = phase + (ngStep ? '/' + ngStep : ''); } }, 1000);
 const T = () => `${((Date.now() - t0) / 1000).toFixed(0)} s`;
 let res = 'ok';
 try {
@@ -96,7 +101,7 @@ try {
     fs.closeSync(fd);
   }
 } catch (e) { res = 'afbrudt: ' + e.message.split('\n')[0]; }
-clearInterval(rssT);
+clearInterval(rssT); if (stepT) clearInterval(stepT);
 console.log(`phys_footprint_peak (fanens proces): ${foot('phys_footprint_peak').toFixed(0)} MB`);
 console.log(`${kind}: fp-top ${peakRss.toFixed(0)} MB (${peakAt}) – ${errs.length ? 'FEJL ' + errs.length : res} (${T()})`);
 await browser.close();

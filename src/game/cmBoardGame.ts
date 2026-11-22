@@ -70,9 +70,20 @@ const JOB: Record<string, number> = { manager: 5, assistant: 6, coach: 8, scout:
 function natOfStaff(g: GameState, id: number): number {
   const nm = g.cmBoard?.nm;
   if (!nm) return -1;
-  for (const k in nm) if (nm[k] === id) return +k;
-  return -1;
+  // (hukommelse, 22/11) omvendt opslag gemt pr. nm-objekt og ændring (nmChanged ved hver skrivning herunder) – før en for…in med nye nøglestrenge
+  // pr. kald (~1,7 GB affald i ønskelisternes stabsvurdering ved spilstarten). Første nøgle i for…in-rækkefølgen vinder som før.
+  let r = NM_REV.get(nm);
+  if (!r || r.ver !== nmVer) {
+    const rev = new Map<number, number>();
+    for (const k in nm) if (!rev.has(nm[k])) rev.set(nm[k], +k);
+    NM_REV.set(nm, (r = { ver: nmVer, rev }));
+  }
+  return r.rev.get(id) ?? -1;
 }
+const NM_REV = new WeakMap<object, { ver: number; rev: Map<number, number> }>();
+let nmVer = 0;
+/** landstrænernes nm er ændret (natOfStaff's omvendte opslag regnes igen) */
+const nmChanged = () => { nmVer++; };
 /** staff +0x3d uden klub. Ledige fra spilstarten (databasens job `cmDbJob`) og personer, der har forladt en klub (keepJobCode): 0x68f130 2a beholder jobkoden; kun +0x3d = 0 får
  *  landsholdsjobbet +0x28 – og ikke landstrænerens (5/12: `continue` før omskrivningen) eller 11; 13/15 uden spillerpost → 8 (oraklets gemte
  *  spil 15/7-2001: Bruce Arena/Louis van Gaal +0x3d 0, +0x28 5; Billy Davies 5, Kit Carson 9). Ellers (ældre spil, stab fra en klub) som før:
@@ -88,23 +99,32 @@ const clublessJob = (s: Staff) => {
   return s.cmNat && s.cmNat[1] !== 11 ? s.cmNat[1] : 0;
 };
 
+/** (hukommelse, 22/11) personen som klasse: accessorerne ligger på prototypen – før fik hver person ~10 nye funktioner (objektliteral med
+ *  get/set), og boardEnv bygger ≈33.000 personer pr. dag i forkørslen (~2,6 GB affald ved spilstarten; Safari på iPhone). Samme felter og værdier. */
+class StaffPerson implements Person {
+  readonly human = false; readonly np = true;
+  id: number; nation: number; age: number; det: number; pres: number; prof: number; temper: number; amb: number; b22: number; ca: number; pa: number;
+  rep: [number, number, number];
+  private readonly g: GameState; private readonly s: Staff; private readonly hid: number[]; private readonly npRow: number[];
+  constructor(g: GameState, s: Staff, today: CmDate) {
+    const hid = s.cmHid ?? [];
+    this.g = g; this.s = s; this.hid = hid; this.npRow = s.cmNp!;
+    this.id = s.id; this.nation = s.nation ?? -1;
+    this.age = s.dob ? ageOn(s.dob, cmToIso(today)) : 45;
+    this.det = hid[2] ?? 10; this.pres = hid[4] ?? 10; this.prof = hid[5] ?? 10; this.temper = hid[7] ?? 10; this.amb = hid[1] ?? 10; this.b22 = hid[8] ?? 0;
+    this.ca = s.ca ?? 0; this.pa = s.cmPa ?? 0;
+    this.rep = (s.cmRep ??= [1, 1, 1]);
+  }
+  get club() { return this.s.club; } set club(v: number) { this.s.club = v; }
+  get job() { return this.s.club ? JOB[this.s.role] ?? 8 : clublessJob(this.s); } set job(_v: number) { /* rollen sættes af setManager */ }
+  get nat() { const d = this.g.cmBoard?.nd?.[this.s.id]; if (d) return natClub(d[0]); const n = natOfStaff(this.g, this.s.id); return n >= 0 ? natClub(n) : 0; }
+  get natJob() { return this.g.cmBoard?.nd?.[this.s.id]?.[1] ?? this.g.cmBoard?.nj?.[this.s.id] ?? 0; }
+  get joined() { return isoToCm(this.s.cmJoined || '1990-01-01'); } set joined(d: CmDate) { this.s.cmJoined = cmToIso(d); }
+  get b59() { return this.hid[3] ?? 10; } set b59(v: number) { this.hid[3] = v; }
+  at(off: number) { return this.npRow[off - 0x0e] ?? 0; }
+}
 function staffPerson(g: GameState, s: Staff, today: CmDate): Person {
-  const hid = s.cmHid ?? [];
-  const np = s.cmNp!;
-  const rep = (s.cmRep ??= [1, 1, 1]);
-  const p: Person = {
-    id: s.id, human: false, np: true, nation: s.nation ?? -1,
-    get club() { return s.club; }, set club(v: number) { s.club = v; },
-    get job() { return s.club ? JOB[s.role] ?? 8 : clublessJob(s); }, set job(_v: number) { /* rollen sættes af setManager */ },
-    get nat() { const d = g.cmBoard?.nd?.[s.id]; if (d) return natClub(d[0]); const n = natOfStaff(g, s.id); return n >= 0 ? natClub(n) : 0; },
-    get natJob() { return g.cmBoard?.nd?.[s.id]?.[1] ?? g.cmBoard?.nj?.[s.id] ?? 0; },
-    get joined() { return isoToCm(s.cmJoined || '1990-01-01'); }, set joined(d: CmDate) { s.cmJoined = cmToIso(d); },
-    age: s.dob ? ageOn(s.dob, cmToIso(today)) : 45,
-    get b59() { return hid[3] ?? 10; }, set b59(v: number) { hid[3] = v; },
-    det: hid[2] ?? 10, pres: hid[4] ?? 10, prof: hid[5] ?? 10, temper: hid[7] ?? 10, amb: hid[1] ?? 10, b22: hid[8] ?? 0,
-    ca: s.ca ?? 0, pa: s.cmPa ?? 0, at: (off: number) => np[off - 0x0e] ?? 0, rep,
-  };
-  return p;
+  return new StaffPerson(g, s, today);
 }
 interface HumanRef { get: () => { userClub: number; manager: GameState['manager'] }; k: number }
 function humanPerson(g: GameState, h: HumanRef): Person {
@@ -525,7 +545,7 @@ function setNationalManager(g: GameState, n: number, p: Person | null, old: numb
   if (!p) {
     let human = false;
     forHumans(g, (m) => { if (m.national?.nation === n) { m.national = undefined; human = true; } });
-    if (!human) { const id = st.nm[n]; if (id !== undefined) { delete st.nm[n]; delete st.nj[id]; } }
+    if (!human) { const id = st.nm[n]; if (id !== undefined) { delete st.nm[n]; delete st.nj[id]; nmChanged(); } }
     resetNationalManagers(g);
     return;
   }
@@ -534,14 +554,14 @@ function setNationalManager(g: GameState, n: number, p: Person | null, old: numb
   if (!s) return;
   if (old) {
     const on = natOfClub(old);
-    if (on !== null) { if (st.nm[on] === s.id) delete st.nm[on]; }
+    if (on !== null) { if (st.nm[on] === s.id) { delete st.nm[on]; nmChanged(); } }
     else {
       const from = g.clubs[old];
       if (from && from.manager === s.id) { from.manager = 0; from.tactic = null; }
       if (s.club === old) { careerEnd(s, 'poached'); s.club = 0; s.role = 'coach'; keepJobCode(s); }   // +0x3d = 8 (np uden spillerpost)
     }
   }
-  st.nm[n] = s.id; st.nj[s.id] = 5;
+  st.nm[n] = s.id; st.nj[s.id] = 5; nmChanged();
   resetNationalManagers(g);
 }
 /** alle menneskers ManagerProfile (det aktive og de andre i fællesspil) */
@@ -931,7 +951,7 @@ function cmBoardNationalInit(g: GameState): void {
     const x = s.cmNat;
     if (!x || (x[1] !== 5 && x[1] !== 12)) continue;
     const n = x[0] - off;
-    if (n >= 0 && n < g.nations.length) g.cmBoard.nm![n] = s.id;
+    if (n >= 0 && n < g.nations.length) { g.cmBoard.nm![n] = s.id; nmChanged(); }
   }
   // (2a) landstrænerens +0x28 bliver stående (5/12 – `continue`): 0x83fa72 (ønskelisten) og 0x69f9b8 (managerjob) springer ham over
   for (const id of Object.values(g.cmBoard.nm!)) { const x = g.staff[id]?.cmNat; if (x) g.cmBoard.nj![id] = x[1]; }
@@ -1203,7 +1223,7 @@ export function cmBoardNationalAnswer(g: GameState, accept: boolean): string | n
   if (offer) { try { const d = JSON.parse(String(offer.params.bd)); d.st = accept ? 1 : 2; Object.assign(offer.params, boardParams(d, { club: offer.params.club })); } catch { /* */ } }
   if (!accept) { if (h) addVacancy(env, st, c, h, rand); return 'ok'; }
   // 0x69ebc0 tjekker ikke, om jobbet er besat imens: club +0xcf = mennesket (en udnævnt computermanager mister landsholdet)
-  if (st.nm?.[n] !== undefined) { const id = st.nm[n]; delete st.nm[n]; delete st.nj?.[id]; }
+  if (st.nm?.[n] !== undefined) { const id = st.nm[n]; delete st.nm[n]; delete st.nj?.[id]; nmChanged(); }
   // 0x69ebc0 for landsholdet: det gamle landshold (menneskets +0x24) – ingen ny ledighed (kun for lande uden verdensdel), han fjernes dér
   const old = g.manager.national?.nation;
   if (old !== undefined && old !== n) g.manager.national = undefined;

@@ -130,6 +130,18 @@ export function setNewGameProgress(cb: ((step: string, frac: number) => void) | 
 const progress = (step: string, frac: number) => progressCb?.(step, frac);
 
 export function createGame(world: WorldData, o: NewGameOptions): GameState {
+  const ctx = createGameBase(world, o);
+  for (const ph of NEW_GAME_PHASES) createGamePhase(ph, ctx);
+  return gs();
+}
+
+/** (hukommelse, iPhone 22/11) spilstarten i trin: ui/newGameWorker.ts kører hvert tungt trin i sin egen kortlivede Web Worker (Safaris heap
+ *  fragmenteres – levende ~0,3–0,65 GB, men kapaciteten voksede til 2,4 GB). Mellem trinene følger spillet med modulernes tilstand (carry.ts) og
+ *  talrækken (g.rng); `ctx` er de lokale værdier, de senere trin bruger. createGame = samme trin i ét forløb. */
+export interface NewGameCtx { o: NewGameOptions; season: number; cmRawLogic: boolean; unsetWages: number[] }
+export const NEW_GAME_PHASES = ['fitness', 'plan', 'shortlists', 'rest'] as const;
+export type NewGamePhase = (typeof NEW_GAME_PHASES)[number];
+export function createGameBase(world: WorldData, o: NewGameOptions): NewGameCtx {
   progress('clubs', 0.02);
   const mode = o.mode ?? 'authentic';
   // (20/11, "Altid som originalen") 2026/27 i ægte tilstand: de europæiske landes klubber uden liga i world.json (world-cm.json euroClubs) som skjulte
@@ -725,18 +737,30 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   cmFinanceWageBills(g);
   // PLAYER_REGEN's første pensioneringsliste 0x7a58f0 ved indlæsningen – før forkørslen (cmRetire.ts)
   cmRetireInit(g);
+  return { o, season, cmRawLogic, unsetWages: [...unsetWages] };
+}
+
+export function createGamePhase(phase: NewGamePhase, ctx: NewGameCtx): void {
+  const g = gs(), o = ctx.o, season = ctx.season, cmRawLogic = ctx.cmRawLogic;
+  if (phase === 'fitness') {
   PRERUN_PROGRESS.cb = (f) => progress('fitness', 0.17 + 0.19 * f);
   try { cmFitNewGame(g); } finally { PRERUN_PROGRESS.cb = undefined; }
   // originalens arbejdstilladelses-historik (0x8c6e60 – cmPermit.ts)
   cmPermitNewGame(g);
+  return;
+  }
+  if (phase === 'plan') {
   // computerens trupplan 0x83a1b0 → 0x83cb40 for alle klubber: trupstatus, lejeliste, +0x3d/+0x3e/+0x3f (cmSquadPlanGame.ts)
   progress('plan', 0.38);
   SQUADPLAN_PROGRESS.cb = (f) => progress('plan', 0.38 + 0.2 * f);
   try { cmSquadPlanStart(g); } finally { SQUADPLAN_PROGRESS.cb = undefined; }
   // 0x83a1b0 efter trupplanen: lønnen for kontrakterne uden løn (0x862720 – cmWageGame.ts)
-  cmWageFillNewGame(g, unsetWages);
+  cmWageFillNewGame(g, new Set(ctx.unsetWages));
   // staben: 0x83a1b0's udfyldning af lønnen −1 med 0x862720 (cmWageGame.ts)
   cmStaffWageNewGame(g);
+  return;
+  }
+  if (phase === 'shortlists') {
   // 0x83a1b0's slutning: positionslisterne 0x83a780 og budgettets fordeling/målene 0x83b6e0 for alle klubber (cmShortlistGame.ts)
   // (nyt spil-forløbets midlertidige verden: ikke – den bruges kun til Select Team, og spillet bygges igen ved Take Control)
   if (!o.preview) {
@@ -744,6 +768,9 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     SL_START_PROGRESS.cb = (f) => progress('shortlists', 0.59 + 0.36 * f);
     try { cmShortlistStart(g); } finally { SL_START_PROGRESS.cb = undefined; }
   }
+  return;
+  }
+  const club = g.clubs[o.clubId];
   // 0x5ccc9c: player_setup.cfg 0x7a30c0 efter 0x83a1b0 – lejeaftalerne (0x8bf400) og skaderne, så 0x5cccaa: Injury::init_squad_fitness 0x62a920
   // (cmFitnessGame.ts). Trupplanen ovenfor har læst konditionen (0x62c680 op til startdagen – helede skader er slut) før startens skader.
   cmSetupLoans(g);
@@ -802,7 +829,6 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   // (Norge/Sverige/Japan/USA/Rusland fra marts–april, Brasiliens pokal): deres kampe spilles her på én gang (sim.ts playOverdue – se cmSeason.ts)
   // (arbejderen ui/newGameWorker.ts har ikke sim.ts' kroge – så tager continueGame dem: g.cmOverdue)
   if (cmSeasonOn(g)) { if (compHooks.playOverdue) cmPlayStartOverdue(g); else g.cmOverdue = true; }
-  return g;
 }
 
 /** `only` (16/11, sæsonskiftet pr. land – cmSeason.ts): kun disse lande; `euro` = Europas turneringer (hovedskiftet); `keepCups` = lande, hvis pokal

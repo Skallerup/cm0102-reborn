@@ -3601,7 +3601,7 @@ Object.assign(pt, {
   "cxs.playerInit": "Inicialização dos Jogadores",
   "cxs.initGame": "Inicializando dados do jogo",
   "cxs.loadingSave": "Carregando jogo salvo",
-  "cxs.look": "Aparência",
+  "cxs.look": "Aparência", 'cxs.dbSize': "Base de dados", 'cxs.dbSize.normal': "Normal", 'cxs.dbSize.maximum': "Máximo", 'cxs.dbSize.hint': "O tamanho da base de dados do original: Máximo mantém todos os jogadores em memória, Normal menos (menos memória – para telemóveis). Só a base de dados 2001/02 3.9.60 existe em Normal.", 'cxs.dbSize.whyPhone': "Normal é escolhido em telemóveis e nos navegadores integrados das apps: um jogo novo com Máximo precisa de mais memória do que permitem.", 'cxs.dbSize.whyKilled': "Normal é escolhido porque o navegador fechou o último jogo novo (pouca memória).",
   "cxs.account": "Conta",
   "start.classicMenu": "Tela inicial clássica",
   "cxs.selectLeagues": "Selecionar Liga(s)",

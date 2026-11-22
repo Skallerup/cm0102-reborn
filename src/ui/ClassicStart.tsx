@@ -33,7 +33,8 @@ import { setTheme, getTheme, modernOn, setStartSkin } from './theme';
 import { ORIGINAL_VERSIONS, type OriginalVersion } from './world';
 import { createOnlineGame } from '../online/client';
 import { markNewGame } from '../online/errors';
-import { createGameAsync, loadStartWorld, LANG_NATION, ORIG_LANG_NATION, prepareConversion, readDb, readVer, runConversion, writeDb, writeVer, type ConvertPrep, type Db } from './startGame';
+import { DB_SIZES, dbSizeReason, readDbSize, writeDbSize, type DbSize } from './dbSize';
+import { createGameAsync, openStartWorld, LANG_NATION, ORIG_LANG_NATION, prepareConversion, readDb, readVer, runConversion, writeDb, writeVer, type ConvertPrep, type Db, type StartWorld } from './startGame';
 
 export type Step = 'menu' | 'db' | 'leagues' | 'season' | 'name' | 'deadline' | 'nation' | 'team' | 'club' | 'confirm' | 'restore' | 'delete' | 'settings' | 'opts' | 'extras' | 'account' | 'convpick' | 'convdone';
 /** Populære spillere og hvilke udgaver (3.9.60/65/68) de findes i – datafilen hentes først, når boksen åbnes */
@@ -163,9 +164,17 @@ export function ClassicStart({ onLang, onHome, onGo, onLook, online }: { onLang:
 
   const [db, setDbState] = useState<Db>(readDb);
   const [ver, setVerState] = useState<OriginalVersion>(readVer);
+  // originalens databasestørrelse (Preferences → Database – ui/dbSize.ts): Normal på telefoner, ellers Maximum
+  const [dbSize, setDbSizeState] = useState<DbSize>(readDbSize);
   const [mine, setMine] = useState<CustomDb[]>([]);
   useEffect(() => { void listDbs().then(setMine).catch(() => {}); }, []);
+  // world = startforløbets lister (slimWorld); hele databasen ligger i arbejderen (startWorld)
   const [world, setWorld] = useState<WorldData | null>(null);
+  const startWorld = useRef<StartWorld | null>(null);
+  const dropStart = () => { startWorld.current?.worker?.terminate(); startWorld.current = null; };
+  useEffect(() => () => dropStart(), []);
+  // Take Control → det rigtige spil: den midlertidige verden er sluppet (hukommelse), så forløbet må ikke springe tilbage imens
+  const launching = useRef(false);
   const [wanted, setWanted] = useState(!!online);
   const [err, setErr] = useState('');
   const [prog, setProg] = useState<Prog | null>(null);
@@ -209,6 +218,13 @@ export function ClassicStart({ onLang, onHome, onGo, onLook, online }: { onLang:
     setDbState(d); setVerState(v); writeDb(d); writeVer(v);
     setWorld(null); setPrep(null); setSel([]); setBgn([]); setTeam(0); setNat(-1);
   };
+  const setDbSize = (z: DbSize) => {
+    writeDbSize(z);
+    if (z === dbSize) return;
+    discard();
+    setDbSizeState(z);
+    setWorld(null); setPrep(null); setSel([]); setBgn([]); setTeam(0); setNat(-1);
+  };
   const dbOpts = useMemo(() => [
     ...ORIGINAL_VERSIONS.map((v) => ({ db: 'original' as Db, ver: v, big: '2001/02', small: t('cxs.dataN', { v }), hint: t(`db.ver.${v.replace(/\./g, '')}`), tag: v === '3.9.60' ? t('db.ver.default') : '' })),
     { db: 'modern' as Db, ver, big: '2026/27', small: t('cxs.dataModern'), hint: t('db.modernHint'), tag: '' },
@@ -223,14 +239,17 @@ export function ClassicStart({ onLang, onHome, onGo, onLook, online }: { onLang:
     let ok = true;
     setErr(''); setWorld(null);
     setProg({ label: t('cxs.loadingDb'), frac: 0.05, auto: true });
-    loadStartWorld(db, ver).then((w) => {
-      if (!ok) return;
-      if (!w) { setDb('modern'); return; }
-      setWorld(w); setProg(null);
+    // (hukommelse, iPhone 21/11) databasen hentes og parses i nyt spils arbejder – hovedtråden får kun listerne (startGame.ts openStartWorld)
+    dropStart();
+    openStartWorld(db, ver, dbSize).then((s) => {
+      if (!ok) { s?.worker?.terminate(); return; }
+      if (!s) { setDb('modern'); return; }
+      startWorld.current = s;
+      setWorld(s.slim); setProg(null);
     }).catch((e) => { if (ok) { setErr(String(e)); setProg(null); } });
     return () => { ok = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [wanted, db, ver]);
+  }, [wanted, db, ver, dbSize]);
 
   // forvalg af land, når databasen er klar (sprogets eget land; ellers England)
   useEffect(() => {
@@ -288,7 +307,7 @@ export function ClassicStart({ onLang, onHome, onGo, onLook, online }: { onLang:
       setBp({ sig, frac: 0.02, done: false });
       const opts = { managerName: 'Manager', managerNation: selected[0], clubId: p.clubs[0].id, activeNations: [...selected, ...background], lang: getLang(), masking, seed: seed.current, preview: true };
       markNewGame(true);
-      createGameAsync(w, opts, (pr) => setBp((cur) => (cur && cur.sig === sig ? { ...cur, frac: pr.frac } : cur)), ctl.signal).finally(() => markNewGame(false)).then(() => {
+      createGameAsync(startWorld.current ?? w, opts, (pr) => setBp((cur) => (cur && cur.sig === sig ? { ...cur, frac: pr.frac } : cur)), ctl.signal).finally(() => markNewGame(false)).then(() => {
         if (build.current?.ctl !== ctl || ctl.signal.aborted) return;
         setBp({ sig, frac: 1, done: true });
       }).catch((e) => { if (build.current?.ctl === ctl) { setErr(String((e as Error).message ?? e)); setBp(null); build.current = null; } });
@@ -317,7 +336,7 @@ export function ClassicStart({ onLang, onHome, onGo, onLook, online }: { onLang:
   const club = prep?.clubs.find((c) => c.id === team);
   const managerName = `${first.trim()} ${second.trim()}`.trim();
   // fremad-pilen kan føre til klubbens side uden valgt klub – så tilbage
-  useEffect(() => { if ((step === 'club' || step === 'confirm') && (!club || !world || !buildReady)) back(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [step, club, world, buildReady]);
+  useEffect(() => { if ((step === 'club' || step === 'confirm') && !launching.current && (!club || !world || !buildReady)) back(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [step, club, world, buildReady]);
 
   const pickClub = (id: number) => { previewClub(gs(), id); setTeam(id); notify(); go('club'); };
 
@@ -330,20 +349,24 @@ export function ClassicStart({ onLang, onHome, onGo, onLook, online }: { onLang:
     try { localStorage.setItem(GROUP_KEY, JSON.stringify(NAV_CLOSED_DEFAULT)); } catch { /* ignorer */ }
     track('start_game', { mode: online ? 'online' : 'single', db: db.startsWith('custom:') ? 'custom' : db, challenge: false, lang: opts.lang, flow: 'classic' });
     await delay(30);
+    // (hukommelse, iPhone 21/11) den midlertidige verden slippes, før det rigtige spil bygges – før levede begge (og databasen) samtidig
+    launching.current = true;
+    discard();
+    const src = startWorld.current ?? world;
     try {
       if (online) {
         // fællesspil: serveren opretter rummet, verden bygges i arbejderen (ingen frysning), og første version uploades
-        await createOnlineGame(world, { ...opts, deadlineHours: deadline }, undefined, (w, o) => createGameAsync(w, o, (p) => setProg({ label: t('mp.creating'), frac: p.frac, step: p.step })));
+        await createOnlineGame(world, { ...opts, deadlineHours: deadline }, undefined, (_w, o) => createGameAsync(src, o, (p) => setProg({ label: t('mp.creating'), frac: p.frac, step: p.step })));
         setProg(null);
         return;
       }
       // (21/11) lukker browseren siden undervejs (for lidt hukommelse), meldes det og vises ved næste start (online/errors.ts)
       markNewGame(true);
-      try { await createGameAsync(world, opts, (p) => setProg({ label: t('cxs.initGame'), frac: p.frac, step: p.step })); } finally { markNewGame(false); }
+      try { await createGameAsync(src, opts, (p) => setProg({ label: t('cxs.initGame'), frac: p.frac, step: p.step })); } finally { markNewGame(false); }
       notify();
       const lg = world.leagues.find((l) => l.id === club.league);
       notifyNewCareer({ manager: opts.managerName, club: club.short, league: lg?.name, nation: natName(world.nations[club.nation]?.name), bots: 0, db: db.startsWith('custom:') ? 'custom' : db, lang: opts.lang });
-    } catch (e) { setProg(null); setErr(String((e as Error).message ?? e)); }
+    } catch (e) { setProg(null); setErr(String((e as Error).message ?? e)); launching.current = false; go('leagues'); }
   };
 
   // ---------- gemte spil ----------
@@ -410,7 +433,7 @@ export function ClassicStart({ onLang, onHome, onGo, onLook, online }: { onLang:
       setProg(null);
       setDone({ report: res.report, id });
       go('convdone');
-    } catch (e) { setProg(null); setErr(String((e as Error).message ?? e)); }
+    } catch (e) { setProg(null); setErr(String((e as Error).message ?? e)); launching.current = false; go('leagues'); }
   };
   const convertSave = async (r: Row) => {
     setErr('');
@@ -432,7 +455,7 @@ export function ClassicStart({ onLang, onHome, onGo, onLook, online }: { onLang:
         : t('cxs.restart.q', { club, old: prep.oldClub });
       if (!(await askConfirm(text, { title: t(prep.kind === 'convert' ? 'cxs.conv.btn' : 'cxs.restart.btn') }))) return;
       await runConv(prep, prep.kind === 'restart' ? prep.clubId : null);
-    } catch (e) { setProg(null); setErr(String((e as Error).message ?? e)); }
+    } catch (e) { setProg(null); setErr(String((e as Error).message ?? e)); launching.current = false; go('leagues'); }
   };
   const pickConvClub = async (id: number, name: string) => {
     if (!conv) return;
@@ -718,6 +741,11 @@ export function ClassicStart({ onLang, onHome, onGo, onLook, online }: { onLang:
           </label>
           <label className="cxs-field"><span>{t('opt.currency')}</span>
             <select value={getCurrency()} onChange={(e) => { setCurrency(e.target.value as Currency); onLang(getLang()); }}>{CURRENCIES.map((c) => <option key={c} value={c}>{t(`cur.${c}`)}</option>)}</select>
+          </label>
+          <label className="cxs-field"><span>{t('cxs.dbSize')}</span>
+            <select value={dbSize} data-dbsize onChange={(e) => setDbSize(e.target.value as DbSize)}>{DB_SIZES.map((z) => <option key={z} value={z}>{t(`cxs.dbSize.${z}`)}</option>)}</select>
+            {/* CM Reborns forklaring (ikke i originalen): hvorfor Normal er valgt, og at den kun findes for 3.9.60 */}
+            <span className="cxs-hint" data-dbsize-hint>{t(dbSizeReason() === 'interrupted' ? 'cxs.dbSize.whyKilled' : dbSizeReason() === 'device' ? 'cxs.dbSize.whyPhone' : 'cxs.dbSize.hint')}</span>
           </label>
           {modernOn() && <label className="cxs-field"><span>{t('cxs.look')}</span>
             <select value="classic" data-look onChange={(e) => { if (e.target.value === 'modern') { setTheme('club'); onLook(); } }}>

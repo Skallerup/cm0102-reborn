@@ -103,30 +103,32 @@ export function playerRecord(p: Player): number[] {
   return playerRecordInto(p, new Array(0x46));
 }
 /** playerRecord i et givet array (0x46 pladser, nulstilles) – uden de midlertidige arrays (kaldes for alle spillere hver dag i ønskelisterne) */
+// (hukommelse, 22/11) uden lukninger og destrukturering pr. kald – kaldes millioner af gange ved spilstarten (~2 GB affald i Safari)
+const recW = (r: number[], o: number, v: number) => { r[o] = v & 0xff; r[o + 1] = (v >> 8) & 0xff; };
+const recB = (r: number[], o: number, v: number) => { r[o] = Math.round(v) & 0xff; };
 export function playerRecordInto(p: Player, r: number[]): number[] {
   r.fill(0, 0, 0x46);
-  const w = (o: number, v: number) => { r[o] = v & 0xff; r[o + 1] = (v >> 8) & 0xff; };
-  const b = (o: number, v: number) => { r[o] = Math.round(v) & 0xff; };
-  b(4, p.number ?? 0); w(5, p.ca); w(7, p.pa);
+  recB(r, 4, p.number ?? 0); recW(r, 5, p.ca); recW(r, 7, p.pa);
   // omdømmet: spilstartens udfyldte værdier (sub_535a80, cmRepMem) ×50 (0x536e8e); uden dem databasens (cmRep) eller vores 0–100 ×2
   const rp = p.cmRepMem ?? p.cmRep;
-  if (rp) { w(9, rp[0] * 50); w(0xb, rp[1] * 50); w(0xd, rp[2] * 50); }
-  else { const v = p.rep * 2 * 50; w(9, v); w(0xb, v); w(0xd, v); }
+  if (rp) { recW(r, 9, rp[0] * 50); recW(r, 0xb, rp[1] * 50); recW(r, 0xd, rp[2] * 50); }
+  else { const v = p.rep * 2 * 50; recW(r, 9, v); recW(r, 0xb, v); recW(r, 0xd, v); }
   // positionerne og Free Role som i databasen (1 = ingen – originalens spor har 01, ikke 0) – som recordRatings
   const np = Math.min(8, p.pos.length);
-  for (let k = 0; k < np; k++) b(0xf + k, p.pos[k]);
-  b(0xf + np, p.side[2]); b(0xf + np + 1, p.side[0]); b(0xf + np + 2, p.side[1]); b(0xf + np + 3, p.cmFree ?? 1);
+  for (let k = 0; k < np; k++) recB(r, 0xf + k, p.pos[k]);
+  recB(r, 0xf + np, p.side[2]); recB(r, 0xf + np + 1, p.side[0]); recB(r, 0xf + np + 2, p.side[1]); recB(r, 0xf + np + 3, p.cmFree ?? 1);
   const gk = p.pos[0] >= 20;
-  for (const [o, ix, intr, gkLow, outLow] of REC_IDX) {
+  for (let i = 0; i < REC_IDX.length; i++) {
+    const e = REC_IDX[i], o = e[0], ix = e[1], intr = e[2];
     const shown = p.attrs[ix] || 10;
-    b(o, intr ? intrinsicFromShown(shown, p.ca, gk ? gkLow : outLow) : shown);
+    recB(r, o, intr ? intrinsicFromShown(shown, p.ca, gk ? e[3] : e[4]) : shown);
   }
   // originalens interne værdier (Player.cmInt, sub_535a80 ved spilstarten – playerInit.ts), når vi har dem
   const ci = p.cmInt;
-  if (ci) for (let k = 0; k < CM_INT_OFFSETS.length; k++) b(CM_INT_OFFSETS[k], ci[k]);
-  b(0x30, p.feet?.[0] ?? (p.foot === 'L' || p.foot === 'B' ? 18 : 8));
-  b(0x3b, p.feet?.[1] ?? (p.foot === 'R' || p.foot === 'B' ? 18 : 8));
-  b(0x45, p.morale ?? 10);
+  if (ci) for (let k = 0; k < CM_INT_OFFSETS.length; k++) recB(r, CM_INT_OFFSETS[k], ci[k]);
+  recB(r, 0x30, p.feet?.[0] ?? (p.foot === 'L' || p.foot === 'B' ? 18 : 8));
+  recB(r, 0x3b, p.feet?.[1] ?? (p.foot === 'R' || p.foot === 'B' ? 18 : 8));
+  recB(r, 0x45, p.morale ?? 10);
   return r;
 }
 

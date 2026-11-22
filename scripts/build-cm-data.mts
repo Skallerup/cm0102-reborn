@@ -730,7 +730,8 @@ if (cmSide && staffX2026 && staffOut !== cmOut) {
 // Post (17 bytes): id (4) · person-id (4) · sæsonens startår (2) · klub (4) · leje (1) · kampe (1) · mål (1).
 // Klubnavnene tages fra hele club.dat (også klubber, der ikke er med i spillet).
 const careersOut = out.replace(/world([^/]*)\.json$/, 'careers$1.json').replace('careers.json', 'careers-cm.json');
-if (files['staff_history.dat'] && careersOut !== out) {
+// (22/11) databasestørrelsen Normal (CM_DBSIZE=2, world-original-normal.json) bruger udgavens egen karrierefil – ingen kopi
+if (files['staff_history.dat'] && careersOut !== out && !process.env.CM_DBSIZE) {
   const H = new DataView(files['staff_history.dat']);
   const C = new DataView(files['club.dat']);
   const dec = new TextDecoder('windows-1252');
@@ -779,8 +780,8 @@ if (resolve(dirname(out)) === resolve('public/data')) {
   const log = existsSync(logFile) ? JSON.parse(readFileSync(logFile, 'utf8')) : {};
   const sha = (f: string) => createHash('sha256').update(readFileSync(f)).digest('hex');
   const src = dir.includes('.orig-db/') ? dir.slice(dir.indexOf('.orig-db/')) : dir;
-  log[basename(out)] = { source: src.replace(/\/+$/, ''), season: SEASON, ...(process.env.NO_LEGACY ? { noLegacy: true } : {}), sha256: sha(out),
-    ...(existsSync(careersOut) && careersOut !== out ? { careers: basename(careersOut), careersSha256: sha(careersOut) } : {}),
+  log[basename(out)] = { source: src.replace(/\/+$/, ''), season: SEASON, ...(process.env.NO_LEGACY ? { noLegacy: true } : {}), ...(process.env.CM_DBSIZE ? { dbSize: Number(process.env.CM_DBSIZE) } : {}), sha256: sha(out),
+    ...(existsSync(careersOut) && careersOut !== out && !process.env.CM_DBSIZE ? { careers: basename(careersOut), careersSha256: sha(careersOut) } : {}),
     ...(cmSide ? { cm: basename(cmOut), cmSha256: sha(cmOut) } : {}),
     ...(cmSide && staffX2026 && existsSync(staffOut) ? { cmStaff: basename(staffOut), cmStaffSha256: sha(staffOut) } : {}), reproducible: true };
   writeFileSync(logFile, JSON.stringify(Object.fromEntries(Object.entries(log).sort(([a], [b]) => a.localeCompare(b))), null, 2) + '\n');

@@ -260,7 +260,7 @@ function scope(env: BoardEnv, s: Person, v: Viewer | null): number {
   return 4;                                                            // (spillerposten +9 + klubbens ≥ 14000 → 3: stab har ingen spillerpost)
 }
 export function repFor(env: BoardEnv, s: Person, v: Viewer | null): number {
-  const [H, C, W] = s.rep;
+  const r = s.rep, H = r[0], C = r[1], W = r[2];
   switch (scope(env, s, v)) {
     case 4: return W;
     case 2: return H;
@@ -313,12 +313,15 @@ export function scoreStaffForJob(env: BoardEnv, s: Person, c: number, job: numbe
     // stabens jobblok (0x69db39/0x69deb6/0x69e22d/0x69e4e7). Formanden som seer har ingen taktiske bytes i spillet (kun +0x16/+0x1d) –
     // foreneligheden regnes kun med en person som seer (managerens ikke-spillerpost)
     if (blk.compat && sp) {
-      const [o0, k0] = blk.compat[0];
+      // (hukommelse, 22/11) indeksløkker uden destrukturering/midlertidige arrays – samme rækkefølge og værdier
+      const c0 = blk.compat[0], o0 = c0[0], k0 = c0[1];
       sc = ftol((1.0 - Math.abs(s8(sp.at(o0)) - s8(s.at(o0))) * k0) * ftol(sc * 1.5));
-      for (let i = 1; i < blk.compat.length; i++) { const [o, k] = blk.compat[i]; sc = ftol((1.0 - Math.abs(s8(sp.at(o)) - s8(s.at(o))) * k) * sc); }
+      for (let i = 1; i < blk.compat.length; i++) { const ci = blk.compat[i], o = ci[0], k = ci[1]; sc = ftol((1.0 - Math.abs(s8(sp.at(o)) - s8(s.at(o))) * k) * sc); }
     }
-    for (const [o, k] of blk.attr) sc = ftol((s8(s.at(o)) * k + 1.0) * sc);
-    for (const b of [s.b59, s.det, s.pres, s.prof]) sc = ftol(((s8(b) - 10) * blk.pers + 1.0) * sc);
+    for (let i = 0; i < blk.attr.length; i++) { const ai = blk.attr[i], o = ai[0], k = ai[1]; sc = ftol((s8(s.at(o)) * k + 1.0) * sc); }
+    const b59 = s.b59, det = s.det, pres = s.pres, prof = s.prof;
+    sc = ftol(((s8(b59) - 10) * blk.pers + 1.0) * sc); sc = ftol(((s8(det) - 10) * blk.pers + 1.0) * sc);
+    sc = ftol(((s8(pres) - 10) * blk.pers + 1.0) * sc); sc = ftol(((s8(prof) - 10) * blk.pers + 1.0) * sc);
     return scoreTail(env, s, c, job, cur, crep, sc, evView);
   }
   if (job !== 5 && job !== 12) return -10000;                          // (11 → 0x69d5fc; 16 → 0x69d65a: ikke brugt)

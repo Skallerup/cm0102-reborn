@@ -172,18 +172,21 @@ function findStaffTarget(g: GameState, env: BoardEnv, club: Club, job: number, b
   return best;
 }
 
+const contOf = (g: GameState, n: number) => (n >= 0 ? g.cmNationCont?.[n] ?? -1 : -1);
+const SEER = { club: 0, nation: 0 };
 /** 0x5407e0(staff, seer, 1) ≥ rand(2000) + 3250 (stabens pladser, gruppe 5 = 0xa: + 2750) og landets/verdensdelens spærrer (0x83ff8x–0x840058) */
 function passesScouting(g: GameState, env: BoardEnv, p: Person, s: Staff, club: Club, mgr: Person | null, youth: boolean, rand: (n: number) => number): boolean {
   const cn = club.nation, crep = s16(clubRepMem(g, club.id));
   const sc = s.club ? g.clubs[s.club] : undefined;
   if (p.nation === cn || (p.b22 & 0xff) > 0 || (sc && sc.nation === cn)) return true;          // 0x840060 → vurdering
-  const cont = (n: number) => (n >= 0 ? g.cmNationCont?.[n] ?? -1 : -1);
-  if (p.nation >= 0 && cont(p.nation) !== cont(cn)) {
+  if (p.nation >= 0 && contOf(g, p.nation) !== contOf(g, cn)) {
     if (crep < 0xabe) return false;
-    const same = !sc || cont(sc.nation) === cont(cn);
+    const same = !sc || contOf(g, sc.nation) === contOf(g, cn);
     if (!same && crep < 0x109a && ((env.nat85(cn) << 24) >> 24) < 12) return false;
   }
-  const seen = s16(repFor(env, p, mgr ? { club: club.id, nation: mgr.nation } : { club: club.id, nation: cn }));
+  // (hukommelse, 22/11) seeren i et genbrugt objekt (repFor læser kun felterne) – passesScouting kaldes ~30 mio. gange ved spilstarten
+  SEER.club = club.id; SEER.nation = mgr ? mgr.nation : cn;
+  const seen = s16(repFor(env, p, SEER));
   return seen >= rand(2000) + (youth ? 0xabe : 0xcb2);
 }
 
@@ -202,10 +205,13 @@ function staffTail(g: GameState, cid: number, clubT: number, fire: boolean): voi
   const e = entryOf(g, cid);
   const T = Math.min(Math.trunc(clubT / 5), 5000);
   const list: Staff[] = [];
+  // (hukommelse, 22/11) klubbens stab i stabens rækkefølge én gang – før en kopi af hele staben (Object.values) pr. rolle pr. klub (~7 GB affald ved spilstarten)
+  const own: Staff[] = [];
+  for (const s of Object.values(g.staff)) if (s.club === cid) own.push(s);
   for (const [role, n] of [['assistant', 1], ['coach', 5], ['physio', 3], ['scout', 7]] as [StaffRole, number][]) {
     let k = 0;
-    for (const s of Object.values(g.staff)) {
-      if (s.club !== cid || s.role !== role || k >= n) continue;
+    for (const s of own) {
+      if (s.role !== role || k >= n) continue;
       k++;
       if (!e.slots.some((sl) => sl.role !== 0xb && sl.f === s.id)) list.push(s);
     }

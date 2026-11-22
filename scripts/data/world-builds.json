@@ -16,6 +16,13 @@
     "careersSha256": "c2aef848c54bf5522e37bdb0a9db6b0407b645da55e4db891b451938c476f369",
     "reproducible": true
   },
+  "world-original-normal.json": {
+    "source": ".orig-db/Original-3.9.60-Database-Swedish_fixed",
+    "season": 2001,
+    "dbSize": 2,
+    "sha256": "e2c82c612538de8954b630a451c34a90898be9c1482755bfe77f5b0c7f4ddbd9",
+    "reproducible": true
+  },
   "world-original.json": {
     "source": ".orig-db/Original-3.9.60-Database-Swedish_fixed",
     "season": 2001,

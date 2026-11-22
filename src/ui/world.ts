@@ -3,97 +3,45 @@ import type { WorldData } from '../game/newgame';
 import { CM_REQUIRED, type CMWorld } from '../game/data/cm0102';
 import { guardWrite } from '../game/storageGuard';
 import { approvedEdits } from '../online/hub';
+import { applyCommunityEdits, fetchModernWorld, fetchOriginalWorld, type CommunityEdit, type OriginalVersion } from './worldFetch';
 
 let cache: Promise<WorldData> | null = null;
+export { ORIGINAL_VERSIONS, originalFile, type OriginalVersion } from './worldFetch';
+
+/** Fællesskabets godkendte rettelser (Community Update) – hentes med en grænse på 2,5 s; uden net ingen */
+export async function communityEdits(db: 'cm' | 'original'): Promise<CommunityEdit[] | null> {
+  const res = await Promise.race([approvedEdits(db), new Promise<null>((r) => setTimeout(() => r(null), 2500))]).catch(() => null);
+  return res?.edits.length ? res.edits : null;
+}
 
 /**
  * Fællesskabets godkendte rettelser ("Community Update", se api/hub.ts) lægges oven på databasen, før et nyt spil
  * bygges fra startsiden: navne og egenskaber på spillere, navne og farver på klubber. Uden net bruges databasen som den er.
  */
 export async function withCommunityEdits(base: WorldData, db: 'cm' | 'original'): Promise<WorldData> {
-  const res = await Promise.race([approvedEdits(db), new Promise<null>((r) => setTimeout(() => r(null), 2500))]).catch(() => null);
-  if (!res?.edits.length) return base;
-  // en kopi: den delte database (bl.a. draft-ligaens spillerpulje) skal være ens hos alle klienter. (Hukommelse, 21/11) kun de rettede rækker
-  // kopieres – før var det hele databasen (structuredClone), så hovedtråden holdt to databaser under et nyt spil (iPhone/Facebook-appen)
-  const src = base as WorldData & Partial<CMWorld>;
-  const cm = { ...src, players: src.players.slice(), clubs: src.clubs.slice(), ...(src.ratings ? { ratings: { ...src.ratings } } : {}),
-    ...(src.clubColors ? { clubColors: { ...src.clubColors } } : {}) } as WorldData & Partial<CMWorld>;
-  const w = cm as WorldData;
-  const F = Object.fromEntries((cm.playerFields ?? []).map((f, i) => [f, i]));
-  const pRows = w.players as unknown as unknown[][], cRows = w.clubs as unknown as unknown[][];
-  const players = new Map(pRows.map((p, i) => [Number(p[0]), i]));
-  const clubs = new Map(cRows.map((c, i) => [Number(c[0]), i]));
-  const copied = new Set<unknown[]>(), copiedR = new Set<number>();
-  const own = (rows: unknown[][], i: number) => { if (!copied.has(rows[i])) { rows[i] = rows[i].slice(); copied.add(rows[i]); } return rows[i]; };
-  for (const e of res.edits) {
-    const id = Number(e.target);
-    if (e.kind === 'player') {
-      const pi = players.get(id);
-      if (pi === undefined) continue;
-      const p = own(pRows, pi);
-      if (e.field === 'first' && F.first !== undefined) p[F.first] = e.value;
-      if (e.field === 'last' && F.last !== undefined) p[F.last] = e.value;
-      if (e.field === 'attr' && cm.ratings?.[id]) {
-        const [i, v] = e.value.split(':').map(Number);
-        if (cm.ratings[id].attrs[i] !== undefined) {
-          if (!copiedR.has(id)) { cm.ratings[id] = structuredClone(cm.ratings[id]); copiedR.add(id); }
-          cm.ratings[id].attrs[i] = v;
-        }
-      }
-    } else {
-      const ci = clubs.get(id);
-      if (ci === undefined) continue;
-      const c = own(cRows, ci);
-      if (e.field === 'name') c[1] = e.value;
-      if (e.field === 'short') c[2] = e.value;
-      if (e.field === 'color' && cm.clubColors) { const [a, b] = e.value.split(','); cm.clubColors[id] = [a, b ?? cm.clubColors[id]?.[1] ?? '#ffffff']; }
-    }
-  }
-  return w;
+  return applyCommunityEdits(base, await communityEdits(db));
 }
 
 export function loadWorld(): Promise<WorldData> {
   if (!cache) {
-    // world-cm.json (byggescriptet): originalens rå værdier (CMWorld.cmRaw) til originalens logik i ægte tilstand (cmLogic – fx gittermotoren);
-    // mangler den (fx uden net og uden cache), bygges spillet uden dem som før
-    const side = fetch(`${import.meta.env.BASE_URL}data/world-cm.json`).then((r) => (r.ok ? r.json() as Promise<{ cmRaw?: CMWorld['cmRaw'] }> : null)).catch(() => null);
-    // world-cm-staff.json (MODERN_PARITY 13): Staff Search's øvrige ikke-spillere (CMWorld.staffX/clubNames – originalens hukommelse 0x524d70);
-    // ikke i offline-cachen – mangler den, får et nyt spil kun spillets egen stab i søgningen
-    const staffSide = fetch(`${import.meta.env.BASE_URL}data/world-cm-staff.json`).then((r) => (r.ok ? r.json() as Promise<Pick<CMWorld, 'staffX' | 'clubNames'>> : null)).catch(() => null);
-    cache = fetch(`${import.meta.env.BASE_URL}data/world.json`).then(async (r) => {
-      if (!r.ok) throw new Error(`world.json: ${r.status}`);
-      const w = await r.json() as WorldData & Partial<CMWorld>;
-      const x = await side;
-      if (x?.cmRaw && w.kind === 'cm0102' && !w.cmRaw) w.cmRaw = x.cmRaw;
-      const xs = await staffSide;
-      if (xs?.staffX && w.kind === 'cm0102' && !w.staffX) { w.staffX = xs.staffX; w.clubNames = xs.clubNames ?? {}; }
-      return w as WorldData;
-    });
+    cache = fetchModernWorld();
     cache.catch(() => { cache = null; });
   }
   return cache;
 }
 
-// De originale CM 01/02-databaser: 3.9.60 (udgivelsen – den, originalen selv bruger til 2001/02) og 3.9.65 (rettelser,
-// stadig 01/02-trupperne) med fællesskabets svenske rettelse ("Swedish_fixed"), samt 3.9.68 (02/03-trupperne med
-// 01/02-startdatoen). Den svenske rettelse ændrer kun skjulte svenske klubber – spillere, trupper og økonomi er de samme.
-export const ORIGINAL_VERSIONS = ['3.9.60', '3.9.65', '3.9.68'] as const;
-export type OriginalVersion = (typeof ORIGINAL_VERSIONS)[number];
-export const originalFile = (v: OriginalVersion) => (v === '3.9.60' ? 'world-original.json' : `world-original-${v.replace(/\./g, '')}.json`);
-const origCache = new Map<OriginalVersion, Promise<WorldData>>();
+const origCache = new Map<string, Promise<WorldData>>();
 /** Hukommelse (Safari "Out of memory" 19/11): den indlæste database (den originale ≈ 110 MB i Chrome, flere gange det i Safari) blev holdt i
  *  hovedtråden hele sessionen. Når spillet er oprettet, slippes den – et nyt spil henter den igen (fra browserens/arbejderens cache). */
 export function releaseWorldCaches(): void { origCache.clear(); cache = null; }
-export function loadOriginalWorld(v: OriginalVersion = '3.9.60'): Promise<WorldData> {
-  let c = origCache.get(v);
+/** `size`: originalens databasestørrelse (ui/dbSize.ts – Normal kun for 3.9.60) */
+export function loadOriginalWorld(v: OriginalVersion = '3.9.60', size: 'normal' | 'maximum' = 'maximum'): Promise<WorldData> {
+  const k = `${v}|${size}`;
+  let c = origCache.get(k);
   if (!c) {
-    const file = originalFile(v);
-    c = fetch(`${import.meta.env.BASE_URL}data/${file}`).then((r) => {
-      if (!r.ok) throw new Error(`${file}: ${r.status}`);
-      return r.json() as Promise<WorldData>;
-    });
-    c.catch(() => { origCache.delete(v); });
-    origCache.set(v, c);
+    c = fetchOriginalWorld(v, size);
+    c.catch(() => { origCache.delete(k); });
+    origCache.set(k, c);
   }
   return c;
 }
