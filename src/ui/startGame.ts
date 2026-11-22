@@ -12,6 +12,7 @@ import { listDbs, loadCustomWorld } from './customDb';
 import { communityEdits, loadOriginalWorld, loadWorld, ORIGINAL_VERSIONS, releaseWorldCaches, withCommunityEdits, type OriginalVersion } from './world';
 import { applyCommunityEdits } from './worldFetch';
 import type { DbSize } from './dbSize';
+import { noteNewGameStep } from '../online/newGameTrace';
 
 /** 'custom:<id>' = en database fra editoren (ændringer oven på den originale eller den moderne) */
 export type Db = 'modern' | 'original' | `custom:${string}`;
@@ -161,6 +162,8 @@ function runPhases(first: NewGameJob, stages: NewGameJob['phases'][], pre: Worke
 export async function createGameAsync(world: WorldData | StartWorld, opts: NewGameOptions, onProgress: (p: NewGameProgress) => void, signal?: AbortSignal): Promise<void> {
   // StartWorld: arbejderen henter selv databasen (eller bruger den, den allerede har indlæst – kun én gang)
   const sw = 'src' in world ? world : null;
+  const report = onProgress;
+  onProgress = (p) => { noteNewGameStep(p.step, p.frac); report(p); };
   if (sw?.full) world = sw.full;
   const pre = sw && !sw.full ? sw.worker : null;
   if (sw) sw.worker = null;

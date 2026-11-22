@@ -5,6 +5,11 @@ import { APP_VERSION } from '../version';
 import { rankingAvailable } from './rank';
 import { previewInfo } from '../game/state';
 import { reloadOnce } from '../ui/lazyLoad';
+import { markNewGame as markNew, readInterrupted } from './newGameTrace';
+export { noteNewGameStep } from './newGameTrace';
+
+/** et nyt spil begynder/er færdigt (markør + spor, online/newGameTrace.ts) */
+export function markNewGame(on: boolean) { markNew(on, readDbSize()); }
 
 const sent = new Map<string, number>();
 let total = 0;
@@ -38,21 +43,16 @@ const STALE = /Importing a module script failed|Unable to preload CSS|Failed to 
 
 // Genindlæses siden, mens et nyt spil oprettes (ingen JS-fejl: browseren/appen har lukket siden – typisk for lidt hukommelse i en
 // indbygget browser som Facebooks), ender spilleren på forsiden uden spil. Det meldes til admin ved næste start (21/11).
-const CREATING = 'cm0102.creating';
-export function markNewGame(on: boolean) {
-  try { if (on) localStorage.setItem(CREATING, String(Date.now())); else localStorage.removeItem(CREATING); } catch { /* ingen lagring */ }
-}
 let interrupted: boolean | null = null;
 /** Siden blev lukket under et nyt spil (læst én gang ved sidens start): forsiden og spillet viser beskeden (ui/InAppBanner.tsx) */
 export function newGameInterrupted(): boolean {
   if (interrupted !== null) return interrupted;
-  let at = 0;
-  try { at = Number(localStorage.getItem(CREATING)) || 0; if (at) localStorage.removeItem(CREATING); } catch { /* ingen lagring */ }
-  interrupted = !!at && Date.now() - at < 15 * 60_000;
-  if (interrupted) {
-    reportError(new Error(`NewGameInterrupted: the page was reloaded ${Math.round((Date.now() - at) / 1000)} s into creating a new game (database ${readDbSize()})`));
-    // (22/11) næste nye spil med originalens mindre databasestørrelse (Normal) – spilleren skal ikke prøve igen og igen med den samme
-    dbSizeAfterInterrupt();
+  const info = readInterrupted(Date.now(), readDbSize());
+  interrupted = !!info;
+  if (info) {
+    reportError(new Error(info.text));
+    // (22/11) næste nye spil med originalens mindre databasestørrelse (Normal) – men ikke når spilleren selv forlod siden
+    if (!info.abandoned) dbSizeAfterInterrupt();
   }
   return interrupted;
 }
