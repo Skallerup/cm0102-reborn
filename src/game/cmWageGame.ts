@@ -14,7 +14,7 @@
 //   land: +0 id (nationsindekset), +0x76 (nation.dat), +0x7e, +0x85; nøglelandenes id-globaler [0x9cf218 …] efter navnet.
 //   finansposten [[0xae2a38]] + 0x167·klub: +0 saldoen (£, int64), +8 klub-id, +0xc/+0x10/+0x14 af 0x598370 (kørt to gange: den første med
 //      +0x14 = 0 – originalens +0x14 er den forrige uges).
-//   kontrakten (80 bytes, indeks = personens id): +4 klubbens id, +0xc ugelønnen (£, −1 = ikke sat), +0x35 bit 7 deltid, +0x45/+0x4f
+//   kontrakten (80 bytes, indeks = personens id): +4 klubbens id, +0xc ugelønnen (£, −1 = ikke sat), +0x35 bit 7 deltid, +0x45 (dword)/+0x4f
 //      (Player.cmContract: trupstatus i høj nibble).
 //   Shortlist_Manager [0xde1f54] → [+0x856] → [+0xdc] + 9·klub + 5 = klubbens mål-omdømme (GameState.cmTargetRep, 0x83bf40).
 // *Estimeret*: ingen relationer (+0x65 – formandens yndlingsspillere), lejede spillere regnes i moderklubben (spillets lejemodel), menneskets
@@ -222,7 +222,7 @@ export function buildWageMem(g: GameState, clubs: Iterable<number>, unset: Set<n
     const k = K0 + 80 * id;
     m.w32(ROWS0 + 79 * id, id); m.w32(ROWS0 + 79 * id + 4, -1);
     m.w32(k + 4, club); m.w32(k + 0xc, wage);
-    if (p) { m.w8(k + 0x35, p.contract?.partTime ? 0x80 : 0); m.w8(k + 0x45, p.cmContract?.b45 ?? 0); m.w8(k + 0x4f, p.cmContract?.b4f ?? 0); contracts.set(p.id, k); }
+    if (p) { m.w8(k + 0x35, p.contract?.partTime ? 0x80 : 0); m.w32(k + 0x45, p.cmContract?.b45 ?? 0); m.w8(k + 0x4f, p.cmContract?.b4f ?? 0); contracts.set(p.id, k); }
     return k;
   };
   const playerRec = (p: Player, id: number, club: number) => {

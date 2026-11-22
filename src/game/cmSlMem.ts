@@ -279,7 +279,7 @@ function writeRec(m: SparseMem, e: Ent, date: string, nNat: number): void {
     const k = K0 + 80 * id;
     m.w32(ROWS0 + 79 * id, id); m.w32(ROWS0 + 79 * id + 4, -1);
     m.w32(k + 4, cid); m.w32(k + 0xc, Math.round(p.contract.wage * gbpOf(cid)));
-    m.w8(k + 0x35, p.contract?.partTime ? 0x80 : 0); m.w8(k + 0x45, p.cmContract?.b45 ?? 0); m.w8(k + 0x4f, p.cmContract?.b4f ?? 0);
+    m.w8(k + 0x35, p.contract?.partTime ? 0x80 : 0); m.w32(k + 0x45, p.cmContract?.b45 ?? 0); m.w8(k + 0x4f, p.cmContract?.b4f ?? 0);
   }
 }
 function writeWant(m: SparseMem, e: Ent, staffOfId: StaffOfId, nNat: number): void {

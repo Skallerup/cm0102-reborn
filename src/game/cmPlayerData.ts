@@ -740,16 +740,18 @@ function contractDayPlayer(g: GameState, p: Player, c: CmContract, rand: (n: num
   // 0x5cfa64: en skade med +0x2c > 30 springer til 0x5d2392
   const w2c = pctx.injuryW2c?.(p) ?? null;
   if (!(w2c !== null && s16(w2c) > 30)) {
-    // R6 0x5d1119–0x5d1155: +0x49 (0), karrieren slutter (0x7a7eb0) og ikke-spillerjob findes ikke hos os ud over cmRetire
-    if (p.cmRetire) { cmFlagClear(c, 0x10); cmFlagClear(c, 2); }
+    // R6 0x5d1119–0x5d1155: +0x49, karrieren slutter (0x7a7eb0); ikke-spillerjob findes ikke hos os
+    if (p.cmRetire || p.contract?.cmB49) { cmFlagClear(c, 0x10); cmFlagClear(c, 2); }
     // R3 0x5d115b: skadet (0x62c400 = 2) med +0x2c > 14
     else if ((pctx.injury?.(p) ?? 0) === 2 && w2c !== null && s16(w2c) > 14) cmFlagClear(c, 0x10);
-    // R4 0x5d1327 (trupstatus 0 → 0x5d11aa's kontraktforlængelse – ikke porteret)
-    else if (statusCode(p) !== 0 && !listedOrRequest(p) && statusCode(p) === 7 && !(c.b45 & 0x10) && !(c.b45 & 4) && rand(20) === 0 && age > 21
+    // 0x5d11a0: trupstatus 0 med klubmanager, ikke i en handel og ikke listet → 0x5d11aa's kontraktforlængelse (ikke porteret) og videre til 0x5d2392
+    else if (statusCode(p) === 0 && !!g.clubs[club]?.manager && !cmInDeal(g, p) && !listedOrRequest(p)) { /* 0x5d11aa–0x5d1322 */ }
+    // R4 0x5d1327
+    else if (!listedOrRequest(p) && statusCode(p) === 7 && !(c.b45 & 0x10) && !(c.b45 & 4) && rand(20) === 0 && age > 21
       && (p.pos[0] !== 20 || age > 24 + ((p.id % 4) | 0))) {
       c.b44 = clamp100(s8(c.b44) - 50);
       cmFlagSet(c, 0x10);
-    }
+    } else contractLengthDay(g, p, c, rand, age, w2c);
   }
   // R5 0x5d23a6/0x5d23e6 ([esp+0x7c] – 0x540a50's B-holdsflag – er 0)
   const amb = s8(sh(p, 'ambition')), tmp = s8(sh(p, 'temperament')), b3f = s8(c.b3f);
@@ -758,6 +760,55 @@ function contractDayPlayer(g: GameState, p: Player, c: CmContract, rand: (n: num
   if (c.b45 & 4 && settled) cmFlagClear(c, 4);
   // 0x5d2fb3: klubbens sprog læres (kontraktens +0x4f lave nibble og sprogtabellen – cmLanguage.ts)
   languageDay(g, p, c, rand);
+}
+
+/** TRANSFER_MANAGER 0x8c1870/0x8c5cf0/0x8c5e40: spilleren er med i et bud/en handel – spillets åbne bud (*estimeret*) */
+export function cmInDeal(g: GameState, p: Player): boolean {
+  return g.offers.some((o) => o.player === p.id && (o.status === 'pending' || o.status === 'negotiating' || o.status === 'countered' || o.status === 'accepted'));
+}
+
+/** dato → [dag i året, år] (Date +0/+2) */
+const doyOf = (iso: string): [number, number] => { const y = +iso.slice(0, 4); return [dayNum(iso.slice(0, 10)) - dayNum(`${y}-01-01`), y]; };
+/** Date::days_between 0x54cdb0 (this − other) */
+const daysBetween54cdb0 = (a: string, b: string) => dayNum(a.slice(0, 10)) - dayNum(b.slice(0, 10));
+
+/** 0x5ce2d0's kontraktlængde-klager 0x5d1448–0x5d1fcf (efter R4): flag 1 (vil have ny kontrakt) og flag 2 (kontrakten er udløbet/for kort).
+ *  A 0x5d1448 (uden flag 1): x = +0x44 + 10·(moral − 10) < 25 (eller landsholdsspiller: staff +0x24 – 0 hos os, som i cmSlMem) og rand(50) = 0 →
+ *    flag 1 efter 0x545e90 (klubbens omdømme – ikke porteret) og videre til 0x5d2392 (alle grene).
+ *  B 0x5d15b5 (med flag 1): rand(50) = 0 eller over 31 år → flag 1 ryddes efter 0x545e90 (ikke porteret) og videre til 0x5d2392.
+ *  C 0x5d16e8: flag 2 og under 60 dage siden kontraktens start (+0x25) → flag 2 ryddes.
+ *  D 0x5d1713: spilstarten + 2·Loyalty + 5 dage og starten + 20·Loyalty + 250 dage er passeret, intet flag 1, ikke listet, trupstatus ≠ 7,
+ *    rand(50) = 0, ingen skade med +0x2c > 60, intet aftalt skifte (0x8cca10) og ingen handel (0x8c1870) → forlængelsen 0x5d188f (0x849ce0/
+ *    0x866620/0x4cda70 – ikke porteret) og videre til 0x5d2392.
+ *  E 0x5d1eef: kontrakten er udløbet (type 1), ingen leje (0x4cf6d0), ingen bud/handel (0x8c5cf0/0x8c5e40/0x8c1870): n = (år − udløbsår)·365 −
+ *    udløbsdag + dag i året; n > rand(100) → flag 2 (0x867700, hvis det ikke er sat) og +0x44 += s8(−n). Ellers 0x5d1fd4's flag 0x100
+ *    (udlandet – ikke porteret). */
+function contractLengthDay(g: GameState, p: Player, c: CmContract, rand: (n: number) => number, age: number, w2c: number | null): void {
+  const k = p.contract!;
+  const loy = s8(sh(p, 'loyalty'));
+  const start = k.cmStart ?? p.joined ?? p.cmJoined;
+  // A / B
+  if (!(c.b45 & 1)) {
+    const x = s8(c.b44) + 10 * (s8(Math.round(p.morale ?? 10)) - 10);
+    if (x < 25 && rand(50) === 0) return;
+  } else if (rand(50) === 0 || age > 31) return;
+  // C
+  if (c.b45 & 2 && start && daysBetween54cdb0(g.date, start) < 60) { cmFlagClear(c, 2); return; }
+  // D
+  {
+    const t = dayNum(g.date);
+    const d1 = dayNum((g.cmFitStart ?? g.date).slice(0, 10)) + s16(2 * loy + 5);
+    const d2 = start ? dayNum(start.slice(0, 10)) + s16(20 * loy + 250) : Infinity;
+    if (d1 < t && d2 < t && !(c.b45 & 1) && !listedOrRequest(p) && statusCode(p) !== 7 && rand(50) === 0 && !(w2c !== null && s16(w2c) > 60)
+      && !k.futureClub && !cmInDeal(g, p)) return;
+  }
+  // E
+  if ((k.cmType ?? 2) !== 1 || p.loan || cmInDeal(g, p)) return;
+  const [ed, ey] = doyOf(k.expires), [td, ty] = doyOf(g.date);
+  const n = (ty - ey) * 365 - ed + td;
+  if (n <= rand(100)) return;
+  if (!(c.b45 & 2)) cmFlagSet(c, 2);
+  c.b44 = clamp100(s8(-n) + s8(c.b44));
 }
 
 /** 0x5cccd0's klubtabel (ugentlig) og 0x5ce2d0 for alle spillere med kontrakt – hver dag (sim.ts newDay). Spillere i en klub i en aktiv liga

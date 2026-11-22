@@ -187,7 +187,9 @@ function promotionRelegation(sc: Scope | null = null) {
 
 function endLoanIfDue(p: Player, today: string) {
   const g = gs();
-  if (p.loan && p.loan.until < today && !exerciseLoanOption(p)) {
+  // CONTRACT_MANAGER 0x4c8077: lejekontraktens slutdato = i dag → end_loan 0x4d07e0 (samme dag, ikke dagen efter – oraklets billeder: lejen med
+  // slut D er væk i billedet D+1, taget før dagens 0x4c7ac0)
+  if (p.loan && p.loan.until <= today && !exerciseLoanOption(p)) {
     // CM 01/02: "[person]'s loan finishes" – til begge klubbers managere
     const loanClub = p.club, from = p.loan.from;
     for (const c of [from, loanClub]) asOwner(c, () => addNews({ cat: 'transfer', key: 'transfer.loanEnded', params: { player: `${p.first} ${p.last}`.trim(), club: g.clubs[loanClub]?.name ?? '', from: g.clubs[from]?.name ?? '' }, link: { kind: 'player', id: p.id } }));
@@ -197,11 +199,11 @@ function endLoanIfDue(p: Player, today: string) {
   }
 }
 
-/** (den originale database i ægte tilstand) lejeaftaler med en slutdato i sæsonen (køberlandets lejeperiode 0x8d0590 – cmLoan.ts) slutter
- *  dagen efter (originalen: TRANSFER_MANAGER's art 4 "lejen slut") */
+/** (den originale database i ægte tilstand) lejeaftalerne (køberlandets lejeperiode 0x8d0590 – cmLoan.ts) slutter på slutdatoen
+ *  (CONTRACT_MANAGER 0x4c8077 → end_loan 0x4d07e0 – også 30/6) */
 export function endDueLoansDaily() {
   const g = gs();
-  for (const p of Object.values(g.players)) if (p.loan && p.loan.until < g.date && p.loan.until.slice(5) !== '06-30') endLoanIfDue(p, g.date);
+  for (const p of Object.values(g.players)) if (p.loan && p.loan.until <= g.date) endLoanIfDue(p, g.date);
 }
 
 function contractsAndLoans() {

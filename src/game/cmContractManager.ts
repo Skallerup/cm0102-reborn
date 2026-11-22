@@ -32,7 +32,7 @@ import { buildWantMem, applyCmTerms, type CmTerms, type WantMem } from './cmCont
 import { contractDailyUpdate_4c7ac0, listAdd_68d0d0, listInit_68d020, listNext_68d1b0 } from './cmContract';
 import { humanClub_600a50 } from './cmWageGame';
 import { slCall } from './cmShortlist';
-import { cmActive, cmLogic, cmRand, newCmContract, statusCode } from './cmPlayerData';
+import { cmActive, cmInDeal, cmLogic, cmRand, newCmContract, statusCode } from './cmPlayerData';
 import { isHumanClub } from './humans';
 import { recordFreeTransfer, setClub } from './state';
 import { ageOn } from './dates';
@@ -174,9 +174,9 @@ export function cmContractManagerDay(g: GameState): void {
       case 0x7a7eb0: return pOf(a[1] >>> 0)?.cmRetire ? 1 : 0;
       case 0x866f60: return slCall(M!.c, 0x866f60, a[0] >>> 0);
       case 0x8c5cf0: case 0x8c5e40: case 0x8c1870: {
-        // TRANSFER_MANAGER: spilleren er med i et bud/en handel – spillets åbne bud (*estimeret*)
+        // TRANSFER_MANAGER: spilleren er med i et bud/en handel (cmInDeal)
         const p = pOf(a[1] >>> 0);
-        return p && g.offers.some((o) => o.player === p.id && (o.status === 'pending' || o.status === 'negotiating' || o.status === 'countered' || o.status === 'accepted')) ? 1 : 0;
+        return p && cmInDeal(g, p) ? 1 : 0;
       }
       case 0x8c16b0: case 0x8c1af0: { const p = pOf(a[1] >>> 0); if (p && !released.includes(p)) released.push(p); return 0; }
       case 0x8c38b0: {
