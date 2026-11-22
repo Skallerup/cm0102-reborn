@@ -109,7 +109,10 @@ describe('nyt spil med originalens kalender', () => {
     }
     // første runde på skemaets dato (Norge 1. division: 20/4-2001 → søndag 22/4; USA lørdag 24/3)
     const sched = (id: string) => (g.comps[id].meta?.dates as string[]);
-    expect(fx('CM316').filter((f) => f.round === 1).every((f) => f.date === sched('CM316')[0])).toBe(true);
+    // (22/11) undtagen Vålerenga–Sandefjord: Vålerenga deler Ullevaal med Lyn (Tippeligaen samme søndag) – samme stadion samme dag = kode 0x14 →
+    // resolve_same_day_clash 0x5ae380 flytter den mindre vigtige kamp (turneringens +0x69) til den anden ugedag (søndag → lørdag 21/4)
+    const off = fx('CM316').filter((f) => f.round === 1 && f.date !== sched('CM316')[0]);
+    expect(off.map((f) => [g.clubs[f.home].name, f.date])).toEqual([['Vålerenga Fotball', '2001-04-21']]);
     expect(fx('CM31').filter((f) => f.round === 1).every((f) => f.date === sched('CM31')[0])).toBe(true);
    }, 120_000);
 });

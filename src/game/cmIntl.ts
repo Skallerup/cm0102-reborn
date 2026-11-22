@@ -20,7 +20,7 @@
 // 'B' International (0x7e6720's B-gren: lige år før 20/6 – ikke bygget, U21-kampen spilles i stedet). U21-holdenes fyldspillere: originalens 0x90dc66 (cmVirtual.ts) i playNation.
 import type { GameState } from './types';
 import { cmIntlOn } from './cmPlayerData';
-import { cmDate } from './cmCalendar';
+import { calIntl, cmCallupDaily, cmCallupRecord, cmDate, type CmIntlFx } from './cmCalendar';
 import { addDays } from './dates';
 import { rng } from './rng';
 import { msvcQsort } from './engine/grid/subs';
@@ -29,7 +29,7 @@ import { addNews, gs } from './state';
 import { registerPrerun } from './cmPrerun';
 import { intlHooks } from './hooks';
 import { intlState, playNation, type IntlRow, type IntlTie } from './international';
-import { cmIntlSquadDaily, cmWithdrawInjured, initSquads, selectForFixture, type SelFixture } from './cmIntlSquad';
+import { cmIntlSquadDaily, cmNatList, cmWithdrawInjured, initSquads, selectForFixture, type SelFixture } from './cmIntlSquad';
 import { cmFifaDaily, cmFifaInit } from './cmFifa';
 import { cmFinalsBusy, cmFinalsDay, cmFinalsDuty } from './cmIntlFinals';
 
@@ -208,8 +208,39 @@ function oppsOf(g: GameState, n: number, from: string, u21?: boolean): number[] 
 /** NationalTeams::daily_update 0x76b100: landskampene på i dag + 2 uger (0x54c770(2)) → 0x76bab0 (venskabskampene og U21-kampene) */
 function callUps(g: GameState): void {
   const d = addDays(g.date, 14);
-  for (const f of cmState(g).fix) if (f.d === d) selectForFixture(g, selFix(f), (n) => oppsOf(g, n, f.d, !!f.u21));
+  for (const f of cmState(g).fix) {
+    if (f.d !== d) continue;
+    selectForFixture(g, selFix(f), (n) => oppsOf(g, n, f.d, !!f.u21));
+    recordCallups(g, f.h, f.a, f.d, !!f.u21);
+  }
 }
+
+/** 0x76b30b–0x76b40b: efter 0x76bab0 – 0x7771c0 for hjemme- og udeholdets liste (A-landsholdet – også ved U21-kampen, hvis hold er A-holdene) og
+ *  for U21-kampen (+0x4d & 0x200) U21-holdenes lister (0x53b4f0, dagen før – 0x5409b0). Ikke for slutrunderne (0x76d940). 'B' (+0x4d & 0x100) findes
+ *  ikke hos os. */
+function recordCallups(g: GameState, h: number, a: number, d: string, u21: boolean): void {
+  cmCallupRecord(g, cmNatList(g, h, 0), d);
+  cmCallupRecord(g, cmNatList(g, a, 0), d);
+  if (u21) {
+    cmCallupRecord(g, cmNatList(g, h, 2), addDays(d, -1));
+    cmCallupRecord(g, cmNatList(g, a, 2), addDays(d, -1));
+  }
+}
+
+/** landskampene på dagen `d` som fixtures (cmCalendar.ts' sammenstødsregel 0x5adba0): venskabskampene (Friendly 72) og U21-kampene (401) med
+ *  +0x3a = 9, EM-kvalifikationen (396) med 10 */
+calIntl.on = (g: GameState, d: string): CmIntlFx[] => {
+  const out: CmIntlFx[] = [];
+  for (const f of g.intl?.cm?.fix ?? []) if (f.d === d) out.push({ d, h: f.h, a: f.a, type: 9, comp: f.u21 ? 401 : 72 });
+  const q = g.intl?.qual;
+  if (q?.cm && q.dates && q.sched) {
+    const r = q.dates.indexOf(d);
+    if (r >= 0) for (const [h, a] of q.sched[r] ?? []) out.push({ d, h, a, type: 10, comp: 396 });
+    const pi = (q.poDates ?? []).indexOf(d);
+    if (pi >= 0) for (const t of q.po ?? []) { const [h, a] = pi === 0 ? [t.a, t.b] : [t.b, t.a]; out.push({ d, h, a, type: 10, comp: 396 }); }
+  }
+  return out;
+};
 
 let inPrerun = false;
 /** 0x5cbb00 – dagen `iso` (i forkørslen dens dato, ellers spillets) */
@@ -378,7 +409,7 @@ function cmEuroQualDay(g: GameState): void {
   if (!q?.cm || !q.dates || !q.sched) return;
   // 0x76b100: kampene 14 dage frem → 0x76bab0
   const r = q.dates.indexOf(addDays(g.date, 14));
-  if (r >= 0) for (const [h, a] of q.sched[r]) selectForFixture(g, { d: q.dates[r], h, a, kind: 'euroq', slot: 0 }, (n) => oppsOf(g, n, q.dates![r]));
+  if (r >= 0) for (const [h, a] of q.sched[r]) { selectForFixture(g, { d: q.dates[r], h, a, kind: 'euroq', slot: 0 }, (n) => oppsOf(g, n, q.dates![r])); recordCallups(g, h, a, q.dates[r], false); }
   const ri = q.dates.indexOf(g.date);
   if (ri >= 0) {
     for (const [h, a] of q.sched[ri]) {
@@ -451,6 +482,7 @@ intlHooks.cmDay = () => {
   if (!g.intl?.cmSq) { cmFifaInit(g); initSquads(g); }
   cmIntlSquadDaily(g);
   cmFifaDaily(g);
+  cmCallupDaily(g);
   callUps(g);
   cmIntlFriendlyDay(g, g.date);
   cmIntlPlayDay(g);

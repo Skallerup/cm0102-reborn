@@ -204,10 +204,298 @@ function moveFixture(f: Fixture, date: string, slot?: number): void {
   if (slot !== undefined) f.slot = slot;
 }
 
+// ---------------------------------------------------------------- (22/11) sammenstødsreglen 0x5ad780/0x5adba0 som originalen (g.cmClash)
+
+/** spillet er startet med originalens sammenstødsregel (find_fixture_clashes 0x5ad780 + 0x5adba0, add_fixture 0x5aa680's grene, 0x5ab510's vinduer
+ *  pr. kamptype, resolve_same_day_clash 0x5ae380 og landsholdenes udtagelser 0x7771c0/0x776fc0) – nye spil (newgame.ts); ældre spil beholder den
+ *  forenklede regel nedenfor */
+export const cmClashOn = (g: GameState): boolean => cmCalendarOn(g) && g.cmClash === 1;
+
+/** en landskamp (fixture med landsholdene som hold – NationalTeams' kampe): hjemme/ude = landene (club +0x53 → 0x53b3d0 = A-landsholdet;
+ *  U21-kampen 0x7e6720 er en kopi af A-kampen med +0x4d | 0x200, samme hold), +0x3a 9 (venskabskamp/U21) eller 10, turneringens id */
+export interface CmIntlFx { d: string; h: number; a: number; type: number; comp: number }
+/** landskampene på en dato (cmIntl.ts registrerer kilden: venskabskampene, U21-kampene, EM-kvalifikationen) */
+export const calIntl: { on: ((g: GameState, d: string) => CmIntlFx[]) | null; compRep: ((g: GameState, comp: string) => number) | null } = { on: null, compRep: null };
+
+/** 0x76d940: slutrundernes turneringer ([0x9cf79c]… = 404 VM, 405 OL, 406 EM, 407 Copa América, 408 Afrikamesterskabet, 399 Asian Cup, 402 Oceanien,
+ *  398, 403 Confederations Cup) */
+const FINALS_COMPS = new Set([404, 405, 406, 407, 408, 399, 402, 398, 403]);
+export const cmIntlFinalsComp = (comp: number) => FINALS_COMPS.has(comp);
+
+/** klubbens omdømme club +0x80 */
+const clubRep80 = (g: GameState, club: number) => g.cmClubRep?.[club] ?? Math.round((g.clubs[club]?.rep ?? 0) * 100);
+const nationName = (g: GameState, n: number | undefined) => (n === undefined || n < 0 ? '' : g.nations[n]?.name ?? '');
+/** fixture +0x18: stadionet (hjemmeklubbens +0x69 → cmCrowd[3]); neutral bane (+0x3c) – stadionet kendes ikke hos os */
+const stadiumOf = (g: GameState, f: Fixture) => (f.cm?.b3c ? -1 : g.cmCrowd?.[f.home]?.[3] ?? -1);
+/** fixture +0 = turneringens id (gameInputs.ts CM_COMP_ID – registreres derfra) */
+let compIdOf: (g: GameState, comp: string) => number = () => -1;
+export const setCalCompId = (fn: (g: GameState, comp: string) => number) => { compIdOf = fn; };
+/** fixture +0x30 → 0x4b0850: rundens ben-kode (w30 < 1000 ? w30 % 10 : 0 – 3/4 = første/andet ben) */
+const legCode = (f: Fixture) => { const w = f.cm?.w30 ?? 0; return w < 1000 ? w % 10 : 0; };
+/** turneringens vt+0x60(F, O): 0x48e360 = (0x4b0850(F +0x30) = 0) – Champions League og UEFA Cup (0x5839d0) altid 0 */
+const vt60 = (g: GameState, f: Fixture) => { const id = compIdOf(g, f.comp); return id !== 326 && id !== 328 && legCode(f) === 0; };
+/** 0x5c6710: venskabsturneringen */
+const isFriendly = (f: Fixture) => f.comp === 'FRIENDLY';
+
+/** 0x7771c0 (NationalTeams, fra daily_update 0x76b100 for landskampene på i dag + 14 dage, efter udtagelsen 0x76bab0): landsholdets liste
+ *  (club +0xd7, 50 pladser – qsort 0x778ef0 efter spillernes klub-id, uden klub sidst) gennemgås klub for klub; for hver ny klub skrives den
+ *  forrige klubs antal i tabellen [this+0x20][klub] (9-byte poster: dato + antal, lagt sammen ved samme dato, sorteret efter datoen) – kun klubber
+ *  (ikke landshold), hvis land er indlæst (+0x11c) og ikke er Brasilien [0x9cf260]. Den sidste klub i listen skrives aldrig (løkken slutter ved
+ *  0x77748b uden at tømme den). Datoen: kampens, én dag før for U21-holdet (0x5409b0) og 'B' (flag 1). */
+export function cmCallupRecord(g: GameState, ids: number[], date: string): void {
+  if (!cmClashOn(g)) return;
+  const tab = (g.cmCallup ??= {});
+  const flush = (club: number, n: number) => {
+    const c = g.clubs[club];
+    if (!c || !nationLoaded(g, c.nation) || nationName(g, c.nation) === 'Brazil') return;
+    const rows = (tab[club] ??= []);
+    const r = rows.find((x) => x[0] === date);
+    if (r) r[1] = (r[1] + n) & 0xff;
+    else { rows.push([date, n]); rows.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)); }
+  };
+  const list = ids.slice().sort((a, b) => (g.players[a]?.club || 1e9) - (g.players[b]?.club || 1e9));
+  let prev = 0, n = 0;
+  for (const id of list) {
+    const p = g.players[id];
+    if (!p) continue;
+    const club = p.club || 0;
+    if (club === prev) { if (prev) n++; continue; }
+    if (prev) flush(prev, n);
+    prev = club; n = 1;
+  }
+}
+
+/** 0x7774b0 (hver 70. dag) fjerner posterne før i dag – her dagligt (kun poster fra i dag − 1 og frem kan tælle i 0x776fc0) */
+export function cmCallupDaily(g: GameState): void {
+  const tab = g.cmCallup;
+  if (!tab) return;
+  for (const [k, rows] of Object.entries(tab)) {
+    const keep = rows.filter((r) => r[0] >= g.date);
+    if (keep.length) tab[+k] = keep; else delete tab[+k];
+  }
+}
+
+/** 0x776fc0(F): venskabskampe altid; ellers må hverken hjemme- eller udeholdet have mere end 2 udtagne spillere dagen før, samme dag eller dagen
+ *  efter (summen af tabellens poster – klubber, ikke landshold) */
+function callupOk(g: GameState, f: Fixture, date: string): boolean {
+  if (isFriendly(f)) return true;
+  const lo = addDays(date, -1), hi = addDays(date, 1);
+  for (const club of [f.home, f.away]) {
+    let n = 0;
+    for (const [d, c] of g.cmCallup?.[club] ?? []) if (d >= lo && d <= hi) n = (n + c) & 0xff;
+    if (n > 2) return false;
+  }
+  return true;
+}
+
+/** en anden kamp O i sammenstødslisten: en klubkamp eller en landskamp (kun koden – landskampe flyttes aldrig af klubkampe) */
+type ClashO = { fx: Fixture } | { intl: CmIntlFx };
+
+/** fixturens "region" (0x48dd70 – nøglelandstabellens +0x14): 0x5ad780 gennemgår regionerne 0..6 (verdensdelene) før landene; inden for en region
+ *  tidspunkterne 0..2 og listernes rækkefølge (her: id – listen genopbygges ved indlæsning) */
+const regionRank = (g: GameState, f: Fixture) => (g.comps[f.comp]?.meta?.cmEuro || g.comps[f.comp]?.type === 'continental' ? 3 : 7);
+
+/** 0x5adba0(F, &kode, liste, regioner, n, &dato, k): dagen dato + k for kampen F (F's +0x28/+0x2a = `date`) */
+function clashDay(g: GameState, f: Fixture, date: string, k: number, out: ClashO[], code: { v: number }): void {
+  const D = addDays(date, k);
+  const type = fixtureType(g, f);
+  // 0x5adc3b: venskabskampe (+0x3a = 1) – kun samme dag
+  if (type === 1 && k !== 0) return;
+  const set13 = () => { if (code.v < 0x13) code.v = 0x13; };
+  const cn = nationName(g, g.comps[f.comp]?.nation);
+  if (k === 0) {
+    // 0x5adc66: juledag (Date(25, 11, år)) – ikke Japans turneringer [0x9cf36c]
+    if (D.slice(5) === '12-25' && cn !== 'Japan') { set13(); return; }
+    // 0x5adcca: Nordirlands turneringer [0x9cf3e4] spiller ikke om søndagen
+    if (cn === 'Northern Ireland' && cmWeekday(D) === 6) { set13(); return; }
+    // 0x5adcf7: Grækenlands [0x9cf31c] påske – 10/4 < D < 20/4
+    if (cn === 'Greece' && D.slice(5) > '04-10' && D.slice(5) < '04-20') { set13(); return; }
+    // 0x5adda4: klubber fra Norge [0x9cf408] spiller ikke 17/5
+    if (D.slice(5) === '05-17' && [f.home, f.away].some((c) => nationName(g, g.clubs[c]?.nation) === 'Norway')) { set13(); return; }
+  }
+  const add = (o: ClashO, t: number, played: boolean) => {
+    if (played) { code.v = 0x16; return; }
+    out.push(o);
+    if (t > code.v) code.v = t;
+  };
+  // landskampene (regionerne 0/1 – før verdensdelene og landene): 0x5ae074–0x5ae0e9 – landsholdet for et af holdenes land (club +0x53 →
+  // 0x53b3d0) spiller; 0x5ae25f: et af holdene har omdømme > 5000 og turneringens vt+0x60(F, O) → O i listen med sin type (spillet → 0x16)
+  const nh = g.clubs[f.home]?.nation, na = g.clubs[f.away]?.nation;
+  for (const o of calIntl.on?.(g, D) ?? []) {
+    const c1 = !cmIntlFinalsComp(o.comp) && Math.abs(k) < 2 && type < 5 && o.h === nh;
+    if (!(c1 || o.h === na || o.a === nh || o.a === na)) continue;
+    if (!(clubRep80(g, f.home) > 5000 || clubRep80(g, f.away) > 5000) || !vt60(g, f)) continue;
+    add({ intl: o }, o.type, false);
+  }
+  // 0x5ade1d–0x5ae2fb: regionerne, tidspunkterne 0..2, listen
+  const fx = fixturesOn(D).map((id) => g.fixtures[id]).filter((o): o is Fixture => !!o && o.id !== f.id)
+    .sort((a, b) => regionRank(g, a) - regionRank(g, b) || (a.slot ?? 1) - (b.slot ?? 1) || a.id - b.id);
+  const fs = k === 0 ? stadiumOf(g, f) : -1;
+  for (const o of fx) {
+    // 0x5adea5: samme klub og samme hold (+0x40/+0x41 – alle spillets kampe er førsteholdenes: 1/1)
+    if (o.home === f.home || o.home === f.away || o.away === f.home || o.away === f.away) { add({ fx: o }, fixtureType(g, o), !!o.result); continue; }
+    // 0x5adfbf: samme dag på samme stadion (ikke turneringen [0x9cf76c] = 390)
+    if (k === 0 && fs >= 0 && stadiumOf(g, o) === fs && compIdOf(g, o.comp) !== 390 && compIdOf(g, f.comp) !== 390) {
+      if (o.result) { code.v = 0x16; continue; }
+      out.push({ fx: o });
+      const ot = fixtureType(g, o);
+      if ((o.slot ?? 1) === (f.slot ?? 1)) { if (ot === 1) { if (code.v < 1) code.v = 1; } else if (code.v === 0) code.v = 0x14; }
+      else if (ot !== 1) { if (code.v === 0) code.v = 0x14; }
+      else if (type !== 1 && code.v === 0) code.v = 1;
+      continue;
+    }
+    // 0x5ae0f3: USA (MLS-turneringen [0x9cf590] = 31 og [0x9cf690] = 90) – klubkampe uden for USA har ingen af dem
+    const lg = (c: number) => g.clubs[c]?.league;
+    if (compIdOf(g, o.comp) === 90 && (lg(f.home) === 'CM31' || lg(f.away) === 'CM31')) { code.v = 0x13; continue; }
+    if (compIdOf(g, f.comp) === 90 && (lg(o.home) === 'CM31' || lg(o.away) === 'CM31')) { out.push({ fx: o }); const ot = fixtureType(g, o); if (ot > code.v) code.v = ot; }
+  }
+}
+
+/** 0x5ad780 find_fixture_clashes(F, &kode, flag): dagene −2 (flag; kun +0x3a < 0x17), −1 (kun +0x3a < 0x17), 0, +1 og −2 (flag) igen; flaget
+ *  nulstilles for Europas/Sydamerikas turneringer (0x48dd70 = 3/5), undtagen [0x9cf7bc] = 104. Intet sammenstød: 0x776fc0(F) = 0 → kode 0x15. */
+function cmClashes(g: GameState, f: Fixture, date: string, flag: boolean): { list: ClashO[]; code: number } {
+  const type = fixtureType(g, f);
+  if (flag && regionRank(g, f) === 3 && compIdOf(g, f.comp) !== 104) flag = false;
+  const out: ClashO[] = [], code = { v: 0 };
+  if (type < 0x17) { if (flag) clashDay(g, f, date, -2, out, code); clashDay(g, f, date, -1, out, code); }
+  clashDay(g, f, date, 0, out, code);
+  clashDay(g, f, date, 1, out, code);
+  if (flag) clashDay(g, f, date, -2, out, code);
+  if (code.v === 0) return { list: [], code: callupOk(g, f, date) ? 0 : 0x15 };
+  return { list: out, code: code.v };
+}
+
+/** 0x5ab510's vinduer pr. kamptype (+0x3a): [start, slut] – null = ingen søgning (venskabskamp, 3, 9) */
+function searchWindow(g: GameState, f: Fixture, type: number): [string, string] | null {
+  const F = f.date;
+  switch (type) {
+    case 2: {
+      // fixture +0x24/+0x26 = sidste rundes dato (0 → fejlbeskeden + F + 2 uger); start F + 4 uger, når den ligger mere end 20 uger efter F
+      const last = (g.comps[f.comp]?.meta?.cmLast as string | undefined) ?? addDays(F, 14);
+      return [last > addDays(F, 140) ? addDays(F, 28) : addDays(F, 3), last];
+    }
+    case 4: case 6: return [addDays(F, 3), addDays(F, 14)];
+    case 5: return [F, addDays(F, 7)];
+    case 7: case 8: case 10: return [addDays(F, -3), addDays(F, 7)];
+    default: return null;
+  }
+}
+
+/** 0x5ab510 find_new_fixture_date som originalen: to gennemgange (anden med 0x5ad780's flag) × ugedagene ons, tir · lør, søn · man, tor, fre × cur fra
+ *  vinduets start i skridt på 4 dage, så længe slut > cur: D = nærmeste ugedag, i dag + 2 ≤ D ≤ slut → dato D og tidspunktet 0x5af2f0; godtaget uden
+ *  sammenstød, ved kode 1 eller type > kode. Ellers max(F, i dag) + 2 dage (tidspunktet bliver det sidst prøvede). IKKE porteret: 0xae2a48-listen for
+ *  dobbeltkampe (+0x30 % 10 = 3/4 → 0x522c70 i 0x5aaf00). */
+function findNewDate(g: GameState, f: Fixture): void {
+  const F = f.date, type = fixtureType(g, f), win = searchWindow(g, f, type);
+  const today = todayOf(g), earliest = addDays(today, 2);
+  if (win) {
+    const [start, last] = win;
+    for (let pass = 0; pass < 2; pass++) {
+      for (const group of WD_ORDER) {
+        for (const wd of group) {
+          for (let cur = start; last > cur; cur = addDays(cur, 4)) {
+            const D = nearestWeekday(cur, wd);
+            if (earliest > D || D > last) continue;
+            f.slot = slotFor(wd);
+            const { list, code } = cmClashes(g, f, D, pass === 1);
+            if ((!list.length && code === 0) || code === 1 || type > code) { moveFixture(f, D); return; }
+          }
+        }
+      }
+    }
+  }
+  moveFixture(f, addDays(F > today ? F : today, 2));
+}
+
+/** "i dag" for FIXTURE_MANAGER ([0xae2c90]): spillets dato – ved et nyt spil opretter create_game ligaernes kampe på databasens dato (1/1, før
+ *  forkørslen 0x5cc850), hos os sættes den med cmWithCalToday omkring setupSeasonComps (newgame.ts) */
+let calToday: string | null = null;
+const todayOf = (g: GameState) => calToday ?? g.date;
+export function cmWithCalToday<T>(date: string, fn: () => T): T {
+  const prev = calToday;
+  calToday = date;
+  try { return fn(); } finally { calToday = prev; }
+}
+
+/** add_fixture 0x5aa680's vagt [0xae2a40]: højst 10 sammenstød pr. kald udefra (arg 2 = 1 nulstiller) */
+let clashGuard = 0;
+
+/** 0x5ae380 resolve_same_day_clash(F, liste) (kode 0x14 – samme stadion samme dag): den første kamp O i listen; den anden ugedag for O's dag
+ *  (man → søn, tir → ons, ons → tir, tor → ons, fre → lør, lør → søn, søn → lør) – vigtigst er turneringens omdømme (+0x69, +0x15 for landshold),
+ *  ved lighed hjemmeholdets +0x80: F vigtigst og O uspillet → O flyttes, ellers F; et sammenstød på den nye dag → 0x5ab510 (en venskabskamp/type 1
+ *  droppes), så add_fixture og nyheden 0x5aac70. */
+function resolveSameDay(g: GameState, f: Fixture, o: Fixture): void {
+  const ALT = [6, 2, 1, 2, 5, 6, 5];
+  const alt = nearestWeekday(o.date, ALT[cmWeekday(o.date)]);
+  const pf = calIntl.compRep?.(g, f.comp) ?? 0, po = calIntl.compRep?.(g, o.comp) ?? 0;
+  const fFirst = (pf > po || (pf === po && clubRep80(g, f.home) > clubRep80(g, o.home))) && !o.result;
+  const [mv, keep] = fFirst ? [o, f] : [f, o];
+  // 0x5ae4f3–0x5ae507: O fjernes (0x5abc30) og F lægges (add_fixture(F, 0)), før O's nye dato prøves
+  if (fFirst) { unindexFixture(o.id, o.date); placeFixture(g, f, false); }
+  const { list } = cmClashes(g, mv, alt, false);
+  if (list.length) {
+    if (fixtureType(g, mv) === 1) { dropFixture(g, mv); return; }
+    moveFixture(mv, alt);
+    findNewDate(g, mv);
+  } else moveFixture(mv, alt);
+  placeFixture(g, mv, false);
+  cmMovedNews(g, mv, keep);
+}
+
+/** 0x5abc30 uden ny dato: kampen fjernes (venskabskampe/reservekampe, der ikke kan lægges – 0x5aa92a/0x5aa964) */
+function dropFixture(g: GameState, f: Fixture): void {
+  unindexFixture(f.id, f.date);
+  delete g.fixtures[f.id];
+  const c = g.comps[f.comp];
+  if (c) { c.pending = Math.max(0, c.pending - 1); for (const t of c.ties) t.fx = t.fx.filter((x) => x !== f.id); }
+}
+
+/** add_fixture 0x5aa680(F, nulstil) som originalen. */
+function placeFixture(g: GameState, f: Fixture, reset: boolean): void {
+  if (reset) clashGuard = 0;
+  // 0x5aa6c1–0x5aa729: kampens dato er i dag eller før, og den er ikke spillet → 0x5ab510
+  if (f.date <= todayOf(g) && !f.result) findNewDate(g, f);
+  // 0x5aa882: højst 10 sammenstød
+  if (clashGuard < 10) {
+    const { list, code } = cmClashes(g, f, f.date, false);
+    if (list.length || code) {
+      clashGuard++;
+      const type = fixtureType(g, f);
+      // 0x5aa8bc: samme stadion samme dag → 0x5ae380
+      if (code === 0x14) { const o = list.find((x): x is { fx: Fixture } => 'fx' in x); if (o) resolveSameDay(g, f, o.fx); return; }
+      // 0x5aa935: koden ≥ kampens type → kampen selv flyttes (0x7e6f20: en reserveturnering droppes) og lægges igen
+      if (code >= type) { findNewDate(g, f); placeFixture(g, f, false); return; }
+      // 0x5aa988: kampen lægges (0x5ab230), og de andre flyttes: venskabskampe 0x5c6570 (aflyses), type 9 (landsholdenes venskabskampe) 0x5abc30,
+      // ellers 0x5abc30 + 0x5ab510 + add_fixture(kopien, 0) + nyheden 0x5aac70(kopien, F, 0)
+      const at = list.map((x) => ('fx' in x ? x.fx.date : ''));
+      for (const [i, x] of list.entries()) {
+        if (!('fx' in x)) continue;
+        const o = x.fx;
+        // listen er kopier: en kamp, der allerede er flyttet (af et tidligere add_fixture i løkken), findes ikke af 0x5abc30 → ingen ny dato
+        if (!g.fixtures[o.id] || o.result || o.date !== at[i]) continue;
+        if (isFriendly(o)) {
+          // 0x5c6570(O, 0): nyheden "friendly cancelled" (0x77bbe0 → 0x7861e0 til begge klubbers manager) og kampen slettes
+          const H = g.clubs[o.home], A = g.clubs[o.away];
+          if (H && A) for (const c of [o.home, o.away]) asOwner(c, () => addNews({ cat: 'match', key: 'cmfr.cancelled', params: { home: H.name, away: A.name, date: o.date } }));
+          dropFixture(g, o);
+          continue;
+        }
+        if (fixtureType(g, o) === 9) { dropFixture(g, o); continue; }
+        findNewDate(g, o);
+        placeFixture(g, o, false);
+        cmMovedNews(g, o, f);
+      }
+    }
+  }
+  // 0x5aaa74–0x5aab27: kampen er lagt → 0x48dd70 = 3/5 → 0x5ae9d0
+  if (g.comps[f.comp]?.meta?.cmEuro) cmEuroClubMoves(g, f);
+}
+
 /** 0x5ab510 (ligakampe, type 2): søgningen fra F + 3 dage (F + 4 uger, når sidste runde ligger mere end 20 uger efter F) til sidste
  *  rundes dato i 4-dages skridt, ugedagene i rækkefølgen ons/tir · lør/søn · man/tor/fre, to gennemgange; ellers max(F, i dag) + 2 dage */
 const WD_ORDER = [[2, 1], [5, 6], [0, 3, 4]];
 export function cmFindNewDate(g: GameState, f: Fixture): void {
+  if (cmClashOn(g)) { findNewDate(g, f); return; }
   const F = f.date;
   const last = (g.comps[f.comp]?.meta?.cmLast as string | undefined) ?? addDays(F, 14);
   const start = last > addDays(F, 140) ? addDays(F, 28) : addDays(F, 3);
@@ -231,6 +519,7 @@ export function cmFindNewDate(g: GameState, f: Fixture): void {
 /** add_fixture 0x5aa680 (0x5aa890–0x5aaa64): et sammenstød med en kode ≥ kampens type → kampen selv flyttes; ellers bliver den, og de
  *  andre kampe flyttes (0x5abc30 + 0x5ab510 + add_fixture) */
 export function cmPlaceFixture(g: GameState, f: Fixture): void {
+  if (cmClashOn(g)) { placeFixture(g, f, true); return; }
   const [list, code] = clashes(g, f, f.date, false);
   if (list.length) {
     if (code >= fixtureType(g, f)) cmFindNewDate(g, f);
@@ -258,9 +547,10 @@ function cmEuroClubMoves(g: GameState, f: Fixture): void {
       // 0x5c6710: venskabskampene (cmFriendlyOffers.ts FRIENDLY_COMP – ikke importeret: competitions.ts ↔ cmCalendar.ts)
       if (!o || o.comp === 'FRIENDLY' || (k < 0 && o.result)) continue;
       const D = addDays(f.date, to);
-      if (clashes(g, o, D, false)[0].length) continue;
+      const on = cmClashOn(g);
+      if (on ? cmClashes(g, o, D, false).list.length : clashes(g, o, D, false)[0].length) continue;
       moveFixture(o, D);
-      cmPlaceFixture(g, o);
+      if (on) placeFixture(g, o, false); else cmPlaceFixture(g, o);
       // 0x5aec32/0x5aedec: 0x5aac70(kopien efter add_fixture, Europa-kampen, 0)
       cmMovedNews(g, o, f);
     }
@@ -305,6 +595,8 @@ function tvMoves(g: GameState, comp: string, row: CmRound): void {
     if (kind !== 3) cmTvNews(g, best, d0, t0, slot);
     // 0x685c4a: fixture +0x3b = tv-pladsens art (process_match_income 0x59aab1: tv-pengene; 0x85d618: tilskuerne)
     best.tv = kind;
+    // 0x685c79: add_fixture(kampen, 1) på den nye dato – et sammenstød flytter den eller de andre (g.cmClash)
+    if (cmClashOn(g)) placeFixture(g, best, true);
     list = list.filter((f) => f !== best);
   }
 }

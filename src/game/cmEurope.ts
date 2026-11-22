@@ -542,8 +542,26 @@ function codes(r: Rnd, leg: number): Fixture['cm'] {
   return { w30: two ? r.id + (leg === 1 ? 3 : 4) : r.id, b34: r.idx, b3a: r.b17, b3c: r.venue & 0x8004 ? 1 : 0, f38: r.f0d, f38dec: two && leg === 2 ? r.f0f : undefined };
 }
 
+/** Cup::draw_round 0x51c410 → 0x522610 (dobbeltkampe, spil med g.cmClash): for hver kamp i rundens tabel den første senere kamp, hvis hjemmehold i
+ *  første ben (side a – eller side b, andet ben) har samme stadion (club +0x69): den senere kamps sider byttes, så de to klubber ikke har hjemmekamp
+ *  samme dag (Lazio/Roma, Milan/Inter …) */
+function sharedStadiumSwap(g: GameState, pairs: [number, number][]): void {
+  const st = (c: number) => (c < 0 ? undefined : g.cmCrowd?.[c]?.[3]);
+  const same = (x: number, y: number) => { const a = st(x), b = st(y); return a !== undefined && a >= 0 && a === b; };
+  for (let i = 0; i < pairs.length; i++) {
+    for (let j = i + 1; j < pairs.length; j++) {
+      if (pairs[i][1] < 0 || pairs[j][1] < 0) continue;
+      if (same(pairs[i][0], pairs[j][0]) || same(pairs[i][1], pairs[j][1])) {
+        pairs[j] = [pairs[j][1], pairs[j][0]];
+        break;
+      }
+    }
+  }
+}
+
 function createTies(g: GameState, c: Competition, stage: string, r: Rnd, date: string, pairs: [number, number][]): void {
   c.stage = stage;
+  if (r.legs === 2 && g.cmClash === 1) sharedStadiumSwap(g, pairs);
   for (const [a, b] of pairs) {
     if (b < 0) {
       // et hold uden modstander (for få deltagere i world-filen): videre uden kamp

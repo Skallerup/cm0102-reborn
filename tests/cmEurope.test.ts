@@ -44,8 +44,16 @@ describe('Europa i originalens format', () => {
       for (const f of Object.values(g.fixtures).filter((x) => x.comp === comp && pred(x))) m.set(f.date, (m.get(f.date) ?? 0) + 1);
       return [...m].sort().map(([d, n]) => `${d}:${n}`).join(' ');
     };
-    expect(days('CL')).toBe(ORACLE_CL);
-    expect(days('UEFA')).toBe(ORACLE_UEFA);
+    // (22/11) klubber med fælles stadion (Lazio/Roma, Milan/Inter …), der begge har hjemmekamp samme dag, flyttes af resolve_same_day_clash 0x5ae380
+    // (tir ↔ ons) – vores lodtrækning er ikke oraklets, så sammenlign spilledagene ugevis (mandag–søndag)
+    const week = (s: string) => s.split(' ').reduce((m, x) => { const [d, n] = x.split(':'); const t = Date.parse(d); const k = new Date(t - ((new Date(t).getUTCDay() + 6) % 7) * 864e5).toISOString().slice(0, 10); m.set(k, (m.get(k) ?? 0) + +n); return m; }, new Map<string, number>());
+    expect([...week(days('CL'))]).toEqual([...week(ORACLE_CL)]);
+    // (22/11) UEFA Cup: dobbeltkampenes fælles stadion byttes (0x522610); en kamp for en klub fra et indlæst land (England) med mere end 2 udtagne
+    // landsholdsspillere dagen før/samme dag/dagen efter flyttes (0x776fc0 → kode 0x15 → 0x5ab510) – det afhænger af, hvem der går videre
+    const oDays = new Set(ORACLE_UEFA.split(' ').map((x) => x.split(':')[0]));
+    const uefa = Object.values(g.fixtures).filter((x) => x.comp === 'UEFA');
+    expect(uefa.length).toBe(ORACLE_UEFA.split(' ').reduce((a, x) => a + +x.split(':')[1], 0));
+    expect(uefa.filter((f) => !oDays.has(f.date) && g.clubs[f.home].nation !== eng && g.clubs[f.away].nation !== eng).map((f) => f.date)).toEqual([]);
     expect(g.comps.CL.finished && g.comps.UEFA.finished).toBe(true);
     // koderne som oraklets poster: 3. kvalifikationsrunde (273/274, +0x38 1024 → 1027 i andet ben), grupperne (+0x32 1085.., +0x34 = spilledag),
     // finalen (150, 131, neutral bane), UEFA Cup'ens 1. runde (+0x3a = 7) og 3. runde (8)

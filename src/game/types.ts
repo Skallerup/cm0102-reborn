@@ -1291,6 +1291,11 @@ export interface GameState {
   /** (22/11) spillet er startet med originalens FA Cup (EngFaCup 0x56fab0/0x570550: 152 deltagere fra 4. kvalifikationsrunde – competitions.ts
    *  cmFaCupDay) og Liga Cup'ens europæiske klubber inkl. Intertoto (EngCcCup 0x56ccc0: club +0x1db ≠ −1) – nye spil (newgame.ts) */
   cmCupPort?: 1;
+  /** (22/11) spillet er startet med originalens sammenstødsregel (cmCalendar.ts cmClashOn: find_fixture_clashes 0x5ad780/0x5adba0, add_fixture
+   *  0x5aa680's grene, 0x5ab510's vinduer pr. kamptype, 0x5ae380, landsholdenes udtagelser 0x7771c0/0x776fc0) – nye spil (newgame.ts) */
+  cmClash?: 1;
+  /** NationalTeams +0x20 (0x7771c0): pr. klub [dato, antal udtagne spillere] for landskampene (cmCalendar.ts cmCallupRecord – 0x776fc0) */
+  cmCallup?: Record<number, [string, number][]>;
   /** (20/11, "Altid som originalen", MODERN_PARITY §0 C+D) spillet er startet med originalens kampregler: turneringernes udskiftninger/bænk
    *  (rules.ts classicRules – 3/5 som 2001) og zonemotorens originale kampkonstanter (sim.ts ORIGINAL/ORIGINAL_LOWER) – nye spil med en CM-database
    *  i ægte tilstand; den originale database har dem altid, ældre 2026/27-spil ikke (5/9 og MODERN) */

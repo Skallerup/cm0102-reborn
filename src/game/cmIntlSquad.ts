@@ -366,6 +366,11 @@ function squadRequestNews(g: GameState, n: number, f: SelFixture, opps: number[]
   });
 }
 
+/** landsholdets liste (club +0xd7; U21-holdets for slot 2) – til 0x7771c0 (cmCalendar.ts cmCallupRecord) */
+export function cmNatList(g: GameState, n: number, slot: SquadSlot): number[] {
+  return slot === 0 ? humanList(g, n) : (st(g).sq[n]?.[slot]?.ids ?? []).slice();
+}
+
 /** landsholdets liste (club +0xd7): menneskets udtagelse – ellers den seneste udtagelse */
 function humanList(g: GameState, n: number): number[] {
   const nj = g.manager?.national;

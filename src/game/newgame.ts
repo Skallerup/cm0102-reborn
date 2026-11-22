@@ -41,7 +41,7 @@ import { cmAwNewGame } from './cmAwards';
 import { cmResNewGame } from './cmReserves';
 import { cmRsvNewGame } from './cmReserveMatches';
 import { cmGbpMeasure } from './cmMoney';
-import { cmStartDate } from './cmCalendar';
+import { cmStartDate, cmWithCalToday } from './cmCalendar';
 import { cmMainNation, cmSeasonOn } from './cmSeason';
 import { cmEuroOn, cmEuroRestoreNext, cmSetupEurope } from './cmEurope';
 import { compHooks } from './hooks';
@@ -219,7 +219,7 @@ export function createGameBase(world: WorldData, o: NewGameOptions): NewGameCtx 
     jobOffers: [],
   };
   const cm = (world as Partial<CMWorld>).kind === 'cm0102' ? (world as CMWorld) : null;
-  if (cm) { g.dbKind = 'cm0102'; g.dbYear = season; if (season < 2020) g.dbVersion = world.source.match(/3\.9\.6\d/)?.[0] ?? '3.9.60'; g.cmPlayoff = 1; g.cmCupPort = 1; g.customRules = cmPlayoffRules(cmLeagueRules(cm.rules as GameState['customRules'])); if (cm.officials?.length) g.officials = cm.officials; }
+  if (cm) { g.dbKind = 'cm0102'; g.dbYear = season; if (season < 2020) g.dbVersion = world.source.match(/3\.9\.6\d/)?.[0] ?? '3.9.60'; g.cmPlayoff = 1; g.cmCupPort = 1; g.cmClash = 1; g.customRules = cmPlayoffRules(cmLeagueRules(cm.rules as GameState['customRules'])); if (cm.officials?.length) g.officials = cm.officials; }
   if (world.nationalTeams) g.intl = { results: [], history: [], info: world.nationalTeams.nations, past: world.nationalTeams.history };
   // den originale 01/02-database spilles i 2001-priser (econ.ts); ligaernes niveau måles, når trupperne er klar
   if (cm && season < 2020) g.econ = { k: 0.5, leagues: {} };
@@ -708,7 +708,8 @@ export function createGameBase(world: WorldData, o: NewGameOptions): NewGameCtx 
   // (21/11) ønskelisterne har fra start originalens del af klubskiftet 0x8c9720 (cmSlMoved) – save.ts repairOldMarket er for ældre spil
   g.cmSlFix = 1;
   // Turneringer for aktive nationer
-  setupSeasonComps(season, {});
+  // (22/11) create_game opretter kampene på databasens dato (1/1) – FIXTURE_MANAGER's "i dag" (cmCalendar.ts' sammenstødsregel, g.cmClash)
+  cmWithCalToday(`${season}-01-01`, () => setupSeasonComps(season, {}));
   // (16/11) sæsonskiftet pr. land (cmSeason.ts): de spilbare lande med egen sæsondag (Norge, Sverige, Japan …) starter i spillets første år
   if (cmSeasonOn(g)) for (const n of g.activeNations) if (!cmMainNation(g, n)) (g.cmNatSeason ??= {})[n] = season;
   // create_game 0x82992b: klubbernes manglende omdømme, tilskuertal og træningsanlæg (cmFinance.ts – kun den originale database i ægte tilstand)

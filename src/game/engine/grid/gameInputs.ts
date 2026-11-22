@@ -37,6 +37,7 @@ import { gameLeagueRow } from './gameTable';
 import type { AiModeInput } from './aiMode';
 import type { Fixture, GameState } from '../../types';
 import { cmFixtureWeather, cmWxOn, setCmWxCompId } from '../../cmWeather';
+import { calIntl, setCalCompId } from '../../cmCalendar';
 import { daysBetween } from '../../dates';
 import { npShown } from '../../cmStaffInit';
 import { captainRel, dislikesPerson, matchRelOf, personKey } from '../../cmRelations';
@@ -325,6 +326,9 @@ export const CM_COMP_ID = (g: GameState, id: string): number => {
   return -1;
 };
 setCmWxCompId(CM_COMP_ID);   // banens hash 0x923994 (fixture+0 = turneringens id)
+// sammenstødsreglen 0x5adba0 (fixture +0) og 0x5ae380 (turneringens +0x69)
+setCalCompId(CM_COMP_ID);
+calIntl.compRep = (g, comp) => { const id = CM_COMP_ID(g, comp); return id >= 0 ? g.cmCompRep?.[id] ?? 0 : 0; };
 export function fixtureCodesOf(g: GameState, f: Fixture | undefined, compId: string | undefined, home: number): GameFixtureCodes {
   compId ??= f?.comp ?? g.clubs[home]?.league;
   const c = compId ? g.comps[compId] : undefined;
