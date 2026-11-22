@@ -93,3 +93,57 @@ export function slimWorld(w: WorldData): WorldData {
   o.names = {};
   return o as unknown as WorldData;
 }
+
+/** (hukommelse, telefoner 22/11) JSON-filens øverste nøgler `want` (null = alle) én ad gangen: bytes skannes (strenge/indlejring), og hver værdi
+ *  dekodes og tolkes for sig. Samme værdier som JSON.parse (tests/worldSlim.test.ts). Bruges til startforløbets lister (fetchSlimWorld – rå WebKit:
+ *  Select League-top 642–684 → 357–400 MB); hele databasen tolkes stadig med r.json() (pr. nøgle i arbejderne målte ikke parvis bedre i forløbet). */
+export function jsonTopKeys(buf: Uint8Array, want: ReadonlySet<string> | null = null): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  const dec = new TextDecoder();
+  const n = buf.length;
+  let i = 0;
+  const ws = () => { while (i < n && (buf[i] === 0x20 || buf[i] === 0x0a || buf[i] === 0x0d || buf[i] === 0x09)) i++; };
+  // i står på '"' – bagefter lige efter strengen
+  const str = () => { i++; while (i < n) { const c = buf[i++]; if (c === 0x5c) i++; else if (c === 0x22) return; } };
+  ws();
+  if (buf[i] !== 0x7b) throw new Error('jsonTopKeys: not an object');
+  i++;
+  for (;;) {
+    ws();
+    if (i >= n || buf[i] === 0x7d) break;
+    if (buf[i] === 0x2c) { i++; ws(); }
+    const k0 = i;
+    str();
+    const key = JSON.parse(dec.decode(buf.subarray(k0, i))) as string;
+    ws(); i++; ws(); // ':'
+    const v0 = i;
+    let depth = 0;
+    while (i < n) {
+      const c = buf[i];
+      if (c === 0x22) { str(); if (depth === 0) break; continue; }
+      if (c === 0x7b || c === 0x5b) depth++;
+      else if (c === 0x7d || c === 0x5d) { if (depth === 0) break; if (--depth === 0) { i++; break; } }
+      else if (depth === 0 && c === 0x2c) break;
+      i++;
+    }
+    if (!want || want.has(key)) out[key] = JSON.parse(dec.decode(buf.subarray(v0, i)));
+  }
+  return out;
+}
+
+/** Startforløbets lister – som slimWorld(applyCommunityEdits(databasen, edits)) – uden at tolke hele databasen (kun hovedfilen; en egen database: null) */
+export async function fetchSlimWorld(src: { base: 'original' | 'modern'; ver: OriginalVersion; size?: 'normal' | 'maximum'; custom?: unknown; edits: CommunityEdit[] | null }): Promise<WorldData | null> {
+  if (src.custom) return null;
+  const file = src.base === 'original' ? originalFile(src.ver, src.size) : 'world.json';
+  const r = await fetch(`${base()}data/${file}`);
+  if (!r.ok) throw new Error(`${file}: ${r.status}`);
+  const top = jsonTopKeys(new Uint8Array(await r.arrayBuffer()), new Set(['kind', 'source', 'season', 'nations', 'leagues', 'clubs', 'playerFields', 'players']));
+  const pf = top.playerFields as string[], players = top.players as (string | number)[][];
+  const nk = pf.indexOf('nation');
+  const o: Record<string, unknown> = {};
+  for (const k of ['kind', 'source', 'season', 'nations', 'leagues', 'clubs'] as const) if (k in top) o[k] = top[k];
+  o.playerFields = ['nation'];
+  o.players = [...new Set(players.map((p) => p[nk] as number))].map((x) => [x]);
+  o.names = {};
+  return applyCommunityEdits(o as unknown as WorldData, src.edits);
+}

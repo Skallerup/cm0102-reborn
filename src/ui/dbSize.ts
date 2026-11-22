@@ -1,7 +1,9 @@
-// Originalens databasestørrelse (Preferences → " Database": Minimum / Normal / Maximum – game.cfg +4; 0x524d70 database_trim beholder færre
-// personer i hukommelsen ved mindre størrelser). CM Reborn har Normal (størrelse 2 – den, oraklet kører med) og Maximum (ejerens CM 01/02);
-// Minimum er ikke porteret. (Hukommelse, iPhone 22/11) Telefoner og apps' indbyggede browsere starter med Normal – og en browser, der har lukket
-// siden under et nyt spil (online/errors.ts NewGameInterrupted), får Normal næste gang. Kun den originale 3.9.60-database findes i Normal.
+// Originalens databasestørrelse (Preferences → " Database": knapperne Normal / Minimum / Maximum 0x8248c2–0x824a80 sætter game.cfg +4 = 1 / 2 / 4;
+// 0x524d70 database_trim beholder færre personer i hukommelsen ved 1/2 – 2 = Minimum springer reglerne 0x5257cd–0x525852 over og er den mindste).
+// CM Reborn har Minimum (størrelse 2 – den, oraklet kører med; id 'normal' og world-original-normal.json af historiske grunde, vist som "Minimum")
+// og Maximum (ejerens CM 01/02); originalens Normal (1) er ikke porteret. (Hukommelse, iPhone 22/11) Telefoner og apps' indbyggede browsere starter med Minimum – og en browser, der har lukket
+// siden under et nyt spil (online/errors.ts NewGameInterrupted), får Minimum næste gang (den mindste – ingen mindre at falde tilbage til). Kun den
+// originale 3.9.60-database findes i Minimum.
 // (Ingen motor-imports: forsiden og errors.ts bruger modulet.)
 export type DbSize = 'normal' | 'maximum';
 export const DB_SIZES: DbSize[] = ['normal', 'maximum'];

@@ -21,7 +21,7 @@ const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, .
 const page = await ctx.newPage();
 await page.route(/\/api\//, (r) => r.fulfill({ json: { ok: true, mail: true } }));
 const errs = [];
-page.on('console', (m) => { const t = m.text(); if (/memory|fejlede|error|RangeError/i.test(t)) { console.log('  console: ' + t.slice(0, 400)); errs.push(t); } });
+page.on('console', (m) => { const t = m.text(); if (t.startsWith('ngtrace ')) { console.log(`  t ${T()} ${t} fp ${rssNow().toFixed(0)} MB`); return; } if (/memory|fejlede|error|RangeError/i.test(t)) { console.log('  console: ' + t.slice(0, 400)); errs.push(t); } });
 page.on('pageerror', (e) => { console.log('PAGEERROR ' + e.message + '\n' + (e.stack ?? '').slice(0, 1200)); errs.push(e.message); });
 // TIMELINE: arbejdernes start/slut (hvilket trin toppen ligger i, også når der ikke vises en fremdriftsbjælke)
 let nW = 0;
@@ -32,6 +32,7 @@ await page.addInitScript(() => { localStorage.setItem('cm0102.lang', 'en'); loca
 // SLPARTS=n: ønskelisternes klubløkke i n arbejdere (startGame.ts newGameStages)
 if (process.env.DBSIZE || process.env.NGSPLIT || process.env.SLPARTS) await page.addInitScript(([z, sp, sl]) => { if (z) localStorage.setItem('cm0102.dbsize', z); if (sp) localStorage.setItem('cm0102.ngSplit', sp); if (sl) localStorage.setItem('cm0102.ngSlParts', sl); }, [process.env.DBSIZE ?? '', process.env.NGSPLIT ?? '', process.env.SLPARTS ?? '']);
 // KEEPLOAD=1: indlæsningens arbejder beholdes til den midlertidige verdens første trin (som før 22/11 – startGame.ts openStartWorld)
+if (process.env.TIMELINE) await page.addInitScript(() => { localStorage.setItem('cm0102.ngTrace', '1'); });
 if (process.env.KEEPLOAD) await page.addInitScript(() => { localStorage.setItem('cm0102.ngKeepLoad', '1'); });
 // NOWORKER=1: uden Web Workers (som når dagens arbejder fejler – alt i hovedtråden)
 if (process.env.NOWORKER) await page.addInitScript(() => { Object.defineProperty(window, 'Worker', { value: undefined, configurable: true }); });

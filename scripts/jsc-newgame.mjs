@@ -1,11 +1,11 @@
 // Nyt spil i JavaScriptCore (macOS' jsc-skal) med processens footprint hvert sekund – Safaris hukommelse uden browseren.
-// Brug: node scripts/jsc-newgame.mjs [world-fil] [land=England] [gc pr. trin=1]
+// Brug: node scripts/jsc-newgame.mjs [world-fil] [land=England] [gc pr. trin=1] [base]
 import { build } from 'esbuild';
 import { spawn, execSync } from 'node:child_process';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-const [file = 'public/data/world-original.json', nat = 'England', gcStep = '1'] = process.argv.slice(2);
+const [file = 'public/data/world-original.json', nat = 'England', gcStep = '1', mode = ''] = process.argv.slice(2);
 const dir = mkdtempSync(join(process.env.TMPDIR ?? tmpdir(), 'jscng-'));
 const out = join(dir, 'ng.js');
 // jsc-skallen mangler TextDecoder/TextEncoder/structuredClone (findes i Safari)
@@ -25,7 +25,7 @@ await build({ entryPoints: ['scripts/jsc-newgame-entry.ts'], bundle: true, forma
   banner: { js: POLY + 'var console = { log: (...a) => print(...a), warn: (...a) => print(...a), error: (...a) => print(...a), info: () => {}, debug: () => {} }; var process = undefined;' } });
 const JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Helpers/jsc';
 // JSCFLAGS='--useFTLJIT=false …': jsc-skallens flag (fx for at se, om JIT-oversættelsen bruger hukommelsen)
-const p = spawn(JSC, [...(process.env.JSCFLAGS ? process.env.JSCFLAGS.split(' ') : []), out, '--', file, nat, gcStep], { stdio: ['ignore', 'pipe', 'inherit'] });
+const p = spawn(JSC, [...(process.env.JSCFLAGS ? process.env.JSCFLAGS.split(' ') : []), out, '--', file, nat, gcStep, mode], { stdio: ['ignore', 'pipe', 'inherit'] });
 let peak = 0, line = '';
 const fp = () => { try { const o = execSync(`footprint --noCategories -f bytes -p ${p.pid}`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }); const m = o.match(/phys_footprint: (\d+) B/); return m ? Number(m[1]) / 1048576 : 0; } catch { return 0; } };
 p.stdout.on('data', (d) => { for (const l of String(d).split('\n').filter(Boolean)) { line = l; console.log(`${l}  | fp ${fp().toFixed(0)} MB`); } });

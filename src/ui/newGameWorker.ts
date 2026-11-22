@@ -14,20 +14,21 @@ import { convertOriginal, restartInOriginal, type ConvertReport } from '../game/
 import type { CMWorld } from '../game/data/cm0102';
 import type { GameState } from '../game/types';
 import type { CustomDb } from '../game/dbEdit';
-import { applyCommunityEdits, fetchModernWorld, fetchOriginalWorld, slimWorld, type CommunityEdit, type OriginalVersion } from './worldFetch';
+import { applyCommunityEdits, fetchModernWorld, fetchOriginalWorld, fetchSlimWorld, slimWorld, type CommunityEdit, type OriginalVersion } from './worldFetch';
 
 /** Hvor arbejderen selv henter databasen: den originale (udgaven) eller den moderne, evt. en egen database (editoren) ovenpå, og fællesskabets rettelser */
 export interface WorldSrc { base: 'original' | 'modern'; ver: OriginalVersion; custom?: CustomDb; edits: CommunityEdit[] | null; /** originalens databasestørrelse (ui/dbSize.ts) */ size?: 'normal' | 'maximum' }
 
 export type NewGameMsg = { type: 'progress'; step: string; frac: number } | { type: 'done'; game: unknown; report?: ConvertReport } | { type: 'error'; message: string }
-  | { type: 'slim'; slim: WorldData } | { type: 'handed' };
+  | { type: 'slim'; slim: WorldData } | { type: 'handed' } | { type: 'trace'; s: string };
 export type NewGameJob = { world?: WorldData; src?: WorldSrc; opts: NewGameOptions; convert?: { kind: 'convert' | 'restart'; old: GameState; picked?: boolean };
   /** (hukommelse, iPhone 22/11) kun disse trin af spilstarten ('base' = createGameBase, så createGamePhase); `from` modtager spillet fra forrige
    *  trins arbejder, `to` sender det videre til næste (uden om hovedtråden) – uden `to` svarer arbejderen med 'done' som før */
   phases?: ('base' | NewGamePhase)[]; from?: MessagePort; to?: MessagePort };
 /** `rng` = talrækkens tilstand (g.rng røres ikke – som i ét forløb, hvor g.rng ikke opdateres undervejs) */
 export type PhaseHandoff = { game: GameState; ctx: NewGameCtx; rng: number };
-export type LoadJob = { type: 'load'; src: WorldSrc };
+/** `slimOnly`: kun listerne – arbejderen lukkes bagefter (startGame.ts openStartWorld), så databasen tolkes ikke hel (worldFetch.ts fetchSlimWorld) */
+export type LoadJob = { type: 'load'; src: WorldSrc; slimOnly?: boolean };
 
 export async function loadSrc(src: WorldSrc): Promise<WorldData> {
   let w = src.base === 'original' ? await fetchOriginalWorld(src.ver, src.size) : await fetchModernWorld();
@@ -43,10 +44,15 @@ let heldWorld: WorldData | undefined;
 self.onmessage = async (e: MessageEvent<NewGameJob | LoadJob>) => {
   const post = (m: NewGameMsg) => (self as unknown as Worker).postMessage(m);
   const data = e.data;
+  // (målinger: webkit-newgame.mjs TIMELINE) trinenes tidspunkter i arbejderen – hovedtråden skriver dem i konsollen med localStorage cm0102.ngTrace
+  const tr = (s: string) => post({ type: 'trace', s });
   try {
     if ('type' in data && data.type === 'load') {
+      const slim = data.slimOnly ? await fetchSlimWorld(data.src) : null;
+      if (slim) { tr('load: lister'); post({ type: 'slim', slim }); return; }
       held = { src: data.src, world: loadSrc(data.src) };
       heldWorld = await held.world;
+      tr('load: parset');
       post({ type: 'slim', slim: slimWorld(heldWorld) });
       return;
     }
@@ -59,6 +65,7 @@ self.onmessage = async (e: MessageEvent<NewGameJob | LoadJob>) => {
       // forrige trins spil (med modulernes tilstand og talrækken) – setGame lægger carry.ts' tilstand tilbage
       const h = await new Promise<PhaseHandoff>((resolve) => { job.from!.onmessage = (m) => resolve(m.data as PhaseHandoff); });
       job.from.close();
+      tr('modtaget');
       setGame(h.game);
       rng.state = h.rng;
       ctx = h.ctx;
@@ -66,18 +73,22 @@ self.onmessage = async (e: MessageEvent<NewGameJob | LoadJob>) => {
       if (held) heldWorld = await held.world;
       else if (job.src) heldWorld = await loadSrc(job.src);
       job.world = take();
+      tr('database parset');
     }
     if (job.phases) {
       for (const ph of job.phases) {
         if (ph === 'base') { if (!job.world) throw new Error('no world'); ctx = createGameBase(job.world, job.opts); job.world = undefined; }
         else { if (!ctx) throw new Error('no ctx'); createGamePhase(ph, ctx); }
+        tr(`trin ${ph} færdigt`);
       }
       if (job.to) {
         const g = gs();
         packCarry(g);
         releasePagePool();
         // (ønskelisternes portioner) hukommelsens sider og tabellerne flyttes (Transferable) – ingen kopi
+        tr('overdrager');
         job.to.postMessage({ game: g, ctx: ctx!, rng: rng.state } satisfies PhaseHandoff, slResumeTransfer(ctx!.sl ?? null));
+        tr('overdraget');
         job.to.close();
         setGame(null);
         post({ type: 'handed' });
@@ -97,6 +108,7 @@ self.onmessage = async (e: MessageEvent<NewGameJob | LoadJob>) => {
     job.world = undefined;
     releasePagePool();
     post({ type: 'progress', step: 'done', frac: 1 });
+    tr('sender spillet');
     // modulernes tilstand (carry.ts) og indeksernes rækkefølge med – hovedtråden fortsætter præcis som spillet bygget her
     const g = gs();
     packCarry(g);

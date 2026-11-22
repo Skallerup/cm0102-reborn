@@ -80,19 +80,20 @@ export async function openStartWorld(db: Db, ver: OriginalVersion, size: DbSize 
   const local = async (): Promise<StartWorld> => { const full = await worldOfSrc(src); return { src, slim: full, worker: null, full }; };
   if (typeof Worker === 'undefined') return local();
   try {
+    let keep = false;
+    try { keep = localStorage.getItem('cm0102.ngKeepLoad') === '1'; } catch { /* ingen lagring */ }
     const w = new Worker(new URL('./newGameWorker.ts', import.meta.url), { type: 'module' });
     const slim = await new Promise<WorldData>((resolve, reject) => {
-      w.onmessage = (e: MessageEvent<import('./newGameWorker').NewGameMsg>) => { if (e.data.type === 'slim') resolve(e.data.slim); else if (e.data.type === 'error') reject(new Error(e.data.message)); };
+      w.onmessage = (e: MessageEvent<import('./newGameWorker').NewGameMsg>) => { if (e.data.type === 'trace') { if (NG_TRACE) console.log(`ngtrace load: ${e.data.s}`); } else if (e.data.type === 'slim') resolve(e.data.slim); else if (e.data.type === 'error') reject(new Error(e.data.message)); };
       w.onerror = (e) => reject(new Error(e.message || 'worker'));
-      w.postMessage({ type: 'load', src } satisfies LoadJob);
+      // (22/11) uden `keep` behøves kun listerne – arbejderen tolker ikke hele databasen (worldFetch.ts fetchSlimWorld)
+      w.postMessage({ type: 'load', src, slimOnly: !keep } satisfies LoadJob);
     });
     w.onmessage = null; w.onerror = null;
     // (hukommelse, iPhone 22/11) indlæsningens arbejder lukkes, når listerne er sendt: dens heap har JSON-tolkningens affald (svarets tekst, den
     // tolkede database), og den midlertidige verdens første trin oven i den gav nyt-spil-forløbets top (WebKit, Normal: 1,05–1,24 GB). Spillets
     // første trin henter databasen igen i en frisk arbejder (fra browserens cache) – som ved Take Control.
     // `localStorage['cm0102.ngKeepLoad'] = '1'`: arbejderen beholdes til det første spil som før (til målinger).
-    let keep = false;
-    try { keep = localStorage.getItem('cm0102.ngKeepLoad') === '1'; } catch { /* ingen lagring */ }
     if (!keep) { w.terminate(); return { src, slim, worker: null }; }
     return { src, slim, worker: w };
   } catch (e) {
@@ -115,6 +116,8 @@ export function newGameStages(opts: Pick<NewGameOptions, 'preview'>): NewGameJob
   // (22/11) ønskelisternes klubløkke i `parts` portioner – hver i sin egen arbejder (cmShortlistGame.ts cmShortlistStartPart: bit for bit som én løkke)
   return [['base'], ['fitness'], ['plan'], ...Array.from({ length: parts }, (_, k): NewGamePhase[] => (k === parts - 1 ? [`shortlists:${k}/${parts}`, 'rest'] : [`shortlists:${k}/${parts}`]))];
 }
+/** (målinger) arbejdernes trin i konsollen – localStorage['cm0102.ngTrace'] = '1' (scripts/webkit-newgame.mjs TIMELINE) */
+const NG_TRACE = (() => { try { return typeof localStorage !== 'undefined' && localStorage.getItem('cm0102.ngTrace') === '1'; } catch { return false; } })();
 /** ønskelisternes portioner ved nyt spil (localStorage['cm0102.ngSlParts'] overstyrer – til målinger) */
 const SL_PARTS = 12;
 /** pause mellem to trins arbejdere (ms) */
@@ -135,6 +138,7 @@ function runPhases(first: NewGameJob, stages: NewGameJob['phases'][], pre: Worke
         const m = e.data;
         if (done) return;
         if (m.type === 'progress') onProgress({ step: m.step, frac: m.frac });
+        else if (m.type === 'trace') { if (NG_TRACE) console.log(`ngtrace ${i}: ${m.s}`); }
         else if (m.type === 'handed' && ch) {
           // (hukommelse) Safari frigiver en afsluttet arbejders heap lidt efter terminate – næste arbejder startes først efter en kort pause, så de
           // to ikke er i hukommelsen samtidig (målt i WebKit: toppen ved skiftet)
@@ -236,6 +240,7 @@ export async function runConversion(prep: ConvertPrep, clubId: number | null, on
       w.onmessage = (e: MessageEvent<import('./newGameWorker').NewGameMsg>) => {
         const m = e.data;
         if (m.type === 'progress') onProgress({ step: m.step, frac: m.frac });
+        else if (m.type === 'trace') { if (NG_TRACE) console.log(`ngtrace convert: ${m.s}`); }
         else if (m.type === 'done') { w.terminate(); resolve({ game: m.game as GameState, report: m.report! }); }
         else if (m.type === 'error') { w.terminate(); reject(Object.assign(new Error(m.message), { inJob: true })); }
       };
