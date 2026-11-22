@@ -17,7 +17,8 @@ import { legacyExtendedFromText, saveKindFromText, saveKindOf, type SaveKind } f
 import type { GameState, Player } from './types';
 import { cmSlRepairHung } from './cmShortlistGame';
 import { cmRsvNewGame } from './cmReserveMatches';
-import { cmMarketOn } from './cmPlayerData';
+import { cmMarketOn, cmRand } from './cmPlayerData';
+import { repairPositions } from './playerInit';
 
 export interface SaveMeta {
   id: string;
@@ -224,6 +225,25 @@ export function forceMultiplayerAuthentic(g: GameState) {
  *  cashRound rundede værdierne, reserveSplit og injuryWave ændrede trupperne, og Conference League kom ind i 2001/02) */
 const currentSave = (g: GameState) => (g.cmSaveVer ?? 0) >= 1;
 
+/** Spillerrapport #32 (Johan Mangfors: forsvarer med Left/Right/Centre = 1): spil startet før 9/11-2026 (a94f63f2) fik databasens positioner
+ *  uden originalens reparation ved spilstarten (sub_535a80 0x536f01–0x5374f4, playerInit.ts repairPositions). En tredjedel af 3.9.60-
+ *  databasens spillere har ingen sider (0) og ~10 % ingen position på 20 – originalen giver dem dem ved spilstarten, så ingen spiller (uden for
+ *  målmændene) står uden en position og en side på 20. Spillere, der bryder den regel, får reparationen nu (egen talrække pr. spiller – spillets
+ *  rng røres ikke). Nye spil (newgame.ts) har ingen af dem. */
+export function repairPositionsOnce(g: GameState = gs()) {
+  if (g.dbKind !== 'cm0102' || g.fixes?.includes('posRepair')) return;
+  for (const p of Object.values(g.players)) {
+    if (p.virtual || !p.pos || !p.side) continue;
+    const noPos = !p.pos.slice(0, 8).some((v) => v === 20), noSide = p.pos[0] !== 20 && !p.side.some((v) => v === 20);
+    if (!noPos && !noSide) continue;
+    // [GK SW D DM M AM F WB R L C] – Player.side er [L C R]
+    const pos11 = [...p.pos.slice(0, 8), p.side[2], p.side[0], p.side[1]];
+    repairPositions(pos11, cmRand(g.seed, p.id, 536));
+    p.pos = pos11.slice(0, 8); p.side = [pos11[9], pos11[10], pos11[8]];
+  }
+  (g.fixes ??= []).push('posRepair');
+}
+
 export function upgradeLoaded() {
   repairCupNames();
   const g = gs();
@@ -231,6 +251,7 @@ export function upgradeLoaded() {
     repairInjuryWave();
     roundValuesOnce();
     splitReservesOnce();
+    repairPositionsOnce(g);
   }
   // gamle gemte spil i udvidet tilstand åbnes, som de blev gemt (moderne udseende + udvidet) – tilstanden ændres ikke (setGame → setSavedModern)
   // fællesspil er altid det originale (classic + ægte tilstand) – alle klienter stiller samme spil om ens
