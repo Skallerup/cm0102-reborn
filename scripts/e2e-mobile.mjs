@@ -55,7 +55,7 @@ function auditInPage() {
     const top = document.elementFromPoint(cx, cy);
     if (top && top !== el && !el.contains(top) && !top.contains(el) && !(el.tagName === 'LABEL' && el.control && (el.control === top || el.contains(top)))) {
       // dækket af en fast/klæbende bjælke (sidebjælke, bundknapper, titel), mens elementet er rullet delvist ind under den: ikke en fejl, kun rulning
-      const bar = top.closest('.cx-side, .cx-foot, .cx-head, .cx-title, .cx-foot-custom, .cx-date, footer, aside');
+      const bar = top.closest('.cx-side, .cx-foot, .cx-head, .cx-title, .cx-foot-custom, .cx-date, footer, aside, .topbar, .mobile-tabs');
       (bar && !el.closest('.cx-side, .cx-foot') ? out.underBar : out.covered).push({ el: name(el), by: name(top), at: [Math.round(cx), Math.round(cy)] });
     }
     if (r.width < 32 || r.height < 32) out.small.push({ el: name(el), w: Math.round(r.width), h: Math.round(r.height) });
@@ -214,7 +214,7 @@ async function run(devKey, look) {
     await shot(label);
     // lang skærm: ét billede mere efter rul, så bunden også ses (knapper nederst)
     await page.evaluate(() => { for (const el of document.querySelectorAll('.cx-main, .main, main')) el.scrollTo?.(0, 99999); window.scrollTo(0, 99999); });
-    await shot(`${label}-bund`);
+    await shot(`${label}-bund`, { folded: await page.evaluate(() => document.querySelector('.shell')?.hasAttribute('data-fold') ?? false) });
   });
 
   // klassisk: Game Options-menuen i sidebjælken, Competitions-menuen og Continue Game

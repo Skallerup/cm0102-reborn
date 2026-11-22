@@ -691,6 +691,21 @@ button.continue.nudge { animation: nudge 0.9s ease-in-out infinite, nudgeColor 0
 }
 @media (max-width: 860px) { .app-btn-label { display: none; } }
 
+/* ---------- mobil fase 3: trykflader i det moderne tema (≥40 px) og sammenfoldet topbjælke ved rulning ---------- */
+@media (max-width: 860px) {
+  :root:not([data-skin='retro']) button:not(.info-btn):not(.pitch button):not(.mobile-tabs button):not(.menu-toggle) { min-height: 40px; }
+  :root:not([data-skin='retro']) button.small, :root:not([data-skin='retro']) .screen-head .back { padding-top: 8px; padding-bottom: 8px; }
+  :root:not([data-skin='retro']) .menu-toggle { min-width: 44px; min-height: 40px; font-size: 18px; }
+  :root:not([data-skin='retro']) input:not([type='range']):not([type='checkbox']):not([type='radio']):not([type='color']):not([type='file']), :root:not([data-skin='retro']) select { min-height: 40px; font-size: 16px; }
+  :root:not([data-skin='retro']) input[type='checkbox'], :root:not([data-skin='retro']) input[type='radio'] { width: 32px; height: 32px; }
+  :root:not([data-skin='retro']) summary { padding-top: 10px; padding-bottom: 10px; }
+  :root:not([data-skin='retro']) .info-btn { width: 32px; height: 32px; font-size: 15px; }
+  /* topbjælken: kun menu, klub, dato og Continue, mens der rulles ned (data-fold sættes af Shell.tsx) */
+  .shell[data-fold]:not(.cx) .topbar { padding-top: 4px; padding-bottom: 4px; row-gap: 0; }
+  .shell[data-fold]:not(.cx) .topbar > :not(.menu-toggle):not(.club):not(.date):not(.continue):not(.unready):not(.spacer) { display: none; }
+  .shell[data-fold]:not(.cx) .topbar .club .crest { width: 22px !important; height: 22px !important; }
+}
+
 /* ---------- 2D-kamp ---------- */
 .pitch2d { position: relative; border-radius: 14px; overflow: hidden; background: #2e6f2b; box-shadow: var(--shadow); }
 .pitch2d svg { display: block; width: 100%; height: auto; }

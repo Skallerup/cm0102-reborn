@@ -180,6 +180,25 @@ export function Shell() {
   const holidaySetRef = useRef<HolidaySettings>({});
   const mainRef = useRef<HTMLElement>(null);
   useEffect(() => { setScrollElement(mainRef.current); return () => setScrollElement(null); }, []);
+  // mobil (moderne tema): topbjælken foldes sammen, når der rulles ned, og kommer tilbage ved rul op/øverst (hysterese + pause efter skift mod flimmer)
+  useEffect(() => {
+    const el = mainRef.current, shell = el?.parentElement;
+    if (!el || !shell) return;
+    const mq = window.matchMedia('(max-width: 860px)');
+    let last = el.scrollTop, anchor = last, down = true, folded = false, lock = 0;
+    const set = (v: boolean) => { folded = v; if (v) shell.setAttribute('data-fold', ''); else shell.removeAttribute('data-fold'); lock = Date.now() + 400; };
+    const onScroll = () => {
+      const y = el.scrollTop;
+      if (!mq.matches) { if (folded) set(false); last = anchor = y; return; }
+      if (Date.now() < lock) { last = anchor = y; return; }
+      if (y !== last && (y > last) !== down) { down = y > last; anchor = last; }
+      if (!folded && down && y > 140 && y - anchor > 40) set(true);
+      else if (folded && (y < 24 || (!down && anchor - y > 40))) set(false);
+      last = y;
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => { el.removeEventListener('scroll', onScroll); shell.removeAttribute('data-fold'); };
+  }, []);
   useLayoutEffect(() => {
     if (mainRef.current) mainRef.current.scrollTop = route.scroll ?? 0;
   }, [route]);
