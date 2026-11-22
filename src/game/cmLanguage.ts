@@ -28,24 +28,24 @@ type Nat = { name: string; lang?: number[] } | undefined;
 
 /** 0x7c6930: point for sproget L af spillerens land og anden nationalitet */
 export function nativePoints(nat: Nat, nat2: Nat, L: number): number {
-  const keyed = (n: Nat, hit: number): number | null => {
-    if (!n) return null;
-    if (n.name === 'Sweden') { if (L === 0x16 || L === 0x20) return hit; }
-    else if (n.name === 'Norway') { if (L === 0x1e || L === 0x20) return hit; }
-    else if (n.name === 'Denmark') { if (L === 0x16 || L === 0x1e) return hit; }
-    else if (n.name === 'Belgium') { if (L === 7) return hit === 500 ? 1000 : 500; }
-    return null;
-  };
   if (!nat) return 0;
-  const a = keyed(nat, 500);
+  const a = keyedPoints(nat, L, 500);
   if (a !== null) return a;
   if (nat.lang?.[1] === L) return 500;
   if (nat.lang?.[2] === L) return 300;
   if (!nat2) return 0;
-  const b = keyed(nat2, 300);
+  const b = keyedPoints(nat2, L, 300);
   if (b !== null) return b;
   if (nat2.lang?.[1] === L) return 300;
   return nat2.lang?.[2] === L ? 100 : 0;
+}
+/** nøglelandene i 0x7c6930 (uden lukning pr. kald – hukommelse ved spilstarten, 22/11) */
+function keyedPoints(n: NonNullable<Nat>, L: number, hit: number): number | null {
+  if (n.name === 'Sweden') { if (L === 0x16 || L === 0x20) return hit; }
+  else if (n.name === 'Norway') { if (L === 0x1e || L === 0x20) return hit; }
+  else if (n.name === 'Denmark') { if (L === 0x16 || L === 0x1e) return hit; }
+  else if (n.name === 'Belgium') { if (L === 7) return hit === 500 ? 1000 : 500; }
+  return null;
 }
 
 /** originalens startdato for England (0x830520: lørdagen nærmest 10/8 − 4 uger) – [0xdd6ec8], da PlayerStats bygges */
@@ -62,31 +62,40 @@ export function initialLanguages(g: GameState, p: Player, lg?: number[]): Record
   const nat = g.nations[p.nation], nat2 = p.cmNation2 !== undefined ? g.nations[p.cmNation2] : undefined;
   if (!nat?.lang) return undefined;
   const t = (20 - adaptOf(p)) * 10;
-  const tab: Record<number, number> = {};
-  const skip = (L: number) => L === nat.lang![0] || L === nat2?.lang?.[0];
+  // (hukommelse, iPhone 22/11) uden Map/lukninger pr. spiller: tabellen oprettes først ved den første post
+  let tab: Record<number, number> | undefined;
+  const n0 = nat.lang[0], n2 = nat2?.lang?.[0];
   for (let L = 1; L <= 0x40; L++) {
     const pts = nativePoints(nat, nat2, L);
-    if (pts === 0 || pts < t || skip(L)) continue;
-    tab[L] = Math.min(10, Math.trunc((pts - t) / 50));
+    if (pts === 0 || pts < t || L === n0 || L === n2) continue;
+    (tab ??= {})[L] = Math.min(10, Math.trunc((pts - t) / 50));
   }
   if (lg) {
-    const days = new Map<number, number>();
-    for (let k = 0; k + 1 < lg.length; k += 2) days.set(lg[k], lg[k + 1]);
-    const Lc = g.nations[g.clubs[p.club]?.nation ?? -1]?.lang?.[0];
-    if (p.club && Lc && Lc !== nat.lang[0]) {
+    // lg = [sprog, dage, …] (en senere post med samme sprog gælder); klubbens sprog Lc får mindst dagene i klubben
+    let Lc: number | undefined, dc = 0;
+    const L0 = g.nations[g.clubs[p.club]?.nation ?? -1]?.lang?.[0];
+    if (p.club && L0 && L0 !== nat.lang[0]) {
       // [0xdd6ec8] = spillets start: England 14/7-2001; (MODERN_PARITY 12) 2026/27 spillets startdato
       const since = p.cmJoined ? dayNo((g.dbYear ?? 2001) < 2020 ? ORIGINAL_START : g.date) - dayNo(p.cmJoined) : 0;
-      const d = (days.get(Lc) ?? 0) > since ? days.get(Lc)! : since;
-      days.set(Lc, (d << 16) >> 16);
+      const had = lgDays(lg, L0) ?? 0;
+      const d = had > since ? had : since;
+      Lc = L0; dc = (d << 16) >> 16;
     }
     for (let L = 1; L <= 0x40; L++) {
-      const d = days.get(L) ?? 0;
-      if (d === 0 || d < t || skip(L)) continue;
+      const d = L === Lc ? dc : lgDays(lg, L) ?? 0;
+      if (d === 0 || d < t || L === n0 || L === n2) continue;
       const fl = Math.min(10, Math.trunc((d - t) / 50));
+      if (!tab) tab = {};
       tab[L] = tab[L] !== undefined ? Math.min(10, tab[L] + fl) : fl;
     }
   }
-  return Object.keys(tab).length ? tab : undefined;
+  return tab;
+}
+/** lg = [sprog, dage, …]: den sidste post for sproget L (som Map.set i rækkefølge) */
+function lgDays(lg: number[], L: number): number | undefined {
+  let v: number | undefined;
+  for (let k = 0; k + 1 < lg.length; k += 2) if (lg[k] === L) v = lg[k + 1];
+  return v;
 }
 
 /** 0x7c6830(spiller, klub, L, 0): hvor flydende spilleren er i sproget L (0..10) */

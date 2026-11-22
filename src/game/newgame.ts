@@ -4,7 +4,7 @@ import { cashRound } from './cmTransferBid';
 import { CLUB_INFO_2026 } from './data/clubInfo2026';
 import { capCA, cmFeet, fillMissing, freeAgentCA, initialisePA, makePool, makeRand, missingCA, repairPositions, shownFromStored } from './playerInit';
 import { splitReserves } from './reserves';
-import { hasReserveTeam, trimLinkedSquads } from './cmBTeam';
+import { clubsChanged, hasReserveTeam, trimLinkedSquads } from './cmBTeam';
 import { initialTransferList } from './transfers';
 import { startScoreSeason } from './rating';
 import { naturalRole } from './attributes';
@@ -321,6 +321,7 @@ export function createGameBase(world: WorldData, o: NewGameOptions): NewGameCtx 
     };
     if (g.clubs[id].colors[0] === g.clubs[id].colors[1]) g.clubs[id].colors[1] = g.clubs[id].colors[0] === '#ffffff' ? '#111111' : '#ffffff';
   }
+  clubsChanged(g);
 
   progress('players', 0.02);
   // Spillere (trøjenumrene uddeles samlet, når trupperne er fyldt op)
@@ -444,9 +445,10 @@ export function createGameBase(world: WorldData, o: NewGameOptions): NewGameCtx 
   progress('squads', 0.11);
   // Fyld trupper op
   const leagueLevel = new Map<string, number>();
+  const clubList = Object.values(g.clubs);
   for (const l of world.leagues) {
     const cas: number[] = [];
-    for (const c of Object.values(g.clubs)) {
+    for (const c of clubList) {
       if (c.league !== l.id) continue;
       const sq = squad(c.id);
       if (sq.length >= 12) cas.push(median(sq.map((p) => p.ca)));
@@ -631,7 +633,10 @@ export function createGameBase(world: WorldData, o: NewGameOptions): NewGameCtx 
     const e = extraSlots.get(cj[0]) ?? extraSlots.set(cj[0], { 8: 0, 9: 0, 10: 0 }).get(cj[0])!;
     e[cj[1] as 8 | 9 | 10]++;
   }
-  for (const c of Object.values(g.clubs)) createClubStaff(c, world, seed, date, dbStaff.get(c.id) ?? []);
+  // (hukommelse, iPhone 22/11) staben før løkken pr. klub (id-orden) – createClubStaff skal kun se dem og sine egne nye (id'erne fra g.nextId.staff)
+  const preStaff = new Map<number, Staff[]>();
+  for (const s of Object.values(g.staff)) { const l = preStaff.get(s.club); if (l) l.push(s); else preStaff.set(s.club, [s]); }
+  for (const c of Object.values(g.clubs)) createClubStaff(c, world, seed, date, dbStaff.get(c.id) ?? [], preStaff.get(c.id) ?? []);
   // ledige stabsfolk fra databasen (CA 100+): rollen efter deres bedste egenskab
   for (const row of dbStaff.get(0) ?? []) {
     const [, , , , , , a] = row;
@@ -1049,8 +1054,10 @@ function addDbStaff(row: NonNullable<CMWorld['staff']>[number], club: number, ro
   return s;
 }
 
-function createClubStaff(c: Club, world: WorldData, seed: number, date: string, db: NonNullable<CMWorld['staff']> = []) {
+/** `pre` = klubbens stab fra før løkken over klubberne (id-orden) */
+function createClubStaff(c: Club, world: WorldData, seed: number, date: string, db: NonNullable<CMWorld['staff']>, pre: Staff[]) {
   const g = gs();
+  const firstId = g.nextId.staff;
   const r = new Rng(hash(seed, c.id, 99));
   // 2026/27: cheftrænerne fra CLUB_INFO_2026 (Wikipedia, nov. 2026)
   const info = world.season >= 2026 ? CLUB_INFO_2026[c.id] : undefined;
@@ -1111,8 +1118,13 @@ function createClubStaff(c: Club, world: WorldData, seed: number, date: string, 
   // stabens løn følger klubbens lønniveau: højst 20 % af spillernes lønsum (*estimeret*) – ellers kostede seks stabsfolk i en
   // lille klub lige så meget som hele truppen, og hundredvis af små klubber gik i minus i første sæson
   // (K8) databasens egne stabslønninger (oraklet har dem som de står) ligger fast; kun de genererede skaleres ned
-  const mine = Object.values(g.staff).filter((s) => s.club === c.id && !dbWaged.has(s));
-  const fixed = Object.values(g.staff).filter((s) => s.club === c.id && dbWaged.has(s)).reduce((x, s) => x + s.wage, 0);
+  // (hukommelse, iPhone 22/11) klubbens stab = den fra før løkken + de nye her (id'erne firstId … – ingen andre klubbers kald rører dem) i id-orden
+  // som Object.values(g.staff).filter(club) – før to Object.values pr. klub (~390 MB affald ved spilstarten)
+  const mine: Staff[] = [];
+  let fixed = 0;
+  const own = (s: Staff | undefined) => { if (!s || s.club !== c.id) return; if (dbWaged.has(s)) fixed += s.wage; else mine.push(s); };
+  for (const s of pre) own(g.staff[s.id] === s ? s : undefined);
+  for (let id = firstId; id < g.nextId.staff; id++) own(g.staff[id]);
   const total = mine.reduce((x, s) => x + s.wage, 0);
   const cap = Math.max(0, squad(c.id).reduce((x, p) => x + (p.contract?.wage ?? 0), 0) * 0.2 - fixed);
   if (total > cap) for (const s of mine) s.wage = Math.max(50, Math.round((s.wage * cap) / total / 50) * 50);

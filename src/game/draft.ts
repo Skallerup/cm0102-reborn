@@ -13,6 +13,7 @@ import { activate, emptySlot, withHuman } from './humans';
 import { emptyFinance, type WorldData } from './newgame';
 import { Rng, hash, rng } from './rng';
 import { addNews, gs, rebuildIndexes, setGame, squad } from './state';
+import { clubsChanged } from './cmBTeam';
 import { formationSlots, newTactic } from './tactics';
 import { POSITIONS, SIDES } from './types';
 import type { Club, Competition, DraftAllTime, DraftInfo, DraftSettings, GameState, Lang, Player, Tactic } from './types';
@@ -399,6 +400,7 @@ export function buildDraftGame(o: BuildOpts): GameState {
       (g.humans ??= []).push(slot);
     }
   }
+  clubsChanged(g);
   for (const id of Object.keys(g.players).map(Number)) g.knowledge[id] = 100;
 
   // kampprogram: hver runde én gang om ugen (lørdag)

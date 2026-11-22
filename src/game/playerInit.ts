@@ -217,6 +217,8 @@ const WORK: [number, AttrKey, 0 | 1 | 2][] = [
   [26, 'penalties', 2], [27, 'positioning', 0], [28, 'reflexes', 0], [29, 'tackling', 2], [30, 'throwIns', 0], [31, 'creativity', 2],
 ];
 export const INTRINSIC_KEYS: AttrKey[] = WORK.map(([, k]) => k);
+const WORK_AI = WORK.map(([, k]) => ATTRS.indexOf(k));
+const Q_KEYS: AttrKey[] = ['acceleration', 'pace', 'technique', 'workRate'];
 
 /** display (sub_544380 0x544380): t = X·0,05 + 10 [0x967888, 0x9688b0]; (0,1t² + t)/3 + 0,5, 1..20, afkortet */
 export function displayFromX(X: number): number {
@@ -229,10 +231,15 @@ export function displayFromX(X: number): number {
 export const toIntrinsic = (stored: number, ca: number) => idiv(clampN(stored * 10 - ca, -200, 200), 2);
 
 /** fælles kerne i sub_538ec0 (0x539184..0x5393de) og sub_538bc0 (0x538c2a..0x538e55); arr[14..31] = interne værdier */
-function rebalanceCore(arr: number[], gk: number, skip: Set<number>, target: (mean: number) => number, dribFin: number): void {
+// (hukommelse, iPhone 22/11) arbejdsarrays og konstanter genbruges (kaldes for hver spiller ved spilstarten): sel/arr skrives for hvert brugt
+// indeks, før de læses (WORK_ARR = arr)
+const SEL: number[] = new Array<number>(32).fill(0), WORK_ARR: number[] = new Array<number>(32).fill(0);
+const SKIP_538EC0 = new Set([24, 30]), SKIP_NONE = new Set<number>();
+/** `base` − gennemsnittet = flytningen D (sub_538ec0: T − m, sub_538bc0: −20 − m) */
+function rebalanceCore(arr: number[], gk: number, skip: Set<number>, base: number, dribFin: number): void {
   for (let pass = 0; pass < 2; pass++) {
     let r = 0, n = 0, thr = 30, sum = 0, cnt = 0, maxIdx = -1;      // tærskel 0x1e, +5 (0x539192)
-    const sel: number[] = [];
+    const sel = SEL;
     for (;;) {
       sum = 0; cnt = 0; maxIdx = -1;
       for (let i = 14; i < 32; i++) {
@@ -244,7 +251,7 @@ function rebalanceCore(arr: number[], gk: number, skip: Set<number>, target: (me
       thr += 5;
     }
     if (maxIdx > -1) sel[maxIdx] = 1;                                 // den højeste afviger flyttes aldrig
-    const D = target(idiv(sum, cnt));
+    const D = base - idiv(sum, cnt);
     for (let i = 14; i < 32; i++) {
       if (skip.has(i) || i === maxIdx) continue;
       if (sel[i] === 1) arr[i] = clampN(arr[i] + D, -125, 125);       // 0xff83 / 0x7d
@@ -273,16 +280,16 @@ function sub_538ec0(a: number[], ca: number, gk: number, feet: [number, number])
   const x = idiv(idiv(ca, 2) - h + 0x37, 2);                                        // +55 (0x538ff1)
   if (x < -14) {                                                                    // 0x538ffb
     const q = Math.max(idiv(x, 15), -2);
-    for (const k of ['acceleration', 'pace', 'technique', 'workRate'] as AttrKey[]) a[AI(k)] = Math.max(1, a[AI(k)] + q);
+    for (const k of Q_KEYS) a[AI(k)] = Math.max(1, a[AI(k)] + q);
   }
   let e = x - 20;
   const pa2 = idiv(v('pace') * v('acceleration'), 2);
   if (pa2 > ca) e -= Math.min(pa2 - ca, 25);                                        // 0x19
   const T = clampN(e, -40, 0);                                                      // 0x539120
-  const arr: number[] = [];
-  for (const [i, k] of WORK) arr[i] = a[AI(k)];
-  rebalanceCore(arr, gk, new Set([24, 30]), (m) => T - m, 2.0);                     // spring One on Ones, Throw Ins over; ×2 (0x539331)
-  for (const [i, k] of WORK) a[AI(k)] = byte(arr[i]);
+  const arr = WORK_ARR;
+  for (let j = 0; j < WORK.length; j++) arr[WORK[j][0]] = a[WORK_AI[j]];
+  rebalanceCore(arr, gk, SKIP_538EC0, T, 2.0);                                     // spring One on Ones, Throw Ins over; ×2 (0x539331)
+  for (let j = 0; j < WORK.length; j++) a[WORK_AI[j]] = byte(arr[WORK[j][0]]);
   if (gk === 20) {                                                                  // 0x539401
     let m = idiv(v('handling') + v('reflexes'), 2);
     a[AI('handling')] -= m; a[AI('reflexes')] -= m;
@@ -292,10 +299,10 @@ function sub_538ec0(a: number[], ca: number, gk: number, feet: [number, number])
 }
 /** sub_538bc0: centrér de interne på −20 (0x538c2a; ×1,75 [0x968f98]) */
 function sub_538bc0(a: number[], gk: number): void {
-  const arr: number[] = [];
-  for (const [i, k] of WORK) arr[i] = a[AI(k)];
-  rebalanceCore(arr, gk, new Set(), (m) => -20 - m, 1.75);
-  for (const [i, k] of WORK) a[AI(k)] = byte(arr[i]);
+  const arr = WORK_ARR;
+  for (let j = 0; j < WORK.length; j++) arr[WORK[j][0]] = a[WORK_AI[j]];
+  rebalanceCore(arr, gk, SKIP_NONE, -20, 1.75);
+  for (let j = 0; j < WORK.length; j++) a[WORK_AI[j]] = byte(arr[WORK[j][0]]);
   if (gk >= 15) {                                                                   // 0x538e78 (≥ 15)
     const m = idiv(a[AI('handling')] + a[AI('reflexes')], 2);
     a[AI('handling')] -= m; a[AI('reflexes')] -= m;

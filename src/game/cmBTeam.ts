@@ -120,13 +120,17 @@ const B_NATIONS = new Set(['Spain', 'Germany', 'Portugal']);
 const fold = (s: string) => s.replace(/[A-Z]/g, (c) => c.toLowerCase());
 
 type Links = Map<number, { other: number; first: boolean }>;
-const cache = new WeakMap<GameState, { n: number; links: Links }>();
+const cache = new WeakMap<GameState, { n: number; clubs: GameState['clubs']; links: Links }>();
+/** en klub er kommet til (eller fjernet) – parrene bygges igen ved næste opslag */
+export function clubsChanged(g: GameState): void { cache.delete(g); }
 
 /** parrene, som indlæsningen 0x601a40/0x6146b0 sætter dem, og 0x540a50's opslag (klub → partner) */
 function links(g: GameState): Links {
-  const n = Object.keys(g.clubs).length;
+  // (hukommelse, iPhone 22/11) klubberne tælles kun, når tabellen bygges: Object.keys(g.clubs) i hvert opslag (trimLinkedSquads/splitReserves pr.
+  // klub ved spilstarten – ~200 MB affald) – klubber kommer kun til ved oprettelsen (newgame.ts/draft.ts), som kalder clubsChanged
   const hit = cache.get(g);
-  if (hit && hit.n === n) return hit.links;
+  if (hit && hit.clubs === g.clubs) return hit.links;
+  const n = Object.keys(g.clubs).length;
   // navn → globalens plads (første gren med navnet vinder)
   const slot = new Map<string, number>();
   PAIRS.forEach(([a, b], i) => {
@@ -149,7 +153,7 @@ function links(g: GameState): Links {
     const a = glob[2 * i], b = glob[2 * i + 1];
     if (a > -1 && b > -1 && !out.has(b) && bNat(b) && g.clubs[a]?.nation) out.set(b, { other: a, first: false });
   }
-  cache.set(g, { n, links: out });
+  cache.set(g, { n, clubs: g.clubs, links: out });
   return out;
 }
 

@@ -23,11 +23,16 @@ await page.route(/\/api\//, (r) => r.fulfill({ json: { ok: true, mail: true } })
 const errs = [];
 page.on('console', (m) => { const t = m.text(); if (/memory|fejlede|error|RangeError/i.test(t)) { console.log('  console: ' + t.slice(0, 400)); errs.push(t); } });
 page.on('pageerror', (e) => { console.log('PAGEERROR ' + e.message + '\n' + (e.stack ?? '').slice(0, 1200)); errs.push(e.message); });
+// TIMELINE: arbejdernes start/slut (hvilket trin toppen ligger i, også når der ikke vises en fremdriftsbjælke)
+let nW = 0;
+if (process.env.TIMELINE) page.on('worker', (w) => { const k = ++nW; console.log(`  t ${T()} arbejder ${k} start`); w.on('close', () => console.log(`  t ${T()} arbejder ${k} slut`)); });
 page.on('crash', () => { console.log('CRASH'); errs.push('crash'); });
 await page.addInitScript(() => { localStorage.setItem('cm0102.lang', 'en'); localStorage.setItem('cm0102.forceLogin', '1'); localStorage.setItem('cm-theme', 'retro'); localStorage.setItem('cm0102.mode', 'authentic'); localStorage.setItem('cm0102.db', 'original'); localStorage.setItem('cm0102.engine', 'original'); localStorage.setItem('cm0102.inapp.seen', String(Date.now())); sessionStorage.setItem('cm0102.play', '1'); });
 // DBSIZE=normal|maximum: originalens databasestørrelse (ui/dbSize.ts); NGSPLIT=0: spilstarten i én arbejder (startGame.ts newGameStages)
 // SLPARTS=n: ønskelisternes klubløkke i n arbejdere (startGame.ts newGameStages)
 if (process.env.DBSIZE || process.env.NGSPLIT || process.env.SLPARTS) await page.addInitScript(([z, sp, sl]) => { if (z) localStorage.setItem('cm0102.dbsize', z); if (sp) localStorage.setItem('cm0102.ngSplit', sp); if (sl) localStorage.setItem('cm0102.ngSlParts', sl); }, [process.env.DBSIZE ?? '', process.env.NGSPLIT ?? '', process.env.SLPARTS ?? '']);
+// KEEPLOAD=1: indlæsningens arbejder beholdes til den midlertidige verdens første trin (som før 22/11 – startGame.ts openStartWorld)
+if (process.env.KEEPLOAD) await page.addInitScript(() => { localStorage.setItem('cm0102.ngKeepLoad', '1'); });
 // NOWORKER=1: uden Web Workers (som når dagens arbejder fejler – alt i hovedtråden)
 if (process.env.NOWORKER) await page.addInitScript(() => { Object.defineProperty(window, 'Worker', { value: undefined, configurable: true }); });
 // Chromium: hovedtrådens levende V8-heap efter en GC (CDP) ved hvert trin
@@ -45,14 +50,15 @@ const allTabPids = () => execSync('ps -A -o pid=,command=', { encoding: 'utf8', 
 // (kun denne browsers processer – ældre kørslers kan stadig være i gang med at lukke)
 const oldPids = new Set(START_PIDS);
 const tabPids = () => allTabPids().filter((x) => !oldPids.has(x));
-const foot = (key) => { try { const ps = tabPids(); if (!ps.length) return 0; const out = execSync(`footprint --noCategories -f bytes ${ps.map((x) => `-p ${x}`).join(' ')}`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }); return Math.max(0, ...[...out.matchAll(new RegExp(`${key}: (\\d+) B`, 'g'))].map((m) => Number(m[1]) / 1048576)); } catch { return 0; } };
+const foot = (key) => { try { const ps = tabPids(); if (!ps.length) return 0; const out = execSync(`footprint --noCategories -f bytes ${ps.map((x) => `-p ${x}`).join(' ')}`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }); const v = [...out.matchAll(new RegExp(`${key}: (\\d+) B`, 'g'))].map((m) => Number(m[1]) / 1048576); lastPer = `${ps.length} pid [${v.map((x) => x.toFixed(0)).join(',')}]`; return Math.max(0, ...v); } catch { return 0; } };
+let lastPer = '';
 const rssNow = () => foot('phys_footprint');
 let phase = 'start';
 // TIMELINE=1: fanens footprint hvert sekund med trinnet under fremdriftsbjælken ([data-ng-step])
 let ngStep = '';
 const stepT = process.env.TIMELINE ? setInterval(() => { page.evaluate(() => document.querySelector('[data-ng-step]')?.getAttribute('data-ng-step') ?? '').then((s) => { ngStep = s; }).catch(() => {}); }, 500) : null;
-const rssT = setInterval(() => { const r = rssNow(); if (process.env.TIMELINE) console.log(`  t ${T()} ${phase}/${ngStep} fp ${r.toFixed(0)} MB`); if (r > peakRss) { peakRss = r; peakAt = phase + (ngStep ? '/' + ngStep : ''); } }, 1000);
-const T = () => `${((Date.now() - t0) / 1000).toFixed(0)} s`;
+const rssT = setInterval(() => { const r = rssNow(); if (process.env.TIMELINE) console.log(`  t ${T()} ${phase}/${ngStep} fp ${r.toFixed(0)} MB ${lastPer}`); if (r > peakRss) { peakRss = r; peakAt = phase + (ngStep ? '/' + ngStep : ''); } }, Number(process.env.TICK) || 1000);
+const T = () => `${((Date.now() - t0) / 1000).toFixed(1)} s`;
 let res = 'ok';
 try {
   await page.goto(URL);

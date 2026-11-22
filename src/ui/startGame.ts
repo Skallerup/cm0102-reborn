@@ -87,6 +87,13 @@ export async function openStartWorld(db: Db, ver: OriginalVersion, size: DbSize 
       w.postMessage({ type: 'load', src } satisfies LoadJob);
     });
     w.onmessage = null; w.onerror = null;
+    // (hukommelse, iPhone 22/11) indlæsningens arbejder lukkes, når listerne er sendt: dens heap har JSON-tolkningens affald (svarets tekst, den
+    // tolkede database), og den midlertidige verdens første trin oven i den gav nyt-spil-forløbets top (WebKit, Normal: 1,05–1,24 GB). Spillets
+    // første trin henter databasen igen i en frisk arbejder (fra browserens cache) – som ved Take Control.
+    // `localStorage['cm0102.ngKeepLoad'] = '1'`: arbejderen beholdes til det første spil som før (til målinger).
+    let keep = false;
+    try { keep = localStorage.getItem('cm0102.ngKeepLoad') === '1'; } catch { /* ingen lagring */ }
+    if (!keep) { w.terminate(); return { src, slim, worker: null }; }
     return { src, slim, worker: w };
   } catch (e) {
     console.warn('Databasen i en Worker fejlede – i hovedtråden', e);
