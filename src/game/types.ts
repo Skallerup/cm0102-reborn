@@ -1218,6 +1218,9 @@ export interface GameState {
   cmClubRep?: Record<number, number>;
   /** (runde 12) Staff_Records: turneringer, hvis sæsonslut er behandlet (id → sæson) – cmMedia.ts cmRecordsDaily */
   cmRecDone?: Record<string, number>;
+  /** ligaer (id → 1), hvis sæson er sat op med 0x684cd0's status → vt+0x40 0x686670 → vt+0x44 (0x576c50/0x686940): mester/oprykning/nedrykning
+   *  gives, når status 5/0/3 sættes (cmBoardGame.ts updateTablePositions → cmMedia.ts), ikke ved sæsonslut (cmRecordsDaily) */
+  cmRecSt?: Record<string, 1>;
   /** (cmScout.ts) SCOUT_MANAGER +0x5c: spejderanmodningerne (Scout Player) og spejderlisternes +0x1a5 (næste dag, spejderen må se en kamp) */
   cmScoutReq?: import('./cmScout').CmScoutReq[];
   cmScoutWatch?: Record<number, string>;

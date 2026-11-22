@@ -14,6 +14,7 @@
 //   - UefaSeeding: spillets CL_SPOTS/UEFA_SPOTS efter landets rang; ingen europæisk Comp_Stats-post (bit 0x400 sættes ikke)
 //   - transferbudgettet 0x598800 = Club.transferBudget (£), formuebåndet 0x5986b0 af saldoen (£)
 //   - 0x844780 (viljen) – se interestOf
+import { tableStatusHooks } from './cmTableHooks';
 import type { Club, Fixture, GameState, MatchReport, Staff } from './types';
 import { squad, addNews } from './state';
 import { cmActive, cmBoardLogic, cmLogic, cmRand, clubRepMem, postHooks } from './cmPlayerData';
@@ -199,7 +200,7 @@ function projectedOf(g: GameState, lid: string, c: number): number | null {
 // oprykning/play-off/nedrykningsslutspil/nedrykning (PL 0/0/0/3, First 2/4/0/3, Second 2/4/0/4, Third 3/4/0/1), +0xd9 = 3, +0xe6 = 0.
 // vt+0x68 (Comp_Stats): England First/Second 0x573260 (bedst ∈ [3,6] → 3, dårligst ∈ [3,6] → 6), Third 0x578660 ([4,7] → 4/7), Premier 0x48e380
 // (uændret); andre ligaklassers vt+0x68 (~120, play-off-strukturer) er ikke afkodet – de skrives uændret.
-const VT68: Record<string, [number, number]> = { 'English First Division': [3, 6], 'English Second Division': [3, 6], 'English Third Division': [4, 7] };
+const VT68: Record<string, [number, number]> ={ 'English First Division': [3, 6], 'English Second Division': [3, 6], 'English Third Division': [4, 7] };
 export function updateTablePositions(g: GameState, st: CmBoardState, lid: string): void {
   const comp = g.comps[lid], L = leagueInfo(g, lid);
   if (!comp || !L) return;
@@ -251,6 +252,7 @@ export function updateTablePositions(g: GameState, st: CmBoardState, lid: string
   const vt = VT68[g.leagues[lid]?.name ?? ''];
   for (let i = 0; i < n; i++) {
     const r = R[i], b = r[0], w = r[1];
+    const s0 = r[2];
     let s = r[2];
     if (w === l13 + 1) { if (s !== 3 && s !== 0xfe && s !== 0xfc && s !== 5) s = 5; }
     else {
@@ -270,6 +272,9 @@ export function updateTablePositions(g: GameState, st: CmBoardState, lid: string
       if (all && s === 0xff) s = 0xfe;
     }
     r[2] = s;
+    // 0x685291/0x685343: den nye status → vt+0x40 0x686670 (nyheden – ikke porteret) → ligaens vt+0x44 (England 0x576c50, ellers 0x686940; ligaens
+    // +0x44 = 0xff): 5 → add_league_champions_record, 0 → add_promotion_record, 3 → add_relegation_record (cmMedia.ts)
+    if (s !== s0 && (s === 5 || s === 0 || s === 3) && g.cmRecSt?.[lid]) tableStatusHooks.on?.(g, lid, rows[i].club, s);
     let mb = b, mw = w;
     if (vt) { if (mb >= vt[0] && mb <= vt[1]) mb = vt[0]; if (mw >= vt[0] && mw <= vt[1]) mw = vt[1]; }
     r[3] = i + 1; r[4] = mb; r[5] = mw;
@@ -306,14 +311,22 @@ function inContention(g: GameState, f: Fixture, c: number): boolean {
   return r[0] !== r[1];
 }
 
+/** +0xbe oprykning, +0xbf play-off, +0xc1 nedrykning af de engelske ligaklasser (oraklet 3.9.60: Premier 0x48e380-klassen 0/0/3, First/Second
+ *  0x576780 2/4/3 og 2/4/4, Third 0x5780c0 3/4/1) */
+const ENG_ZONES: Record<string, [number, number, number]> = {
+  'English Premier Division': [0, 0, 3], 'English First Division': [2, 4, 3], 'English Second Division': [2, 4, 4], 'English Third Division': [3, 4, 1],
+};
 function leagueInfo(g: GameState, lid: string): LeagueInfo | null {
   const comp = g.comps[lid];
   if (!comp) return null;
   const rules = g.customRules?.[lid] ?? rulesFor(lid, comp.clubs.length);
+  const lp = compNum(lid);
+  // de engelske ligaklassers egne tal (spillet har ingen play-off – vinderen tælles med i rules.promoted, cmCalendar.ts CM_ZONE_RULES)
+  const z = ENG_ZONES[g.leagues[lid]?.name ?? ''];
+  if (z) return { teams: comp.clubs.length, autoPromo: z[0] > 0, promo: z[0], playoff: z[1], relegation: z[2], rep: lp >= 0 ? g.cmCompRep?.[lp] ?? 0 : 0 };
   const promo = rules.promoted ?? 0;
   const playoff = rules.playoff?.seeds.filter(([l]) => l === lid).length ?? 0;
-  const lp = compNum(lid);
-  return { teams: comp.clubs.length, autoPromo: promo > 0, promo, playoff, relegation: rules.relegated ?? 0, rep: lp >= 0 ? g.cmCompRep?.[lp] ?? 0 : 0 };
+  return { teams: comp.clubs.length, autoPromo: promo > 0, promo, playoff, relegation: rules.relegated ?? tableStatusHooks.relegated?.(g, lid) ?? 0, rep: lp >= 0 ? g.cmCompRep?.[lp] ?? 0 : 0 };
 }
 
 // ---------------------------------------------------------------- miljøet
@@ -936,7 +949,9 @@ export function cmBoardInit(g: GameState, chair: Record<number, [number, number,
   g.cmBoard = natBoard ? { rec: {}, dep: [], vac: [], ult: [], month: -1, tab: {}, nm: {}, nj: {} } : { rec: {}, dep: [], vac: [], ult: [], month: -1, tab: {}, nd: natDb ?? {} };
   if (natBoard) cmBoardNationalInit(g);
   predictLeagues(g, stateOf(g), money);
-  const db = `${g.date.slice(0, 4)}-01-01`;
+  g.cmRecSt = {};
+  for (const comp of Object.values(g.comps)) if (comp.type === 'league' && !g.leagues[comp.id]?.hidden) g.cmRecSt[comp.id] = 1;
+  const db =`${g.date.slice(0, 4)}-01-01`;
   const env = boardEnv(g, db, g.date);
   initRecords(env, stateOf(g), rnd(g, dayNum(db), 0x68f130));
 }
@@ -1090,6 +1105,7 @@ export function cmBoardSeasonSetup(g: GameState, only?: Set<string>): void {
     if (comp.type !== 'league' || g.leagues[comp.id]?.hidden || (only && !only.has(comp.id))) continue;
     if (only && st.tab) for (const c of comp.clubs) delete st.tab[c];
     if (only && st.lt) for (const c of comp.clubs) delete st.lt[c];
+    (g.cmRecSt ??= {})[comp.id] = 1;
     for (const c of comp.clubs) { setSeasonExpectations(env, st, c, true, rnd(g, dayNum(g.date), 0x68aa80, c)); cmFineSeasonHalve(g, c); }   // 0x6a4472: 0x5a5930
   }
   syncHuman(g);

@@ -22,7 +22,7 @@ export interface GameLeagueRow {
 }
 
 /** samme rækkefølge som competitions.ts sortTable (uden den cirkulære import) */
-function sorted(g: GameState, rows: TableRow[]) {
+export function sorted(g: GameState, rows: TableRow[]) {
   return rows.slice().sort((a, b) => b.pts - a.pts || b.gf - b.ga - (a.gf - a.ga) || b.gf - a.gf || (g.clubs[a.club]?.short ?? '').localeCompare(g.clubs[b.club]?.short ?? ''));
 }
 

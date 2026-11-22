@@ -2,6 +2,7 @@
 import { cmBoardAfterMatch, cmBoardDaily, cmBoardOn } from './cmBoardGame';
 import './cmQuickMatch';   // engine+0 (0x6b66a0) – registrerer postHooks.quick
 import { cmWxDaily, cmWxFix } from './cmWeather';
+import { cmClubRepWeekly } from './cmClubRepWeek';
 import { cmOwnStaffContractsDaily, cmStaffOffersDaily } from './cmStaff';
 import { cmStaffMovesDaily, cmStaffNpDaily } from './cmStaffMove';
 import { cmActive, cmLogic, cmMarketOn, cmMediaOn, cmStaffOn, cmAfterMatch, clubRepMem, cmContractDaily, cmFlagSet, cmRand, cmSquadMoraleDaily, MORALE_OFF, withFlagCtx } from './cmPlayerData';
@@ -731,6 +732,8 @@ function newDay() {
   cmPermitDaily(g);
   // Staff_Records ved turneringernes afslutning (mester/op-/nedrykning/pokal – gårsdagens sidste kampe, cmMedia.ts)
   cmRecordsDaily(g, squad);
+  // 0x5cccd0 om tirsdagen: klubbernes omdømme efter ligaplaceringen (cmClubRepWeek.ts – lige før klubtabellen 0x5cd776)
+  cmClubRepWeekly(g);
   // 0x5ce2d0's kontraktdel (+0x44/+0x45) og klubtabellen [0xae2d14] (cmPlayerData.ts)
   cmContractDaily(g, squad);
   // 0x5ce2d0's gren for ikke-spillerne: stabens omdømme og CA (cmStaffMove.ts)

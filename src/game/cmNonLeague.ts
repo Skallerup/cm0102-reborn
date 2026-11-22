@@ -27,6 +27,7 @@ import { balGbp, book, K } from './cmFinance';
 import { finalOrder } from './competitions';
 import { msvcQsort } from './engine/grid/subs';
 import { cmBoardClubMoved } from './cmBoardGame';
+import { tableStatusHooks } from './cmTableHooks';
 
 const s16 = (v: number) => (v << 16) >> 16;
 const s8 = (v: number) => (v << 24) >> 24;
@@ -69,6 +70,8 @@ export function cmNonLeagueRelegated(g: GameState, compId: string): number {
   if (compId === leagueId(g, DK_SECOND) && (g.cmLowerDiv ?? -1) >= 0) return DK_DOWN;
   return 0;
 }
+
+tableStatusHooks.relegated = cmNonLeagueRelegated;
 
 // ------------------------------------------------------------------------------------------------ stadionet (0x599e00)
 

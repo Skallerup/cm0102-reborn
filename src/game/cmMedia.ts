@@ -27,7 +27,8 @@ import { finalOrder, promotionOrder } from './competitions';
 import { LEAGUE_RULES } from './leagues';
 import { cmNonLeagueRelegated } from './cmNonLeague';
 import { CM_COMP_ID } from './engine/grid/gameInputs';
-import { signHooks } from './state';
+import { signHooks, squad } from './state';
+import { tableStatusHooks } from './cmTableHooks';
 
 const s8 = (v: number) => (v << 24) >> 24;
 const s16 = (v: number) => (v << 16) >> 16;
@@ -44,6 +45,17 @@ export function cmSignContractMorale(g: GameState, p: Player): void {
 }
 
 signHooks.onSign = cmSignContractMorale;
+
+// England 0x576c50 / ellers 0x686940 (ligaens vt+0x44, +0x44 = 0xff), kaldt af 0x686670, når 0x684cd0 sætter en ny status: 5 → mester (0x868c50),
+// 0 → oprykning (0x869480(klub, ligaen, 100)), 3 → nedrykning (0x86a1c0); status 1 (play-off-plads) → 0x86bdd0 rører ikke klubbens omdømme
+tableStatusHooks.on = (g, lid, club, status) => {
+  if (!cmMediaOn(g) || g.cmFitStart === undefined) return;
+  const comp = g.comps[lid];
+  if (!comp) return;
+  if (status === 5) recChampions(g, club, comp, squad);
+  else if (status === 0) recPromotion(g, club, comp, squad);
+  else recRelegation(g, club, comp, squad);
+};
 
 /** turneringens omdømme (+0x69, word) */
 const compRep = (g: GameState, id: string) => { const n = CM_COMP_ID(g, id); return s16(n >= 0 ? g.cmCompRep?.[n] ?? 0 : 0); };
@@ -135,6 +147,8 @@ export function cmRecordsDaily(g: GameState, squadOf: (c: number) => Player[]): 
     done[comp.id] = g.season;
     if (comp.type === 'league') {
       if (!g.leagues[comp.id] || g.leagues[comp.id].hidden) continue;
+      // sat op med tabelstatussen (g.cmRecSt): rekorderne er givet, da status blev sat (tableStatusHooks nedenfor)
+      if (g.cmRecSt?.[comp.id]) continue;
       const order = finalOrder(comp);
       if (order[0]) recChampions(g, order[0], comp, squadOf);
       const rules = LEAGUE_RULES[comp.id];
