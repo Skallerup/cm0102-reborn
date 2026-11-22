@@ -361,16 +361,21 @@ export function simulateFixture(f: Fixture, userAuto = true, commentary = false)
 /** originalens baggrundskamp (fixture −2, 0x84c339–0x84c493 – cmReserves.ts): fyldspillerne, kampmotoren og kun de efterfølgende kald,
  *  originalen laver for −2-kampe – PlayerStats 0x7c0d70 (kategori pr. hold rand(9) ? 2 : 3), kontrakten og bonusserne 0x4ca6d0, konditionen
  *  0x62c080 og arbejdstilladelsen 0x8c39f0. Ingen tabel, økonomi, karantæner, bestyrelse eller nyheder; spillets egen talrække røres ikke
- *  (kampens tal af frøet og kampen – se cmReserves.ts). Zonemotoren med originalens profil (CM_RES_GRID=1: gittermotoren). */
+ *  (kampens tal af frøet og kampen – se cmReserves.ts). Gittermotorens hurtigkamp (0x6beeb0); zonemotoren kun i spil uden gittermotoren. */
 function playResMatch(f: Fixture): MatchReport | null {
   const g = gs();
   const m = prepareMatch(f);
   if (m.home.tactic.lineup.filter(Boolean).length < 7 || m.away.tactic.lineup.filter(Boolean).length < 7) { cmVirtualDrop(g, f.home); cmVirtualDrop(g, f.away); return null; }
   const r = new RngClass(hash(g.seed ?? 0, -f.id, 0x6b98c0));
   const opts = { neutral: false, needsWinner: undefined, importance: m.importance, var: false, weather: m.weather, finish: m.finish, homeAdv: m.homeAdv, finSlope: m.finSlope, squash: m.squash, squashAtt: m.squashAtt, squashDef: m.squashDef, ease: m.ease, cards: m.cards, corners: m.corners, countBlocked: m.countBlocked, close: m.close, closeSlope: m.closeSlope, onTarget: m.onTarget, offside: m.offside, shotSpread: m.shotSpread, oneOnOneK: m.oneOnOneK, level: m.level, openDamp: m.openDamp, rules: m.rules, pitch: m.pitch, referee: m.referee, subs: maxSubs(), fixtureId: f.id, date: g.date };
-  const gridOn = typeof process !== 'undefined' && process.env?.CM_RES_GRID === '1' && gridEngineOn(g);
-  const grid = gridOn ? getGridFactory() : null;
-  const rep = grid ? grid(m.home, m.away, { ...opts, commentary: false, aiSubs: [true, true] }, r).runToEnd() : new MatchSim(m.home, m.away, { ...opts, commentary: false, aiSubs: [true, true] }, r).runToEnd();
+  // originalens motor (gittermotoren): init_match(kampen, 1, 0, 0) 0x84c3e8 → engine+0 = 1 → run_match_steps' hurtigkamp quick_simulate_match
+  // 0x6beeb0 (engine/grid/quickSim.ts). Kampen ligger kun i g.fixtures, mens den spilles (motoren slår fixture-posten op dér)
+  const grid = gridEngineOn(g) ? getGridFactory() : null;
+  let rep: MatchReport;
+  if (grid) {
+    g.fixtures[f.id] = f;
+    try { rep = grid(m.home, m.away, { ...opts, commentary: false, aiSubs: [true, true] }, r).runToEnd(); } finally { delete g.fixtures[f.id]; }
+  } else rep = new MatchSim(m.home, m.away, { ...opts, commentary: false, aiSubs: [true, true] }, r).runToEnd();
   const pick = cmRand(g.seed ?? 0, -f.id, 0x7c0d70);
   const cats: [number, number] = [pick(9) ? 2 : 3, pick(9) ? 2 : 3];
   for (const line of rep.players) {

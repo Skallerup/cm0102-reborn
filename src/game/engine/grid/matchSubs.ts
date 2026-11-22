@@ -475,6 +475,17 @@ export function makeMatchSubs(env: MatchSubsEnv) {
       lastChange[s] = m.clock;
       afterChange(s);                                                                // 0x6cdcea/0x6cdcf1
     },
+    /** sub_6cda20(p, 1) fra hurtigkampen (quick_simulate_match 0x6beeb0, quickSim.ts): +0x23 og minuttet +0x21 springes over (kalderen tæller),
+     *  ingen 6cdd50; plads −3 (0x6cdadb); engine+0 ≠ 0 → 0x6cdb85: uden optøjer (+0x1a3) får computerholdet (+0x9049) en ny keeper 0x6e1090(1),
+     *  når den udviste var keeper; så 0x6bbb60/0x6bbf60 (samspillet og mandsopdækningen) */
+    sendOffQuick(q: GP) {
+      const wasKeeper = q.pos === L.POS.keeper, x = st.get(q);
+      if (x && q.slot >= 0) x.prevSlot = q.slot;
+      q.slot = -3; q.active = false;
+      const s = q.side;
+      if (env.ai(s) && wasKeeper) doReselect(s, true);
+      afterChange(s);
+    },
     /** sub_6d1210 0x6d1591–0x6d16ea: keeperen blev udvist under optøjerne (engine+0x1cb+side) – computeren 0x6e1090(1), mennesket 0x6e1aa0 +
      *  0x6ce110 (her som omrokeringen); uret i +0x8ecc, samspillet og mandsopdækningen */
     keeperOffAfterFights(s: Side) {

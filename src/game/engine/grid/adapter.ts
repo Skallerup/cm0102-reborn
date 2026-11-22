@@ -31,6 +31,8 @@ import { gamePostReport } from './postMatchGame';
 import { natOfClub } from '../../cmVirtual';
 import { cmQuickMatch } from '../../cmQuickMatch';
 import { cmMediaOn } from '../../cmPlayerData';
+/** cmReserves.ts RES_COMP (baggrundskampene, fixture −2) */
+const RES_COMP = 'RES';
 import type { CmPostResult } from '../../types';
 
 /** originalens begivenheder → UI'ets linjetype (fremhævning/lyd/mål-blink); resten er spil-for-spil ('pl-o', kun klassisk + playByPlay) */
@@ -97,6 +99,8 @@ export class GridSim implements LiveSim {
   private quickOf!: () => 0 | 1;
   private pens?: [number, number];
   private extra = false;
+  /** hurtigkampen (quick_simulate_match 0x6beeb0) er kørt – den viste karakter er +0x1b fra den (quickSim.ts) */
+  private quickDone = false;
   /** ctx.ai – samme array hele kampen, så UI'ets ændring af opts.aiSubs (fællesspil) når motoren */
   private ai: [boolean, boolean];
   private byIdx: [GP[], GP[]] = [[], []];
@@ -122,7 +126,8 @@ export class GridSim implements LiveSim {
       if (this.quick !== undefined) return this.quick;
       const g = hasGame() ? gs() : null, f = g && opts.fixtureId !== undefined ? g.fixtures[opts.fixtureId] : undefined;
       const sq = (t: EngineTeam) => [...t.tactic.lineup, ...(t.tactic.bench ?? [])].map((id) => t.players.get(id)).filter((p): p is Player => !!p);
-      return (this.quick = g && f && !opts.intl && cmMediaOn(g) ? cmQuickMatch(g, f, [sq(home), sq(away)], watchedFlag) : 0);
+      // baggrundskampen (fixture −2, cmReserves.ts): init_match(kampen, 1, 0, 0) 0x84c3e8 – engine+0 = 1
+      return (this.quick = g && f && !opts.intl && cmMediaOn(g) ? (f.comp === RES_COMP ? 1 : cmQuickMatch(g, f, [sq(home), sq(away)], watchedFlag)) : 0);
     };
     this.quickOf = quickOf;
     const mk = (t: EngineTeam, idx: number): LiveSimTeam => {
@@ -305,6 +310,8 @@ export class GridSim implements LiveSim {
       // sub_6ce460: holdets afleveringer/tacklinger/hovedstød = summen af spillernes tællere (alle 20 i kamptruppen)
       let pa = 0, pc = 0, ta = 0, tw = 0, ha = 0, hw = 0;
       for (const q of this.byIdx[i]) { pa += q.c01 & 0xff; pc += q.c02 & 0xff; ta += q.tacklesTried & 0xff; tw += q.tacklesWon & 0xff; ha += q.b7 & 0xff; hw += q.b8 & 0xff; }
+      // hurtigkampen tæller kun holdblokkens ord (+0xf5e2… afleveringer, tacklinger, hovedstød) – ikke spillernes
+      if (this.quickDone) { const b = this.g.teamBlock(i as 0 | 1); pa = b[0x26]; pc = b[0x28]; ta = b[0x2a]; tw = b[0x2c]; ha = b[0x2e]; hw = b[0x30]; }
       Object.assign(t.stats, { goals: s.goals, shots: s.shots, onTarget: s.onTarget, corners: s.corners, fouls: s.fouls, yellows: s.yellows, reds: s.reds, offsides: s.offsides,
         passes: pa, passesCompleted: pc, throwIns: s.throwIns, tackles: ta, tacklesWon: tw, headers: ha, headersWon: hw });
     });
@@ -318,10 +325,11 @@ export class GridSim implements LiveSim {
       if (p.yellows || p.reasons[0] || p.reasons[1]) { l.cy = p.yellows; l.cw = [p.reasons[0], p.reasons[1]]; }   // kampposten +0x9d/+0x9f/+0xa0 (Fine 0x5a69b0)
       { const st = this.g.subState(p);
         l.cmr = [p.b0f & 0xff, p.pensTaken & 0xff, p.penGoals & 0xff, p.penGoalsWon & 0xff, p.shots & 0xff, p.shotsOnTarget & 0xff, p.dribblesPast & 0xff,
-          p.yellows & 0xff, st && st.minuteRed >= 0 ? 1 : 0]; }                                   // 0x729ff0: resultatpostens +0x22..+0x2d (spillerstatistikken)
+          p.yellows & 0xff, st && st.minuteRed >= 0 ? 1 : p.b23 ? p.b23 & 0xff : 0]; }                                   // 0x729ff0: resultatpostens +0x22..+0x2d (spillerstatistikken)
       l.passes = p.c01 & 0xff; l.passesOk = p.c02 & 0xff; l.tckA = p.tacklesTried & 0xff; l.tackles = p.tacklesWon & 0xff; l.hea = p.b7 & 0xff; l.heaW = p.b8 & 0xff;
       // den viste karakter +0x1b (sub_6ce460: trunc((+0x35 + 500)/1000) klemt 1..10 – originalens Player Ratings og 0x6d26b0's karakter)
-      sp.rating = Math.max(1, Math.min(10, Math.trunc((((p.rating << 16) >> 16) + 500) / 1000)));
+      // hurtigkampen: +0x1b = ftol((+0x35 + 6000)·0,0004 + 1,83) (quickSim.ts 0x6c05a2)
+      sp.rating = this.quickDone ? p.b1b : Math.max(1, Math.min(10, Math.trunc((((p.rating << 16) >> 16) + 500) / 1000)));
       sp.cond = Math.max(0, Math.min(1, p.condition / 10000));
       sp.line.rating = Math.round(sp.rating * 10) / 10;
       sp.line.cond = Math.round(sp.cond * 100);
@@ -331,6 +339,16 @@ export class GridSim implements LiveSim {
 
   step(): boolean {
     if (this.finished) return false;
+    // run_match_steps 0x6b98ce: engine+0 ≠ 0 → quick_simulate_match 0x6beeb0 i ét kald (ingen trin), så 0x6d0f80/0x6d1cc0 som efter slutfløjtet
+    if (this.moment === 0 && this.quickOf() === 1) {
+      const r = this.g.quickRun();
+      this.quickDone = true;
+      this.extra = r.minutes > 90;
+      if (r.pens) this.pens = [r.pens[0], r.pens[1]];
+      this.moment = 1;
+      this.end();
+      return false;
+    }
     this.ai[0] = this.opts.aiSubs?.[0] ?? true; this.ai[1] = this.opts.aiSubs?.[1] ?? true;
     const pe0 = this.g.m.periodEnd;
     const ok = this.g.tick();

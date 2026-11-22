@@ -45,6 +45,7 @@ import { ATTRS } from '../../attributes';
 import type { Player, Tactic } from '../../types';
 import { DIS_PERSON, FAV_PERSON, relPersons } from '../../cmRelations';
 import { recordBytes, staffBytes } from './gameInputs';
+import { quickSimulate, type QuickFixture, type QuickResult } from './quickSim';
 
 export type Rand = (n: number) => number;
 /** tællere til fejlsøgning (scripts/grid-stats.ts DEBUG=1) */
@@ -214,6 +215,8 @@ export interface GridMatchCtx {
   /** kampens fixture (engine+0x4792) til historierne sub_6d4b70/sub_717470 og sub_6ce310: fixture+0x14 ≠ 0, klubbens liga (club+0x57 ==
    *  fixture+0x14) og europæiske turnering (club+0x1db == fixture[0]) pr. side, word +0x30, første bens mål +0x4b/+0x4c (null = ingen) og
    *  word +0x38. Mangler = ligakamp i klubbernes egen liga uden første kamp (spillets kampe indtil videre) */
+  /** hurtigkampens fixture-data (quickSim.ts 0x6beeb0: −2-kampen, turneringen, landet, hjemmeholdets liga); mangler = ingen turnering */
+  quickFixture?: Omit<QuickFixture, 'rep' | 'flags38' | 'firstLeg'>;
   fixtureInfo?: { hasComp: boolean; ownLeague: [boolean, boolean]; ownContinental: [boolean, boolean]; code30: number; firstLeg: [number, number] | null; flags38: number };
   /** kampen skal have en vinder ved stillingen (fixture+0x38 & 2 forlænget, & 1 straffe – sub_6bd930); mangler = uafgjort tæller */
   needsWinner?: (hg: number, ag: number) => boolean;
@@ -309,6 +312,8 @@ export interface GP extends L.Player {
   // +0x1/+0x2 tællere (?; > 10 læses af målets historier 0x707910–0x7079cc), +0xd straffespark taget, +0x13 fanget offside, +0x1b (?),
   // +0x30 debut (MATCH_PLAYER::init 0x6eb22c/0x6eb31a: ingen kampe for klubben – PlayerStats, ikke porteret → 0)
   c01: number; c02: number; pensTaken: number; offsidesCaught: number; b1b: number; debut: number;
+  /** +0x23 røde kort – kun hurtigkampen (quickSim.ts 0x6beeb0) tæller den selv (0x6cda20(p, 1) springer tællingen over) */
+  b23?: number;
   tbl: Table | null; pslot: number; // taktikkens positionstabel (forudindstillingen) og pladsen i den (tacticTable.ts)
   posR: H.PosRatings;               // positions-/sideevner til sub_715f50
   view?: PassPlayer & H.MatchPlayer;
@@ -1176,6 +1181,10 @@ export interface GridMatch {
   events: MatchEvents;
   /** sub_6d0f80 (kampens spiller, kaldt ved slutfløjtet 0x6ba94f – ingen tal): engine+0x477a */
   manOfTheMatch(): GP | null;
+  /** engine+0 ≠ 0 (run_match_steps 0x6b98ce): hele kampen som quick_simulate_match 0x6beeb0 (quickSim.ts) i stedet for trinene */
+  quickRun(): QuickResult;
+  /** holdblokken engine+0xf5bc + 54·side */
+  teamBlock(s: Side): readonly number[];
 }
 
 /** sub_6d0f80 (sikker, 0x6d0f80–0x6d1097): for begge holds første (fixture+0x4d & 0xf) + 11 kampspillere (bænken med) – undtagen dem uden plads
@@ -3775,10 +3784,35 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
       else if (k === 'b8eb4') b8eb4 = v as number; else if (k === 'lastOwner') lastOwner = v as Side; else if (k === 'lastShotType') lastShotType = v as number;
       else if (k === 'lastShotEvent') lastShotEvent = v as number;
     } });
+  /** run_match_steps 0x6b98ce (engine+0 ≠ 0): quick_simulate_match 0x6beeb0 – ingen trin; kampens spiller (0x6d0f80) og kamprapporten
+   *  (0x6d1cc0) tager adapteren bagefter som efter slutfløjtet */
+  const quickRun = (): QuickResult => {
+    const qf = ctx.quickFixture ?? { bg: false, hasComp: false, tour: true, nation: null, homeLeague: false };
+    const sides = [0, 1].map((s) => gp.filter((q) => q.side === s)) as [GP[], GP[]];
+    const r = quickSimulate({
+      m, rand, sides, blk: teamBlk, rec: (q, o) => (recByte(q, o) << 24) >> 24,
+      ca: (q) => (q.recRaw ? ((q.recRaw[5] & 0xff) | (q.recRaw[6] << 8)) : q.src.ca),
+      fx: { ...qf, rep: [ctx.rep?.[0] ?? 5000, ctx.rep?.[1] ?? 5000], flags38: ctx.fixtureInfo?.flags38 ?? 0, firstLeg: ctx.fixtureInfo?.firstLeg ?? null },
+      sendOff: (q) => subs.sendOffQuick(q),
+      injure: (kind, sev, q, o) => injure(kind, sev, q, o),
+      comment: (id, q, side) => comment(id, q, side, null, -1, 0),
+      onGoal: (q, a, pen) => on?.goal?.(q, a, pen),
+      onCard: (q, code) => on?.card?.(q, code, true),
+    });
+    for (const s of [0, 1] as Side[]) {
+      const b = teamBlk[s], x = st(s);
+      x.goals = m.goals[s]; x.shots = b[2]; x.onTarget = b[3]; x.corners = b[0xb]; x.throwIns = b[0xc]; x.fouls = b[0xd]; x.offsides = b[0xe]; x.reds = b[0xf]; x.yellows = b[0x10];
+      x.passes = b[0x26]; x.passesCompleted = b[0x28];
+    }
+    m.clock = r.minutes * 11; m.periodEnd = r.minutes > 90 ? 1 : 0;
+    finished = true;
+    return r;
+  };
   return { m, tick, get finished() { return finished; }, crowdTotal: cr ? cr.total : null, result: () => ({ home: m.stats[0], away: m.stats[1], ticks: m.clock }),
     substitute: (s, o, i) => subs.human(s, o, i), setTactic: (s, t) => { pendingTactic[s] = t; },
     subsLeft: (s) => subs.subsLeft[s] - subs.pending(s), subState: (p) => subs.state(p), events,
-    manOfTheMatch: () => manOfTheMatch6d0f80([0, 1].map((s) => gp.filter((q) => q.side === s)), (q) => subs.state(q)?.minuteOff ?? -1) };
+    manOfTheMatch: () => manOfTheMatch6d0f80([0, 1].map((s) => gp.filter((q) => q.side === s)), (q) => subs.state(q)?.minuteOff ?? -1),
+    quickRun, teamBlock: (s) => teamBlk[s] };
 }
 
 /** spillerpostens egenskaber fra +0x1b (alfabetisk; +0x1c Aggression, +0x21 Consistency, +0x25 Dirtiness, +0x2e Jumping, +0x30/+0x3b fødderne,

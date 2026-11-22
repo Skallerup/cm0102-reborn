@@ -15,6 +15,9 @@ const step = (to: string) => {
   g.date = addDays(to, -1);   // continueGame → newDay går til `to`
   g.dayDone = true;
   g.pendingFixture = null;
+  // datospringet springer menneskets kampe over: playMissedUserFixtures spillede dem ellers alle på én dag (konditionen ~10 %, halvdelen skadet –
+  // efter et par måneder for få spillere til en opstilling, afhængigt af talrækken). De markeres som spillet (0–0); kun turneringerne tælles her.
+  for (const f of Object.values(g.fixtures)) if (!f.result && f.date < g.date && (f.home === g.userClub || f.away === g.userClub)) f.result = { hg: 0, ag: 0, scorers: [] };
   const r = continueGame();
   if (r.match) quickPlayUserMatch();
 };
