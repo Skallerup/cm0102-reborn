@@ -13,6 +13,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '2026-11-22',
     title: { da: 'Mere af det originale CM 01/02', en: 'More of the original CM 01/02' },
     items: [
+      { da: "Nyt spil på mobil: mindre hukommelse, mens holdlisten bygges (Select Team) – færre lukkede faner på iPhone.", en: "New game on mobile: less memory while the team list is built (Select Team) – fewer closed tabs on iPhone." },
       { da: "Computerklubberne forlænger nu også regens' kontrakter som i CM 01/02, og forlængelserne om sommeren kommer kun i spillets første sæson som i originalen.", en: "Computer clubs now renew regens' contracts as in CM 01/02, and summer renewals happen only in the game's first season, as in the original." },
       { da: "Nyt spil på telefoner bruger mindre hukommelse: ønskelisterne bygges i flere små trin, og den moderne startskærm har fået valget af databasestørrelse (Normal/Maksimum).", en: "Starting a new game on phones uses less memory: shortlists are built in several small steps, and the modern start screen now offers the database size choice (Normal/Maximum)." },
       { da: "Nyt spil på mobil bruger endnu lidt mindre hukommelse.", en: "Starting a new game on mobile uses a little less memory again." },
