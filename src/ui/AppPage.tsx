@@ -96,7 +96,10 @@ function AppInner() {
         } else if (last?.kind === 'local') {
           if (!(await loadGame(last.id))) {
             // det gemte spil er væk (fx ryddet af en indbygget browser) – spilleren lander i menuen uden spil: meld det til admin
-            reportError(new Error('ResumeMissing: the last local game was not found in storage'));
+            const { storageDiag } = await import('../game/storageGuard');
+            const { listSaves } = await import('../game/save');
+            const n = await listSaves().then((l) => l.length).catch(() => -1);
+            reportError(new Error(`ResumeMissing: the last local game was not found in storage | ${await storageDiag({ saves: n })}`));
             forgetLast();
             // var det en lokal kopi af et online-spil, så åbn det seneste online-spil i stedet
             const room = savedRooms()[0];

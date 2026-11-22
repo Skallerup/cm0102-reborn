@@ -75,8 +75,9 @@ export async function saveGame(opts?: { cloud?: boolean; name?: string }): Promi
     kind: saveKindOf(g),
     ext: extOf(g),
   };
-  await guardWrite(async () => { await set(`save:${id}`, blob); await set(`meta:${id}`, meta); }, !!opts?.cloud);
   requestPersistentStorage();
+  await guardWrite(async () => { await set(`save:${id}`, blob); await set(`meta:${id}`, meta); }, !!opts?.cloud);
+  // "seneste spil" sættes først, når spillet er gemt (så den aldrig peger på et spil, der ikke findes)
   rememberLast({ kind: 'local', id });
   cloudHook?.(meta, blob, !!opts?.cloud);
   return meta;
@@ -141,7 +142,7 @@ export async function getSaveMeta(id: string): Promise<SaveMeta | undefined> {
 
 // ---------- seneste spil (så en genindlæsning fortsætter hvor man slap) ----------
 
-import { rememberLast } from './last';
+import { forgetLast, getLast, rememberLast } from './last';
 export { forgetLast, getLast, rememberLast, type LastGame } from './last';
 
 // ---------- autogem ----------
@@ -382,6 +383,9 @@ export async function openPreview(blob: Blob, label: string, theme?: string): Pr
 
 export async function deleteSave(id: string) {
   try { await del(`save:${id}`); await del(`meta:${id}`); } catch (e) { if (!isQuotaError(e)) throw e; }
+  // peger "seneste spil" på det slettede, ville næste genindlæsning melde et manglende spil
+  const last = getLast();
+  if (last?.kind === 'local' && last.id === id) forgetLast();
 }
 
 export async function exportSave(): Promise<void> {

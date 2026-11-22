@@ -23,7 +23,7 @@ export const en: Record<string, string> = {
 
   'top.unemployed': 'Unemployed', 'top.balance': 'Balance', 'top.budget': 'Transfer budget', 'top.next': 'Next',
   'top.continue': 'Continue', 'top.toTheMatch': 'To the match ›', 'top.toMatch': 'Next match »', 'top.toMatchHint': 'Skip to the next match (stops on important news)',
-  'top.fullscreen': 'Full screen', 'top.exitFullscreen': 'Exit full screen', 'top.running': 'Simulating…', 'top.saved': 'Game saved', 'storage.full': 'Cannot save: your device storage is full. Free up space or delete old saved games – the game keeps running, but nothing is saved until there is room.', 'top.quitConfirm': 'Save and quit to the main menu?',
+  'top.fullscreen': 'Full screen', 'top.exitFullscreen': 'Exit full screen', 'top.running': 'Simulating…', 'top.saved': 'Game saved', 'storage.saveFailed': 'Cannot save the game on this device (the browser refuses to store it – private mode, an in-app browser or cleared site data can cause this). Open the game in a normal browser window, or use Export to keep a copy.', 'storage.full': 'Cannot save: your device storage is full. Free up space or delete old saved games – the game keeps running, but nothing is saved until there is room.', 'top.quitConfirm': 'Save and quit to the main menu?',
   'nav.inbox': 'Inbox', 'nav.squad': 'Squad', 'nav.tactics': 'Tactics', 'nav.training': 'Training', 'nav.fixtures': 'Fixtures',
   'nav.competitions': 'Competitions', 'nav.transfers': 'Transfers', 'nav.scouting': 'Scouting', 'nav.assistant': 'Assistant',
   'nav.staff': 'Staff', 'nav.finance': 'Finances', 'nav.club': 'Club', 'nav.history': 'History', 'nav.jobs': 'Job centre',

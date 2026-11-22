@@ -32,3 +32,13 @@ describe('fuld disk', () => {
     await expect(guardWrite(async () => { throw new Error('boom'); })).rejects.toThrow('boom');
   });
 });
+
+describe('gemning fejler af anden grund (ikke kvote)', () => {
+  beforeEach(() => { resetStorageGuard(); notice.mockClear(); vi.mocked(reportError).mockClear(); });
+  it('kaster uændret, melder SaveFailed med diagnose én gang og viser besked én gang', async () => {
+    for (let i = 0; i < 3; i++) await expect(guardWrite(async () => { throw Object.assign(new Error('db closed'), { name: 'InvalidStateError' }); })).rejects.toThrow('db closed');
+    expect(notice).toHaveBeenCalledTimes(1);
+    expect(reportError).toHaveBeenCalledTimes(1);
+    expect(String(vi.mocked(reportError).mock.calls[0][0])).toMatch(/SaveFailed: InvalidStateError db closed/);
+  });
+});

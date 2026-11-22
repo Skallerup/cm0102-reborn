@@ -19,7 +19,7 @@ import { APP_VERSION } from './changelogData';
 import { askConfirm, askNotice } from './confirm';
 import { ClassicManagerHistory } from './screens/ManagerHistoryClassic';
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
-import { flushAutosave, forgetLast, saveGame, scheduleAutosave } from '../game/save';
+import { flushAutosave, forgetLast, getLast, saveGame, scheduleAutosave } from '../game/save';
 import { runUntil, watchedDay } from '../game/sim';
 import { GameRunError, runDays } from './dayRunner';
 import { reportError } from '../online/errors';
@@ -29,7 +29,7 @@ import { cmTimeOfDay } from '../game/cmCalendar';
 import { compLogoUrl } from './logos';
 import { isOriginal2001 } from '../game/rules2001';
 import { intlDayResults } from '../game/international';
-import { gs, hasGame, notify, setGame, squad, subscribe } from '../game/state';
+import { gs, hasGame, notify, previewInfo, setGame, squad, subscribe } from '../game/state';
 import { cmActive, cmScoutLogic } from '../game/cmPlayerData';
 import { cmFinOn } from '../game/cmFinance';
 import { compName, dateFmt, money, setCashStyle, setMoneyRounding, t } from '../i18n';
@@ -333,6 +333,8 @@ export function Shell() {
   useEffect(() => {
     if (online) return;
     let lastSavedDate = hasGame() ? gs().date : '';
+    // et nyt spil gemmes straks (ikke først ved næste ændring), så en dræbt fane ikke mister det
+    if (hasGame() && !previewInfo()) { const l = getLast(); if (!(l?.kind === 'local' && l.id === gs().id)) scheduleAutosave(300); }
     const unsub = subscribe(() => {
       if (!hasGame()) return;
       const g2 = gs();
