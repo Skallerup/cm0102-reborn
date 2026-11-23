@@ -36,7 +36,8 @@ import { getMaxWage_5968d0 } from './cmMaxWage';
 import { addDays_54c5b0, subDays_54c8e0, listRemove_68d1f0, offerContract_4cda70, daysSince_54cdb0 } from './cmContract';
 import { entryOf, storeEntry, fromRow, staffTailed, afterBudgetHooks, clubDivRep } from './cmSquadPlanGame';
 import { newPlanEntry, type PlanEntry } from './cmSquadPlan';
-import { registerImpl, enter, QSORT_CMP, QSORT_CMP8, SHARED, PC_HOOK, FASTHOST, stackBelow, FAKE_RET, type X86 } from './cmGen/x86';
+import { registerImpl, enter, QSORT_CMP, QSORT_CMP8, SHARED, PC_HOOK, FASTHOST, stackBelow, FAKE_RET, HEAP0, HEAP_PTR, type X86 } from './cmGen/x86';
+import { msvcQsort } from './engine/grid/subs';
 import { getClubFinance_5a0590 } from './cmWage';
 import { leagueClash } from './cmBoardInterest';
 import { GEN } from './cmGen/index';
@@ -2105,6 +2106,65 @@ export function cmSlRepairHung(g: GameState): number {
   return hung.length;
 }
 
+/** [0xae2d1c] (GameState.cmClubOrder): klubberne efter omdømmet +0x80, størst først. Indlæsningen 0x53db40(1) (0x82b739) lægger dem i tabellens
+ *  rækkefølge og sorterer; 0x5cccd0 kalder 0x53db40(0) hver dag (0x5cdab0 – før klubløkken 0x5cdcb4): gårsdagens rækkefølge sorteres igen med
+ *  MSVC-qsort 0x945333 og 0x540020 (s16 +0x80: a < b → 1, a > b → −1, lige → 0 – ikke stabil, derfor gemt fra dag til dag). Landsholdene (de
+ *  sidste 2·[0xae2350] i tabellen – 0x53b900) står her efter klubberne; 0x842c00 springer dem over. */
+export function clubOrderDaily(g: GameState): number[] {
+  let o = g.cmClubOrder;
+  if (!o || o.length !== Object.keys(g.clubs).length) o = Object.keys(g.clubs).map(Number).sort((a, b) => a - b);
+  const rep = (cid: number) => (clubRepMem(g, cid) << 16) >> 16;
+  msvcQsort(o, (a, b) => { const x = rep(a), y = rep(b); return x < y ? 1 : x > y ? -1 : 0; });
+  g.cmClubOrder = o;
+  return o;
+}
+/** [0xae2d1c] i ønskelisternes hukommelse: g.cmClubOrder og landsholdene ([0xae235c] poster) */
+function writeClubOrder(S: SlMem): void {
+  const { m, g } = S;
+  const o = g.cmClubOrder ?? clubOrderDaily(g);
+  const n = m.s32(0xae235c);
+  let p = m.u32(HEAP_PTR) >>> 0;
+  if (p < HEAP0) p = HEAP0;
+  const a = (p + 15) & ~15;
+  m.w32(HEAP_PTR, (a + Math.max(16, 4 * n + 16)) >>> 0);
+  let i = 0;
+  for (const cid of o) if (i < n) m.w32(a + 4 * i++, cid);
+  for (let id = n - 2 * m.s32(0xae2350); i < n; id++) m.w32(a + 4 * i++, id);
+  m.w32(0xae2d1c, a >>> 0);
+}
+export const SL_OFFERED = { calls: 0, days: 0, ms: 0, changed: 0 };
+/** CONTRACT_MANAGER::daily_update 0x4c7ac0's kald af Shortlist_Manager 0x842c00(staff, flag) (cmContractManager.ts – 0x4c8840: sat fri (+0x49)
+ *  i et ulige udløbsbånd; 0x4c88b5–0x4c8ab8: Bosman-kandidaterne – vil væk, i et ulige bånd (dagen, kontrakten har 182/152/121/91/60/30/7 dage
+ *  tilbage) eller bånd 14 med rand(20) = 0): spilleren tilbydes klubberne i [0xae2d1c]-rækkefølgen – 0x842e10(staff, positionsflag, klub) for
+ *  hver computerklub (ikke landshold, ikke hans egen), til fem har taget ham på ønskelisten (rækkens +0xb & 0xf tæller med). I dagens hukommelse
+ *  efter kontraktmanagerens dag, i den rækkefølge kaldene kom (personløkkens id-rækkefølge). Før gjorde kaldet intet: K7 – spillere med
+ *  udløbende kontrakt som mål hos andre klubber 7/2001–1/2002 273 mod oraklets 765 (december 22 mod 372; oraklet topper præcis på båndenes dage). */
+export function cmSlOffer842c00(g: GameState, reqs: [number, number][]): void {
+  if (!cmShortlistOn(g) || !g.cmPlan || !reqs.length || ENV.CM_SL_842C00 === '0') return;
+  const t0 = now();
+  const S = buildSlMem(g);
+  try {
+    const { m } = S;
+    writeClubOrder(S);
+    const clubs = Object.keys(g.cmPlan).map(Number);
+    for (const cid of clubs) refreshClub(S, cid);
+    const before = new Map(clubs.map((cid) => [cid, JSON.stringify(g.cmPlan![cid].s)]));
+    S.M.setRand(cmRand(g.seed ?? 0, dayNum(g.date), 0x842c00));
+    shared(() => {
+      for (const [pid, flag] of reqs) {
+        const id = S.memOf.get(pid);
+        if (id === undefined) continue;
+        SL_OFFERED.calls++;
+        slCall(S.c, 0x842c00, S.slm, (m.u32(G.STAFF) + 0x6e * id) >>> 0, flag);
+      }
+    }, S);
+    for (const cid of clubs) { readSlots(S, cid); if (before.get(cid) !== JSON.stringify(g.cmPlan![cid].s)) SL_OFFERED.changed++; }
+    readPairs(S);
+    applyHook(S.events);
+  } finally { (S.m as SparseMem).release(); }
+  SL_OFFERED.days++; SL_OFFERED.ms += now() - t0;
+}
+
 /** TRANSFER_MANAGER::move_player_to_club 0x8c9720 (fra finalise_transfer 0x8c9390 – køb, leje, klubløse og bytte-spillere), 0x8ca0a4–0x8ca0ce:
  *  har spilleren en klub efter skiftet (+0x39) og er han ikke transferlistet der (0x5444a0: kontrakten 0x4cf5a0's +0x4e bit 1 – efter et køb den
  *  nye kontrakt, ved leje moderklubbens), sættes klubbens trupplanstæller +8 = 100: 0x84a020 byder ikke (+8 ≥ 100), før 0x5cccd0 har kørt
@@ -2311,6 +2371,9 @@ export function cmShortlistDaily(g: GameState, planClub: (cid: number) => { drop
   if (!cmShortlistOn(g) || !g.cmPlan) return;
   const t0 = typeof performance !== 'undefined' ? performance.now() : 0, c0 = cpuNow();
   const S = buildSlMem(g);
+  // 0x5cdab0: 0x53db40(0) – [0xae2d1c] efter omdømmet (før klubløkken)
+  clubOrderDaily(g);
+  writeClubOrder(S);
   SL_DIAG.after?.(S);
   dropDeadBids(S);
   let tt = now();

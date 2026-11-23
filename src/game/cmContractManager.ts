@@ -16,6 +16,7 @@
 //     han i klubben med den udløbne kontrakt. 31 dage efter: vil han væk (0x866f60) eller er sat fri → fri transfer.
 //   – tilbuddene afgøres 1–5 dage senere (4–7 når kontrakten udløber inden 180 dage, højst 14): 0x4ce4e0 vælger det bedste (værdien 0x866830 mod
 //     hans ønskede kontrakt 0x85fc50, vægtet med klubbens tiltrækning 0x846920) – underskriften 0x8c38b0 → spillets nye kontrakt.
+//   – Shortlist_Manager 0x842c00 (ønskelisterne: spilleren tilbydes klubberne) køres i ønskelisternes hukommelse efter dagen (cmSlOffer842c00).
 // Spillets egne systemer for de samme spillere er slået fra (transfers.ts aiRenewals, season.ts' udløb 1/7).
 //
 // Gating (kun for hastigheden – samme virkning): personløkken køres kun for de spillere, der kan blive berørt i dag (dagene ovenfor, type 1 efter
@@ -24,7 +25,7 @@
 // har spillets eget system.
 // *Estimeret*: ingen nyheder (0x4d6790/0x4da590/0x4d49a0/0x4d6d70 går kun til mennesket), transfertilbuddene/
 // forhandlingerne (TRANSFER_MANAGER 0x8c5cf0/0x8c5e40/0x8c1870 = spillets åbne bud på spilleren), karrierens slut 0x7a7eb0 = Player.cmRetire,
-// ønskelisterne 0x842c00 (intet), sign_contract 0x4cf720's felter (+0x3d.. som cmPlayerData newCmContract).
+// sign_contract 0x4cf720's felter (+0x3d.. som cmPlayerData newCmContract).
 import { bookBlock, K as FK, memKnown } from './cmFinance';
 import type { Contract, GameState, Player } from './types';
 import { G, clubAt, getContract, cmAfter2330, DATE_2330, type CmMem } from './cmMem';
@@ -32,6 +33,7 @@ import { buildWantMem, applyCmTerms, type CmTerms, type WantMem } from './cmCont
 import { contractDailyUpdate_4c7ac0, listAdd_68d0d0, listInit_68d020, listNext_68d1b0 } from './cmContract';
 import { humanClub_600a50 } from './cmWageGame';
 import { slCall } from './cmShortlist';
+import { cmSlOffer842c00 } from './cmShortlistGame';
 import { cmActive, cmInDeal, cmLogic, cmRand, newCmContract, statusCode } from './cmPlayerData';
 import { isHumanClub } from './humans';
 import { recordFreeTransfer, setClub } from './state';
@@ -161,7 +163,7 @@ export function cmContractManagerDay(g: GameState): void {
   for (const pid of due) { const p = g.players[pid]; if (p?.club && g.clubs[p.club]) clubs.add(p.loan?.from ?? p.club); }
   CMD_STATS.days++;
   if (!clubs.size) { if (t0) CMD_STATS.ms += performance.now() - t0; return; }
-  const signed: { p: Player; k: number }[] = [], released: Player[] = [];
+  const signed: { p: Player; k: number }[] = [], released: Player[] = [], offered: [number, number][] = [];
   let M: WantMem | null = null;
   const byMem = new Map<number, Player>();
   const pOf = (st: number) => byMem.get(M!.c.m.s32(st));
@@ -181,6 +183,8 @@ export function cmContractManagerDay(g: GameState): void {
         return p && cmInDeal(g, p) ? 1 : 0;
       }
       case 0x8c16b0: case 0x8c1af0: { const p = pOf(a[1] >>> 0); if (p && !released.includes(p)) released.push(p); return 0; }
+      // Shortlist_Manager 0x842c00(staff, flag): i ønskelisternes hukommelse efter dagen (cmShortlistGame.ts cmSlOffer842c00)
+      case 0x842c00: { const p = pOf(a[1] >>> 0); if (p) offered.push([p.id, a[2] | 0]); return 0; }
       case 0x8c38b0: {
         // sign_contract 0x4cf720 (via TRANSFER_MANAGER 0x8c38b0): tilbuddet bliver personens kontrakt
         const L = a[1] >>> 0, st = (m.u32(G.STAFF) + 0x6e * m.s32(L)) >>> 0, k = getContract(m, st), p = pOf(st);
@@ -304,6 +308,7 @@ export function cmContractManagerDay(g: GameState): void {
   for (const k of Object.keys(S.row)) if (!live(+k)) delete S.row[+k];
   CMD_STATS.cand += cands.length; CMD_STATS.clubs += clubs.size; CMD_STATS.signed += signed.length;
   if (t0) CMD_STATS.ms += performance.now() - t0;
+  cmSlOffer842c00(g, offered.filter(([pid]) => g.players[pid]?.club));
 }
 
 /** Kontrakten (80 bytes) efter sign_contract som spillets kontrakt; Signing On Fee betales af klubben, moralen +20 (cmMedia.ts) */

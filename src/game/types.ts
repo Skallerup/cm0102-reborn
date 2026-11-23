@@ -1355,6 +1355,9 @@ export interface GameState {
   cmCm?: { dec: number[][]; off: [number, string][]; row: Record<number, number> };
   /** Shortlist_Manager's par (spiller, klub) – computerklubbernes ønskelister (0x8423f0, cmShortlistGame.ts) */
   cmSlPairs?: [number, number][];
+  /** [0xae2d1c]: klubberne efter omdømmet +0x80, størst først – 0x53db40 sorterer gårsdagens rækkefølge igen hver dag (0x5cdab0, MSVC-qsort, ikke
+   *  stabil); Shortlist_Manager 0x842c00 tilbyder spilleren til klubberne i den rækkefølge (cmShortlistGame.ts clubOrder) */
+  cmClubOrder?: number[];
   /** TRANSFER_MANAGER: de lukkede computer → computer-bud, originalen beholder i budtabellen, til den planlagte remove_offer 0x8d0f60 (0x8c63a0):
    *  tilstanden +0x2c, runderne +0x2e og dagen, de fjernes (cmShortlistGame.ts writeOffers, transfers.ts cmTmClose) */
   cmTmKept?: CmTmKept[];
