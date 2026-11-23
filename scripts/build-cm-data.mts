@@ -178,6 +178,14 @@ if (ORIGINAL) {
   if (hasTc) {
     for (const l of w.leagues) if (keptLeagues.has(l.id)) playableNat.add(l.nation);
     for (const c of w.clubs) if (!keptLeagues.has(c[4] as string) && playableNat.has(c[3] as number)) keep.add(c[0] as number);
+    // (23/11) også de ikke-spilbare landes klubber med en spiller, 0x524d70 beholder altid eller for et spilbart land (CMRatings.tc) – fx en
+    // englænder i en klub med division (ikke "Lower Division") i Wales/Irland/USA: `sel.has(nat)` beholder ham, når England er valgt, og
+    // 0x5267c0 (c) klubben med ham. Før kun klubberne med talenter (notable), så oraklets ~285 englændere i udenlandske klubber (størrelse 2: fx
+    // Caernarfon Town og Connah's Quay Nomads med 10 hver) manglede; newgame.ts beholder klubben, når en af dem er i hukommelsen (tcOk)
+    for (const p of w.players) {
+      const club = p[F.club] as number, tc = w.ratings[p[F.id] as number]?.tc;
+      if (club && !keptLeagues.has(clubLeague.get(club) ?? '') && (tc === 1 || (Array.isArray(tc) && tc.some((n) => playableNat.has(n))))) keep.add(club);
+    }
     // de spilbare landes inaktive divisioner har ingen talentudvalg (HIDDEN_SQUAD): også deres talenter er kun med, når 0x524d70 har dem i
     // hukommelsen for de valgte lande (tc) – før beholdt udvalget op til 16 pr. klub uden for hukommelsen (størrelse 2: 2.215 spillere i Englands
     // non-league mod oraklets 1.673 15/7-01, fx Bromsgrove Rovers 16 mod 3, Grantham Town 16 mod 1), så trupperne var for store og klubberne

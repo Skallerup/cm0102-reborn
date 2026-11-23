@@ -427,7 +427,10 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
       id: CL.i32(o), name: CL.str(o + 4, 51), short: CL.str(o + 56, 26), nation: CL.i32(o + 83), division: CL.i32(o + 87),
       // sidste sæsons division (+0x5b) og placering (+0x5f) – Comp_Stats' +0x72 ved spilstart (klubbens stemning 0x5cd61d)
       lastDiv: CL.i32(o + 91), lastPos: CL.u8(o + 95),
-      stadium: CL.i32(o + 105), maxAtt: CL.i32(o + 123), rep: CL.i16(o + 128), fg: CL.i32(o + 131), bg: CL.i32(o + 135),
+      // omdømmet +0x80: club.dat-indlæseren 0x54db50 sætter 0 til 1 (0x54dc39–0x54dc45: `cmp word [eax], 0; jne; mov word [eax], 1`) – oraklet
+      // efter indlæsningen (ldpost-0-0): alle 2.496 klubber uden omdømme i databasen har 1; create_game's 0x82996a (lav byte af rand(4000) + 1)
+      // rammer derfor kun landsholdene (nat_club.dat læses uden) og negative tal
+      stadium: CL.i32(o + 105), maxAtt: CL.i32(o + 123), rep: CL.i16(o + 128) || 1, fg: CL.i32(o + 131), bg: CL.i32(o + 135),
       balance: CL.i32(o + 101), status: CL.u8(o + 100), avgAtt: CL.i32(o + 115), minAtt: CL.i32(o + 119), training: CL.u8(o + 127),
       // klubbens manager (staff-id; ejerens Bosman-projekt, db.rs: club.dat 207)
       manager: CL.i32(o + 207),
