@@ -27,7 +27,7 @@ import { cmCmOn, cmCmScope } from './cmContractManager';
 import { cmAcceptBid, cmOfferContract, cmSwapAccept, cmSwapDaily, cmSwapOn, cmTalksDaily, cmTalksOn } from './cmTransferTalks';
 import { cmLoanRefuses } from './cmLoan';
 import { cmBuildBid } from './cmAiBid';
-import { cmWindowOpen } from './cmOfferCheck';
+import { cmAiRulesBlock, cmWindowOpen } from './cmOfferCheck';
 import { cmRumourAdd } from './cmRumours';
 import { cmAskingPrice, cmExchangeCheck, cmInterestedClubs, cmLoanAnswerNow, cmLoanDelayNow, cmMovedToClub, cmShortlistOn, cmSlMoved, setSlApply, setSlDue, type SlDueCtx, type SlEvent } from './cmShortlistGame';
 import { ADDON_APPS, bidClauseWorth, cleanClauses, clauseWorth, defaultRelease, settleSellOn } from './clauses';
@@ -870,7 +870,8 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
   if (p.club && p.stats.apps + p.stats.subs > 0) pushCareerLine(p, p.club, !!p.loan);
   // en udlejet, der sælges (computerens ønskelister – cmShortlistApply): lejekontrakten ophører med handlen
   if (!o.loan && p.loan) { noteLoanEnd(p.club); p.loan = null; }
-  recordMove(p, buyer.id, o.fee, o.loan);
+  // 0x8c9720 @0x8c9984: kontrakttilbud med sum 0 og tidsnibble 3/4 (forkontrakten – add_future_transfer 0x8cb9a0) → historikkens art 4
+  recordMove(p, buyer.id, o.fee, o.loan, false, !o.loan && !o.fee && !!o.cmFut);
   // fansene reagerer på stjernesalg og -køb
   if (!o.loan && seller) fansOnDeparture(p, seller, 'sold', o.fee);
   // 0x8c9720/0x8c9390: ønskelisternes del af skiftet (før staff +0x39 skifter) – pladsen med ham bliver hans, budmærkerne ryddes
@@ -1977,7 +1978,7 @@ export function cmShortlistApply(events: SlEvent[]) {
   }
 }
 /** målinger (fejlsøgning): computer → computer-svarene på ønskelisternes bud */
-export const CM_AIAI = { declined: 0, noContract: 0, free: 0, freeRefused: 0, freeDone: 0, pre: 0, preFut: 0, preDone: 0, loan: 0, loanOk: 0, bid: 0, accept: 0, counter: 0, counterOk: 0, reject: 0, refused: 0, withdrawn: 0, review: 0, rebid: 0, done: 0, open: 0, openDays: 0 };
+export const CM_AIAI = { declined: 0, noContract: 0, free: 0, freeRefused: 0, freeDone: 0, pre: 0, preFut: 0, preDone: 0, loan: 0, loanOk: 0, bid: 0, accept: 0, counter: 0, counterOk: 0, reject: 0, refused: 0, withdrawn: 0, review: 0, rebid: 0, rules: 0, done: 0, open: 0, openDays: 0 };
 const cmOpen = (o: TransferOffer) => o.status === 'pending' || o.status === 'countered' || o.status === 'negotiating';
 /** CM 01/02: menneskets lejebud til en computerklub. add_transfer_offer 0x8be300 giver svartiden 0x8cc5b0 (+ 0x8c6220, regnet første gang
  *  dagens behandling ser buddet, fra buddets dag); på svardagen process_due_offer 0x8c63a0 (tilstand 0, +0x1f = 1) →
@@ -2145,6 +2146,8 @@ function cmAiAiDue(cx: SlDueCtx) {
         continue;
       }
     }
+    // try_complete_offer 0x8c34e0: check_offer_restrictions 0x8cfc90 for køberen og sælgeren – uden for vinduet (grund 9) falder handlen (0x8c44e0)
+    if (cmAiRulesBlock(g, o)) { CM_AIAI.rules++; cmTmClose(o, 0x10, 20, 'collapsed'); closed = true; continue; }
     CM_AIAI.done++;
     cmTmCollapseOthers(o);
     if (!o.seller) {

@@ -98,6 +98,8 @@ export interface PlayerMove {
   loan?: boolean;
   /** Indgik i en byttehandel */
   swap?: boolean;
+  /** Historikkens art 4 (0x8c9720 @0x8c9996): forkontrakt-skiftet ved kontraktens udløb (kontrakttilbud, sum 0, tidsnibble 3/4) – en fri transfer, ikke et køb */
+  bosman?: boolean;
 }
 
 export interface CareerLine {

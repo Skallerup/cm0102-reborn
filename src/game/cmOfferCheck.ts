@@ -122,3 +122,22 @@ export function cmCheckOffer(g: GameState, o: TransferOffer): OfferCheck {
   if (!cmWindowOpen(g, buyer, g.date)) return { code: 2, reason: 9 };
   return { code: 0, reason: 0 };
 }
+
+/** try_complete_offer 0x8c34e0 (process_due_offer 0x8c63a0, tilstand 0xe, andet argument 0) for computer → computer-handlen: check_offer_restrictions
+ *  0x8cfc90(bud, klub, &grund, 0) først for køberen (0x8c355a), så for kontraktens klub (0x8c35c4 – ingen for en klubløs). Svar 2 → handlen
+ *  falder (0x8c44e0: tilstand 0x10, 20 dage); svar 1 → en uge mere (0x8c36b0). Her kun nationens regelsæt (TRANSFER_RULES +0xc, 0x8e8800):
+ *  udlændingegrænsen (+0x13, for køberen) og transfervinduet (0x8e8c40, grund 9) – landet uden vinduer er altid åbent. Bestyrelsens veto
+ *  (0x8cdb80), pengene og truppladsen (0x8cd450) er ikke porteret her (pengene: transfers.ts' budgetprøve). true = handlen falder (svar 2). */
+export function cmAiRulesBlock(g: GameState, o: TransferOffer): boolean {
+  const buyer = g.clubs[o.buyer], p = g.players[o.player];
+  if (!buyer || !p || !cmMarketOn(g)) return false;
+  const swap = (o.swap ?? []).map((id) => g.players[id]).filter(Boolean);
+  const limit = cmForeignLimit(g, buyer);
+  if (limit !== null && cmForeignPlayer(g, p, buyer.nation) && !swap.some((s) => cmForeignPlayer(g, s, buyer.nation))) {
+    const foreign = squad(o.buyer).filter((x) => cmForeignPlayer(g, x, buyer.nation)).length;
+    if (foreign + 1 > limit) return true;
+  }
+  if (!cmWindowOpen(g, buyer, g.date)) return true;
+  const seller = o.seller ? g.clubs[o.seller] : undefined;
+  return !!seller && !cmWindowOpen(g, seller, g.date);
+}

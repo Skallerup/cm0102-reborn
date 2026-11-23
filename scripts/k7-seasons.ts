@@ -30,14 +30,15 @@ const E = `${homedir()}/cm0102-engine`;
 const SEASONS = Number(process.env.SEASONS ?? 3);
 const Y23 = process.env.Y23 ?? `${E}/oracle/daysnap/s1-3.9.60-y23-e14`;
 const ONLY_ORACLE = !!process.env.ONLY_ORACLE;
-const LOANS = process.env.LOANS;   // fil: lejeaftalerne (begge sider) + lejelisten pr. billede (engelske klubber) – k7-loans-analyse
+const LOANS = process.env.LOANS;
+const BUYS = process.env.BUYS;   // fil: alle handler (begge sider) med alder/CA/land/division – k7-købsanalyse   // fil: lejeaftalerne (begge sider) + lejelisten pr. billede (engelske klubber) – k7-loans-analyse
 const llSeries: { o: { iso: string; keys: string[] }[]; u: { iso: string; keys: string[] }[] } = { o: [], u: [] };
 const CLUB = 'Arsenal';
 
 // ------------------------------------------------------------------ normaliseret verden (begge sider)
 interface PRow { key: string; id: number; age: number; ca: number; pa: number; club: string; eng: boolean; div: string; nat: string; exp: string; wage: number; loan: boolean; loanFromEng: boolean; mem: boolean; ll?: boolean }
 interface CRow { name: string; div: string; bal: number; wb: number; rep: number; mgr: string; squad: number }
-interface TRow { key: string; date: string; from: string; to: string; fee: number; loan: boolean; free: boolean; eng: boolean; staff?: boolean; pkey?: string; age?: number; ca?: number; fromNat?: string; toNat?: string; fromDiv?: string; toDiv?: string }
+interface TRow { key: string; date: string; from: string; to: string; fee: number; loan: boolean; free: boolean; eng: boolean; staff?: boolean; bosman?: boolean; pkey?: string; age?: number; ca?: number; fromNat?: string; toNat?: string; fromDiv?: string; toDiv?: string }
 interface LRow { div: string; club: string; p: number; gf: number; ga: number; pos: number }
 interface World { date: string; players: PRow[]; clubs: CRow[]; league: LRow[] }
 
@@ -91,21 +92,21 @@ function oracleWorld(m: SparseMem): World {
       for (let i = 0; i < nr && i < 200; i++) if (m.s32(rows + 0x76 * i) === m.s32(adr)) { const r = rows + 0x76 * i; league.push({ div, club: cName(ix), p: m.u8(r + 4), gf: m.u8(r + 0x69), ga: m.u8(r + 0x6a), pos: m.u8(r + 0x73) }); break; }
     }
   }
-  // TRANSFER_MANAGER +0x862 (37 bytes pr. handel): +0 person, +0x10/+0x14 klubberne, +0x18 sum, +0x1c art (0 køb/klubløs, 2 leje, 3 fri, 4 leje slut), +0x1d/+0x1f dato
+  // TRANSFER_MANAGER +0x862 (37 bytes pr. handel): +0 person, +0x10/+0x14 klubberne, +0x18 sum, +0x1c art (0 køb/klubløs, 2 leje, 3 fri, 4 forkontrakt-skifte 0x8c9996 (sum 0), 5 stab), +0x1d/+0x1f dato
   const tmA = m.u32(0xde1f54), arr = m.u32(tmA + 0x862), nT = m.s32(tmA + 0x86a);
   const byId = new Map(players.map((p) => [p.id, p]));
   for (let i = 0; i < nT; i++) {
     const r = arr + 37 * i, d = dayIso(m.s16(r + 0x1d), m.s16(r + 0x1f));
     const art = m.u8(r + 0x1c);
-    if (!d || art === 4) continue;
+    if (!d) continue;
     // målt 1/9-01 (253/253 køb): +0x10 = den nye klub (køber/lejeklub), +0x14 = den gamle (−1 = klubløs); art 3: +0x10 = −1; art 5 = stab
     const to = m.s32(r + 0x10), from = m.s32(r + 0x14), pid = m.s32(r);
     const key = `${byId.get(pid)?.key ?? pid}|${d}|${to}|${art}`;
     if (oTransfers.has(key)) continue;
     const cNat = (ix: number) => (ix >= 0 && ix < nc ? str(m, m.u32(C + 0x245 * ix + 0x53) + 4, 51) : '');
     const pp = byId.get(pid);
-    oTransfers.set(key, { key, date: d, from: from >= 0 ? cName(from) : '', to: to >= 0 ? cName(to) : '', fee: m.s32(r + 0x18), loan: art === 2, free: art === 3 || from < 0, eng: cEng(to) || cEng(from), staff: art === 5,
-      ...(LOANS && art === 2 ? { pkey: pp?.key, age: pp ? yrs(d, pp.key.split('|')[1]) : undefined, ca: pp?.ca, fromNat: cNat(from), toNat: cNat(to), fromDiv: from >= 0 ? cDiv(from) : '', toDiv: to >= 0 ? cDiv(to) : '' } : {}) });
+    oTransfers.set(key, { key, date: d, from: from >= 0 ? cName(from) : '', to: to >= 0 ? cName(to) : '', fee: m.s32(r + 0x18), loan: art === 2, free: art === 3 || art === 4 || from < 0, ...(art === 4 ? { bosman: true } : {}), eng: cEng(to) || cEng(from), staff: art === 5,
+      ...((LOANS && art === 2) || BUYS ? { pkey: pp?.key, age: pp ? yrs(d, pp.key.split('|')[1]) : undefined, ca: pp?.ca, fromNat: cNat(from), toNat: cNat(to), fromDiv: from >= 0 ? cDiv(from) : '', toDiv: to >= 0 ? cDiv(to) : '' } : {}) });
   }
   return { date, players, clubs, league };
 }
@@ -131,8 +132,8 @@ function ourWorld(date: string): World {
       if (uTransfers.has(key)) continue;
       const fe = g.clubs[mv.from]?.nation === eng, te = g.clubs[mv.to]?.nation === eng;
       const cDivU = (cid: number) => { const c = g.clubs[cid]; return c ? g.comps[c.league]?.name ?? g.leagues[c.league]?.name ?? '' : ''; };
-      uTransfers.set(key, { key, date: mv.date, from: g.clubs[mv.from]?.name ?? '', to: g.clubs[mv.to]?.name ?? '', fee: Math.round(mv.fee * GBP), loan: !!mv.loan, free: !mv.from || !mv.to, eng: fe || te,
-        ...(LOANS && mv.loan ? { pkey: `${p.first} ${p.last}|${p.dob}`, age: yrs(mv.date, p.dob), ca: p.ca, fromNat: g.nations[g.clubs[mv.from]?.nation ?? -1]?.name ?? '', toNat: g.nations[g.clubs[mv.to]?.nation ?? -1]?.name ?? '', fromDiv: cDivU(mv.from), toDiv: cDivU(mv.to) } : {}) });
+      uTransfers.set(key, { key, date: mv.date, from: g.clubs[mv.from]?.name ?? '', to: g.clubs[mv.to]?.name ?? '', fee: Math.round(mv.fee * GBP), loan: !!mv.loan, free: !mv.from || !mv.to || !!mv.bosman, ...(mv.bosman ? { bosman: true } : {}), eng: fe || te,
+        ...((LOANS && mv.loan) || BUYS ? { pkey: `${p.first} ${p.last}|${p.dob}`, age: yrs(mv.date, p.dob), ca: p.ca, fromNat: g.nations[g.clubs[mv.from]?.nation ?? -1]?.name ?? '', toNat: g.nations[g.clubs[mv.to]?.nation ?? -1]?.name ?? '', fromDiv: cDivU(mv.from), toDiv: cDivU(mv.to) } : {}) });
     }
   }
   for (const s of Object.values(g.staff)) for (const mv of s.moves ?? []) {
@@ -317,6 +318,7 @@ function seasonMetrics(si: number, A: World, B: World, divW: [World | undefined,
   const buys = ts.filter((t) => !t.loan && !t.free && t.fee > 0);
   set('transfers', 'køb med sum (antal)', buys.length);
   set('transfers', 'køb uden sum (antal)', ts.filter((t) => !t.loan && !t.free && t.fee <= 0 && t.from && t.to).length);
+  set('transfers', 'forkontrakt-skifte (art 4, sum 0)', ts.filter((t) => t.bosman).length);
   set('transfers', 'klubløs skriver under (antal)', ts.filter((t) => !t.loan && !t.from && t.to).length);
   set('transfers', 'kontrakt udløbet/fri (antal)', ts.filter((t) => !t.loan && t.from && !t.to).length);
   set('transfers', 'leje (antal)', ts.filter((t) => t.loan).length);
@@ -328,6 +330,11 @@ function seasonMetrics(si: number, A: World, B: World, divW: [World | undefined,
   set('transfers', 'til Premier-klub (antal, køb)', buys.filter((t) => B.clubs.some((c) => c.name === t.to && c.div === DIVS[0]) || A.clubs.some((c) => c.name === t.to && c.div === DIVS[0])).length);
   set('transfers', 'køb i transfervinduet jul–aug (antal)', buys.filter((t) => /-0[78]-/.test(t.date)).length);
   set('transfers', 'køb jan–mar (antal)', buys.filter((t) => /-0[123]-/.test(t.date)).length);
+  for (const mo of ['07', '08', '09', '10', '11', '12', '01', '02', '03', '04', '05', '06']) {
+    const bm = buys.filter((t) => t.date.slice(5, 7) === mo);
+    set('transfers pr. måned', `køb ${mo} (antal)`, bm.length);
+    set('transfers pr. måned', `køb ${mo} sum median £`, median(bm.map((t) => t.fee)));
+  }
   // --- klubber pr. division (slut)
   for (const d of DIVS.slice(0, 4)) {
     const cs = B.clubs.filter((c) => c.div === d);
@@ -405,4 +412,5 @@ out(`\n${((Date.now() - t0) / 1000).toFixed(0)} s`);
 if (process.env.REPORT) writeFileSync(process.env.REPORT, lines.join('\n') + '\n');
 if (process.env.JSON) writeFileSync(process.env.JSON, JSON.stringify({ keyDates: Object.fromEntries(keyDates), metrics, names }, null, 1));
 if (!existsSync(Y23)) process.exitCode = 0;
+if (BUYS) writeFileSync(BUYS, JSON.stringify({ keyDates: Object.fromEntries(keyDates), o: [...oTransfers.values()].filter((t) => !t.staff), u: [...uTransfers.values()].filter((t) => !t.staff) }));
 if (LOANS) writeFileSync(LOANS, JSON.stringify({ keyDates: Object.fromEntries(keyDates), o: { loans: [...oTransfers.values()].filter((t) => t.loan), ll: llSeries.o }, u: { loans: [...uTransfers.values()].filter((t) => t.loan), ll: llSeries.u } }));

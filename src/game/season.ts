@@ -223,7 +223,7 @@ function contractsAndLoans() {
         p.futureClauses = undefined;
         p.sellOn = undefined;
         p.addOn = undefined;
-        recordMove(p, to, 0);
+        recordMove(p, to, 0, false, false, true);
         setClub(p, to);
         p.joined = today;
         const msg = { cat: 'transfer' as const, key: 'transfer.bosmanDone', params: { player: pname(p), from: fromName, to: g.clubs[to].name } };
@@ -550,10 +550,10 @@ export function youthIntake() {
 }
 
 /** Bogfør et klubskifte (til karriereoversigten) – kaldes før spilleren skifter */
-export function recordMove(p: Player, to: number, fee: number, loan = false, swap = false) {
+export function recordMove(p: Player, to: number, fee: number, loan = false, swap = false, bosman = false) {
   const g = gs();
   recordsAfterMove(p, to, fee, loan);
-  (p.moves ??= []).push({ season: g.season, date: g.date, from: p.club, to, fee, ...(loan ? { loan: true } : {}), ...(swap ? { swap: true } : {}) });
+  (p.moves ??= []).push({ season: g.season, date: g.date, from: p.club, to, fee, ...(loan ? { loan: true } : {}), ...(swap ? { swap: true } : {}), ...(bosman ? { bosman: true } : {}) });
   if (p.moves.length > 20) p.moves.shift();
 }
 
