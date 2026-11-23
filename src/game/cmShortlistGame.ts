@@ -1989,7 +1989,10 @@ function dropDeadBids(S: SlMem): void {
   if (ENV.CM_SL_DROP === '0') return;
   const { g, m } = S;
   const open = new Set<number>();
-  for (const o of g.offers) if (o.status === 'pending' || o.status === 'negotiating' || o.status === 'countered') open.add(o.id);
+  // (et aftalt fremtidigt skifte – add_future_transfer 0x8cb9a0, tilstand 0x13 – er ikke afvist: buddet står i tabellen til skiftet 0x8cbbe0, og
+  // ingen af afslagsvejene 0x8bf680/0x8bfa30/0x8bfcb0 kører 0x84aeb0/0x843e10 for det. Før ryddede vi pladsen dagen efter aftalen, så køberen
+  // fandt et nyt mål til den og bød igen – i det lukkede vindue blev hvert køb til endnu et ventende køb)
+  for (const o of g.offers) if (o.status === 'pending' || o.status === 'negotiating' || o.status === 'countered' || (o.status === 'accepted' && o.cmFut)) open.add(o.id);
   for (const [k, st] of Object.entries(g.cmPlan ?? {})) {
     const cid = +k;
     const drop: number[] = [];
