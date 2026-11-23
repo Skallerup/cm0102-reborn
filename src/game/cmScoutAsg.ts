@@ -41,7 +41,7 @@ import type { GameState, Player, Staff } from './types';
 import { addDays, ageOn } from './dates';
 import { addNews } from './state';
 import { asOwner } from './humans';
-import { clubRepMem, cmActive, cmFormRatings, cmRand, leagueAverage, newCmContract, statAvg, statusCode, staffJoined } from './cmPlayerData';
+import { clubRepMem, cmActive, cmGenerated, cmFormRatings, cmRand, leagueAverage, newCmContract, statAvg, statusCode, staffJoined } from './cmPlayerData';
 import { cmClubLevelOf, cmStaffAttr } from './cmStaff';
 import { cmKnowSee } from './cmKnow';
 import { cmNeedsPermit, cmPermitOn, cmWorkPermit, CM_EU } from './cmPermit';
@@ -101,7 +101,7 @@ function repSeen(g: GameState, p: Player, club: number): number {
 function scoutRole(g: GameState, p: Player, s: Staff, club: number, flags: number, age: number, rec: number[]): number {
   const judge = { id: s.cmId ?? s.id, ja: cmStaffAttr(s, 'judgingAbility'), jp: cmStaffAttr(s, 'judgingPotential') };
   const d = { ...roleDataOf(p, { cm: true, date: g.date, gameSeed: g.seed, leagueAvg: leagueAverage(g), judge }, age), repSeen: repSeen(g, p, club) };
-  return roleScore({ id: p.id, age, atClub: !p.club, joined: dayOf(staffJoined(p) ?? g.date), realPlayer: !p.regen, rec, pos: 0, att: 0, lo: 0, hi: 0, tb: 0, tf: 0,
+  return roleScore({ id: p.id, age, atClub: !p.club, joined: dayOf(staffJoined(p) ?? g.date), realPlayer: !cmGenerated(g, p), rec, pos: 0, att: 0, lo: 0, hi: 0, tb: 0, tf: 0,
     flags, mgrJoined: dayOf(s.cmJoined ?? s.career?.[s.career.length - 1]?.from ?? g.date), today: dayOf(g.date), yearAgo: dayOf(`${+g.date.slice(0, 4) - 1}${g.date.slice(4)}`),
     captain: false, setPiece: 0, data: d, hasClub: false });
 }
@@ -491,7 +491,7 @@ export function cmOppKeyRow(g: GameState, p: Player, r: CmAsgRow): CmOppKey {
 }
 
 /** klubbens trup (+0xd7) – databasens spillere (id < [0xae2364]) med spillerpost */
-const realSquad = (g: GameState, club: number) => Object.values(g.players).filter((p) => p.club === club && !p.virtual && !p.regen).sort((a, b) => a.id - b.id);
+const realSquad = (g: GameState, club: number) => Object.values(g.players).filter((p) => p.club === club && !cmGenerated(g, p)).sort((a, b) => a.id - b.id);
 
 /** Comp_Stats-rækken (0x4a4850) i klubbens division (+0x57): [kampe, mål for (+0x69), mål imod (+0x6a)] som bytes; null uden række */
 function divRow(g: GameState, club: number): [number, number, number] | null {

@@ -182,25 +182,28 @@ function pickBest(g: GameState, r: RegenView, rand: Rand): Club | undefined {
   return best;
 }
 
-const lists = new WeakMap<GameState, Map<number, number[]>>();
-/** 0x7acfc0 (ved indlæsningen): landenes klublister – klubber med division i lande med verdensdel (+0x71); i de indlæste lande kun med omdømme ≤ 2 */
-function nationList(g: GameState, n: number): number[] {
-  let m = lists.get(g);
-  if (!m) {
-    m = new Map();
-    const mls = [clubKey(g, 0x9d00a4), clubKey(g, 0x9d00a8)];
-    for (const c of Object.values(g.clubs).sort((a, b) => a.id - b.id)) {
-      if (c.nation < 0 || (g.cmNationCont?.[c.nation] ?? 0) < 0) continue;
-      if (!hasDivision(g, c)) continue;
-      if (nationLoaded(g, c.nation) && repOf(g, c) > 2) continue;
-      if (mls.includes(c.id)) continue;
-      const L = m.get(c.nation) ?? [];
-      L.push(c.id);
-      m.set(c.nation, L);
-    }
-    lists.set(g, m);
+const lists = new WeakMap<GameState, Record<number, number[]>>();
+/** 0x7acfc0: landenes klublister – klubber med division i lande med verdensdel (+0x71); i de indlæste lande kun med omdømme +0x80 ≤ 2 */
+function buildLists(g: GameState): Record<number, number[]> {
+  const m: Record<number, number[]> = {};
+  const mls = [clubKey(g, 0x9d00a4), clubKey(g, 0x9d00a8)];
+  for (const c of Object.values(g.clubs).sort((a, b) => a.id - b.id)) {
+    if (c.nation < 0 || (g.cmNationCont?.[c.nation] ?? 0) < 0) continue;
+    if (!hasDivision(g, c)) continue;
+    if (nationLoaded(g, c.nation) && s16(repOf(g, c)) > 2) continue;
+    if (mls.includes(c.id)) continue;
+    (m[c.nation] ??= []).push(c.id);
   }
-  return m.get(n) ?? [];
+  return m;
+}
+/** PLAYER_REGEN 0x7a5380 (0x7a54cf) bygger listerne ved indlæsningen – i create_game 0x829b67 lige efter klubdataenes udfyldning 0x82992b
+ *  (cmFinance.ts cmClubDataFill_829960), så de følger klubbernes omdømme på det tidspunkt (cmRetire.ts cmRetireInit). Gemmes i spillet. */
+export function cmRegenListsInit(g: GameState): void { g.cmRegenLists = buildLists(g); }
+function nationList(g: GameState, n: number): number[] {
+  // spil fra før 23/11 uden de gemte lister: som før – bygget ved første regen
+  let m = g.cmRegenLists;
+  if (!m) { m = lists.get(g); if (!m) { m = buildLists(g); lists.set(g, m); } }
+  return m[n] ?? [];
 }
 
 /** 0x7ad590: klubben fra landets liste (Wales/Irland – og Nordirland med rand(5) < 2 – bruger Englands) med højst rand(score) */

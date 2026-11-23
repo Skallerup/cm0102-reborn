@@ -22,7 +22,7 @@
 // oraklet: 8 spillere på dag 1 og 14 mere i sæson 1, som stabens pensioneringer frigiver); forsikringsnyheden 0x58a980; staffState +0xb's lave bits (0); personerne uden for originalens hukommelse (0x524d70) får
 // samme regler på en egen liste (st.ext), så de ikke blokerer originalens kø; for world-filer uden hukommelsesoplysningen = de ikke indlæste lande.
 import type { Club, GameState, Player, RegenSeed, Staff, StaffRole } from './types';
-import { cmRegenRetired, cmRegenSortQueue } from './cmRegen';
+import { cmRegenListsInit, cmRegenRetired, cmRegenSortQueue } from './cmRegen';
 import { cmActive, cmLogic, cmRand, newCmContract, statusCode, type CmContract } from './cmPlayerData';
 import { nationLoaded } from './cmFinance';
 import { seasonRow } from './cmFitness';
@@ -230,6 +230,8 @@ const dayNo = (iso: string) => Math.round(Date.parse(iso + 'T00:00:00Z') / 86400
 export function cmRetireInit(g: GameState): void {
   // spilstarten (newgame.ts/cmConvert.ts): enhver CM-database i ægte tilstand – listen g.cmRet slår modulet til (cmRetireOn)
   if (g.draft || !cmLogic(g)) return;
+  // 0x7a5380 (0x7a54cf): regen'ernes klublister pr. land (cmRegen.ts)
+  cmRegenListsInit(g);
   const st = stateOf(g);
   st.list = []; st.ext = [];
   const ref = `${g.date.slice(0, 4)}-01-01`;

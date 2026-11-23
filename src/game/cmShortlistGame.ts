@@ -27,7 +27,7 @@ import { type CmCtx, type CmMem, G, getContract, clubAt, SparseMem } from './cmM
 import { holidayOpt_5fea50 } from './cmHoliday';
 import { buildSlWantMem, resetSlBase, slMemPages, SLMEM_DEFER, type SlWantState } from './cmSlMem';
 import { buildWantMem, type WantMem } from './cmContractGame';
-import { cmMarketOn, cmRand, clubRepMem, nationRepMem, staffJoined } from './cmPlayerData';
+import { cmGenerated, cmMarketOn, cmRand, clubRepMem, nationRepMem, staffJoined } from './cmPlayerData';
 import { cmGbp, payClub } from './cmMoney';
 import { slCall } from './cmShortlist';
 import { playerValue_4d0c60, knowsNation_53d980, seenRep_5407e0, knowledge_5408c0, judge_6e86d0, JUDGE_HI, euCitizen_53d740, keyMemForget } from './cmValue';
@@ -708,9 +708,11 @@ function playerBase(S: SlMem, p: Player, mid: number): PlBase {
   let rec = C.rec.get(p.id);
   if (!rec) { rec = playerRecord(p); C.rec.set(p.id, rec); }
   const pClub = p.loan ? p.loan.from : p.club;
+  // 0x6e85c5 "ægte" = staff-id < [0xae2364]: 0x7abac0's regens har den pensioneredes post og er ægte (cmGenerated) – før 23/11 !p.regen, så
+  // klubløse regens fik −30 og ingen form-/karakterblokke, og næsten ingen klub skrev under med dem (K7c: 1/17/12 mod oraklets 8/84/50)
   B = {
     id: p.id, nation: p.nation, nation2: p.cmNation2, rel: p.cmRel,
-    real: !p.regen, age: PL.age, joined: PL.joined, rec, today: D.today, yearAgo: D.yearAgo,
+    real: !cmGenerated(g, p), age: PL.age, joined: PL.joined, rec, today: D.today, yearAgo: D.yearAgo,
     nationRep: nationRepMem(g, p.nation), british: BRITISH.has(g.nations[p.nation]?.code ?? ''), caps: p.caps, b56: sh(p, 'adaptability'),
     pClub, pClubNation: g.clubs[pClub]?.nation ?? -1, stClubRep: clubRepMem(g, pClub), daysNoClub: pClub ? 0 : Math.max(0, dayNum(g.date) - dayNum(staffJoined(p) ?? g.date)),
     pLang: PL.pLang, langs: PL.langs, cc: !!p.cmContract, injV: undefined, rdC: null, rdN: null,
@@ -789,7 +791,7 @@ function planValue0(S: SlMem, st: number, mask: number, flags: number, clubAdr: 
   let rec = S.cache.rec.get(p.id);
   if (!rec) { rec = playerRecord(p); S.cache.rec.set(p.id, rec); }
   return planScore({
-    id: p.id, real: !p.regen, age, joined, rec, pos: mask & 0xffff, flags, thr,
+    id: p.id, real: !cmGenerated(g, p), age, joined, rec, pos: mask & 0xffff, flags, thr,
     hasClub: !!clubAdr, atClub: pClub === cid, stHasClub: pClub > 0, sameNationClub: !!club && (g.clubs[pClub]?.nation ?? -1) === club.nation,
     mgrJoined: null, today, yearAgo,
     nationRep: nationRepMem(g, p.nation), british: BRITISH.has(g.nations[p.nation]?.code ?? ''), caps: p.caps, b56: sh(p, 'adaptability'),

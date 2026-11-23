@@ -28,7 +28,7 @@ import type { GameState, MatchReport, Player } from './types';
 import { ageOn, addDays } from './dates';
 import { asOwner, forEachHuman, isHumanClub } from './humans';
 import { addNews } from './state';
-import { cmRand, clubRepMem, clubDivRep, nationRepMem, staffJoined } from './cmPlayerData';
+import { cmGenerated, cmRand, clubRepMem, clubDivRep, nationRepMem, staffJoined } from './cmPlayerData';
 import { aiPickCtx, playerRecord, roleDataOf } from './engine/grid/aiTeam';
 import { roleScore } from './engine/grid/roleScore';
 import { assignSquad } from './engine/grid/pickTeam';
@@ -246,7 +246,7 @@ export function selectSquad(g: GameState, n: number, slot: SquadSlot, f: SelFixt
       const age = ageOn(p.dob, date);
       const d = roleDataOf(p, ctx as Parameters<typeof roleDataOf>[1], age);
       v = roleScore({
-        id: p.id, age, atClub: false, joined: dayOf(staffJoined(p) ?? date), realPlayer: !p.regen, rec: recs[i], pos: masks[j], att: 0, lo: 0, hi: 0, tb: 0, tf: 0,
+        id: p.id, age, atClub: false, joined: dayOf(staffJoined(p) ?? date), realPlayer: !cmGenerated(g, p), rec: recs[i], pos: masks[j], att: 0, lo: 0, hi: 0, tb: 0, tf: 0,
         flags, mgrJoined: null, today, yearAgo, captain: false, setPiece: 0, nationRep: nationRepMem(g, p.nation),
         data: { ...d, contract: null },
         tail: { caps: p.caps ?? 0, hasClub: !!p.club, leagueRep: clubDivRep(g, p.club) },

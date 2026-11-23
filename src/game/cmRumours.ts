@@ -54,7 +54,7 @@ import type { GameState, Player } from './types';
 import { ATTRS, naturalRole } from './attributes';
 import { addNews, squad } from './state';
 import { forEachHuman, isHumanClub } from './humans';
-import { cmMediaOn, cmAdjustMorale, cmContractOf, cmFlagSet, cmRand, curRep, wantsToLeave, withFlagCtx } from './cmPlayerData';
+import { cmGenerated, cmMediaOn, cmAdjustMorale, cmContractOf, cmFlagSet, cmRand, curRep, wantsToLeave, withFlagCtx } from './cmPlayerData';
 import { addDisPerson, clubDislikes, clubFavours, managerStaff, personKey } from './cmRelations';
 import { newRec } from './cmBoard';
 import { askingPrice, windowOpen } from './transfers';
@@ -125,7 +125,7 @@ export function cmRumourAnswerEffects(g: GameState, p: Player, club: number, ans
   const c = g.clubs[club];
   if (!c || p.club !== club || !p.contract) return;
   const key = personKey(p);
-  const mates = squad(club).slice(0, 50).filter((q) => !q.regen && !q.virtual);
+  const mates = squad(club).slice(0, 50).filter((q) => !cmGenerated(g, q));
   const mgr = managerStaff(g, club);
   const meFavours = (q: Player) => !!q.cmRel && [6, 7, 8].some((i) => q.cmRel![i] === key);
   const meDislikes = (q: Player) => !!q.cmRel && [9, 10, 11].some((i) => q.cmRel![i] === key);

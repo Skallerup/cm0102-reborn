@@ -1446,6 +1446,8 @@ export interface GameState {
   /** (cmRegen.ts) PLAYER_REGEN's pulje af de pensionerede spilleres poster (+0x3c, FIFO) og regen-køen (+0x10: forfaldsdag, person) */
   cmRegenPool?: RegenSeed[];
   cmRegenQ?: import('./cmRegen').CmRegenQ[];
+  /** PLAYER_REGEN 0x7acfc0's klublister pr. land (bygget ved spilstarten, cmRegen.ts cmRegenListsInit) */
+  cmRegenLists?: Record<number, number[]>;
   /** (den originale database i ægte tilstand) PLAYER_REGEN's pensioneringsliste (cmRetire.ts) */
   cmRet?: import('./cmRetire').CmRetState;
   /** (den originale database i ægte tilstand) de gennemførte pensioneringer: [dato, alder, årsag, klubben (0 klubløs), nationalitet] */

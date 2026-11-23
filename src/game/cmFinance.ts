@@ -229,7 +229,10 @@ export function cmClubDataFill_829960(g: GameState, world: CMWorld, seed: number
     const cid = +k;
     const rand = cmRand(seed, cid, 0x829960);
     let rep = (g.cmClubRep[cid] << 16) >> 16;
-    if (rep <= 0) { rep = rand(4000) + 1; g.cmClubRep[cid] = rep; }
+    // 0x82996a: `inc al; movsx cx, al` – kun den lave byte, med fortegn (−128..127). Oraklet 14/7-01: alle databasens klubber med omdømme 0 har
+    // små tal (fx Alfreton Town, Guiseley, Lancaster City +0x80 = 1, tilskuertal 250/75) – før 23/11 rand(4000) + 1 (Alfreton 2997, 4491 tilskuere),
+    // og Englands regen-liste 0x7acfc0 (indlæste lande: kun +0x80 ≤ 2) var tom, så walisiske/irske regens blev klubløse
+    if (rep <= 0) { rep = ((rand(4000) + 1) << 24) >> 24; g.cmClubRep[cid] = rep; }
     const r2 = rep * rep;
     if (cr[0] <= 0) cr[0] = Math.max(Math.trunc(r2 / 2000), 250);
     if (cr[1] <= 0) cr[1] = Math.max(Math.trunc(r2 / 10000), 75);
