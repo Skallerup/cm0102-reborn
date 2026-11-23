@@ -51,6 +51,7 @@ import { onGameSwitch } from './state';
 import { ageOn } from './dates';
 import { ATTRS } from './attributes';
 import { workPermitGranted, cmLoanRulesOk } from './rules2001';
+import { cmCanSign } from './cmOfferCheck';
 import { cmLoanPeriod } from './cmLoan';
 import { cmFitRead } from './cmFitnessGame';
 import { aiPickCtx, roleDataOf, playerRecord } from './engine/grid/aiTeam';
@@ -1652,7 +1653,19 @@ export function buildSlMem(g: GameState, opts: { noStale?: boolean; resume?: SlR
         if (!slCall(S.M.c, 0x8ce990, m.u32(0xde1f54), st, cp, why, 0)) return 0;
         return cmLoanRulesOk(cl, g.clubs[m.s32(k + 4)]) ? 1 : 0;
       }
-      case 0x8ced40: return 1;
+      case 0x8ced40: {
+        // TRANSFER_MANAGER 0x8ced40(køber, &dato, staff, kontraktklub, 1, &grund): køberlandets can_sign_player 0x8e8560 på datoen (cmOfferCheck.ts
+        // cmCanSign – udlændinge 0x14, uden for EU 0x15, vinduet 9). build_bid 0x8e766c: grund 9 → tidsnibblen 0 → 1 / 3 → 4 (handlen venter på
+        // vinduet), en anden grund → intet bud; 0x84a438: en anden grund end 9 → straf. Før svarede den altid 1 (i orden).
+        const n = a.length, cp = a[n - 6] >>> 0, dp = a[n - 5] >>> 0, st = a[n - 4] >>> 0, why = a[n - 1] >>> 0;
+        if (why) m.w16(why, 0);
+        const cl = g.clubs[m.s32(cp)], p = S.byMem.get(m.s32(st));
+        if (!cl || !p || !dp) return 1;
+        const r = cmCanSign(g, cl, p, isoOf(m.s16(dp), m.u16(dp + 2)));
+        if (!r) return 1;
+        if (why) m.w16(why, r);
+        return 0;
+      }
       case 0x8be300: {
         // TRANSFER_MANAGER::add_transfer_offer (offer, …): spillets bud; indekset = bud-id'et
         const r = a[a.length - 2] >>> 0;
@@ -1882,15 +1895,18 @@ function addBid(S: SlMem, r: number, loan: boolean, lt?: { until: string; share:
   // forkontrakterne blev til bud på £0, som sælgeren afviste.
   const free7 = !loan && m.u8(r + 0x2f) !== 0;
   let f7 = {};
+  // build_bid's tidsnibble (+0x30 & 0xf) og kontraktens udløb (+0x2d) – for alle køb hos en klub (get_offer_completion_date 0x8cee70: 1 = når
+  // vinduet åbner (0x8ced40 svarede grund 9), 3/4 = forkontrakt, 5 = kompensation); før kun for kontrakttilbuddene (+0x2f)
+  const tmN = m.u8(r + 0x30) & 0xf;
+  const until = k && (tmN === 3 || tmN === 4) ? isoOf(m.s16(k + 0x2d), m.u16(k + 0x2f)) : undefined;
+  const tmx = !loan && k ? { tm: tmN, ...(until ? { until } : {}) } : {};
   if (free7) {
     const rr = cmRand(g.seed ?? 0, p.id, buyer, dayNum(g.date), 0x4cd230); const dd = rr(5) + 1;
-    const tmN = m.u8(r + 0x30) & 0xf;
-    const until = k && (tmN === 3 || tmN === 4) ? isoOf(m.s16(k + 0x2d), m.u16(k + 0x2f)) : undefined;
-    f7 = { free7: true, dd, bl: days, r4: rr(2) + 4, ...(k ? { tm: tmN } : {}), ...(until ? { until } : {}) };
+    f7 = { free7: true, dd, bl: days, r4: rr(2) + 4 };
   }
   S.events.push({ kind: 'bid', id, buyer, player: p.id, fee: loan ? 0 : eur(m.s32(r + 0x1b)), loan: loan || m.u8(r + 0x1f) === 1,
     months: Math.max(0, s8(m.u8(r + 0x40))), sellOn: Math.max(0, s8(m.u8(r + 0x3f))), lgFee: eur(m.s32(r + 0x35)), lgApps: m.u8(r + 0x39) || 10,
-    intFee: eur(m.s32(r + 0x3a)), intApps: m.u8(r + 0x3e) || 10, pub: m.u8(r + 0x2d), max: maxOf(S, buyer, p), days, ...(lt ? { loanUntil: lt.until, loanShare: lt.share } : {}), ...f7 });
+    intFee: eur(m.s32(r + 0x3a)), intApps: m.u8(r + 0x3e) || 10, pub: m.u8(r + 0x2d), max: maxOf(S, buyer, p), days, ...(lt ? { loanUntil: lt.until, loanShare: lt.share } : {}), ...tmx, ...f7 });
   return id;
 }
 

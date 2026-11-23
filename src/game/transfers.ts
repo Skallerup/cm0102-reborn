@@ -27,7 +27,7 @@ import { cmCmOn, cmCmScope } from './cmContractManager';
 import { cmAcceptBid, cmOfferContract, cmSwapAccept, cmSwapDaily, cmSwapOn, cmTalksDaily, cmTalksOn, cmTalksOpen, offerTerms } from './cmTransferTalks';
 import { cmLoanRefuses } from './cmLoan';
 import { cmBuildBid } from './cmAiBid';
-import { cmAiRulesBlock, cmWindowOpen } from './cmOfferCheck';
+import { cmAiRulesBlock, cmAiRulesReason, cmCompletionDate, cmWindowOpen } from './cmOfferCheck';
 import { cmRumourAdd } from './cmRumours';
 import { cmAskingPrice, cmExchangeCheck, cmInterestedClubs, cmLoanAnswerNow, cmLoanDelayNow, cmMovedToClub, cmShortlistOn, cmSlMoved, setSlApply, setSlDue, type SlDueCtx, type SlEvent } from './cmShortlistGame';
 import { ADDON_APPS, bidClauseWorth, cleanClauses, clauseWorth, defaultRelease, settleSellOn } from './clauses';
@@ -877,7 +877,8 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
   // en udlejet, der sælges (computerens ønskelister – cmShortlistApply): lejekontrakten ophører med handlen
   if (!o.loan && p.loan) { noteLoanEnd(p.club); p.loan = null; }
   // 0x8c9720 @0x8c9984: kontrakttilbud med sum 0 og tidsnibble 3/4 (forkontrakten – add_future_transfer 0x8cb9a0) → historikkens art 4
-  recordMove(p, buyer.id, o.fee, o.loan, false, !o.loan && !o.fee && !!o.cmFut);
+  // historikkens art 4 (0x8c9996): kontrakttilbud uden beløb med tidsnibble 3/4 (forkontrakten) – gennemført i dag eller på den aftalte dato
+  recordMove(p, buyer.id, o.fee, o.loan, false, !o.loan && !o.fee && (o.cmTime === 3 || o.cmTime === 4));
   // fansene reagerer på stjernesalg og -køb
   if (!o.loan && seller) fansOnDeparture(p, seller, 'sold', o.fee);
   // 0x8c9720/0x8c9390: ønskelisternes del af skiftet (før staff +0x39 skifter) – pladsen med ham bliver hans, budmærkerne ryddes
@@ -1155,8 +1156,9 @@ export function processOffers() {
       o.status = 'withdrawn';
     }
   }
-  // ryd gamle tilbud
-  if (g.offers.length > 120) g.offers = g.offers.filter((o) => ['pending', 'negotiating', 'countered'].includes(o.status) || o.created > addDays(g.date, -60));
+  // ryd gamle tilbud – men ikke de aftalte fremtidige skifter (add_future_transfer 0x8cb9a0, tilstand 0x13: de lever til datoen, 0x8cbbe0). Før
+  // røg forkontrakterne, der var aftalt mere end 60 dage før, når listen havde over 120 bud (oraklet: 147 forkontrakter venter 20/4-02, vi 9)
+  if (g.offers.length > 120) g.offers = g.offers.filter((o) => ['pending', 'negotiating', 'countered'].includes(o.status) || cmFutOpen(o) || o.created > addDays(g.date, -60));
 }
 
 
@@ -1973,9 +1975,11 @@ export function cmShortlistApply(events: SlEvent[]) {
     }
     o.cmAi = true;
     o.respondBy = addDays(g.date, e.days ?? 0);
+    // build_bid's tidsnibble +0x30 (0x8cee70) og kontraktens udløb – alle køb hos en klub (ikke kun forkontrakterne)
+    if (p.club && !e.loan && e.tm !== undefined) { o.cmTime = e.tm; if (e.until) o.cmUntil = e.until; }
     // (K7c #3) også en spiller med kontrakt hos en computerklub (forkontrakt/Bosman, 0x8be81e: +0x2f → tilstand 7) – ingen sælger svarer
     if (e.free7 && e.k && (!p.club || !isHumanClub(p.club))) {
-      if (p.club) { CM_AIAI.pre++; o.cmTime = e.tm ?? 0; if (e.until) o.cmUntil = e.until; }
+      if (p.club) CM_AIAI.pre++;
       // build_bid 0x8e5d60 til en klubløs: buddet får tilstand 7 (0x8be857 – ingen accept_transfer_bid 0x8c0080, ingen vilje-kontrol), og
       // 0x84a75c tilbyder build_bid's kontrakt straks (add_contract_offer 0x4cc490). Beslutningen 0x4cd230: personens post (eksisterende,
       // ellers i dag + rand(5) + 1) trækkes frem til 0x8cc5b0's svartid, højst 14 dage; +0x2f: under 4 dage frem → i dag + rand(2) + 4.
@@ -2150,12 +2154,13 @@ function cmAiAiDue(cx: SlDueCtx) {
     }
     // accepteret, og spilleren har besluttet sig: handlen (køberen skal stadig have råd – rater: kun første rate)
     if (!o.loan && !(o.months && o.months > 0) && buyer.transferBudget < o.fee) { cmTmClose(o, 0x10, 20, 'collapsed'); closed = true; continue; }
-    // (K7c #3) tilstand 7 med sælger (forkontrakt): handle_player_accepted_terms 0x8c2180 → advance_offer_to_club_approval 0x8c2f50 →
-    // confirm_offer_by_club 0x8c3310: tidsnibblen ≠ 0 → get_offer_completion_date 0x8cee70 (4/3: kontraktens udløb, hvis det ikke er nået; 1:
-    // i dag). Senere end i dag → de andre bud falder (0x8c47d0) og add_future_transfer 0x8cb9a0 (tilstand 0x13): skiftet sker på datoen
-    // (0x8cbbe0 – cmFutureDue). Landenes TRANSFER_RULES +0xc (0x8cf0e0's dag-for-dag-søgning) og 5 (0x8d0bb0, vinduet) er ikke porteret.
-    if (o.seller && o.cmK && o.cmTime !== undefined) {
-      const date = (o.cmTime === 4 || o.cmTime === 3) && o.cmUntil && o.cmUntil > g.date ? o.cmUntil : g.date;
+    // (K7c #3) med sælger (køb og forkontrakt): handle_player_accepted_terms 0x8c2180 → advance_offer_to_club_approval 0x8c2f50 →
+    // confirm_offer_by_club 0x8c3310: tidsnibblen ≠ 0 → get_offer_completion_date 0x8cee70 (cmOfferCheck.ts cmCompletionDate – 1/4: første dag
+    // i købers vindue fra i dag/kontraktens udløb, 0x8cf0e0; 3: dagen efter udløbet; 5: 0x8d0bb0). Senere end i dag → de andre bud falder
+    // (0x8c47d0) og add_future_transfer 0x8cb9a0 (tilstand 0x13): skiftet sker på datoen (0x8cbbe0 – cmFutureDue). Et køb i det lukkede
+    // vindue (build_bid: 0x8ced40 grund 9 → nibble 1) gennemføres altså, når vinduet åbner – oraklets spids 4/6-02, 3/6-03, 1/6-04.
+    if (o.seller && o.cmK && o.cmTime) {
+      const date = cmCompletionDate(g, o);
       if (date > g.date) {
         CM_AIAI.preFut++;
         cmTmCollapseOthers(o);
@@ -2198,7 +2203,7 @@ function cmAiAiDue(cx: SlDueCtx) {
 const cmFutOpen = (o: TransferOffer) => o.status === 'accepted' && !!o.cmFut;
 /** TRANSFER_MANAGER::process_due_future_transfers 0x8cbbe0 (fra daily_update 0x8c5880 efter buddene): de aftalte skifter, hvis dato er kommet –
  *  arbejdstilladelsen (0x8c7690 – completeTransfer) og handlen 0x8c9390 (beløb 0, art 4 – 0x8c9996); buddet får tilstand 0x14 (10 dage).
- *  Er han ikke længere i sælgerens klub, eller er skiftet væk, falder buddet. check_offer_restrictions 0x8cfc90 er ikke porteret. */
+ *  Er han ikke længere i sælgerens klub, eller er skiftet væk, falder buddet; ellers check_offer_restrictions 0x8cfc90 (grund 9 tæller ikke). */
 function cmFutureDue(): boolean {
   const g = gs();
   let any = false;
@@ -2208,6 +2213,8 @@ function cmFutureDue(): boolean {
     const p = g.players[o.player], buyer = g.clubs[o.buyer];
     if (p?.contract?.futureClub === o.buyer) p.contract.futureClub = undefined;
     if (!p || !buyer || p.club !== o.seller || p.loan || isHumanClub(o.buyer)) { o.status = 'collapsed'; cmTmClose(o, 0x10, 20); continue; }
+    // 0x8cbcce/0x8cbdc8: check_offer_restrictions 0x8cfc90 for køberen og kontraktens klub – svar ≠ 0 med en anden grund end 9 → 0x8c44e0
+    if (cmAiRulesReason(g, o, true)) { CM_AIAI.rules++; o.status = 'collapsed'; cmTmClose(o, 0x10, 20); continue; }
     o.status = 'negotiating';
     CM_AIAI.preDone++;
     if (completeTransfer(o, wageDemand(p, buyer), preferredYears(p))) { o.status = 'completed'; cmTmClose(o, 0x14, 10); }

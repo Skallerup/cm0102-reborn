@@ -178,16 +178,20 @@ describe('accepteret bud → Offer Contract (3.9.60, ægte tilstand)', { timeout
     }
   });
 
-  it('transfervinduerne 2001/02 (0x8e8c40): England 2/6 (mandag) – 26/3 (torsdag), vindue uden for = grund 9, Danmark altid åbent', () => {
+  it('transfervinduerne 2001/02 (0x8e8c40): England 2/6 (nærmeste tirsdag) – 26/3 (nærmeste fredag), vindue uden for = grund 9, Danmark altid åbent', () => {
     const g = gs();
     const eng = CM_WINDOWS.England[0];
+    // 0x54a2d0: ugedag 0 = mandag, datoen flyttes til den nærmeste dag med ugedagen (±3) – oraklets spids af handler 4/6-02, 3/6-03, 1/6-04
     expect(cmInWindow(eng, '2001-07-14')).toBe(true);
-    expect(cmInWindow(eng, '2002-03-27')).toBe(true);   // 26/3 2002 er tirsdag → torsdag 28/3
-    expect(cmInWindow(eng, '2002-03-28')).toBe(true);
-    expect(cmInWindow(eng, '2002-03-29')).toBe(false);
+    expect(cmInWindow(eng, '2002-03-29')).toBe(true);   // 26/3 2002 er tirsdag → fredag 29/3
+    expect(cmInWindow(eng, '2002-03-30')).toBe(false);
     expect(cmInWindow(eng, '2002-05-15')).toBe(false);
-    expect(cmInWindow(eng, '2001-06-03')).toBe(false);   // 2/6 2001 er lørdag → mandag 4/6
-    expect(cmInWindow(eng, '2001-06-04')).toBe(true);
+    expect(cmInWindow(eng, '2001-06-04')).toBe(false);   // 2/6 2001 er lørdag → tirsdag 5/6
+    expect(cmInWindow(eng, '2001-06-05')).toBe(true);
+    expect(cmInWindow(eng, '2002-06-03')).toBe(false);   // søndag 2/6 → tirsdag 4/6
+    expect(cmInWindow(eng, '2002-06-04')).toBe(true);
+    expect(cmInWindow(eng, '2004-05-31')).toBe(false);   // onsdag 2/6 → tirsdag 1/6
+    expect(cmInWindow(eng, '2004-06-01')).toBe(true);
     const mc = g.clubs[mu];
     expect(cmWindowOpen(g, mc, '2002-04-10')).toBe(false);
     const nation = mc.nation;
