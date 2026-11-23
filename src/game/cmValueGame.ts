@@ -19,7 +19,7 @@ import { buildWantMem, type WantMem } from './cmContractGame';
 import { playerValue_4d0c60, seenRep_5407e0, judge_6e86d0 } from './cmValue';
 import { hasActiveReleaseClause_867b50 } from './cmContractWant';
 import { clubAt, getContract } from './cmMem';
-import { humanClub_600a50 } from './cmWageGame';
+import { humanClub_600a50, writeHumanMgr } from './cmWageGame';
 import { cmActive, cmLogic } from './cmPlayerData';
 import { isHumanClub } from './humans';
 import { cmGbp } from './cmMoney';
@@ -29,8 +29,6 @@ import { cmGbp } from './cmMoney';
 export const cmValueOn = (g: GameState): boolean => cmActive(g) || (cmLogic(g) && !g.draft && g.cmCmMgr === 1);
 /** CM_VALUE_MGR=sel (målinger mod oraklet, databasestørrelse 2): kun de valgte landes managere er i hukommelsen (Staff.cmMem er Maximum's) */
 const MGR_SEL = typeof process !== 'undefined' && process.env?.CM_VALUE_MGR === 'sel';
-/** menneskets managers ikke-spillerpost +0x00..+0x22 i oraklet (14/7-2001: CA 3, PA 151, omdømmet 4410/5282/4582, de 21 egenskaber fra +0x0e) */
-const HUMAN_NP = [183, 8, 0, 0, 3, 0, 151, 0, 58, 17, 162, 20, 230, 17, 1, 8, 246, 241, 4, 10, 9, 9, 2, 241, 10, 10, 11, 251, 3, 3, 246, 10, 3, 246, 4];
 const HUMAN_NP_ADR = 0x67f00000;
 
 /** stabile id'er til 0x6e86d0's spredning pr. hukommelse: personpost → id (spillerne: Player.id; managerne: 500.000 + Staff.id; menneskets
@@ -52,9 +50,7 @@ export function cmValueMem(g: GameState, clubs: Iterable<number>): WantMem {
     const mg = m.u32(a + 0xcf);
     if (!mg) continue;
     if (isHumanClub(+cid)) {
-      const np = HUMAN_NP_ADR + 0x40 * hn++;
-      HUMAN_NP.forEach((v, k) => m.w8(np + k, v));
-      m.w32(mg + 0x39, a); m.w32(mg + 0x1a, M.W.natOf(g.manager.nation)); m.w8(mg + 0x3d, 5); m.w32(mg + 0x69, np);
+      writeHumanMgr(m, mg, a, M.W.natOf(g.manager.nation), HUMAN_NP_ADR + 0x40 * hn++);
       ids.set(mg, 499_999);
     } else if (g.cmStaffMem && (!g.staff[g.clubs[+cid].manager ?? -1]?.cmMem || (MGR_SEL && !g.activeNations?.includes(g.clubs[+cid].nation)))) m.w32(a + 0xcf, 0);
     else ids.set(mg, 500_000 + (g.clubs[+cid].manager ?? 0));

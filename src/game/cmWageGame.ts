@@ -20,7 +20,7 @@
 // *Estimeret*: ingen relationer (+0x65 – formandens yndlingsspillere), lejede spillere regnes i moderklubben (spillets lejemodel), menneskets
 // manager uden ikke-spillerpost, ferietjekket 0x5fe040 i 0x600a50 ikke porteret.
 import type { Club, GameState, Player } from './types';
-import { type CmCtx, G, SparseMem, cmAfter2330 } from './cmMem';
+import { type CmCtx, type CmMem, G, SparseMem, cmAfter2330 } from './cmMem';
 import { holidayOpt_5fea50, onHoliday_5fd210, writeHolidayMem } from './cmHoliday';
 import { getMaxWage_5968d0, maxStaffWage_597db0, recalcWages_598370 } from './cmMaxWage';
 import { clubInSeason_669bd0, linkedClub_540a50 } from './cmClubLinks';
@@ -46,6 +46,16 @@ export function humanClub_600a50(c: CmCtx, club: number, ignoreHoliday = 1): boo
   if (!mg || m.s32(mg) < m.s32(G.STAFF_COUNT) - 16) return false;
   // 0x600ab8–0x600b81 (andet argument 0): på ferie (HM +0x9a01, cmHoliday.ts) styrer assistenten – klubben regnes ikke som menneskets
   return !(ignoreHoliday === 0 && onHoliday_5fd210(m, mg, m.s32(G.STAFF_COUNT)));
+}
+
+/** menneskets managers ikke-spillerpost +0x00..+0x22 i oraklet (14/7-2001: CA 3, PA 151, omdømmet 4410/5282/4582, de 21 egenskaber fra +0x0e) */
+export const HUMAN_NP = [183, 8, 0, 0, 3, 0, 151, 0, 58, 17, 162, 20, 230, 17, 1, 8, 246, 241, 4, 10, 9, 9, 2, 241, 10, 10, 11, 251, 3, 3, 246, 10, 3, 246, 4];
+/** Menneskets managerpost mg (en af de 16 sidste personer): klub +0x39, nation +0x1a, job +0x3d = 5 og ikke-spillerposten +0x69 (HUMAN_NP ved
+ *  `np`) som i originalen. Managerens bedømmelse 0x6e86d0 (via 0x4d0c60/0x4d1600) af menneskets spillere læser posten – uden den vurderes de
+ *  unge spillere til en brøkdel af værdien (Pennant £188K mod £2,36M). */
+export function writeHumanMgr(m: CmMem, mg: number, club: number, nat: number, np: number): void {
+  HUMAN_NP.forEach((v, k) => m.w8(np + k, v));
+  m.w32(mg + 0x39, club); m.w32(mg + 0x1a, nat); m.w8(mg + 0x3d, 5); m.w32(mg + 0x69, np);
 }
 
 /** c.call for lønportene */

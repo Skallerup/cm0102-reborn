@@ -7,6 +7,9 @@ import { cmBuildBid } from '../src/game/cmAiBid';
 import { aiBidsForListed } from '../src/game/transfers';
 import { addDays } from '../src/game/dates';
 import { toGbp } from '../src/game/cmTransferBid';
+import { buildSlMem } from '../src/game/cmShortlistGame';
+import { playerValue_4d0c60 } from '../src/game/cmValue';
+import { clubAt, getContract } from '../src/game/cmMem';
 
 describe('computerens bud: build_bid 0x8e5d60 (3.9.60, ægte tilstand)', { timeout: 900_000 }, () => {
   const world = JSON.parse(readFileSync('public/data/world-original.json', 'utf8')) as WorldData;
@@ -33,6 +36,25 @@ describe('computerens bud: build_bid 0x8e5d60 (3.9.60, ægte tilstand)', { timeo
     }
     expect(built).toBeGreaterThan(20);
     expect(rates).toBeGreaterThan(0);
+  });
+
+  it('menneskets manager står i ønskelisternes hukommelse med sin post: 0x4d0c60 for hans spillere = den viste værdi (ejeren 23/11: lave bud)', () => {
+    const g = gs();
+    const S = buildSlMem(g, { noStale: true });
+    const m = S.M.c.m, mg = m.u32(S.M.W.clubOf(mu) + 0xcf);
+    expect(m.u8(mg + 0x3d)).toBe(5);
+    expect(m.u32(mg + 0x69)).not.toBe(0);
+    const rs: number[] = [];
+    for (const p of squad(mu)) {
+      const st = S.M.W.staffOf(p); if (!st) continue;
+      const k = getContract(m, st), cl = k ? clubAt(m, m.s32(k + 4)) : 0;
+      if (!cl) continue;
+      rs.push((playerValue_4d0c60(S.M.c, st, cl, 0, -1, 1) | 0) / toGbp(p.value));
+    }
+    rs.sort((a, b) => a - b);
+    // uden posten: de unge spillere til 5–20 % af værdien (Pennant £188K mod £2,36M), snit 0,53
+    expect(rs[Math.floor(rs.length * 0.1)]).toBeGreaterThan(0.7);
+    expect(rs[Math.floor(rs.length / 2)]).toBeGreaterThan(0.9);
   });
 
   it('et bud på menneskets spiller kommer fra build_bid (beløbet er ikke længere værdien) og kan bære vilkårene', () => {
