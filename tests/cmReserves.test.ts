@@ -78,7 +78,9 @@ describe('baggrundskampene som CM 01/02 (original DB, ægte tilstand)', () => {
     expect(minReal).toBeGreaterThan(1000);
     // (21/11) ikke en nedre grænse pr. klub: udtagelsen stiller også fyldspillere, når der er rigtige spillere (fx Racing de Andorra 5 af 14) – med
     // 0x5267c0's klubber med 1–5 spillere (Englands non-league) ligger tallet lige under summen
-    expect(withStats.length).toBeGreaterThanOrEqual(Math.floor(minReal * 0.95));
+    // (23/11) 0,94: spilstartens omdømme for spillere uden CA i databasen følger nu 0x536270 (rå CA < 1 → rand(di) + 1, oftest 1 – fordelingen som
+    // oraklets 14/7-01), og udtagelsens rollevurdering (roleScore.ts, spillerposten +0xb) vurderer de unge lavere, så lidt flere fyldspillere stilles
+    expect(withStats.length).toBeGreaterThanOrEqual(Math.floor(minReal * 0.94));
     expect(Object.values(g.players).filter((p) => p.virtual).length).toBeLessThanOrEqual(virt0);   // 0x90d6b0 efter hver kamp
     // ingen kampindtægt (FinanceTable 0x59a5d0 kaldes ikke) – kun bonusser kan trække penge
     for (const c of pool) expect(g.clubs[c].balance).toBeLessThanOrEqual(before[c]);
