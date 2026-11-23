@@ -620,7 +620,7 @@ export function cmApplyPost(g: GameState, f: Fixture, rep: MatchReport, world200
   if (!post) return;
   for (const [id, v] of Object.entries(post.players)) {
     const p = g.players[+id]; if (!p) continue;
-    if (world2001) p.morale = v.morale;
+    if (world2001) { moraleTap.f?.(p, p.morale, v.morale, 'post'); p.morale = v.morale; }
     p.cmRepMem = [repMemOf(v.rep[0]), repMemOf(v.rep[1]), repMemOf(v.rep[2])];
   }
   // 0x6b6cc0: managerens omdømme (og en fjerdedel til assistenten og trænerne) FØR klubbens omdømme
@@ -877,6 +877,8 @@ export function cmContractDaily(g: GameState, squadOf: (club: number) => Player[
 
 // ---------------------------------------------------------------- moralen (spillerposten +0x45) – runde 10A
 
+/** målinger (scripts): hver moralændring af 0x544710 (cmAdjustMorale) og kamprapportens (cmApplyPost) – før/efter */
+export const moraleTap: { f?: (p: Player, before: number, after: number, src: 'adj' | 'post') => void } = {};
 /** MORALE_OFF: til målinger – den daglige moral (0x5cf4c8) slået fra (spillets egen glidning mod 13 bruges så heller ikke) */
 export let MORALE_OFF = false;
 export const setMoraleOff = (v: boolean) => { MORALE_OFF = v; };
@@ -896,6 +898,7 @@ export function cmAdjustMorale(p: Player, d: number, flag: boolean, rand: (n: nu
   } else v = s8(m + d);
   v = v < 1 ? 1 : v > 0x14 ? 0x14 : v;
   if (flag && d > 0 && (p.cmContract?.b45 ?? 0) !== 0 && v >= m) v = m;
+  moraleTap.f?.(p, m, v, 'adj');
   p.morale = v;
   return v !== m;
 }
