@@ -1,13 +1,15 @@
 // Kontrol (22/11): spilstarten i trin – hvert trin i sin egen arbejder (ui/newGameWorker.ts, startGame.ts newGameStages) – giver bit for bit det
 // samme spil som createGame i ét forløb: spillets sha efter oprettelsen og efter N dage (spillet fortsat i en frisk arbejder som hovedtråden).
-// Brug: npx tsx scripts/newgame-phases-check.ts [world-fil] [land=England] [dage=2] [preview=0] [portioner=0]
+// Brug: npx tsx scripts/newgame-phases-check.ts [world-fil] [land=England] [dage=2] [preview=0] [portioner=0] [json=0]
 // (portioner = n > 0: ønskelisternes klubløkke i n arbejdere – 'shortlists:k/n', cmShortlistGame.ts cmShortlistStartPart)
 import { Worker } from 'node:worker_threads';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import type { WorldData } from '../src/game/newgame';
 
-const [file = 'public/data/world-original.json', nat = 'England', daysS = '2', previewS = '0', partsS = '0'] = process.argv.slice(2);
+const [file = 'public/data/world-original.json', nat = 'England', daysS = '2', previewS = '0', partsS = '0', jsonS = '0'] = process.argv.slice(2);
+// json = 1 (dagenes fingeraftryk med sorterede felter): det sidste trin sender spillet som det gemte spils gzip-bytes (ui/newGameWorker.ts fra 23/11), hovedtråden pakker det ud
+const json = jsonS === '1';
 const parts = Number(partsS);
 const days = Number(daysS), preview = previewS === '1';
 const w0 = JSON.parse(readFileSync(file, 'utf8')) as WorldData;
@@ -31,15 +33,16 @@ const noId = (g: any) => ({ ...g, id: 0 });
 
 const all = await run({ kind: 'all', file, opts }, {});
 const allSha = shaGame(all.game);
-const allDays = (await run({ kind: 'continue', days }, { game: all.game })).days;
+const allDays = (await run({ kind: 'continue', days, canon: json }, { game: all.game })).days;
 console.log(`ét forløb:  ${allSha}  ${allDays.join('  ')}`);
 
 const stages: string[][] = preview ? [['base'], ['fitness'], ['plan', 'shortlists', 'rest']] : !parts ? [['base'], ['fitness'], ['plan'], ['shortlists', 'rest']]
   : [['base'], ['fitness'], ['plan'], ...Array.from({ length: parts }, (_, k) => (k === parts - 1 ? [`shortlists:${k}/${parts}`, 'rest'] : [`shortlists:${k}/${parts}`]))];
 let h: any = {};
-for (let i = 0; i < stages.length; i++) h = await run({ kind: 'phases', phases: stages[i], file: i === 0 ? file : undefined, opts, last: i === stages.length - 1 }, h);
+for (let i = 0; i < stages.length; i++) h = await run({ kind: 'phases', phases: stages[i], file: i === 0 ? file : undefined, opts, last: i === stages.length - 1, json }, h);
+if (h.gz) { const { deserializeState } = await import('../src/game/snapshot'); h = { game: await deserializeState(new Blob([h.gz])) }; }
 const phSha = shaGame(h.game);
-const phDays = (await run({ kind: 'continue', days }, { game: h.game })).days;
+const phDays = (await run({ kind: 'continue', days, canon: json }, { game: h.game })).days;
 console.log(`i trin:     ${phSha}  ${phDays.join('  ')}`);
 const ok = allSha === phSha && allDays.join() === phDays.join();
 if (allSha !== phSha) {
@@ -53,7 +56,9 @@ if (allSha !== phSha) {
     if (ka.join() !== kb.join()) { const sa = new Set(ka), sb = new Set(kb); diffs.push(`${path}: nøgler kun ét forløb [${ka.filter((k) => !sb.has(k)).slice(0, 8)}] kun trin [${kb.filter((k) => !sa.has(k)).slice(0, 8)}]${ka.length === kb.length ? ' (rækkefølge)' : ''}`); }
     for (const k of ka) if (k in b) cmp(a[k], b[k], `${path}.${k}`);
   };
-  cmp(noId(all.game), noId(h.game), 'g');
+  // (som sha: JSON-formen – felter med undefined findes ikke i et gemt spil)
+  const js = (x: any) => JSON.parse(JSON.stringify(x));
+  cmp(js(noId(all.game)), js(noId(h.game)), 'g');
   console.log(diffs.join('\n'));
 }
 console.log(ok ? 'ENS' : 'FORSKEL');

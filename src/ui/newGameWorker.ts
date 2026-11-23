@@ -14,19 +14,26 @@ import { convertOriginal, restartInOriginal, type ConvertReport } from '../game/
 import type { CMWorld } from '../game/data/cm0102';
 import type { GameState } from '../game/types';
 import type { CustomDb } from '../game/dbEdit';
+import { serializeNewGame } from '../game/snapshot';
+import { saveMetaOf, type SaveMeta } from '../game/save';
+import { writeSave } from '../game/saveStore';
 import { applyCommunityEdits, fetchModernWorld, fetchOriginalWorld, fetchSlimWorld, slimWorld, type CommunityEdit, type OriginalVersion } from './worldFetch';
 
 /** Hvor arbejderen selv henter databasen: den originale (udgaven) eller den moderne, evt. en egen database (editoren) ovenpå, og fællesskabets rettelser */
 export interface WorldSrc { base: 'original' | 'modern'; ver: OriginalVersion; custom?: CustomDb; edits: CommunityEdit[] | null; /** originalens databasestørrelse (ui/dbSize.ts) */ size?: 'normal' | 'maximum' }
 
-export type NewGameMsg = { type: 'progress'; step: string; frac: number } | { type: 'done'; game: unknown; report?: ConvertReport } | { type: 'error'; message: string }
+export type NewGameMsg = { type: 'progress'; step: string; frac: number } | { type: 'done'; game: unknown; report?: ConvertReport }
+  /** (hukommelse, iPhone 23/11) det færdige spil som det gemte spils gzip-bytes (Transferable) – og det første gem, hvis arbejderen selv skrev det */
+  | { type: 'done'; gz: ArrayBuffer; saved: SaveMeta | null } | { type: 'error'; message: string }
   | { type: 'slim'; slim: WorldData } | { type: 'handed' } | { type: 'trace'; s: string };
 export type NewGameJob = { world?: WorldData; src?: WorldSrc; opts: NewGameOptions; convert?: { kind: 'convert' | 'restart'; old: GameState; picked?: boolean };
   /** (hukommelse, iPhone 22/11) kun disse trin af spilstarten ('base' = createGameBase, så createGamePhase); `from` modtager spillet fra forrige
    *  trins arbejder, `to` sender det videre til næste (uden om hovedtråden) – uden `to` svarer arbejderen med 'done' som før */
   phases?: ('base' | NewGamePhase)[]; from?: MessagePort; to?: MessagePort;
   /** (hukommelse) pause i arbejderen, før spillet tages fra `from` (forrige arbejders heap frigives imens) – arbejderens egen timer, ikke hovedtrådens */
-  gapMs?: number };
+  gapMs?: number;
+  /** (hukommelse, iPhone 23/11) arbejderen skriver selv nyt spils første gem i IndexedDB (kun et lokalt spil – ikke fællesspil eller den midlertidige verden) */
+  save?: boolean };
 /** `rng` = talrækkens tilstand (g.rng røres ikke – som i ét forløb, hvor g.rng ikke opdateres undervejs) */
 export type PhaseHandoff = { game: GameState; ctx: NewGameCtx; rng: number };
 /** `slimOnly`: kun listerne – arbejderen lukkes bagefter (startGame.ts openStartWorld), så databasen tolkes ikke hel (worldFetch.ts fetchSlimWorld) */
@@ -44,7 +51,7 @@ const take = (): WorldData | undefined => { const w = heldWorld; heldWorld = und
 let heldWorld: WorldData | undefined;
 
 self.onmessage = async (e: MessageEvent<NewGameJob | LoadJob>) => {
-  const post = (m: NewGameMsg) => (self as unknown as Worker).postMessage(m);
+  const post = (m: NewGameMsg, tf?: Transferable[]) => (self as unknown as Worker).postMessage(m, tf ?? []);
   const data = e.data;
   // (målinger: webkit-newgame.mjs TIMELINE) trinenes tidspunkter i arbejderen – hovedtråden skriver dem i konsollen med localStorage cm0102.ngTrace
   const tr = (s: string) => post({ type: 'trace', s });
@@ -111,9 +118,28 @@ self.onmessage = async (e: MessageEvent<NewGameJob | LoadJob>) => {
     job.world = undefined;
     releasePagePool();
     post({ type: 'progress', step: 'done', frac: 1 });
+    const g = gs();
+    if (!cv) {
+      // (hukommelse, iPhone/Android 23/11) Spillet sendes som det gemte spils bytes (gzip-JSON, som et gem: serializeState med modulernes tilstand og
+      // talrækken), ikke som struktureret kopi af hele objektgrafen: kopien af ~50 MB JSON-data (kopibufferen + spillet i begge tråde) fejlede på
+      // telefonerne lige efter 'done', og hovedtråden byggede så hele spillet igen selv (createGameAsync's nødløsning) og blev lukket af browseren.
+      // Hovedtråden pakker bytes ud som ved indlæsning af et gemt spil (loadGame) – spillet fortsætter præcis som her (snapshot.ts). Arbejderen skriver
+      // også selv det første gem, så hovedtråden ikke serialiserer hele spillet lige efter starten (Shell.tsx' gem 300 ms efter start).
+      tr('pakker spillet');
+      const blob = await serializeNewGame(g);
+      let saved: SaveMeta | null = null;
+      if (job.save) {
+        const meta = saveMetaOf(g);
+        try { await writeSave(meta.id, blob, meta); saved = meta; tr('gemt'); } catch (e) { tr(`gem fejlede: ${String((e as Error)?.message ?? e).slice(0, 120)}`); }
+      }
+      setGame(null);
+      const gz = await blob.arrayBuffer();
+      tr(`sender spillet ${(gz.byteLength / 1048576).toFixed(1)} MB`);
+      post({ type: 'done', gz, saved }, [gz]);
+      return;
+    }
     tr('sender spillet');
     // modulernes tilstand (carry.ts) og indeksernes rækkefølge med – hovedtråden fortsætter præcis som spillet bygget her
-    const g = gs();
     packCarry(g);
     post({ type: 'done', game: g, report });
     setGame(null);

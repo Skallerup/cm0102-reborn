@@ -13,6 +13,8 @@ import { communityEdits, loadOriginalWorld, loadWorld, ORIGINAL_VERSIONS, releas
 import { applyCommunityEdits } from './worldFetch';
 import type { DbSize } from './dbSize';
 import { noteNewGameStep } from '../online/newGameTrace';
+import { deserializeState } from '../game/snapshot';
+import type { SaveMeta } from '../game/save';
 
 /** 'custom:<id>' = en database fra editoren (ændringer oven på den originale eller den moderne) */
 export type Db = 'modern' | 'original' | `custom:${string}`;
@@ -126,11 +128,14 @@ const PHASE_GAP_MS = 400;
 const phaseGap = () => { try { const v = localStorage.getItem('cm0102.ngGap'); const n = Number(v); return v !== null && v !== '' && n >= 0 && n <= 5000 ? n : PHASE_GAP_MS; } catch { return PHASE_GAP_MS; } };
 const newWorker = () => new Worker(new URL('./newGameWorker.ts', import.meta.url), { type: 'module' });
 /** kører trinene i hver sin arbejder; den sidste svarer med spillet */
-function runPhases(first: NewGameJob, stages: NewGameJob['phases'][], pre: Worker | null, onProgress: (p: NewGameProgress) => void, signal?: AbortSignal): Promise<GameState> {
-  return new Promise<GameState>((resolve, reject) => {
-    let cur: Worker | null = null, done = false;
+/** arbejdernes svar: spillet som gzip-bytes (+ det første gem, hvis arbejderen skrev det); `started` = en arbejder nåede at svare (så kører de) */
+type PhasesResult = { gz: ArrayBuffer; saved: SaveMeta | null };
+class PhasesError extends Error { started = false; }
+function runPhases(first: NewGameJob, stages: NewGameJob['phases'][], pre: Worker | null, onProgress: (p: NewGameProgress) => void, signal?: AbortSignal): Promise<PhasesResult> {
+  return new Promise<PhasesResult>((resolve, reject) => {
+    let cur: Worker | null = null, done = false, started = false;
     const gap = phaseGap();
-    const fail = (e: Error) => { if (done) return; done = true; cur?.terminate(); cur = null; reject(e); };
+    const fail = (e: Error) => { if (done) return; done = true; cur?.terminate(); cur = null; const pe = Object.assign(new PhasesError(e.message), { name: e.name, stack: e.stack, started }); reject(pe); };
     signal?.addEventListener('abort', () => fail(new DOMException('aborted', 'AbortError')));
     const start = (i: number, w: Worker, job: NewGameJob) => {
       cur = w;
@@ -140,6 +145,7 @@ function runPhases(first: NewGameJob, stages: NewGameJob['phases'][], pre: Worke
       w.onmessage = (e: MessageEvent<import('./newGameWorker').NewGameMsg>) => {
         const m = e.data;
         if (done) return;
+        started = true;
         if (m.type === 'progress') onProgress({ step: m.step, frac: m.frac });
         else if (m.type === 'trace') { if (NG_TRACE) console.log(`ngtrace ${i}: ${m.s}`); }
         else if (m.type === 'handed' && ch) {
@@ -149,12 +155,13 @@ function runPhases(first: NewGameJob, stages: NewGameJob['phases'][], pre: Worke
           w.terminate(); cur = null;
           start(i + 1, newWorker(), { opts: job.opts, from: ch.port2, gapMs: gap });
         }
-        else if (m.type === 'done') { done = true; w.terminate(); cur = null; resolve(m.game as GameState); }
+        else if (m.type === 'done' && 'gz' in m) { if (NG_TRACE) console.log('ngtrace main: spillet modtaget'); done = true; w.terminate(); cur = null; resolve({ gz: m.gz, saved: m.saved }); }
+        else if (m.type === 'done') fail(new Error('worker: no game'));
         else if (m.type === 'error') fail(new Error(m.message));
       };
       w.onerror = (e) => fail(new Error(e.message || 'worker'));
       const ports = [...(ch ? [ch.port1] : []), ...(job.from ? [job.from] : [])];
-      w.postMessage({ ...job, phases: stages[i], ...(ch ? { to: ch.port1 } : {}) } satisfies NewGameJob, ports);
+      w.postMessage({ ...job, phases: stages[i], ...(ch ? { to: ch.port1 } : {}), ...(first.save ? { save: true } : {}) } satisfies NewGameJob, ports);
     };
     start(0, pre ?? newWorker(), first);
   });
@@ -162,7 +169,7 @@ function runPhases(first: NewGameJob, stages: NewGameJob['phases'][], pre: Worke
 
 /** nyt spil i en Web Worker (ui/newGameWorker.ts) med status undervejs – siden fryser ikke; uden Worker (eller ved fejl) i hovedtråden.
  *  `opts.preview` = nyt-spil-forløbets midlertidige verden (setSetupGame); `signal` afbryder arbejderen (en ny liga-/databasevalg). */
-export async function createGameAsync(world: WorldData | StartWorld, opts: NewGameOptions, onProgress: (p: NewGameProgress) => void, signal?: AbortSignal): Promise<void> {
+export async function createGameAsync(world: WorldData | StartWorld, opts: NewGameOptions, onProgress: (p: NewGameProgress) => void, signal?: AbortSignal, local?: { save?: boolean }): Promise<void> {
   // StartWorld: arbejderen henter selv databasen (eller bruger den, den allerede har indlæst – kun én gang)
   const sw = 'src' in world ? world : null;
   const report = onProgress;
@@ -174,13 +181,29 @@ export async function createGameAsync(world: WorldData | StartWorld, opts: NewGa
   // (hukommelse) det rigtige spil: databasen behøves ikke længere i hovedtråden (world.ts releaseWorldCaches)
   const put = (g: GameState) => { if (opts.preview) setSetupGame(g); else { setGame(g); releaseWorldCaches(); } };
   if (typeof Worker === 'undefined') { createGame(await full(), opts); if (opts.preview) setSetupGame(gs()); else releaseWorldCaches(); return; }
+  let got = false;
   try {
-    const first: NewGameJob = sw && !sw.full ? { src: sw.src, opts } : { world: world as WorldData, opts };
-    const game = await runPhases(first, newGameStages(opts), pre, onProgress, signal);
+    // (iPhone 23/11) arbejderen skriver selv det første gem af et lokalt spil (ikke den midlertidige verden eller fællesspil)
+    const save = !!local?.save && !opts.preview;
+    const first: NewGameJob = sw && !sw.full ? { src: sw.src, opts, save } : { world: world as WorldData, opts, save };
+    const res = await runPhases(first, newGameStages(opts), pre, onProgress, signal);
+    got = true;
+    if (signal?.aborted) return;
+    // spillet pakkes ud som et gemt spil (save.ts loadGame) – arbejderen er lukket, før hovedtråden bygger spillet
+    const blob = new Blob([res.gz]);
+    const game = await deserializeState(blob);
     if (signal?.aborted) return;
     put(game);
+    if (res.saved && !opts.preview) { const { adoptWorkerSave } = await import('../game/save'); adoptWorkerSave(res.saved, blob); }
+    if (NG_TRACE) console.log('ngtrace main: spillet lagt ind');
   } catch (e) {
     if ((e as Error).name === 'AbortError') return;
+    // (iPhone/Android 23/11) Er arbejderne først gået i gang, bygges spillet ikke igen i hovedtråden: den hentede og tolkede hele databasen og
+    // byggede spillet selv – på en telefon lukkede browseren siden (NewGameInterrupted 20–40 s efter 'done'). Fejlen vises og meldes i stedet.
+    if (got || (e as PhasesError).started) {
+      try { const { reportError } = await import('../online/errors'); reportError(new Error(`NewGameWorkerFailed: ${(e as Error).message.slice(0, 300)}`)); } catch { /* ignorér */ }
+      throw e;
+    }
     console.warn('Nyt spil i en Worker fejlede – opretter i hovedtråden', e);
     createGame(await full(), opts);
     if (opts.preview) setSetupGame(gs()); else releaseWorldCaches();
@@ -247,7 +270,7 @@ export async function runConversion(prep: ConvertPrep, clubId: number | null, on
         const m = e.data;
         if (m.type === 'progress') onProgress({ step: m.step, frac: m.frac });
         else if (m.type === 'trace') { if (NG_TRACE) console.log(`ngtrace convert: ${m.s}`); }
-        else if (m.type === 'done') { w.terminate(); resolve({ game: m.game as GameState, report: m.report! }); }
+        else if (m.type === 'done' && 'game' in m) { w.terminate(); resolve({ game: m.game as GameState, report: m.report! }); }
         else if (m.type === 'error') { w.terminate(); reject(Object.assign(new Error(m.message), { inJob: true })); }
       };
       w.onerror = (e) => { w.terminate(); reject(new Error(e.message || 'worker')); };

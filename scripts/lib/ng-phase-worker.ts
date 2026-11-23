@@ -8,10 +8,18 @@ import { gs, packCarry, setGame } from '../../src/game/state';
 import { rng } from '../../src/game/rng';
 import type { GameState } from '../../src/game/types';
 import { slResumeTransfer } from '../../src/game/cmShortlistGame';
+import { serializeNewGame } from '../../src/game/snapshot';
 
-const wd = workerData as { kind: 'phases' | 'all' | 'continue'; phases?: ('base' | NewGamePhase)[]; file?: string; opts?: NewGameOptions; days?: number; last?: boolean };
+const wd = workerData as { kind: 'phases' | 'all' | 'continue'; phases?: ('base' | NewGamePhase)[]; file?: string; opts?: NewGameOptions; days?: number; last?: boolean; json?: boolean; canon?: boolean };
 const port = parentPort!;
-const sha = (x: unknown) => createHash('sha256').update(JSON.stringify(x)).digest('hex').slice(0, 16);
+// canon: felterne sorteret – et gemt spil (JSON) bevarer ikke pladsen for felter, der var undefined (som snap-verify.ts' save-tilstande)
+const canonRepl = (_k: string, v: unknown) => {
+  if (!wd.canon || !v || typeof v !== 'object' || Array.isArray(v)) return v;
+  const o = v as Record<string, unknown>, out: Record<string, unknown> = {};
+  for (const k of Object.keys(o).sort()) out[k] = o[k];
+  return out;
+};
+const sha = (x: unknown) => createHash('sha256').update(JSON.stringify(x, canonRepl)).digest('hex').slice(0, 16);
 
 port.once('message', async (msg: { game?: GameState; ctx?: NewGameCtx; rng?: number }) => {
   if (wd.kind === 'continue') {
@@ -35,6 +43,8 @@ port.once('message', async (msg: { game?: GameState; ctx?: NewGameCtx; rng?: num
     if (ph === 'base') { ctx = createGameBase(world!, wd.opts!); world = undefined; } else createGamePhase(ph, ctx!);
   }
   const g = gs();
+  // (23/11) som ui/newGameWorker.ts: det færdige spil som det gemte spils gzip-bytes (serializeState) – hovedtråden pakker det ud (deserializeState)
+  if (wd.last && wd.json) { const gz = await (await serializeNewGame(g)).arrayBuffer(); port.postMessage({ gz }, [gz]); return; }
   packCarry(g);
   port.postMessage({ game: g, ctx, rng: rng.state }, slResumeTransfer(ctx?.sl ?? null));
 });

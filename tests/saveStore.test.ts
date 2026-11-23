@@ -27,6 +27,13 @@ describe('saveStore', () => {
     await same(await readSaveBlob('g'), b);
     expect(chunksOf('g')).toBe(1);
   });
+  it('to gem af samme spil på én gang flettes ikke (manifestet peger aldrig på slettede bidder)', async () => {
+    const a = bytes(CHUNK_BYTES * 2 + 9, 3), b = bytes(CHUNK_BYTES + 1, 5);
+    await Promise.all([writeSave('g', new Blob([a]), { v: 'a' }), writeSave('g', new Blob([b]), { v: 'b' })]);
+    await same(await readSaveBlob('g'), b);
+    expect(db.m.get('meta:g')).toEqual({ v: 'b' });
+    expect(chunksOf('g')).toBe(2);
+  });
   it('gammelt format (Blob under save:<id>) kan stadig læses', async () => {
     const a = bytes(500);
     db.m.set('save:old', new Blob([a]));

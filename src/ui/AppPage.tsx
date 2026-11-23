@@ -97,10 +97,13 @@ function AppInner() {
           if (!(await loadGame(last.id))) {
             // det gemte spil er væk (fx ryddet af en indbygget browser) – spilleren lander i menuen uden spil: meld det til admin
             const { storageDiag } = await import('../game/storageGuard');
-            const { listSaves } = await import('../game/save');
+            const { listSaves, resumeDiag } = await import('../game/save');
             const n = await listSaves().then((l) => l.length).catch(() => -1);
-            reportError(new Error(`ResumeMissing: the last local game was not found in storage | ${await storageDiag({ saves: n })}`));
-            forgetLast();
+            // (23/11) lageret pr. nøgle: kunne IndexedDB slet ikke læses (fx et midlertidigt låst/ødelagt lager), er spillet måske ikke væk – så
+            // huskes det seneste spil, og næste genindlæsning prøver igen (før: saves=0 og "glemt", som om det var slettet)
+            const rd = await resumeDiag(last.id);
+            reportError(new Error(`ResumeMissing: the last local game was not found in storage | ${await storageDiag({ saves: n })} ${rd.text} id=${last.id.slice(0, 40)}`));
+            if (!rd.idbError) forgetLast();
             // var det en lokal kopi af et online-spil, så åbn det seneste online-spil i stedet
             const room = savedRooms()[0];
             if (room) await openSession(room);

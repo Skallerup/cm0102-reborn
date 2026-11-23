@@ -364,7 +364,7 @@ export function ClassicStart({ onLang, onHome, onGo, onLook, online }: { onLang:
       }
       // (21/11) lukker browseren siden undervejs (for lidt hukommelse), meldes det og vises ved næste start (online/errors.ts)
       markNewGame(true);
-      try { await createGameAsync(src, opts, (p) => setProg({ label: t('cxs.initGame'), frac: p.frac, step: p.step })); } finally { markNewGame(false); }
+      try { await createGameAsync(src, opts, (p) => setProg({ label: t('cxs.initGame'), frac: p.frac, step: p.step }), undefined, { save: true }); } finally { markNewGame(false); }
       notify();
       const lg = world.leagues.find((l) => l.id === club.league);
       notifyNewCareer({ manager: opts.managerName, club: club.short, league: lg?.name, nation: natName(world.nations[club.nation]?.name), bots: 0, db: db.startsWith('custom:') ? 'custom' : db, lang: opts.lang });

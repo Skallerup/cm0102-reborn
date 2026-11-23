@@ -363,7 +363,7 @@ function NewGame({ challenge, onBack, setBusy, setProg, online, onDraft, initial
       } else {
         if (setProg) setProg({ step: 'clubs', frac: 0 });
         markNewGame(true);
-        try { await createGameAsync(startWorld.current ?? world, opts, (p) => setProg?.(p)); } finally { markNewGame(false); }
+        try { await createGameAsync(startWorld.current ?? world, opts, (p) => setProg?.(p), undefined, { save: true }); } finally { markNewGame(false); }
         if (bots > 0) {
           // lokalt spil mod AI-managere: samme multiplayer-regler, men du spiller dine kampe live
           enableMultiplayer('host', opts.managerName);

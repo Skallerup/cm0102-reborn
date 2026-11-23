@@ -28,6 +28,14 @@ export async function serializeState(g: GameState): Promise<Blob> {
   try { return gzipText(JSON.stringify(g)); } finally { delete g.cmCarry; }
 }
 
+/** (23/11) nyt spil fra spilstartens arbejder som gzip-bytes (ui/newGameWorker.ts): som den strukturerede kopi før – hovedtråden fortsatte med
+ *  spillets egen g.rng (setGame), ikke arbejderens talrække – så g.rng skrives ikke om (scripts/newgame-phases-check.ts … json=1: ENS) */
+export async function serializeNewGame(g: GameState): Promise<Blob> {
+  const keep = rng.state;
+  rng.state = g.rng;
+  try { return await serializeState(g); } finally { rng.state = keep; }
+}
+
 export async function deserializeState(blob: Blob): Promise<GameState> {
   return ensureOptions(JSON.parse(await gunzipText(blob)) as GameState);
 }

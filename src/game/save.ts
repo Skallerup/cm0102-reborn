@@ -38,6 +38,9 @@ export interface SaveMeta {
 /** id'et for et navngivet gemt spil */
 export const namedSaveId = (gameId: string, name: string) => `${gameId}~${name.trim().toLowerCase().replace(/[^a-z0-9æøåäöü-]+/gi, '-').slice(0, 40)}`;
 
+/** (målinger) gemmets trin i konsollen – localStorage['cm0102.ngTrace'] = '1' (scripts/webkit-newgame-raw.mjs) */
+const ngTrace = () => { try { return localStorage.getItem('cm0102.ngTrace') === '1'; } catch { return false; } };
+
 export async function serialize(g: GameState): Promise<Blob> {
   return serializeState(g);
 }
@@ -63,7 +66,10 @@ export async function saveGame(opts?: { cloud?: boolean; name?: string }): Promi
   const meta0 = { id: g.id, manager: g.manager.name, club: g.clubs[g.userClub]?.name ?? '—', date: g.date, saved: new Date().toISOString() };
   // admin-preview af en andens spil: gem aldrig (hverken lokalt eller i skyen)
   if (previewInfo()) return meta0;
+  const tr = ngTrace();
+  if (tr) console.log('ngtrace save: start');
   const blob = await serialize(g);
+  if (tr) console.log(`ngtrace save: serialiseret ${(blob.size / 1048576).toFixed(1)} MB`);
   const name = opts?.name?.trim();
   const id = name ? namedSaveId(g.id, name) : g.id;
   const meta: SaveMeta = {
@@ -80,11 +86,25 @@ export async function saveGame(opts?: { cloud?: boolean; name?: string }): Promi
   await guardWrite((st) => writeSave(id, blob, meta, st), !!opts?.cloud);
   // "seneste spil" sættes først, når spillet er gemt (så den aldrig peger på et spil, der ikke findes)
   rememberLast({ kind: 'local', id });
+  if (tr) console.log('ngtrace save: gemt');
   cloudHook?.(meta, blob, !!opts?.cloud);
   return meta;
 }
 
 const extOf = (g: GameState): boolean => !g.humans?.length && !g.draft && legacyExtended(g);
+
+/** metadata for spillets eget (unavngivne) gem – som saveGame */
+export function saveMetaOf(g: GameState): SaveMeta {
+  return { id: g.id, manager: g.manager.name, club: g.clubs[g.userClub]?.name ?? '—', date: g.date, saved: new Date().toISOString(), kind: saveKindOf(g), ext: extOf(g) };
+}
+
+/** (hukommelse, iPhone 23/11) nyt spils første gem er skrevet af spilstartens arbejder (ui/newGameWorker.ts): hovedtråden gør resten af saveGame
+ *  (seneste spil, varig lagring, skyen) uden at serialisere spillet igen – Shell.tsx' første gem springes så over (seneste = dette spil) */
+export function adoptWorkerSave(meta: SaveMeta, blob: Blob): void {
+  requestPersistentStorage();
+  rememberLast({ kind: 'local', id: meta.id });
+  cloudHook?.(meta, blob, false);
+}
 
 /** Er et lokalt gemt spil et gammelt udvidet spil? Metadata uden `ext` (gemt af en ældre version): teksten læses og svaret gemmes. null = ukendt */
 export async function storedLegacyExt(meta: SaveMeta): Promise<boolean | null> {
@@ -166,6 +186,23 @@ export async function flushAutosave() {
   dirty = false;
   try { await saveGame(); } catch { dirty = true; } finally { saving = false; }
 }
+
+/** (ResumeMissing, 23/11) hvad lageret har for det seneste spil: antal nøgler i alt/gemte spil (meta:), om manifestet/metadata/bidderne findes –
+ *  og fejlen, hvis IndexedDB ikke kunne læses (listSaves sluger fejlen og gav saves=0, som om alt var væk). `idbError` = lageret svarede ikke. */
+export async function resumeDiag(id: string): Promise<{ text: string; idbError: boolean }> {
+  try {
+    const all = (await keys()) as string[];
+    const metas = all.filter((k) => typeof k === 'string' && k.startsWith('meta:')).length;
+    const chunks = all.filter((k) => typeof k === 'string' && k.startsWith(`savec:${id}:`));
+    const v = await get<unknown>(`save:${id}`);
+    const kind = v === undefined ? 'none' : v instanceof Blob ? 'blob' : (v as SaveManifestLike)?.v === 2 ? `manifest n=${(v as SaveManifestLike).n} gen=${(v as SaveManifestLike).gen}` : typeof v;
+    const gens = [...new Set(chunks.map((k) => k.split(':')[2]))].join('/');
+    return { text: `keys=${all.length} metas=${metas} save=${kind} meta=${all.includes(`meta:${id}`) ? 'yes' : 'no'} chunks=${chunks.length}${gens ? ` gens=${gens}` : ''}`, idbError: false };
+  } catch (e) {
+    return { text: `idbError=${e === null || e === undefined ? 'null' : `${(e as Error).name ?? ''} ${String((e as Error).message ?? e).slice(0, 100)}`}`, idbError: true };
+  }
+}
+type SaveManifestLike = { v: number; n: number; gen: string };
 
 export async function listSaves(): Promise<SaveMeta[]> {
   // IndexedDB kan ikke åbnes (fuld disk, privat vindue): ingen lokale gemte spil frem for et nedbrud

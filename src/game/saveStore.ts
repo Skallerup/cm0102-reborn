@@ -25,7 +25,19 @@ export class SavePhaseError extends Error {
 const chunkKey = (id: string, gen: string, i: number) => `savec:${id}:${gen}:${i}`;
 
 /** Skriv et gemt spil (blob er allerede serialiseret og komprimeret FØR første transaktion åbnes) + metadata. Kvotefejl kastes uændret, andre som SavePhaseError. */
-export async function writeSave(id: string, blob: Blob, meta: unknown, st?: UseStore): Promise<void> {
+export function writeSave(id: string, blob: Blob, meta: unknown, st?: UseStore): Promise<void> {
+  // (23/11) to gem af samme spil på én gang (autogem + Save/skyen) må ikke flettes: det seneste manifest kunne pege på bidder, som det andet gems
+  // oprydning havde slettet ("ResumeMissing") – gemmene af ét spil køres efter hinanden
+  const prev = queue.get(id) ?? Promise.resolve();
+  const run = prev.catch(() => {}).then(() => writeSaveNow(id, blob, meta, st));
+  const tail = run.catch(() => {});
+  queue.set(id, tail);
+  void tail.then(() => { if (queue.get(id) === tail) queue.delete(id); });
+  return run;
+}
+const queue = new Map<string, Promise<void>>();
+
+async function writeSaveNow(id: string, blob: Blob, meta: unknown, st?: UseStore): Promise<void> {
   let phase: SavePhase = 'buffer';
   let i = 0;
   const gen = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
