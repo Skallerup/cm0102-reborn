@@ -106,6 +106,23 @@ export const OTHER_GLOBALS = [0x9cf594, 0x9cf2e8, 0x9cf2ec];
 
 export const STAFF0 = 0x10000000, PREC0 = 0x20000000, CLUB0 = 0x30000000, NAT0 = 0x38000000, DIV0 = 0x3c000000, FIN0 = 0x40000000, K0 = 0x50000000,
   ROWS0 = 0x58000000, TM0 = 0x5f000000, PTRS = 0x5e000000;
+/** lejekontrakternes indeks (række +4): K0 + 80 · (LOAN_IX + id) = 0xa0000000 + 80 · id – uden for de andre områder */
+export const LOAN_IX = 0x1000000;
+/** (ønskelisternes hukommelse, `full`) en udlejet spiller som i originalen (oraklets billeder 1/9-01): staff +0x39 = lejeklubben, i BEGGE klubbers
+ *  trupliste +0xd7 (moderklubbens og lejeklubbens), hovedkontrakten (række +0) +4 = moderklubben, lejekontrakten (række +4, type 6 i +0x35) +4 =
+ *  lejeklubben, +0xc lønnen · andelen, +0x2d/+0x2f slutdatoen. Før stod han kun hos moderklubben (+0x39 = moderklubben, ingen lejekontrakt), så
+ *  ønskelisterne bød næsten aldrig på udlejede (oraklet: ~30 udlejede fra engelske klubber købt midt i lejen pr. sæson, vi 0) og lejeklubben
+ *  så ikke sine lejede spillere. */
+export function writeLoanContract(m: SparseMem, id: number, p: Player, gbp: number): void {
+  const l = p.loan;
+  if (!l || !p.contract) return;
+  const k = K0 + 80 * (LOAN_IX + id);
+  m.w32(ROWS0 + 79 * id + 4, LOAN_IX + id);
+  m.w32(k + 4, p.club); m.w32(k + 0xc, Math.round(p.contract.wage * (l.share ?? 0) * gbp));
+  m.w8(k + 0x35, 6);
+  const [d, y] = isoDay(l.until.slice(0, 10));
+  m.w16(k + 0x2d, d); m.w16(k + 0x2f, y);
+}
 
 const ATTR_IX = new Map<string, number>(ATTRS.map((k, i) => [k, i]));
 const attr = (p: Player, k: string) => Math.round(p.attrs[ATTR_IX.get(k) ?? -1] || 10);
@@ -248,6 +265,7 @@ export function buildWageMem(g: GameState, clubs: Iterable<number>, unset: Set<n
 
   // udlejede spillere hører til moderklubben
   const loanedOut = sc.loanedOut;
+  const loanDone = new Set<number>();
   // klubberne
   const humanMgr: number[] = [];
   const npStaff = new Map<number, number>();
@@ -268,11 +286,23 @@ export function buildWageMem(g: GameState, clubs: Iterable<number>, unset: Set<n
     m.w8(a + 0x244, 0);
     m.w16(TM0 + 0x10000 + 9 * cid + 5, g.cmTargetRep?.[cid] ?? 0);
     // truppen +0xd7: spillerne i klubben (lejede spillere i moderklubben – spillets lejemodel, *estimeret*)
-    const sq = squad(cid).filter((p) => !p.loan).concat(loanedOut.get(cid) ?? []);
+    // (full – ønskelisterne: også de lejede i lejeklubben, som originalen – writeLoanContract)
+    const sq = squad(cid).filter((p) => !p.loan || (full && p.club === cid)).concat(loanedOut.get(cid) ?? []);
     let i = 0;
     for (const p of sq) {
       if (i >= 50 || p.virtual) continue;
       const id = pid(p);
+      if (full && p.loan) {
+        // den udlejede: posten én gang (+0x39 = lejeklubben), hovedkontrakten hos moderklubben, lejekontrakten hos lejeklubben
+        if (!loanDone.has(p.id)) {
+          loanDone.add(p.id);
+          const st = playerRec(p, id, p.club);
+          if (p.contract) { contract(id, p.loan.from, unset.has(p.id) ? -1 : Math.round(p.contract.wage * cmGbp(g, p.loan.from)), p); writeLoanContract(m, id, p, cmGbp(g, p.loan.from)); }
+          players.push([p, st]);
+        }
+        m.w32(a + 0xd7 + 4 * i++, staffAdr(id));
+        continue;
+      }
       const st = playerRec(p, id, cid);
       m.w32(a + 0xd7 + 4 * i++, st);
       if (p.contract) contract(id, cid, unset.has(p.id) ? -1 : Math.round(p.contract.wage * gbp), p);

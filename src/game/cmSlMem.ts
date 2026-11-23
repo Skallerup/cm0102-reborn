@@ -7,7 +7,7 @@
 import type { GameState, Player, Staff } from './types';
 import { type CmCtx, G, SparseMem, writeMonthTables, cmAfter2330 } from './cmMem';
 import { writeHolidayMem } from './cmHoliday';
-import { cmMemCall, scanOf, writeKeyIds, KEY_NATIONS, OTHER_GLOBALS, NAT7F, STAFF0, PREC0, CLUB0, NAT0, DIV0, FIN0, K0, ROWS0, TM0, PTRS, type WageMem } from './cmWageGame';
+import { cmMemCall, scanOf, writeKeyIds, writeLoanContract, LOAN_IX, KEY_NATIONS, OTHER_GLOBALS, NAT7F, STAFF0, PREC0, CLUB0, NAT0, DIV0, FIN0, K0, ROWS0, TM0, PTRS, type WageMem } from './cmWageGame';
 import type { WantMem } from './cmContractGame';
 import { getMaxWage_5968d0, recalcWages_598370 } from './cmMaxWage';
 import { getClubFinance_5a0590 } from './cmWage';
@@ -187,7 +187,7 @@ class PidMap {
   get(x: number): number | undefined { return x >= 0 && x < PID_N ? (this.e[x] ? this.v[x] : undefined) : this.big.get(x); }
   has(x: number): boolean { return this.get(x) !== undefined; }
 }
-interface Ent { p: Player; id: number; cid: number; hasK: boolean; pref: number }
+interface Ent { p: Player; id: number; cid: number; hasK: boolean; pref: number; /** en udlejet: moderklubben (hovedkontraktens +4) */ home?: number }
 /** (hastighed) id → værdi i et array (personernes id'er er tætte, < ~200.000) i stedet for en Map */
 class IdMap<T> {
   private a: (T | undefined)[] = [];
@@ -230,6 +230,7 @@ function fpInto(o: Float64Array, at: number, ss: (string | undefined)[], si: num
   const p = e.p, ct = p.contract, rp = p.cmRepMem ?? p.cmRep, cc = p.cmContract, A = p.attrs;
   ss[si] = p.dob; ss[si + 1] = p.cmJoined; ss[si + 2] = p.joined; ss[si + 3] = ct?.expires;
   o[at++] = e.id; o[at++] = e.cid; o[at++] = e.hasK ? 1 : 0;
+  ss[si + 4] = e.home !== undefined ? p.loan?.until : undefined; o[at++] = e.home ?? -1; o[at++] = e.home !== undefined ? p.loan?.share ?? 0 : 0;
   o[at++] = ageFast(p.dob, dy, dmd, date); o[at++] = num(p.nation); o[at++] = num(p.caps);
   o[at++] = num(A[A_AMB]); o[at++] = num(A[A_DET]); o[at++] = num(A[A_LOY]); o[at++] = num(A[A_PRE]); o[at++] = num(A[A_PRO]);
   o[at++] = p.ca; o[at++] = p.pa;
@@ -276,10 +277,11 @@ function writeRec(m: SparseMem, e: Ent, date: string, nNat: number): void {
   m.w32(st + 0x52, Math.round((p.value ?? 0) * gbpOf(e.cid || undefined)));
   // (en udskudt spiller – refreshClub – kan have mistet kontrakten i løbet af dagen: fritstillet eller solgt før klubbens tur; sæsonen 16/11 gik ned her)
   if (e.hasK && p.contract) {
-    const k = K0 + 80 * id;
+    const k = K0 + 80 * id, kc = e.home ?? cid;
     m.w32(ROWS0 + 79 * id, id); m.w32(ROWS0 + 79 * id + 4, -1);
-    m.w32(k + 4, cid); m.w32(k + 0xc, Math.round(p.contract.wage * gbpOf(cid)));
+    m.w32(k + 4, kc); m.w32(k + 0xc, Math.round(p.contract.wage * gbpOf(kc)));
     m.w8(k + 0x35, p.contract?.partTime ? 0x80 : 0); m.w32(k + 0x45, p.cmContract?.b45 ?? 0); m.w8(k + 0x4f, p.cmContract?.b4f ?? 0);
+    if (e.home !== undefined) writeLoanContract(m, id, p, gbpOf(kc));   // (cmWageGame.ts writeLoanContract – den udlejede som i originalen)
   }
 }
 function writeWant(m: SparseMem, e: Ent, staffOfId: StaffOfId, nNat: number): void {
@@ -330,7 +332,7 @@ function zeroRange(m: SparseMem, a: number, n: number): void {
 }
 /** et ids poster nulstilles (personposten, rækken, spillerposten, kontrakten) */
 function zeroId(m: SparseMem, id: number): void {
-  zeroRange(m, STAFF0 + 0x6e * id, 0x6e); zeroRange(m, ROWS0 + 79 * id, 8); zeroRange(m, recAdr(id), 0x46); zeroRange(m, K0 + 80 * id, 80);
+  zeroRange(m, STAFF0 + 0x6e * id, 0x6e); zeroRange(m, ROWS0 + 79 * id, 8); zeroRange(m, recAdr(id), 0x46); zeroRange(m, K0 + 80 * id, 80); zeroRange(m, K0 + 80 * (LOAN_IX + id), 80);
 }
 
 /** Som buildWantMem(g, clubs, { full: true, call, useLog }) – samme hukommelse og samme kald */
@@ -354,6 +356,7 @@ export function buildSlWantMem(g: GameState, clubs: Iterable<number>, opts: { ca
   let next = sc.maxId + 1;
   const pid = (p: Player) => { if (!p.regen && p.id < 1_000_000) return p.id; let v = memId.get(p); if (v === undefined) { v = next++; memId.set(p, v); } return v; };
   const ents: Ent[] = [];
+  const loanEnt = new Set<number>();
   const squads = new Map<number, number[]>(), chairs = new Map<number, number>(), staffIds = new Map<number, [Staff, number][]>();
   for (const cid of clubIds) {
     // (squad(cid) uden udlejede, så de udlejede fra klubben – uden de mellemliggende lister)
@@ -362,9 +365,11 @@ export function buildSlWantMem(g: GameState, clubs: Iterable<number>, opts: { ca
       if (sts.length >= 50 || p.virtual) return;
       const id = pid(p);
       sts.push(STAFF0 + 0x6e * id);
+      // en udlejet står i begge klubbers trupliste, men har én post: +0x39 = lejeklubben, hovedkontrakten hos moderklubben (cmWageGame.ts)
+      if (p.loan) { if (!loanEnt.has(p.id)) { loanEnt.add(p.id); ents.push({ p, id, cid: p.club, hasK: !!p.contract, pref: -1, home: p.loan.from }); } return; }
       ents.push({ p, id, cid, hasK: !!p.contract, pref: -1 });
     };
-    for (const x of squadIds(cid)) { const p = g.players[x]; if (p && p.club === cid && !p.loan) add(p); }
+    for (const x of squadIds(cid)) { const p = g.players[x]; if (p && p.club === cid) add(p); }
     for (const p of sc.loanedOut.get(cid) ?? []) add(p);
     squads.set(cid, sts);
     if (g.cmFin?.[cid]?.chair) chairs.set(cid, next++);
@@ -424,7 +429,7 @@ export function buildSlWantMem(g: GameState, clubs: Iterable<number>, opts: { ca
     for (const e of es) n2 = fpPref(scr2, n2, e, staffOfId);
     let sameCore: boolean;
     const e0 = es[0];
-    if (stale && old && es.length === 1 && old[0] === e0.id && old[1] === e0.cid && old[2] === (e0.hasK ? 1 : 0) && stale(e0.p, e0.cid)) {
+    if (stale && old && es.length === 1 && old[0] === e0.id && old[1] === e0.cid && old[2] === (e0.hasK ? 1 : 0) && e0.home === undefined && stale(e0.p, e0.cid)) {
       sameCore = true; SLMEM_STATS.stale++;
       const l = deferred.get(e0.cid); if (l) l.push(e0); else deferred.set(e0.cid, [e0]);
       deferredPids.set(e0.p.id, 1);
@@ -432,7 +437,7 @@ export function buildSlWantMem(g: GameState, clubs: Iterable<number>, opts: { ca
     }
     else {
       if (FP.length < 80 * es.length) FP = new Float64Array(160 * es.length);
-      for (const e of es) { n = fpInto(FP, n, strs, ns, e, date, dYear, dMd); ns += 4; }
+      for (const e of es) { n = fpInto(FP, n, strs, ns, e, date, dYear, dMd); ns += 5; }
       sameCore = sameNum(old, FP, n) && sameStr(B.fs.get(id), strs, ns);
     }
     if (sameCore && same(oldP, scr2, n2)) continue;

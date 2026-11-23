@@ -43,7 +43,7 @@ export interface BidTerms {
 /** TRANSFER_OFFER::init_transfer_offer 0x8e78f0: N = 10 for begge klausuler, resten 0; låst offentligt (1), hvis klubberne spiller i samme liga
  *  (klub +0x57), rand(20) == 0 og spillerens omdømme (spillerdata +0xb) > 7000 */
 export function newTerms(g: GameState, p: Player, buyer: number, fee: number): BidTerms {
-  const seller = g.clubs[p.club], b = g.clubs[buyer];
+  const seller = g.clubs[p.loan?.from ?? p.club], b = g.clubs[buyer];   // sælgeren = hovedkontraktens klub (+4) – også for en udlejet
   const rand = cmRand(g.seed ?? 0, p.id, buyer, dayN(g.date), 0x8e78f0);
   const pub = seller && b && seller.league === b.league && rand(20) === 0 && repMem(p) > 7000 ? 1 : 0;
   return { fee: Math.max(0, fee), months: 0, sellOn: 0, lgFee: 0, lgApps: 10, intFee: 0, intApps: 10, pub, swap: [] };
@@ -325,7 +325,7 @@ export function statusSatisfaction(b44: number, oldStatus: number, newStatus: nu
 /** Vurderingens tal af spillet: sælgerklubbens manager vurderer (0x6e86d0), formuebåndet 0x5986b0 af sælgerens saldo og omdømme. Pengene i £ med
  *  faktoren for klubben, de tilhører (cmMoney.ts): værdien og saldoen sælgerens, bytte-spillerne deres klubs, buddet køberens (`buyer`). */
 export function valueCtx(g: GameState, p: Player, buyer?: number): ValueCtx {
-  const sellerId = p.club;
+  const sellerId = p.loan?.from ?? p.club;   // hovedkontraktens klub (+4) – for en udlejet moderklubben
   const seller: Club | undefined = g.clubs[sellerId];
   const age = ageOn(p.dob, g.date);
   const ctx = sellerId ? aiPickCtx(sellerId) ?? {} : {};
@@ -340,7 +340,7 @@ export function valueCtx(g: GameState, p: Player, buyer?: number): ValueCtx {
   };
 }
 export function clauseOptIn(g: GameState, p: Player, buyer: number): ClauseOptIn {
-  return { buyerRep: clubRepMem(g, buyer), sellerRep: clubRepMem(g, p.club), paGap: p.pa - p.ca, rep: repMem(p) };
+  return { buyerRep: clubRepMem(g, buyer), sellerRep: clubRepMem(g, p.loan?.from ?? p.club), paGap: p.pa - p.ca, rep: repMem(p) };
 }
 
 /** Afvisning med begrundelse på menneskets spiller (0x8f06f0): trupstatus og tilfredsheden; intet svar fra spilleren (det er det udvidede spils). */

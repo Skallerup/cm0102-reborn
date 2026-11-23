@@ -4,7 +4,7 @@ import { cmLogic, cmMarketOn, cmMediaOn, cmRand, setRequestHooks, setStatusCode 
 import { cmBidChance, cmInterested, cmRequestNews } from './cmTransferList';
 import { transferNewsToMe } from './cmNewsScope';
 import { cmSignContractMorale } from './cmMedia';
-import { isOriginal2001, loanBlocked, loanRecallOn, noteLoan, permitOk } from './rules2001';
+import { isOriginal2001, loanBlocked, loanRecallOn, noteLoan, noteLoanEnd, permitOk } from './rules2001';
 import { A, naturalRole } from './attributes';
 import { addDays, ageOn, daysBetween, month, year } from './dates';
 import { makePlayer, randomDob, randomName, roundValue, wageFor } from './data/generate';
@@ -868,6 +868,8 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
   }
   // skifte midt i sæsonen: bogfør tallene hos den gamle klub
   if (p.club && p.stats.apps + p.stats.subs > 0) pushCareerLine(p, p.club, !!p.loan);
+  // en udlejet, der sælges (computerens ønskelister – cmShortlistApply): lejekontrakten ophører med handlen
+  if (!o.loan && p.loan) { noteLoanEnd(p.club); p.loan = null; }
   recordMove(p, buyer.id, o.fee, o.loan);
   // fansene reagerer på stjernesalg og -køb
   if (!o.loan && seller) fansOnDeparture(p, seller, 'sold', o.fee);
@@ -1927,10 +1929,14 @@ export function cmShortlistApply(events: SlEvent[]) {
     const p = g.players[e.player], buyer = g.clubs[e.buyer];
     if (!p || !buyer || p.contract?.futureClub || p.club === buyer.id || isHumanClub(buyer.id)) continue;
     if (!p.club && e.loan) continue;
-    if (p.loan || g.offers.some((o) => o.player === p.id && o.buyer === buyer.id && ['pending', 'negotiating', 'countered'].includes(o.status))) continue;
+    // en udlejet spiller står i moderklubbens trup i hukommelsen (hovedkontrakten +4, cmSlMem.ts loanedOut), så ønskelisterne byder på ham
+    // som på alle andre: sælgeren er moderklubben, og handlen afslutter lejen (oraklets billeder: udlejede købt af en tredje klub midt i lejen,
+    // ~30 pr. sæson fra engelske klubber). Kun computer ↔ computer (moder- og lejeklub); en ny leje af en udlejet afvises af 0x8ce990 selv.
+    if (p.loan && (e.loan || p.loan.from === buyer.id || isHumanClub(p.loan.from) || isHumanClub(p.club))) continue;
+    if (g.offers.some((o) => o.player === p.id && o.buyer === buyer.id && ['pending', 'negotiating', 'countered'].includes(o.status))) continue;
     // buddets beløb er køberens penge: £ → € med køberens faktor (cmMoney.ts – den originale database 0,86)
     const fromGbp = (x: number) => fromK(x, buyer.id);
-    const o: TransferOffer = { id: e.id, player: p.id, buyer: buyer.id, seller: p.club, fee: e.loan ? 0 : fromGbp(e.fee), loan: e.loan, status: 'pending', created: g.date,
+    const o: TransferOffer = { id: e.id, player: p.id, buyer: buyer.id, seller: p.loan?.from ?? p.club, fee: e.loan ? 0 : fromGbp(e.fee), loan: e.loan, status: 'pending', created: g.date,
       respondBy: addDays(g.date, 5), maxFee: fromGbp(Math.max(e.max, e.fee)),
       ...(e.months > 0 ? { months: e.months } : {}), ...(e.sellOn > 0 ? { sellOn: e.sellOn } : {}),
       ...(e.lgFee > 0 ? { lgFee: fromGbp(e.lgFee), lgApps: e.lgApps } : {}), ...(e.intFee > 0 ? { intFee: fromGbp(e.intFee), intApps: e.intApps } : {}),
@@ -2044,9 +2050,10 @@ function cmAiAiDue(cx: SlDueCtx) {
     if (!o.cmAi || !cmOpen(o) || o.respondBy > g.date) continue;
     const p = g.players[o.player];
     let buyer = g.clubs[o.buyer];
-    if (!p || !buyer || p.club !== o.seller || p.loan || p.contract?.futureClub || isHumanClub(p.club) || isHumanClub(buyer.id)) {
+    const home = p ? p.loan?.from ?? p.club : 0;   // hovedkontraktens klub (en udlejet: moderklubben)
+    if (!p || !buyer || home !== o.seller || (p.loan && o.loan) || p.contract?.futureClub || isHumanClub(home) || isHumanClub(p.club) || isHumanClub(buyer.id)) {
       // (han er skiftet: 0x8c47d0's 0xf; ellers trukket 0x8bfcb0)
-      if (p && p.club !== o.seller) cmTmClose(o, 0xf, 10, 'withdrawn'); else cmTmClose(o, 3, 10, 'withdrawn');
+      if (p && home !== o.seller) cmTmClose(o, 0xf, 10, 'withdrawn'); else cmTmClose(o, 3, 10, 'withdrawn');
       CM_AIAI.withdrawn++; closed = true; continue;
     }
     if (o.status === 'pending') {
@@ -2073,7 +2080,7 @@ function cmAiAiDue(cx: SlDueCtx) {
       const c = valueCtx(g, p, buyer.id);
       const askS = cx.asking(p.id, buyer.id);
       // 0x8c8291: udbudsprisen 0x4d1600 i dagens hukommelse – den samme, køberens build_bid 0x8e6533 regnede i
-      const asking = askS ?? cmAskingPrice(g, p, buyer.id) ?? toK(askingPrice(p), p.club);
+      const asking = askS ?? cmAskingPrice(g, p, buyer.id) ?? toK(askingPrice(p), home);
       const rivals = g.offers.filter((x) => x !== o && x.player === p.id && x.status === 'pending' && !x.loan).map(termsOf);
       const t = termsOf(o);
       const r = aiRespond(t, c, { asking, rivals, unwanted: false, final: !!o.final, base: newTerms(g, p, buyer.id, 0), clause: clauseOptIn(g, p, buyer.id) });
