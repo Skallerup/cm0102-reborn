@@ -12,12 +12,13 @@
 // klubbens rivaler (club +0xb3..+0xbb), club +0xcf, landshold (0x53b900 – landskampene spilles ikke i gittermotoren),
 // de store landsholdsturneringer (0x76d940), rundekoderne fixture +0x30/+0x32 (= 0), prøvespillerlisten engine+0x478e (ingen) og managerens
 // omdømme i ikke-spillerposten (+8/+0xa/+0xc – Staff har det ikke: 0x6d3610 springes over).
-import type { CmPostResult, Player } from '../../types';
+import type { CmPostResult, Fixture, Player } from '../../types';
 import { gs, hasGame } from '../../state';
-import { clubRepMem, cmGeneratedNow, newCmContract, statusCode } from '../../cmPlayerData';
-import { fixtureInfoOf } from './gameInputs';
+import { clubRepMem, cmGeneratedNow, newCmContract, postHooks, statusCode } from '../../cmPlayerData';
+import { fixtureInfoOf, recordBytes, staffBytes } from './gameInputs';
 import type { GP, GridMatch, Rand } from './gridMatch';
-import { matchReport6d1cc0, refereeReport6d4a20, type PmManager, type PmClub, type PmEnv, type PmFixture, type PmPlayer, type PmStaff } from './postMatch';
+import { matchReport6d1cc0, playerReport6d26b0, refereeReport6d4a20, type PmManager, type PmClub, type PmEnv, type PmFixture, type PmPlayer, type PmStaff } from './postMatch';
+import { isResFixture } from '../../cmReserves';
 import { pmPlayerOf, pmSides, refereeInputs } from './postMatchInputs';
 import { natClubId, natOfClub, nationalManager } from '../../cmVirtual';
 import { RSV_COMP } from '../../cmReserveMatches';
@@ -41,30 +42,66 @@ function clubOfGame(id: number): PmClub {
 }
 
 function staffOfGame(q: GP): PmStaff | null {
-  const p = q.src;
-  if (cmGeneratedNow(p) || !q.staffRaw || !q.recRaw) return null;                    // 0x6d20d6: genererede spillere (id ≥ [0xae2364]) får ingen rapport
-  const S = q.staffRaw, R = q.recRaw;
+  if (cmGeneratedNow(q.src) || !q.staffRaw || !q.recRaw) return null;                // 0x6d20d6: genererede spillere (id ≥ [0xae2364]) får ingen rapport
+  return staffOf(q.src, q.staffRaw, q.recRaw);
+}
+function staffOf(p: Player, S: Int8Array, R: Int8Array): PmStaff {
   return { key: p.id + 1, id: p.id, age: s8(S[0x18]), nation: (p.nation ?? -1) + 1, ambition: S[0x57], determination: S[0x58], pressure: S[0x5a],
     professionalism: S[0x5b], temperament: S[0x5d], rec: { ca: s16a(R, 5), r9: s16a(R, 9), rb: s16a(R, 0xb), rd: s16a(R, 0xd) },
     // staff+0x65 +4..+0xc og +0x10..+0x18 (Player.cmRel – klubnøglen er klub-id + 1 som clubOfGame; postMatch.ts' navne følger låsetrinets felter)
     prefs: p.cmRel ? { disClubs: p.cmRel.slice(0, 3).filter((x) => x > 0).map((x) => x + 1), favClubs: p.cmRel.slice(3, 6).filter((x) => x > 0).map((x) => x + 1) } : null };
 }
 
-/** kamprapporten for gittermotorens kamp (efter slutfløjtet) med kampens egne tal (rand) – null uden spil */
-export function gamePostReport(gm: GridMatch, o: { home: number; away: number; fixtureId?: number; neutral?: boolean; intl?: { b3a: number; w30: number; compId: number; major: boolean }; quick?: number }, rand: Rand): CmPostResult | null {
-  if (!hasGame()) return null;
+type PostOpts = { home: number; away: number; fixtureId?: number; neutral?: boolean; intl?: { b3a: number; w30: number; compId: number; major: boolean }; quick?: number };
+
+/** kampposten (fixture) af spillets kamp – `fix`, når kampen ikke (længere) ligger i g.fixtures (baggrundskampene efter kampen) */
+function fixtureOfGame(o: PostOpts, goals: [number, number], fix?: Fixture): PmFixture {
   const g = gs();
-  const f = o.fixtureId !== undefined ? g.fixtures[o.fixtureId] : undefined;
+  const f = fix ?? (o.fixtureId !== undefined ? g.fixtures[o.fixtureId] : undefined);
   const info = o.intl ? { fx3a: o.intl.b3a, comp: o.intl.compId >= 0 ? { rep: g.cmCompRep?.[o.intl.compId] ?? 0 } : null } : fixtureInfoOf(f?.comp, o.home, f?.stage);
   const comp = o.intl ? undefined : f ? g.comps[f.comp] : g.comps[g.clubs[o.home]?.league ?? ''];
   const home = clubOfGame(o.home), away = clubOfGame(o.away);
-  const fx: PmFixture = {
-    id: o.fixtureId ?? 0, home, away, ground: o.neutral ? 0 : home.ground, w30: o.intl?.w30 ?? 0, w32: 0, b3a: info.fx3a, b40: f?.comp === RSV_COMP ? 0 : 1,
+  return {
+    // baggrundskampene (cmReserves.ts 0x84be20): fixture +0 = −2 (0x84c339) – 0x6d26b0's vægt 5
+    id: isResFixture(f) ? -2 : o.fixtureId ?? 0, home, away, ground: o.neutral ? 0 : home.ground, w30: o.intl?.w30 ?? 0, w32: 0, b3a: info.fx3a, b40: f?.comp === RSV_COMP ? 0 : 1,
     // reservekampen (cmReserveMatches.ts): +0x40 = 0 → 0x6d26b0/0x6d3610/0x6d3de0 vejer med turneringens +0x69 alene (Reserve)
-  // landsholdsturneringerne: +0x5d = ingen nation; 0x76d940 (de store slutrunder) = major; venskabskampe (0x5c6710) = special
+    // landsholdsturneringerne: +0x5d = ingen nation; 0x76d940 (de store slutrunder) = major; venskabskampe (0x5c6710) = special
     comp: info.comp ? { rep: info.comp.rep, nation: comp && comp.nation >= 0 ? comp.nation + 1 : 0, major: !!o.intl?.major, special: !!o.intl && o.intl.b3a === 9 && o.intl.compId === FRIENDLY_COMP } : null,
-    goals: [gm.m.goals[0] & 0xff, gm.m.goals[1] & 0xff],
+    goals: [goals[0] & 0xff, goals[1] & 0xff],
   };
+}
+
+/** 0x4cf5f0 for rapporten: spillerens kontrakt med klubben (ikke udlejede) – +0x3d og +0x4f (trupstatus) */
+function contractOfGame(st: PmStaff, club: PmClub): { b3d: number; b4f: number } | null {
+  const p = gs().players[st.id];
+  if (!p || p.club !== club.id || p.loan) return null;
+  const c = p.cmContract ?? newCmContract(statusCode(p));
+  return { b3d: c.b3d, b4f: c.b4f ?? (statusCode(p) << 4) };
+}
+
+/** CONTRACT_MANAGER::update_after_match 0x4ca6d0, 0x4caf77–0x4cafc8: en spiller i truppen, der ikke spillede (0x4cae7d's betingelser – kalderen),
+ *  får rapporten 0x6d26b0(NULL, staff, egen klub, modstanderen, kampen, karakter = snittet [0xb74350]+0x10/+0x18 (6,8 uden kampe) − 0,05 som
+ *  float, a7 = 0, a8 = 0): omdømmet +9/+0xb/+0xd skrives i spillerposten, moralen md går til 0x544710(staff, md, 1) (0x6d3196). */
+export function notPlayedReport(f: Fixture, side: 0 | 1, p: Player, goals: [number, number], rand: Rand): { md: number; rep: [number, number, number] } | null {
+  if (!hasGame() || cmGeneratedNow(p)) return null;
+  const g = gs();
+  const fx = fixtureOfGame({ home: f.home, away: f.away, fixtureId: f.id, neutral: f.cm ? f.cm.b3c === 1 : f.stage === 'F' }, goals, f);
+  const st = staffOf(p, staffBytes(p, g.date), recordBytes(p));
+  const env: PmEnv = { b0: 0, avg: [...(g.cmRatingAvg ?? [680, 100]), ...(g.cmRatingAvgQ ?? [680, 100])] as [number, number, number, number], clock: 0, momSet: false,
+    staffLimit: Infinity, list: true, trials: null, contract: contractOfGame };
+  const [s1, n1] = env.avg;
+  const a6 = Math.fround((n1 === 0 ? 6.8 : s1 / n1) - 0.05);                         // 0x4caf8d–0x4cafbf: fld, fsub 0,05, fstp dword
+  const md = playerReport6d26b0(null, st, side ? fx.away : fx.home, side ? fx.home : fx.away, fx, a6, 0, 0, env, rand);
+  const r = st.rec!;
+  return { md, rep: [r.r9, r.rb, r.rd] };
+}
+postHooks.notPlayed = notPlayedReport;
+
+/** kamprapporten for gittermotorens kamp (efter slutfløjtet) med kampens egne tal (rand) – null uden spil */
+export function gamePostReport(gm: GridMatch, o: PostOpts, rand: Rand): CmPostResult | null {
+  if (!hasGame()) return null;
+  const g = gs();
+  const fx = fixtureOfGame(o, [gm.m.goals[0], gm.m.goals[1]]);
   const sides = pmSides(gm);
   const players: [(PmPlayer | null)[], (PmPlayer | null)[]] = [Array(20).fill(null), Array(20).fill(null)];
   const byIdx: [Player[], Player[]] = [[], []];
@@ -72,13 +109,7 @@ export function gamePostReport(gm: GridMatch, o: { home: number; away: number; f
   const env: PmEnv = {
     // engine+0 (cmQuickMatch.ts) og spillets to karaktersnit [0xb74350]+0x10/+0x18 og +0x20/+0x28 (cmPlayerData.ts recordPlayerMatch)
     b0: o.quick ?? 0, avg: [...(g.cmRatingAvg ?? [680, 100]), ...(g.cmRatingAvgQ ?? [680, 100])] as [number, number, number, number], clock: gm.m.clock, momSet: !!gm.manOfTheMatch(),
-    staffLimit: Infinity, list: true, trials: null,
-    contract: (st, club) => {
-      const p = g.players[st.id];
-      if (!p || p.club !== club.id || p.loan) return null;
-      const c = p.cmContract ?? newCmContract(statusCode(p));
-      return { b3d: c.b3d, b4f: c.b4f ?? (statusCode(p) << 4) };
-    },
+    staffLimit: Infinity, list: true, trials: null, contract: contractOfGame,
   };
   // managerens omdømme 0x6d3610: ikke-spillerpostens +8/+0xa/+0xc (Staff.cmRep / ManagerProfile.cmRep – cmBoard.ts); uden post: springes over
   const mgrOf = (club: number): PmManager | null => {

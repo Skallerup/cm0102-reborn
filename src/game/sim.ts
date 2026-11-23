@@ -393,7 +393,7 @@ function playResMatch(f: Fixture): MatchReport | null {
     if (p.contract?.goalBonus || p.contract?.cleanSheetBonus || p.contract?.cmAssistBonus || p.addOn) afterAppearance(p, line.goals, cmKeeperConceded(line, rep), { assists: line.assists, pay: true });
   }
   // 0x7c0d70 i de «hurtige» kampes snit (engine+0 = 1) – kun personer i hukommelsen (id < [0xae2364]; databasestørrelsens udvalg, cmInMemory)
-  cmAfterMatch(g, f, rep, squad, { cats, avg: true, quick: true, avgOf: (p) => cmInMemory(g, p) });
+  cmAfterMatch(g, f, rep, squad, { cats, avg: true, quick: true, avgOf: (p) => cmInMemory(g, p) }, (p) => cmInMemory(g, p));
   cmPermitAfterMatch(g, f, rep, (p) => !!p.injury || p.banned > 0);
   cmFitMatch(g, rep, true, f.id, [f.home, f.away]);
   cmScoutMatch(g, f, rep);
@@ -548,7 +548,7 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
   }
   // originalens spillerdata efter kampen (0x7c0d70 statistikken, 0x4ca6d0 kontraktens tællere) – kun den originale database i ægte tilstand,
   // ingen tal fra spillets rng (cmPlayerData.ts)
-  cmAfterMatch(g, f, rep, squad);
+  cmAfterMatch(g, f, rep, squad, undefined, (p) => cmInMemory(g, p));
   // Discipline::process_match 0x55ca00 (0x6b60df – lige efter 0x4ca6d0, før konditionsmodulet 0x62c080): karantænerne (cmDiscipline.ts)
   cmDiscAfterMatch(g, f, rep);
   // AWARD_MANAGER::process_fixture 0x4134c0 + Staff_Records 0x868830: priserne (månedens karakterer, ligaens tal, managernes point – cmAwards.ts)

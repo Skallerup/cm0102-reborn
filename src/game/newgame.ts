@@ -393,7 +393,9 @@ export function createGameBase(world: WorldData, o: NewGameOptions): NewGameCtx 
       // sub_535a80 0x536270–0x536ec6: manglende omdømme udfyldes (egen talrække – spillets rng røres ikke) og Free Role (+0x1a)
       if (cm!.cmRaw && (season < 2020 || cmRawLogic)) {
         const cr = club ? cm!.cmRaw.clubRep[club] : undefined;
-        p.cmRepMem = fillReputation({ rep: rt.rep ?? [0, 0, 0], ca: rt.ca, pa: rt.paRaw ?? rt.pa, club: club ? { rep: cr ?? 0, sameNation: g.clubs[club]?.nation === p.nation } : null,
+        // CA som spillerposten +5 står ved 0x536270 – databasens rå værdi (< 1 = mangler; 0x536c72 fylder den først bagefter): før blev de manglende
+        // læst som 1 (rt.ca), så de fik rand(25) + 1 i stedet for grenen rand(di) + 1 (di af klubbens omdømmes lave byte – oftest 1)
+        p.cmRepMem = fillReputation({ rep: rt.rep ?? [0, 0, 0], ca: rt.caRaw ?? rt.ca, pa: rt.paRaw ?? rt.pa, club: club ? { rep: cr ?? 0, sameNation: g.clubs[club]?.nation === p.nation } : null,
           nationRep: cm!.cmRaw.nationRep[p.nation] ?? 0, caps: p.caps }, cmRand(seed, p.id, 535));
         if (rt.fr) p.cmFree = rt.fr;
         // staff +0x1e (anden nationalitet) og +0x3e (kom til klubben) – arbejdstilladelsens historik (cmPermit.ts)

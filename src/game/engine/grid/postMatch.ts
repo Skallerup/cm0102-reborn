@@ -230,9 +230,11 @@ export function adjustMorale7172d0(mp: PmPlayer, d: number, momSet: boolean, ran
 
 // ---------------------------------------------------------------- 0x6d26b0
 
-/** 0x6d26b0(mp, staff, egen klub, modstander, fixture, karakter (float), a7 = engine+0, a8 = 1): omdømmet og moralen for én spiller */
+/** 0x6d26b0(mp, staff, egen klub, modstander, fixture, karakter (float), a7 = engine+0, a8 = 1): omdømmet og moralen for én spiller.
+ *  Giver moralændringen md: med mp går den til 0x7172d0 (MATCH_PLAYER +0x17); uden mp (0x4ca6d0's spillere, der ikke spillede, 0x4cafc8)
+ *  kalder originalen 0x544710(staff, md, 1) (0x6d3196) – det gør kalderen (cmPlayerData.ts cmAdjustMorale). */
 export function playerReport6d26b0(mp: PmPlayer | null, st: PmStaff, own: PmClub, opp: PmClub, fx: PmFixture, a6: number, a7: number, a8: number,
-  env: PmEnv, rand: PmRand): void {
+  env: PmEnv, rand: PmRand): number {
   const rec = st.rec!;
   a6 = f32(a6);
   let L14 = 1, L18 = 1, L1c = 1, same = 0;
@@ -317,7 +319,7 @@ export function playerReport6d26b0(mp: PmPlayer | null, st: PmStaff, own: PmClub
   const n = ax < -20 ? -20 : ax > 20 ? 20 : ax;
   const md = rand(n);
   if (mp) adjustMorale7172d0(mp, md, env.momSet, rand);
-  // (uden mp: 0x544710(staff, md, 1) – kaldes ikke fra 0x6d1cc0)
+  // (uden mp: 0x544710(staff, md, 1) 0x6d3196 – md returneres, kalderen anvender den; resten herunder trækker ingen tal og læser ikke moralen)
   // 0x6d319e: grænserne – højst T = 300·cr + 4000 over det gamle, CA-båndet, ±(2 − v/10000)·k
   const fB = f32(2.0 - wB * 0.0001), fA = f32(2.0 - w9 * 0.0001), fD = f32(2.0 - wD * 0.0001);
   const T = s16(300 * crWord + 4000), ca = s16(rec.ca);
@@ -366,6 +368,7 @@ export function playerReport6d26b0(mp: PmPlayer | null, st: PmStaff, own: PmClub
   let bx = finD; if (bx > 10000) bx = 10000; if (bx < s16(L1c)) bx = s16(L1c);
   if (mp) { mp.w4b = bx; mp.w47 = cx; mp.w49 = dx; }
   else { rec.rb = cx; rec.r9 = dx; rec.rd = bx; }
+  return md;
 }
 
 // ---------------------------------------------------------------- 0x6d3610

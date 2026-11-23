@@ -612,7 +612,9 @@ export function repMemOf(v: number): number {
 /** cmBoardGame.ts registrerer managerens omdømme (undgår en cirkulær import) */
 export const postHooks: { managerRep?: (g: GameState, club: number, v: [number, number, number]) => void;
   /** cmQuickMatch.ts registrerer engine+0 (0x6b66a0) – undgår en cirkulær import */
-  quick?: (g: GameState, f: Fixture, picked: [Player[], Player[]], watched: boolean) => 0 | 1 } = {};
+  quick?: (g: GameState, f: Fixture, picked: [Player[], Player[]], watched: boolean) => 0 | 1;
+  /** postMatchGame.ts registrerer 0x4ca6d0's rapport for spillerne, der ikke spillede (0x4cafc8 → 0x6d26b0 uden MATCH_PLAYER) */
+  notPlayed?: (f: Fixture, side: 0 | 1, p: Player, goals: [number, number], rand: (n: number) => number) => { md: number; rep: [number, number, number] } | null } = {};
 export function cmApplyPost(g: GameState, f: Fixture, rep: MatchReport, world2001 = true): void {
   const post = rep.cmPost;
   if (!post) return;
@@ -628,7 +630,7 @@ export function cmApplyPost(g: GameState, f: Fixture, rep: MatchReport, world200
 
 /** 0x7c0d70 + 0x4ca6d0 for en klubkamp: statistik pr. kategori, formen, karaktersnittet og kontraktens tællere for begge hold. */
 export function cmAfterMatch(g: GameState, f: Fixture, rep: MatchReport, squadOf: (club: number) => Player[],
-  bg?: { cats: [number, number]; avg?: boolean; contract?: boolean; quick?: boolean; avgOf?: (p: Player) => boolean }): void {
+  bg?: { cats: [number, number]; avg?: boolean; contract?: boolean; quick?: boolean; avgOf?: (p: Player) => boolean }, inMemory?: (p: Player) => boolean): void {
   // 2026/27 i ægte tilstand (cmLogic uden cmActive): ældre spil uden moralmodulet (g.cmMedia) kun kampmotorens omdømme (spillerne +9/+0xb/+0xd,
   // klubben +0x80) – spillets egen moral i sim.ts gælder dér. Med cmMediaOn (MODERN_PARITY 8) som 2001: moralen, managerens omdømme, PlayerStats
   // og kontraktens tællere (0x5ce2d0's kontraktdel læser dem)
@@ -645,6 +647,9 @@ export function cmAfterMatch(g: GameState, f: Fixture, rep: MatchReport, squadOf
     return postHooks.quick?.(g, f, [pick(0), pick(1)], false) === 1;
   })();
   const played = new Set<number>();
+  // 0x4ca7bc/0x4cadb3: en venskabskamp (fixture +0x3a = 1) springer hele sidens del af 0x4ca6d0 over (begge løkker – kontrakttællerne, bonusserne
+  // og 0x6d26b0 for dem, der ikke spillede), medmindre modstanderens omdømme ≥ max(1,25·eget, eget + 1500)
+  const off = [0, 1].map((t) => f.comp === 'FRIENDLY' && Math.max(clubRepMem(g, t ? f.away : f.home) * 1.25, clubRepMem(g, t ? f.away : f.home) + 1500) > clubRepMem(g, t ? f.home : f.away));
   for (const line of rep.players) {
     const p = g.players[line.id]; if (!p) continue;
     played.add(p.id);
@@ -652,15 +657,37 @@ export function cmAfterMatch(g: GameState, f: Fixture, rep: MatchReport, squadOf
     recordPlayerMatch(g, p, bg ? bg.cats[line.team] : cat, line, gf, ga, rep.mom === p.id, bg ? !!bg.avg && (bg.avgOf?.(p) ?? true) : true, quick);
     // reservekampene (cmReserveMatches.ts): 0x4ca6d0 gør intet, når fixture +0x40/+0x41 = 0
     if (bg?.contract === false) continue;
+    // 0x4ca90a: kun personer i hukommelsen (id < [0xae2364] – databasestørrelsens udvalg, cmRetire.ts cmInMemory)
+    if ((inMemory && !inMemory(p)) || off[line.team]) continue;
     const club = line.team === 0 ? f.home : f.away;
     const mins = line.sub ? Math.max(0, line.minutes) : line.red || line.injured ? line.minutes : 90;
     contractAfterMatch(g, p, { starter: !line.sub, minutes: mins, injured: line.injured, condition: line.cond ?? 100, won: gf > ga, lost: gf < ga,
       clubRep: clubRepMem(g, club), nationRep: nationRepMem(g, p.nation), seed: f.id, club });
   }
   if (bg?.contract === false) return;
-  for (const club of [f.home, f.away]) {
+  // de ubrugte udskiftere (kampens linjer k ≥ 11 med +0x32 = 0xff, 0x4caa1d → 0x4caadb): bl = 0, +0x3d uændret, resten af den første løkke
+  // (tilfredsheden, sejr/nederlag) – og de nulstilles i truppens kopi (0x4cad2b), så den anden løkke (0x4cae7d) springer dem over
+  rep.bench?.forEach((ids, team) => {
+    const club = team === 0 ? f.home : f.away, gf = goals[team], ga = goals[1 - team];
+    for (const id of ids) {
+      const p = g.players[id]; if (!p || played.has(id)) continue;
+      played.add(id);
+      if (cmGenerated(g, p) || (inMemory && !inMemory(p)) || off[team]) continue;
+      contractAfterMatch(g, p, { starter: false, minutes: 0, injured: false, condition: 100, won: gf > ga, lost: gf < ga,
+        clubRep: clubRepMem(g, club), nationRep: nationRepMem(g, p.nation), seed: f.id, club });
+    }
+  });
+  for (const [side, club] of [[0, f.home], [1, f.away]] as const) {
+    if (off[side]) continue;
     for (const p of squadOf(club)) {
-      if (played.has(p.id) || cmGenerated(g, p) || p.injury || p.banned > 0 || p.loan) continue;
+      if (played.has(p.id) || cmGenerated(g, p) || (inMemory && !inMemory(p)) || p.injury || p.banned > 0 || p.loan) continue;   // 0x4caea6: id < [0xae2364]
+      // 0x4cafc8: 0x6d26b0 uden MATCH_PLAYER – omdømmet i spillerposten og 0x544710(staff, md, 1) (postMatchGame.ts notPlayedReport)
+      const rand = cmRand(g.seed ?? 0, p.id, dayNum(g.date), f.id, 0x4cafc8);
+      const r = postHooks.notPlayed?.(f, side, p, [goals[0], goals[1]], rand);
+      if (r) {
+        p.cmRepMem = [repMemOf(r.rep[0]), repMemOf(r.rep[1]), repMemOf(r.rep[2])];
+        cmAdjustMorale(p, r.md, true, rand);
+      }
       contractNotPlayed(g, p, clubRepMem(g, club), nationRepMem(g, p.nation), club, f.id);
     }
   }
