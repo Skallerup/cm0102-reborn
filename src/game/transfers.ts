@@ -919,8 +919,12 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
   // CM 01/02: en leje laver kun en lejekontrakt (sign_loan_contract 0x4d01e0) – hovedkontraktens +0x4e (transfer-/lejelisten) bliver stående,
   // så "Loa" står på spilleren under lejen (0x4849f0 → 0x544590; ejerens billeder 18/11)
   if (!o.loan || !cmMarketOn(g)) { p.listed = false; p.listPrice = undefined; p.loanListed = undefined; }
-  p.squadStatus = !o.loan ? o.cmRole : undefined;   // Set Role At Club: han får den valgte status
-  if (p.squadStatus) setStatusCode(p);
+  // Set Role At Club: han får den valgte status. En leje med originalens marked rører ikke hovedkontraktens trupstatus +0x4f (sign_loan_contract
+  // 0x4d01e0 – state.ts setClub beholder Player.cmContract)
+  if (!o.loan || !cmMarketOn(g)) {
+    p.squadStatus = !o.loan ? o.cmRole : undefined;
+    if (p.squadStatus) setStatusCode(p);
+  }
   p.wantsAway = false;
   p.promiseUntil = undefined;
   p.renewal = undefined;

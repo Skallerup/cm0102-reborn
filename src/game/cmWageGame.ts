@@ -29,7 +29,8 @@ import { fillUnsetWage_83a1b0 } from './cmWageFill';
 import { cmLogic, cmStaffOn, clubRepMem, staffJoined } from './cmPlayerData';
 import { ageOn } from './dates';
 import { ATTRS } from './attributes';
-import { squad } from './state';
+import { gs, hasGame, squad } from './state';
+import { contractLanguageNibble } from './cmLanguage';
 import { isHumanClub } from './humans';
 import { updateWageBill, wageIdx } from './cmFinance';
 import { AGE_PCT_9A7F30, FEE_STEPS_9A7F48, KEY_CLUB_GLOBALS, KEY_COMP_GLOBALS, KEY_NATION_GLOBALS, NATION_7F } from './cmKeyIds';
@@ -132,6 +133,12 @@ export function writeLoanContract(m: SparseMem, id: number, p: Player, gbp: numb
   m.w8(k + 0x35, 6);
   const [d, y] = isoDay(l.until.slice(0, 10));
   m.w16(k + 0x2d, d); m.w16(k + 0x2f, y);
+  // 0x8c0f40 → 0x85e590: +0x4e = 4, +0x4f lav nibble = sproget i lejeklubben (0x7c6830, højst 10), +0x25 = lejens start (i dag ved tilbuddet);
+  // sign_loan_contract 0x4d01e0 kopierer tilbuddets kontrakt. (+0x4f's høje nibble – lejeklubbens trupstatus – føres ikke hos os)
+  m.w8(k + 0x4e, 4);
+  if (hasGame()) m.w8(k + 0x4f, contractLanguageNibble(gs(), p, p.club) & 0xf);
+  const since = p.moves?.findLast((x) => x.loan && x.to === p.club)?.date;
+  if (since) { const [d0, y0] = isoDay(since.slice(0, 10)); m.w16(k + 0x25, d0); m.w16(k + 0x27, y0); }
 }
 
 const ATTR_IX = new Map<string, number>(ATTRS.map((k, i) => [k, i]));

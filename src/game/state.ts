@@ -19,7 +19,7 @@ export function hasGame(): boolean {
 import { setEconomy, setModern26 } from './econ';
 import { setSavedModern } from '../ui/modernFlag';
 import { cmPermitMove } from './cmPermit';
-import { cmActive, cmMediaOn, cmStaffStateMove } from './cmPlayerData';
+import { cmActive, cmMarketOn, cmMediaOn, cmStaffStateMove } from './cmPlayerData';
 import { offInOriginal } from './newsFilter';
 import { legacyExtended } from './rules';
 import { captureCarry, registerCarry, restoreCarry } from './carry';
@@ -176,7 +176,11 @@ export function setClub(p: Player, club: number) {
   if (moved && p.club && hasGame() && p.stats && p.stats.apps + p.stats.subs > 0) pushCareerLine(p, p.club, !!p.loan);
   // en klubløs spiller har ingen kontrakt og dermed ingen trupstatus (kontrakten +0x4f slettes sammen med posten) – før hang "squad rotation" ved efter fri transfer/frigivelse (ejerens fund 21/11)
   if (moved && !club) p.squadStatus = undefined;
-  if (moved) { p.cmStats = undefined; p.cmContract = undefined; if (hasGame()) { cmPermitMove(gs(), p, club); cmStaffStateMove(gs(), p, p.club, club); } }
+  // CM 01/02: en leje (sign_loan_contract 0x4d01e0) og dens slut (end_loan 0x4d07e0) laver/sletter kun lejekontrakten (række +4) – hovedkontrakten
+  // (række +0: trupstatus +0x4f, +0x3d–+0x3f, +0x44/+0x45, +0x4e) bliver stående (oraklets billeder 3/11-01: udlejedes hovedkontrakt +0x4f 0x7a/0x6a/0x5a).
+  // Før fik en leje lavet i spillet en ny kontrakt med trupstatus 0, så viljen 0x846920 (0x8474dc: +0x4f >> 4) gav ×7 for en udlejet
+  const loanMove = moved && !!p.loan && (p.loan.from === p.club || p.loan.from === club) && hasGame() && cmMarketOn(gs());
+  if (moved) { p.cmStats = undefined; if (!loanMove) p.cmContract = undefined; if (hasGame()) { cmPermitMove(gs(), p, club); cmStaffStateMove(gs(), p, p.club, club); } }
   p.club = club;
   // en nyindkøbt spiller kommer på førsteholdet: reserve-mærket hører til den gamle klub (spillerrapport #25: Obi og Arthur
   // stod som reserver hos ejeren – røde, uden "+ Sub" og uden at kunne vælges)
