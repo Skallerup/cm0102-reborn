@@ -13,6 +13,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '2026-11-23',
     title: { da: 'Mere af det originale CM 01/02', en: 'More of the original CM 01/02' },
     items: [
+      { da: "⚠ Kræver et nyt spil: Computerklubberne tilbydes nu spillere med udløbende kontrakt på de samme dage som i originalen (7, 6, 5 … måneder og 1 uge før udløbet), så flere skifter klub på en fri transfer eller forkontrakt.", en: "⚠ Requires a new game: Computer clubs are now offered players with expiring contracts on the same days as in the original (7, 6, 5 … months and 1 week before expiry), so more of them move on free transfers or pre-contracts." },
       { da: "Computerklubberne laver nu forkontrakter (Bosman) med spillere i det sidste kontraktår, og skiftet sker, når kontrakten udløber – som i originalen.", en: "Computer clubs now agree pre-contracts (Bosman) with players in the last year of their contract, and the move happens when the contract expires – as in the original." },
       { da: "Regens er rigtige spillere hele vejen igennem: moral og skader ved kampstart, kampværdier, kamprapporter, reservekampe, kondition, kontrakter og moral som i originalen. Opfundne fyldspillere tæller ikke længere som rigtige.", en: "Regens are real players throughout: kick-off morale and injuries, match values, match reports, reserve games, fitness, contracts and morale as in the original. Invented squad fillers no longer count as real players." },
     ],
