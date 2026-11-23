@@ -66,4 +66,17 @@ describe('FA Cup – rundetabellen og lodtrækningen', () => {
     expect(pairs.length).toBe(40);
     expect(new Set(pairs.flat()).size).toBe(80);
   });
+  it('randomize_round_teams med tomme pladser (2026/27: 44 deltagere): rundens faste antal kampe, ulige antal kaster ikke', () => {
+    for (const n of [11, 22, 40, 21]) {
+      const teams = Array.from({ length: n }, (_, i) => i + 1);
+      const alone: number[] = [];
+      const pairs = cmRandomizeRound(teams, 20, cmRand(n), alone);
+      expect(pairs.length * 2 + alone.length).toBe(n);
+      expect(new Set([...pairs.flat(), ...alone]).size).toBe(n);
+      // første gennemgang fylder kampe uden hold: færre hold end kampe → ingen kampe
+      if (n <= 20) expect(pairs.length).toBe(0);
+      else expect(pairs.length).toBe(n - 20);
+    }
+    expect(() => cmRandomizeRound([1, 2, 3], 1, cmRand(1))).toThrow();
+  });
 });

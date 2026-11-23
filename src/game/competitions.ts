@@ -425,8 +425,12 @@ export function cmFaCupDay(g: GameState): void {
     const shape = cmCupRoundShape('ENG', year, r);
     if (!shape) continue;
     const ent = m.cmEnt as number[];
-    const pool = [...prev.map((t) => t.winner!), ...ent.slice(shape[3], shape[3] + shape[2])].filter((c) => g.clubs[c]);
-    const pairs = cmRandomizeRound(pool, Math.floor(pool.length / 2), cmRand(g.seed ?? 0, 0x51e220, year, r));
+    // rundens faste antal kampe (+0x1a); mangler databasen deltagere (2026/27), går hold uden modstander videre (meta.cmFaBye)
+    const bye = (m.cmFaBye as number[] | undefined) ?? [];
+    const pool = [...prev.map((t) => t.winner!), ...bye, ...ent.slice(shape[3], shape[3] + shape[2])].filter((c) => g.clubs[c]);
+    const alone: number[] = [];
+    const pairs = cmRandomizeRound(pool, Math.max(shape[1], Math.ceil(pool.length / 2)), cmRand(g.seed ?? 0, 0x51e220, year, r), alone);
+    if (alone.length || bye.length) m.cmFaBye = alone;
     createCupRound(comp, pairs, r, calendar(g.season));
   }
 }

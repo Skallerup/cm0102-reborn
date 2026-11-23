@@ -195,16 +195,21 @@ export function cmFaCupEntrants(g: GameState, nation: number, year: number, rand
   return out;
 }
 
-/** Cup::randomize_round_teams 0x51e220 for en runde med `ties` kampe: holdene (`teams` – alle kendte, ingen tomme pladser) blandes
- *  (for hver plads i: rand(n) ↔ i, 0x51e491), og hvert hold får en tilfældig kamp: start rand(ties), videre fremad (rundt), første gennemgang
- *  kun kampe uden hold, så kampe med en ledig side (gennemgangen bliver stående, 0x51e60f); begge sider ledige → rand(2) ≠ 0 = side a.
- *  Resultatet [a, b] pr. kamp (set_home_teams_for_round: a hjemme). */
-export function cmRandomizeRound(teams: number[], ties: number, rand: (n: number) => number): [number, number][] {
-  const L = teams.slice();
+/** Cup::randomize_round_teams 0x51e220 for en runde med `ties` kampe (rundens +0x1a): rundens poster (2·ties – en tom plads = en tom post
+ *  0xffff, 0x51e3b6) blandes (for hver post i: rand(n) ↔ i, 0x51e491), tomme poster springes over (0x51e529), og hvert hold får en tilfældig
+ *  kamp: start rand(ties), videre fremad (rundt), første gennemgang kun kampe uden hold, så kampe med en ledig side (gennemgangen bliver
+ *  stående, 0x51e60f); begge sider ledige → rand(2) ≠ 0 = side a. Resultatet [a, b] pr. kamp (set_home_teams_for_round: a hjemme) og
+ *  `alone` = hold uden modstander (kampen har en tom side – set_up_round 0x51cb90 laver ingen kamp, 0x522950). Kun når databasen mangler
+ *  deltagere (2026/27: ingen engelske Second/Third/non-league-klubber); i 2001 er holdene altid 2·ties. */
+export function cmRandomizeRound(teams: number[], ties: number, rand: (n: number) => number, alone: number[] = []): [number, number][] {
+  if (teams.length > 2 * ties) throw new Error('cmRandomizeRound: ingen ledig plads');
+  const L: (number | null)[] = teams.slice();
+  while (L.length < 2 * ties) L.push(null);
   for (let i = 0; i < L.length; i++) { const j = rand(L.length); const t = L[j]; L[j] = L[i]; L[i] = t; }
   const A: (number | null)[] = new Array(ties).fill(null), B: (number | null)[] = new Array(ties).fill(null);
   let pass = 0;
   for (const club of L) {
+    if (club === null) continue;
     const start = rand(ties);
     let k = start;
     for (;;) {
@@ -221,7 +226,10 @@ export function cmRandomizeRound(teams: number[], ties: number, rand: (n: number
     }
   }
   const out: [number, number][] = [];
-  for (let k = 0; k < ties; k++) if (A[k] !== null && B[k] !== null) out.push([A[k]!, B[k]!]);
+  for (let k = 0; k < ties; k++) {
+    if (A[k] !== null && B[k] !== null) out.push([A[k]!, B[k]!]);
+    else if (A[k] !== null || B[k] !== null) alone.push((A[k] ?? B[k])!);
+  }
   return out;
 }
 
