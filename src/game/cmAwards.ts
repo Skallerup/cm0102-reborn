@@ -46,6 +46,7 @@ import { asOwner, isHumanClub } from './humans';
 import { addNews } from './state';
 import { cmActive, cmLogic, clubRepMem, curRep, repMemOf, statAvg } from './cmPlayerData';
 import { cmDate } from './cmCalendar';
+import { renewalHooks } from './cmTableHooks';
 import { posGroup } from './cmFutureMore';
 import { naturalMask } from './engine/grid/aiTacticChoice';
 import type { Fixture, GameState, MatchReport, Player } from './types';
@@ -777,6 +778,12 @@ function award(g: GameState, def: CmAwDef, comp: string, w: CmAwPlace[], m?: num
   const name = cmAwardName(def.id);
   for (const x of w.slice(0, 1)) raiseRep(g, x, def.rep);
   if (team) for (const [pid, club] of team) if (pid) raiseRep(g, { id: pid, club, name: '' }, def.rep);
+  // Staff_Records::add_month_award_record 0x86c8c0 (set_winner 0x7671c0 – vinderen) / add_year_award_record 0x86c390 (0x9302f0 – de tre
+  // pladser): spillere (ikke job 5/12) med kontrakt (ikke type 5) får forlængelsestilbuddet 0x86cb5d/0x86c62d (cmContractRenewals)
+  if (!team && (def.kind === 'month' || def.kind === 'year')) {
+    const ps = w.slice(0, def.kind === 'month' ? 1 : 3).map((x) => (x.mgr ? undefined : g.players[x.id])).filter((p): p is Player => !!p?.contract && p.contract.cmType !== 5);
+    if (ps.length) renewalHooks.offer?.(g, ps);
+  }
   const humans = Object.values(g.clubs).filter((c) => isHumanClub(c.id) || c.id === g.userClub).map((c) => c.id);
   const nat = natIdx(g, def.nation);
   const inScope = (club: number) => (comp ? g.clubs[club]?.league === comp : (g.clubs[club]?.nation ?? -2) === nat);

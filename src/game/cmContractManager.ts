@@ -30,7 +30,7 @@ import { bookBlock, K as FK, memKnown } from './cmFinance';
 import type { Contract, GameState, Player } from './types';
 import { G, clubAt, getContract, cmAfter2330, DATE_2330, type CmMem } from './cmMem';
 import { buildWantMem, applyCmTerms, type CmTerms, type WantMem } from './cmContractGame';
-import { contractDailyUpdate_4c7ac0, listAdd_68d0d0, listInit_68d020, listNext_68d1b0 } from './cmContract';
+import { contractDailyUpdate_4c7ac0, daysSince_54cdb0, fixedDates_4c7ac0, offerContract_4cda70, listAdd_68d0d0, listInit_68d020, listNext_68d1b0 } from './cmContract';
 import { humanClub_600a50 } from './cmWageGame';
 import { slCall } from './cmShortlist';
 import { cmSlOffer842c00 } from './cmShortlistGame';
@@ -42,6 +42,7 @@ import { ATTRS } from './attributes';
 import { HEAP0, HEAP_PTR } from './cmGen/x86';
 import { addFavClub, addFavPerson, managerStaff, personKey } from './cmRelations';
 import { cmSignContractMorale } from './cmMedia';
+import { renewalHooks } from './cmTableHooks';
 
 /** € → £ (cmMoney.ts) */
 import { cmGbp } from './cmMoney';
@@ -150,18 +151,39 @@ const FORCE = new Set([0x7875e0, 0x7a7eb0, 0x8d0a70, 0x842c00, 0x4d6790, 0x4da59
 
 /** En dag af CONTRACT_MANAGER::daily_update 0x4c7ac0 for computerklubberne (sim.ts newDay og spilstarten) */
 export function cmContractManagerDay(g: GameState): void {
+  cmContractManagerRun(g);
+}
+
+/** Staff_Records' forlængelsestilbud (add_league_champions_record 0x8692a7, add_promotion_record 0x869972, add_relegation_record 0x86a61a,
+ *  add_cup_winners_record 0x86aee4, add_month_award_record 0x86cb5d, add_year_award_record 0x86c62d): kontrakten (0x4cf5f0) startede for mere
+ *  end 300 dage siden (0x54cdb0: i dag − +0x25 > 0x12c), klubbens trupplan har ham (0x849ce0(klub, staff, 0, 0) ≠ 0 – pladsens +0xf = staff),
+ *  så CONTRACT_MANAGER::offer_contract 0x4cda70(staff, 0, 0, −1, 0, 1,0, 1) – art 1: tilbuddet gives kun, når hans kontrakt løber mere end
+ *  i dag + 365 + 150 dage (0x4cdd5a). Kaldt med det samme (samme dag og hukommelse som dagens kontraktmanager); de enkelte rekorders egne
+ *  betingelser (trupstatus, kampe) står hos kalderne (cmMedia.ts, cmAwards.ts). */
+export function cmContractRenewals(g: GameState, ps: Player[]): void {
+  if (!ps.length || !cmCmOn(g)) return;
+  const list = ps.filter((p) => cmCmScope(g, p));
+  if (!list.length) return;
+  cmContractManagerRun(g, list);
+}
+
+renewalHooks.offer = cmContractRenewals;
+
+function cmContractManagerRun(g: GameState, renew?: Player[]): void {
   if (!cmCmOn(g)) return;
   const t0 = typeof performance !== 'undefined' ? performance.now() : 0;
   const S: CmCmState = (g.cmCm ??= { dec: [], off: [], row: {} });
   const T = dayNum(g.date), A = date2330();
-  // kandidaterne og de forfaldne beslutninger
+  // kandidaterne og de forfaldne beslutninger (ikke ved Staff_Records' tilbud – dér kun de nævnte spillere)
   const cands: Player[] = [];
-  for (const p of Object.values(g.players)) if (cmCmScope(g, p) && candidate(g, p, T, A)) cands.push(p);
   const due = new Set<number>();
-  for (const d of S.dec) if (dayNum(dayIso(d[1], d[2])) <= T) due.add(d[0]);
-  const clubs = new Set<number>(cands.map((p) => p.club));
+  if (!renew) {
+    for (const p of Object.values(g.players)) if (cmCmScope(g, p) && candidate(g, p, T, A)) cands.push(p);
+    for (const d of S.dec) if (dayNum(dayIso(d[1], d[2])) <= T) due.add(d[0]);
+  }
+  const clubs = new Set<number>((renew ?? cands).map((p) => p.club));
   for (const pid of due) { const p = g.players[pid]; if (p?.club && g.clubs[p.club]) clubs.add(p.loan?.from ?? p.club); }
-  CMD_STATS.days++;
+  if (!renew) CMD_STATS.days++;
   if (!clubs.size) { if (t0) CMD_STATS.ms += performance.now() - t0; return; }
   const signed: { p: Player; k: number }[] = [], released: Player[] = [], offered: [number, number][] = [];
   let M: WantMem | null = null;
@@ -202,7 +224,7 @@ export function cmContractManagerDay(g: GameState): void {
   M = buildWantMem(g, clubs, { call, useLog: (adr) => adr === 0x600a50 || adr === 0x849f00 || FORCE.has(adr) });
   const { W, c } = M;
   const m = c.m;
-  M.setRand(cmRand(g.seed ?? 0, T, 0x4c7ac0));
+  M.setRand(renew ? cmRand(g.seed ?? 0, T, 0x868c50, renew[0].id) : cmRand(g.seed ?? 0, T, 0x4c7ac0));
   const memId = new Map<number, number>();
   for (const [p, st] of W.players) { const id = m.s32(st); byMem.set(id, p); memId.set(p.id, id); }
   const memOf = (pid: number) => (pid > -1 ? memId.get(pid) ?? (g.players[pid] && !g.players[pid].regen && pid < 1_000_000 ? pid : -1) : -1);
@@ -254,9 +276,25 @@ export function cmContractManagerDay(g: GameState): void {
       m.w8(ra, m.u8(ra) + 1);
     }
   }
+  // Staff_Records' tilbud (cmContractRenewals): i kalderens rækkefølge, med dagens faste datoer (tidspunkt 0: [0xae1068] = i dag + 365)
+  if (renew) {
+    m.w8(G.SLICE, 2);
+    m.w8(G.B_AE233C, cmAfter2330(g.date, false));
+    fixedDates_4c7ac0(m, G.TODAY);
+    const slm = m.u32(m.u32(0xde1f54) + 0x856);
+    for (const p of renew) {
+      const st = W.staffOf(p);
+      const con = st ? getContract(m, st) : 0;
+      if (!con) continue;
+      if (!(daysSince_54cdb0(m, G.TODAY, { d: m.s16(con + 0x25), y: m.u16(con + 0x27), x: m.u32(con + 0x29) }) > 0x12c)) continue;
+      const club = clubAt(m, m.s32(con + 4));
+      if (!club || !c.call(0x849ce0, slm, club, st, 0, 0)) continue;
+      offerContract_4cda70(c, self, st, 0, 0, -1, 1.0, 1);
+    }
+  }
   // de tre tidspunkter (0: de faste datoer, 2: personløkken – kun kandidaterne, i id-rækkefølge)
   const only = cands.map((p) => W.staffOf(p)).filter((st) => st).sort((a, b) => m.s32(a) - m.s32(b));
-  for (let slice = 0; slice <= 2; slice++) {
+  if (!renew) for (let slice = 0; slice <= 2; slice++) {
     m.w8(G.SLICE, slice);
     m.w8(G.B_AE233C, cmAfter2330(g.date, slice === 0));
     contractDailyUpdate_4c7ac0(c, G.TODAY, slice, 1, slice === 2 ? only : []);

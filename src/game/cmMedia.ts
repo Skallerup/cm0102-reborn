@@ -18,8 +18,10 @@
 //   add_relegation_record 0x86a1c0                 klubomdømmet −500 (mindst 750), truppen moral −15; omdømmet (+9/+0xb/+0xd) ×0,9
 //                                                  (trupstatus 1–2) / ×0,95 (3–5)
 //   add_cup_winners_record 0x86a800                klubomdømmet mod 500·turneringens omdømme (højst +750)
+//                                                  og truppen (400·omdømmet ≥ klubbens): moral +15, +0x44 +100
+//   forlængelsestilbuddene 0x4cda70 (1,0, art 1)    i de fire og i prisernes 0x86c8c0/0x86c390 (cmAwards.ts) → cmContractManager.ts cmContractRenewals
 // Ikke porteret (se noten): managerens/formandens historik og omdømme i de fire Staff_Records-funktioner (0x58e340, +0x69's +8/+0xa/+0xc),
-// stadionets +0x44 (mester), forlængelsestilbuddene 0x4cda70 (kontrakterne), mediesystemet 0x754a30/0x72c1f0/0x744240/0x733a60/0x735870/
+// stadionets +0x44 (mester), mediesystemet 0x754a30/0x72c1f0/0x744240/0x733a60/0x735870/
 // 0x741020/0x736c00/0x73e870/0x74b060, Fine::fine_player 0x5a5980, AWOL 0x4190d0/0x41a360/0x419840, skadernes nyheder 0x630ee0.
 import type { Competition as Comp, GameState, Player } from './types';
 import { cmMediaOn, cmAdjustMorale, cmRand, repMemOf, statAvg, statusCode } from './cmPlayerData';
@@ -28,7 +30,7 @@ import { LEAGUE_RULES } from './leagues';
 import { cmNonLeagueRelegated } from './cmNonLeague';
 import { CM_COMP_ID } from './engine/grid/gameInputs';
 import { signHooks, squad } from './state';
-import { tableStatusHooks } from './cmTableHooks';
+import { renewalHooks, tableStatusHooks } from './cmTableHooks';
 
 const s8 = (v: number) => (v << 24) >> 24;
 const s16 = (v: number) => (v << 16) >> 16;
@@ -89,13 +91,17 @@ export function recChampions(g: GameState, club: number, comp: Comp, squadOf: (c
   const legs = g.customRules?.[comp.id]?.rounds || 2;
   const thr = Math.trunc(Math.fround((comp.table.length - 1) * legs) * 0.33);
   const day = dayNum(g.date);
+  const renew: Player[] = [];
   for (const p of squad50(squadOf, club)) {
     if (p.club !== club) continue;
     const rand = cmRand(g.seed ?? 0, p.id, day, 0x868c50);
     const big = statAvg(p, 2, 1, 6.5) > thr;
     cmAdjustMorale(p, big ? 20 : 10, true, rand);
     if (p.contract && p.cmContract) p.cmContract.b44 = add44(p.cmContract.b44, big ? 100 : 50);
+    // 0x869248: kun de faste (ligakampe over grænsen) får forlængelsestilbuddet (0x4cda70 – cmContractRenewals)
+    if (big && p.contract) renew.push(p);
   }
+  renewalHooks.offer?.(g, renew);
 }
 
 /** add_promotion_record 0x869480(klub, liga, …): +500 (højst 10000), maksimum +10·omdømme (0x869518), truppen (0x869884) 0x544710(+15, 1) og
@@ -106,10 +112,15 @@ export function recPromotion(g: GameState, club: number, comp: Comp, squadOf: (c
   setClubRep(g, club, v > 10000 ? 10000 : v);
   crowdMax(g, club, 10 * rep);
   const day = dayNum(g.date);
+  const renew: Player[] = [];
   for (const p of squad50(squadOf, club)) {
     cmAdjustMorale(p, 15, true, cmRand(g.seed ?? 0, p.id, day, 0x869480));
     if (p.contract && p.cmContract) p.cmContract.b44 = add44(p.cmContract.b44, 75);
+    // 0x869908: trupstatus (+0x4f >> 4) 1–3 eller 5 → forlængelsestilbuddet (0x4cda70 – cmContractRenewals)
+    const st = statusCode(p);
+    if (p.contract && ((st >= 1 && st <= 3) || st === 5)) renew.push(p);
   }
+  renewalHooks.offer?.(g, renew);
 }
 
 /** add_relegation_record 0x86a1c0(klub, liga): −500 (mindst 750), truppen (0x86a475) 0x544710(−15, 1) og efter trupstatus (+0x4f >> 4)
@@ -119,21 +130,40 @@ export function recRelegation(g: GameState, club: number, _comp: Comp, squadOf: 
   if (v < 0x2ee) v = 0x2ee;
   setClubRep(g, club, v);
   const day = dayNum(g.date);
+  const renew: Player[] = [];
   for (const p of squad50(squadOf, club)) {
     cmAdjustMorale(p, -15, true, cmRand(g.seed ?? 0, p.id, day, 0x86a1c0));
-    if (!p.contract || !p.cmRepMem) continue;
+    if (!p.contract) continue;
     const st = statusCode(p);
     if (st < 1 || st > 5) continue;
+    // 0x86a5b2: trupstatus 1–2 (efter ×0,9) → forlængelsestilbuddet (0x4cda70 – cmContractRenewals)
+    if (st <= 2) renew.push(p);
+    if (!p.cmRepMem) continue;
     const f = st <= 2 ? 0.9 : 0.95;
     const r = p.cmRepMem;
     p.cmRepMem = [repMemOf(s16(Math.trunc(Math.round(r[0] * 50) * f))), repMemOf(s16(Math.trunc(Math.round(r[1] * 50) * f))),
       repMemOf(s16(Math.trunc(Math.round(r[2] * 50) * f)))];
   }
+  renewalHooks.offer?.(g, renew);
 }
 
-/** add_cup_winners_record 0x86a800(klub, finalen, …): klubomdømmet mod 500·turneringens omdømme (højst +750) – truppen røres ikke */
-export function recCupWinners(g: GameState, club: number, comp: Comp): void {
-  repTowards(g, club, compRep(g, comp.id));
+/** add_cup_winners_record 0x86a800(klub, finalen, …): klubomdømmet mod 500·turneringens omdømme (højst +750); truppen (0x86add3), når
+ *  400·turneringens omdømme ≥ klubbens +0x80 (målt efter omdømmet): 0x544710(+15, 1), kontraktens +0x44 +100 og for trupstatus 1–3 eller 5
+ *  forlængelsestilbuddet (0x86aee4 – cmContractRenewals) */
+export function recCupWinners(g: GameState, club: number, comp: Comp, squadOf?: (c: number) => Player[]): void {
+  const rep = compRep(g, comp.id);
+  repTowards(g, club, rep);
+  if (!squadOf || 400 * rep < clubRep(g, club)) return;
+  const day = dayNum(g.date);
+  const renew: Player[] = [];
+  for (const p of squad50(squadOf, club)) {
+    cmAdjustMorale(p, 15, true, cmRand(g.seed ?? 0, p.id, day, 0x86a800));
+    if (!p.contract || !p.cmContract) continue;
+    p.cmContract.b44 = add44(p.cmContract.b44, 100);
+    const st = statusCode(p);
+    if ((st >= 1 && st <= 3) || st === 5) renew.push(p);
+  }
+  renewalHooks.offer?.(g, renew);
 }
 
 /** Staff_Records ved turneringernes afslutning (dagligt efter dagens kampe): en færdig liga giver mesterskabet, nedrykningerne (de nederste
@@ -165,6 +195,6 @@ export function cmRecordsDaily(g: GameState, squadOf: (c: number) => Player[]): 
       // oprykningsplayoff PO-<lavere liga> (playoffFor = ligaen over): vinderen rykker op fra den lavere liga (season.ts promotionRelegation)
       const from = comp.id.startsWith('PO-') ? comp.id.slice(3) : '';
       if (comp.winner && g.comps[from] && LEAGUE_RULES[comp.playoffFor ?? '']?.below === from) recPromotion(g, comp.winner, g.comps[from], squadOf);
-    } else if ((comp.type === 'cup' || comp.type === 'continental') && comp.winner) recCupWinners(g, comp.winner, comp);
+    } else if ((comp.type === 'cup' || comp.type === 'continental') && comp.winner) recCupWinners(g, comp.winner, comp, squadOf);
   }
 }

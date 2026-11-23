@@ -1,4 +1,4 @@
-import type { GameState } from './types';
+import type { GameState, Player } from './types';
 
 /** League::update_table_positions 0x684cd0 (cmBoardGame.ts updateTablePositions) og modulerne, den kalder ud til – her, så ingen af dem skal
  *  importere hinanden (cmMedia.ts og cmNonLeague.ts registrerer sig) */
@@ -8,3 +8,7 @@ export const tableStatusHooks: {
   /** cmNonLeague.ts cmNonLeagueRelegated: has_relegation +0xc1 for en liga uden kørende liga under (Third Division 1) */
   relegated?: (g: GameState, lid: string) => number;
 } = {};
+
+/** Staff_Records' forlængelsestilbud 0x4cda70 (cmMedia.ts' rekorder, cmAwards.ts' priser) → CONTRACT_MANAGER (cmContractManager.ts registrerer
+ *  cmContractRenewals) */
+export const renewalHooks: { offer?: (g: GameState, ps: Player[]) => void } = {};

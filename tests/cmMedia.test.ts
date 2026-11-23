@@ -2,7 +2,12 @@
 // efter disassemblyen (konstanterne 0x968f78 = 0,33, 0x9689d0 = 0,95, 0x9689d8 = 0,9).
 import { describe, expect, it } from 'vitest';
 import { cmSignContractMorale, recChampions, recCupWinners, recPromotion, recRelegation } from '../src/game/cmMedia';
+import { renewalHooks } from '../src/game/cmTableHooks';
 import type { Competition, GameState, Player } from '../src/game/types';
+
+// forlængelsestilbuddene 0x4cda70 (cmContractManager.ts) fanges her: hvem rekorden sender videre
+let renewed: number[] = [];
+renewalHooks.offer = (_g, ps) => { renewed.push(...ps.map((p) => p.id)); };
 
 const game = (): GameState => ({
   dbKind: 'cm0102', dbYear: 2001, season: 2001, seed: 1, date: '2002-05-11', options: { mode: 'authentic' }, cmFitStart: 0,
@@ -29,7 +34,9 @@ describe('Staff_Records', () => {
     const g = game();
     const a = player(20, 20, { cmStats: { 2: [13, 0, 0, 0, 0, 0, 0, 0, 0] } } as unknown as Partial<Player>);
     const b = player(21, 20, { cmStats: { 2: [12, 0, 0, 0, 0, 0, 0, 0, 0] } } as unknown as Partial<Player>);
+    renewed = [];
     recChampions(g, 1, league, () => [a, b]);
+    expect(renewed).toEqual([20]);                                   // 0x869248: kun over grænsen
     expect(g.cmClubRep![1]).toBe(6750);
     expect(g.cmCrowd![1][2]).toBe(30200 + 300);
     expect(a.cmContract!.b44).toBe(100); expect(b.cmContract!.b44).toBe(90);
@@ -38,7 +45,10 @@ describe('Staff_Records', () => {
   it('0x869480: +500 (højst 10000), +0x44 +75 (højst 100), moralen +15', () => {
     const g = game();
     const p = player(30, 4);
-    recPromotion(g, 2, league, () => [p]);
+    const q = player(31, 4, { cmContract: { b3d: 0, b3e: 0, b3f: 0, b44: 0, b45: 0, b4f: 0x40 } } as Partial<Player>);
+    renewed = [];
+    recPromotion(g, 2, league, () => [p, q]);
+    expect(renewed).toEqual([30]);                                   // 0x869908: trupstatus 1–3 eller 5
     expect(g.cmClubRep![2]).toBe(10000);
     expect(p.cmContract!.b44).toBe(100);
     expect(p.morale).toBeGreaterThan(4);
@@ -47,17 +57,26 @@ describe('Staff_Records', () => {
     const g = game(); g.cmClubRep![1] = 1000;
     const k = player(40, 15, { cmRepMem: [100, 60, 20] } as Partial<Player>);
     const r = player(41, 15, { cmRepMem: [100, 60, 20], cmContract: { b3d: 0, b3e: 0, b3f: 0, b44: 0, b45: 0, b4f: 0x40 } } as Partial<Player>);
+    renewed = [];
     recRelegation(g, 1, league, () => [k, r]);
+    expect(renewed).toEqual([40]);                                   // 0x86a5b2: trupstatus 1–2
     expect(g.cmClubRep![1]).toBe(750);
     expect(k.cmRepMem!.map((v) => Math.trunc(v * 50))).toEqual([4500, 2700, 900]);
     expect(r.cmRepMem!.map((v) => Math.trunc(v * 50))).toEqual([4750, 2850, 950]);
     expect(k.morale).toBeLessThan(15);
   });
-  it('0x86a800: kun klubomdømmet (målet 500·turneringens omdømme)', () => {
+  it('0x86a800: klubomdømmet (målet 500·turneringens omdømme); truppen kun når 400·turneringens omdømme ≥ klubbens', () => {
     const g = game(); g.cmCompRep![351] = 13;
     const cup = { id: 'CUP-60', name: 'English FA Cup', type: 'cup' } as unknown as Competition;
     g.comps[cup.id] = cup;
-    recCupWinners(g, 1, cup);
+    const a = player(50, 5);
+    renewed = [];
+    recCupWinners(g, 1, cup, () => [a]);
     expect(g.cmClubRep![1]).toBe(6500);
+    expect(a.morale).toBe(5); expect(a.cmContract!.b44).toBe(40); expect(renewed).toEqual([]);    // 400·13 = 5200 < 6500
+    g.cmClubRep![1] = 3000;
+    recCupWinners(g, 1, cup, () => [a]);
+    expect(g.cmClubRep![1]).toBe(3750);
+    expect(a.morale).toBeGreaterThan(5); expect(a.cmContract!.b44).toBe(100); expect(renewed).toEqual([50]);
   });
 });

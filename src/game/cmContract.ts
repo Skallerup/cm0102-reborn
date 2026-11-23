@@ -293,6 +293,12 @@ const copyBytes = (m: CmMem, dst: number, src: number, n: number) => { for (let 
 
 /** 0x4c7ac0 CONTRACT_MANAGER::daily_update(dato*, tidspunkt, flag) – thiscall på [0xae1050]. `only` (spillet, cmContractManager.ts): personløkken
  *  kun for disse poster (i id-rækkefølge) i stedet for alle [0xae2364] – de andre kan ikke blive berørt den dag */
+/** 0x4c7ac0 tidspunkt 0: de faste datoer i dag + 7 … + 1095 (0x867d30's bånd, 0x4cda70's [0xae1068]) */
+export function fixedDates_4c7ac0(m: CmMem, D: number): void {
+  for (const [a, n] of [[0xae1048, 7], [0xae1030, 0x1e], [0xae1058, 0x3c], [0xae1010, 0x5b], [0xae1060, 0x79], [0xae1040, 0x98],
+    [0xae1090, 0xb6], [0xae1068, 0x16d], [0xae1008, 0x226], [0xae1020, 0x447]]) wrDate(m, a, addDays_54c5b0(m, D, n));
+}
+
 export function contractDailyUpdate_4c7ac0(c: CmCtx, D: number, slice: number, flag: number, only?: number[]): void {
   const m = c.m;
   const self = m.u32(G.CM);
@@ -300,10 +306,8 @@ export function contractDailyUpdate_4c7ac0(c: CmCtx, D: number, slice: number, f
   try {
     let st = m.u32(G.STAFF);                                                  // ebx ved indgangen
     const sl = slice & 0xff;
-    if (sl === 0) {
-      for (const [a, n] of [[0xae1048, 7], [0xae1030, 0x1e], [0xae1058, 0x3c], [0xae1010, 0x5b], [0xae1060, 0x79], [0xae1040, 0x98],
-        [0xae1090, 0xb6], [0xae1068, 0x16d], [0xae1008, 0x226], [0xae1020, 0x447]]) wrDate(m, a, addDays_54c5b0(m, D, n));
-    } else if (sl === 2) {
+    if (sl === 0) fixedDates_4c7ac0(m, D);
+    else if (sl === 2) {
       // (1) forhandlingslisten
       for (let i = 0, off = 0; i < m.s32(self + 0x2c); i++, off += 0x15) {
         const arr = m.u32(self + 0x28);
