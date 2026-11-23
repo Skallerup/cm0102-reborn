@@ -9,6 +9,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.35.0',
+    date: '2026-11-23',
+    title: { da: 'Mere af det originale CM 01/02', en: 'More of the original CM 01/02' },
+    items: [
+      { da: "Regens er rigtige spillere hele vejen igennem: moral og skader ved kampstart, kampværdier, kamprapporter, reservekampe, kondition, kontrakter og moral som i originalen. Opfundne fyldspillere tæller ikke længere som rigtige.", en: "Regens are real players throughout: kick-off morale and injuries, match values, match reports, reserve games, fitness, contracts and morale as in the original. Invented squad fillers no longer count as real players." },
+    ],
+  },
+  {
     version: '0.34.0',
     date: '2026-11-22',
     title: { da: 'Mere af det originale CM 01/02', en: 'More of the original CM 01/02' },
