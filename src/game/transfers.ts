@@ -917,7 +917,10 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
   p.promiseUntil = undefined;
   p.renewal = undefined;
   p.complaint = undefined;
-  p.joined = g.date;
+  // CM 01/02: lejen (sign_loan_contract 0x4d01e0) og dens slut (end_loan 0x4d07e0) rører ikke staff +0x3e/+0x40 – datoen, han kom til
+  // moderklubben (oraklets billeder 25/8- og 3/11-01: udlejede og hjemvendte har moderklubbens dato). Med lejedatoen dér var en udlejet
+  // "nyankommen" i viljen 0x846920 (0x84862e: under (loyalitet + 8) · 15 dage i klubben → 0), så tredje klubber købte ham aldrig midt i lejen.
+  if (!o.loan || !cmMarketOn(g)) p.joined = g.date;
   p.morale = Math.min(20, p.morale + 2);
   p.form = [];
   o.status = 'completed';
@@ -2516,11 +2519,13 @@ export function recallLoan(pid: number): string {
   const g = gs();
   const p = g.players[pid];
   if (!p || !p.loan || p.loan.from !== g.userClub || !loanRecallOn()) return 'error';
-  if (p.joined && daysBetween(p.joined, g.date) < 28) return 'loan.recallTooSoon';
+  // (lejens start: flytningen til lejeklubben – Player.joined er moderklubbens dato med originalens marked, se completeTransfer)
+  const since = [...(p.moves ?? [])].reverse().find((x) => x.loan && x.to === p.club)?.date ?? p.joined;
+  if (since && daysBetween(since, g.date) < 28) return 'loan.recallTooSoon';
   const at = g.clubs[p.club];
   setClub(p, g.userClub);
   p.loan = null;
-  p.joined = g.date;
+  if (!cmMarketOn(g)) p.joined = g.date;   // (end_loan 0x4d07e0 rører ikke staff +0x3e – se completeTransfer)
   addNews({ cat: 'transfer', key: 'loan.recalledNews', params: { player: pname(p), club: at?.name ?? '' }, link: { kind: 'player', id: p.id } });
   return 'loan.recalled';
 }

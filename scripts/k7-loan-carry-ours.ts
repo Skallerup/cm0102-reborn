@@ -1,6 +1,6 @@
 // K7c #2: modstykket til scripts/k7-loan-carry.ts – vores lejer fra engelske klubber på oraklets billeddatoer (spillet ved D−1 færdigspillet,
 // som k7-seasons.ts: frø 1, Arsenal på ferie, world med CM_DBSIZE=2): slutdato, oprettelsesdato (lejens flytning), hovedkontraktens udløb.
-//   WORLD=<world-dbs2.json> [V=<dato,dato>] [UNTIL=2004-06-27] node scripts/measure.mjs -- npx tsx scripts/k7-loan-carry-ours.ts
+//   WORLD=<world-dbs2.json> [V=<dato,dato>] [START=2001-07-28] [UNTIL=2004-06-27] node scripts/measure.mjs -- npx tsx scripts/k7-loan-carry-ours.ts
 import { readFileSync } from 'node:fs';
 import { createGame, type WorldData } from '../src/game/newgame';
 import { continueGame, quickPlayUserMatch } from '../src/game/sim';
@@ -13,8 +13,9 @@ createGame(w, { managerName: 'Test Smoke', managerNation: eng, clubId: w.clubs.f
 const g = gs();
 const UNTIL = process.env.UNTIL ?? '2004-06-27';
 const V = new Set((process.env.V ?? '2002-06-30,2003-06-29,2004-06-27').split(','));
-const dates: string[] = ['2002-06-30'];
-for (let t = Date.parse('2002-07-14'); ; t += 14 * 86400000) { const d = new Date(t).toISOString().slice(0, 10); if (d > UNTIL) break; dates.push(d); }
+// START: første dato (hver 14. dag derfra; standard 30/6-02 og så 14/7-02 – oraklets y23-e14-billeder)
+const dates: string[] = process.env.START ? [] : ['2002-06-30'];
+for (let t = Date.parse(process.env.START ?? '2002-07-14'); ; t += 14 * 86400000) { const d = new Date(t).toISOString().slice(0, 10); if (d > UNTIL) break; dates.push(d); }
 const cDiv = (cid: number) => { const c = g.clubs[cid]; if (!c) return ''; const n = g.comps[c.league]?.name ?? g.leagues[c.league]?.name ?? ''; return c.nation === eng && n ? n.replace('English ', '') : n || 'nl'; };
 let prevL: Map<number, string> | null = null;
 for (const d of dates) {
