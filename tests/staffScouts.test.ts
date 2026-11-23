@@ -141,9 +141,12 @@ describe('cmStaff – i spillet (3.9.60, ægte tilstand)', () => {
     // Rec: de bedste spillere i verden får 4-5 stjerner af Man Utds spejder, de fleste 0
     const top = Object.values(g.players).filter((p) => p.club !== mu).sort((a, b) => b.ca - a.ca).slice(0, 10);
     expect(top.filter((p) => cmScoutRec(g, p) >= 4).length).toBeGreaterThanOrEqual(8);
-    // Wenger: Superb (cmRep +0xa = 9500)
+    // Wenger: Superb (databasens +0xa = 9500; oraklet 14/7-01: 9500). Forkørslen flytter den med bestyrelsens ugentlige 0x69a36c, når
+    // tilliden falder – og tilliden ved spilstarten (0x68f130) trækker af én talrække for alle klubber, så den følger fx antallet af klubber
+    // med omdømme < 500 (create_game 0x82996a, s8). Ordet testes derfor på databasens værdi; spillets ligger tæt på (frø 5: 9494).
     const wenger = all.find((s) => s.last === 'Wenger')!;
-    expect(cmStaffRepWord(wenger, g.date)).toBe('superb');
+    expect(Math.abs((wenger.cmRep?.[1] ?? 0) - 9500)).toBeLessThan(100);
+    expect(cmStaffRepWord({ ...wenger, cmRep: [9500, 9500, 9000] }, g.date)).toBe('superb');
     // tilbud til en træner i en anden klub – svaret kommer dagen efter
     const coach = shown.find((s) => s.club && s.role === 'coach' && cmRolesFor(s, g.date).includes('coach'))!;
     expect(applyAction({ t: 'cmStaffOffer', id: coach.id, role: 'coach', wage: 1, years: 2, signOn: 0 })).toBe('ok');
