@@ -33,6 +33,7 @@ import { asOwner, forEachHuman, isHumanClub } from './humans';
 import { JOB_CODE } from './cmStaff';
 import { ATTRS } from './attributes';
 import { playerRecordInto } from './engine/grid/aiTeam';
+import { cmHasCaPost } from './cmDevelop';
 
 export interface CmRetEntry {
   /** spillerens id */ id: number;
@@ -470,7 +471,9 @@ function settle(g: GameState, L: CmRetEntry[], i: number, today: number, rand: R
     if (daysBetween(today, joinedPair(g, p)) < 210 && age < 38 && k && !p.listed && !p.loanListed && !k.b45) { p.cmRetire = undefined; return; }
   }
   if (!p.club) e.club = 0;
-  retire(g, p, e, g.date, rand, L === stateOf(g).list);
+  // puljen/køen (0x7a6335/0x7a64e2) kender kun originalens personer: en spiller uden spillerpost i CA-fordelingen (kommet til hukommelsen udefra)
+  // findes ikke i originalen – hans regen går ad den gamle vej uden post (cmDevelop.ts caRedistribute)
+  retire(g, p, e, g.date, rand, L === stateOf(g).list && cmHasCaPost(g, p.id) !== false);
 }
 
 function process(g: GameState): void {

@@ -451,7 +451,7 @@ function caRankFor(g: GameState): CaRank {
 }
 /** 0x5d587a–0x5d58de. Originalens poster forsvinder ikke: en pensioneret spillers post (PLAYER_REGEN, cmRetire.ts) står med sin CA/PA og
  *  sorteres med, til regen'en lægges i den (0x7abac0: staff +0x61 = posten fra regen-køens indgang). Hos os slettes spilleren – posten bliver
- *  her stående med de sidste tal, og regen'en (Player.regenOf) overtager den; andre nye spillere får en ny post. */
+ *  her stående med de sidste tal, og regen'en (Player.regenOf) overtager den; andre nye spillere får ingen post. */
 function caRedistribute(g: GameState): void {
   const r = caRankFor(g);
   const used = new Set<number>(), byId = new Map<number, CaSlot>();
@@ -459,11 +459,12 @@ function caRedistribute(g: GameState): void {
   for (const p of Object.values(g.players).sort((a, b) => a.id - b.id)) {
     if (!realPlayer(p) || used.has(p.id)) continue;
     const sl = p.regenOf !== undefined && !used.has(p.regenOf) ? byId.get(p.regenOf) : undefined;
-    // uden post: kun nye personer i hukommelsen (oprettet efter øjebliksbilledet); en spiller, der fandtes uden for hukommelsen og siden er
-    // kommet til et indlæst land, findes ikke i originalen (ingen post – han udvikles uden omfordeling)
-    if (!sl && (!cmInMemory(g, p) || (r.top !== undefined && p.id < r.top))) continue;
-    if (sl) { byId.delete(sl.id); sl.id = p.id; sl.ca = caOf(p); sl.pa = paOf(p); byId.set(p.id, sl); }
-    else { const n = { id: p.id, ca: caOf(p), pa: paOf(p) }; r.slots.push(n); byId.set(p.id, n); }
+    // Originalen får aldrig flere spillerposter end [0xae236c]: 0x7abac0 lægger regen'en i en post fra puljen (en pensioneret spillers). En spiller
+    // uden post – en, der fandtes uden for hukommelsen og siden er kommet til et indlæst land, eller en regen af en sådan – findes ikke i
+    // originalen og udvikles uden omfordeling. (Før fik de en ny post ud over fordelingen; posterne over dens længde beholdt deres egen CA, så de
+    // bedste ~30 spillere slap for fordelingen og alle under dem rykkede op – K7c: fælles spilleres ΔCA +0,75/+0,53 pr. sæson mod oraklets ~0.)
+    if (!sl) continue;
+    byId.delete(sl.id); sl.id = p.id; sl.ca = caOf(p); sl.pa = paOf(p); byId.set(p.id, sl);
     used.add(p.id);
   }
   const list = r.slots;
@@ -477,6 +478,12 @@ function caRedistribute(g: GameState): void {
     const p = g.players[sl.id];
     if (realPlayer(p)) { p.ca = Math.max(1, v); cmIntSync(g, p); }
   }
+}
+
+/** har spilleren en post i CA-fordelingen (0x5d393e: en af [0xae236c] spillerposterne)? undefined før fordelingens øjebliksbillede */
+export function cmHasCaPost(g: GameState, id: number): boolean | undefined {
+  const r = caRanks.get(g);
+  return r ? r.slots.some((x) => x.id === id) : undefined;
 }
 
 /** udviklingen for én spiller (0x5d38f9–0x5d5777) med 0x538bc0 bagefter */

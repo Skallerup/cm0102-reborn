@@ -12,12 +12,14 @@ import { applyAction } from '../src/game/actions';
 import { gs } from '../src/game/state';
 import { cmInMemory } from '../src/game/cmRetire';
 import type { GameState } from '../src/game/types';
+import { ST } from '../src/game/cmPlayerData';
 
 const DATES = (process.env.DATES ?? '2001-07-14,2001-10-06,2002-01-05,2002-06-30').split(',');
 const ONLY_ORACLE = !!process.env.ONLY_ORACLE;
 const CLUB = 'Arsenal';
 /** pr. spiller: nøgle, alder, CA, PA, klub, klubbens land, division, (vores) regen/ny, kampe i sæsonen, trænere i klubben */
-export interface DRow { key: string; age: number; ca: number; pa: number; club: string; nat: string; div: string; nw?: boolean; rg?: boolean; apps?: number; coaches?: number; fac?: number }
+export interface DRow { key: string; age: number; ca: number; pa: number; club: string; nat: string; div: string; nw?: boolean; rg?: boolean; apps?: number; coaches?: number; fac?: number;
+  /** PlayerStats kat. 6 og 1: [kampe, karaktersum] (udviklingens s1/s2 og s4/s3 – 0x7c1e30) */ st6?: [number, number]; st1?: [number, number] }
 
 const yrs = (date: string, dob: string) => (Date.parse(date) - Date.parse(dob)) / (365.25 * 86400000);
 const str = (m: SparseMem, a: number, n = 60) => { let s = ''; if (!a) return s; for (let i = 0; i < n; i++) { const c = m.u8(a + i); if (!c) break; s += String.fromCharCode(c); } return s.trim(); };
@@ -27,6 +29,12 @@ function oracleRows(m: SparseMem): { date: string; rows: DRow[] } {
   const S = m.u32(0xae23bc), n = m.s32(0xae2364), C = m.u32(0xae23b4), nc = m.s32(0xae235c);
   const date = dayIso(m.s16(0xae2c90), m.s16(0xae2c92));
   const rows: DRow[] = [];
+  const PS = m.u32(0xb74350), nP = m.s32(0xae236c), sidx = m.u32(PS + 0x30), srec = m.u32(PS + 4);
+  const stOf = (pid: number, c: number): [number, number] | undefined => {
+    if (pid < 0 || pid >= nP) return undefined;
+    const ix = m.s32(sidx + 39 * pid + 4 * (c - 1)); if (ix < 0) return undefined;
+    const r = srec + 32 * ix; return [m.u8(r), m.s16(r + 0xe)];
+  };
   for (let id = 0; id < n; id++) {
     const st = S + 0x6e * id, pr = m.u32(st + 0x61);
     if (!pr || m.u8(st + 0x3d) === 16) continue;
@@ -36,7 +44,7 @@ function oracleRows(m: SparseMem): { date: string; rows: DRow[] } {
     const ok = cix >= 0 && cix < nc;
     const adr = C + 0x245 * cix, dv = ok ? m.u32(adr + 0x57) : 0;
     rows.push({ key: `${common || f + ' ' + l}|${dob}`, age: yrs(date, dob), ca: m.s16(pr + 5), pa: m.s16(pr + 7), club: ok ? str(m, adr + 4, 51) : '',
-      nat: ok ? str(m, m.u32(adr + 0x53) + 4, 51) : '', div: dv ? str(m, dv + 4, 51) : '' });
+      nat: ok ? str(m, m.u32(adr + 0x53) + 4, 51) : '', div: dv ? str(m, dv + 4, 51) : '', st6: stOf(m.s32(pr), 6), st1: stOf(m.s32(pr), 1) });
   }
   return { date, rows };
 }
@@ -52,7 +60,8 @@ function ourRows(date: string): DRow[] {
     if (p.virtual || !cmInMemory(g, p)) continue;
     const c = g.clubs[p.club];
         rows.push({ key: `${p.first} ${p.last}|${p.dob}`, age: yrs(date, p.dob), ca: p.ca, pa: p.pa, club: c?.name ?? '', nat: c ? g.nations[c.nation]?.name ?? '' : '', div: p.club ? divOf(p.club) : '',
-      nw: p.id >= top0, rg: !!p.regen, apps: p.stats?.apps, coaches: p.club ? coaches.get(p.club) ?? 0 : undefined, fac: c?.facilities });
+      nw: p.id >= top0, rg: !!p.regen, apps: p.stats?.apps, coaches: p.club ? coaches.get(p.club) ?? 0 : undefined, fac: c?.facilities,
+      st6: p.cmStats?.[6] ? [p.cmStats[6][ST.apps], p.cmStats[6][ST.rating]] : undefined, st1: p.cmStats?.[1] ? [p.cmStats[1][ST.apps], p.cmStats[1][ST.rating]] : undefined });
   }
   return rows;
 }
@@ -87,6 +96,7 @@ for (const iso of DATES) {
   const e = ix.snaps.find((s) => s.iso === iso), e2 = ix2?.snaps.find((s) => s.iso === iso);
   const o = oracleRows(e ? loadDaySnap(ix, e) : loadDaySnap(ix2!, e2!));
   out.o[iso] = o.rows;
-  console.log(`${iso}: orakel ${o.rows.length} (${o.date}), vores ${out.u[iso]?.length ?? '-'} (${((Date.now() - t0) / 1000).toFixed(0)} s)`);
+  const av = g?.cmRatingAvg, aq = g?.cmRatingAvgQ;
+  console.log(`${iso}: orakel ${o.rows.length} (${o.date}), vores ${out.u[iso]?.length ?? '-'} (${((Date.now() - t0) / 1000).toFixed(0)} s)  snit vores ${av ? (av[0] / av[1]).toFixed(3) : '-'} / ${aq ? (aq[0] / aq[1]).toFixed(3) : '-'}`);
 }
 writeFileSync(process.env.OUT!, JSON.stringify(out));
