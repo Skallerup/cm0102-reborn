@@ -2125,6 +2125,7 @@ Object.assign(it, {
   "ng.step.done": "Calcio d'inizio...",
   "ng.step.shortlists": "I club preparano le liste degli obiettivi...",
   "ng.slowHint": "Sul telefono può richiedere fino a un minuto: lascia la pagina aperta.",
+  "ng.bgHint": "Lascia la pagina aperta: in background la creazione si mette in pausa.",
   "inapp.killedTitle": "Il browser ha chiuso il gioco durante la creazione",
   "inapp.killedText": "Il telefono ha esaurito la memoria (succede spesso nel browser integrato di un'app). Riprova, oppure apri cm0102reborn.com in Safari o Chrome.",
   "info.title": "Informazioni su questo gioco",

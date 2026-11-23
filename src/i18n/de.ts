@@ -2125,6 +2125,7 @@ Object.assign(de, {
   "ng.step.done": "Anpfiff...",
   "ng.step.shortlists": "Die Vereine stellen ihre Wunschlisten auf...",
   "ng.slowHint": "Auf dem Handy kann das bis zu einer Minute dauern – lass die Seite geöffnet.",
+  "ng.bgHint": "Lass die Seite geöffnet – im Hintergrund pausiert die Erstellung.",
   "inapp.killedTitle": "Der Browser hat das Spiel beim Erstellen geschlossen",
   "inapp.killedText": "Dein Handy hatte zu wenig Speicher (das passiert oft im eingebauten Browser einer App). Versuche es erneut – oder öffne cm0102reborn.com in Safari oder Chrome.",
   "info.title": "Über dieses Spiel",

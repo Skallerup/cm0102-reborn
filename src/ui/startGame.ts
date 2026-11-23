@@ -121,13 +121,15 @@ export function newGameStages(opts: Pick<NewGameOptions, 'preview'>): NewGameJob
 const NG_TRACE = (() => { try { return typeof localStorage !== 'undefined' && localStorage.getItem('cm0102.ngTrace') === '1'; } catch { return false; } })();
 /** ønskelisternes portioner ved nyt spil (localStorage['cm0102.ngSlParts'] overstyrer – til målinger) */
 const SL_PARTS = 12;
-/** pause mellem to trins arbejdere (ms) */
+/** pause mellem to trins arbejdere (ms) – localStorage['cm0102.ngGap'] overstyrer (til målinger) */
 const PHASE_GAP_MS = 400;
+const phaseGap = () => { try { const v = localStorage.getItem('cm0102.ngGap'); const n = Number(v); return v !== null && v !== '' && n >= 0 && n <= 5000 ? n : PHASE_GAP_MS; } catch { return PHASE_GAP_MS; } };
 const newWorker = () => new Worker(new URL('./newGameWorker.ts', import.meta.url), { type: 'module' });
 /** kører trinene i hver sin arbejder; den sidste svarer med spillet */
 function runPhases(first: NewGameJob, stages: NewGameJob['phases'][], pre: Worker | null, onProgress: (p: NewGameProgress) => void, signal?: AbortSignal): Promise<GameState> {
   return new Promise<GameState>((resolve, reject) => {
     let cur: Worker | null = null, done = false;
+    const gap = phaseGap();
     const fail = (e: Error) => { if (done) return; done = true; cur?.terminate(); cur = null; reject(e); };
     signal?.addEventListener('abort', () => fail(new DOMException('aborted', 'AbortError')));
     const start = (i: number, w: Worker, job: NewGameJob) => {
@@ -141,10 +143,11 @@ function runPhases(first: NewGameJob, stages: NewGameJob['phases'][], pre: Worke
         if (m.type === 'progress') onProgress({ step: m.step, frac: m.frac });
         else if (m.type === 'trace') { if (NG_TRACE) console.log(`ngtrace ${i}: ${m.s}`); }
         else if (m.type === 'handed' && ch) {
-          // (hukommelse) Safari frigiver en afsluttet arbejders heap lidt efter terminate – næste arbejder startes først efter en kort pause, så de
-          // to ikke er i hukommelsen samtidig (målt i WebKit: toppen ved skiftet)
+          // (hukommelse) Safari frigiver en afsluttet arbejders heap lidt efter terminate – næste arbejder venter en kort pause, før den tager spillet
+          // fra kanalen, så de to ikke er i hukommelsen samtidig (målt i WebKit: toppen ved skiftet). (23/11) Pausen ligger i arbejderen, ikke i en
+          // setTimeout i hovedtråden: en skjult fanes timere drosles (≥ 1 s) eller fryses, og forløbet stod da stille mellem to trin.
           w.terminate(); cur = null;
-          setTimeout(() => { if (!done) start(i + 1, newWorker(), { opts: job.opts, from: ch.port2 }); }, PHASE_GAP_MS);
+          start(i + 1, newWorker(), { opts: job.opts, from: ch.port2, gapMs: gap });
         }
         else if (m.type === 'done') { done = true; w.terminate(); cur = null; resolve(m.game as GameState); }
         else if (m.type === 'error') fail(new Error(m.message));

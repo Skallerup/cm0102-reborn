@@ -34,6 +34,7 @@ import { ORIGINAL_VERSIONS, type OriginalVersion } from './world';
 import { createOnlineGame } from '../online/client';
 import { markNewGame } from '../online/errors';
 import { DB_SIZES, dbSizeReason, readDbSize, writeDbSize, type DbSize } from './dbSize';
+import { useHiddenWhile } from './NewGameLoader';
 import { createGameAsync, openStartWorld, LANG_NATION, ORIG_LANG_NATION, prepareConversion, readDb, readVer, runConversion, writeDb, writeVer, type ConvertPrep, type Db, type StartWorld } from './startGame';
 
 export type Step = 'menu' | 'db' | 'leagues' | 'season' | 'name' | 'deadline' | 'nation' | 'team' | 'club' | 'confirm' | 'restore' | 'delete' | 'settings' | 'opts' | 'extras' | 'account' | 'convpick' | 'convdone';
@@ -118,6 +119,7 @@ export function Frame({ step, version, title, sub, children, onBack, onNext, bac
   hist: { back: boolean; fwd: boolean }; onHist: (d: -1 | 1) => void; onRestart: () => void; onExit?: () => void; className?: string;
 }) {
   const pct = prog ? Math.max(0, Math.min(100, Math.round(prog.frac * 100))) : 0;
+  const bg = useHiddenWhile(!!prog?.step);
   // baggrunden som i spillet: --cx-photo på :root (Shell sætter den samme variabel), og hovedfladen .cx-orig lader fotoet stå alene
   useEffect(() => { document.documentElement.style.setProperty('--cx-photo', `url("${import.meta.env.BASE_URL}original-bg/${BG[step]}.webp")`); }, [step]);
   return (
@@ -135,7 +137,7 @@ export function Frame({ step, version, title, sub, children, onBack, onNext, bac
           <div className="cx-running" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-label={prog.label}>
             <span className="cx-run-l">{prog.label}{prog.step && <small className="cx-run-step" data-ng-step={prog.step}>{t(`ng.step.${prog.step}`)}</small>}</span>
             <span className="cx-run-bar"><i style={{ width: `${pct}%` }} /><b className="cx-run-pct">{pct}%</b></span>
-            {prog.step && <small className="cx-running-hint">{t('ng.slowHint')}</small>}
+            {prog.step && <small className="cx-running-hint" {...(bg ? { 'data-ng-bg': '' } : {})}>{t(bg ? 'ng.bgHint' : 'ng.slowHint')}</small>}
           </div>
         ) : (
           <div className="cx-backnext">

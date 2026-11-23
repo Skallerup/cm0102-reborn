@@ -24,7 +24,9 @@ export type NewGameMsg = { type: 'progress'; step: string; frac: number } | { ty
 export type NewGameJob = { world?: WorldData; src?: WorldSrc; opts: NewGameOptions; convert?: { kind: 'convert' | 'restart'; old: GameState; picked?: boolean };
   /** (hukommelse, iPhone 22/11) kun disse trin af spilstarten ('base' = createGameBase, så createGamePhase); `from` modtager spillet fra forrige
    *  trins arbejder, `to` sender det videre til næste (uden om hovedtråden) – uden `to` svarer arbejderen med 'done' som før */
-  phases?: ('base' | NewGamePhase)[]; from?: MessagePort; to?: MessagePort };
+  phases?: ('base' | NewGamePhase)[]; from?: MessagePort; to?: MessagePort;
+  /** (hukommelse) pause i arbejderen, før spillet tages fra `from` (forrige arbejders heap frigives imens) – arbejderens egen timer, ikke hovedtrådens */
+  gapMs?: number };
 /** `rng` = talrækkens tilstand (g.rng røres ikke – som i ét forløb, hvor g.rng ikke opdateres undervejs) */
 export type PhaseHandoff = { game: GameState; ctx: NewGameCtx; rng: number };
 /** `slimOnly`: kun listerne – arbejderen lukkes bagefter (startGame.ts openStartWorld), så databasen tolkes ikke hel (worldFetch.ts fetchSlimWorld) */
@@ -62,6 +64,7 @@ self.onmessage = async (e: MessageEvent<NewGameJob | LoadJob>) => {
     setNewGameProgress((step, frac) => post({ type: 'progress', step, frac: cv ? frac * 0.9 : frac }));
     let ctx: NewGameCtx | null = null;
     if (job.from) {
+      if (job.gapMs) await new Promise((r) => setTimeout(r, job.gapMs));
       // forrige trins spil (med modulernes tilstand og talrækken) – setGame lægger carry.ts' tilstand tilbage
       const h = await new Promise<PhaseHandoff>((resolve) => { job.from!.onmessage = (m) => resolve(m.data as PhaseHandoff); });
       job.from.close();

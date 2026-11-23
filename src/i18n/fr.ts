@@ -2125,6 +2125,7 @@ Object.assign(fr, {
   "ng.step.done": "Coup d'envoi...",
   "ng.step.shortlists": "Les clubs dressent leurs listes de cibles...",
   "ng.slowHint": "Sur un téléphone, cela peut prendre jusqu'à une minute – laissez la page ouverte.",
+  "ng.bgHint": "Laissez la page ouverte – la création est en pause en arrière-plan.",
   "inapp.killedTitle": "Le navigateur a fermé le jeu pendant sa création",
   "inapp.killedText": "Votre téléphone a manqué de mémoire (cela arrive souvent dans le navigateur intégré d'une application). Réessayez – ou ouvrez cm0102reborn.com dans Safari ou Chrome.",
   "info.title": "À propos de ce jeu",

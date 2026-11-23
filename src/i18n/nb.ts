@@ -6652,6 +6652,7 @@ Object.assign(nb, {
   "ng.step.done": "Avspark...",
   "ng.step.shortlists": "Klubbene lager ønskelister...",
   "ng.slowHint": "Det kan ta opptil ett minutt på en mobil – la siden være åpen.",
+  "ng.bgHint": "Hold siden åpen – opprettelsen settes på pause i bakgrunnen.",
   "inapp.killedTitle": "Nettleseren lukket spillet mens det ble opprettet",
   "inapp.killedText": "Telefonen gikk tom for minne (det skjer ofte i en apps innebygde nettleser). Prøv igjen – eller åpne cm0102reborn.com i Safari eller Chrome.",
   "info.title": "Om dette spillet",

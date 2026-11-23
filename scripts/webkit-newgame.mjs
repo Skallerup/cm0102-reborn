@@ -15,7 +15,8 @@ const stop = () => { try { server.kill(); } catch { /* */ } };
 process.on('exit', stop);
 for (let i = 0; i < 60; i++) { try { if ((await fetch(URL)).ok) break; } catch { /* */ } await new Promise((r) => setTimeout(r, 500)); }
 const START_PIDS = execSync('ps -A -o pid=,command=', { encoding: 'utf8', maxBuffer: 1 << 24 }).split('\n').filter((l) => l.includes('ms-playwright')).map((l) => l.trim().split(/\s+/)[0]);
-const browser = await (kind === 'chromium' ? chromium : webkit).launch();
+// CH=chromium: Chromium i den nye headless-tilstand (fanernes synlighed som i en rigtig browser – BG=hidden skjuler siden; den gamle headless-shell gør ikke)
+const browser = await (kind === 'chromium' ? chromium : webkit).launch({ ...(process.env.CH ? { channel: process.env.CH } : {}), ...(process.env.HEADED ? { headless: false, args: ['--window-position=-2400,-2400'] } : {}) });
 // UA=<user agent>: fx Facebook-appens browser på iPhone (FBAN/FBIOS)
 const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, ...(process.env.UA ? { userAgent: process.env.UA } : {}) });
 const page = await ctx.newPage();
@@ -30,6 +31,8 @@ page.on('crash', () => { console.log('CRASH'); errs.push('crash'); });
 await page.addInitScript(() => { localStorage.setItem('cm0102.lang', 'en'); localStorage.setItem('cm0102.forceLogin', '1'); localStorage.setItem('cm-theme', 'retro'); localStorage.setItem('cm0102.mode', 'authentic'); localStorage.setItem('cm0102.db', 'original'); localStorage.setItem('cm0102.engine', 'original'); localStorage.setItem('cm0102.inapp.seen', String(Date.now())); sessionStorage.setItem('cm0102.play', '1'); });
 // DBSIZE=normal|maximum: originalens databasestørrelse (ui/dbSize.ts); NGSPLIT=0: spilstarten i én arbejder (startGame.ts newGameStages)
 // SLPARTS=n: ønskelisternes klubløkke i n arbejdere (startGame.ts newGameStages)
+// NGGAP=ms: pausen mellem to trins arbejdere (startGame.ts PHASE_GAP_MS)
+if (process.env.NGGAP) await page.addInitScript((g) => { localStorage.setItem('cm0102.ngGap', g); }, process.env.NGGAP);
 if (process.env.DBSIZE || process.env.NGSPLIT || process.env.SLPARTS) await page.addInitScript(([z, sp, sl]) => { if (z) localStorage.setItem('cm0102.dbsize', z); if (sp) localStorage.setItem('cm0102.ngSplit', sp); if (sl) localStorage.setItem('cm0102.ngSlParts', sl); }, [process.env.DBSIZE ?? '', process.env.NGSPLIT ?? '', process.env.SLPARTS ?? '']);
 // KEEPLOAD=1: indlæsningens arbejder beholdes til den midlertidige verdens første trin (som før 22/11 – startGame.ts openStartWorld)
 if (process.env.TIMELINE) await page.addInitScript(() => { localStorage.setItem('cm0102.ngTrace', '1'); });
@@ -85,14 +88,43 @@ try {
   await page.locator('[data-take]').click();
   await page.waitForSelector('[data-confirm]');
   await page.locator('.cx-foot .cx-next').click();
-  await page.waitForTimeout(3000);
+  const tTC = Date.now();
+  // BG=hidden|frozen (Chromium): siden i baggrunden under Take Control – BGAT ms efter klikket i BGMS ms (hidden: en anden fane forrest;
+  // frozen: CDP Page.setWebLifecycleState som Chrome Androids frysning af baggrundsfaner). Tiden til spillet er klar skrives til sidst.
+  let bgDone = Promise.resolve();
+  if (process.env.BG) {
+    const at = Number(process.env.BGAT ?? 2000), ms = Number(process.env.BGMS ?? 30000);
+    bgDone = (async () => {
+      await page.waitForTimeout(at);
+      const vis = () => page.evaluate(() => document.visibilityState).catch(() => '?');
+      let other = null;
+      let win = null;
+      if (process.env.BG === 'frozen') await cdp.send('Page.setWebLifecycleState', { state: 'frozen' });
+      else if (process.env.BG === 'hfrozen') { other = await ctx.newPage(); await other.bringToFront(); await page.waitForTimeout(500); console.log(`  BG skjult: ${await vis()}`); await cdp.send('Page.setWebLifecycleState', { state: 'frozen' }); }
+      else if (process.env.BG === 'min') { win = (await cdp.send('Browser.getWindowForTarget')).windowId; await cdp.send('Browser.setWindowBounds', { windowId: win, bounds: { windowState: 'minimized' } }); }
+      else { other = await ctx.newPage(); await other.bringToFront(); }
+      console.log(`  BG ${process.env.BG} ved ${T()} (${/frozen/.test(process.env.BG) ? 'frosset' : await vis()})`);
+      // sidens egen visibilityState undervejs (frosset: intet svar)
+      const pv = setInterval(() => { vis().then((v) => console.log(`  BG ${T()} side: ${v}`)); }, 10000);
+      await new Promise((r) => setTimeout(r, ms));
+      clearInterval(pv);
+      if (process.env.BG === 'frozen') await cdp.send('Page.setWebLifecycleState', { state: 'active' });
+      else if (process.env.BG === 'hfrozen') { await cdp.send('Page.setWebLifecycleState', { state: 'active' }); await page.bringToFront(); await other.close(); }
+      else if (win !== null) await cdp.send('Browser.setWindowBounds', { windowId: win, bounds: { windowState: 'normal' } });
+      else { await page.bringToFront(); await other.close(); }
+      console.log(`  BG slut ved ${T()} (${await vis()}) hint: ${await page.evaluate(() => document.querySelector('[data-ng-bg]')?.textContent ?? 'intet').catch(() => '?')}`);
+    })();
+  }
+  if (!process.env.BG) await page.waitForTimeout(3000);
   // hovedtråden UNDER Take Control (Chromium): hvad der stadig holdes, mens det rigtige spil bygges i arbejderne; TCSNAP=<fil>: heap-snapshot dér
-  if (cdp) {
+  if (cdp && !process.env.BG) {
     console.log(`Take Control (under) ${T()} fp nu ${rssNow().toFixed(0)} MB${await mainHeap()}`);
     if (process.env.TCSNAP) { const fs = await import('node:fs'); const fd = fs.openSync(process.env.TCSNAP, 'w'); const h = (e) => fs.writeSync(fd, e.chunk); cdp.on('HeapProfiler.addHeapSnapshotChunk', h); await cdp.send('HeapProfiler.takeHeapSnapshot', { reportProgress: false }); cdp.off('HeapProfiler.addHeapSnapshotChunk', h); fs.closeSync(fd); }
   }
   await page.waitForSelector('.cx-running', { state: 'detached', timeout: 600000 }).catch(() => {});
   await page.waitForSelector('.cx-side .cx-continue', { timeout: 600000 });
+  console.log(`Take Control → spillet klar: ${((Date.now() - tTC) / 1000).toFixed(1)} s`);
+  await bgDone;
   await page.waitForTimeout(3000); console.log(`nyt spil ${T()} fp-top ${peakRss.toFixed(0)} MB (${peakAt}) nu ${rssNow().toFixed(0)} MB${await mainHeap()}`); phase = 'continue';
   for (let i = 0; i < conts; i++) {
     const dateNow = () => page.evaluate(() => { try { return window.__cm?.gs?.().date ?? document.querySelector('.cx-date, .cx-top-date')?.textContent ?? '?'; } catch { return '?'; } });

@@ -1,7 +1,7 @@
 // Det klassiske nye-spil-forløb (som webkit-newgame.mjs: 3.9.60, England, Arsenal) i WebKit UDEN Playwright: Playwrights inspektør gemmer
 // hvert svars indhold i fanens proces (målt 22/11: +180 MB pr. hentet 31 MB-database – findes ikke i Safari på en telefon). Her leverer en lille
 // http-server prod-bygningen med et indsat styrescript (samme klik som webkit-newgame.mjs), og MiniBrowseren (Playwright.app) startes direkte.
-// Brug: PROD=<vite build-mappe> node scripts/webkit-newgame-raw.mjs [DBSIZE=normal|maximum] [TICK=150]
+// Brug: PROD=<vite build-mappe> node scripts/webkit-newgame-raw.mjs [DBSIZE=normal|maximum] [TICK=150] [NGGAP=ms: pausen mellem trinenes arbejdere]
 import http from 'node:http';
 import { spawn, execSync } from 'node:child_process';
 import { readFileSync, statSync, existsSync, mkdtempSync } from 'node:fs';
@@ -12,7 +12,7 @@ const DBSIZE = process.env.DBSIZE ?? 'normal';
 const t0 = Date.now();
 const T = () => `${((Date.now() - t0) / 1000).toFixed(1)} s`;
 const DRIVER = `(() => {
-  const ls = { 'cm0102.lang': 'en', 'cm0102.forceLogin': '1', 'cm-theme': 'retro', 'cm0102.mode': 'authentic', 'cm0102.db': 'original', 'cm0102.engine': 'original', 'cm0102.inapp.seen': String(Date.now()), 'cm0102.dbsize': '${DBSIZE}', 'cm0102.ngTrace': '${process.env.NOTRACE ? 0 : 1}' };
+  const ls = { 'cm0102.lang': 'en', 'cm0102.forceLogin': '1', 'cm-theme': 'retro', 'cm0102.mode': 'authentic', 'cm0102.db': 'original', 'cm0102.engine': 'original', 'cm0102.inapp.seen': String(Date.now()), 'cm0102.dbsize': '${DBSIZE}', 'cm0102.ngTrace': '${process.env.NOTRACE ? 0 : 1}'${process.env.NGGAP ? `, 'cm0102.ngGap': '${process.env.NGGAP}'` : ''} };
   for (const k in ls) localStorage.setItem(k, ls[k]);
   sessionStorage.setItem('cm0102.play', '1');
   const log = (s) => fetch('/__log?s=' + encodeURIComponent(s)).catch(() => {});
@@ -34,6 +34,8 @@ const DRIVER = `(() => {
       await click('.cx-foot .cx-next'); await wait('[data-nat]'); await click('.cx-foot .cx-next');
       await wait('[data-club]'); await sleep(3000); log('MARK Select Team');
       await click('[data-club="Arsenal"]'); await click('[data-take]'); await wait('[data-confirm]'); await click('.cx-foot .cx-next');
+      // Take Control → spillet klar uden sidens timere (de drosles/fryses i en skjult fane): MutationObserver
+      { const t = Date.now(); log('TC'); const ob = new MutationObserver(() => { if (q('.cx-side .cx-continue') && !q('.cx-running')) { ob.disconnect(); log('KLAR ' + (Date.now() - t)); } }); ob.observe(document.body, { subtree: true, childList: true }); }
       await sleep(3000); await wait('.cx-running', 600000, true); await wait('.cx-side .cx-continue', 600000); await sleep(3000);
       log('MARK nyt spil'); log('SLUT');
     } catch (e) { log('FEJL ' + e.message); log('SLUT'); }
@@ -46,7 +48,7 @@ const finished = new Promise((r) => { finish = r; });
 let phase = 'start', peak = 0, peakAt = '', phPeak = 0;
 const srv = http.createServer((req, res) => {
   const u = new URL(req.url, 'http://x');
-  if (u.pathname === '/__log') { const s = u.searchParams.get('s'); res.end('ok'); if (s.startsWith('MARK ')) { console.log(`${s.slice(5)} ${T()} top ${peak.toFixed(0)} MB (${peakAt}) fasens top ${phPeak.toFixed(0)} MB nu ${fp('phys_footprint').toFixed(0)} MB`); phase = s.slice(5); phPeak = 0; } else if (s === 'SLUT') finish(); else console.log(`  t ${T()} ${s} fp ${fp('phys_footprint').toFixed(0)} MB`); return; }
+  if (u.pathname === '/__log') { const s = u.searchParams.get('s'); res.end('ok'); if (s.startsWith('MARK ')) { console.log(`${s.slice(5)} ${T()} top ${peak.toFixed(0)} MB (${peakAt}) fasens top ${phPeak.toFixed(0)} MB nu ${fp('phys_footprint').toFixed(0)} MB`); phase = s.slice(5); phPeak = 0; } else if (s === 'SLUT') finish(); else if (s === 'TC') { console.log(`  t ${T()} Take Control`); if (CHROME && process.env.BG) void background(); } else if (s.startsWith('KLAR ')) console.log(`Take Control → spillet klar: ${(Number(s.slice(5)) / 1000).toFixed(1)} s`); else console.log(`  t ${T()} ${s} fp ${fp('phys_footprint').toFixed(0)} MB`); return; }
   if (u.pathname.startsWith('/api/')) { res.setHeader('content-type', 'application/json'); res.end('{"ok":true,"mail":true}'); return; }
   let p = u.pathname.startsWith(BASE) ? u.pathname.slice(BASE.length) : u.pathname.slice(1);
   let f = join(PROD, decodeURIComponent(p));
@@ -56,15 +58,53 @@ const srv = http.createServer((req, res) => {
   if (f.endsWith('index.html')) body = Buffer.from(String(body).replace('<head>', `<head><script>${DRIVER}</script>`));
   res.end(body);
 }).listen(PORT);
-const old = new Set(execSync('ps -A -o pid=,command=', { encoding: 'utf8' }).split('\n').filter((l) => /WebContent/.test(l)).map((l) => l.trim().split(/\s+/)[0]));
-const pids = () => execSync('ps -A -o pid=,command=', { encoding: 'utf8' }).split('\n').filter((l) => /WebContent/.test(l) && l.includes('ms-playwright')).map((l) => l.trim().split(/\s+/)[0]).filter((x) => !old.has(x));
+const old = new Set(execSync('ps -A -o pid=,command=', { encoding: 'utf8' }).split('\n').filter((l) => /WebContent|--type=renderer/.test(l)).map((l) => l.trim().split(/\s+/)[0]));
+const pids = () => execSync('ps -A -o pid=,command=', { encoding: 'utf8' }).split('\n').filter((l) => /WebContent|--type=renderer/.test(l) && l.includes('ms-playwright')).map((l) => l.trim().split(/\s+/)[0]).filter((x) => !old.has(x));
 const fp = (key) => { try { const ps = pids(); if (!ps.length) return 0; const o = execSync(`footprint --noCategories -f bytes ${ps.map((x) => `-p ${x}`).join(' ')}`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }); return Math.max(0, ...[...o.matchAll(new RegExp(`${key}: (\\d+) B`, 'g'))].map((m) => Number(m[1]) / 1048576)); } catch { return 0; } };
-const pw = spawn(`${homedir()}/Library/Caches/ms-playwright/webkit-2370/pw_run.sh`, // en frisk profil pr. kørsel (ellers genoptager siden det sidste spil); HEADLESS=1 uden vindue
-  [`--user-data-dir=${mkdtempSync(join(process.env.TMPDIR ?? tmpdir(), 'wkraw-'))}`, ...(process.env.HEADLESS ? ['--headless'] : []), `http://localhost:${PORT}${BASE}`], { stdio: 'ignore' });
+// BROWSER=chromium: Chrome for Testing (Playwrights) i ny headless-tilstand styret med ren CDP – uden Playwrights flag, der holder fanen synlig
+// og slår droslingen fra. BG=hidden|frozen: siden i baggrunden BGAT ms efter Take Control i BGMS ms (hidden: en anden fane forrest – timere drosles
+// til ≥ 1 s; frozen: også Page.setWebLifecycleState frozen som Chrome Androids frysning af baggrundsfaner).
+const CHROME = process.env.BROWSER === 'chromium';
+const profile = mkdtempSync(join(process.env.TMPDIR ?? tmpdir(), 'wkraw-'));
+const CDP_PORT = PORT + 1000;
+const pw = CHROME
+  ? spawn(`${homedir()}/Library/Caches/ms-playwright/chromium-1248/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing`, [`--remote-debugging-port=${CDP_PORT}`, `--user-data-dir=${profile}`, '--no-first-run', '--no-default-browser-check', '--headless=new', `http://localhost:${PORT}${BASE}`], { stdio: 'ignore' })
+  : spawn(`${homedir()}/Library/Caches/ms-playwright/webkit-2370/pw_run.sh`, // en frisk profil pr. kørsel (ellers genoptager siden det sidste spil); HEADLESS=1 uden vindue
+    [`--user-data-dir=${profile}`, ...(process.env.HEADLESS ? ['--headless'] : []), `http://localhost:${PORT}${BASE}`], { stdio: 'ignore' });
+let cdp = null;
+if (CHROME) {
+  let ver;
+  for (let i = 0; i < 100 && !ver; i++) { try { ver = await (await fetch(`http://127.0.0.1:${CDP_PORT}/json/version`)).json(); } catch { await new Promise((r) => setTimeout(r, 200)); } }
+  const ws = new WebSocket(ver.webSocketDebuggerUrl);
+  await new Promise((r) => ws.addEventListener('open', r));
+  let id = 0; const pend = new Map();
+  ws.addEventListener('message', (e) => { const m = JSON.parse(e.data); if (m.id && pend.has(m.id)) { pend.get(m.id)(m); pend.delete(m.id); } });
+  const send = (method, params = {}, sessionId) => new Promise((r) => { const i = ++id; pend.set(i, r); ws.send(JSON.stringify({ id: i, method, params, ...(sessionId ? { sessionId } : {}) })); });
+  const { result: { targetInfos } } = await send('Target.getTargets');
+  const page = targetInfos.find((t) => t.type === 'page').targetId;
+  const { result: { sessionId } } = await send('Target.attachToTarget', { targetId: page, flatten: true });
+  cdp = { send, page, sessionId, ws };
+}
+async function background() {
+  const at = Number(process.env.BGAT ?? 2000), ms = Number(process.env.BGMS ?? 30000);
+  await new Promise((r) => setTimeout(r, at));
+  const ev = async (x) => (await cdp.send('Runtime.evaluate', { expression: x, returnByValue: true }, cdp.sessionId)).result?.result?.value;
+  const { result: { targetId } } = await cdp.send('Target.createTarget', { url: 'about:blank', newWindow: false });
+  await cdp.send('Target.activateTarget', { targetId });
+  await new Promise((r) => setTimeout(r, 300));
+  console.log(`  BG ${T()} siden: ${await ev('document.visibilityState')}`);
+  if (process.env.BG === 'frozen') console.log(`  BG ${T()} frosset: ${JSON.stringify((await cdp.send('Page.setWebLifecycleState', { state: 'frozen' }, cdp.sessionId)).error ?? 'ok')}`);
+  await new Promise((r) => setTimeout(r, ms));
+  if (process.env.BG === 'frozen') await cdp.send('Page.setWebLifecycleState', { state: 'active' }, cdp.sessionId);
+  await cdp.send('Target.activateTarget', { targetId: cdp.page });
+  await cdp.send('Target.closeTarget', { targetId });
+  await new Promise((r) => setTimeout(r, 300));
+  console.log(`  BG slut ${T()} siden: ${await ev('document.visibilityState')}, tekst: ${await ev("document.querySelector('[data-ng-bg]')?.textContent ?? 'intet'")}`);
+}
 const tm = setInterval(() => { const v = fp('phys_footprint'); if (process.env.TIMELINE) console.log(`  t ${T()} ${phase} fp ${v.toFixed(0)} MB`); if (v > peak) { peak = v; peakAt = phase; } if (v > phPeak) phPeak = v; }, Number(process.env.TICK) || 150);
 await Promise.race([finished, new Promise((r) => setTimeout(r, 600000))]);
 clearInterval(tm);
 console.log(`phys_footprint_peak (fanens proces): ${fp('phys_footprint_peak').toFixed(0)} MB; prøvernes top ${peak.toFixed(0)} MB (${peakAt}) – ${T()}`);
-pw.kill(); srv.close();
+pw.kill(); srv.close(); cdp?.ws.close();
 try { execSync('pkill -f "webkit-2370/Playwright.app"'); } catch { /* */ }
 process.exit(0);

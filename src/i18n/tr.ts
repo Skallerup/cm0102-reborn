@@ -2125,6 +2125,7 @@ Object.assign(tr, {
   "ng.step.done": "Başlıyoruz...",
   "ng.step.shortlists": "Kulüpler transfer listelerini hazırlıyor...",
   "ng.slowHint": "Telefonda bu bir dakika kadar sürebilir – sayfayı açık bırakın.",
+  "ng.bgHint": "Sayfayı açık bırakın – arka planda oluşturma duraklar.",
   "inapp.killedTitle": "Tarayıcı oyunu oluşturulurken kapattı",
   "inapp.killedText": "Telefonunuzun belleği yetmedi (bu genellikle bir uygulamanın yerleşik tarayıcısında olur). Tekrar deneyin – ya da cm0102reborn.com'u Safari veya Chrome'da açın.",
   "info.title": "Bu oyun hakkında",
