@@ -100,6 +100,9 @@ export interface SlBid {
    *  add_contract_offer 0x4cc490 – `k` = kontraktens 0x50 bytes), og beslutningen planlægges (0x4cd230): `dd` = rand(5) + 1 (personens nye
    *  beslutningspost), `bl` = 0x8cc5b0's svartid (dage), `r4` = rand(2) + 4 (+0x2f-reglen 0x4cd4xx: under 4 dage frem → i dag + 4–5) */
   free7?: boolean; k?: number[]; dd?: number; bl?: number; r4?: number;
+  /** build_bid's tidsnibble +0x30 & 0xf (0x8e75bd/0x8e76c5: kontrakttilbud til en spiller MED kontrakt (forkontrakt/Bosman) 3 → 4, ellers 0 → 1;
+   *  5 = med kompensation 0x8d0780) og kontraktens udløb +0x2d (nibble 3/4: get_offer_completion_date 0x8cee70 → det fremtidige skifte) */
+  tm?: number; until?: string;
 }
 export interface SlFree { kind: 'free'; buyer: number; player: number }
 /** add_rumour 0x754740(staff, klub, beløb £, vilje) fra 0x83f3a0 (0x84079d/0x840c4b): mediernes kø (cmRumours.ts) */
@@ -560,9 +563,10 @@ function writeOffers(S: SlMem): void {
     return a;
   };
   for (const o of g.offers) {
-    if (!['pending', 'negotiating', 'countered'].includes(o.status) || isHumanClub(o.buyer) && isHumanClub(o.seller)) continue;
+    const fut = o.status === 'accepted' && !!o.cmFut;   // add_future_transfer 0x8cb9a0: tilstand 0x13 (19), til skiftet 0x8cbbe0
+    if (!fut && !['pending', 'negotiating', 'countered'].includes(o.status) || isHumanClub(o.buyer) && isHumanClub(o.seller)) continue;
     const GBP = cmGbp(g, o.buyer);   // buddets beløb: køberens penge (cmMoney.ts)
-    const st = o.status === 'pending' ? 0 : o.status === 'countered' ? (o.cmAi ? 1 : 2) : o.cmK ? 7 : 5;
+    const st = fut ? 0x13 : o.status === 'pending' ? 0 : o.status === 'countered' ? (o.cmAi ? 1 : 2) : o.cmK ? 7 : 5;
     const a = rec(o.id, o.buyer, o.player, o.created, o.fee, o.loan, st, 0, o.pub);
     if (!a) continue;
     m.w32(a + 0x35, Math.round((o.lgFee ?? 0) * GBP)); m.w8(a + 0x39, o.lgApps ?? 10);
@@ -592,6 +596,13 @@ function writeOffers(S: SlMem): void {
       m.w16(list, j - i); m.w32(list + 6, prev); m.w32(list + 0xa, 0);
     }
     i = j;
+  }
+  // 0x8cb9a0 (0x8cbb34): et aftalt fremtidigt skifte – spillerens +0x86e-byte |= 0x10 (get_future_transfer 0x8cca10; ønskelisterne springer ham over)
+  for (const [p] of S.M.W.players) {
+    const pm = memOf.get(p.id);
+    if (pm === undefined) continue;
+    const f = (T86E0 + 8 * pm) >>> 0, b = m.u8(f);
+    if (p.contract?.futureClub) { if (!(b & 0x10)) m.w8(f, b | 0x10); } else if (b & 0x10) m.w8(f, b & ~0x10);
   }
 }
 
@@ -1863,9 +1874,17 @@ function addBid(S: SlMem, r: number, loan: boolean, lt?: { until: string; share:
   const sellerHuman = !!k && (m.u8(k + 0x35) & 0x3f) !== 5 && isHumanClub(m.s32(k + 4));
   const days = sellerHuman ? 28 : responseDelay(S, r);
   // (cmMarketOn) build_bid's klubløse (+0x2f = 1): tilstand 7 – 0x4cd230's tal (egen talrække pr. spiller, køber og dag som cx.rand)
-  const free7 = !loan && m.u8(r + 0x2f) !== 0 && !k;
+  // 0x8be81e: +0x2f ≠ 0 → tilstand 7 uanset kontrakten – også et kontrakttilbud til en spiller MED kontrakt (build_bid 0x8e6346: 0x84b6f0 og
+  // 0x8d0a70 → forkontrakt/Bosman, eller kontrakttype 1/3/5) går direkte til spilleren (ingen sælger svarer). Før kun de klubløse (!k), så
+  // forkontrakterne blev til bud på £0, som sælgeren afviste.
+  const free7 = !loan && m.u8(r + 0x2f) !== 0;
   let f7 = {};
-  if (free7) { const rr = cmRand(g.seed ?? 0, p.id, buyer, dayNum(g.date), 0x4cd230); const dd = rr(5) + 1; f7 = { free7: true, dd, bl: days, r4: rr(2) + 4 }; }
+  if (free7) {
+    const rr = cmRand(g.seed ?? 0, p.id, buyer, dayNum(g.date), 0x4cd230); const dd = rr(5) + 1;
+    const tmN = m.u8(r + 0x30) & 0xf;
+    const until = k && (tmN === 3 || tmN === 4) ? isoOf(m.s16(k + 0x2d), m.u16(k + 0x2f)) : undefined;
+    f7 = { free7: true, dd, bl: days, r4: rr(2) + 4, ...(k ? { tm: tmN } : {}), ...(until ? { until } : {}) };
+  }
   S.events.push({ kind: 'bid', id, buyer, player: p.id, fee: loan ? 0 : eur(m.s32(r + 0x1b)), loan: loan || m.u8(r + 0x1f) === 1,
     months: Math.max(0, s8(m.u8(r + 0x40))), sellOn: Math.max(0, s8(m.u8(r + 0x3f))), lgFee: eur(m.s32(r + 0x35)), lgApps: m.u8(r + 0x39) || 10,
     intFee: eur(m.s32(r + 0x3a)), intApps: m.u8(r + 0x3e) || 10, pub: m.u8(r + 0x2d), max: maxOf(S, buyer, p), days, ...(lt ? { loanUntil: lt.until, loanShare: lt.share } : {}), ...f7 });

@@ -841,6 +841,12 @@ export interface TransferOffer {
   /** computer → computer: køberens kontrakttilbud (0x8c1e40 → 0x4cda70, kontraktens 0x50 bytes), når sælgeren har accepteret – spilleren
    *  afgør det på respondBy (0x4ce4e0); TRANSFER_MANAGER-tilstand 7 */
   cmK?: number[];
+  /** computer → computer, tilstand 7 til en spiller MED kontrakt: build_bid's tidsnibble (+0x30 & 0xf; 4 = forkontrakt/Bosman ved udløbet)
+   *  og kontraktens udløb (+0x2d) – get_offer_completion_date 0x8cee70 */
+  cmTime?: number;
+  cmUntil?: string;
+  /** add_future_transfer 0x8cb9a0: aftalt skifte på datoen (tilstand 0x13, status 'accepted'); process_due_future_transfers 0x8cbbe0 */
+  cmFut?: string;
 }
 
 /** En AI-klub der jagter en spiller (vender tilbage med højere bud) */

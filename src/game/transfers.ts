@@ -1943,7 +1943,9 @@ export function cmShortlistApply(events: SlEvent[]) {
     }
     o.cmAi = true;
     o.respondBy = addDays(g.date, e.days ?? 0);
-    if (e.free7 && e.k && !p.club) {
+    // (K7c #3) også en spiller med kontrakt hos en computerklub (forkontrakt/Bosman, 0x8be81e: +0x2f → tilstand 7) – ingen sælger svarer
+    if (e.free7 && e.k && (!p.club || !isHumanClub(p.club))) {
+      if (p.club) { CM_AIAI.pre++; o.cmTime = e.tm ?? 0; if (e.until) o.cmUntil = e.until; }
       // build_bid 0x8e5d60 til en klubløs: buddet får tilstand 7 (0x8be857 – ingen accept_transfer_bid 0x8c0080, ingen vilje-kontrol), og
       // 0x84a75c tilbyder build_bid's kontrakt straks (add_contract_offer 0x4cc490). Beslutningen 0x4cd230: personens post (eksisterende,
       // ellers i dag + rand(5) + 1) trækkes frem til 0x8cc5b0's svartid, højst 14 dage; +0x2f: under 4 dage frem → i dag + rand(2) + 4.
@@ -1966,7 +1968,7 @@ export function cmShortlistApply(events: SlEvent[]) {
   }
 }
 /** målinger (fejlsøgning): computer → computer-svarene på ønskelisternes bud */
-export const CM_AIAI = { declined: 0, noContract: 0, free: 0, freeRefused: 0, freeDone: 0, loan: 0, loanOk: 0, bid: 0, accept: 0, counter: 0, counterOk: 0, reject: 0, refused: 0, withdrawn: 0, review: 0, rebid: 0, done: 0, open: 0, openDays: 0 };
+export const CM_AIAI = { declined: 0, noContract: 0, free: 0, freeRefused: 0, freeDone: 0, pre: 0, preFut: 0, preDone: 0, loan: 0, loanOk: 0, bid: 0, accept: 0, counter: 0, counterOk: 0, reject: 0, refused: 0, withdrawn: 0, review: 0, rebid: 0, done: 0, open: 0, openDays: 0 };
 const cmOpen = (o: TransferOffer) => o.status === 'pending' || o.status === 'countered' || o.status === 'negotiating';
 /** CM 01/02: menneskets lejebud til en computerklub. add_transfer_offer 0x8be300 giver svartiden 0x8cc5b0 (+ 0x8c6220, regnet første gang
  *  dagens behandling ser buddet, fra buddets dag); på svardagen process_due_offer 0x8c63a0 (tilstand 0, +0x1f = 1) →
@@ -2117,6 +2119,22 @@ function cmAiAiDue(cx: SlDueCtx) {
     }
     // accepteret, og spilleren har besluttet sig: handlen (køberen skal stadig have råd – rater: kun første rate)
     if (!o.loan && !(o.months && o.months > 0) && buyer.transferBudget < o.fee) { cmTmClose(o, 0x10, 20, 'collapsed'); closed = true; continue; }
+    // (K7c #3) tilstand 7 med sælger (forkontrakt): handle_player_accepted_terms 0x8c2180 → advance_offer_to_club_approval 0x8c2f50 →
+    // confirm_offer_by_club 0x8c3310: tidsnibblen ≠ 0 → get_offer_completion_date 0x8cee70 (4/3: kontraktens udløb, hvis det ikke er nået; 1:
+    // i dag). Senere end i dag → de andre bud falder (0x8c47d0) og add_future_transfer 0x8cb9a0 (tilstand 0x13): skiftet sker på datoen
+    // (0x8cbbe0 – cmFutureDue). Landenes TRANSFER_RULES +0xc (0x8cf0e0's dag-for-dag-søgning) og 5 (0x8d0bb0, vinduet) er ikke porteret.
+    if (o.seller && o.cmK && o.cmTime !== undefined) {
+      const date = (o.cmTime === 4 || o.cmTime === 3) && o.cmUntil && o.cmUntil > g.date ? o.cmUntil : g.date;
+      if (date > g.date) {
+        CM_AIAI.preFut++;
+        cmTmCollapseOthers(o);
+        o.status = 'accepted';
+        o.cmFut = date;
+        if (p.contract) p.contract.futureClub = buyer.id;
+        closed = true;
+        continue;
+      }
+    }
     CM_AIAI.done++;
     cmTmCollapseOthers(o);
     if (!o.seller) {
@@ -2140,8 +2158,29 @@ function cmAiAiDue(cx: SlDueCtx) {
   }
   for (const o of g.offers) if (o.cmAi && cmOpen(o)) { CM_AIAI.open++; }
   CM_AIAI.openDays++;
+  if (cmFutureDue()) closed = true;
   // de afsluttede computer → computer-bud fjernes (originalen: 0x8bf680 efter 25 dage; dropDeadBids ser kun de åbne)
-  if (closed || g.offers.some((o) => o.cmAi && !cmOpen(o))) g.offers = g.offers.filter((o) => !o.cmAi || cmOpen(o));
+  if (closed || g.offers.some((o) => o.cmAi && !cmOpen(o) && !cmFutOpen(o))) g.offers = g.offers.filter((o) => !o.cmAi || cmOpen(o) || cmFutOpen(o));
+}
+const cmFutOpen = (o: TransferOffer) => o.status === 'accepted' && !!o.cmFut;
+/** TRANSFER_MANAGER::process_due_future_transfers 0x8cbbe0 (fra daily_update 0x8c5880 efter buddene): de aftalte skifter, hvis dato er kommet –
+ *  arbejdstilladelsen (0x8c7690 – completeTransfer) og handlen 0x8c9390 (beløb 0, art 4 – 0x8c9996); buddet får tilstand 0x14 (10 dage).
+ *  Er han ikke længere i sælgerens klub, eller er skiftet væk, falder buddet. check_offer_restrictions 0x8cfc90 er ikke porteret. */
+function cmFutureDue(): boolean {
+  const g = gs();
+  let any = false;
+  for (const o of g.offers.slice()) {
+    if (!o.cmAi || !cmFutOpen(o) || o.cmFut! > g.date) continue;
+    any = true;
+    const p = g.players[o.player], buyer = g.clubs[o.buyer];
+    if (p?.contract?.futureClub === o.buyer) p.contract.futureClub = undefined;
+    if (!p || !buyer || p.club !== o.seller || p.loan || isHumanClub(o.buyer)) { o.status = 'collapsed'; cmTmClose(o, 0x10, 20); continue; }
+    o.status = 'negotiating';
+    CM_AIAI.preDone++;
+    if (completeTransfer(o, wageDemand(p, buyer), preferredYears(p))) { o.status = 'completed'; cmTmClose(o, 0x14, 10); }
+    else cmTmClose(o, 0x10, 20);
+  }
+  return any;
 }
 setSlDue(cmAiAiDue);
 setSlApply(cmShortlistApply);
