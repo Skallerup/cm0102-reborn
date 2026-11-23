@@ -44,11 +44,20 @@ export type Rand = (n: number) => number;
 /** originalens dato: dag i året (0 = 1. januar) og år */
 export interface CmDate { day: number; year: number }
 export const NULLDATE: CmDate = { day: 234, year: 1971 };                 // Date(23, 7, 1971) = 23/8-1971 (dag 234)
+// (hastighed, telefoner 23/11) det seneste opslag huskes – begge kaldes for hver person/spiller med samme dato (fx StaffPerson for hele staben hver dag)
+let i2cIso = '', i2cDay = 0, i2cYear = 0;
 export const isoToCm = (iso: string): CmDate => {
-  const t = Date.parse(iso.slice(0, 10) + 'T00:00:00Z'), y = new Date(t).getUTCFullYear();
-  return { day: Math.round((t - Date.UTC(y, 0, 1)) / 86400000), year: y };
+  if (iso !== i2cIso) {
+    const t = Date.parse(iso.slice(0, 10) + 'T00:00:00Z'), y = new Date(t).getUTCFullYear();
+    i2cDay = Math.round((t - Date.UTC(y, 0, 1)) / 86400000); i2cYear = y; i2cIso = iso;
+  }
+  return { day: i2cDay, year: i2cYear };
 };
-export const cmToIso = (d: CmDate): string => new Date(Date.UTC(d.year, 0, 1) + d.day * 86400000).toISOString().slice(0, 10);
+let c2iDay = NaN, c2iYear = NaN, c2iIso = '';
+export const cmToIso = (d: CmDate): string => {
+  if (d.day !== c2iDay || d.year !== c2iYear) { c2iIso = new Date(Date.UTC(d.year, 0, 1) + d.day * 86400000).toISOString().slice(0, 10); c2iDay = d.day; c2iYear = d.year; }
+  return c2iIso;
+};
 /** after(a, b): a.år > b.år (u16) || (samme år && (s16)a.dag > (s16)b.dag) */
 export const after = (a: CmDate, b: CmDate) => (a.year & 0xffff) > (b.year & 0xffff) || ((a.year & 0xffff) === (b.year & 0xffff) && s16(a.day) > s16(b.day));
 /** 0x54cdb0 Date::days_since: dage fra d til t (gregoriansk) */

@@ -26,28 +26,30 @@ const trunc = Math.trunc;
 /** PA-tabellen ved omslag (0x9b5988) */
 const PA_LEVEL = [1, 5, 8, 10, 15, 20, 25, 33, 45, 65, 90, 110, 127, 135, 142, 149, 155, 161, 166, 171, 175];
 
+// (hastighed) hjælperne uden lukninger pr. spiller – samme træk i samme rækkefølge
+const paFinish = (v: number, ca: number) => Math.min(200, Math.max(10, Math.max(v, ca)));
+function paMinus2(ca: number, rand: Rand): number { let v = rand(10) !== 0 ? 120 + rand(81) : 160 + rand(41); if (rand(20) === 0) v -= rand(50); else if (v > 165) v -= rand(30); return paFinish(v, ca); }
+function paMinus1(ca: number, rand: Rand): number { let v = rand(10) !== 0 ? 80 + rand(81) : 120 + rand(81); if (rand(20) === 0) v -= rand(50); else if (v > 140) v -= rand(30); return paFinish(v, ca); }
+function paReroll(ca: number, rand: Rand): number {
+  let L: number;
+  if (rand(100) === 0) L = rand(21);
+  else if (rand(2) === 0) L = 6 + rand(6);
+  else if (rand(2000) === 0) L = 1 + rand(20);
+  else L = 4 + rand(7);
+  if (L < 1 || L > 20) L = 3 + rand(10);
+  return paFinish(rand(60) + PA_LEVEL[L] - 30, ca);
+}
+
 /** Originalens PA for en spiller i et nyt spil. `paDb` = databasens PA (kan være −2, −1, 0 eller 1-200). */
 export function initialisePA(paDb: number, ca: number, age: number, clubLevel: number, rand: Rand): number {
   let pa = paDb;
   // tilfældige omslag for ALLE spillere (0x53621b)
   if (rand(2000) === 0) pa = -2; else if (rand(750) === 0) pa = -1; else if (rand(100) === 0) pa = 0;
-  const finish = (v: number) => Math.min(200, Math.max(10, Math.max(v, ca)));
-  const minus2 = () => { let v = rand(10) !== 0 ? 120 + rand(81) : 160 + rand(41); if (rand(20) === 0) v -= rand(50); else if (v > 165) v -= rand(30); return finish(v); };
-  const minus1 = () => { let v = rand(10) !== 0 ? 80 + rand(81) : 120 + rand(81); if (rand(20) === 0) v -= rand(50); else if (v > 140) v -= rand(30); return finish(v); };
-  const reroll = () => {
-    let L: number;
-    if (rand(100) === 0) L = rand(21);
-    else if (rand(2) === 0) L = 6 + rand(6);
-    else if (rand(2000) === 0) L = 1 + rand(20);
-    else L = 4 + rand(7);
-    if (L < 1 || L > 20) L = 3 + rand(10);
-    return finish(rand(60) + PA_LEVEL[L] - 30);
-  };
-  if (pa === -2) return minus2();
-  if (pa === -1) return minus1();
-  if (pa > 140 && age < rand(30) && ca < 170 && rand(10010 - clubLevel) === 0) return minus1();
-  if (pa >= 1 && pa <= 200) return age >= 25 || rand(25) !== 0 ? pa : reroll();
-  return reroll();
+  if (pa === -2) return paMinus2(ca, rand);
+  if (pa === -1) return paMinus1(ca, rand);
+  if (pa > 140 && age < rand(30) && ca < 170 && rand(10010 - clubLevel) === 0) return paMinus1(ca, rand);
+  if (pa >= 1 && pa <= 200) return age >= 25 || rand(25) !== 0 ? pa : paReroll(ca, rand);
+  return paReroll(ca, rand);
 }
 
 /** CA mangler (0x536c72; reserveposterne 0x52638a har CA 0): clubLevel = klubbens omdømmebyte (uden klub rand(2) + 1) */
@@ -117,9 +119,9 @@ interface Packed { ca: number; ent: Int16Array }
 const NPOS = 11; // GK, SW, D, DM, M, AM, F, WB, R, L, C (fri rolle har vi ikke)
 
 /** Pak en world-post ud på databasens skala (de 18 omregnede regnes tilbage fra den viste værdi) */
-export function pack(r: InitRec): Packed {
+export function pack(r: InitRec, into?: Int16Array): Packed {
   const keeper = (r.pos[0] ?? 0) >= 15;
-  const ent = new Int16Array(NPOS + ARR.length);
+  const ent = into ?? new Int16Array(NPOS + ARR.length);
   for (let i = 0; i < 8; i++) ent[i] = r.pos[i] ?? 0;
   ent[8] = r.side[2] ?? 0; ent[9] = r.side[0] ?? 0; ent[10] = r.side[1] ?? 0;
   ARR.forEach(([k], j) => {
@@ -143,33 +145,43 @@ const ok = (v: number) => v >= 1 && v <= 20;
  */
 const FILL_CA = 10;
 
-export function fillMissing(r: InitRec, age: number, pool: Packed[], rand: Rand): boolean {
-  const me = pack(r);
+/** Skabelonpuljen fladt (hastighed, telefoner 23/11): posterne efter hinanden i ét Int16Array (`NENT` pr. spiller), CA og
+ *  `bad` = 100 × antal ugyldige indgange pr. post (det led, 0x537640 lægger til for hver ugyldig skabelonindgang – uafhængigt af spilleren) */
+export interface Pool { length: number; ca: Int32Array; bad: Int32Array; ent: Int16Array }
+const NENT = NPOS + ARR.length;
+// spillerens gyldige indgange og vægte (genbruges – kaldes for hver spiller ved spilstarten)
+const ME_I = new Int32Array(NENT), ME_V = new Int32Array(NENT), ME_W = new Int32Array(NENT), ME_ENT = new Int16Array(NENT), OUT = new Int16Array(ARR.length);
+
+export function fillMissing(r: InitRec, age: number, pool: Pool, rand: Rand): boolean {
+  const me = pack(r, ME_ENT);
   let missing = false;
   for (let j = 0; j < ARR.length; j++) if (!ok(me.ent[NPOS + j])) { missing = true; break; }
   if (!missing) return false;
   const keeper = me.ent[0] >= 15;
-  // skabelon: den mest lignende af 250 tilfældige spillere (0x537640)
-  let tpl: Packed | undefined, bestScore = Infinity;
+  // skabelon: den mest lignende af 250 tilfældige spillere (0x537640). Summen = trunc(|ΔCA| · 2,5) + 100 pr. ugyldig skabelonindgang
+  // + vægtet afstand, hvor begge er gyldige; alle led ≥ 0, så rækkefølgen er ligegyldig, og summen kan stoppes, når den ikke længere
+  // kan slå den bedste (samme valg)
+  let nMe = 0;
+  for (let i = 0; i < NENT; i++) if (ok(me.ent[i])) { ME_I[nMe] = i; ME_V[nMe] = me.ent[i]; ME_W[nMe] = i === 0 ? 1000 : i < NPOS ? 25 : 16; nMe++; }
+  const pe = pool.ent, pca = pool.ca, pbad = pool.bad, meCa = me.ca, meGk20 = me.ent[0] === 20;
+  let tplI = -1, bestScore = Infinity;
   for (let n = 0; n < 250 && pool.length; n++) {
-    const t = pool[rand(pool.length)];
+    const ti = rand(pool.length), base = ti * NENT;
     let score: number;
-    if (me.ent[0] === 20 && t.ent[0] === 20) score = 0;
+    if (meGk20 && pe[base] === 20) score = 0;
     else {
-      score = trunc(Math.abs(me.ca - t.ca) * 2.5);
-      for (let i = 0; i < me.ent.length; i++) {
-        if (!ok(t.ent[i])) { score += 100; continue; }
-        if (!ok(me.ent[i])) continue;
-        const d = Math.abs(me.ent[i] - t.ent[i]);
-        score += i === 0 ? d * 1000 : i < NPOS ? d * 25 : d * 16;
-        if (score >= bestScore) break;   // summen vokser kun – kan ikke længere slå den bedste (samme valg, færre led)
+      score = trunc(Math.abs(meCa - pca[ti]) * 2.5) + pbad[ti];
+      for (let k = 0; k < nMe && score < bestScore; k++) {
+        const tv = pe[base + ME_I[k]];
+        if (tv >= 1 && tv <= 20) score += Math.abs(ME_V[k] - tv) * ME_W[k];
       }
     }
-    if (score < bestScore) { bestScore = score; tpl = t; }
+    if (score < bestScore) { bestScore = score; tplI = ti; }
   }
+  const tpl = tplI < 0 ? undefined : { ca: pca[tplI], ent: pe.subarray(tplI * NENT, (tplI + 1) * NENT) };
   const wrong = (j: number) => (keeper && ARR[j][1] === 2) || (!keeper && ARR[j][1] === 1);
   const clampFill = (v: number) => (v < 1 ? rand(8) + 1 : v > 20 ? 20 : v);
-  const out = new Int16Array(ARR.length);
+  const out = OUT;
   for (let j = 0; j < ARR.length; j++) {
     let v = me.ent[NPOS + j];
     if (ok(v)) { if (wrong(j)) v = Math.max(1, v - 10); out[j] = v; continue; }
@@ -198,7 +210,16 @@ export function fillMissing(r: InitRec, age: number, pool: Packed[], rand: Rand)
 }
 
 /** Skabelonpuljen: alle databasens spillere med en CA (originalen tager tilfældige staff-poster med CA 1-200) */
-export const makePool = (recs: InitRec[]): Packed[] => recs.filter((r) => r.ca >= 1 && r.ca <= 200).map(pack);
+export function makePool(recs: InitRec[]): Pool {
+  const ps = recs.filter((r) => r.ca >= 1 && r.ca <= 200).map((r) => pack(r));
+  const pool: Pool = { length: ps.length, ca: new Int32Array(ps.length), bad: new Int32Array(ps.length), ent: new Int16Array(ps.length * NENT) };
+  ps.forEach((p, k) => {
+    pool.ca[k] = p.ca; pool.ent.set(p.ent, k * NENT);
+    let bad = 0; for (let i = 0; i < NENT; i++) if (!ok(p.ent[i])) bad += 100;
+    pool.bad[k] = bad;
+  });
+  return pool;
+}
 
 // =============================================================================================================
 // Visningskæden ved nyt spil (Bosman-projektet identical/5_player_generation, læst i cm0102.exe – sikkert):
@@ -209,7 +230,9 @@ export const makePool = (recs: InitRec[]): Packed[] => recs.filter((r) => r.ca >
 
 const idiv = (a: number, b: number) => Math.trunc(a / b);
 const clampN = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi : v);
-const AI = (k: AttrKey) => ATTRS.indexOf(k);
+// (hastighed) indekset slås op i en tabel i stedet for ATTRS.indexOf for hver egenskab og spiller
+const AI_IDX = new Map<AttrKey, number>(ATTRS.map((k) => [k, ATTRS.indexOf(k)]));
+const AI = (k: AttrKey) => AI_IDX.get(k) ?? -1;
 /** arbejds-arrayets indeks 14..31 (sub_53a610) → vores egenskab og rolle (1 = målmand: kun Handling; 2 = markspiller) */
 const WORK: [number, AttrKey, 0 | 1 | 2][] = [
   [14, 'anticipation', 0], [15, 'crossing', 2], [16, 'decisions', 0], [17, 'dribbling', 2], [18, 'finishing', 2], [19, 'handling', 1],
