@@ -5,7 +5,8 @@ import { legacyExtended } from './rules';
 const modernEnabledHere = () => { if (MODERN_ENABLED) return true; try { return localStorage.getItem('cm0102.modern') === '1'; } catch { return false; } };
 import { fixClubName } from './data/clubNames';
 import { cmDatabase } from './newgame';
-import { del, get, keys, set } from 'idb-keyval';
+import { get, keys, set } from 'idb-keyval';
+import { deleteSaveData, readSaveBlob, writeSave } from './saveStore';
 import { gs, setGame, addNews, notify, ensureNumbers, previewInfo, setPreview } from './state';
 import { splitReserves } from './reserves';
 import { cmCupName, cmLeagueRules, cmPlayoffRules } from './cmCalendar';
@@ -76,7 +77,7 @@ export async function saveGame(opts?: { cloud?: boolean; name?: string }): Promi
     ext: extOf(g),
   };
   requestPersistentStorage();
-  await guardWrite(async (st) => { await set(`save:${id}`, blob, st); await set(`meta:${id}`, meta, st); }, !!opts?.cloud);
+  await guardWrite((st) => writeSave(id, blob, meta, st), !!opts?.cloud);
   // "seneste spil" sættes først, når spillet er gemt (så den aldrig peger på et spil, der ikke findes)
   rememberLast({ kind: 'local', id });
   cloudHook?.(meta, blob, !!opts?.cloud);
@@ -89,7 +90,7 @@ const extOf = (g: GameState): boolean => !g.humans?.length && !g.draft && legacy
 export async function storedLegacyExt(meta: SaveMeta): Promise<boolean | null> {
   if (meta.ext !== undefined) return meta.ext;
   try {
-    const blob = await get<Blob>(`save:${meta.id}`);
+    const blob = await readSaveBlob(meta.id);
     if (!blob) return null;
     const ext = legacyExtendedFromText(await gunzipText(blob));
     if (ext !== null) await set(`meta:${meta.id}`, { ...meta, ext }).catch(() => {});
@@ -99,7 +100,7 @@ export async function storedLegacyExt(meta: SaveMeta): Promise<boolean | null> {
 
 /** Læg et spil hentet fra skyen i den lokale database (overskriver en ældre lokal kopi) */
 export async function storeSave(meta: SaveMeta, blob: Blob) {
-  await guardWrite(async (st) => { await set(`save:${meta.id}`, blob, st); await set(`meta:${meta.id}`, meta, st); }, true);
+  await guardWrite((st) => writeSave(meta.id, blob, meta, st), true);
 }
 
 /** Slags for et lokalt gemt spil uden `kind` i metadata (gemt af en ældre version): den udpakkede tekst læses (uden at bygge spillet) og
@@ -107,7 +108,7 @@ export async function storeSave(meta: SaveMeta, blob: Blob) {
 export async function storedSaveKind(meta: SaveMeta): Promise<SaveKind | null> {
   if (meta.kind) return meta.kind;
   try {
-    const blob = await get<Blob>(`save:${meta.id}`);
+    const blob = await readSaveBlob(meta.id);
     if (!blob) return null;
     const kind = saveKindFromText(await gunzipText(blob));
     if (kind) await set(`meta:${meta.id}`, { ...meta, kind }).catch(() => {});
@@ -117,7 +118,7 @@ export async function storedSaveKind(meta: SaveMeta): Promise<SaveKind | null> {
 
 /** Et gemt spil (lokalt eller hentet fra skyen) som GameState – til konverteringen (det gamle gem røres ikke) */
 export async function readSave(id: string): Promise<GameState | null> {
-  const blob = await get<Blob>(`save:${id}`);
+  const blob = await readSaveBlob(id);
   return blob ? deserializeState(blob) : null;
 }
 
@@ -131,7 +132,7 @@ export async function storeNewGame(g: GameState): Promise<string> {
   const blob = serialize(g);
   rng.state = keep;
   const data = await blob;
-  await guardWrite(async (st) => { await set(`save:${g.id}`, data, st); await set(`meta:${g.id}`, meta, st); }, true);
+  await guardWrite((st) => writeSave(g.id, data, meta, st), true);
   requestPersistentStorage();
   return g.id;
 }
@@ -353,7 +354,7 @@ async function repairStadiums(): Promise<void> {
 
 export async function loadGame(id: string): Promise<boolean> {
   let blob: Blob | undefined;
-  try { blob = await get<Blob>(`save:${id}`); } catch { return false; }
+  try { blob = await readSaveBlob(id); } catch { return false; }
   if (!blob) return false;
   const g = await deserializeState(blob);
   // en gammel lokal kopi af et online-spil: åbn ikke den (det rigtige spil ligger på serveren)
@@ -382,7 +383,7 @@ export async function openPreview(blob: Blob, label: string, theme?: string): Pr
 }
 
 export async function deleteSave(id: string) {
-  try { await del(`save:${id}`); await del(`meta:${id}`); } catch (e) { if (!isQuotaError(e)) throw e; }
+  try { await deleteSaveData(id); } catch (e) { if (!isQuotaError(e)) throw e; }
   // peger "seneste spil" på det slettede, ville næste genindlæsning melde et manglende spil
   const last = getLast();
   if (last?.kind === 'local' && last.id === id) forgetLast();
