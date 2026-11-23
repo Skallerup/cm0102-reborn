@@ -17,6 +17,7 @@ import { ATTRS } from './attributes';
 import { ageOn } from './dates';
 import { recordFreeTransfer, setClub, squad } from './state';
 import { isHumanClub } from './humans';
+import { holidayClub } from './cmHoliday';
 import { cmActive, cmGenerated, cmLogic, cmMarketOn, cmContractOf, cmRand, cmUnhappy, clubRepMem, clubDivRep, nationRepMem, staffJoined, squadPlacement, statusCode } from './cmPlayerData';
 export { clubDivRep };
 import { cmClubEuro, cmFitRead } from './cmFitnessGame';
@@ -109,6 +110,7 @@ export function cmSquadPlanClub(g: GameState, cid: number, daily: boolean, first
   const e = entryOf(g, cid);
   const fit = cmFitRead(g);
   const hum = human ?? isHumanClub(cid);
+  const hol = hum && holidayClub(g, cid);
   // truppen i hukommelsen (0x524d70): i et ikke-indlæst land kun de udvalgte (Player.cmMem) – resten findes ikke i originalen. Før så planen hele
   // truppen: oraklet 21/7-01 har 1.695 udenlandske klubber uden spillere i hukommelsen med 7 mål i alt (ingen indehavere +0x13); vi havde
   // 12.205 indehavere og 7.198 mål, og de hentede de unge engelske klubløse (sæson 1: 52 underskrifter i udlandet mod oraklets 7)
@@ -131,7 +133,8 @@ export function cmSquadPlanClub(g: GameState, cid: number, daily: boolean, first
   const today = dayOf(g.date);
   const ind: PlanInput = {
     clubId: cid, daily, first, rep, status, national: false, hasNation: true, activeLeague: !!lg && !lg.hidden && !!g.comps[club.league],
-    human1: hum, human2: hum, humanSettings: false, bTeam: false, partnerIsParent: false,
+    // 0x600a50(klub, 0, 1, 0, 0) (human1) er 0 på ferie; (klub, 1, 1, 0, 0) (human2) ser mennesket, og så [esp+0x30] = 0x5fd210 (på ferie)
+    human1: hum && !hol, human2: hum, humanSettings: hum && hol, bTeam: false, partnerIsParent: false,
     x18: euro > -1 && (euro !== 330 || rep < 5000),
     managerId: st ? st.id : null, managerForm: st ? (st.tac?.[7] ?? null) : null, managerJoinedDay: mj.day, managerJoinedYear: mj.year,
     T, R, daysSinceStart: dayNum(g.date) - dayNum(g.cmStart ?? g.date), today, squad: pl,

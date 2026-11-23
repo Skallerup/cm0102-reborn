@@ -36,6 +36,7 @@ import { slCall } from './cmShortlist';
 import { cmSlOffer842c00 } from './cmShortlistGame';
 import { cmActive, cmInDeal, cmLogic, cmRand, newCmContract, statusCode } from './cmPlayerData';
 import { isHumanClub } from './humans';
+import { holidayClub } from './cmHoliday';
 import { recordFreeTransfer, setClub } from './state';
 import { ageOn } from './dates';
 import { ATTRS } from './attributes';
@@ -73,7 +74,9 @@ const BANDS = new Set([182, 152, 121, 91, 60, 30, 7]);
 export function cmCmScope(g: GameState, p: Player): boolean {
   if (!p.club || !p.contract || p.loan || p.virtual || p.contract.futureClub) return false;
   const c = g.clubs[p.club];
-  if (!c || isHumanClub(c.id)) return false;
+  // menneskets klub: spillets eget system – men på ferie er 0x600a50(klub, 0, 1, 0, 0) = 0 (cmContract.ts isHuman(…, 0, 1)), så
+  // CONTRACT_MANAGER forlænger, tilbyder og sætter fri som for en computerklub (oraklet: Arsenal på ferie, Henry £53k → £84k)
+  if (!c || (isHumanClub(c.id) && !holidayClub(g, c.id))) return false;
   // også klubberne uden aktiv liga (de valgte landes inaktive divisioner – England: 146 non-league-klubber, 1.610 spillere i oraklets hukommelse):
   // 0x4c7ac0's personløkke går over alle personer i hukommelsen, og 0x83a1b0/0x83cb40 giver dem trupplanen (cmSquadPlanStart). Før stod de uden
   // for porten, og cmExpireOutsideDaily (*estimeret*) satte dem fri dagen efter udløbet – klubløse 30/6 918 mod oraklets 202

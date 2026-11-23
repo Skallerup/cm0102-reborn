@@ -72,6 +72,8 @@ if (!ONLY_ORACLE) {
   const eng = w.nations.findIndex((x) => x.name === 'England');
   const user = w.clubs.find((c) => c[1] === CLUB)![0];
   createGame(w, { managerName: 'Test Smoke', managerNation: eng, clubId: user, activeNations: [eng], lang: 'en', masking: true, seed: 1, mode: 'authentic' });
+  // oraklet går på ferie 14/7-01 (tools/ct/run_season_ct.py: Go on Holiday → Yes, alle valg fra) og bliver dér – HOLIDAY=0: mennesket styrer selv
+  if (process.env.HOLIDAY !== '0') gs().manager.holiday = {};
   g = gs();
   top0 = g.nextId.player;
 }

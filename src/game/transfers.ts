@@ -1,5 +1,5 @@
 // Transfers, kontrakter og AI-transfermarked (forbedring #7: behovsstyrede AI-klubber).
-import { holidayOpt, onHoliday } from './cmHoliday';
+import { holidayOpt, humanClub0, onHoliday } from './cmHoliday';
 import { cmLogic, cmMarketOn, cmMediaOn, cmRand, setRequestHooks, setStatusCode } from './cmPlayerData';
 import { cmBidChance, cmInterested, cmRequestNews } from './cmTransferList';
 import { transferNewsToMe } from './cmNewsScope';
@@ -1953,7 +1953,8 @@ export function cmShortlistApply(events: SlEvent[]) {
   for (const e of events) {
     if (e.kind === 'rumour') { const p = g.players[e.player]; if (p) cmRumourAdd(g, p, e.club, fromK(e.amt, e.club), e.will); continue; }
     const p = g.players[e.player], buyer = g.clubs[e.buyer];
-    if (!p || !buyer || p.contract?.futureClub || p.club === buyer.id || isHumanClub(buyer.id)) continue;
+    // (køberen: 0x84a020 byder for menneskets klub på ferie – 0x600a50(klub, 0, …) = 0; ferievalg 4 i den oversatte funktion)
+    if (!p || !buyer || p.contract?.futureClub || p.club === buyer.id || humanClub0(g, buyer.id)) continue;
     if (!p.club && e.loan) continue;
     // en udlejet spiller står i moderklubbens trup i hukommelsen (hovedkontrakten +4, cmSlMem.ts loanedOut), så ønskelisterne byder på ham
     // som på alle andre: sælgeren er moderklubben, og handlen afslutter lejen (oraklets billeder: udlejede købt af en tredje klub midt i lejen,
@@ -2079,7 +2080,7 @@ function cmAiAiDue(cx: SlDueCtx) {
     const p = g.players[o.player];
     let buyer = g.clubs[o.buyer];
     const home = p ? p.loan?.from ?? p.club : 0;   // hovedkontraktens klub (en udlejet: moderklubben)
-    if (!p || !buyer || home !== o.seller || (p.loan && o.loan) || p.contract?.futureClub || isHumanClub(home) || isHumanClub(p.club) || isHumanClub(buyer.id)) {
+    if (!p || !buyer || home !== o.seller || (p.loan && o.loan) || p.contract?.futureClub || isHumanClub(home) || isHumanClub(p.club) || humanClub0(g, buyer.id)) {
       // (han er skiftet: 0x8c47d0's 0xf; ellers trukket 0x8bfcb0)
       if (p && home !== o.seller) cmTmClose(o, 0xf, 10, 'withdrawn'); else cmTmClose(o, 3, 10, 'withdrawn');
       CM_AIAI.withdrawn++; closed = true; continue;
@@ -2144,7 +2145,7 @@ function cmAiAiDue(cx: SlDueCtx) {
     // afvises – handle_player_rejected_terms 0x8c28c0 (tilstand 0xf). Før afgjorde det første forfaldne tilbud alene, om han skrev under.
     if (o.cmK && !o.loan) {
       if (g.offers.some((x) => x !== o && x.player === p.id && (x.status === 'pending' || x.status === 'countered' || (x.status === 'negotiating' && !x.cmK)))) { o.respondBy = addDays(g.date, 2); continue; }
-      const cands = g.offers.filter((x) => x.cmAi && x.player === p.id && x.status === 'negotiating' && x.cmK && !x.loan && !!g.clubs[x.buyer] && !isHumanClub(x.buyer));
+      const cands = g.offers.filter((x) => x.cmAi && x.player === p.id && x.status === 'negotiating' && x.cmK && !x.loan && !!g.clubs[x.buyer] && !humanClub0(g, x.buyer));
       let best = 2.75, win: TransferOffer | null = null;
       for (const x of cands) { const t = cx.decide(p.id, x.buyer, x.cmK!); if (t > best) { best = t; win = x; } }
       for (const x of cands) if (x !== win) { CM_AIAI.declined++; cmTmClose(x, 0xf, 10, 'collapsed'); }
@@ -2212,7 +2213,7 @@ function cmFutureDue(): boolean {
     any = true;
     const p = g.players[o.player], buyer = g.clubs[o.buyer];
     if (p?.contract?.futureClub === o.buyer) p.contract.futureClub = undefined;
-    if (!p || !buyer || p.club !== o.seller || p.loan || isHumanClub(o.buyer)) { o.status = 'collapsed'; cmTmClose(o, 0x10, 20); continue; }
+    if (!p || !buyer || p.club !== o.seller || p.loan || humanClub0(g, o.buyer)) { o.status = 'collapsed'; cmTmClose(o, 0x10, 20); continue; }
     // 0x8cbcce/0x8cbdc8: check_offer_restrictions 0x8cfc90 for køberen og kontraktens klub – svar ≠ 0 med en anden grund end 9 → 0x8c44e0
     if (cmAiRulesReason(g, o, true)) { CM_AIAI.rules++; o.status = 'collapsed'; cmTmClose(o, 0x10, 20); continue; }
     o.status = 'negotiating';

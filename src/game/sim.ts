@@ -6,6 +6,7 @@ import { cmClubRepWeekly } from './cmClubRepWeek';
 import { cmOwnStaffContractsDaily, cmStaffOffersDaily } from './cmStaff';
 import { cmStaffMovesDaily, cmStaffNpDaily } from './cmStaffMove';
 import { cmActive, cmGenerated, cmLogic, cmMarketOn, cmMediaOn, cmStaffOn, cmAfterMatch, clubRepMem, cmContractDaily, cmFlagSet, cmRand, cmSquadMoraleDaily, MORALE_OFF, withFlagCtx } from './cmPlayerData';
+import { HOLIDAY_AI } from './cmHoliday';
 import { cmLoanBar } from './cmLoan';
 import { cmFitAfterMatch, cmFitDay, cmFitMatch, cmFitOn, cmFitPreMatch, setMatchSquad } from './cmFitnessGame';
 import { cmPermitAfterMatch, cmPermitDaily } from './cmPermit';
@@ -1261,7 +1262,8 @@ function holidayDaily() {
     else if (h.rejectBelow && p && !o.loan && o.fee < askingPrice(p)) respondToOffer(o.id, 'reject');
   }
   // assistentens køb (kun hvis "Do not buy any players" er fra; "Only buy players from shortlist" begrænser til ønskelisten)
-  if (!h.noBuy) holidaySignings(!!h.onlyShortlist);
+  // (med originalens marked byder ønskelisterne 0x84a020 selv for menneskets klub på ferie – cmHoliday.ts holidayClub – ikke assistentens frie agenter herunder)
+  if (!h.noBuy && !(cmMarketOn(g) && HOLIDAY_AI)) holidaySignings(!!h.onlyShortlist);
   // søg en ledig stilling i en klub med større omdømme (højst én om ugen)
   const myRep = g.clubs[g.userClub]?.rep ?? 0;
   if (h.applyJobs && g.date.endsWith('1') && !cmBoardOn(g)) {

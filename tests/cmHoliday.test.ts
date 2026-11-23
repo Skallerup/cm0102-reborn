@@ -1,7 +1,9 @@
 // CM 01/02 "Go on holiday" (0x6b2d80) – ferievalgene i HUMAN_MANAGER-posten, 0x600a50's ferietjek og assistentens svar (auto_respond 0x784100)
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { holidayOpt, holidayOpt_5fea50, holidayToggle, onHoliday_5fd210 } from '../src/game/cmHoliday';
+import { holidayClub, holidayOpt, holidayOpt_5fea50, holidayToggle, humanClub0, onHoliday_5fd210 } from '../src/game/cmHoliday';
+import { cmCmScope } from '../src/game/cmContractManager';
+import { cmSquadPlanClub } from '../src/game/cmSquadPlanGame';
 import { createGame, type WorldData } from '../src/game/newgame';
 import { gs } from '../src/game/state';
 import { G } from '../src/game/cmMem';
@@ -53,6 +55,18 @@ describe('ferien i spillet (3.9.60, ægte tilstand)', () => {
     expect(look()).toEqual({ a0: false, a1: true, hol: 1, o0: 2, o4: 2 });
     g.manager.holiday = undefined;
     expect(look().hol).toBe(0);
+  });
+  it('på ferie er menneskets klub en computerklub for 0x600a50(klub, 0, …): CONTRACT_MANAGER, trupplanens daglige kald og buddene', () => {
+    const g = gs();
+    const p = Object.values(g.players).find((x) => x.club === mu && !x.loan && x.contract && !x.contract.futureClub)!;
+    expect([holidayClub(g, mu), humanClub0(g, mu), cmCmScope(g, p)]).toEqual([false, true, false]);
+    // 0x83cb40(entry, klub, 1, 0): menneskets klub springes over (0x83cbdf) – ikke på ferie
+    expect(cmSquadPlanClub(g, mu, true, false)?.ran).toBeFalsy();
+    g.manager.holiday = {};
+    expect([holidayClub(g, mu), humanClub0(g, mu), cmCmScope(g, p)]).toEqual([true, false, true]);
+    expect(cmSquadPlanClub(g, mu, true, false)?.ran).toBe(true);
+    g.manager.holiday = undefined;
+    expect(cmCmScope(g, p)).toBe(false);
   });
   it('bud på hans spillere: "Reject all offers" afviser; uden valg svarer assistenten som computeren (0x8c8090)', () => {
     const g = gs();

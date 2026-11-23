@@ -68,5 +68,19 @@ export function onHoliday(g: GameState): boolean {
   return !!g.manager?.holiday && !!g.userClub;
 }
 
+/** 0x600a50(klub, 0, …) = 0 for menneskets klub: på ferie (+0x9a01) regnes den ikke som menneskets – de AI-funktioner, der kalder 0x600a50
+ *  med andet argument 0 (CONTRACT_MANAGER 0x4c7ac0/0x4cda70, trupplanen 0x83cb40's daglige kald, make_club_bids 0x84a020), behandler den som en
+ *  computerklub. Kun i dét tilfælde; kald med andet argument 1 (nyheder 0x7875e0, trupplanens menneskegrupper) ser stadig mennesket. */
+export function holidayClub(g: GameState, cid: number): boolean {
+  return HOLIDAY_AI && !!cid && onHoliday(g) && cid === g.userClub;
+}
+/** CM_HOLIDAY_AI=0: menneskets klub regnes som menneskets også på ferie (målinger før/efter) */
+export const HOLIDAY_AI = (typeof process !== 'undefined' ? process.env?.CM_HOLIDAY_AI : undefined) !== '0';
+
+/** 0x600a50(klub, 0, 1, 0, 0): et menneske styrer klubben og er ikke på ferie */
+export function humanClub0(g: GameState, cid: number): boolean {
+  return !!cid && g.clubs[cid]?.manager === -1 && !holidayClub(g, cid);
+}
+
 /** acceptJob (board.ts) til assistentens ja på ferie (cmBoardGame.ts holidayJobAnswers) – sat af board.ts (ingen cirkulær import) */
 export const holidayHooks: { acceptJob?: (cid: number) => void } = {};

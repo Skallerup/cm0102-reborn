@@ -24,7 +24,7 @@
 // kommer straks (originalen venter på hans beslutningsdato 0x4cd230).
 import type { GameState, Player } from './types';
 import { type CmCtx, type CmMem, G, getContract, clubAt, SparseMem } from './cmMem';
-import { holidayOpt_5fea50 } from './cmHoliday';
+import { holidayOpt_5fea50, humanClub0 } from './cmHoliday';
 import { buildSlWantMem, resetSlBase, slMemPages, SLMEM_DEFER, type SlWantState } from './cmSlMem';
 import { buildWantMem, type WantMem } from './cmContractGame';
 import { cmGenerated, cmMarketOn, cmRand, clubRepMem, nationRepMem, staffJoined } from './cmPlayerData';
@@ -841,7 +841,9 @@ let fastDone = false;
 function ensureFast(): void {
   if (fastDone) return;
   fastDone = true;
-  FASTHOST.f.set(0x600a50, (R) => (humanClub_600a50(ACTIVE!.M.c, R.m.u32(R.esp >>> 0)) ? 1 : 0));
+  // 0x600a50(klub, ignorér ferie, …): andet argument med – (klub, 0, …) er 0 på ferie (0x83b6e0/0x83f3a0/0x84a020: menneskets klub byder som en
+  // computerklub). Før blev det tabt, og ferieklubben fik aldrig budgetter (+7) eller mål
+  FASTHOST.f.set(0x600a50, (R) => (humanClub_600a50(ACTIVE!.M.c, R.m.u32(R.esp >>> 0), R.m.s32((R.esp + 4) >>> 0)) ? 1 : 0));
   FASTHOST.f.set(0x5a0590, (R) => getClubFinance_5a0590(ACTIVE!.M.c, R.m.s32(R.esp >>> 0)));
   FASTHOST.f.set(0x4b02e0, (R) => { const m = R.m, sp = R.esp >>> 0; return leagueClash(ACTIVE!.M.env(), m.s32(m.s32(sp)), m.s32(m.s32(sp + 4))); });
 }
@@ -2061,7 +2063,7 @@ export function cmSlMoved(g: GameState, p: Player, to: number, buyer: number, sw
     const toAdr = S.clubAdr(to);
     let holderPid = -1;
     shared(() => {
-      if (toAdr && g.cmPlan![to] && !isHumanClub(to)) {
+      if (toAdr && g.cmPlan![to] && !humanClub0(g, to)) {
         const base = m.u32((m.u32(S.slm + 0xdc) + 9 * to) >>> 0);
         for (let i = 0; i < 0x19 && base; i++) {
           const a = base + SLOT * i;
@@ -2412,7 +2414,9 @@ export function cmShortlistDaily(g: GameState, planClub: (cid: number) => { drop
     const go = gate(e, gateRand(c.id), bids);
     storeEntry(g, c.id, e);
     if (go) { const r = planClub(c.id); tt = tick('d.gate', tt); if (r) afterPlan(S, c.id, r.dropped); tt = tick('d.plan', tt); }
-    if (!isHumanClub(c.id)) makeBids(S, c.id, off);
+    // 0x5cccd0 kalder 0x84a020 for alle klubber; den springer menneskets klub over med 0x600a50(klub, 0, 1, 0, 0) – på ferie ikke (kun "Do not buy
+    // any players", ferievalg 4 = 1 – 0x84a0e2, i den oversatte funktion)
+    if (!humanClub0(g, c.id)) makeBids(S, c.id, off);
     tt = tick('d.bids', tt);
   }
   SL_DIAG.end?.(S);
