@@ -21,10 +21,10 @@ import { fansOnDeparture, fansOnRenewal, fansOnSigning } from './fans';
 import { pushCareerLine, recordMove } from './season';
 import { blockedMoveReaction, playerPraises, targetReaction, type RejectReason } from './will';
 import type { Club, Contract, ContractClauses, Player, Role, TransferOffer } from './types';
-import { aiContract, cmAiTerms, cmMoveInterest } from './cmContractGame';
+import { aiContract, cmAiTerms, cmContractAnswer, cmMoveInterest, cmTalkDemand } from './cmContractGame';
 import { cmBoardWageAllow } from './cmBudget';
 import { cmCmOn, cmCmScope } from './cmContractManager';
-import { cmAcceptBid, cmOfferContract, cmSwapAccept, cmSwapDaily, cmSwapOn, cmTalksDaily, cmTalksOn } from './cmTransferTalks';
+import { cmAcceptBid, cmOfferContract, cmSwapAccept, cmSwapDaily, cmSwapOn, cmTalksDaily, cmTalksOn, cmTalksOpen, offerTerms } from './cmTransferTalks';
 import { cmLoanRefuses } from './cmLoan';
 import { cmBuildBid } from './cmAiBid';
 import { cmAiRulesBlock, cmWindowOpen } from './cmOfferCheck';
@@ -439,6 +439,9 @@ export function makeBid(pid: number, fee: number, loan = false, extra?: { sellOn
   if (!cmPermitOn(g) && !permitOk(p, buyer)) return 'transfer.noWorkPermit';
   // Change Transfer Bid (CM 01/02): det ventende bud erstattes af det ændrede (*estimeret*: et nyt bud med ny svartid)
   if (extra?.change && cmMarketOn(g)) { const old = myPendingBid(pid); if (old) { old.status = 'withdrawn'; old.cmCounter = undefined; } }
+  // klubløs (CM 01/02): det åbne kontrakttilbud (intet svar ventende) åbnes igen med Offer Contract
+  const again = !p.club && cmLogic(g) ? g.offers.find((o) => o.player === pid && o.buyer === buyer.id && !o.loan && o.cmTalks?.state !== 1 && cmTalksOpen(g, o)) : undefined;
+  if (again) return again;
   if (g.offers.some((o) => o.player === pid && o.buyer === buyer.id && ['pending', 'negotiating', 'countered'].includes(o.status))) return 'transfer.alreadyBidding';
   // add_transfer_offer 0x8be300 (0x8be979–0x8be9ad): menneskets køber får spilleren på sin shortliste (SCOUT_MANAGER::add_to_shortlist 0x7f75f0)
   if (cmMarketOn(g) && p.club && !g.shortlist.includes(pid)) g.shortlist.push(pid);
@@ -447,6 +450,9 @@ export function makeBid(pid: number, fee: number, loan = false, extra?: { sellOn
     id: g.nextId.offer++, player: pid, buyer: buyer.id, seller: p.club, fee: p.club ? fee : 0, loan,
     status: p.club ? 'pending' : 'negotiating', created: g.date, respondBy: addDays(g.date, !p.club ? 7 : humanSeller ? 5 : rng.int(1, 3)),
   };
+  // CM 01/02 (en CM-database i ægte tilstand): Offer Contract til en klubløs er et kontrakttilbud som alle andre (add_contract_offer 0x4cc490) –
+  // kravet 0x85fc50 på skærmen, svaret efter 1–5 dage i resolve_contract_offers 0x4ce4e0 (cmTransferTalks.ts), ingen frist
+  if (!p.club && !loan && cmLogic(g)) { o.cmTalks = { rounds: 0, state: 0 }; o.respondBy = addDays(g.date, 3650); }
   // byder en anden manager også på spilleren hos en AI-klub: lukket budrunde med fælles frist
   if (p.club && !loan && !humanSeller && legacyExtended()) startAuction(o, p); // budkrige: ikke i CM 01/02
   if (p.club && loan && extra?.loanUntil) {
@@ -707,7 +713,7 @@ export function negotiate(offerId: number, wage: number, years: number, clauses?
   }
   // CM 01/02 (original database, ægte tilstand – her klubløse og forkontrakter uden cmTalks): spillerens vilje 0x846920 som 0x8c0080 (under
   // 0,75 vil han ikke) i stedet for spillets skøn – samme funktion som Player Search' "Interested" (cmSearchInterest.ts) og budforløbet
-  // (*estimeret*: originalen afgør en klubløs i 0x4ce4e0 resolve_contract_offers)
+  // (en klubløs i en CM-database i ægte tilstand har cmTalks – originalens 0x4ce4e0 ovenfor; her kun ældre spil)
   const cmX = cmLogic(g) && !o.loan ? cmMoveInterest(g, p, club.id) : null;
   const interest = cmX !== null ? (cmX < 0.75 ? 'reputation' : 'yes') : playerInterest(p, club);
   if (interest !== 'yes') {
@@ -1014,6 +1020,16 @@ export function renewalDemand(p: Player, club: Club): number {
   return Math.round(wageDemand(p, club) * f / 50) * 50;
 }
 
+/** Kravet, mennesket ser ved en forlængelse: en CM-database i ægte tilstand (cmLogic) → originalens 0x85fc50 for egen klub med hans trupstatus
+ *  (Set Role At Club – samme krav, som 0x4ce4e0 sammenligner tilbuddet med, cmTalkDemand); ellers spillets eget (renewalDemand) */
+export function humanRenewDemand(p: Player, club: Club): { wage: number; years: number; signOn: number } {
+  const g = gs();
+  const w = cmLogic(g) ? cmTalkDemand(g, p, club.id, p.squadStatus) : null;
+  if (w) return { wage: w.wage, years: Math.max(1, year(w.expires) - year(g.date)), signOn: w.signOn };
+  const wage = renewalDemand(p, club);
+  return { wage, years: preferredYears(p), signOn: signOnDemand(p, wage, false) };
+}
+
 /** Forlæng kontrakt for egen spiller – brugeren tilbyder løn/år */
 /**
  * Udløbsdato for en forlængelse på `years` år. I sommerpausen (juli-august) tæller den sæson, der starter; senere
@@ -1041,7 +1057,11 @@ export function renewContract(pid: number, wage: number, years: number, clauses?
   const demand = base + signOnDemand(p, base, false) / (52 * Math.max(1, years));
   if (overBoardWage(p, club.id, wage, currentBill(club.id) - (p.contract?.wage ?? 0) + wage > club.wageBudget)) return 'budget';
   const cl = cleanClauses(clauses);
-  if (wage + clausesWorthFor(p, club.id, wage, years, cl) >= demand * AGENT_RULES[agentOf(p).style].accept) {
+  // CM 01/02 (en CM-database i ægte tilstand): tilbuddet til egen spiller afgøres som alle kontrakttilbud i resolve_contract_offers 0x4ce4e0 –
+  // værdien 0x866830 af tilbuddet (løn, signing-on fordelt over kontraktens dage, bonusser, klausuler) mod hans krav 0x85fc50 for klubben med
+  // trupstatussen fra Set Role At Club, vægtet med viljen 0x846920 (cmContractAnswer). Før: spillets eget skøn (agentens accept-faktor)
+  const cmAns = cmLogic(g) ? cmContractAnswer(g, p, club.id, { ...offerTerms(g, wage, years, cl, club.id), expires: renewalExpiry(p.contract?.expires, years, g.date) }, p.squadStatus) : null;
+  if (cmAns ? cmAns.accept : wage + clausesWorthFor(p, club.id, wage, years, cl) >= demand * AGENT_RULES[agentOf(p).style].accept) {
     p.contract = { wage, expires: renewalExpiry(p.contract?.expires, years, g.date), ...cl };
     // CM 01/02 0x8c38b0 → Finance::add_signing_on 0x5998e0 (blokken; kun originalens økonomi – bookBlock tjekker cmFinOn)
     if (cl.signOn) { club.balance -= cl.signOn; club.finance.signOn = (club.finance.signOn ?? 0) + cl.signOn; bookBlockEur(g, club, CMK.signOn, cl.signOn); }
@@ -2584,7 +2604,7 @@ export function answerPendingRenewals() {
       const res = renewContract(r.pid, r.wage, r.years, r.clauses);
       if (res === 'accepted') return; // renewContract skriver selv nyheden
       const club = g.clubs[r.club];
-      addNews({ cat: 'contract', key: res === 'budget' ? 'contract.offerBudget' : 'contract.offerRejected', params: { player: pname(p), wage: renewalDemand(p, club), years: preferredYears(p) }, link: { kind: 'player', id: p.id } });
+      addNews({ cat: 'contract', key: res === 'budget' ? 'contract.offerBudget' : 'contract.offerRejected', params: (() => { const d = humanRenewDemand(p, club); return { player: pname(p), wage: d.wage, years: d.years }; })(), link: { kind: 'player', id: p.id } });
     });
   }
 }

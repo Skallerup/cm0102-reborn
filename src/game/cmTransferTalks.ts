@@ -203,9 +203,10 @@ export function cmAgreed(o: TransferOffer, p: Player, terms: { wage: number; yea
   const g = gs();
   const params = { player: pname(p), last: p.last || pname(p), seller: short(g, o.seller), buyer: short(g, o.buyer) };
   const human = isHumanClub(o.buyer);
-  asOwner(o.buyer, () => addNews({ cat: 'transfer', key: 'transfer.cmAgrees', params, link: human && !o.preContract ? { kind: 'offer', id: o.id } : { kind: 'player', id: p.id } }));
-  // forkontrakt (Bosman): aftalen indgås straks – der er intet bud at bekræfte
-  if (!human || o.preContract) { complete(o, terms.wage, terms.years, terms.clauses); return; }
+  const direct = !human || o.preContract || !o.seller;
+  asOwner(o.buyer, () => addNews({ cat: 'transfer', key: 'transfer.cmAgrees', params, link: !direct ? { kind: 'offer', id: o.id } : { kind: 'player', id: p.id } }));
+  // forkontrakt (Bosman) og klubløs: aftalen indgås straks – der er intet bud at bekræfte (0x4ce4e0: tilbud uden transfer, +0x59 = −1 → 0x8c38b0)
+  if (direct) { complete(o, terms.wage, terms.years, terms.clauses); return; }
   o.cmTalks = { ...(o.cmTalks ?? { rounds: 0 }), state: 5, agreed: terms };
 }
 

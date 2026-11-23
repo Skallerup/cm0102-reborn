@@ -4,7 +4,8 @@ import { aiCall } from '../../ai/client';
 import { agentOf } from '../../game/agents';
 import { gs } from '../../game/state';
 import { act } from '../../game/actions';
-import { clausesWorthFor, preferredYears, renewalDemand, wageDemand } from '../../game/transfers';
+import { clausesWorthFor, humanRenewDemand, preferredYears, wageDemand } from '../../game/transfers';
+import { cmTalksDemand } from '../../game/cmTransferTalks';
 import { clauseCost } from '../../game/clauses';
 import { SHIFT_WEEKS } from '../../game/board';
 import type { ContractClauses, TransferOffer } from '../../game/types';
@@ -26,7 +27,9 @@ function ModernNegotiation({ offer, renewPid, onClose }: { offer?: TransferOffer
   const pid = offer?.player ?? renewPid!;
   const p = g.players[pid];
   const club = g.clubs[g.userClub];
-  const demand = offer?.demand?.wage ?? (offer ? wageDemand(p, club) : renewalDemand(p, club));
+  // CM 01/02 (en CM-database i ægte tilstand): kravet 0x85fc50, som svaret 0x4ce4e0 afgøres med (efter et accepteret bud, klubløs, forlængelse)
+  const askOf = () => (offer?.cmTalks ? cmTalksDemand(offer)?.wage : undefined) ?? offer?.demand?.wage ?? (offer ? wageDemand(p, club) : humanRenewDemand(p, club).wage);
+  const demand = askOf();
   const [wage, setWage] = useState(Math.round(demand / 50) * 50);
   const [years, setYears] = useState(offer?.demand?.years ?? preferredYears(p));
   const [msg, setMsg] = useState<{ text: string; tone: string; budget?: boolean } | null>(null);
@@ -45,7 +48,7 @@ function ModernNegotiation({ offer, renewPid, onClose }: { offer?: TransferOffer
     ...(offer?.rival ? [offer.rival.club] : []),
   ])].map((c) => g.clubs[c]?.name).filter(Boolean);
   const speak = (outcome: string, offered?: { wage: number; years: number }) => {
-    const demandW = money(offer?.demand?.wage ?? (offer ? wageDemand(p, club) : renewalDemand(p, club)));
+    const demandW = money(askOf());
     const demandY = offer?.demand?.years ?? preferredYears(p);
     const situation = {
       opening: `Forhandlingen begynder. Du fremlægger din klients krav: ${demandW} om ugen i ${demandY} år.`,
@@ -68,10 +71,12 @@ function ModernNegotiation({ offer, renewPid, onClose }: { offer?: TransferOffer
     // spillets eget svar vises med det samme; agentens AI-replik erstatter det, når den kommer
     setAgentLine(null);
     speak(res, { wage, years });
+    // CM 01/02: tilbuddet er sendt – svaret kommer som nyhed om 1–5 dage
+    if (res === 'cmSent') { onClose(); return; }
     if (res === 'accepted') { setMsg({ text: t('neg.accepted'), tone: 'good' }); setTimeout(onClose, 2200); }
     else if (res === 'pending') { setMsg({ text: t('neg.pendingMp'), tone: 'warn' }); setTimeout(onClose, 3200); }
     else if (res === 'counter') {
-      const d = offer?.demand?.wage ?? (offer ? wageDemand(p, club) : renewalDemand(p, club));
+      const d = askOf();
       setWage(Math.round(d / 50) * 50);
       setYears(offer?.demand?.years ?? preferredYears(p));
       setMsg({ text: t('neg.counter', { wage: money(d), years: offer?.demand?.years ?? preferredYears(p) }), tone: 'warn' });

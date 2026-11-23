@@ -3,11 +3,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { act } from '../../game/actions';
 import { gs } from '../../game/state';
-import { preferredYears, renewalDemand, signOnDemand, wageDemand } from '../../game/transfers';
+import { humanRenewDemand, preferredYears, renewalDemand, signOnDemand, wageDemand } from '../../game/transfers';
 import type { ContractClauses, StaffRole, TransferOffer } from '../../game/types';
 import { cmRolesFor, cmStaffCompensation, cmStaffDemand, cmStaffInterestedIn, JOB_CODE } from '../../game/cmStaff';
 import { cmStaffOfferCheck } from '../../game/cmContractGame';
-import { cmStaffOn } from '../../game/cmPlayerData';
+import { cmLogic, cmStaffOn } from '../../game/cmPlayerData';
 import { cmBoardStaffWageAllow, cmBoardWageAllow, cmTransferBudgetRaw } from '../../game/cmBudget';
 import { cmGbp } from '../../game/cmMoney';
 import { poachFee } from '../../game/staff';
@@ -199,8 +199,12 @@ function NegotiationBody({ offer, renewPid, onClose }: { offer?: TransferOffer; 
   const club = g.clubs[g.userClub];
   // CM 01/02 efter et accepteret bud: spillerens krav 0x85fc50 (cmTransferTalks.ts)
   const [cmWant] = useState(() => (offer?.cmTalks ? cmTalksDemand(offer, offer.cmRole) : null));
-  const demand = r50(cmWant?.wage ?? offer?.demand?.wage ?? (offer ? wageDemand(p, club) : renewalDemand(p, club)));
-  const wantYears = cmWant ? Math.max(1, Number(cmWant.expires.slice(0, 4)) - year(g.date)) : offer?.demand?.years ?? preferredYears(p);
+  // forlængelse (CM 01/02, en CM-database i ægte tilstand): Offer Contract til egen spiller viser samme krav 0x85fc50, som 0x4ce4e0 afgør tilbuddet
+  // med – for egen klub med trupstatussen fra Set Role At Club (genberegnes, når rollen er sat)
+  const renewCm = !offer && cmLogic(g);
+  const [rw, setRw] = useState(() => (renewCm ? humanRenewDemand(p, club) : null));
+  const demand = r50(cmWant?.wage ?? rw?.wage ?? offer?.demand?.wage ?? (offer ? wageDemand(p, club) : renewalDemand(p, club)));
+  const wantYears = cmWant ? Math.max(1, Number(cmWant.expires.slice(0, 4)) - year(g.date)) : rw ? rw.years : offer?.demand?.years ?? preferredYears(p);
   const [tab, setTab] = useState<Tab>('basic');
   // egen spiller (CM 01/02): først "Set Role At Club" – status i truppen og jobbeskrivelse
   // ægte CM 01/02: et aftalt skifte (Next club) – Offer Contract viser kun "… does not wish to negotiate a new contract at the current time." (0x9b0964)
@@ -210,7 +214,7 @@ function NegotiationBody({ offer, renewPid, onClose }: { offer?: TransferOffer; 
   const [job, setJob] = useState<'player' | 'assistant' | 'coach'>(p.jobRole ?? 'player');
   const [wage, setWage] = useState(demand);
   const [years, setYears] = useState(wantYears);
-  const signReq = cmWant ? Math.round(cmWant.signOn / 500) * 500 : signOnDemand(p, demand, !!offer && (!offer.fee || !!offer.preContract));
+  const signReq = cmWant ? Math.round(cmWant.signOn / 500) * 500 : rw ? Math.round(rw.signOn / 500) * 500 : signOnDemand(p, demand, !!offer && (!offer.fee || !!offer.preContract));
   const [cl, setCl] = useState<ContractClauses>(signReq ? { signOn: signReq } : {});
   const [ask, setAsk] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -226,12 +230,12 @@ function NegotiationBody({ offer, renewPid, onClose }: { offer?: TransferOffer; 
   // "X has no interest in negotiating terms …" efter trupstatussen (0x4e0ff9: 1–2 uden tilføjelse, 3 rotation, 4 backup, 5 hot prospect,
   // 6 youngster) med grundene 0x8e4ae0, når interessen (0x846920) er over 1,25 – og intet tilbud kan gives. Det fanger også 0x85fc50's
   // spærre (kravet sat til 250.000 p/w). Skærmparameteren 0x16 (grenen 0x4e0f1f) er ikke fundet – *estimeret* aldrig over 1,5 × loftet.
-  const [noInt] = useState(() => {
+  const noInt = useMemo(() => {
     if (noRenew) return { key: 'cm.neg.noRenewNow', reasons: '' };
-    if (!cmWant || demand < 1.5 * allow) return null;
-    const r = cmNoInterest(g, p, club.id, offer?.cmRole);
+    if ((!cmWant && !rw) || roleStep || demand < 1.5 * allow) return null;
+    const r = cmNoInterest(g, p, club.id, offer ? offer.cmRole : p.squadStatus);
     return { key: r.key, reasons: r.why ? cmWhyText(r.why) : '' };
-  });
+  }, [roleStep, rw]); // eslint-disable-line react-hooks/exhaustive-deps
   const end = (y: number) => `${t('cl.neg.jun')} ${g.season + y}`;
   const col = titleColors(p.club || undefined);
   const set = (k: keyof ContractClauses, v: number | undefined) => setCl((c) => ({ ...c, [k]: v || undefined }));
@@ -280,7 +284,9 @@ function NegotiationBody({ offer, renewPid, onClose }: { offer?: TransferOffer; 
           {!careerOk && <p className="cx-ts-intro">+ {t('cl.role.notEnding')}</p>}
         </div>
         <div className="cx-ts-buttons cx-dlg-foot"><button onClick={onClose}>{t('common.back')}</button>
-          <button className="primary" onClick={() => { act({ t: 'squadStatus', pid, status: status ?? null, loanListed: !!p.loanListed }); p.jobRole = job; setRoleStep(false); }}>{t('cl.ts.set')}</button></div>
+          <button className="primary" onClick={() => { act({ t: 'squadStatus', pid, status: status ?? null, loanListed: !!p.loanListed }); p.jobRole = job;
+            if (renewCm) { const d = humanRenewDemand(p, club), so = Math.round(d.signOn / 500) * 500; setRw(d); setWage(r50(d.wage)); setYears(d.years); setCl(so ? { signOn: so } : {}); }
+            setRoleStep(false); }}>{t('cl.ts.set')}</button></div>
       </div>
     );
   }
