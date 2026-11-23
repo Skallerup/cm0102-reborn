@@ -67,7 +67,7 @@ export async function importCMFiles(list: FileList | File[]): Promise<CMWorld> {
   }
   const { parseCM0102 } = await import('../game/data/cm0102');
   const world = parseCM0102(files);
-  try { await guardWrite(() => set(CM_KEY, world), true); } catch { /* kun i hukommelsen, hvis browseren ikke vil gemme (fuld disk: beskeden er vist) */ }
+  try { await guardWrite((st) => set(CM_KEY, world, st), true); } catch { /* kun i hukommelsen, hvis browseren ikke vil gemme (fuld disk: beskeden er vist) */ }
   cmCache = world;
   return world;
 }

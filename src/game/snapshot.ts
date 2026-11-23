@@ -29,5 +29,11 @@ export async function serializeState(g: GameState): Promise<Blob> {
 }
 
 export async function deserializeState(blob: Blob): Promise<GameState> {
-  return JSON.parse(await gunzipText(blob)) as GameState;
+  return ensureOptions(JSON.parse(await gunzipText(blob)) as GameState);
+}
+
+/** et øjebliksbillede/gemt spil uden `options` (beskadiget eller meget gammelt) må ikke vælte skærmene (`options.mode` på undefined): udfyld som et gammelt udvidet spil */
+export function ensureOptions(g: GameState): GameState {
+  if (g && typeof g === 'object' && !g.options) g.options = { masking: false, autosave: true, matchSpeed: 650, fullCommentary: true, rules: 'modern' } as GameState['options'];
+  return g;
 }

@@ -9,7 +9,7 @@ import type { GameState } from './types';
 export function classicRules(): boolean {
   if (!hasGame()) return false;
   const g = gs();
-  return g.options.rules === 'classic' && !g.options.modernSubs && (g.dbKind !== 'cm0102' || (g.dbYear ?? g.season) < 2020 || g.cmMatch === 1);
+  return g.options?.rules === 'classic' && !g.options.modernSubs && (g.dbKind !== 'cm0102' || (g.dbYear ?? g.season) < 2020 || g.cmMatch === 1);
 }
 export const maxSubs = () => (classicRules() ? 3 : 5);
 
@@ -17,7 +17,7 @@ export const maxSubs = () => (classicRules() ? 3 : 5);
  *  (`options.mode` ≠ 'authentic'). Spillets logik afhænger aldrig af udseendet (temaet) – samme svar i hovedtråden, Web Workeren og Node. */
 export function legacyExtended(g?: GameState): boolean {
   const s = g ?? (hasGame() ? gs() : undefined);
-  return !s || s.options.mode !== 'authentic';
+  return !s || s.options?.mode !== 'authentic';
 }
 /** originalens logik (CM 01/02 1:1) – alle spil undtagen de gamle udvidede */
 export const origLogic = (g?: GameState): boolean => !legacyExtended(g);

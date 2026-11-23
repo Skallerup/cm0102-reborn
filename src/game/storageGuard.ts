@@ -1,5 +1,6 @@
 // Fuld disk/lagerkvote (QuotaExceededError, "Encountered full disk while opening backing store for indexedDB.open"): spillet må aldrig
 // gå ned på det. Gemning viser én tydelig besked pr. session (indtil et gem lykkes igen) og spillet fortsætter; fejlen meldes til admin én gang.
+import { createStore, type UseStore } from 'idb-keyval';
 import { t } from '../i18n';
 
 /** Kastes af saveGame m.fl., når disken er fuld – kaldere må ikke vise "Gemt" (fejlen er allerede vist og meldt) */
@@ -37,25 +38,49 @@ export async function handleStorageFull(e: unknown, manual: boolean): Promise<vo
   } catch { /* ingen dialog (fx i tests): spillet fortsætter */ }
 }
 
-/** Kør en skrivning til IndexedDB: ved fuld disk behandles fejlen, og StorageFullError kastes; øvrige fejl kastes uændret */
-export async function guardWrite<T>(fn: () => Promise<T>, manual = false): Promise<T> {
+/** Pause før genforsøget (iOS fryser en PWA i baggrunden og afbryder transaktionen; et øjeblik efter virker lageret igen). Kun tests ændrer den. */
+export const retry = { delayMs: 400 };
+
+/** Beskriv en IndexedDB-fejl læsbart: idb-keyval afviser med `request.error`/`transaction.error`, som er null, når en transaktion afbrydes uden årsag
+ *  (WebKit: siden gik i baggrunden/blev suspenderet, forbindelsen blev lukket) – så står der ellers bare "null". */
+export function describeStorageError(e: unknown): string {
+  if (e === null || e === undefined) return `${String(e)} (aborted, no cause: transaction abort or closed connection)`;
+  const x = e as { name?: string; message?: string; code?: number; constructor?: { name?: string } };
+  if (typeof e !== 'object') return `${typeof e} ${String(e).slice(0, 120)}`;
+  const kind = x.constructor?.name && x.constructor.name !== x.name && x.constructor.name !== 'Error' ? ` <${x.constructor.name}>` : '';
+  return `${x.name ?? 'Error'}${x.code ? `#${x.code}` : ''}${kind} ${String(x.message ?? '').slice(0, 120)}`.trim();
+}
+
+/** en ny IndexedDB-forbindelse til idb-keyvals standardlager (en lukket/afbrudt forbindelse genbruges ellers for evigt) */
+const freshStore = (): UseStore | undefined => { try { return createStore('keyval-store', 'keyval'); } catch { return undefined; } };
+
+/** Kør en skrivning til IndexedDB: ved fuld disk behandles fejlen, og StorageFullError kastes; en anden fejl (fx en afbrudt transaktion – iOS) prøves igen
+ *  én gang efter en kort pause på en ny forbindelse (fn får lageret som argument; udefineret = standardlageret), og først hvis genforsøget også fejler,
+ *  meldes den og vises for spilleren. Fejlen kastes uændret. */
+export async function guardWrite<T>(fn: (store?: UseStore) => Promise<T>, manual = false): Promise<T> {
+  let first: unknown;
   try { const r = await fn(); storageWorks(); return r; }
   catch (e) {
-    if (!isQuotaError(e)) { await handleSaveFailed(e, manual); throw e; }
-    await handleStorageFull(e, manual);
-    throw new StorageFullError(e);
+    if (isQuotaError(e)) { await handleStorageFull(e, manual); throw new StorageFullError(e); }
+    first = e;
+  }
+  await new Promise((r) => setTimeout(r, retry.delayMs));
+  try { const r = await fn(freshStore()); storageWorks(); return r; }
+  catch (e) {
+    if (isQuotaError(e)) { await handleStorageFull(e, manual); throw new StorageFullError(e); }
+    await handleSaveFailed(e, manual, first);
+    throw e;
   }
 }
 
 /** Gemningen fejlede af en anden grund end fuld disk (fx IndexedDB utilgængelig/ryddet, privat tilstand, indbygget browser): meld til admin (højst én gang
  *  pr. session, med diagnose) og vis spilleren en tydelig besked (højst én gang, indtil et gem lykkes; manuelt gem viser den altid). Kaster aldrig. */
-export async function handleSaveFailed(e: unknown, manual: boolean): Promise<void> {
+export async function handleSaveFailed(e: unknown, manual: boolean, first?: unknown): Promise<void> {
   if (!failReported) {
     failReported = true;
     try {
-      const err = e as { name?: string; message?: string } | null;
       const { reportError } = await import('../online/errors');
-      reportError(new Error(`SaveFailed: ${err?.name ?? ''} ${String(err?.message ?? e).slice(0, 120)} | ${await storageDiag()}`));
+      reportError(new Error(`SaveFailed: ${describeStorageError(e)}${first !== undefined || e === null ? ` [first: ${describeStorageError(first)}; retried]` : ''} | ${await storageDiag()}`));
     } catch { /* ignorér */ }
   }
   if (failWarned && !manual) return;

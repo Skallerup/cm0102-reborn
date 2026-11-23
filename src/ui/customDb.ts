@@ -15,11 +15,11 @@ export async function listDbs(): Promise<CustomDb[]> {
 export async function saveDb(db: CustomDb): Promise<void> {
   const all = await listDbs();
   const next = { ...db, updated: new Date().toISOString() };
-  await guardWrite(() => set(KEY, [next, ...all.filter((d) => d.id !== db.id)]), true);
+  await guardWrite((st) => set(KEY, [next, ...all.filter((d) => d.id !== db.id)], st), true);
 }
 
 export async function deleteDb(id: string): Promise<void> {
-  await guardWrite(async () => set(KEY, (await listDbs()).filter((d) => d.id !== id)), true);
+  await guardWrite(async (st) => set(KEY, (await listDbs()).filter((d) => d.id !== id), st), true);
 }
 
 export async function getDb(id: string): Promise<CustomDb | undefined> {

@@ -76,7 +76,7 @@ export async function saveGame(opts?: { cloud?: boolean; name?: string }): Promi
     ext: extOf(g),
   };
   requestPersistentStorage();
-  await guardWrite(async () => { await set(`save:${id}`, blob); await set(`meta:${id}`, meta); }, !!opts?.cloud);
+  await guardWrite(async (st) => { await set(`save:${id}`, blob, st); await set(`meta:${id}`, meta, st); }, !!opts?.cloud);
   // "seneste spil" sættes først, når spillet er gemt (så den aldrig peger på et spil, der ikke findes)
   rememberLast({ kind: 'local', id });
   cloudHook?.(meta, blob, !!opts?.cloud);
@@ -99,7 +99,7 @@ export async function storedLegacyExt(meta: SaveMeta): Promise<boolean | null> {
 
 /** Læg et spil hentet fra skyen i den lokale database (overskriver en ældre lokal kopi) */
 export async function storeSave(meta: SaveMeta, blob: Blob) {
-  await guardWrite(async () => { await set(`save:${meta.id}`, blob); await set(`meta:${meta.id}`, meta); }, true);
+  await guardWrite(async (st) => { await set(`save:${meta.id}`, blob, st); await set(`meta:${meta.id}`, meta, st); }, true);
 }
 
 /** Slags for et lokalt gemt spil uden `kind` i metadata (gemt af en ældre version): den udpakkede tekst læses (uden at bygge spillet) og
@@ -131,7 +131,7 @@ export async function storeNewGame(g: GameState): Promise<string> {
   const blob = serialize(g);
   rng.state = keep;
   const data = await blob;
-  await guardWrite(async () => { await set(`save:${g.id}`, data); await set(`meta:${g.id}`, meta); }, true);
+  await guardWrite(async (st) => { await set(`save:${g.id}`, data, st); await set(`meta:${g.id}`, meta, st); }, true);
   requestPersistentStorage();
   return g.id;
 }

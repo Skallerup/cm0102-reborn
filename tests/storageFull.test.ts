@@ -4,9 +4,10 @@ vi.hoisted(() => { (globalThis as { window?: unknown }).window ??= { addEventLis
 const notice = vi.hoisted(() => vi.fn(async () => {}));
 vi.mock('../src/ui/confirm', () => ({ askNotice: notice }));
 vi.mock('../src/online/errors', () => ({ reportError: vi.fn() }));
-import { guardWrite, isQuotaError, resetStorageGuard, StorageFullError } from '../src/game/storageGuard';
+import { describeStorageError, guardWrite, isQuotaError, resetStorageGuard, retry, StorageFullError } from '../src/game/storageGuard';
 import { reportError } from '../src/online/errors';
 
+retry.delayMs = 0;
 const quota = () => Object.assign(new Error('QuotaExceededError: Encountered full disk while opening backing store for indexedDB.open.'), { name: 'QuotaExceededError' });
 
 describe('fuld disk', () => {
@@ -40,5 +41,32 @@ describe('gemning fejler af anden grund (ikke kvote)', () => {
     expect(notice).toHaveBeenCalledTimes(1);
     expect(reportError).toHaveBeenCalledTimes(1);
     expect(String(vi.mocked(reportError).mock.calls[0][0])).toMatch(/SaveFailed: InvalidStateError db closed/);
+  });
+});
+
+describe('afbrudt transaktion (iOS/WebKit: fejlen er null)', () => {
+  beforeEach(() => { resetStorageGuard(); notice.mockClear(); vi.mocked(reportError).mockClear(); });
+  it('et genforsøg efter en afbrudt skrivning lykkes uden besked eller melding', async () => {
+    let n = 0;
+    const r = await guardWrite(async () => { if (n++ === 0) throw null; return 'ok'; });
+    expect(r).toBe('ok');
+    expect(n).toBe(2);
+    expect(notice).not.toHaveBeenCalled();
+    expect(reportError).not.toHaveBeenCalled();
+  });
+  it('fejler genforsøget også: besked + melding med årsag (ikke bare "null")', async () => {
+    await expect(guardWrite(async () => { throw null; })).rejects.toBeNull();
+    expect(notice).toHaveBeenCalledTimes(1);
+    const msg = String(vi.mocked(reportError).mock.calls[0][0]);
+    expect(msg).toMatch(/SaveFailed: null \(aborted, no cause/);
+    expect(msg).toMatch(/first: null/);
+  });
+  it('kvotefejl i genforsøget behandles som fuld disk', async () => {
+    let n = 0;
+    await expect(guardWrite(async () => { if (n++ === 0) throw null; throw quota(); })).rejects.toBeInstanceOf(StorageFullError);
+  });
+  it('describeStorageError', () => {
+    expect(describeStorageError(new DOMException('x', 'AbortError'))).toMatch(/^AbortError/);
+    expect(describeStorageError('streng')).toMatch(/string streng/);
   });
 });

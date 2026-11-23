@@ -293,7 +293,7 @@ export function removePlayer(p: Player) {
 export function newsRelevant(...clubIds: (number | undefined)[]): boolean {
   const g = gs();
   const me = g.clubs[g.userClub];
-  const scope = g.options.newsScope ?? 'league';
+  const scope = g.options?.newsScope ?? 'league';
   if (scope === 'world') return true;
   return clubIds.some((id) => {
     const c = id ? g.clubs[id] : undefined;
@@ -310,7 +310,7 @@ export const newsStamp: { tod?: (g: GameState) => 0 | 1 | 2 | null } = {};
 export function addNews(n: Omit<NewsItem, 'id' | 'date' | 'read'> & { date?: string }, opts?: { all?: boolean }) {
   const g = gs();
   if (cmMediaOn(g) && offInOriginal(n.key, cmActive(g))) return; // nyheder uden modstykke i originalen (newsFilter.ts)
-  const muted = !!g.options.mutedNews?.includes(n.cat);
+  const muted = !!g.options?.mutedNews?.includes(n.cat);
   // originalens kalender: nyhedens tidspunkt på dagen (News-listens "Fri 24th Aug EVE" – cmCalendar.ts registrerer cmTimeOfDay)
   const tod = n.date === undefined || n.date === g.date ? newsStamp.tod?.(g) ?? null : null;
   const item = { id: g.nextId.news++, date: n.date ?? g.date, read: muted, ...n, ...(muted ? { muted: true } : {}), ...(tod !== null ? { tod } : {}) };
