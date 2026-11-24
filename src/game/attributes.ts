@@ -80,11 +80,21 @@ export function slotRole(slot: Slot): Role {
     case 'AM': return slot.side === 'C' ? 'AM' : 'W';
     case 'ST': return 'ST';
   }
+  // ukendt betegnelse (fx en gammel gemt kamptaktik med motorens interne navne LB/CB/CF): rollen ud fra pladsen på banen (som slotAt)
+  const x = slot?.x ?? 50, y = slot?.y ?? 50, side = y < 30 ? 'L' : y > 70 ? 'R' : 'C';
+  if (x < 6) return 'GK';
+  if (x < 27) return side === 'C' ? 'CB' : 'FB';
+  if (x < 36) return side === 'C' ? 'DM' : 'FB';
+  if (x < 56) return side === 'C' ? 'CM' : 'WM';
+  if (x < 70) return side === 'C' ? 'AM' : 'W';
+  return 'ST';
 }
 
 /** Vægtet attribut-gennemsnit for rollen (1-20) */
 export function roleScore(p: Player, role: Role): number {
   const w = ROLE_WEIGHTS[role];
+  // ukendt rolle eller spiller uden egenskaber (nedbrud 24/11 i taktikskærmens sortering): sorteres sidst
+  if (!w || !p?.attrs) return 0;
   let s = 0;
   let t = 0;
   for (let i = 0; i < 36; i++) {
@@ -92,7 +102,7 @@ export function roleScore(p: Player, role: Role): number {
     if (wi > 0) {
       // kvadratisk vægtning → nøgleattributter betyder mest
       const ww = wi * wi;
-      s += p.attrs[i] * ww;
+      s += (p.attrs[i] ?? 0) * ww;
       t += ww;
     }
   }

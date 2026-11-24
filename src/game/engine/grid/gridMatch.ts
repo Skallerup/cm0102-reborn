@@ -971,13 +971,15 @@ const RAWN = ['acceleration', 'pace', 'agility', 'balance', 'strength', 'flair',
 
 /** en taktikplads ud fra originalens positionsmaske (GK 0x1, SW 0x2, D 0x4, DM 0x8, M 0x10, AM 0x20, F 0x40; L 0x80, LC 0x100, C 0x200, RC 0x400,
  *  R 0x800) – kun til målmanden og grundpositionen; motoren bruger selve masken (makePlayer base.pos) */
-function maskSlot(mask: number): Tactic['slots'][number] {
+export function maskSlot(mask: number): Tactic['slots'][number] {
   const row = mask & 1 ? 0 : mask & 2 ? 1 : mask & 4 ? 2 : mask & 8 ? 3 : mask & 0x10 ? 4 : mask & 0x20 ? 5 : 6;
   const y = mask & 0x80 ? 10 : mask & 0x100 ? 30 : mask & 0x400 ? 70 : mask & 0x800 ? 90 : 50;
   const x = [2, 12, 20, 35, 50, 65, 85][row];
   const side = y < 40 ? 'L' : y > 60 ? 'R' : 'C';
-  const pos = row === 0 ? 'GK' : row <= 2 ? (side === 'L' ? 'LB' : side === 'R' ? 'RB' : 'CB') : row === 3 ? 'DM' : row === 4 ? (side === 'L' ? 'LM' : side === 'R' ? 'RM' : 'CM')
-    : row === 5 ? (side === 'L' ? 'LW' : side === 'R' ? 'RW' : 'AM') : 'CF';
+  // spillets egne pladsnavne (PosKey, som snapSlot i tactics.ts) – før LB/CB/CF …, som taktikskærmens rolle (slotRole) ikke kendte
+  // (nedbrud 24/11: computerudtaget opstilling vist i kampens taktikskærm → roleScore(p, undefined))
+  const pos = row === 0 ? 'GK' : row === 1 ? (side === 'C' ? 'SW' : 'D') : row === 2 ? 'D' : row === 3 ? (side === 'C' ? 'DM' : 'WB') : row === 4 ? 'M'
+    : row === 5 ? 'AM' : 'ST';
   return { pos, side, x, y } as Tactic['slots'][number];
 }
 
