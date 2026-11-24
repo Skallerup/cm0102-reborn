@@ -52,7 +52,7 @@ function ScoutPanel({ scout, n }: { scout?: Staff; n: number }) {
         <b className="grow">{desc}</b>
         {cm && a ? <button className="danger" onClick={() => act({ t: 'scout', staffId: scout.id, assignment: null })}>{t('cm.sc.recall')}</button> : <>
           <select value={kind} onChange={(e) => setKind(e.target.value as Kind)}>
-            {(['club', 'nextOpp', 'youth', 'nation', 'region'] as Kind[]).map((k) => <option key={k} value={k}>{t(k === 'nextOpp' ? 'cl.sc.nextOpp' : k === 'youth' ? 'cl.sc.youth' : `cl.sc.${k}`)}</option>)}
+            {(['club', 'nextOpp', 'youth', 'nation', 'region'] as Kind[]).map((k) => <option key={k} value={k}>{t(k === 'nextOpp' ? 'cl.sc.nextOpp' : k === 'youth' ? 'cl.sc.youth' : k === 'club' ? 'cl.sc.club' : k === 'nation' ? 'cl.sc.nation' : 'cl.sc.region')}</option>)}
           </select>
           {(kind === 'nation' || kind === 'club') && <select value={nat} onChange={(e) => { setNat(Number(e.target.value)); setClub(0); }}>{(kind === 'club' ? nationIds : nationOf).map((x) => <option key={x} value={x}>{natName(g.nations[x].name)}</option>)}</select>}
           {kind === 'club' && <select value={club} onChange={(e) => setClub(Number(e.target.value))}><option value={0}>-</option>{clubOpts.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>}
