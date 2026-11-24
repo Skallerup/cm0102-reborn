@@ -208,7 +208,11 @@ export function setClub(p: Player, club: number) {
   // (række +0: trupstatus +0x4f, +0x3d–+0x3f, +0x44/+0x45, +0x4e) bliver stående (oraklets billeder 3/11-01: udlejedes hovedkontrakt +0x4f 0x7a/0x6a/0x5a).
   // Før fik en leje lavet i spillet en ny kontrakt med trupstatus 0, så viljen 0x846920 (0x8474dc: +0x4f >> 4) gav ×7 for en udlejet
   const loanMove = moved && !!p.loan && (p.loan.from === p.club || p.loan.from === club) && hasGame() && cmMarketOn(gs());
-  if (moved) { p.cmStats = undefined; if (!loanMove) p.cmContract = undefined; if (hasGame()) { cmPermitMove(gs(), p, club); cmStaffStateMove(gs(), p, p.club, club); } }
+  // Lejens start (handle_player_accepted_terms 0x8c2180 → sign_loan_contract 0x4d01e0, uden om finalise_transfer 0x8c9390) og slut (end_loan
+  // 0x4d07e0) kalder ikke klubskiftet 0x8c9720 (dets eneste kalder er 0x8c9390): klubbernes omdømme +0x80, indkøringsbyten og trupplanens
+  // tæller (cmStaffStateMove) er urørte. Før gav hver leje ud −verdensomdømme/100 og retur +, så lejerne flyttede omdømmet frem og tilbage.
+  const loanLeg = moved && !!p.loan && (p.loan.from === p.club || p.loan.from === club);
+  if (moved) { p.cmStats = undefined; if (!loanMove) p.cmContract = undefined; if (hasGame()) { cmPermitMove(gs(), p, club); if (!loanLeg) cmStaffStateMove(gs(), p, p.club, club); } }
   p.club = club;
   // en nyindkøbt spiller kommer på førsteholdet: reserve-mærket hører til den gamle klub (spillerrapport #25: Obi og Arthur
   // stod som reserver hos ejeren – røde, uden "+ Sub" og uden at kunne vælges)

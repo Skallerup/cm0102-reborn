@@ -40,7 +40,9 @@ interface PRow { key: string; id: number; age: number; ca: number; pa: number; c
 interface CRow { name: string; div: string; bal: number; wb: number; rep: number; mgr: string; squad: number }
 interface TRow { key: string; date: string; from: string; to: string; fee: number; loan: boolean; free: boolean; eng: boolean; staff?: boolean; bosman?: boolean; pkey?: string; age?: number; ca?: number; fromNat?: string; toNat?: string; fromDiv?: string; toDiv?: string }
 interface LRow { div: string; club: string; p: number; gf: number; ga: number; pos: number }
-interface World { date: string; players: PRow[]; clubs: CRow[]; league: LRow[] }
+// reps: omdømmet for ALLE engelske klubber uanset division (omdømme Δ: oraklets 30/6-billede har allerede næste sæsons divisioner, og
+// Conference er ingen turnering i oraklet – en nedrykket klub ville ellers falde ud af mængden på den ene side)
+interface World { date: string; players: PRow[]; clubs: CRow[]; league: LRow[]; reps: Record<string, number> }
 
 const yrs = (date: string, dob: string) => (Date.parse(date) - Date.parse(dob)) / (365.25 * 86400000);
 const seasonOf = (iso: string) => (+iso.slice(5, 7) >= 7 ? +iso.slice(0, 4) : +iso.slice(0, 4) - 1);
@@ -74,12 +76,13 @@ function oracleWorld(m: SparseMem): World {
     players.push({ key: `${common || f + ' ' + l}|${dob}`, id, age: yrs(date, dob), ca: m.s16(pr + 5), pa: m.s16(pr + 7), club: cName(cix), eng: cEng(cix), div: cix >= 0 ? cDiv(cix) : '',
       nat: str(m, m.u32(st + 0x1a) + 4, 51), exp: k ? dayIso(m.s16(k + 0x2d), m.u16(k + 0x2f)) : '', wage: k ? m.s32(k + 0xc) : 0, loan: !!kl, loanFromEng: !!kl && cEng(parent), mem: true, ll: k ? !!(m.u8(k + 0x4e) & 2) : false });
   }
-  const clubs: CRow[] = [];
+  const clubs: CRow[] = [], reps: Record<string, number> = {};
   const league: LRow[] = [];
   const fin0 = m.u32(m.u32(0xae2a38));
   for (let ix = 0; ix < nc; ix++) {
     if (!cEng(ix)) continue;
     const adr = C + 0x245 * ix, div = cDiv(ix);
+    reps[cName(ix)] = m.s16(adr + 0x80);
     if (!DIV_TIER[div]) continue;
     const f = fin0 + 0x167 * ix;
     const mgrP = m.u32(adr + 0xcf);
@@ -108,7 +111,7 @@ function oracleWorld(m: SparseMem): World {
     oTransfers.set(key, { key, date: d, from: from >= 0 ? cName(from) : '', to: to >= 0 ? cName(to) : '', fee: m.s32(r + 0x18), loan: art === 2, free: art === 3 || art === 4 || from < 0, ...(art === 4 ? { bosman: true } : {}), eng: cEng(to) || cEng(from), staff: art === 5,
       ...((LOANS && art === 2) || BUYS ? { pkey: pp?.key, age: pp ? yrs(d, pp.key.split('|')[1]) : undefined, ca: pp?.ca, fromNat: cNat(from), toNat: cNat(to), fromDiv: from >= 0 ? cDiv(from) : '', toDiv: to >= 0 ? cDiv(to) : '' } : {}) });
   }
-  return { date, players, clubs, league };
+  return { date, players, clubs, league, reps };
 }
 
 // ------------------------------------------------------------------ spillet
@@ -141,9 +144,10 @@ function ourWorld(date: string): World {
     if (uTransfers.has(key)) continue;
     uTransfers.set(key, { key, date: mv.date, from: g.clubs[mv.from]?.name ?? '', to: g.clubs[mv.to]?.name ?? '', fee: Math.round(mv.fee * GBP), loan: false, free: false, eng: g.clubs[mv.from]?.nation === eng || g.clubs[mv.to]?.nation === eng, staff: true });
   }
-  const clubs: CRow[] = [];
+  const clubs: CRow[] = [], reps: Record<string, number> = {};
   for (const c of Object.values(g.clubs)) {
     if (c.nation !== eng) continue;
+    reps[c.name] = g.cmClubRep?.[c.id] ?? Math.round(c.rep * 100);
     const div = divOf(c.id);
     if (!DIV_TIER[div]) continue;
     const mgr = g.staff[c.manager];
@@ -157,7 +161,7 @@ function ourWorld(date: string): World {
     const k = `${g.season}|${comp.name}`, old = uLeague.get(k);
     if (!old || rows.reduce((t, r) => t + r.p, 0) >= old.reduce((t, r) => t + r.p, 0)) uLeague.set(k, rows);
   }
-  return { date, players, clubs, league: [] };
+  return { date, players, clubs, league: [], reps };
 }
 
 // ------------------------------------------------------------------ billederne
@@ -351,7 +355,9 @@ function seasonMetrics(si: number, A: World, B: World, divW: [World | undefined,
     const ch = B.clubs.filter((c) => c.mgr !== '(menneske)' && aC.has(c.name) && aC.get(c.name)!.mgr !== c.mgr);
     set('klubber', 'managerskifter (klubber med anden manager ved slut)', ch.length);
     set('klubber', 'uden manager (slut)', B.clubs.filter((c) => !c.mgr).length);
-    set('klubber', 'omdømme Δ gns. (start→slut, alle ligaklubber)', mean(B.clubs.filter((c) => aC.has(c.name)).map((c) => c.rep - aC.get(c.name)!.rep)));
+    // sæsonens ligaklubber (billedet fra 1/9, ellers A) – omdømmet ved start og slut uanset division (reps), så nedrykkede tæller med på begge sider
+    const set0 = (divW[0] ?? A).clubs.map((c) => c.name).filter((nm) => A.reps?.[nm] !== undefined && B.reps?.[nm] !== undefined);
+    set('klubber', 'omdømme Δ gns. (start→slut, alle ligaklubber)', mean(set0.map((nm) => B.reps[nm] - A.reps[nm])));
   }
   // --- ligaerne: mål/kamp og op-/nedrykning
   for (const d of DIVS.slice(0, 4)) {
