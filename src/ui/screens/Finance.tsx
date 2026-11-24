@@ -15,7 +15,7 @@ import { Bar, Modal, MoneyInput, Panel, Tabs } from '../components';
 import { useGame, useNav, useRouteState } from '../core';
 import { AttendanceTab, FacilitiesTab, FinanceHistoryTab } from './Stadium';
 import { Head } from './common';
-import { authentic, extended } from '../../game/rules';
+import { authentic, extended, origLogic } from '../../game/rules';
 import { isRetro } from '../theme';
 
 export function Finance() {
@@ -31,15 +31,18 @@ export function Finance() {
   const [tab0, setTab] = useRouteState('tab', route.tab ?? 'overview');
   // klassisk (CM 01/02): kun økonomien – ingen sponsorvalg, billetpriser, byggeprojekter, FFP, prognose eller budgetforhandling
   const orig = isRetro() || authentic();
-  const tab = orig && tab0 === 'facilities' ? 'overview' : tab0;
+  // original logik i det moderne udseende: ingen sponsorvalg, billetpriser eller byggeprojekter (findes ikke i originalen)
+  const noExt = orig || origLogic();
+  const tab = noExt && tab0 === 'facilities' ? 'overview' : tab0;
   return (
     <div>
       {talk && <BudgetModal onClose={() => setTalk(false)} />}
       <Head title={t('nav.finance')}>
         <Tabs tabs={orig ? [['overview', t('fin.tab.overview')], ['stadium', t('fin.tab.attendance')], ['history', t('fin.tab.history')]]
+          : noExt ? [['overview', t('fin.tab.overview')], ['stadium', t('fin.tab.attendance')], ['history', t('fin.tab.history')]]
           : [['overview', t('fin.tab.overview')], ['stadium', t('fin.tab.stadium')], ['facilities', t('fin.tab.facilities')], ['history', t('fin.tab.history')]]} value={tab} onChange={setTab} />
       </Head>
-      {tab === 'stadium' && <AttendanceTab ticketPanel={extended() && !orig ? <TicketPanel /> : null} />}
+      {tab === 'stadium' && <AttendanceTab ticketPanel={extended() && !noExt ? <TicketPanel /> : null} />}
       {tab === 'facilities' && <FacilitiesTab />}
       {tab === 'history' && <FinanceHistoryTab />}
       {tab === 'overview' && orig && <ClassicFinances />}

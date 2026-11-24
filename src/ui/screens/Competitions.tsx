@@ -14,7 +14,7 @@ import { ClubLink, Panel, PlayerLink, Rating, Table, Tabs, type Col } from '../c
 import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
 import { isRetro } from '../theme';
-import { authentic } from '../../game/rules';
+import { authentic, origLogic } from '../../game/rules';
 import { resultStr, stageLabel } from './Fixtures';
 import { ClassicCup } from './CupClassic';
 import { ClassicCompHistory } from './CompHistoryClassic';
@@ -217,7 +217,7 @@ function CupView({ comp }: { comp: Competition }) {
   return (
     <div>
       {comp.winner && <div className="insight good">{t('comp.winner')}: <ClubLink id={comp.winner} long /></div>}
-      {comp.type === 'continental' && comp.table.length > 0 && !authentic() && (
+      {comp.type === 'continental' && comp.table.length > 0 && !origLogic() && (
         <Panel title={t('stage.LP')} className="flush">
           <LeagueTable rows={comp.table} comp={comp} zones={(i) => (i < 8 ? 'euro' : i < 24 ? 'playoff' : 'releg')} />
           <div className="legend" style={{ padding: 8 }}>

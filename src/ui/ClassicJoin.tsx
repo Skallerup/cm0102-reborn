@@ -7,7 +7,7 @@ import type { GameState } from '../game/types';
 import { downloadSnapshot, fetchRoom, joinOnlineGame, type RoomInfo } from '../online/client';
 import { track } from '../analytics';
 import { DraftJoin } from './Draft';
-import { setTheme, getTheme, setStartSkin } from './theme';
+import { setStartSkin } from './theme';
 import { compAbbr } from './classic';
 import { DEMONYM } from './demonyms';
 import { Frame, REGION_CODE, REGION_ORDER, type Prog, type Step } from './ClassicStart';
@@ -16,7 +16,6 @@ import { regionOfNation } from './classicOptions';
 const adjective = (name: string, adj?: string) => (getLang() === 'en' ? DEMONYM[name] ?? adj ?? name : natName(name));
 
 export function ClassicJoin({ code, onBack, onHome, setBusy }: { code: string; onBack: () => void; onHome?: () => void; setBusy: (s: string) => void }) {
-  useEffect(() => { if (getTheme() !== 'retro') setTheme('retro'); }, []);
   useEffect(() => { setStartSkin(true); return () => setStartSkin(false); }, []);
   const [hist, setHist] = useState<{ stack: Step[]; i: number }>({ stack: ['name'], i: 0 });
   const step = hist.stack[hist.i];

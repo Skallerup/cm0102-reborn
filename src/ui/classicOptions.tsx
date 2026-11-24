@@ -27,7 +27,7 @@ import { REBORN_KEYS, rebornOn } from './reborn';
 import type { RebornKey } from '../game/types';
 import { inAppBrowser, showInAppHelp } from './InAppBanner';
 import { canInstall, installApp, notifyEnabled, notifySupported, onInstallChange, setNotify } from './notify';
-import { getTheme, modernOn, setTheme, type Theme } from './theme';
+import { getTheme, setTheme, type Theme } from './theme';
 import { authentic } from '../game/rules';
 import { bTeamOf, hasReserveTeam } from '../game/cmBTeam';
 import { cmAwardNations, cmAwOn } from '../game/cmAwards';
@@ -196,7 +196,7 @@ function GameSettings({ onClose }: { onClose: () => void }) {
           <div className="cx-set-grid">
             {row(t('opt.language'), <Seg value={d.lang} opts={LANGS.map(([k, , full]) => [k, full] as [Lang, string])} onChange={(v) => up({ lang: v })} />)}
             {row(t('opt.currency'), <Seg value={d.cur} opts={CURRENCIES.map((c) => [c, t(`cur.${c}`).match(/\(([^)]+)\)/)?.[1] ?? c] as [Currency, string])} onChange={(v) => up({ cur: v })} />)}
-            {modernOn() && row(t('cl.set.skin'), <Seg value={d.theme} opts={[['retro', t('cl.set.classic')], ['club', t('opt.theme.club')], ['dark', t('opt.theme.dark')], ['light', t('opt.theme.light')]]} onChange={(v) => up({ theme: v })} />)}
+            {row(t('cl.set.skin'), <Seg value={d.theme} opts={[['retro', t('cl.set.classic')], ['club', t('opt.theme.club')], ['clubDark', t('opt.theme.clubDark')], ['dark', t('opt.theme.dark')], ['light', t('opt.theme.light')]]} onChange={(v) => up({ theme: v })} />)}
             {row(t('cl.set.fonts'), <Seg value={d.font} opts={CX_FONTS.map((f) => [f, t(`cl.set.font.${f}`)] as [CxFont, string])} onChange={(v) => up({ font: v })} />)}
             {row(t('cl.set.logo'), onOff(d.logo, (v) => up({ logo: v })))}
             {row(t('cl.set.stadium'), onOff(d.stadium, (v) => up({ stadium: v })))}

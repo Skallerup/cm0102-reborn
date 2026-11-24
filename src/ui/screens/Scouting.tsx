@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { authentic } from '../../game/rules';
+import { origLogic } from '../../game/rules';
 import { isRetro } from '../theme';
 import { MAX_TRIALS } from '../../game/trials';
 import { transferRealism } from '../../game/transfers';
@@ -34,7 +34,7 @@ export function Scouting() {
         </Panel>
       </div>
       {/* prøvespillere findes ikke i CM 01/02 */}
-      {!isRetro() && !authentic() && <TrialsPanel />}
+      {!isRetro() && !origLogic() && <TrialsPanel />}
       <Panel title={t('scout.assignments')} className="flush">
         <table className="grid">
           <thead><tr><th>{t('col.name')}</th><th>{t('scout.assignment')}</th></tr></thead>

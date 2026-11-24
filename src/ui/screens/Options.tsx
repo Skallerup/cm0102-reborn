@@ -54,7 +54,6 @@ export function Options() {
             <label className="row">{t('opt.theme')}
               <select value={theme} onChange={(e) => { const th = e.target.value as Theme; setThemeState(th); setTheme(th); }}>
                 {(['club', 'clubDark', 'light', 'dark', 'retro'] as const).map((m) => <option key={m} value={m}>{t(`opt.theme.${m}`)}</option>)}
-                {(['gold'] as const).map((m) => <option key={m} value={m}>{t(`opt.theme.${m}`)}</option>)}
               </select>
             </label>
             {(theme === 'club' || theme === 'clubDark') && <div className="muted">{t('opt.theme.clubHint')}</div>}

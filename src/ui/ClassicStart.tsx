@@ -29,7 +29,7 @@ import { regionOfNation, type UiRegion } from './classicOptions';
 import { DEMONYM } from './demonyms';
 import { listDbs } from './customDb';
 import { changeCount, type CustomDb } from '../game/dbEdit';
-import { setTheme, getTheme, modernOn, setStartSkin } from './theme';
+import { setTheme, modernOn, setStartSkin } from './theme';
 import { ORIGINAL_VERSIONS, type OriginalVersion } from './world';
 import { createOnlineGame } from '../online/client';
 import { markNewGame } from '../online/errors';
@@ -152,8 +152,6 @@ export function Frame({ step, version, title, sub, children, onBack, onNext, bac
 
 /** `online`: nyt fællesspil (Network Play → Create) – samme forløb som nyt spil (Select League(s) … Please Confirm), plus turfristen, og spillet oprettes på serveren */
 export function ClassicStart({ onLang, onHome, onGo, onLook, online }: { onLang: (l: Lang) => void; onHome?: () => void; onGo: (v: LegacyView) => void; onLook: () => void; online?: { onBack: () => void } }) {
-  // originalen er ægte CM 01/02 med den klassiske DOM – temaet sættes, så resten af spillet (og e2e) ser det klassiske udseende
-  useEffect(() => { if (getTheme() !== 'retro') setTheme('retro'); }, []);
   // spillets klassiske skin (:root[data-skin='retro']) gælder også før der er et spil – startskærmene bruger spillets egne knapper og lister
   useEffect(() => { setStartSkin(true); return () => setStartSkin(false); }, []);
   const [hist, setHist] = useState<{ stack: Step[]; i: number }>({ stack: [online ? 'leagues' : 'menu'], i: 0 });

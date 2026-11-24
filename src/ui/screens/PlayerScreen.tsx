@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { authentic } from '../../game/rules';
+import { origLogic } from '../../game/rules';
 import { loanRecallOn } from '../../game/rules2001';
 import { trialOf } from '../../game/trials';
 import { bidClauseWorth } from '../../game/clauses';
@@ -582,7 +582,7 @@ export function TalkPanel({ pid }: { pid: number }) {
     if (!text || thinking) return;
     setThinking(true);
     // ægte CM 01/02: kun Discipline Player (advarsel og bøde)
-    const allowed: TalkKind[] = authentic() ? ['warning', 'fine'] : ['praise', 'encourage', 'criticise', 'demand', 'fine', 'chat', ...(ageOn(p.dob, g.date) <= 23 ? ['future' as TalkKind] : [])];
+    const allowed: TalkKind[] = origLogic() ? ['warning', 'fine'] : ['praise', 'encourage', 'criticise', 'demand', 'fine', 'chat', ...(ageOn(p.dob, g.date) <= 23 ? ['future' as TalkKind] : [])];
     const r = await aiCall<{ intent: string }>('talkIntent', { message: text, allowed });
     const intent = (allowed.includes(r?.intent as TalkKind) ? r!.intent : guessIntent(text)) as TalkKind;
     const out = await doTalk(intent);

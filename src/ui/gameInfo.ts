@@ -4,7 +4,6 @@ import { APP_VERSION } from '../version';
 import { gs, hasGame } from '../game/state';
 import { cmDatabase } from '../game/newgame';
 import { gridEngineOn } from '../game/sim';
-import { authentic } from '../game/rules';
 import { getTheme } from './theme';
 import { getLang } from '../i18n';
 
@@ -41,7 +40,7 @@ export function gameInfo(route?: string): InfoRow[] {
     const pos = club && lg ? g.comps[club.league]?.table?.findIndex?.((r: { club: number }) => r.club === g.userClub) : -1;
     rows.push(
       { k: 'Database', v: databaseLabel() },
-      { k: 'Mode', v: `${g.options.mode ?? 'extended'}${g.options.mode === 'authentic' && !authentic() ? ' (inactive: modern look)' : ''}` },
+      { k: 'Mode', v: `${g.options.mode ?? 'extended'}` },
       { k: 'Look', v: getTheme() === 'retro' ? 'classic' : `modern (${getTheme()})` },
       { k: 'Match engine', v: engineLabel() },
       { k: 'Rules', v: `${g.options.rules ?? 'modern'} · masking ${g.options.masking ? 'on' : 'off'} · windows ${g.options.transferWindows ?? 'real'}` },

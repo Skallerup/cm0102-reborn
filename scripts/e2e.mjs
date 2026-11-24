@@ -697,6 +697,30 @@ async function run(look) {
     if (!(await page.locator('.cx-settings', { hasText: 'Modern substitution rules' }).count())) throw new Error('Game Settings mangler "Modern substitution rules"');
     await page.locator('.cx-settings .modal-foot button', { hasText: 'Cancel' }).click();
   });
+  // Game Options → Game Settings → Skin: det moderne udseende kan vælges i ALLE spil (også et originalt spil i ægte tilstand) og skiftes tilbage;
+  // valget ændrer kun udseendet – spillets tilstand er uændret, og udvidede funktioner vises ikke i et originalt spil
+  if (look === 'klassisk') await step('Game Settings: moderne udseende i et originalt spil og tilbage', async () => {
+    await go({ name: 'inbox' });
+    const mode0 = await gs(() => window.__cm.gs().options.mode);
+    await page.locator('.cx-side .cx-drop-btn', { hasText: 'Game Options' }).first().click();
+    await page.locator('.cx-drop-pop button', { hasText: 'Game Settings' }).first().click();
+    await page.waitForSelector('.cx-settings .cx-set-grid');
+    await page.locator('.cx-settings .cx-set-seg button', { hasText: /^Dark$/ }).first().click();
+    await page.locator('.cx-settings .modal-foot button.primary').click();
+    await page.waitForSelector('.sidenav', { timeout: 10000 });
+    if ((await gs(() => window.__cm.gs().options.mode)) !== mode0) throw new Error('udseendet ændrede spillets tilstand');
+    if ((await page.evaluate(() => localStorage.getItem('cm0102.modern'))) === '1') throw new Error('udseendet slog det skjulte moderne flag til');
+    for (const r of [{ name: 'inbox' }, { name: 'squad' }, { name: 'tactics' }, { name: 'fixtures' }, { name: 'competitions' }, { name: 'transfers' }, { name: 'finance' }, { name: 'board' }, { name: 'club', id: await gs(() => window.__cm.gs().userClub) }, { name: 'international' }, { name: 'staff' }, { name: 'options' }]) {
+      await go(r);
+      await checkScreen(`moderne ${r.name}`);
+      if (mode0 === 'authentic' && r.name === 'finance' && (await page.locator('.tabs button', { hasText: /Facilities|Sponsors/ }).count())) throw new Error('moderne økonomi viser udvidede faner i et originalt spil');
+    }
+    // tilbage til klassisk via Options-skærmen
+    await go({ name: 'options' });
+    await page.locator('select').filter({ has: page.locator('option[value="retro"]') }).first().selectOption('retro');
+    await page.waitForSelector('.cx-side', { timeout: 10000 });
+    if ((await page.evaluate(() => document.documentElement.dataset.skin)) !== 'retro') throw new Error('kom ikke tilbage til det klassiske udseende');
+  });
   // Game Options: rød prik ved ny ændringslog (forsvinder, når loggen er åbnet) og én samlet feedback/fejl-knap med typevalg
   if (look === 'klassisk') await step('Game Options: ændringslog-prik og samlet feedback', async () => {
     await go({ name: 'inbox' });

@@ -10,11 +10,22 @@ export { MODERN_ENABLED, modernOn } from './modernFlag';
 import { modernOn, savedModernOn } from './modernFlag';
 const VARS = ['--accent', '--accent-ink', '--accent2', '--tint1', '--tint2', '--nav-bg', '--nav-fg', '--nav-muted', '--nav-hover', '--nav-active', '--top-bg', '--top-fg', '--top-muted', '--top-chip', '--cm-club', '--cm-club2', '--cm-club-ink'];
 
+/** Udseendet er et frit valg i Game Options (alle spil, alle tilstande) og hører ikke til den udvidede tilstand – det ændrer kun tegningen, aldrig logikken.
+ *  Standard er det klassiske CM 01/02-udseende; valget huskes i localStorage (cm-theme + cm-look-chosen). */
+const CHOSEN = 'cm-look-chosen';
+const VALID: Theme[] = ['dark', 'light', 'clubDark', 'gold', 'retro', 'club'];
 export function getTheme(): Theme {
-  if (!modernOn()) return 'retro';
-  // standard: klubbens farver på lys baggrund
-  // et gammelt udvidet spil vises i det moderne udseende (udvidet hører ikke til det klassiske)
-  try { const v = localStorage.getItem(KEY); if (savedModernOn() && hasGame() && (v === 'retro' || !v)) return 'club'; return v === 'dark' || v === 'light' || v === 'clubDark' || v === 'gold' || v === 'retro' ? v : 'club'; } catch { return 'club'; }
+  // startskærmene (før et spil) er altid klassiske – uden at røre det gemte valg
+  if (!hasGame() && startSkin) return 'retro';
+  try {
+    const v = localStorage.getItem(KEY) as Theme | null;
+    const ok = !!v && VALID.includes(v);
+    // et gammelt gemt spil i udvidet tilstand åbnes, som det blev gemt (moderne udseende)
+    if (savedModernOn() && hasGame() && (v === 'retro' || !v)) return 'club';
+    // den skjulte indgang /?modern=1 (som før): moderne som standard
+    if (modernOn()) return ok ? v! : 'club';
+    return ok && localStorage.getItem(CHOSEN) === '1' ? v! : 'retro';
+  } catch { return 'retro'; }
 }
 
 /** Er retro-CM-skindet aktivt? (kun når det er valgt i Indstillinger – ikke længere auto-standard) */
@@ -23,7 +34,7 @@ export function isRetro(): boolean {
 }
 
 export function setTheme(t: Theme) {
-  try { localStorage.setItem(KEY, t); } catch { /* privat vindue */ }
+  try { localStorage.setItem(KEY, t); localStorage.setItem(CHOSEN, '1'); } catch { /* privat vindue */ }
   applyTheme();
   // genrendér UI'et, så fx CM-navigationen (der afhænger af temaet) slår til med det samme
   if (hasGame()) notify();
