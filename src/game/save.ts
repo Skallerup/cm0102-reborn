@@ -6,12 +6,12 @@ const modernEnabledHere = () => { if (MODERN_ENABLED) return true; try { return 
 import { fixClubName } from './data/clubNames';
 import { cmDatabase } from './newgame';
 import { get, keys, set } from 'idb-keyval';
-import { deleteSaveData, readSaveBlob, writeSave } from './saveStore';
+import { deleteSaveData, readSaveBlob, sweepSaveChunksOnce, writeSave } from './saveStore';
 import { gs, setGame, addNews, notify, ensureNumbers, previewInfo, setPreview } from './state';
 import { splitReserves } from './reserves';
 import { cmCupName, cmLeagueRules, cmPlayoffRules } from './cmCalendar';
 import { cashRound } from './cmTransferBid';
-import { deserializeState, gunzipText, serializeState } from './snapshot';
+import { deserializeState, gunzipText, gzSize, serializeBytes, serializeState } from './snapshot';
 import { rng } from './rng';
 import { guardWrite, isQuotaError } from './storageGuard';
 import { legacyExtendedFromText, saveKindFromText, saveKindOf, type SaveKind } from './saveKind';
@@ -68,8 +68,9 @@ export async function saveGame(opts?: { cloud?: boolean; name?: string }): Promi
   if (previewInfo()) return meta0;
   const tr = ngTrace();
   if (tr) console.log('ngtrace save: start');
-  const blob = await serialize(g);
-  if (tr) console.log(`ngtrace save: serialiseret ${(blob.size / 1048576).toFixed(1)} MB`);
+  // (iPhone 24/11 phase=buffer NotReadableError) bytes i sidens hukommelse, ikke en Blob, til lageret (saveStore.ts)
+  const parts = await serializeBytes(g);
+  if (tr) console.log(`ngtrace save: serialiseret ${(gzSize(parts) / 1048576).toFixed(1)} MB`);
   const name = opts?.name?.trim();
   const id = name ? namedSaveId(g.id, name) : g.id;
   const meta: SaveMeta = {
@@ -83,11 +84,11 @@ export async function saveGame(opts?: { cloud?: boolean; name?: string }): Promi
     ext: extOf(g),
   };
   requestPersistentStorage();
-  await guardWrite((st) => writeSave(id, blob, meta, st), !!opts?.cloud);
+  await guardWrite((st) => writeSave(id, parts, meta, st), !!opts?.cloud);
   // "seneste spil" sættes først, når spillet er gemt (så den aldrig peger på et spil, der ikke findes)
   rememberLast({ kind: 'local', id });
   if (tr) console.log('ngtrace save: gemt');
-  cloudHook?.(meta, blob, !!opts?.cloud);
+  cloudHook?.(meta, new Blob(parts), !!opts?.cloud);
   return meta;
 }
 
@@ -120,7 +121,9 @@ export async function storedLegacyExt(meta: SaveMeta): Promise<boolean | null> {
 
 /** Læg et spil hentet fra skyen i den lokale database (overskriver en ældre lokal kopi) */
 export async function storeSave(meta: SaveMeta, blob: Blob) {
-  await guardWrite((st) => writeSave(meta.id, blob, meta, st), true);
+  // læses én gang ind i sidens hukommelse (en Blob kan blive ulæselig i WebKit – genforsøget skal ikke læse den igen)
+  const parts = [new Uint8Array(await blob.arrayBuffer())];
+  await guardWrite((st) => writeSave(meta.id, parts, meta, st), true);
 }
 
 /** Slags for et lokalt gemt spil uden `kind` i metadata (gemt af en ældre version): den udpakkede tekst læses (uden at bygge spillet) og
@@ -149,10 +152,10 @@ export async function storeNewGame(g: GameState): Promise<string> {
   // serializeState skriver den globale talrække i spillet – her er spillet ikke lagt ind, så dets egen bruges
   const keep = rng.state;
   rng.state = g.rng;
-  const blob = serialize(g);
+  const data = serializeBytes(g);
   rng.state = keep;
-  const data = await blob;
-  await guardWrite((st) => writeSave(g.id, data, meta, st), true);
+  const parts = await data;
+  await guardWrite((st) => writeSave(g.id, parts, meta, st), true);
   requestPersistentStorage();
   return g.id;
 }
@@ -205,6 +208,8 @@ export async function resumeDiag(id: string): Promise<{ text: string; idbError: 
 type SaveManifestLike = { v: number; n: number; gen: string };
 
 export async function listSaves(): Promise<SaveMeta[]> {
+  // (24/11) forældreløse bidder fra afbrudte gem ryddes én gang pr. session (saveStore.ts sweepSaveChunks)
+  sweepSaveChunksOnce();
   // IndexedDB kan ikke åbnes (fuld disk, privat vindue): ingen lokale gemte spil frem for et nedbrud
   try {
     const all = (await keys()) as string[];

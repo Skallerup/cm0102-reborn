@@ -14,7 +14,7 @@ import { convertOriginal, restartInOriginal, type ConvertReport } from '../game/
 import type { CMWorld } from '../game/data/cm0102';
 import type { GameState } from '../game/types';
 import type { CustomDb } from '../game/dbEdit';
-import { serializeNewGame } from '../game/snapshot';
+import { gzConcat, serializeNewGame } from '../game/snapshot';
 import { saveMetaOf, type SaveMeta } from '../game/save';
 import { writeSave } from '../game/saveStore';
 import { applyCommunityEdits, fetchModernWorld, fetchOriginalWorld, fetchSlimWorld, slimWorld, type CommunityEdit, type OriginalVersion } from './worldFetch';
@@ -126,14 +126,15 @@ self.onmessage = async (e: MessageEvent<NewGameJob | LoadJob>) => {
       // Hovedtråden pakker bytes ud som ved indlæsning af et gemt spil (loadGame) – spillet fortsætter præcis som her (snapshot.ts). Arbejderen skriver
       // også selv det første gem, så hovedtråden ikke serialiserer hele spillet lige efter starten (Shell.tsx' gem 300 ms efter start).
       tr('pakker spillet');
-      const blob = await serializeNewGame(g);
+      const gzParts = await serializeNewGame(g);
       let saved: SaveMeta | null = null;
       if (job.save) {
         const meta = saveMetaOf(g);
-        try { await writeSave(meta.id, blob, meta); saved = meta; tr('gemt'); } catch (e) { tr(`gem fejlede: ${String((e as Error)?.message ?? e).slice(0, 120)}`); }
+        try { await writeSave(meta.id, gzParts, meta); saved = meta; tr('gemt'); } catch (e) { tr(`gem fejlede: ${String((e as Error)?.message ?? e).slice(0, 120)}`); }
       }
       setGame(null);
-      const gz = await blob.arrayBuffer();
+      const gz = gzConcat(gzParts);
+      gzParts.length = 0;
       tr(`sender spillet ${(gz.byteLength / 1048576).toFixed(1)} MB`);
       post({ type: 'done', gz, saved }, [gz]);
       return;

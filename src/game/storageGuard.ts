@@ -80,7 +80,8 @@ export async function handleSaveFailed(e: unknown, manual: boolean, first?: unkn
     failReported = true;
     try {
       const { reportError } = await import('../online/errors');
-      reportError(new Error(`SaveFailed: ${describeStorageError(e)}${first !== undefined || e === null ? ` [first: ${describeStorageError(first)}; retried]` : ''} | ${await storageDiag()}`));
+      const { saveStoreDiagText } = await import('./saveStore');
+      reportError(new Error(`SaveFailed: ${describeStorageError(e)}${first !== undefined || e === null ? ` [first: ${describeStorageError(first)}; retried]` : ''} | ${await storageDiag()} ${await saveStoreDiagText()}`));
     } catch { /* ignorér */ }
   }
   if (failWarned && !manual) return;

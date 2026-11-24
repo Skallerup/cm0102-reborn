@@ -9,7 +9,8 @@ vi.mock('idb-keyval', () => ({
   keys: async () => [...db.m.keys()],
   createStore: () => undefined,
 }));
-import { CHUNK_BYTES, deleteSaveData, readSaveBlob, SavePhaseError, writeSave } from '../src/game/saveStore';
+import { CHUNK_BYTES, deleteSaveData, readSaveBlob, saveStoreDiagText, SavePhaseError, sweepSaveChunks, SWEEP_MIN_AGE_MS, writeSave } from '../src/game/saveStore';
+import { gunzipText, gzipChunks } from '../src/game/snapshot';
 
 const bytes = (n: number, seed = 1) => { const a = new Uint8Array(n); for (let i = 0; i < n; i++) a[i] = (i * 31 + seed) & 255; return a; };
 const same = async (b: Blob | undefined, a: Uint8Array) => { expect(b).toBeTruthy(); expect(new Uint8Array(await b!.arrayBuffer())).toEqual(a); };
@@ -63,5 +64,46 @@ describe('saveStore', () => {
     await writeSave('g', new Blob([bytes(10)]), {});
     await deleteSaveData('g');
     expect(db.m.size).toBe(0);
+  });
+  it('bytes som bidder (komprimeringens uddata) deles op uden Blob – skæve grænser', async () => {
+    const a = bytes(CHUNK_BYTES * 2 + 777, 9);
+    const parts = [a.slice(0, 5), a.slice(5, CHUNK_BYTES + 3), a.slice(CHUNK_BYTES + 3, CHUNK_BYTES * 2 + 100), a.slice(CHUNK_BYTES * 2 + 100)];
+    await writeSave('p', parts, { id: 'p' });
+    await same(await readSaveBlob('p'), a);
+    expect(chunksOf('p')).toBe(3);
+    expect(db.m.get('save:p')).toMatchObject({ v: 2, n: 3, size: a.length });
+  });
+  it('ulæselig Blob (WebKit NotReadableError) melder fase buffer; de samme data som bidder lykkes', async () => {
+    const bad = new Blob([bytes(100)]);
+    const nre = Object.assign(new Error('The I/O read operation failed.'), { name: 'NotReadableError' });
+    bad.slice = () => ({ arrayBuffer: () => Promise.reject(nre) }) as unknown as Blob;
+    const e = await writeSave('g', bad, {}).catch((x) => x);
+    expect(e).toMatchObject({ phase: 'buffer' });
+    expect(e.message).toMatch(/phase=buffer size=0\.0MB cause=NotReadableError/);
+    expect(chunksOf('g')).toBe(0);
+    await writeSave('g', [bytes(100)], {});
+    await same(await readSaveBlob('g'), bytes(100));
+  });
+  it('gzip-uddata som bidder pakkes ud til samme tekst og gemmes', async () => {
+    const text = JSON.stringify({ x: Array.from({ length: 20000 }, (_, i) => i * 7) });
+    const gz = await gzipChunks([text]);
+    expect(gz.every((b) => b instanceof Uint8Array)).toBe(true);
+    await writeSave('z', gz, {});
+    expect(await gunzipText((await readSaveBlob('z'))!)).toBe(text);
+  });
+  it('oprydning: forældreløse generationer ældre end 10 min slettes, den levende og unge bliver', async () => {
+    await writeSave('g', [bytes(CHUNK_BYTES + 1)], { id: 'g' });
+    const live = (db.m.get('save:g') as { gen: string }).gen;
+    const old = (Date.now() - SWEEP_MIN_AGE_MS - 60_000).toString(36) + 'abcd';
+    const young = (Date.now() - 1000).toString(36) + 'wxyz';
+    for (let i = 0; i < 3; i++) db.m.set(`savec:g:${old}:${i}`, new ArrayBuffer(8));
+    db.m.set(`savec:g:${young}:0`, new ArrayBuffer(8));
+    db.m.set(`savec:gone:${old}:0`, new ArrayBuffer(8)); // spillet er slettet, bidden blev
+    expect(await saveStoreDiagText()).toBe('saves=1 chunks=7 gens=4 orphans=5/3g liveMB=4');
+    const d = await sweepSaveChunks(true);
+    expect(d).toMatchObject({ saves: 1, chunks: 7, orphans: 5, swept: 4 });
+    const left = [...db.m.keys()].filter((k) => k.startsWith('savec:')).sort();
+    expect(left).toEqual([`savec:g:${live}:0`, `savec:g:${live}:1`, `savec:g:${young}:0`].sort());
+    await same(await readSaveBlob('g'), bytes(CHUNK_BYTES + 1));
   });
 });

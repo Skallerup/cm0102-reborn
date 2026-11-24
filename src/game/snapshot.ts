@@ -7,10 +7,39 @@ import type { GameState } from './types';
 // (17/11) tallene gemmes uden afrunding: med 2 decimaler (før) spillede et gemt og indlæst spil ikke videre som det samme spil (egenskaberne,
 // moralen, lønnen, værdien, saldoen … er kommatal i originalens beregninger) – scripts/save-diff.ts: +19 % gzip
 
+/** (iPhone 24/11 "SavePhaseError phase=buffer … NotReadableError The I/O read operation failed") Gzip-uddata samles som Uint8Array-bidder i
+ *  sidens egen hukommelse – ikke som Blob (Response(stream).blob()): en Blob i WebKit lever i netværksprocessen/en midlertidig fil, som iOS kan
+ *  smide væk, mens appen ligger i baggrunden, så den ikke kan læses igen (og genforsøget læste den samme døde Blob). */
+export type GzBytes = Uint8Array<ArrayBuffer>[];
+export const gzSize = (p: GzBytes) => p.reduce((n, b) => n + b.byteLength, 0);
+/** ét sammenhængende ArrayBuffer (til overdragelse som Transferable) */
+export function gzConcat(p: GzBytes): ArrayBuffer {
+  const out = new Uint8Array(gzSize(p));
+  let o = 0;
+  for (const b of p) { out.set(b, o); o += b.byteLength; }
+  return out.buffer;
+}
+async function readAll(r: ReadableStream<Uint8Array<ArrayBuffer>>): Promise<GzBytes> {
+  const parts: GzBytes = [];
+  const rd = r.getReader();
+  for (;;) { const { done, value } = await rd.read(); if (done) break; if (value?.byteLength) parts.push(value); }
+  return parts;
+}
+
 export async function gzipText(text: string): Promise<Blob> {
-  if (typeof CompressionStream === 'undefined') return new Blob([text]);
-  const stream = new Blob([text]).stream().pipeThrough(new CompressionStream('gzip'));
-  return new Response(stream).blob();
+  return new Blob(await gzipTextBytes(text));
+}
+export async function gzipTextBytes(text: string): Promise<GzBytes> {
+  const raw = new TextEncoder().encode(text);
+  if (typeof CompressionStream === 'undefined') return [raw];
+  const cs = new CompressionStream('gzip');
+  const out = readAll(cs.readable);
+  const w = cs.writable.getWriter();
+  try {
+    for (let o = 0; o < raw.byteLength; o += 1 << 20) await w.write(raw.subarray(o, o + (1 << 20)));
+    await w.close();
+  } catch (e) { void w.abort(e).catch(() => {}); void out.catch(() => {}); throw e; }
+  return out;
 }
 
 /** (hukommelse, iPhone 24/11) Præcis samme tekst som JSON.stringify(v), men i bidder: almindelige objekter/arrays i op til `depth` niveauer skrives
@@ -45,13 +74,13 @@ export function* jsonChunks(v: unknown, depth = 2): Generator<string> {
   yield '}';
 }
 
-/** gzip af tekstbidder (jsonChunks) – bytes skrives til komprimeringen i portioner på ~1 MB */
-export async function gzipChunks(chunks: Iterable<string>): Promise<Blob> {
-  if (typeof CompressionStream === 'undefined') return new Blob([...chunks]);
-  const cs = new CompressionStream('gzip');
-  const out = new Response(cs.readable).blob();
-  const w = cs.writable.getWriter();
+/** gzip af tekstbidder (jsonChunks) – bytes skrives til komprimeringen i portioner på ~1 MB; uddata som Uint8Array-bidder (GzBytes) */
+export async function gzipChunks(chunks: Iterable<string>): Promise<GzBytes> {
   const enc = new TextEncoder();
+  if (typeof CompressionStream === 'undefined') return [...chunks].map((c) => enc.encode(c));
+  const cs = new CompressionStream('gzip');
+  const out = readAll(cs.readable);
+  const w = cs.writable.getWriter();
   let buf: string[] = [], n = 0;
   try {
     for (const c of chunks) {
@@ -73,21 +102,24 @@ export async function gunzipText(blob: Blob): Promise<string> {
 
 /** `streamed` (kun spilstartens arbejder, hvor intet andet ændrer spillet undervejs): teksten skrives i bidder mellem await – i hovedtråden kunne
  *  spillet ellers ændre sig midt i et gem, så dér er tolkningen ét synkront øjebliksbillede som før */
-export async function serializeState(g: GameState, streamed = false): Promise<Blob> {
+export async function serializeBytes(g: GameState, streamed = false): Promise<GzBytes> {
   g.rng = rng.state;
   stash(g);
   // modulernes tilstand (carry.ts) følger med det aktive spil, så det indlæste spil fortsætter præcis som dette
   packCarry(g);
   // (24/11) i bidder (samme tekst som JSON.stringify) – hele teksten findes aldrig som én streng
-  try { return streamed ? await gzipChunks(jsonChunks(g)) : await gzipText(JSON.stringify(g)); } finally { delete g.cmCarry; }
+  try { return streamed ? await gzipChunks(jsonChunks(g)) : await gzipTextBytes(JSON.stringify(g)); } finally { delete g.cmCarry; }
+}
+export async function serializeState(g: GameState, streamed = false): Promise<Blob> {
+  return new Blob(await serializeBytes(g, streamed));
 }
 
 /** (23/11) nyt spil fra spilstartens arbejder som gzip-bytes (ui/newGameWorker.ts): som den strukturerede kopi før – hovedtråden fortsatte med
  *  spillets egen g.rng (setGame), ikke arbejderens talrække – så g.rng skrives ikke om (scripts/newgame-phases-check.ts … json=1: ENS) */
-export async function serializeNewGame(g: GameState): Promise<Blob> {
+export async function serializeNewGame(g: GameState): Promise<GzBytes> {
   const keep = rng.state;
   rng.state = g.rng;
-  try { return await serializeState(g, true); } finally { rng.state = keep; }
+  try { return await serializeBytes(g, true); } finally { rng.state = keep; }
 }
 
 export async function deserializeState(blob: Blob): Promise<GameState> {

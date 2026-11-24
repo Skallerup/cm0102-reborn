@@ -16,6 +16,6 @@ describe('jsonChunks', () => {
   });
   it('gzipChunks pakkes ud til samme tekst', async () => {
     const big = { players: Array.from({ length: 5000 }, (_, i) => ({ id: i, name: `Spiller ${i} æøå`, v: i / 7, x: undefined })), meta: { a: 1 } };
-    expect(await gunzipText(await gzipChunks(jsonChunks(big)))).toBe(JSON.stringify(big));
+    expect(await gunzipText(new Blob(await gzipChunks(jsonChunks(big))))).toBe(JSON.stringify(big));
   });
 });

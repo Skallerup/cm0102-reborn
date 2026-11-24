@@ -8,7 +8,7 @@ import { gs, packCarry, setGame } from '../../src/game/state';
 import { rng } from '../../src/game/rng';
 import type { GameState } from '../../src/game/types';
 import { slResumeTransfer } from '../../src/game/cmShortlistGame';
-import { serializeNewGame } from '../../src/game/snapshot';
+import { gzConcat, serializeNewGame } from '../../src/game/snapshot';
 
 const wd = workerData as { kind: 'phases' | 'all' | 'continue'; phases?: ('base' | NewGamePhase)[]; file?: string; opts?: NewGameOptions; days?: number; last?: boolean; json?: boolean; canon?: boolean };
 const port = parentPort!;
@@ -44,7 +44,7 @@ port.once('message', async (msg: { game?: GameState; ctx?: NewGameCtx; rng?: num
   }
   const g = gs();
   // (23/11) som ui/newGameWorker.ts: det færdige spil som det gemte spils gzip-bytes (serializeState) – hovedtråden pakker det ud (deserializeState)
-  if (wd.last && wd.json) { const gz = await (await serializeNewGame(g)).arrayBuffer(); port.postMessage({ gz }, [gz]); return; }
+  if (wd.last && wd.json) { const gz = gzConcat(await serializeNewGame(g)); port.postMessage({ gz }, [gz]); return; }
   packCarry(g);
   port.postMessage({ game: g, ctx, rng: rng.state }, slResumeTransfer(ctx?.sl ?? null));
 });
