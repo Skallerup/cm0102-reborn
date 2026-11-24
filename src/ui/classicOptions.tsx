@@ -1,11 +1,11 @@
 // Klassisk tema: "Game Options"-menuen i venstre kolonne og dialogen "Game Settings" (som i originalen).
-import { AccountBar } from './Login';
-import { Fragment, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
+import type { GameState } from '../game/types';
+import { rebornOn } from './reborn';
+import { onInstallChange } from './notify';
 import { act } from '../game/actions';
 import { regionOf } from '../game/leagues';
-import { notify } from '../game/state';
-import type { GameState, Lang } from '../game/types';
-import { LANGS, CURRENCIES, compName, getCurrency, getLang, natName, setCurrency, setLang, t, type Currency } from '../i18n';
+import { compName, natName, t } from '../i18n';
 import { APP_VERSION } from './changelogData';
 import { ChangelogModal, markChangelogSeen, useChangelogFresh } from './Changelog';
 import { ProfileGate, WriteModal } from './Community';
@@ -17,21 +17,15 @@ import { createPortal } from 'react-dom';
 import { communityAvailable } from '../online/community';
 import { getProfile } from '../online/rank';
 import { CxDrop, type DropItem } from './classic';
-import { bgPack, bgSet, setBgPack, setBgSet, type BgSet } from './backgrounds';
 import { askConfirm, askNotice } from './confirm';
 import { LoginModal } from './Login';
 import { getAccount } from '../online/account';
 import { saveGame } from '../game/save';
 import { useGame, useNav } from './core';
-import { REBORN_KEYS, rebornOn } from './reborn';
-import type { RebornKey } from '../game/types';
 import { installPossible, runInstall } from './installTip';
-import { notifyEnabled, notifySupported, onInstallChange, setNotify } from './notify';
-import { getTheme, setTheme, type Theme } from './theme';
 import { authentic } from '../game/rules';
 import { bTeamOf, hasReserveTeam } from '../game/cmBTeam';
 import { cmAwardNations, cmAwOn } from '../game/cmAwards';
-import { matchSound, setMatchSound } from './matchSound';
 
 // ---------- små visningsindstillinger (kun i denne browser) ----------
 
@@ -95,7 +89,6 @@ applyFlash();
 
 export function GameOptionsMenu({ onSave, onQuit, online, allowed }: { onSave: () => void; onQuit: () => void; online: boolean; allowed: (k: string) => boolean }) {
   const { nav, route } = useNav();
-  const [settings, setSettings] = useState(false);
   const [show, setShow] = useState<'changelog' | 'feedback' | 'info' | 'support' | null>(null);
   const fresh = useChangelogFresh();
   const go = (k: string) => () => nav({ name: k as never });
@@ -111,8 +104,7 @@ export function GameOptionsMenu({ onSave, onQuit, online, allowed }: { onSave: (
   const add = (k: string, label: string) => { if (allowed(k)) items.push({ key: k, label, onClick: go(k) }); };
   // CM 01/02: Save Game · Manager Status · Game Settings · (Edition) Options · Hall of Fame · Game Credits · Web Sites · Restart · Exit
   items.push({ key: 'mstatus', label: t('cl.go.status'), onClick: () => nav({ name: 'mgrstatus' }) });
-  items.push({ key: 'settings', label: t('cl.go.settings'), onClick: () => setSettings(true) });
-  add('options', t('cl.go.all'));
+  items.push({ key: 'settings', label: t('cl.go.settings'), onClick: () => nav({ name: 'options' }) });
   items.push({ key: 'leagues', label: t('cl.sl.title'), onClick: () => nav({ name: 'leagues' }) });
   items.push({ key: 'info', label: t('info.title'), onClick: () => setShow('info') });
   add('ranking', t('cl.go.hall'));
@@ -134,7 +126,6 @@ export function GameOptionsMenu({ onSave, onQuit, online, allowed }: { onSave: (
   return (
     <>
       <CxDrop className="cx-gameopt" fixed caret={false} label={<>{t('cl.options')}{fresh && <i className="cx-dot" data-testid="cx-opt-dot" />}</>} items={items} btn={{ className: 'cx-sbtn cx-gopt' }} />
-      {settings && <GameSettings onClose={() => setSettings(false)} />}
       {login && createPortal(<LoginModal onClose={() => setLogin(false)} onDone={() => { setLogin(false); void cloudSave(); }} />, document.body)}
       {show === 'changelog' && createPortal(<ChangelogModal onClose={() => setShow(null)} />, document.body)}
       {show === 'support' && createPortal(<Modal title={t('sb.menu')} onClose={() => setShow(null)}><SupportBox full /></Modal>, document.body)}
@@ -146,87 +137,16 @@ export function GameOptionsMenu({ onSave, onQuit, online, allowed }: { onSave: (
   );
 }
 
-// ---------- Game Settings ----------
-
-type Draft = { lang: Lang; cur: Currency; theme: Theme; bg: boolean; flash: boolean; goalFlash: number; pixel: PixelLevel; font: CxFont; logo: boolean; stadium: boolean; sound: boolean; bgset: BgSet; realism: boolean; bgMatch: boolean; modernSubs: boolean; save: string; notif: boolean; reborn: Record<RebornKey, boolean> };
+// ---------- Game Settings (den samlede skærm ligger i screens/Options.tsx) ----------
 
 export function Seg<T extends string | boolean | number>({ value, opts, onChange }: { value: T; opts: [T, string][]; onChange: (v: T) => void }) {
   return <div className="cx-set-seg">{opts.map(([v, l]) => <button key={String(v)} className={v === value ? 'on' : ''} onClick={() => onChange(v)}>{l}</button>)}</div>;
 }
 
-function GameSettings({ onClose }: { onClose: () => void }) {
-  const g = useGame()! as GameState;
-  const { nav } = useNav();
-  const [pack, setPack] = useState(bgPack());
-  const initial: Draft = {
-    lang: getLang(), cur: getCurrency(), theme: getTheme(), bg: bgChanges(), flash: flashingText(), goalFlash: goalFlashMs(), pixel: pixelLook(), font: classicFont(), logo: titleLogo(), stadium: stadiumBackgrounds(), sound: matchSound(), bgset: bgSet(), realism: showRealism(), bgMatch: !!g.options.bgMatch, modernSubs: !!g.options.modernSubs,
-    save: g.options.autosaveMode ?? (g.options.autosave === false ? 'off' : 'changes'), notif: notifyEnabled(),
-    reborn: Object.fromEntries(REBORN_KEYS.map((k) => [k, rebornOn(k)])) as Record<RebornKey, boolean>,
-  };
-  const [d, setD] = useState<Draft>(initial);
-  const up = (x: Partial<Draft>) => setD({ ...d, ...x });
-  const onOff = (v: boolean, on: (b: boolean) => void) => <Seg value={v} opts={[[true, t('cl.set.on')], [false, t('cl.set.off')]]} onChange={on} />;
-  const ok = async () => {
-    if (d.lang !== initial.lang) { setLang(d.lang); g.lang = d.lang; }
-    if (d.cur !== initial.cur) setCurrency(d.cur);
-    if (d.save !== initial.save) { g.options.autosaveMode = d.save as 'changes'; g.options.autosave = d.save !== 'off'; }
-    write(PREF.bg, d.bg); write(PREF.flash, d.flash); try { localStorage.setItem(PREF.goalFlash, String(d.goalFlash)); } catch { /* ignorér */ } try { localStorage.setItem(PREF.pixel, d.pixel); } catch { /* ignorér */ } try { localStorage.setItem(PREF.fontKind, d.font); } catch { /* ignorér */ } write(PREF.logo, d.logo); write(PREF.stadium, d.stadium); if (d.realism !== initial.realism) write(PREF.realism, d.realism); setMatchSound(d.sound); setBgSet(d.bgset); applyFlash();
-    if (REBORN_KEYS.some((k) => d.reborn[k] !== initial.reborn[k])) g.options.reborn = { ...g.options.reborn, ...d.reborn }; // CM Reborn-tilvalg (kun visning)
-    if (d.bgMatch !== initial.bgMatch) g.options.bgMatch = d.bgMatch;
-    if (d.modernSubs !== initial.modernSubs) g.options.modernSubs = d.modernSubs; // gælder fra næste kamp
-    if (d.notif !== initial.notif) await setNotify(d.notif);
-    notify();
-    if (d.theme !== initial.theme) setTheme(d.theme); // kun udseendet – logikken er altid originalens (docs/ALWAYS_ORIGINAL.md)
-    onClose();
-  };
-  const row = (label: string, ctl: React.ReactNode) => <><span>{label}</span><div>{ctl}</div></>;
-  return (
-    <div className="modal-bg" onClick={onClose}>
-      <div className="modal cx-settings" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-head"><span>{t('cl.go.settings')}</span><button className="x" onClick={onClose}>×</button></div>
-        <div className="modal-body">
-          <AccountBar />
-          <div className="cx-set-top">
-            <span>{t('cl.set.version', { v: APP_VERSION })}</span>
-            <button className="cx-greybtn" onClick={() => setD({ ...initial, bg: true, flash: true, goalFlash: 5500, pixel: 'light', font: 'futuristic', logo: true, stadium: true, sound: true, bgset: 'original', realism: !authentic(), bgMatch: false, reborn: Object.fromEntries(REBORN_KEYS.map((k) => [k, !authentic()])) as Record<RebornKey, boolean> })}>{t('cl.set.reset')}</button>
-          </div>
-          <div className="cx-set-grid">
-            {row(t('opt.language'), <Seg value={d.lang} opts={LANGS.map(([k, , full]) => [k, full] as [Lang, string])} onChange={(v) => up({ lang: v })} />)}
-            {row(t('opt.currency'), <Seg value={d.cur} opts={CURRENCIES.map((c) => [c, t(`cur.${c}`).match(/\(([^)]+)\)/)?.[1] ?? c] as [Currency, string])} onChange={(v) => up({ cur: v })} />)}
-            {row(t('cl.set.skin'), <Seg value={d.theme} opts={[['retro', t('cl.set.classic')], ['club', t('opt.theme.club')], ['clubDark', t('opt.theme.clubDark')], ['dark', t('opt.theme.dark')], ['light', t('opt.theme.light')]]} onChange={(v) => up({ theme: v })} />)}
-            {row(t('cl.set.fonts'), <Seg value={d.font} opts={CX_FONTS.map((f) => [f, t(`cl.set.font.${f}`)] as [CxFont, string])} onChange={(v) => up({ font: v })} />)}
-            {row(t('cl.set.logo'), onOff(d.logo, (v) => up({ logo: v })))}
-            {row(t('cl.set.stadium'), onOff(d.stadium, (v) => up({ stadium: v })))}
-            {row(t('cl.set.sound'), onOff(d.sound, (v) => up({ sound: v })))}
-            {row(t('cl.set.bgset'), <Seg value={d.bgset} opts={[['original', t('cl.set.bgset.original')], ['screens', t('cl.set.bgset.screens')], ['sunday', t('cl.set.bgset.sunday')]]} onChange={(v) => up({ bgset: v })} />)}
-            {row(t('cl.set.pixel'), <Seg value={d.pixel} opts={[['off', t('cl.set.off')], ['light', t('cl.set.light')], ['strong', t('cl.set.strong')]]} onChange={(v) => up({ pixel: v })} />)}
-            {row(t('cl.set.bg'), onOff(d.bg, (v) => up({ bg: v })))}
-            {row(t('hub.skins.setting'), <div className="cx-set-seg">
-              <button className={!pack ? 'on' : ''} onClick={() => { setBgPack(null); setPack(null); }}>{t('hub.skins.default')}</button>
-              {pack && <button className="on">{pack.title}</button>}
-              <button onClick={() => { onClose(); nav({ name: 'community', tab: 'skins' }); }}>{t('hub.skins.more')}</button>
-            </div>)}
-            {row(t('cl.set.flash'), onOff(d.flash, (v) => up({ flash: v })))}
-            {row(t('cl.set.goalFlash'), <Seg value={d.goalFlash} opts={GOAL_FLASH_MS.map((ms) => [ms, `${ms / 1000} s`.replace('.5', '½')] as [number, string])} onChange={(v) => up({ goalFlash: v })} />)}
-            {row(t('opt.autosave'), <Seg value={d.save} opts={(['changes', 'daily', 'weekly', 'monthly', 'off'] as const).map((m) => [m, t(`cl.set.save.${m}`)] as [string, string])} onChange={(v) => up({ save: v })} />)}
-            {notifySupported() && row(t('opt.notify'), onOff(d.notif, (v) => up({ notif: v })))}
-          </div>
-          {/* CM Reborns egne tilvalg (findes ikke i originalen; kun visning – spillets logik er altid originalens). Fra som standard i nye spil. */}
-          <div className="cx-set-sec">{t('cl.rb.title')}</div>
-          <div className="cx-set-grid">
-            {row(t('cl.set.realism'), onOff(d.realism, (v) => up({ realism: v })))}
-            {row(t('cl.rb.bgMatch'), onOff(d.bgMatch, (v) => up({ bgMatch: v })))}
-            {row(t('cl.rb.modernSubs'), onOff(d.modernSubs, (v) => up({ modernSubs: v })))}
-            {REBORN_KEYS.map((k) => <Fragment key={k}>{row(t(`cl.rb.${k}`), onOff(d.reborn[k], (v) => up({ reborn: { ...d.reborn, [k]: v } })))}</Fragment>)}
-          </div>
-        </div>
-        <div className="modal-foot cx-set-foot">
-          <button onClick={onClose}>{t('common.cancel')}</button>
-          <button className="primary" onClick={ok}>{t('common.ok')}</button>
-        </div>
-      </div>
-    </div>
-  );
+/** Gemmer en visningsindstilling (samme nøgler som før) og anvender den med det samme */
+export function setDisplayPref(k: keyof typeof PREF, v: boolean | string | number) {
+  try { localStorage.setItem(PREF[k], typeof v === 'boolean' ? (v ? 'on' : 'off') : String(v)); } catch { /* ignorér */ }
+  applyFlash();
 }
 
 // ---------- managerens menu (klik på navnet i sidebaren) ----------

@@ -689,13 +689,27 @@ async function run(look) {
   if (look === 'klassisk') await step('Game Settings: CM Reborn-sektion', async () => {
     await go({ name: 'inbox' });
     await page.locator('.cx-side .cx-drop-btn', { hasText: 'Game Options' }).first().click();
-    if (await page.locator('.cx-drop-pop button', { hasText: /^(Awards|Help)$/ }).count()) throw new Error('Awards/Help skal være væk fra Game Options som standard');
+    if (await page.locator('.cx-drop-pop button', { hasText: /^(Awards|Help|All Options.*)$/ }).count()) throw new Error('Awards/Help/All Options skal være væk fra Game Options');
     await page.locator('.cx-drop-pop button', { hasText: 'Game Settings' }).first().click();
-    await page.waitForSelector('.cx-settings .cx-set-sec');
-    const on = await page.locator('.cx-settings .cx-set-sec ~ .cx-set-grid .cx-set-seg button.on', { hasText: /^On$/ }).count();
+    await page.waitForSelector('.gs .gs-row');
+    const grp = page.locator('.gs-panel', { has: page.locator('h3', { hasText: 'CM Reborn features' }) });
+    const on = await grp.locator('.cx-set-seg button.on', { hasText: /^On$/ }).count();
     if (on) throw new Error(`CM Reborn-valgene skal være fra som standard (${on} til)`);
-    if (!(await page.locator('.cx-settings', { hasText: 'Modern substitution rules' }).count())) throw new Error('Game Settings mangler "Modern substitution rules"');
-    await page.locator('.cx-settings .modal-foot button', { hasText: 'Cancel' }).click();
+    if (!(await grp.locator('.gs-row', { hasText: 'Modern substitution rules' }).count())) throw new Error('Game Settings mangler "Modern substitution rules"');
+    // hver indstilling én gang: sprog og skin findes kun én gang, og ⓘ viser forklaringen
+    for (const l of ['Language', 'Skin']) if ((await page.locator('.gs-label span', { hasText: new RegExp(`^${l}$`) }).count()) !== 1) throw new Error(`Game Settings: "${l}" skal findes præcis én gang`);
+    await page.locator('.gs-row', { hasText: 'Language' }).first().locator('.gs-i').click();
+    await page.waitForSelector('.gs-help');
+    // en indstilling gælder med det samme: Pixel Look → Strong
+    await page.locator('.gs-row', { hasText: 'Pixel Look' }).locator('.cx-set-seg button', { hasText: 'Strong' }).click();
+    if ((await page.evaluate(() => document.documentElement.dataset.pixel)) !== 'strong') throw new Error('Pixel Look slog ikke igennem med det samme');
+    await page.locator('.gs-row', { hasText: 'Pixel Look' }).locator('.cx-set-seg button', { hasText: 'Light' }).click();
+    if (process.env.E2E_SHOTS) { // skærmbilleder af Game Settings (klassisk, desktop + mobil)
+      await page.screenshot({ path: `${process.env.E2E_SHOTS}/gs-classic.png`, fullPage: true });
+      const vp = page.viewportSize(); await page.setViewportSize({ width: 390, height: 844 }); await page.waitForTimeout(300);
+      await page.screenshot({ path: `${process.env.E2E_SHOTS}/gs-classic-mobile.png`, fullPage: true });
+      if (vp) await page.setViewportSize(vp);
+    }
   });
   // Game Options → Game Settings → Skin: det moderne udseende kan vælges i ALLE spil (også et originalt spil i ægte tilstand) og skiftes tilbage;
   // valget ændrer kun udseendet – spillets tilstand er uændret, og udvidede funktioner vises ikke i et originalt spil
@@ -705,9 +719,15 @@ async function run(look) {
     const mode0 = await gs(() => { const o = window.__cm.gs().options; const m = o.mode; o.mode = 'authentic'; return m; });
     await page.locator('.cx-side .cx-drop-btn', { hasText: 'Game Options' }).first().click();
     await page.locator('.cx-drop-pop button', { hasText: 'Game Settings' }).first().click();
-    await page.waitForSelector('.cx-settings .cx-set-grid');
-    await page.locator('.cx-settings .cx-set-seg button', { hasText: /^Dark$/ }).first().click();
-    await page.locator('.cx-settings .modal-foot button.primary').click();
+    await page.waitForSelector('.gs .gs-row');
+    await page.locator('.gs-row', { hasText: 'Skin' }).locator('.cx-set-seg button', { hasText: /^Dark$/ }).first().click();
+    if (process.env.E2E_SHOTS) { // moderne udseende: samme skærm
+      await page.waitForSelector('.sidenav', { timeout: 10000 }); await page.waitForSelector('.gs .gs-row');
+      await page.screenshot({ path: `${process.env.E2E_SHOTS}/gs-modern.png`, fullPage: true });
+      const vp = page.viewportSize(); await page.setViewportSize({ width: 390, height: 844 }); await page.waitForTimeout(300);
+      await page.screenshot({ path: `${process.env.E2E_SHOTS}/gs-modern-mobile.png`, fullPage: true });
+      if (vp) await page.setViewportSize(vp);
+    }
     await page.waitForSelector('.sidenav', { timeout: 10000 });
     if ((await gs(() => window.__cm.gs().options.mode)) !== 'authentic') throw new Error('udseendet ændrede spillets tilstand');
     for (const n of ['Profile', 'Jobs', 'Community']) if (await page.locator('.sidenav button', { hasText: new RegExp(`^${n}$`) }).count()) throw new Error(`moderne menu viser ${n} i et originalt spil`);
@@ -765,7 +785,7 @@ async function run(look) {
     } catch (e) { origErr = e; }
     // tilbage til klassisk via Options-skærmen
     await go({ name: 'options' });
-    await page.locator('select').filter({ has: page.locator('option[value="retro"]') }).first().selectOption('retro');
+    await page.locator('.gs-row', { hasText: 'Skin' }).locator('.cx-set-seg button', { hasText: /^Classic$/ }).first().click();
     await page.waitForSelector('.cx-side', { timeout: 10000 });
     if ((await page.evaluate(() => document.documentElement.dataset.skin)) !== 'retro') throw new Error('kom ikke tilbage til det klassiske udseende');
     await gs((m) => { window.__cm.gs().options.mode = m; }, mode0);

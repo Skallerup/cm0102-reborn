@@ -1469,3 +1469,24 @@ input[type='color'] { width: 44px; height: 30px; padding: 2px; }
 .orig-pen b { min-width: 18px; color: var(--accent); }
 .orig-pen.on { border-color: var(--accent); }
 .zone-pitch-m { cursor: pointer; }
+
+/* Game Settings: den samlede indstillingsskærm (begge udseender) */
+.gs-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); gap: 14px; align-items: start; }
+.gs-list { display: flex; flex-direction: column; gap: 2px; }
+.gs-row { display: grid; grid-template-columns: minmax(130px, 38%) 1fr; gap: 4px 14px; align-items: center; padding: 8px 2px; border-bottom: 1px solid var(--line); }
+.gs-row:last-child { border-bottom: 0; }
+.gs-label { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.gs-ctl { min-width: 0; }
+.gs-help { grid-column: 1 / -1; font-size: 12.5px; line-height: 1.45; color: var(--muted); background: var(--row2); border-left: 3px solid var(--accent2); padding: 6px 10px; border-radius: 4px; }
+.gs-note { font-size: 12.5px; color: var(--muted); padding: 2px 2px 6px; }
+.gs-i { flex: none; width: 18px; height: 18px; padding: 0; border-radius: 50%; border: 1px solid var(--line2); background: transparent; color: var(--muted); font: italic 700 12px/1 Georgia, serif; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.gs-i:hover, .gs-i.on { color: var(--accent-ink); background: var(--accent2); border-color: var(--accent2); }
+.gs-range { display: flex; align-items: center; gap: 8px; }
+.gs-range input { flex: 1; min-width: 0; }
+.gs-ver { color: var(--muted); font-size: 12.5px; }
+.gs-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.gs .cx-set-seg { display: flex; flex-wrap: wrap; gap: 4px; }
+.gs .cx-set-seg button { padding: 4px 10px; font-size: 13px; border-radius: 6px; border: 1px solid var(--line2); background: transparent; color: var(--text); cursor: pointer; }
+.gs .cx-set-seg button:hover { background: var(--rowhover); }
+.gs .cx-set-seg button.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
+@media (max-width: 640px) { .gs-row { grid-template-columns: 1fr; } .gs-cols { gap: 10px; } }

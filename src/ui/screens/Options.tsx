@@ -1,3 +1,5 @@
+// Game Settings: den ene samlede indstillingsskærm (klassisk og moderne udseende). Alle indstillinger virker med det samme og gemmes
+// på de samme steder som før (localStorage-nøglerne i classicOptions.tsx og g.options).
 import { AccountBar, CloudStatus } from '../Login';
 import { useState } from 'react';
 import { exportSave, saveGame } from '../../game/save';
@@ -8,11 +10,14 @@ import { session } from '../../online/client';
 import type { Lang } from '../../game/types';
 import { LANGS, CURRENCIES, getCurrency, getLang, natName, setCurrency, setLang, t, type Currency } from '../../i18n';
 import { Panel } from '../components';
-import { useGame } from '../core';
+import { useGame, useNav } from '../core';
 import { Head } from './common';
-import { getTheme, setTheme, type Theme } from '../theme';
+import { getTheme, isRetro, setTheme, type Theme } from '../theme';
 import { notifyEnabled, notifySupported, setNotify } from '../notify';
-import { modernBackgrounds, setModernBackgrounds, setStadiumBackgrounds, stadiumBackgrounds } from '../classicOptions';
+import { CX_FONTS, GOAL_FLASH_MS, Seg, bgChanges, classicFont, flashingText, goalFlashMs, modernBackgrounds, pixelLook, setDisplayPref, setModernBackgrounds, setStadiumBackgrounds, showRealism, stadiumBackgrounds, titleLogo, type CxFont, type PixelLevel } from '../classicOptions';
+import { bgPack, bgSet, setBgPack, setBgSet, type BgSet } from '../backgrounds';
+import { REBORN_KEYS, rebornOn } from '../reborn';
+import { APP_VERSION } from '../changelogData';
 import { matchSound, setMatchSound } from '../matchSound';
 import { addableNations } from '../../game/sim';
 import { addNation } from './GameOptionsClassic';
@@ -21,103 +26,146 @@ import { GameInfoTable } from '../GameInfoPanel';
 import { rankingAvailable } from '../../online/rank';
 import { SupportBox } from '../SupportBox';
 
+/** Én indstilling: navn, ⓘ (forklaringen vises under rækken ved tryk/klik – virker også på mobil) og kontrollen */
+function Row({ label, help, children }: { label: string; help?: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="gs-row">
+      <div className="gs-label">
+        <span>{label}</span>
+        {help && <button type="button" className={`gs-i ${open ? 'on' : ''}`} aria-label={t('gs.help')} aria-expanded={open} title={help} onClick={() => setOpen(!open)}>i</button>}
+      </div>
+      <div className="gs-ctl">{children}</div>
+      {help && open && <div className="gs-help" role="note">{help}</div>}
+    </div>
+  );
+}
+
+const Group = ({ title, children }: { title: string; children: React.ReactNode }) => <Panel title={title} className="gs-panel"><div className="gs-list">{children}</div></Panel>;
+
 export function Options() {
   const g = useGame()!;
+  const retro = isRetro();
   const [msg, setMsg] = useState('');
-  const [theme, setThemeState] = useState<Theme>(getTheme());
-  const [notif, setNotif] = useState(notifyEnabled());
-  const [mbg, setMbg] = useState(modernBackgrounds());
-  const [snd, setSnd] = useState(matchSound());
-  const [sbg, setSbg] = useState(stadiumBackgrounds());
+  const [, setTick] = useState(0);
+  const bump = () => { setTick((x) => x + 1); notify(); };
+  const [pack, setPack] = useState(bgPack());
+  const { nav } = useNav();
+  const theme = getTheme();
+  const onOff = (v: boolean, on: (b: boolean) => void) => <Seg value={v} opts={[[true, t('cl.set.on')], [false, t('cl.set.off')]]} onChange={(b) => { on(b); bump(); }} />;
+  const notHost = !!g.humans && !session()?.isHost;
+  const autosave = g.options.autosaveMode ?? (g.options.autosave === false ? 'off' : 'changes');
+  const reset = () => {
+    for (const [k, v] of [['bg', true], ['flash', true], ['goalFlash', 5500], ['pixel', 'light'], ['fontKind', 'futuristic'], ['logo', true], ['stadium', true]] as const) setDisplayPref(k, v);
+    setMatchSound(true); setBgSet('original'); setModernBackgrounds(true); bump();
+  };
   return (
-    <div>
-      <Head title={t('nav.options')} />
-      <div className="cols">
-        <Panel title={t('opt.general')}>
-          <div className="col">
-            <label className="row">{t('opt.language')}
-              <select value={getLang()} onChange={(e) => { setLang(e.target.value as Lang); g.lang = e.target.value as Lang; notify(); }}>
-                {LANGS.map(([k, , full]) => <option key={k} value={k}>{full}</option>)}
-              </select>
-            </label>
-            <label className="row">{t('opt.currency')}
-              <select value={getCurrency()} onChange={(e) => { setCurrency(e.target.value as Currency); notify(); }}>
-                {CURRENCIES.map((c) => <option key={c} value={c}>{t(`cur.${c}`)}</option>)}
-              </select>
-            </label>
-            <label className="row">{t('opt.autosave')}
-              <select value={g.options.autosaveMode ?? (g.options.autosave === false ? 'off' : 'changes')} onChange={(e) => { g.options.autosaveMode = e.target.value as 'changes'; g.options.autosave = e.target.value !== 'off'; notify(); }}>
-                {(['changes', 'daily', 'weekly', 'monthly', 'off'] as const).map((m) => <option key={m} value={m}>{t(`opt.save.${m}`)}</option>)}
-              </select>
-            </label>
-            <div className="muted">{t(`opt.save.${g.options.autosaveMode ?? 'changes'}.hint`)}</div>
-            <label className="row">{t('opt.theme')}
-              <select value={theme} onChange={(e) => { const th = e.target.value as Theme; setThemeState(th); setTheme(th); }}>
-                {(['club', 'clubDark', 'light', 'dark', 'retro'] as const).map((m) => <option key={m} value={m}>{t(`opt.theme.${m}`)}</option>)}
-              </select>
-            </label>
-            {(theme === 'club' || theme === 'clubDark') && <div className="muted">{t('opt.theme.clubHint')}</div>}
-            {theme === 'retro' && <div className="muted">{t('opt.theme.retroHint')}</div>}
-            {theme !== 'retro' && <label className="row"><input type="checkbox" checked={mbg} onChange={(e) => { setModernBackgrounds(e.target.checked); setMbg(e.target.checked); notify(); }} />{t('opt.bgPhotos')}</label>}
-            <label className="row"><input type="checkbox" checked={sbg} onChange={(e) => { setStadiumBackgrounds(e.target.checked); setSbg(e.target.checked); notify(); }} />{t('cl.set.stadium')}</label>
-            <label className="row"><input type="checkbox" checked={snd} onChange={(e) => { setMatchSound(e.target.checked); setSnd(e.target.checked); }} />{t('cl.set.sound')}</label>
-            {notifySupported() && <label className="row"><input type="checkbox" checked={notif} onChange={async (e) => setNotif(await setNotify(e.target.checked))} />{t('opt.notify')}</label>}
-            {notifySupported() && <div className="muted">{t('opt.notify.hint')}</div>}
-            <div className="muted">{t('opt.newsMoved')}</div>
-            {g.humans && (
-              <label className="row">{t('opt.h2hTime')}
-                <select value={g.options.h2hHalfMinutes ?? 3} disabled={!session()?.isHost} title={!session()?.isHost ? t('opt.hostOnly') : undefined}
-                  onChange={(e) => act({ t: 'setH2hTime', minutes: Number(e.target.value) })}>
-                  {[1, 2, 3, 4, 5, 7, 10].map((m) => <option key={m} value={m}>{t('opt.h2hMin', { n: m })}</option>)}
-                </select>
-              </label>
-            )}
-            {/* (docs/ALWAYS_ORIGINAL.md) reglerne og vinduerne er logik: kun i gamle udvidede spil – originale spil får dem fra spilstarten */}
-            {!g.draft && legacyExtended(g) && <>
-            <label className="row">{t('opt.rules')}
-              <select value={g.options.rules ?? 'modern'} disabled={!!g.humans && !session()?.isHost} title={g.humans && !session()?.isHost ? t('opt.hostOnly') : undefined}
-                onChange={(e) => act({ t: 'setRules', rules: e.target.value as 'modern' | 'classic' })}>
-                {(['modern', 'classic'] as const).map((m) => <option key={m} value={m}>{t(`opt.rules.${m}`)}</option>)}
-              </select>
-            </label>
-            <div className="muted">{t('opt.rules.hint')}</div>
-            <div className="muted">{t('mode.legacy')} {t('mode.extendedHint')}</div>
-            <label className="row">{t('opt.windows')}
-              <select value={g.options.transferWindows ?? 'real'} disabled={!!g.humans && !session()?.isHost} title={g.humans && !session()?.isHost ? t('opt.hostOnly') : undefined}
-                onChange={(e) => { act({ t: 'setWindows', mode: e.target.value as 'real' | 'classic' }); }}>
-                {(['real', 'classic'] as const).map((m) => <option key={m} value={m}>{t(`opt.windows.${m}`)}</option>)}
-              </select>
-            </label>
-            </>}
-            <label className="row"><input type="checkbox" checked={g.options.ai !== false} onChange={(e) => { g.options.ai = e.target.checked; notify(); }} />{t('opt.ai')}</label>
-            <div className="muted">{t('opt.ai.hint')}</div>
-            <label className="row"><input type="checkbox" checked={!!g.options.modernSubs} onChange={(e) => { g.options.modernSubs = e.target.checked; notify(); }} />{t('cl.rb.modernSubs')}</label>
-            {!g.draft && <label className="row"><input type="checkbox" checked={g.options.masking} onChange={(e) => { g.options.masking = e.target.checked; notify(); }} />{t('start.masking')}</label>}
-            <label className="col">{t('opt.speed')}
-              <input type="range" min={60} max={1500} step={20} value={1560 - g.options.matchSpeed} onChange={(e) => { g.options.matchSpeed = 1560 - Number(e.target.value); notify(); }} />
-            </label>
-            <label className="row"><input type="checkbox" checked={!!g.options.bgMatch} onChange={(e) => { g.options.bgMatch = e.target.checked; notify(); }} />{t('cl.rb.bgMatch')}</label>
-          </div>
-        </Panel>
+    <div className="gs">
+      <Head title={t('cl.go.settings')}>
+        <span className="gs-ver">{t('cl.set.version', { v: APP_VERSION })}</span>
+        <button className="small" onClick={reset}>{t('gs.reset')}</button>
+      </Head>
+      <div className="gs-cols">
+        <Group title={t('gs.g.game')}>
+          <Row label={t('opt.language')} help={t('gs.h.lang')}>
+            <Seg value={getLang()} opts={LANGS.map(([k, , full]) => [k, full] as [Lang, string])} onChange={(v) => { setLang(v); g.lang = v; bump(); }} />
+          </Row>
+          <Row label={t('opt.currency')} help={t('gs.h.cur')}>
+            <Seg value={getCurrency()} opts={CURRENCIES.map((c) => [c, t(`cur.${c}`).match(/\(([^)]+)\)/)?.[1] ?? c] as [Currency, string])} onChange={(v) => { setCurrency(v); bump(); }} />
+          </Row>
+          <Row label={t('opt.autosave')} help={`${t('gs.h.autosave')} ${t(`opt.save.${autosave}.hint`)}`}>
+            <Seg value={autosave as string} opts={(['changes', 'daily', 'weekly', 'monthly', 'off'] as const).map((m) => [m, t(`cl.set.save.${m}`)] as [string, string])} onChange={(v) => { g.options.autosaveMode = v as 'changes'; g.options.autosave = v !== 'off'; bump(); }} />
+          </Row>
+          {notifySupported() && <Row label={t('opt.notify')} help={`${t('gs.h.notif')} ${t('opt.notify.hint')}`}>
+            <Seg value={notifyEnabled()} opts={[[true, t('cl.set.on')], [false, t('cl.set.off')]]} onChange={async (v) => { await setNotify(v); bump(); }} />
+          </Row>}
+          <Row label={t('opt.speed')} help={t('gs.h.speed')}>
+            <div className="gs-range"><small>{t('gs.speed.slow')}</small><input type="range" min={60} max={1500} step={20} value={1560 - g.options.matchSpeed} onChange={(e) => { g.options.matchSpeed = 1560 - Number(e.target.value); bump(); }} /><small>{t('gs.speed.fast')}</small></div>
+          </Row>
+          <Row label={t('opt.ai')} help={t('opt.ai.hint')}>{onOff(g.options.ai !== false, (v) => { g.options.ai = v; })}</Row>
+          {!g.draft && <Row label={t('start.masking')} help={`${t('gs.h.masking')} ${t('start.maskingHint')}`}>{onOff(!!g.options.masking, (v) => { g.options.masking = v; })}</Row>}
+          {g.humans && <Row label={t('opt.h2hTime')} help={t('gs.h.h2h')}>
+            <select value={g.options.h2hHalfMinutes ?? 3} disabled={notHost} title={notHost ? t('opt.hostOnly') : undefined} onChange={(e) => { act({ t: 'setH2hTime', minutes: Number(e.target.value) }); bump(); }}>
+              {[1, 2, 3, 4, 5, 7, 10].map((m) => <option key={m} value={m}>{t('opt.h2hMin', { n: m })}</option>)}
+            </select>
+          </Row>}
+          {/* (docs/ALWAYS_ORIGINAL.md) reglerne og vinduerne er logik: kun i gamle udvidede spil – originale spil får dem fra spilstarten */}
+          {!g.draft && legacyExtended(g) && <>
+            <Row label={t('opt.rules')} help={`${t('opt.rules.hint')} ${t('mode.legacy')} ${t('mode.extendedHint')}`}>
+              <Seg value={g.options.rules ?? 'modern'} opts={(['modern', 'classic'] as const).map((m) => [m, t(`opt.rules.${m}`)] as ['modern' | 'classic', string])} onChange={(v) => { if (!notHost) { act({ t: 'setRules', rules: v }); bump(); } }} />
+            </Row>
+            <Row label={t('opt.windows')} help={t('gs.h.windows')}>
+              <Seg value={g.options.transferWindows ?? 'real'} opts={(['real', 'classic'] as const).map((m) => [m, t(`opt.windows.${m}`)] as ['real' | 'classic', string])} onChange={(v) => { if (!notHost) { act({ t: 'setWindows', mode: v }); bump(); } }} />
+            </Row>
+          </>}
+        </Group>
+
+        <Group title={t('gs.g.look')}>
+          <Row label={t('cl.set.skin')} help={`${t('gs.h.theme')} ${theme === 'club' || theme === 'clubDark' ? t('opt.theme.clubHint') : theme === 'retro' ? t('opt.theme.retroHint') : ''}`}>
+            <Seg value={theme} opts={[['retro', t('cl.set.classic')], ['club', t('opt.theme.club')], ['clubDark', t('opt.theme.clubDark')], ['dark', t('opt.theme.dark')], ['light', t('opt.theme.light')]] as [Theme, string][]} onChange={(v) => { setTheme(v); bump(); }} />
+          </Row>
+          {theme !== 'retro' && <Row label={t('opt.bgPhotos')} help={t('gs.h.modernBg')}>{onOff(modernBackgrounds(), setModernBackgrounds)}</Row>}
+          <Row label={t('cl.set.stadium')} help={t('gs.h.stadium')}>{onOff(stadiumBackgrounds(), setStadiumBackgrounds)}</Row>
+        </Group>
+
+        {retro && <Group title={t('gs.g.classic')}>
+          <Row label={t('cl.set.fonts')} help={t('gs.h.font')}>
+            <Seg value={classicFont()} opts={CX_FONTS.map((f) => [f, t(`cl.set.font.${f}`)] as [CxFont, string])} onChange={(v) => { setDisplayPref('fontKind', v); bump(); }} />
+          </Row>
+          <Row label={t('cl.set.logo')} help={t('gs.h.logo')}>{onOff(titleLogo(), (v) => setDisplayPref('logo', v))}</Row>
+          <Row label={t('cl.set.pixel')} help={t('gs.h.pixel')}>
+            <Seg value={pixelLook()} opts={[['off', t('cl.set.off')], ['light', t('cl.set.light')], ['strong', t('cl.set.strong')]] as [PixelLevel, string][]} onChange={(v) => { setDisplayPref('pixel', v); bump(); }} />
+          </Row>
+          <Row label={t('cl.set.flash')} help={t('gs.h.flash')}>{onOff(flashingText(), (v) => setDisplayPref('flash', v))}</Row>
+          <Row label={t('cl.set.goalFlash')} help={t('gs.h.goalFlash')}>
+            <Seg value={goalFlashMs()} opts={GOAL_FLASH_MS.map((ms) => [ms, `${ms / 1000} s`.replace('.5', '½')] as [number, string])} onChange={(v) => { setDisplayPref('goalFlash', v); bump(); }} />
+          </Row>
+          <Row label={t('cl.set.bgset')} help={t('gs.h.bgset')}>
+            <Seg value={bgSet()} opts={[['original', t('cl.set.bgset.original')], ['screens', t('cl.set.bgset.screens')], ['sunday', t('cl.set.bgset.sunday')]] as [BgSet, string][]} onChange={(v) => { setBgSet(v); bump(); }} />
+          </Row>
+          <Row label={t('cl.set.bg')} help={t('gs.h.bgDaily')}>{onOff(bgChanges(), (v) => setDisplayPref('bg', v))}</Row>
+          <Row label={t('hub.skins.setting')} help={t('gs.h.pack')}>
+            <div className="cx-set-seg">
+              <button className={!pack ? 'on' : ''} onClick={() => { setBgPack(null); setPack(null); }}>{t('hub.skins.default')}</button>
+              {pack && <button className="on">{pack.title}</button>}
+              <button onClick={() => nav({ name: 'community', tab: 'skins' })}>{t('hub.skins.more')}</button>
+            </div>
+          </Row>
+        </Group>}
+
+        <Group title={t('gs.g.sound')}>
+          <Row label={t('cl.set.sound')} help={t('gs.h.sound')}>{onOff(matchSound(), setMatchSound)}</Row>
+        </Group>
+
+        <Group title={t('gs.g.reborn')}>
+          <div className="gs-note">{t('gs.reborn.note')}</div>
+          <Row label={t('cl.set.realism')} help={t('gs.h.realism')}>{onOff(showRealism(), (v) => setDisplayPref('realism', v))}</Row>
+          <Row label={t('cl.rb.modernSubs')} help={t('gs.h.modernSubs')}>{onOff(!!g.options.modernSubs, (v) => { g.options.modernSubs = v; })}</Row>
+          <Row label={t('cl.rb.bgMatch')} help={t('gs.h.bgMatch')}>{onOff(!!g.options.bgMatch, (v) => { g.options.bgMatch = v; })}</Row>
+          {REBORN_KEYS.map((k) => <Row key={k} label={t(`cl.rb.${k}`)} help={t(`gs.h.${k}`)}>{onOff(rebornOn(k), (v) => { g.options.reborn = { ...g.options.reborn, [k]: v }; })}</Row>)}
+        </Group>
+
         {!g.draft && <PlayableNations />}
-        <Panel title={t('opt.saves')}>
-          <div className="col">
+
+        <Group title={t('gs.g.account')}>
+          <AccountBar />
+          <CloudStatus />
+          <div className="gs-btns">
             {!g.humans?.length && <button onClick={async () => { try { await saveGame({ cloud: true }); setMsg(t('top.saved')); } catch { /* fællesspil gemmes på serveren */ } }}>{t('nav.save')}</button>}
             <button onClick={() => exportSave()}>{t('opt.export')}</button>
-            <div className="muted">{t('opt.exportHint')}</div>
-            <div className="kv"><span>{t('start.seed')}</span><span>{g.seed}</span></div>
-            {msg && <div className="good">{msg}</div>}
-            <CloudStatus />
-            <AccountBar />
           </div>
-        </Panel>
-        {rankingAvailable() && !g.humans?.length && <Panel title={t('sendDev.title')}><SendToDev /></Panel>}
-        <Panel title={t('info.title')}><GameInfoTable route="options" /></Panel>
-        <Panel title={'♥ ' + t('sb.menu')}><SupportBox full /></Panel>
-        <Panel title={t('opt.about')}>
+          <div className="muted">{t('opt.exportHint')}</div>
+          <Row label={t('start.seed')} help={t('gs.h.seed')}><span>{g.seed}</span></Row>
+          {msg && <div className="good">{msg}</div>}
+          {rankingAvailable() && !g.humans?.length && <SendToDev />}
+        </Group>
+
+        <Group title={t('gs.g.about')}>
+          <GameInfoTable route="options" />
+          <SupportBox full />
           <p>{t('opt.aboutText')}</p>
           <p className="muted">{t('opt.dataCredit')}</p>
-        </Panel>
+        </Group>
       </div>
     </div>
   );
@@ -132,20 +180,18 @@ function PlayableNations() {
   const addable = mp ? [] : addableNations().sort((a, b) => name(a).localeCompare(name(b)));
   const active = g.activeNations.slice().sort((a, b) => name(a).localeCompare(name(b)));
   return (
-    <Panel title={t('lg.title')}>
-      <div className="col">
-        <div className="tags">{active.map((n) => <span key={n} className="tag">{name(n)}</span>)}</div>
-        <div className="muted">{t(mp ? 'lg.mpOff' : 'lg.hint')}</div>
-        {!mp && addable.length > 0 && (
-          <label className="row">
-            <select value={pick} onChange={(e) => setPick(Number(e.target.value))}>
-              <option value={-1}>{t('lg.pick')}</option>
-              {addable.map((n) => <option key={n} value={n}>{name(n)}</option>)}
-            </select>
-            <button disabled={pick < 0} onClick={async () => { await addNation(pick); setPick(-1); }}>{t('lg.add')}</button>
-          </label>
-        )}
-      </div>
-    </Panel>
+    <Group title={t('lg.title')}>
+      <div className="tags">{active.map((n) => <span key={n} className="tag">{name(n)}</span>)}</div>
+      <div className="muted">{t(mp ? 'lg.mpOff' : 'lg.hint')}</div>
+      {!mp && addable.length > 0 && (
+        <label className="row">
+          <select value={pick} onChange={(e) => setPick(Number(e.target.value))}>
+            <option value={-1}>{t('lg.pick')}</option>
+            {addable.map((n) => <option key={n} value={n}>{name(n)}</option>)}
+          </select>
+          <button disabled={pick < 0} onClick={async () => { await addNation(pick); setPick(-1); }}>{t('lg.add')}</button>
+        </label>
+      )}
+    </Group>
   );
 }

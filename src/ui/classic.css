@@ -2108,3 +2108,16 @@ button.cx-bid-swap.removing { cursor: pointer; color: #fff21f; }
 @media (max-width: 760px) { .cx-stg-row { grid-template-columns: 90px minmax(0, 1fr) 44px minmax(0, 1fr); } .cx-stg-row .cx-cup-nat, .cx-stg-row .cx-cup-pts { display: none; } }
 .cx-cup-tbl .cx-cup-nat, .cx-stg-row .cx-cup-nat { color: #ff9a2a; }
 .cx-gameopt .cx-install-why { display: block; font-size: 10px; font-weight: 400; opacity: .8; white-space: normal; max-width: 220px; line-height: 1.2; }
+
+/* Game Settings (samlet skærm): CM 01/02-stil, men luftigere */
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .gs-cols { gap: 16px; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .gs-row { padding: 9px 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.12); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .gs-label { color: #fff; font-size: 16px; font-weight: 700; text-shadow: 1px 1px 0 #000; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .gs-help { color: #e8f0e8; background: rgba(0, 0, 0, 0.35); border-left-color: #ffe600; font-size: 13.5px; border-radius: 0; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .gs-note { color: #cfe8cf; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .gs-i { border-radius: 0; width: 20px; height: 20px; border: 1px solid; border-color: #d8dbe2 #3c3f48 #3c3f48 #d8dbe2; background: linear-gradient(180deg, #a9adb8, #7c818e); color: #fff; font-style: normal; font-family: inherit; text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .gs-i.on, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .gs-i:hover { background: linear-gradient(180deg, #fff21f, #c9b800); color: #000; text-shadow: none; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .gs .cx-set-seg button { min-width: 82px; height: 26px; padding: 0 10px; background: transparent; border: 1px solid transparent; border-radius: 0; color: #7fe07a; font-size: 14px; font-weight: 700; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .gs .cx-set-seg button:hover { color: #fff; background: transparent; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .gs .cx-set-seg button.on { color: #fff21f; border-color: #fff21f; background: rgba(0, 0, 0, 0.15); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .gs-ver { color: #cfe8cf; }

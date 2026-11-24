@@ -21,11 +21,14 @@ import BT from '../src/game/data/cmBoardTexts.json';
 const LANGS: Record<string, Record<string, string>> = { da, de, es, fr, it: itl, pt, tr, sv, nb };
 /** nøgler, der med vilje ikke findes på et sprog (falder tilbage til engelsk) – tom, så længe alle er oversat */
 /** CM Reborn-tilvalgene (Game Options): kun en + da, øvrige sprog falder tilbage til engelsk */
-const RB = ['title', 'achievements', 'matchExtras', 'firstDay', 'articles', 'menus', 'searchPresets', 'helpTexts', 'bgMatch'].map((k) => `cl.rb.${k}`)
+const GS = ['g.game', 'g.look', 'g.classic', 'g.sound', 'g.reborn', 'g.account', 'g.about', 'reset', 'help', 'speed.fast', 'speed.slow', 'reborn.note'].map((k) => `gs.${k}`)
+  .concat(['lang', 'cur', 'autosave', 'notif', 'speed', 'masking', 'h2h', 'windows', 'theme', 'modernBg', 'stadium', 'font', 'logo', 'pixel', 'flash', 'goalFlash', 'bgDaily', 'bgset', 'pack', 'sound', 'realism', 'modernSubs', 'bgMatch', 'achievements', 'matchExtras', 'firstDay', 'articles', 'menus', 'searchPresets', 'helpTexts', 'seed'].map((k) => `gs.h.${k}`)); // Game Settings: kun en + da
+const RB0 = ['title', 'achievements', 'matchExtras', 'firstDay', 'articles', 'menus', 'searchPresets', 'helpTexts', 'bgMatch'].map((k) => `cl.rb.${k}`)
   .concat(['title', 'about', 'cost', 'goal', 'raised', 'goalOnly', 'percent', 'btn', 'free', 'heroes', 'anon', 'menu'].map((k) => `sb.${k}`))
   .concat(['tag', 'title', 'q.convert', 'q.new', 'convert', 'new', 'keep'].map((k) => `legacyExt.${k}`))
   .concat(['start.loadFailed', 'start.reloadBtn']) // nødskærm ved mislykket hentning af spillet (kun en + da)
   .concat(['cm.feedbackBug', 'cm.feedbackType', 'cl.rb.modernSubs']); // + Game Options: samlet feedback/fejl-knap (CM Reborn)
+const RB = RB0.concat(GS);
 const EXCEPT: Record<string, string[]> = { de: RB, es: RB, fr: RB, it: RB, pt: RB, tr: RB, sv: RB, nb: RB };
 /** nøgler, hvor sproget med vilje bruger andre pladsholdere (dansk bruger {nation}/{fromDa} i stedet for {adj}/{fromEn}) */
 const PH_EXCEPT: Record<string, string[]> = { da: ['scout.doneOne.body', 'cm.fut.adjustLifestyle', 'cm.staffRejects.body', 'cm.rum.r.r1', 'cm.rum.r.r2', 'cm.fut.fellowHelp'] };
