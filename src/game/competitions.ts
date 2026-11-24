@@ -912,6 +912,16 @@ function tieNews(comp: Competition, tie: Tie) {
   asOwner(loser, () => addNews({ cat: 'match', key: final ? (comp.type === 'playoff' ? 'comp.playoffLost' : 'comp.lostFinal') : 'comp.out', params: { club: g.clubs[loser]?.name ?? '', comp: comp.name, opp: g.clubs[tie.winner!]?.name ?? '', round: tie.stage }, link: { kind: 'comp', id: comp.id } }));
 }
 
+/** Brødteksten til pokalvinder-nyheden (comp_util.cpp 0x4b0b80, 0x99f324 ff.): "have won the X with a 2-1 win over Y." (to ben: "aggregate win"), ellers "have won the X championship." (0x98acec) */
+function finalBodyParams(tie: Tie, winner: number, loser: number): Record<string, string | number> {
+  const g = gs();
+  const fxs = tie.fx.map((id) => g.fixtures[id]).filter((f) => f?.result);
+  let w = 0, l = 0;
+  for (const f of fxs) { const r = f.result!; const wg = f.home === winner ? r.hg : r.ag, lg = f.home === winner ? r.ag : r.hg; w += wg; l += lg; }
+  if (!fxs.length || w <= l) return { body: 'plain' };
+  return { body: fxs.length > 1 ? 'agg' : 'win', a: w, b: l, opp: g.clubs[loser].name };
+}
+
 function advance(comp: Competition, stage: string) {
   const g = gs();
   const stageTies = comp.ties.filter((t) => t.stage === stage);
@@ -923,7 +933,7 @@ function advance(comp: Competition, stage: string) {
     comp.winner = winners[0];
     const runnerUp = stageTies[0].a === winners[0] ? stageTies[0].b : stageTies[0].a;
     comp.meta = { ...(comp.meta ?? {}), runnerUp };
-    forEachHuman(() => { if (comp.type === 'continental' || newsRelevant(...comp.clubs)) addNews({ cat: 'general', key: comp.type === 'playoff' ? 'news.playoffWin' : 'news.cupWin', params: { club: g.clubs[winners[0]].name, comp: comp.name }, link: { kind: 'comp', id: comp.id } }); });
+    forEachHuman(() => { if (comp.type === 'continental' || newsRelevant(...comp.clubs)) addNews({ cat: 'general', key: comp.type === 'playoff' ? 'news.playoffWin' : 'news.cupWin', params: { club: g.clubs[winners[0]].name, comp: comp.name, ...finalBodyParams(stageTies[0], winners[0], runnerUp) }, link: { kind: 'comp', id: comp.id } }); });
     if (comp.type !== 'playoff') celebrateTrophy(winners[0], comp.name, comp.type === 'continental' ? 'europe' : 'cup');
     if (comp.meta?.cmEuro) cmEuroFinished(comp);
     return;

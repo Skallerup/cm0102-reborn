@@ -9,6 +9,7 @@ import { createGame, type WorldData } from '../src/game/newgame';
 import { runUntil } from '../src/game/sim';
 import { gs } from '../src/game/state';
 import { newsBody } from '../src/ui/screens/common';
+import { ensureLang, setLang } from '../src/i18n';
 
 /** Originalen har ingen brødtekst til disse (kun overskriften) – dokumenteret, ikke en mangel */
 const HEADLINE_ONLY = new Set<string>([]);
@@ -33,5 +34,28 @@ describe('nyheder i ægte tilstand har brødtekst', () => {
     for (const key of ['transfer.done', 'transfer.freeDone', 'transfer.loanDone', 'transfer.o.0', 'transfer.o.3', 'transfer.oFree.2']) {
       expect(newsBody({ ...base, key } as never), key).toBeTruthy();
     }
+  });
+
+  it('nyheder uden egne pladser i selve spillet (pokalvinder, op-/nedrykning, kontrakt, rekord) har brødtekst på en og da', async () => {
+    const mk = (key: string, params: Record<string, unknown>) => ({ cat: 'general' as const, id: 1, date: '2001-08-12', read: false, key, params });
+    const items = [
+      mk('news.cupWin', { club: 'Liverpool', comp: 'Charity Shield', body: 'win', a: 2, b: 1, opp: 'Man Utd' }),
+      mk('news.cupWin', { club: 'Liverpool', comp: 'FA Cup', body: 'agg', a: 3, b: 1, opp: 'Man Utd' }),
+      mk('news.cupWin', { club: 'Liverpool', comp: 'Charity Shield', body: 'plain' }),
+      mk('news.cupWin', { club: 'Liverpool', comp: 'Charity Shield' }), // gamle gemte nyheder uden brødtekstens felter
+      mk('news.playoffWin', { club: 'Liverpool', comp: 'Playoff', body: 'plain' }),
+      mk('news.promoted', { club: 'Man City', comp: 'English Premier Division' }),
+      mk('news.relegated', { club: 'Southampton', comp: 'English First Division' }),
+      mk('contract.left', { player: 'Neil Wood' }),
+      mk('transfer.bosmanDone', { player: 'Ronny Johnsen', from: 'Man Utd', to: 'Feyenoord' }),
+      ...['signing2', 'signing3', 'renew2', 'renew3', 'leave.sold2', 'leave.sold3', 'leave.released2', 'leave.released3', 'leave.free2', 'leave.free3'].map((k) => mk(`fans.${k}`, { player: 'Verón', club: 'Man Utd' })),
+      mk('recb.news.apps', { player: 'Verón', n: 61 }),
+    ];
+    for (const lang of ['en', 'da'] as const) {
+      await ensureLang(lang); setLang(lang);
+      for (const n of items) expect(newsBody(n as never), `${lang} ${n.key} ${JSON.stringify(n.params)}`).toMatch(/\S/);
+    }
+    setLang('en');
+    expect(newsBody(items[0] as never)).toBe('Liverpool have won the Charity Shield with a 2-1 win over Man Utd.');
   });
 });

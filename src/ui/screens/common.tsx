@@ -207,6 +207,8 @@ export function possessiveName(x: string): string {
 }
 
 function bodyKey(n: NewsItem): string {
+  // pokalvinderen (competitions.ts finalBodyParams): comp_util.cpp 0x99f324 – med resultatet, samlet resultat eller blot "championship"
+  if (n.key === 'news.cupWin' || n.key === 'news.playoffWin') return n.params?.body === 'win' ? 'news.cupWin.body' : n.params?.body === 'agg' ? 'news.cupWin.bodyAgg' : 'news.cupWin.bodyPlain';
   if ((n.key === 'cm.staffRenewOk' || n.key === 'cm.staffRenewNo') && typeof n.params?.body === 'string') return `cm.rn.${n.params.body}`;
   if (n.key.startsWith('cmsr.')) return 'cmsr.body';
   // uden stadion: exe'ens korte brødtekst (31865-31867)
