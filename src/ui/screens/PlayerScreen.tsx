@@ -31,6 +31,7 @@ import { aiCall } from '../../ai/client';
 import { guessIntent } from '../../ai/fallback';
 import { useAiAvailable } from '../ai';
 import { statusTags } from './Squad';
+import { contractRows, transferRows } from './PlayerClassic';
 import { agentOf } from '../../game/agents';
 import { realCareer, realMoves, type RealMove, type RealSeason } from '../careers';
 
@@ -55,6 +56,8 @@ function ModernPlayer({ id }: { id: number }) {
   const club = g.clubs[p.club];
   const shortlisted = g.shortlist.includes(p.id);
   const scouts = Object.values(g.staff).filter((s) => s.club === g.userClub && s.role === 'scout');
+  // originalt spil: kontrakten og transfersiden står som originalens Contract/Transfer-faner (rækker fra PlayerClassic), uden Reborns egne ekstra rækker
+  const orig = origLogic() && !g.draft;
 
   const act = (r: TransferOffer | string) => {
     if (typeof r === 'string') {
@@ -87,16 +90,16 @@ function ModernPlayer({ id }: { id: number }) {
             <span>{t('player.foot')}</span><span>{t(`foot.${p.foot || 'R'}`)}</span>
             <span>{t('player.height')}</span><span>{p.height} cm</span>
             {!g.draft && <><span>{t('col.value')}</span><span>{money(p.value)}</span></>}
-            {p.contract && <><span>{t('col.wage')}</span><span>{money(p.contract.wage)} / {t('common.week')}</span>
+            {!orig && p.contract && <><span>{t('col.wage')}</span><span>{money(p.contract.wage)} / {t('common.week')}</span>
               <span>{t('col.expires')}</span><span>{dateFmt(p.contract.expires)}</span></>}
-            {p.contract?.release && (mine || k >= 40) ? <><span>{t('clause.release')}</span><span>{money(p.contract.release)}</span></> : null}
-            {mine && p.contract && clauseText(p.contract) && <><span>{t('clause.title')}</span><span>{clauseText(p.contract)}</span></>}
+            {!orig && p.contract?.release && (mine || k >= 40) ? <><span>{t('clause.release')}</span><span>{money(p.contract.release)}</span></> : null}
+            {!orig && mine && p.contract && clauseText(p.contract) && <><span>{t('clause.title')}</span><span>{clauseText(p.contract)}</span></>}
             {mine && p.sellOn && <><span>{t('clause.sellOn')}</span><span>{t('clause.sellOnTo', { pct: p.sellOn.pct, club: g.clubs[p.sellOn.club]?.name ?? '?' })}</span></>}
             {p.addOn && (mine || p.addOn.club === g.userClub) && <><span>{t('clause.addOnShort')}</span><span>{t('clause.addOnLeft', { fee: money(p.addOn.fee), club: g.clubs[p.addOn.club]?.name ?? '?', n: p.addOn.left })}</span></>}
-            {p.contract?.futureClub && <><span>{t('player.nextClub')}</span><span><ClubLink id={p.contract.futureClub} /></span></>}
+            {!orig && p.contract?.futureClub && <><span>{t('player.nextClub')}</span><span><ClubLink id={p.contract.futureClub} /></span></>}
             <span>{t('player.caps')}</span><span>{p.caps} / {p.intGoals}</span>
-            {!g.draft && (() => { const a = agentOf(p); return <><span>{t('player.agent')}</span><span title={t(`agent.${a.style}.hint`)}>{a.name} <span className="tag">{t(`agent.${a.style}`)}</span></span></>; })()}
-            {!mine && !g.draft && p.club > 0 && <><span>{t('player.asking')}</span><span>{k >= 40 ? `≈ ${money(askingPrice(p))}` : t('player.unknown')}</span></>}
+            {!g.draft && !orig && (() => { const a = agentOf(p); return <><span>{t('player.agent')}</span><span title={t(`agent.${a.style}.hint`)}>{a.name} <span className="tag">{t(`agent.${a.style}`)}</span></span></>; })()}
+            {!mine && !g.draft && !orig && p.club > 0 && <><span>{t('player.asking')}</span><span>{k >= 40 ? `≈ ${money(askingPrice(p))}` : t('player.unknown')}</span></>}
           </div>
         </Panel>
         <Panel title={t('player.status')}>
@@ -178,12 +181,18 @@ function ModernPlayer({ id }: { id: number }) {
         </Panel>
         )}
       </div>
+      {orig && (
+        <div className="cols">
+          <Panel title={t('cl.pl.contract')}><div className="kv">{contractRows(p, mine).map(([l, v], i) => [<span key={`l${i}`}>{l}</span>, <span key={`v${i}`}>{v}</span>])}</div></Panel>
+          <Panel title={t('cl.pl.transfer')}><div className="kv">{transferRows(p, mine, true).map(([l, v], i) => [<span key={`l${i}`}>{l}</span>, <span key={`v${i}`}>{v}</span>])}</div></Panel>
+        </div>
+      )}
       {mine && <IncomingOffersFor pid={p.id} />}
       {mine && p.wantsAway && <WantsAway pid={p.id} onMsg={setMsg} />}
       {mine && (traits(p).includes('troublemaker') || traits(p).includes('temperamental')) && <ReformPanel pid={p.id} />}
       {mine && !g.draft && <TalkPanel pid={p.id} />}
-      {!mine && !g.draft && g.userClub > 0 && <ScoutReport pid={p.id} />}
-      {!g.draft && <InterestPanel pid={p.id} mine={mine} />}
+      {!mine && !g.draft && !orig && g.userClub > 0 && <ScoutReport pid={p.id} />}
+      {!g.draft && !orig && <InterestPanel pid={p.id} mine={mine} />}
       <Panel title={t('player.attributes')} right={g.options.masking && k < 100 ? <span className="muted">{t('player.rangeHint')}</span> : undefined}>
         <div className="attr-groups">
           {(['technical', 'mental', 'physical', ...(p.pos[0] >= 15 ? ['goalkeeping'] : [])] as (keyof typeof GROUPS)[]).map((grp) => (

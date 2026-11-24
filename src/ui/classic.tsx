@@ -203,11 +203,15 @@ export function CxLink({ to, children, title }: { to: Route; children: ReactNode
 }
 
 /** Klubnavne adskilt af komma – hver af dem klikbar */
-export function ClubList({ ids, empty, suffix }: { ids: number[]; empty: ReactNode; suffix?: (id: number, i: number) => ReactNode }) {
+export function ClubList({ ids, empty, suffix, modern }: { ids: number[]; empty: ReactNode; suffix?: (id: number, i: number) => ReactNode; modern?: boolean }) {
   const g = gs();
   const list = ids.filter((id) => g.clubs[id]);
   if (!list.length) return <>{empty}</>;
-  return <>{list.map((id, i) => <span key={`${id}-${i}`}>{i > 0 && ', '}<CxLink to={clubRoute(id)}>{g.clubs[id].name}</CxLink>{suffix?.(id, i)}</span>)}</>;
+  return <>{list.map((id, i) => <span key={`${id}-${i}`}>{i > 0 && ', '}{modern ? <ModernClubName id={id} /> : <CxLink to={clubRoute(id)}>{g.clubs[id].name}</CxLink>}{suffix?.(id, i)}</span>)}</>;
+}
+function ModernClubName({ id }: { id: number }) {
+  const { nav } = useNav();
+  return <a className="link" onClick={(e) => { e.stopPropagation(); nav(clubRoute(id)); }}>{gs().clubs[id]?.name}</a>;
 }
 const mgrName = (g: GameState) => g.manager?.name ?? '';
 const own = (g: GameState) => g.userClub || undefined;

@@ -278,8 +278,9 @@ function permitLine(played: number, missed: number): string {
   return t('cl.pl.permitnn', { n: played, m: missed, pct });
 }
 
-function ContractTab({ p, mine }: { p: Player; mine: boolean }) {
-  const g = useGame()!;
+/** Contract-fanens rækker (CM 01/02) – også brugt af det moderne udseende i originale spil */
+export function contractRows(p: Player, mine: boolean): [string, ReactNode, string?][] {
+  const g = gs();
   const k = knowledgeOf(p);
   const c = p.contract;
   // CM 01/02: Type, Wages, Started, Protected, Expires, Squad Status, Bonuses, Clauses, Notes
@@ -326,6 +327,11 @@ function ContractTab({ p, mine }: { p: Player; mine: boolean }) {
     [t('cl.pl.notes'), p.notes || '-'],
   ];
   if (p.contract?.futureClub) rows.push([t('player.nextClub'), <ClubLink id={p.contract.futureClub} />]);
+  return rows;
+}
+
+function ContractTab({ p, mine }: { p: Player; mine: boolean }) {
+  const rows = contractRows(p, mine);
   return (
     <Frame p={p} rows={rows}>
       {/* ægte CM 01/02: spillerens holdning til en forlængelse står ikke på Contract-fanen (findes ikke i originalen) */}
@@ -355,8 +361,9 @@ function weekday(iso: string): string {
   try { return new Date(iso + 'T00:00:00Z').toLocaleDateString(t('cl.locale'), { weekday: 'long', timeZone: 'UTC' }); } catch { return ''; }
 }
 
-function TransferTab({ p, mine }: { p: Player; mine: boolean }) {
-  const g = useGame()!;
+/** Transfer-fanens rækker (CM 01/02): Availability, Value, Languages, Offers, Interested, Future – også brugt af det moderne udseende */
+export function transferRows(p: Player, mine: boolean, modern = false): [string, ReactNode, string?][] {
+  const g = gs();
   const k = knowledgeOf(p);
   // den originale database i ægte tilstand: originalens Availability og Future (0x87dd80 – cmTransferList.ts)
   // ægte CM 01/02: originalens Future (0x87dd80) for alle spillere, man kender – aldrig spillets egne, modsigende linjer
@@ -374,7 +381,7 @@ function TransferTab({ p, mine }: { p: Player; mine: boolean }) {
   // CM 01/02 0x87e659–0x87e828: et aftalt skifte (0x8cca10) er hele rækken – "<klub> - transfer arranged for <ugedag dato>." (ejerens billede 24/11)
   const arranged = arrangedMove(g, p);
   const offerText = arranged ? <><ClubLink id={arranged.club} />{t('cl.pl.offerArranged', { date: `${weekday(arranged.date)} ${cmLongDate(arranged.date)}` })}</>
-    : <ClubList ids={offers.map((o) => o.buyer)} empty={t('common.none')} suffix={(_, i) => ` (${offers[i].loan ? t('tag.loan') : money(offers[i].fee)})`} />;
+    : <ClubList ids={offers.map((o) => o.buyer)} empty={t('common.none')} modern={modern} suffix={(_, i) => ` (${offers[i].loan ? t('tag.loan') : money(offers[i].fee)})`} />;
   const interestIds = interestedClubs(p).map((i) => i.club);
   // hele Future-blokken (0x87ee70–0x8853ba) inkl. den tilfredse blok og "Unknown" (0x8852f9), når intet er skrevet
   const cmFut = cm ? cmFutureLines(g, p, interestIds.length).map((x) => t(`cm.fut.${x.k}`, x.p?.date ? { ...x.p, date: dateFmt(String(x.p.date)) } : x.p?.pos ? { ...x.p, pos: t(`cm.fut.pos.${x.p.pos}`) } : x.p)) : [];
@@ -386,9 +393,15 @@ function TransferTab({ p, mine }: { p: Player; mine: boolean }) {
     [t('col.value'), moneyFull(p.value)], // 0x87dd80: Value flag 6, tilbuddene flag 5
     [t('cl.pl.languages'), langs.length ? langs.map((l: string) => l.charAt(0).toUpperCase() + l.slice(1)).join(', ') : '-'],
     [t('cl.pl.offers'), offerText],
-    [t('cl.pl.interested'), <ClubList ids={interestIds} empty={t('common.none')} />],
+    [t('cl.pl.interested'), <ClubList ids={interestIds} empty={t('common.none')} modern={modern} />],
     ...fut.map((x, i): [string, ReactNode] => [i === 0 ? t('cl.pl.future') : '', x]),
   ];
+  return rows;
+}
+
+function TransferTab({ p, mine }: { p: Player; mine: boolean }) {
+  const g = useGame()!;
+  const rows = transferRows(p, mine);
   return (
     <Frame p={p} rows={rows}>
       {!mine && <EnquiryLine pid={p.id} />}
