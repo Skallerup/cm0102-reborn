@@ -381,7 +381,11 @@ export function createGameBase(world: WorldData, o: NewGameOptions): NewGameCtx 
       // omslag i hvert nyt spil), CA over PA, og manglende egenskaber kopieret fra en lignende skabelonspiller
       const rand = makeRand(() => initRng.next());
       initRng.state = hash(seed, p.id, 91) || 1;
-      const clubLevel = club ? rand(4) + 1 : rand(2) + 1;
+      // 0x5362c4: klubbens omdømmes lave byte (klub +0x80, movsx – databasens rå omdømme); 0 → rand(4) + 1, uden klub rand(2) + 1.
+      // (rand(4) trækkes altid her – talrækken er spillets egen pr. spiller, og de øvrige træk i kæden står, hvor de stod)
+      const repByte = club ? ((((cm?.cmRaw?.clubRep[club] ?? 0) & 0xff) << 24) >> 24) : 0;
+      const lvl0 = club ? rand(4) + 1 : rand(2) + 1;
+      const clubLevel = repByte || lvl0;
       const pa = initialisePA(rt.paRaw ?? rt.pa, rt.ca, age, clubLevel, rand);
       // ægte tilstand: CA mangler (0x536c72 – reserveposterne) og klubløses CA (0x536e19) før CA over PA
       let ca0 = rt.ca;

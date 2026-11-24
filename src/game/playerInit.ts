@@ -20,6 +20,7 @@ export function makeRand(next: () => number) {
 }
 type Rand = (n: number) => number;
 const trunc = Math.trunc;
+const s16 = (v: number) => (v << 16) >> 16;
 
 // ---------------------------------------------------------------- PA (0x53621b..0x536c5d)
 
@@ -56,8 +57,9 @@ export function initialisePA(paDb: number, ca: number, age: number, clubLevel: n
 export function missingCA(pa: number, age: number, clubLevel: number, rand: Rand): number {
   const peak = 20 + rand(10);
   const r = Math.max(5, rand(pa));
-  const e = rand(trunc(((pa >> 2) * r) / 100));
-  const k = e + 2 * trunc((10000 - clubLevel) / 100) + 3;
+  // 0x536ca4/0x536cc8: begge divisioner er /200 (0x51eb851f, sar 6) – før /100, så k ≈ 200 og næsten alle fik CA 1 → rand(PA/5) + 1
+  const e = rand(trunc(((pa >> 2) * r) / 200));
+  const k = s16(e + 2 * trunc((10000 - clubLevel) / 200) + 3);
   let ca = Math.min(200, Math.max(1, pa - trunc((k * Math.max(3, Math.abs(peak - age))) / 5)));
   if (ca === 1 && rand(10) !== 0) ca = rand(trunc(pa / 5)) + 1;
   return ca;
