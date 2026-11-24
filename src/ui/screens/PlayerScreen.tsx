@@ -33,6 +33,7 @@ import { useAiAvailable } from '../ai';
 import { statusTags } from './Squad';
 import { contractRows, transferRows } from './PlayerClassic';
 import { OrigBidModal } from './OrigBid';
+import { OrigTransferStatus } from './OrigStatus';
 import { cmLogic, cmMarketOn } from '../../game/cmPlayerData';
 import { cmScoutOn } from '../../game/cmScout';
 import { cmTalksOpen } from '../../game/cmTransferTalks';
@@ -56,6 +57,7 @@ function ModernPlayer({ id }: { id: number }) {
   const [msg, setMsg] = useState('');
   const [loanOutOpen, setLoanOut] = useState(false);
   const [listOpen, setListOpen] = useState(false);
+  const [statusOpen, setStatusOpen] = useState(false);
   if (!p) return <div><Head title={t('player.gone')} /></div>;
   const mine = p.club === g.userClub && !!g.userClub;
   const k = knowledgeOf(p);
@@ -137,7 +139,7 @@ function ModernPlayer({ id }: { id: number }) {
                 </div>
                 <AdviceLine pid={p.id} />
                 <div className="row">
-                  {p.listed
+                  {cmMarketOn(g) ? <button onClick={() => setStatusOpen(true)}>{t('cl.ts.title')}</button> : p.listed
                     ? <><button onClick={() => setListOpen(true)}>{t('list.changePrice')}</button><button onClick={() => dispatch({ t: 'listed', pid: p.id, price: null })}>{t('player.unlist')}</button></>
                     : <button onClick={() => setListOpen(true)}>{t('player.list')}</button>}
                   <button onClick={() => setNeg({ renew: p.id })}>{t('player.renew')}</button>
@@ -277,6 +279,7 @@ function ModernPlayer({ id }: { id: number }) {
         ? <OrigBidModal pid={p.id} loan={bid === 'loan'} change={bid === 'change'} onClose={() => setBid(false)} onSent={(o) => { setBid(false); act(o); }} />
         : <BidModal pid={p.id} offerId={typeof bid === 'number' ? bid : undefined} onClose={() => setBid(false)} onDone={(r) => { setBid(false); act(r); }} />)}
       {listOpen && <ListModal pid={p.id} onClose={() => setListOpen(false)} />}
+      {statusOpen && <OrigTransferStatus pid={p.id} onClose={() => setStatusOpen(false)} />}
       {p.loan?.from === g.userClub && loanRecallOn() && (
         <div className="insight" style={{ marginTop: 8 }}>{t('loan.onLoanAt', { club: g.clubs[p.club]?.name ?? '' })} <button className="small" onClick={() => setMsg(t(dispatch<string>({ t: 'recallLoan', pid: p.id })))}>{t('loan.recall')}</button></div>
       )}

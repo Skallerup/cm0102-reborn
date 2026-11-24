@@ -36,6 +36,8 @@ import { requestOpen } from '../../game/cmTransferList';
 import { cmConfirmOpen, cmConfirmScreen, cmSwapOpen, cmSwapView, cmTalksOpen } from '../../game/cmTransferTalks';
 import { cmAppealAsk, cmAppealOpen } from '../../game/cmDiscipline';
 import { newsMustRespond } from './newsRespond';
+import { OrigNewsActions } from './OrigInbox';
+import { origLogic } from '../../game/rules';
 
 /** Klassisk tema: nyhedsfiltre som faner (øverst) og under-knapper (nederst) */
 const CX_TOP = ['all', 'messages', 'competitions', 'injuries'] as const;
@@ -280,7 +282,7 @@ export function Inbox() {
               <AppealBox item={item} />
               <AiArticle item={item} />
               {item.link && <div><button onClick={() => open(item)}>{t('inbox.open')}</button></div>}
-              {cmSquadAnswerOpen(g, item) && <div><button className="primary" onClick={() => void squadRespond(item, nav)}>{t('cl.bid.respond')}</button></div>}
+              {origLogic() ? <OrigNewsActions item={item} /> : cmSquadAnswerOpen(g, item) && <div><button className="primary" onClick={() => void squadRespond(item, nav)}>{t('cl.bid.respond')}</button></div>}
             </div>
           ) : <Empty text={t('inbox.select')} />}
         </Panel>
