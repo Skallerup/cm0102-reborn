@@ -397,7 +397,7 @@ function playResMatch(f: Fixture): MatchReport | null {
   cmAfterMatch(g, f, rep, squad, { cats, avg: true, quick: true, avgOf: (p) => cmInMemory(g, p) }, (p) => cmInMemory(g, p));
   cmPermitAfterMatch(g, f, rep, (p) => !!p.injury || p.banned > 0);
   cmFitMatch(g, rep, true, f.id, [f.home, f.away]);
-  cmScoutMatch(g, f, rep);
+  // 0x84c339–0x84c493 kalder ikke spejderne (0x7f8c00) – og 0x7b5be0 ser ingen hurtige kampe (resultatposten +0x4c = engine+0 = 1)
   // 0x90d6b0: fyldspillerne ud igen
   cmVirtualDrop(g, f.home); cmVirtualDrop(g, f.away);
   return rep;

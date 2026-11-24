@@ -308,6 +308,8 @@ export function cmScoutMatch(g: GameState, f: Fixture, rep: MatchReport): void {
 /** 0x7b5be0 PLAYER_SEARCH::scout_match for én spejderliste: anmodningerne (uden opgave) og turneringssøgningen (cmScoutAsg.ts) */
 function scoutMatchList(g: GameState, s: Staff, f: Fixture, rep: MatchReport, rnd: (n: number) => number, out: CmScoutRec[]): void {
   const club = s.club;
+  // 0x7b5d79: resultatposten +0x4c (engine+0 – en «hurtig» kamp, cmQuickMatch.ts) ≠ 0 → listen ser ikke kampen
+  if (rep.cmQuick) return;
   const a = cmAsgOf(g, s);
   // den opgave, der stadig kører som før (Club – scouting.ts): ingen kampe for anmodningerne
   if (!a && s.assignment && s.assignment.kind !== 'player') return;
