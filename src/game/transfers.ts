@@ -1952,10 +1952,18 @@ registerAskingPrice(askingPrice, playerInterest, (p) => transferRealism(p).level
  *  bud på computerens spillere OG på klubløse lever i g.offers (`cmAi`) til svartiden 0x8cc5b0 er gået (cmAiAiDue) – også en klubløs får et
  *  transfertilbud i TRANSFER_MANAGER (0x84a728 → 0x8be300 med build_bid's kontrakttilbud, 0x84a75c add_contract_offer 0x4cc490), som
  *  process_due_offer 0x8c63a0 behandler på svardagen (tilstand 0 uden sælger → 0x8c0080). Før skrev de klubløse under samme dag. */
+/** 0x587370's tre tekster til nyheden 0xfbd (rand(3) i 0x587220): 0x9c4b04, 0x9c4b9c, 0x9c4c50 */
+const SPOTTED_KEYS = ['scout.spotted.seen', 'scout.spotted', 'scout.spotted.star'] as const;
 export function cmShortlistApply(events: SlEvent[]) {
   const g = gs();
   for (const e of events) {
     if (e.kind === 'rumour') { const p = g.players[e.player]; if (p) cmRumourAdd(g, p, e.club, fromK(e.amt, e.club), e.will); continue; }
+    if (e.kind === 'spotted') {
+      // 0x587220 → 0x7861e0: nyheden 0xfbd til spillerens klub (et menneske styrer den – 0x7875e0 i 0x83f3a0); tekst nr. v (0x587370)
+      const p = g.players[e.player], sc = g.clubs[e.club];
+      if (p && sc && p.club && isHumanClub(p.club)) asOwner(p.club, () => addNews({ cat: 'scout', key: SPOTTED_KEYS[e.v] ?? 'scout.spotted', params: { club: sc.name, player: pname(p) }, link: { kind: 'player', id: p.id } }));
+      continue;
+    }
     const p = g.players[e.player], buyer = g.clubs[e.buyer];
     // (køberen: 0x84a020 byder for menneskets klub på ferie – 0x600a50(klub, 0, …) = 0; ferievalg 4 i den oversatte funktion)
     if (!p || !buyer || p.contract?.futureClub || p.club === buyer.id || humanClub0(g, buyer.id)) continue;

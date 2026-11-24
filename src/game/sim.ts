@@ -625,10 +625,9 @@ function userMatchResult(f: Fixture, rep: MatchReport) {
     // draft-liga: ingen bestyrelse, presse eller fans
     if (!g.draft) {
       if (!cmBoardOn(g)) boardAfterMatch(scored, conceded, opp, comp?.type ?? 'league');
-      // CM 01/02: "A scout from [klub] was spotted at your last match" – en klub med en af dine spillere på listen
-      const mine = new Set(squad(g.userClub).map((p) => p.id));
-      const watcher = rng.chance(0.3) ? Object.values(g.clubs).find((c) => c.id !== g.userClub && !isHumanClub(c.id) && (c.shortlist ?? []).some((id) => mine.has(id))) : undefined;
-      if (watcher) { const pid = watcher.shortlist!.find((id) => mine.has(id))!; addNews({ cat: 'scout', key: 'scout.spotted', params: { club: watcher.name, player: pname(g.players[pid]) }, link: { kind: 'player', id: pid } }); }
+      // "A scout from [klub] was spotted at your last match" (nyheden 0xfbd) kommer KUN fra ønskelisternes 0x83f3a0 → 0x587220 (cmShortlistGame.ts).
+      // Det tidligere estimat her (30 % efter hver kamp) er fjernet; trækket bevares, så tilfældighederne i gamle spil er uændrede.
+      rng.chance(0.3);
       recordRivalry(opp, scored, conceded);
       resolvePressPromise(f.id, scored, conceded);
       if (legacyExtended()) invitePress(f, 'post');

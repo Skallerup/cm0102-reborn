@@ -54,6 +54,7 @@ import { workPermitGranted, cmLoanRulesOk } from './rules2001';
 import { cmCanSign } from './cmOfferCheck';
 import { cmLoanPeriod } from './cmLoan';
 import { cmFitRead } from './cmFitnessGame';
+import { clubInSeason_669bd0 } from './cmClubLinks';
 import { aiPickCtx, roleDataOf, playerRecord } from './engine/grid/aiTeam';
 import { planScore, type ManagerBlockIn } from './engine/grid/planScore';
 import { judgeAbility, type Day } from './engine/grid/roleScore';
@@ -109,7 +110,9 @@ export interface SlBid {
 export interface SlFree { kind: 'free'; buyer: number; player: number }
 /** add_rumour 0x754740(staff, klub, beløb £, vilje) fra 0x83f3a0 (0x84079d/0x840c4b): mediernes kø (cmRumours.ts) */
 export interface SlRumour { kind: 'rumour'; club: number; player: number; amt: number; will: number }
-export type SlEvent = SlBid | SlRumour;
+/** 0x587220 nyheden 0xfbd "<spiller> watched" (fra 0x83f3a0 @0x840a79) til spillerens (menneskets) klub; `v` = rand(3), teksten 0x587370 */
+export interface SlSpotted { kind: 'spotted'; club: number; player: number; v: number }
+export type SlEvent = SlBid | SlRumour | SlSpotted;
 
 // ---------------------------------------------------------------- hukommelsen
 
@@ -1718,7 +1721,24 @@ export function buildSlMem(g: GameState, opts: { noStale?: boolean; resume?: SlR
         if (L && ev?.kind === 'bid' && ev.free7 && S.memOf.get(ev.player) === m.s32(L)) { const k: number[] = []; for (let i = 0; i < 0x50; i++) k.push(m.u8(L + i)); ev.k = k; }
         return 0;
       }
-      case 0x4cd230: case 0x4cd6d0: case 0x587220: case 0x6181d0: case 0x5a8f60: case 0x5cc7d0:
+      case 0x587220: {
+        // 0x587220(spiller, spejderklub) – nyheden 0xfbd, kun fra 0x83f3a0 @0x840a79 (alder < 28 − rand(6), spejderklubbens omdømme > spillerklubbens
+        // + 2000 + rand(1000), 0x7875e0: et menneske styrer spillerens klub). Spilleren med spillerdata (+0x61) og klub (+0x39), en spejderklub →
+        // rand(3) = teksten (0x587370: 0 "was seen … rumoured he was watching", 1 "spotted … impressed", 2 "seen … recommended … potential star");
+        // så kun når spejderklubbens land er i sæson (0x547770 → 0x669bd0), spilleren ikke er skadet (0x62ed70) og står på SPEJDERKLUBBENS
+        // holdkort (0x8972c0: Tactics [0xde1d08] +0x601, klubbens 20 pladser) → 0x7861e0 til spillerens klub
+        const st = a[0] >>> 0, cp = a[1] >>> 0;
+        if (!st || !m.u32(st + 0x61) || !m.u32(st + 0x39) || !cp) return 0;
+        const v = S.M.c.rand(3);
+        if (!clubInSeason_669bd0(S.M.c, cp, 0, 0)) return 0;
+        const p = S.byMem.get(m.s32(st)), sc = g.clubs[m.s32(cp)];
+        if (!p || !sc || fit.injury(p)) return 0;
+        const t = sc.tactic;
+        if (!t || !(t.lineup.includes(p.id) || t.bench.includes(p.id))) return 0;
+        S.events.push({ kind: 'spotted', club: sc.id, player: p.id, v });
+        return 0;
+      }
+      case 0x4cd230: case 0x4cd6d0: case 0x6181d0: case 0x5a8f60: case 0x5cc7d0:
       case 0x690890: case 0x8c1f80: case 0x8c2060: case 0x4cc9e0:
         return 0;
     }
