@@ -115,7 +115,10 @@ export function cmSquadPlanClub(g: GameState, cid: number, daily: boolean, first
   // truppen: oraklet 21/7-01 har 1.695 udenlandske klubber uden spillere i hukommelsen med 7 mål i alt (ingen indehavere +0x13); vi havde
   // 12.205 indehavere og 7.198 mål, og de hentede de unge engelske klubløse (sæson 1: 52 underskrifter i udlandet mod oraklets 7)
   const mem = !memKnown(g) || nationLoaded(g, club.nation);
-  const all = mem ? squad(cid) : squad(cid).filter((p) => p.cmMem === 1);
+  // 0x541f90: klubbens trupliste +0xd7 – også de udlejede (de står i begge klubbers liste; oraklet 14/7-01: Chelseas Rhys Evans i både Chelseas og
+  // Leyton Orients). planSquad lægger dem i hovedlisten (p.loan og p.clubId = klubben), de lejede ind for sig
+  const list = squad(cid).concat(loanedOut(g, cid));
+  const all = mem ? list : list.filter((p) => p.cmMem === 1);
   const pl = all.map((p) => planPlayer(g, p, fit, first && !daily && !g.cmPlan?.[cid]));
   const byId = new Map(all.map((p) => [p.id, p]));
   const rep = clubRepMem(g, cid);
@@ -125,10 +128,9 @@ export function cmSquadPlanClub(g: GameState, cid: number, daily: boolean, first
   const leagueRep = clubDivRep(g, cid);
   const euro = cmClubEuro(g, cid);
   const euroRep = euro > -1 ? g.cmCompRep?.[euro] ?? EURO_REP[euro] ?? null : null;
-  // 0x53c590(klub, 0, 0): klubbens trupliste +0xd7 – alle poster, også de udlejede (de står i begge klubbers liste). Før talte de udlejede
-  // ikke med: oraklet 14/7-01 Chelsea 39 (3 udlejede), vi 36 – og 0x7bca90's T faldt 5 % pr. manglende spiller under divisionens 1,35·+0x69 + 20
-  const lent = loanedOut(cid).filter((p) => !cmGenerated(g, p) && (mem || p.cmMem === 1));
-  const count = all.filter((p) => !cmGenerated(g, p)).length + lent.length;
+  // 0x53c590(klub, 0, 0): alle poster i listen, også de udlejede. Før talte de ikke med: oraklet 14/7-01 Chelsea 39 (3 udlejede), vi 36 – og
+  // 0x7bca90's T faldt 5 % pr. manglende spiller under divisionens 1,35·+0x69 + 20
+  const count = all.filter((p) => !cmGenerated(g, p)).length;
   const { T, R } = clubStrength({ rep, minAtt, status, leagueRep, leagueActive: !!lg && !lg.hidden && !!g.comps[club.league], euroRep, squadCount: count,
     finance: financeStatus(Math.round(club.balance * cmGbp(g, cid)), rep) });
   const st = g.staff[club.manager ?? -1];

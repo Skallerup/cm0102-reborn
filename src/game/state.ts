@@ -150,20 +150,30 @@ export function squadIds(clubId: number): number[] {
   return squadIndex.get(clubId) ?? [];
 }
 
-/** klubskifter (setClub, rebuildIndexes) – udlejedes opslag nedenfor bygges igen efter et skifte */
+/** de udlejedes opslag nedenfor: bygges helt efter rebuildIndexes (moveGen) og opdateres for hver spiller, setClub har flyttet (moved) */
 let moveGen = 0;
-let loanOut: { g: GameState; gen: number; by: Map<number, number[]> } | null = null;
+let movedIds: number[] = [];
+let loanOut: { g: GameState; gen: number; by: Map<number, Set<number>>; of: Map<number, number> } | null = null;
 /** spillerne, klubben har lejet ud (Player.loan.from = klubben, Player.club = lejeklubben) – i originalen står de i begge klubbers trupliste
- *  (klub +0xd7; oraklet 14/7-01: Chelseas Rhys Evans i både Chelseas og Leyton Orients). Opslaget bygges efter hvert klubskifte og kontrolleres
- *  ved hvert kald (en lejeaftale, der ender uden skifte – købsoptionen – falder ud) */
-export function loanedOut(clubId: number): Player[] {
-  const g = gs();
+ *  (klub +0xd7; oraklet 14/7-01: Chelseas Rhys Evans i både Chelseas og Leyton Orients). Kontrolleres ved hvert kald (en lejeaftale, der ender
+ *  uden klubskifte – købsoptionen – falder ud). `g` gives med (trupplanen kører også i ugens Web Worker, hvor gs() ikke er sat) */
+export function loanedOut(g: GameState, clubId: number): Player[] {
+  const put = (L: NonNullable<typeof loanOut>, p: Player | undefined, id: number) => {
+    const was = L.of.get(id);
+    if (was !== undefined) { L.by.get(was)?.delete(id); L.of.delete(id); }
+    if (p?.loan && p.club) { let a = L.by.get(p.loan.from); if (!a) L.by.set(p.loan.from, (a = new Set())); a.add(id); L.of.set(id, p.loan.from); }
+  };
   if (!loanOut || loanOut.g !== g || loanOut.gen !== moveGen) {
-    const by = new Map<number, number[]>();
-    for (const p of Object.values(g.players)) if (p.loan && p.club) { const a = by.get(p.loan.from); if (a) a.push(p.id); else by.set(p.loan.from, [p.id]); }
-    loanOut = { g, gen: moveGen, by };
+    loanOut = { g, gen: moveGen, by: new Map(), of: new Map() };
+    for (const p of Object.values(g.players)) if (p.loan) put(loanOut, p, p.id);
+    movedIds = [];
+  } else if (movedIds.length) {
+    for (const id of movedIds) put(loanOut, g.players[id], id);
+    movedIds = [];
   }
-  return (loanOut.by.get(clubId) ?? []).map((id) => g.players[id]).filter((p) => p && p.loan?.from === clubId && p.club !== clubId);
+  const out: Player[] = [];
+  for (const id of loanOut.by.get(clubId) ?? []) { const p = g.players[id]; if (p && p.loan?.from === clubId && p.club && p.club !== clubId) out.push(p); }
+  return out.sort((a, b) => a.id - b.id);
 }
 
 /** cmMedia.ts registrerer sign_contract's moral (en direkte import giver en cirkulær import) */
@@ -179,7 +189,7 @@ export function recordFreeTransfer(g: GameState, p: Player) {
 
 /** Flyt spiller mellem klubber og hold indekset opdateret */
 export function setClub(p: Player, club: number) {
-  moveGen++;
+  if (movedIds.length < 100000) movedIds.push(p.id); else moveGen++;
   if (p.club) {
     const arr = squadIndex.get(p.club);
     if (arr) squadIndex.set(p.club, arr.filter((id) => id !== p.id));
