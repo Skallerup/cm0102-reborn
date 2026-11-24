@@ -3,6 +3,7 @@
 // Valget er personligt og gemmes i browseren – ikke i spillet.
 import { loadLogos, logoUrl } from './logos';
 import { gs, hasGame, notify } from '../game/state';
+import { origLogic } from '../game/rules';
 
 export type Theme = 'club' | 'clubDark' | 'light' | 'dark' | 'gold' | 'retro';
 const KEY = 'cm-theme';
@@ -28,10 +29,20 @@ export function getTheme(): Theme {
   } catch { return 'retro'; }
 }
 
-/** Er retro-CM-skindet aktivt? (kun når det er valgt i Indstillinger – ikke længere auto-standard) */
-export function isRetro(): boolean {
+/** Er det klassiske CM-skin (hele rammen: sidebjælke, faner, bundbjælke) aktivt? */
+export function chromeRetro(): boolean {
   return hasGame() && !holdDark && getTheme() === 'retro';
 }
+
+/** Skal skærmenes INDHOLD være originalens klassiske komponenter? Ja i det klassiske udseende – og i et originalt spil (origLogic) også i det moderne
+ *  udseende, så alle originalens funktioner (kontrakttilbud, shortlist, transfermarked, scouting, venskabskampe, økonomi …) findes. Indholdet
+ *  vises da i en ramme med data-skin-scope='retro' (classic.css), så det ser ud som i originalen midt i det moderne udseende. */
+export function isRetro(): boolean {
+  if (chromeRetro()) return true;
+  return hasGame() && !holdDark && origLogic() && !gs().draft;
+}
+/** Klassisk indhold i en moderne ramme (originalt spil + moderne udseende) */
+export const classicScope = () => isRetro() && !chromeRetro();
 
 export function setTheme(t: Theme) {
   try { localStorage.setItem(KEY, t); localStorage.setItem(CHOSEN, '1'); } catch { /* privat vindue */ }

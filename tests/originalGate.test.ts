@@ -43,7 +43,7 @@ describe('originalens logik uafhængig af udseendet', () => {
     expect(g.options.rules).toBe('classic');
     const before = { o: origLogic(g), c: cmLogic(g), e: gridEngineOn(g) };
     doc.document = { documentElement: { dataset: { skin: 'modern' } } };
-    expect(authentic()).toBe(false); // UI: ikke originalens skærme
+    expect(authentic()).toBe(true); // UI: originalens skærme gælder også i det moderne udseende (klassisk indhold i en moderne ramme)
     expect({ o: origLogic(g), c: cmLogic(g), e: gridEngineOn(g) }).toEqual(before);
     expect(before.o && before.c).toBe(true);
     expect(legacyExtended(g)).toBe(false);

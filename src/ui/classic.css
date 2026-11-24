@@ -4,7 +4,7 @@
    Farver, baggrunde og grafik er spillets egne (ingen billeder fra andre spil).
    ===================================================================================== */
 
-:root[data-skin='retro'] {
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) {
   --cx-desk: #070a26;
   --cx-side1: #1c2c96;
   --cx-side2: #0b1462;
@@ -24,12 +24,12 @@
   --line: rgba(130, 150, 255, 0.26); --line2: rgba(150, 170, 255, 0.4);
   --text: #ffffff; --muted: #b9c3ec; --strong: #ffffff; --rowhover: rgba(255, 255, 255, 0.07);
 }
-:root[data-skin='retro'] body { background: var(--cx-desk); font-family: Tahoma, Verdana, 'Segoe UI', sans-serif; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) body { background: var(--cx-desk); font-family: Tahoma, Verdana, 'Segoe UI', sans-serif; }
 
 /* firkantede, "trykte" knapper overalt (ingen afrundede hjørner) */
-:root[data-skin='retro'] button, :root[data-skin='retro'] .button, :root[data-skin='retro'] input,
-:root[data-skin='retro'] select, :root[data-skin='retro'] .sel, :root[data-skin='retro'] .panel, :root[data-skin='retro'] .tag { border-radius: 0; }
-:root[data-skin='retro'] .badge { border-radius: 999px; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) button, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .button, :is(:root[data-skin='retro'], [data-skin-scope='retro']) input,
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) select, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .sel, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .panel, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .tag { border-radius: 0; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .badge { border-radius: 999px; }
 
 /* ---------- grid ---------- */
 .shell.cx { grid-template-columns: 112px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; background: var(--cx-desk); }
@@ -203,64 +203,64 @@
 }
 
 /* ---------- popups (dialoger): titelstrimmel, dialogflade med trykt kant, grå Annullér/OK-bjælker ---------- */
-:root[data-skin='retro'] .modal-bg { background: rgba(0, 0, 0, 0.55); backdrop-filter: none; }
-:root[data-skin='retro'] .modal {
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .modal-bg { background: rgba(0, 0, 0, 0.55); backdrop-filter: none; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .modal {
   padding: 8px; gap: 8px; border-radius: 0; box-shadow: 6px 8px 0 rgba(0, 0, 0, 0.55);
   background: linear-gradient(180deg, #123a32, #0a241f); border: 2px solid; border-color: #4f9a86 #04130f #04130f #4f9a86;
 }
-:root[data-skin='retro'] .modal * { border-radius: 0; }
-:root[data-skin='retro'] .modal .badge { border-radius: 999px; }
-:root[data-skin='retro'] .modal-head { position: relative; justify-content: center; padding: 10px 40px; background: #02060a; border: 1px solid #2c4a9e; color: #fff; font-size: 18px; font-weight: 800; text-align: center; }
-:root[data-skin='retro'] .modal-head .x { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 24px; height: 24px; padding: 0; background: linear-gradient(180deg, #b3b7c2, #80858f); color: #fff; font-size: 16px; line-height: 1; border: 1px solid; border-color: #e2e4ea #4a4e58 #4a4e58 #e2e4ea; }
-:root[data-skin='retro'] .modal-body { padding: 10px 12px 4px; background: rgba(0, 0, 0, 0.22); border: 1px solid rgba(120, 200, 170, 0.22); color: #eafff6; }
-:root[data-skin='retro'] .modal-body .muted { color: #9fd8c2; }
-:root[data-skin='retro'] .modal b:not([class]), :root[data-skin='retro'] .modal strong:not([class]) { color: #fff; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .modal * { border-radius: 0; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .modal .badge { border-radius: 999px; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .modal-head { position: relative; justify-content: center; padding: 10px 40px; background: #02060a; border: 1px solid #2c4a9e; color: #fff; font-size: 18px; font-weight: 800; text-align: center; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .modal-head .x { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 24px; height: 24px; padding: 0; background: linear-gradient(180deg, #b3b7c2, #80858f); color: #fff; font-size: 16px; line-height: 1; border: 1px solid; border-color: #e2e4ea #4a4e58 #4a4e58 #e2e4ea; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .modal-body { padding: 10px 12px 4px; background: rgba(0, 0, 0, 0.22); border: 1px solid rgba(120, 200, 170, 0.22); color: #eafff6; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .modal-body .muted { color: #9fd8c2; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .modal b:not([class]), :is(:root[data-skin='retro'], [data-skin-scope='retro']) .modal strong:not([class]) { color: #fff; }
 /* valgknapper: grøn tekst uden flade, det valgte med gul ramme og gul tekst */
-:root[data-skin='retro'] .modal-body button { background: transparent; color: #5ee08f; border: 1px solid transparent; font-weight: 700; box-shadow: none; }
-:root[data-skin='retro'] .modal-body button:hover:not(:disabled) { color: #fff; background: rgba(255, 255, 255, 0.06); }
-:root[data-skin='retro'] .modal-body button.on, :root[data-skin='retro'] .modal-body button.primary { color: var(--cx-gold); border-color: var(--cx-gold); background: rgba(0, 0, 0, 0.25); }
-:root[data-skin='retro'] .modal-body button.danger { color: #ff7a7a; border-color: #ff7a7a; }
-:root[data-skin='retro'] .modal-body button:disabled { color: rgba(160, 220, 190, 0.35); border-color: transparent; }
-:root[data-skin='retro'] .modal-body input, :root[data-skin='retro'] .modal-body select, :root[data-skin='retro'] .modal-body textarea { background: #04110d; color: var(--cx-gold); border: 1px solid; border-color: #04130f #4f9a86 #4f9a86 #04130f; }
-:root[data-skin='retro'] .modal-body input[type='range'] { accent-color: var(--cx-gold); background: transparent; border: none; }
-:root[data-skin='retro'] .modal-body input[type='checkbox'], :root[data-skin='retro'] .modal-body input[type='radio'] { accent-color: var(--cx-gold); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .modal-body button { background: transparent; color: #5ee08f; border: 1px solid transparent; font-weight: 700; box-shadow: none; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .modal-body button:hover:not(:disabled) { color: #fff; background: rgba(255, 255, 255, 0.06); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .modal-body button.on, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .modal-body button.primary { color: var(--cx-gold); border-color: var(--cx-gold); background: rgba(0, 0, 0, 0.25); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .modal-body button.danger { color: #ff7a7a; border-color: #ff7a7a; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .modal-body button:disabled { color: rgba(160, 220, 190, 0.35); border-color: transparent; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .modal-body input, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .modal-body select, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .modal-body textarea { background: #04110d; color: var(--cx-gold); border: 1px solid; border-color: #04130f #4f9a86 #4f9a86 #04130f; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .modal-body input[type='range'] { accent-color: var(--cx-gold); background: transparent; border: none; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .modal-body input[type='checkbox'], :is(:root[data-skin='retro'], [data-skin-scope='retro']) .modal-body input[type='radio'] { accent-color: var(--cx-gold); }
 /* infobokse og paneler inde i dialogen: firkantede, mørkere felter */
-:root[data-skin='retro'] .modal-body .panel, :root[data-skin='retro'] .modal-body [class*='box'], :root[data-skin='retro'] .modal-body [class*='note'], :root[data-skin='retro'] .modal-body [class*='info'] { background: rgba(0, 0, 0, 0.3); border-color: rgba(120, 200, 170, 0.25); box-shadow: none; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .modal-body .panel, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .modal-body [class*='box'], :is(:root[data-skin='retro'], [data-skin-scope='retro']) .modal-body [class*='note'], :is(:root[data-skin='retro'], [data-skin-scope='retro']) .modal-body [class*='info'] { background: rgba(0, 0, 0, 0.3); border-color: rgba(120, 200, 170, 0.25); box-shadow: none; }
 /* den sidste knaprække (Annullér / Send bud …) og bekræftelses-dialogen: brede grå bjælker */
-:root[data-skin='retro'] .modal-body > .row:last-child, :root[data-skin='retro'] .modal-body > .col > .row:last-child, :root[data-skin='retro'] .confirm-btns { display: flex; gap: 4px; margin-top: 10px; padding-bottom: 6px; }
-:root[data-skin='retro'] .modal-body > .row:last-child > button, :root[data-skin='retro'] .modal-body > .col > .row:last-child > button, :root[data-skin='retro'] .confirm-btns > button {
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .modal-body > .row:last-child, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .modal-body > .col > .row:last-child, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .confirm-btns { display: flex; gap: 4px; margin-top: 10px; padding-bottom: 6px; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .modal-body > .row:last-child > button, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .modal-body > .col > .row:last-child > button, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .confirm-btns > button {
   flex: 1 1 0; min-height: 36px; background: linear-gradient(180deg, #a5a9b3, #7a7f89); color: #f4f5f8; font-size: 16px; font-weight: 800;
   border: 2px solid; border-color: #e6e8ee #3e424b #3e424b #e6e8ee; text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.55);
 }
-:root[data-skin='retro'] .modal-body > .row:last-child > button:hover:not(:disabled), :root[data-skin='retro'] .modal-body > .col > .row:last-child > button:hover:not(:disabled), :root[data-skin='retro'] .confirm-btns > button:hover { background: linear-gradient(180deg, #b5b9c3, #8a8f99); color: #fff; }
-:root[data-skin='retro'] .modal-body > .row:last-child > button:disabled, :root[data-skin='retro'] .modal-body > .col > .row:last-child > button:disabled { color: #c3c6cd; text-shadow: none; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .modal-body > .row:last-child > button:hover:not(:disabled), :is(:root[data-skin='retro'], [data-skin-scope='retro']) .modal-body > .col > .row:last-child > button:hover:not(:disabled), :is(:root[data-skin='retro'], [data-skin-scope='retro']) .confirm-btns > button:hover { background: linear-gradient(180deg, #b5b9c3, #8a8f99); color: #fff; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .modal-body > .row:last-child > button:disabled, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .modal-body > .col > .row:last-child > button:disabled { color: #c3c6cd; text-shadow: none; }
 /* bekræftelses-dialogen har ingen titel: teksten står i en sort strimmel */
-:root[data-skin='retro'] .confirm-box > p { margin: 0; padding: 14px 16px; background: #02060a; border: 1px solid #2c4a9e; color: #fff; font-weight: 700; text-align: center; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .confirm-box > p { margin: 0; padding: 14px 16px; background: #02060a; border: 1px solid #2c4a9e; color: #fff; font-weight: 700; text-align: center; }
 /* infobokse (assistentens råd, advarsler) og pris/risiko-boksen: firkantede, mørke felter med farvet kant */
-:root[data-skin='retro'] .insight { border-radius: 0; background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(255, 255, 255, 0.12); border-left: 3px solid #8a93b8; color: #fff; }
-:root[data-skin='retro'] .insight.good { border-left-color: #5ee08f; }
-:root[data-skin='retro'] .insight.bad { border-left-color: #ff5a5a; }
-:root[data-skin='retro'] .insight.warn { border-left-color: var(--cx-gold); }
-:root[data-skin='retro'] .modal .insight { border-color: rgba(120, 200, 170, 0.25); }
-:root[data-skin='retro'] .price-risk { border-radius: 0; background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(120, 200, 170, 0.25); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .insight { border-radius: 0; background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(255, 255, 255, 0.12); border-left: 3px solid #8a93b8; color: #fff; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .insight.good { border-left-color: #5ee08f; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .insight.bad { border-left-color: #ff5a5a; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .insight.warn { border-left-color: var(--cx-gold); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .modal .insight { border-color: rgba(120, 200, 170, 0.25); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .price-risk { border-radius: 0; background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(120, 200, 170, 0.25); }
 
 /* ---------- rullemenuer (View, Sort By, Filter, Action) ---------- */
 .cx-action { position: absolute; right: 6px; top: 6px; z-index: 6; }
 .cx-drop { position: relative; display: inline-block; }
-:root[data-skin='retro'] .cx-drop-btn { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 132px; height: 24px; padding: 0 4px 0 10px; background: linear-gradient(180deg, #b8bcc6, #7e828e); color: #fff; border: 1px solid; border-color: #e2e4ea #4a4e58 #4a4e58 #e2e4ea; font-size: 12.5px; font-weight: 700; text-shadow: 1px 1px 0 #000; }
-:root[data-skin='retro'] .cx-drop-btn:hover { background: linear-gradient(180deg, #c8ccd6, #8e929e); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-drop-btn { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 132px; height: 24px; padding: 0 4px 0 10px; background: linear-gradient(180deg, #b8bcc6, #7e828e); color: #fff; border: 1px solid; border-color: #e2e4ea #4a4e58 #4a4e58 #e2e4ea; font-size: 12.5px; font-weight: 700; text-shadow: 1px 1px 0 #000; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-drop-btn:hover { background: linear-gradient(180deg, #c8ccd6, #8e929e); }
 .cx-drop-caret { display: inline-grid; place-items: center; width: 16px; height: 16px; background: transparent; color: #15172a; font-size: 11px; text-shadow: none; }
-:root[data-skin='retro'] .cx-act .cx-drop-btn, :root[data-skin='retro'] .cx-act .cx-drop-btn:hover { background: linear-gradient(180deg, #cfe4ff, #8fb4e8); color: #0b1a5c; border-color: #fff #33416e #33416e #fff; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-act .cx-drop-btn, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-act .cx-drop-btn:hover { background: linear-gradient(180deg, #cfe4ff, #8fb4e8); color: #0b1a5c; border-color: #fff #33416e #33416e #fff; }
 /* pop op-listen: gul liste som i originalens Sort By */
 .cx-drop-pop { position: absolute; top: 26px; z-index: 40; min-width: 210px; max-height: 70vh; overflow-y: auto; padding: 3px 0; background: #ffd21f; border: 1px solid; border-color: #fff3a8 #8a6a00 #8a6a00 #fff3a8; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); text-align: left; }
 .cx-drop-pop.left { left: 0; } .cx-drop-pop.right { right: 0; }
 .cx-drop-pop .cx-menu-head { color: #6b4a00; padding: 4px 10px 2px; }
 .cx-drop-pop .cx-menu-head:not(:first-child) { margin-top: 3px; border-top: 1px solid rgba(0, 0, 0, 0.2); padding-top: 5px; }
 .cx-drop-sep { height: 0; margin: 5px 8px; border-top: 1px solid rgba(0, 0, 0, 0.35); border-bottom: 1px solid rgba(255, 255, 255, 0.5); }
-:root[data-skin='retro'] .cx-drop-pop button { display: flex; align-items: center; width: 100%; padding: 3px 10px 3px 4px; background: transparent; border: none; color: #10164e; text-align: left; font-size: 12.5px; font-weight: 700; text-shadow: none; }
-:root[data-skin='retro'] .cx-drop-pop button:hover:not(:disabled) { background: #fff36a; }
-:root[data-skin='retro'] .cx-drop-pop button:disabled { color: #9a8a4a; }
-:root[data-skin='retro'] .cx-drop-pop button.danger { color: #a40000; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-drop-pop button { display: flex; align-items: center; width: 100%; padding: 3px 10px 3px 4px; background: transparent; border: none; color: #10164e; text-align: left; font-size: 12.5px; font-weight: 700; text-shadow: none; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-drop-pop button:hover:not(:disabled) { background: #fff36a; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-drop-pop button:disabled { color: #9a8a4a; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-drop-pop button.danger { color: #a40000; }
 .cx-drop-check { display: inline-block; width: 18px; margin-right: 4px; text-align: center; flex-shrink: 0; }
 
 /* ---------- spillerprofilen ---------- */
@@ -290,7 +290,7 @@
 
 /* ---------- truppen: to kolonner med udtagelsesknapper ---------- */
 .cx-sq .cx-tools { flex-wrap: wrap; gap: 6px; }
-:root[data-skin='retro'] .cx-tool { height: 24px; padding: 0 12px; background: var(--cx-btn); color: #fff; font-size: 12.5px; font-weight: 700; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-tool { height: 24px; padding: 0 12px; background: var(--cx-btn); color: #fff; font-size: 12.5px; font-weight: 700; }
 .cx-sq-head { display: flex; align-items: baseline; justify-content: center; gap: 14px; padding: 2px 0 6px; color: var(--cx-gold); font-size: 19px; font-weight: 800; text-shadow: 1px 1px 0 #000; }
 .cx-sq-head small { font-size: 12px; color: #b9c3ec; font-weight: 700; }
 .cx-sq-head small.warn { color: #ff8a5a; }
@@ -305,21 +305,21 @@
 .cx-sq-row { display: grid; grid-template-columns: 44px 36px minmax(0, 1fr) minmax(70px, auto); align-items: center; gap: 4px; min-height: 26px; }
 .cx-sq-row.dragging { opacity: 0.45; }
 .cx-sel { display: block; }
-:root[data-skin='retro'] .cx-selbtn { width: 44px; min-width: 0; height: 24px; padding: 0; justify-content: center; background: linear-gradient(180deg, #1d2a8c, #121a66); color: #fff; font-size: 11px; font-weight: 800; cursor: grab; }
-:root[data-skin='retro'] .cx-selbtn.xi { background: linear-gradient(180deg, #2fae4c, #1b7a32); }
-:root[data-skin='retro'] .cx-selbtn.bench { background: linear-gradient(180deg, #a5c23a, #6f8a1c); }
-:root[data-skin='retro'] .cx-selbtn:hover { filter: brightness(1.15); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-selbtn { width: 44px; min-width: 0; height: 24px; padding: 0; justify-content: center; background: linear-gradient(180deg, #1d2a8c, #121a66); color: #fff; font-size: 11px; font-weight: 800; cursor: grab; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-selbtn.xi { background: linear-gradient(180deg, #2fae4c, #1b7a32); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-selbtn.bench { background: linear-gradient(180deg, #a5c23a, #6f8a1c); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-selbtn:hover { filter: brightness(1.15); }
 .cx-sel .cx-drop-pop { min-width: 230px; }
 .cx-sel-slot { display: inline-block; min-width: 40px; }
 .cx-sel-who { color: #5a4a10; font-weight: 600; margin-left: 6px; }
 .cx-sq-tag { display: grid; place-items: center; height: 20px; font-size: 11px; font-weight: 800; color: #10164e; }
 .cx-sq-tag:not(:empty) { background: linear-gradient(180deg, #f4f0c8, #c9c08a); border: 1px solid; border-color: #fff #6b6440 #6b6440 #fff; }
 .cx-sq-tag.inj, .cx-sq-tag.sus { background: linear-gradient(180deg, #ff6b5a, #b8261a); color: #fff; }
-:root[data-skin='retro'] .cx-sq-name { min-width: 0; padding: 0 2px; background: none; border: none; color: #fff; font-size: 16px; font-weight: 800; text-align: left; text-shadow: 1px 1px 0 #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
-:root[data-skin='retro'] .cx-sq-name:hover { color: var(--cx-gold); }
-:root[data-skin='retro'] .cx-sq-name.loan { color: #6cc4ff; }
-:root[data-skin='retro'] .cx-sq-name.mine { color: var(--cx-gold); }
-:root[data-skin='retro'] .cx-sq-name.unavail { color: #ff6b5a; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-name { min-width: 0; padding: 0 2px; background: none; border: none; color: #fff; font-size: 16px; font-weight: 800; text-align: left; text-shadow: 1px 1px 0 #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-name:hover { color: var(--cx-gold); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-name.loan { color: #6cc4ff; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-name.mine { color: var(--cx-gold); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-name.unavail { color: #ff6b5a; }
 .cx-sq-info { color: var(--cx-gold); font-size: 13px; font-weight: 800; text-shadow: 1px 1px 0 #000; white-space: nowrap; }
 .cx-sq-filtered { text-align: center; color: #b9c3ec; font-size: 12px; margin: -4px 0 6px; }
 .cx-sq-drop-out { position: sticky; bottom: 0; margin-top: 8px; padding: 10px; text-align: center; background: rgba(140, 15, 18, 0.85); border: 2px dashed #ffb0a0; color: #fff; font-weight: 800; }
@@ -328,7 +328,7 @@
   .cx-sq-cols { grid-template-columns: 1fr; }
   .cx-sq-head { font-size: 16px; flex-wrap: wrap; }
   .cx-sq-slots { grid-template-columns: repeat(auto-fill, minmax(38px, 1fr)); }
-  :root[data-skin='retro'] .cx-sq-name { font-size: 14.5px; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-name { font-size: 14.5px; }
 }
 
 .cx-drop-pop.up { top: auto; bottom: 26px; }
@@ -339,9 +339,9 @@
 .cx-subtitle { margin: 2px 0 10px; padding: 6px 8px; text-align: center; background: rgba(0, 0, 0, 0.45); color: #fff21f; font-size: clamp(20px, 2.6vw, 30px); font-weight: 900; text-shadow: 2px 2px 0 #000; }
 .cx-statement { padding: 6px 14px; }
 .cx-statement p { margin: 0 0 22px; color: #fff; font-size: clamp(16px, 1.8vw, 21px); font-weight: 800; line-height: 1.35; text-shadow: 2px 2px 0 #000; }
-:root[data-skin='retro'] .cx-greybtn { height: 24px; padding: 0 22px; background: linear-gradient(180deg, #a9adb8, #7c818e); color: #fff; border: 1px solid; border-color: #d8dbe2 #3c3f48 #3c3f48 #d8dbe2; font-size: 12.5px; font-weight: 700; text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5); }
-:root[data-skin='retro'] .cx-greybtn:hover:not(:disabled) { background: linear-gradient(180deg, #babec8, #8a8f9c); }
-:root[data-skin='retro'] .cx-greybtn:disabled { color: #d0d3da; opacity: 0.7; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-greybtn { height: 24px; padding: 0 22px; background: linear-gradient(180deg, #a9adb8, #7c818e); color: #fff; border: 1px solid; border-color: #d8dbe2 #3c3f48 #3c3f48 #d8dbe2; font-size: 12.5px; font-weight: 700; text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-greybtn:hover:not(:disabled) { background: linear-gradient(180deg, #babec8, #8a8f9c); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-greybtn:disabled { color: #d0d3da; opacity: 0.7; }
 .cx-kv { display: grid; grid-template-columns: minmax(140px, 230px) 1fr; gap: 3px 16px; padding: 4px 10px; font-size: 14.5px; font-weight: 700; text-shadow: 1px 1px 0 #000; }
 .cx-kv > span:nth-child(odd) { color: #fff; }
 .cx-kv > span:nth-child(even) { color: #fff21f; }
@@ -367,8 +367,8 @@
 .cx-tbl .c-val { background: #3a1670; color: #fff; text-align: center; min-width: 70px; }
 .cx-tbl .c-num { text-align: center; }
 .cx-tbl .c-cond { color: #ff9a2a; text-align: center; }
-:root[data-skin='retro'] .cx-rowbtn { width: 100%; min-width: 92px; height: 21px; padding: 0 6px; justify-content: center; background: linear-gradient(180deg, #1d2a8c, #121a66); color: #fff; font-size: 12px; font-weight: 700; }
-:root[data-skin='retro'] .cx-rowbtn.on { background: linear-gradient(180deg, #2fae4c, #1b7a32); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-rowbtn { width: 100%; min-width: 92px; height: 21px; padding: 0 6px; justify-content: center; background: linear-gradient(180deg, #1d2a8c, #121a66); color: #fff; font-size: 12px; font-weight: 700; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-rowbtn.on { background: linear-gradient(180deg, #2fae4c, #1b7a32); }
 /* CM 01/02 (ejerens billede 13/11): Wnt = grå knap med gul tekst, Inj = brun/orange (delvis) eller rød (skadet), hvid tekst */
 .cx-inf { display: inline-grid; place-items: center; min-width: 30px; height: 18px; padding: 0 3px; font-size: 11px; font-weight: 600; color: #fff21f; text-shadow: 1px 1px 0 #000; background: #4a4a4e; border: 1px solid; border-color: #8a8a90 #1c1c1e #1c1c1e #8a8a90 !important; }
 .cx-inf.bad { background: #a8601e; color: #fff; border-color: #d89a5a #4a2608 #4a2608 #d89a5a !important; }
@@ -379,41 +379,41 @@
 .cx-found { text-align: center; color: #6fe3ff; font-size: 18px; font-weight: 800; text-shadow: 2px 2px 0 #000; padding: 8px 0 2px; }
 .cx-pager-line { display: flex; align-items: center; gap: 8px; padding: 2px 6px 6px; color: #6fe3ff; font-size: 13px; font-weight: 700; }
 .cx-pager-line .grow { flex: 1; }
-:root[data-skin='retro'] .cx-pager-line button { width: 24px; height: 20px; padding: 0; background: #1d2a8c; color: #fff; font-size: 11px; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-pager-line button { width: 24px; height: 20px; padding: 0; background: #1d2a8c; color: #fff; font-size: 11px; }
 .cx-pager-line .pg { color: #fff21f; min-width: 74px; text-align: center; }
 .cx-funds { padding: 2px 10px; background: linear-gradient(180deg, #ffe25a, #d4a90f); color: #10164e; font-size: 12px; font-weight: 800; border: 1px solid; border-color: #fff6b0 #6b5200 #6b5200 #fff6b0; white-space: nowrap; cursor: pointer; }
 .cx-funds:hover { filter: brightness(1.08); }
 /* CM 01/02: Funds-knappen i titelbjælkens farve (Man Utd: rød) med lys kant */
-:root[data-skin='retro'] .cx-title:not(.neutral) .cx-funds { background: var(--tb); color: inherit; border-color: color-mix(in srgb, var(--tb) 55%, #fff 45%) color-mix(in srgb, var(--tb) 50%, #000) color-mix(in srgb, var(--tb) 50%, #000) color-mix(in srgb, var(--tb) 55%, #fff 45%); font-weight: 600; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-title:not(.neutral) .cx-funds { background: var(--tb); color: inherit; border-color: color-mix(in srgb, var(--tb) 55%, #fff 45%) color-mix(in srgb, var(--tb) 50%, #000) color-mix(in srgb, var(--tb) 50%, #000) color-mix(in srgb, var(--tb) 55%, #fff 45%); font-weight: 600; }
 @media (max-width: 760px) { .cx-kv { grid-template-columns: minmax(110px, 40%) 1fr; font-size: 13.5px; } .cx-funds { font-size: 10.5px; padding: 2px 4px; } }
 .cx-tools-inline { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
 .cx-tools-inline .grow, .cx-tools .grow { flex: 1; }
 .cx-subtitle.small { font-size: clamp(17px, 2vw, 22px); padding: 3px 8px; margin-bottom: 6px; }
-:root[data-skin='retro'] .cx-rowbtn.narrow { min-width: 44px; width: 44px; color: #fff21f; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-rowbtn.narrow { min-width: 44px; width: 44px; color: #fff21f; }
 .modal .filter-row, .modal .filter-more { flex-wrap: wrap; }
 
 /* ---------- Game Options (grøn menu ud for knappen) og Game Settings ---------- */
 .cx-gameopt { display: block; }
 .cx-gameopt > .cx-drop-btn { width: 100%; }
-:root[data-skin='retro'] .cx-gameopt > .cx-drop-btn.cx-sbtn { min-width: 0; height: auto; min-height: 44px; justify-content: center; padding: 5px 4px; color: var(--cx-gold); background: var(--cx-btn); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-gameopt > .cx-drop-btn.cx-sbtn { min-width: 0; height: auto; min-height: 44px; justify-content: center; padding: 5px 4px; color: var(--cx-gold); background: var(--cx-btn); }
 /* sidebjælkens menuer skal ligge over de faste bokse (.cx-dlg, z 70 – fx Tilbyd kontrakt), ellers gemmes de bag boksen */
 .cx-gameopt .cx-drop-sub { z-index: 81; }
 .cx-gameopt .cx-drop-pop { z-index: 80; min-width: 170px; background: linear-gradient(180deg, #2d8a2a, #1f6a1e); border-color: #8ee07a #0c3a0c #0c3a0c #8ee07a; }
-:root[data-skin='retro'] .cx-gameopt .cx-drop-pop button { color: #fff; }
-:root[data-skin='retro'] .cx-gameopt .cx-drop-pop button:hover:not(:disabled) { background: #fff21f; color: #10164e; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-gameopt .cx-drop-pop button { color: #fff; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-gameopt .cx-drop-pop button:hover:not(:disabled) { background: #fff21f; color: #10164e; }
 .cx-gameopt .cx-drop-check { width: 14px; margin-right: 6px; }
-:root[data-skin='retro'] .cx-gameopt > .cx-drop-btn.cx-sbtn.cx-mgr { color: var(--cx-cyan); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-gameopt > .cx-drop-btn.cx-sbtn.cx-mgr { color: var(--cx-cyan); }
 .cx-gameopt .cx-drop-sep { border-top-color: rgba(0, 0, 0, 0.4); border-bottom-color: rgba(255, 255, 255, 0.25); }
 :root[data-flash='off'] .cx-news { animation: none; }
-:root[data-skin='retro'] .modal.cx-settings { max-width: 720px; background: linear-gradient(180deg, rgba(20, 70, 24, 0.96), rgba(12, 46, 16, 0.96)); border: 2px solid; border-color: #6cc26a #0c300c #0c300c #6cc26a; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .modal.cx-settings { max-width: 720px; background: linear-gradient(180deg, rgba(20, 70, 24, 0.96), rgba(12, 46, 16, 0.96)); border: 2px solid; border-color: #6cc26a #0c300c #0c300c #6cc26a; }
 .cx-set-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; color: #e8f0e8; font-size: 12.5px; }
 .cx-set-grid { display: grid; grid-template-columns: minmax(150px, 230px) 1fr; gap: 6px 16px; align-items: center; padding: 8px 10px; border: 1px solid rgba(255, 255, 255, 0.25); background: rgba(0, 0, 0, 0.18); }
 .cx-set-sec { margin: 12px 0 4px; color: #ffe600; font-size: 17px; font-weight: 800; text-shadow: 1px 1px 0 #000; }
 .cx-set-grid > span { color: #fff; font-size: 17px; font-weight: 700; text-shadow: 1px 1px 0 #000; }
 .cx-set-seg { display: flex; flex-wrap: wrap; gap: 4px; }
-:root[data-skin='retro'] .cx-set-seg button { min-width: 82px; height: 24px; padding: 0 10px; background: transparent; border: 1px solid transparent; color: #7fe07a; font-size: 13px; font-weight: 700; text-shadow: none; }
-:root[data-skin='retro'] .cx-set-seg button:hover { color: #fff; }
-:root[data-skin='retro'] .cx-set-seg button.on { color: #fff21f; border-color: #fff21f; background: rgba(0, 0, 0, 0.15); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-set-seg button { min-width: 82px; height: 24px; padding: 0 10px; background: transparent; border: 1px solid transparent; color: #7fe07a; font-size: 13px; font-weight: 700; text-shadow: none; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-set-seg button:hover { color: #fff; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-set-seg button.on { color: #fff21f; border-color: #fff21f; background: rgba(0, 0, 0, 0.15); }
 .cx-set-foot { display: grid; grid-template-columns: 2fr 1fr; gap: 4px; }
 @media (max-width: 760px) { .cx-set-grid { grid-template-columns: 1fr; } .cx-set-grid > span { font-size: 15px; margin-top: 4px; } }
 
@@ -467,39 +467,39 @@
 
 /* ---------- simulering: dæmpet skærm og én grå datobjælke ---------- */
 .shell.cx.cx-busy .cx-main, .shell.cx.cx-busy .cx-side > :not(.cx-date) { filter: brightness(0.62) saturate(0.7); pointer-events: none; transition: filter 0.2s; }
-:root[data-skin='retro'] .cx-running-hint { font-size: 11px; font-weight: 400; opacity: 0.85; }
-:root[data-skin='retro'] .cx-running { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; height: 42px; background: linear-gradient(180deg, #a9adb8, #7c818e); color: #fff; border: 1px solid; border-color: #d8dbe2 #3c3f48 #3c3f48 #d8dbe2; font-size: 15px; font-weight: 700; text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5); cursor: progress; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-running-hint { font-size: 11px; font-weight: 400; opacity: 0.85; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-running { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; height: 42px; background: linear-gradient(180deg, #a9adb8, #7c818e); color: #fff; border: 1px solid; border-color: #d8dbe2 #3c3f48 #3c3f48 #d8dbe2; font-size: 15px; font-weight: 700; text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5); cursor: progress; }
 .cx-ball { display: inline-block; animation: cx-spin 0.9s linear infinite; }
 @keyframes cx-spin { to { transform: rotate(360deg); } }
 
-:root[data-skin='retro'] .cx-set-foot button { height: 34px; background: linear-gradient(180deg, #a9adb8, #7c818e); color: #fff; border: 1px solid; border-color: #d8dbe2 #3c3f48 #3c3f48 #d8dbe2; font-size: 16px; font-weight: 700; text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5); }
-:root[data-skin='retro'] .cx-set-foot button:hover { background: linear-gradient(180deg, #babec8, #8a8f9c); }
-:root[data-skin='retro'] .cx-settings .cx-set-top .cx-greybtn { background: linear-gradient(180deg, #a9adb8, #7c818e); color: #fff; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-set-foot button { height: 34px; background: linear-gradient(180deg, #a9adb8, #7c818e); color: #fff; border: 1px solid; border-color: #d8dbe2 #3c3f48 #3c3f48 #d8dbe2; font-size: 16px; font-weight: 700; text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-set-foot button:hover { background: linear-gradient(180deg, #babec8, #8a8f9c); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-settings .cx-set-top .cx-greybtn { background: linear-gradient(180deg, #a9adb8, #7c818e); color: #fff; }
 
 /* ---------- pixeleret udseende (Game Settings → Pixel Look: Off · Light · Strong) ---------- */
 /* Light (standard): baggrundsfotos (800x600) med synlige pixels og hårde, skarpe skygger – teksten forbliver udglattet */
-:root[data-skin='retro']:is([data-pixel='light'], [data-pixel='strong']) .shell.cx .main.cx-main { image-rendering: pixelated; }
-:root[data-skin='retro']:is([data-pixel='light'], [data-pixel='strong']) .cx-title h2 { text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.5); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']):is([data-pixel='light'], [data-pixel='strong']) .shell.cx .main.cx-main { image-rendering: pixelated; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']):is([data-pixel='light'], [data-pixel='strong']) .cx-title h2 { text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.5); }
 /* Strong: også teksten uden udglatning, som på en skærm fra 2001 */
-:root[data-skin='retro'][data-pixel='strong'] body, :root[data-skin='retro'][data-pixel='strong'] body * {
+:is(:root[data-skin='retro'], [data-skin-scope='retro'])[data-pixel='strong'] body, :is(:root[data-skin='retro'], [data-skin-scope='retro'])[data-pixel='strong'] body * {
   -webkit-font-smoothing: none; -moz-osx-font-smoothing: unset; font-smooth: never; text-rendering: optimizeSpeed;
 }
 /* den "futuristiske" skrift (Game Settings → Fonts) */
-:root[data-skin='retro'][data-cxfont='futuristic'] body { font-family: 'Saira Semi Condensed', Tahoma, Verdana, sans-serif; }
-:root[data-skin='retro'][data-cxfont='futuristic'] .cx-title h2 { letter-spacing: 0.02em; font-weight: 800; }
-:root[data-skin='retro'][data-cxfont='futuristic'] button, :root[data-skin='retro'][data-cxfont='futuristic'] input, :root[data-skin='retro'][data-cxfont='futuristic'] select { font-family: inherit; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro'])[data-cxfont='futuristic'] body { font-family: 'Saira Semi Condensed', Tahoma, Verdana, sans-serif; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro'])[data-cxfont='futuristic'] .cx-title h2 { letter-spacing: 0.02em; font-weight: 800; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro'])[data-cxfont='futuristic'] button, :is(:root[data-skin='retro'], [data-skin-scope='retro'])[data-cxfont='futuristic'] input, :is(:root[data-skin='retro'], [data-skin-scope='retro'])[data-cxfont='futuristic'] select { font-family: inherit; }
 
 /* ---------- Player & Staff Search: filterdialog, stabssøgning, scouter ---------- */
-:root[data-skin='retro'] .modal.cx-settings.cx-filters { width: min(920px, 96vw); max-width: 920px; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .modal.cx-settings.cx-filters { width: min(920px, 96vw); max-width: 920px; }
 .cx-filters .modal-head span { flex: 1; text-align: center; font-size: 20px; }
 .cx-filters .cx-set-grid { grid-template-columns: minmax(130px, 200px) 1fr; gap: 3px 14px; }
 .cx-filters .cx-set-grid > span { font-size: 18px; }
-:root[data-skin='retro'] .cx-filters .cx-set-seg button { min-width: 96px; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-filters .cx-set-seg button { min-width: 96px; }
 .cx-fl-ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .cx-fl-tabs { display: flex; gap: 4px; }
-:root[data-skin='retro'] .cx-fl-tabs button { min-width: 140px; height: 26px; background: linear-gradient(180deg, #a9adb8, #7c818e); color: #fff; border: 1px solid; border-color: #d8dbe2 #3c3f48 #3c3f48 #d8dbe2; font-weight: 700; }
-:root[data-skin='retro'] .cx-fl-tabs button.on { border-color: #3c3f48 #d8dbe2 #d8dbe2 #3c3f48; background: linear-gradient(180deg, #8a8f9c, #a9adb8); }
-:root[data-skin='retro'] .cx-fl-input { height: 24px; min-width: 180px; padding: 0 8px; background: rgba(0, 0, 0, 0.35); color: #fff21f; border: 1px solid #7fe07a; font-weight: 700; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-fl-tabs button { min-width: 140px; height: 26px; background: linear-gradient(180deg, #a9adb8, #7c818e); color: #fff; border: 1px solid; border-color: #d8dbe2 #3c3f48 #3c3f48 #d8dbe2; font-weight: 700; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-fl-tabs button.on { border-color: #3c3f48 #d8dbe2 #d8dbe2 #3c3f48; background: linear-gradient(180deg, #8a8f9c, #a9adb8); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-fl-input { height: 24px; min-width: 180px; padding: 0 8px; background: rgba(0, 0, 0, 0.35); color: #fff21f; border: 1px solid #7fe07a; font-weight: 700; }
 .cx-fl-range { display: inline-flex; align-items: center; gap: 6px; color: #fff; }
 .cx-fl-range select { height: 24px; }
 .cx-fl-hint { grid-column: 1 / -1; color: #cfe8cf; font-size: 12px; }
@@ -507,7 +507,7 @@
 .cx-scout-who { color: #6fe3ff; font-weight: 800; font-size: 15px; text-shadow: 1px 1px 0 #000; }
 .cx-empty { padding: 24px; text-align: center; color: #fff21f; font-weight: 700; text-shadow: 1px 1px 0 #000; }
 .cx-tabrow button:disabled, .cx-subrow button:disabled { opacity: 0.45; cursor: default; }
-@media (max-width: 760px) { .cx-filters .cx-set-grid { grid-template-columns: 1fr; } .cx-filters .cx-set-grid > span { font-size: 15px; } :root[data-skin='retro'] .cx-fl-tabs button { min-width: 0; padding: 0 10px; } }
+@media (max-width: 760px) { .cx-filters .cx-set-grid { grid-template-columns: 1fr; } .cx-filters .cx-set-grid > span { font-size: 15px; } :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-fl-tabs button { min-width: 0; padding: 0 10px; } }
 .cx-filters .cx-set-grid > .cx-fl-hint { font-size: 12px; font-weight: 400; color: #cfe8cf; text-shadow: none; }
 
 /* ▸-menuen på klubskærme: ligaens klubber i grøn CM-stil */
@@ -519,22 +519,22 @@
 
 /* Alle rullemenuer i klassisk tema: grøn baggrund med sort tekst (som i CM 01/02) */
 .cx-drop-pop, .cx-gameopt .cx-drop-pop { background: linear-gradient(180deg, #34962f, #237523); border-color: #8ee07a #0c3a0c #0c3a0c #8ee07a; }
-:root[data-skin='retro'] .cx-drop-pop button, :root[data-skin='retro'] .cx-gameopt .cx-drop-pop button { color: #000; }
-:root[data-skin='retro'] .cx-drop-pop button:hover:not(:disabled), :root[data-skin='retro'] .cx-gameopt .cx-drop-pop button:hover:not(:disabled) { background: #5fc25a; color: #000; }
-:root[data-skin='retro'] .cx-drop-pop button:disabled { color: #145214; opacity: 0.6; }
-:root[data-skin='retro'] .cx-drop-pop button.danger { color: #6a0000; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-drop-pop button, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-gameopt .cx-drop-pop button { color: #000; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-drop-pop button:hover:not(:disabled), :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-gameopt .cx-drop-pop button:hover:not(:disabled) { background: #5fc25a; color: #000; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-drop-pop button:disabled { color: #145214; opacity: 0.6; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-drop-pop button.danger { color: #6a0000; }
 .cx-drop-pop .cx-menu-head { color: #fff21f; text-shadow: 1px 1px 0 #000; }
 .cx-drop-sep { border-top-color: rgba(0, 0, 0, 0.4); border-bottom-color: rgba(255, 255, 255, 0.25); }
-:root[data-skin='retro'] .cx-menu-clubs button { color: #000; }
-:root[data-skin='retro'] .cx-menu-clubs button:hover { background: #5fc25a !important; color: #000 !important; }
-:root[data-skin='retro'] .cx-menu-clubs button.on { color: #fff21f; text-shadow: 1px 1px 0 #000; }
-:root[data-skin='retro'] .cx-selbtn.cx-selbtn-static { display: inline-block; flex: none; cursor: default; border: 1px solid; border-color: var(--cx-btn-hi) var(--cx-btn-lo) var(--cx-btn-lo) var(--cx-btn-hi); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-menu-clubs button { color: #000; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-menu-clubs button:hover { background: #5fc25a !important; color: #000 !important; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-menu-clubs button.on { color: #fff21f; text-shadow: 1px 1px 0 #000; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-selbtn.cx-selbtn-static { display: inline-block; flex: none; cursor: default; border: 1px solid; border-color: var(--cx-btn-hi) var(--cx-btn-lo) var(--cx-btn-lo) var(--cx-btn-hi); }
 /* mærkerne i truppen er knapper: et klik åbner den del af profilen, der forklarer dem */
-:root[data-skin='retro'] button.cx-sq-tag { min-width: 0; height: 20px; padding: 0; font-size: 11px; font-weight: 800; color: #10164e; text-shadow: none; cursor: pointer; background: linear-gradient(180deg, #f4f0c8, #c9c08a); border: 1px solid; border-color: #fff #6b6440 #6b6440 #fff; }
-:root[data-skin='retro'] button.cx-sq-tag:hover { filter: brightness(1.12); }
-:root[data-skin='retro'] button.cx-sq-tag.inj, :root[data-skin='retro'] button.cx-sq-tag.sus { background: linear-gradient(180deg, #ff6b5a, #b8261a); color: #fff; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) button.cx-sq-tag { min-width: 0; height: 20px; padding: 0; font-size: 11px; font-weight: 800; color: #10164e; text-shadow: none; cursor: pointer; background: linear-gradient(180deg, #f4f0c8, #c9c08a); border: 1px solid; border-color: #fff #6b6440 #6b6440 #fff; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) button.cx-sq-tag:hover { filter: brightness(1.12); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) button.cx-sq-tag.inj, :is(:root[data-skin='retro'], [data-skin-scope='retro']) button.cx-sq-tag.sus { background: linear-gradient(180deg, #ff6b5a, #b8261a); color: #fff; }
 /* knapper i samme række i en dialog får samme højde (også når en af dem har to linjer tekst) */
-:root[data-skin='retro'] .modal .row:has(> button) { align-items: stretch; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .modal .row:has(> button) { align-items: stretch; }
 
 /* spillerkarriere (History) */
 .cx-career .cx-career-club { width: 40%; color: #fff; font-size: 17px; font-weight: 800; text-shadow: 2px 2px 0 #000; }
@@ -545,7 +545,7 @@
 @media (max-width: 760px) { .cx-career .cx-career-club { font-size: 14px; } }
 
 /* Find */
-:root[data-skin='retro'] .cx-gameopt > .cx-drop-btn.cx-sbtn.cx-findbtn { color: #fff; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-gameopt > .cx-drop-btn.cx-sbtn.cx-findbtn { color: #fff; }
 .cx-find-label { color: #fff; font-weight: 700; padding: 0 8px; text-shadow: 1px 1px 0 #000; }
 .cx-find { display: flex; flex-direction: column; padding: 4px 18px; }
 .cx-find-row { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr); gap: 12px; align-items: baseline; min-height: 30px; }
@@ -569,14 +569,14 @@
 .cx-tac-left { background: rgba(3, 5, 22, 0.55); }
 .cx-tac-form { display: grid; place-items: center; height: 40px; margin-bottom: 6px; background: rgba(3, 5, 22, 0.7); color: #fff21f; font-size: 22px; font-weight: 600; text-shadow: 2px 2px 0 #000; }
 .cx-tac-panes { display: flex; gap: 2px; height: 40px; margin-bottom: 6px; }
-:root[data-skin='retro'] .cx-tac-panes button { flex: 1; min-width: 0; height: 40px; padding: 0 6px; background: linear-gradient(180deg, var(--cx-tab1), var(--cx-tab2)); color: #fff; font-weight: 500; border: 1px solid; border-color: var(--cx-btn-hi) var(--cx-btn-lo) var(--cx-btn-lo) var(--cx-btn-hi); }
-:root[data-skin='retro'] .cx-tac-panes button.on { border: 2px solid #fff21f; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-tac-panes button { flex: 1; min-width: 0; height: 40px; padding: 0 6px; background: linear-gradient(180deg, var(--cx-tab1), var(--cx-tab2)); color: #fff; font-weight: 500; border: 1px solid; border-color: var(--cx-btn-hi) var(--cx-btn-lo) var(--cx-btn-lo) var(--cx-btn-hi); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-tac-panes button.on { border: 2px solid #fff21f; }
 .cx-tac-list { flex: 1; display: flex; flex-direction: column; gap: 1px; height: calc(100vh - 262px); min-height: 360px; overflow-y: auto; }
 .cx-tac-list > .cx-tac-row { flex: 1 0 26px; max-height: 40px; }
 .cx-tac-list.all > .cx-tac-row { flex: 0 0 32px; }
 .cx-tac-row { display: grid; grid-template-columns: 62px minmax(0, 1fr) 46px 96px 64px; align-items: center; gap: 0 10px; min-height: 26px; padding-right: 10px; cursor: pointer; }
 .cx-tac-row:hover .cx-tac-name { color: #fff21f; }
-:root[data-skin='retro'] .cx-tac-num { display: grid; place-items: center; height: 100%; min-height: 24px; min-width: 0; padding: 0; background: linear-gradient(180deg, #1d2a8c, #121a66); color: #fff; font-size: 15px; font-weight: 500; border: 1px solid; border-color: var(--cx-btn-hi) var(--cx-btn-lo) var(--cx-btn-lo) var(--cx-btn-hi); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-tac-num { display: grid; place-items: center; height: 100%; min-height: 24px; min-width: 0; padding: 0; background: linear-gradient(180deg, #1d2a8c, #121a66); color: #fff; font-size: 15px; font-weight: 500; border: 1px solid; border-color: var(--cx-btn-hi) var(--cx-btn-lo) var(--cx-btn-lo) var(--cx-btn-hi); }
 .cx-tac-name { color: #fff; font-size: 17px; font-weight: 800; text-shadow: 1px 1px 0 #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cx-tac-row.bench .cx-tac-name, .cx-tac-row.rest .cx-tac-name { color: #b4b4b4; }
 .cx-tac-row.rest .cx-tac-name { color: #8a8fa6; }
@@ -609,43 +609,43 @@
 .cx-ti-row { display: grid; grid-template-columns: minmax(120px, 170px) 1fr; align-items: center; gap: 8px; }
 .cx-ti-label { color: #fff; font-size: 16px; font-weight: 700; text-shadow: 1px 1px 0 #000; }
 .cx-ti-opts { display: flex; flex-wrap: wrap; gap: 3px; }
-:root[data-skin='retro'] .cx-ti-opts button { min-width: 74px; height: 24px; padding: 0 8px; background: transparent; border: 1px solid transparent; color: #7fe07a; font-size: 13px; font-weight: 700; text-shadow: none; }
-:root[data-skin='retro'] .cx-ti-opts button:hover { color: #fff; }
-:root[data-skin='retro'] .cx-ti-opts button.on { color: #fff21f; border-color: #fff21f; background: rgba(0, 0, 0, 0.15); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-ti-opts button { min-width: 74px; height: 24px; padding: 0 8px; background: transparent; border: 1px solid transparent; color: #7fe07a; font-size: 13px; font-weight: 700; text-shadow: none; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-ti-opts button:hover { color: #fff; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-ti-opts button.on { color: #fff21f; border-color: #fff21f; background: rgba(0, 0, 0, 0.15); }
 .cx-ti-empty { padding: 10px; color: #cfe8cf; font-size: 13px; text-align: center; }
 @media (max-width: 860px) {
   .cx-tac-body { grid-template-columns: 1fr; }
   .cx-tac-pitch, .cx-tac-right .cx-tac-pitch { height: auto; aspect-ratio: 68 / 100; max-height: none; max-width: 420px; margin: 0 auto; }
   .cx-tac-list { height: auto; min-height: 0; max-height: none; }
   .cx-tac-row { grid-template-columns: 44px minmax(0, 1fr) 36px 70px 46px; gap: 0 6px; }
-  :root[data-skin='retro'] .cx-tac-panes button { min-width: 0; padding: 0 10px; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-tac-panes button { min-width: 0; padding: 0 10px; }
   .cx-ti-row { grid-template-columns: 1fr; }
 }
 
 /* ---------- draft-rummet i klassisk udseende ---------- */
-:root[data-skin='retro'] body:has(:is(.draft-page, .cxl), .cxl) { background: radial-gradient(ellipse at 50% 0%, #142080 0%, #0a1050 45%, var(--cx-desk) 100%) fixed; }
-:root[data-skin='retro'] :is(.draft-page, .cxl) { font-family: Tahoma, Verdana, 'Segoe UI', sans-serif; gap: 8px; }
-:root[data-skin='retro'] :is(.draft-page, .cxl) .draft-top { padding: 8px 12px; background: linear-gradient(180deg, var(--cx-side1), var(--cx-side2)); border: 1px solid; border-color: var(--cx-btn-hi) var(--cx-btn-lo) var(--cx-btn-lo) var(--cx-btn-hi); align-items: center; }
-:root[data-skin='retro'] :is(.draft-page, .cxl) .draft-top h1 { color: var(--cx-gold); font-size: 22px; font-weight: 700; text-shadow: 0 2px 0 rgba(0, 0, 0, 0.5); }
-:root[data-skin='retro'] :is(.draft-page, .cxl) .panel { background: var(--cx-panel); border: 1px solid var(--cx-line); box-shadow: none; backdrop-filter: none; }
-:root[data-skin='retro'] :is(.draft-page, .cxl) .panel > header { padding: 5px 10px; background: linear-gradient(180deg, var(--cx-tab1), var(--cx-tab2)); border: 1px solid; border-color: var(--cx-btn-hi) var(--cx-btn-lo) var(--cx-btn-lo) var(--cx-btn-hi); }
-:root[data-skin='retro'] :is(.draft-page, .cxl) .panel > header h3 { color: #fff; font-size: 13px; text-transform: none; letter-spacing: 0; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.6); }
-:root[data-skin='retro'] :is(.draft-page, .cxl) .panel > header h3::before { display: none; }
-:root[data-skin='retro'] :is(.draft-page, .cxl) .panel-body { padding: 8px 10px; }
-:root[data-skin='retro'] :is(.draft-page, .cxl) button { background: var(--cx-btn); color: #fff; border: 1px solid; border-color: var(--cx-btn-hi) var(--cx-btn-lo) var(--cx-btn-lo) var(--cx-btn-hi); box-shadow: none; font-weight: 700; }
-:root[data-skin='retro'] :is(.draft-page, .cxl) button:hover:not(:disabled) { background: #1c27a2; color: #fff; }
-:root[data-skin='retro'] :is(.draft-page, .cxl) button.primary { background: linear-gradient(180deg, #34962f, #237523); color: #000; border-color: #8ee07a #0c3a0c #0c3a0c #8ee07a; }
-:root[data-skin='retro'] :is(.draft-page, .cxl) button.primary:hover:not(:disabled) { background: linear-gradient(180deg, #3fa83a, #2a852a); color: #000; }
-:root[data-skin='retro'] :is(.draft-page, .cxl) input, :root[data-skin='retro'] :is(.draft-page, .cxl) select { background: #0a1150; color: #fff; border: 1px solid; border-color: var(--cx-btn-lo) var(--cx-btn-hi) var(--cx-btn-hi) var(--cx-btn-lo); }
-:root[data-skin='retro'] :is(.draft-page, .cxl) table.grid { background: transparent; }
-:root[data-skin='retro'] :is(.draft-page, .cxl) table.grid thead th { background: rgba(160, 165, 180, 0.85); color: #fff; font-size: 11.5px; font-weight: 700; text-transform: none; letter-spacing: 0; padding: 3px 6px; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5); }
-:root[data-skin='retro'] :is(.draft-page, .cxl) table.grid tbody td { padding: 3px 6px; font-size: 13px; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
-:root[data-skin='retro'] :is(.draft-page, .cxl) table.grid tbody tr:nth-child(even) td { background: rgba(255, 255, 255, 0.025); }
-:root[data-skin='retro'] :is(.draft-page, .cxl) table.grid tbody tr.clickable:hover td, :root[data-skin='retro'] :is(.draft-page, .cxl) table.grid tbody tr.sel td { background: rgba(140, 16, 20, 0.55); }
-:root[data-skin='retro'] :is(.draft-page, .cxl) .insight { border-radius: 0; background: rgba(10, 17, 80, 0.85); border: 1px solid var(--cx-line); }
-:root[data-skin='retro'] :is(.draft-page, .cxl) .insight.good { background: linear-gradient(180deg, rgba(20, 70, 24, 0.94), rgba(12, 46, 16, 0.94)); border-color: #6cc26a; }
-:root[data-skin='retro'] :is(.draft-page, .cxl) b, :root[data-skin='retro'] :is(.draft-page, .cxl) strong { color: var(--cx-gold); }
-:root[data-skin='retro'] :is(.draft-page, .cxl) .tag, :root[data-skin='retro'] :is(.draft-page, .cxl) .chip, :root[data-skin='retro'] :is(.draft-page, .cxl) .badge { border-radius: 0; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) body:has(:is(.draft-page, .cxl), .cxl) { background: radial-gradient(ellipse at 50% 0%, #142080 0%, #0a1050 45%, var(--cx-desk) 100%) fixed; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) :is(.draft-page, .cxl) { font-family: Tahoma, Verdana, 'Segoe UI', sans-serif; gap: 8px; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) :is(.draft-page, .cxl) .draft-top { padding: 8px 12px; background: linear-gradient(180deg, var(--cx-side1), var(--cx-side2)); border: 1px solid; border-color: var(--cx-btn-hi) var(--cx-btn-lo) var(--cx-btn-lo) var(--cx-btn-hi); align-items: center; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) :is(.draft-page, .cxl) .draft-top h1 { color: var(--cx-gold); font-size: 22px; font-weight: 700; text-shadow: 0 2px 0 rgba(0, 0, 0, 0.5); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) :is(.draft-page, .cxl) .panel { background: var(--cx-panel); border: 1px solid var(--cx-line); box-shadow: none; backdrop-filter: none; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) :is(.draft-page, .cxl) .panel > header { padding: 5px 10px; background: linear-gradient(180deg, var(--cx-tab1), var(--cx-tab2)); border: 1px solid; border-color: var(--cx-btn-hi) var(--cx-btn-lo) var(--cx-btn-lo) var(--cx-btn-hi); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) :is(.draft-page, .cxl) .panel > header h3 { color: #fff; font-size: 13px; text-transform: none; letter-spacing: 0; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.6); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) :is(.draft-page, .cxl) .panel > header h3::before { display: none; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) :is(.draft-page, .cxl) .panel-body { padding: 8px 10px; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) :is(.draft-page, .cxl) button { background: var(--cx-btn); color: #fff; border: 1px solid; border-color: var(--cx-btn-hi) var(--cx-btn-lo) var(--cx-btn-lo) var(--cx-btn-hi); box-shadow: none; font-weight: 700; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) :is(.draft-page, .cxl) button:hover:not(:disabled) { background: #1c27a2; color: #fff; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) :is(.draft-page, .cxl) button.primary { background: linear-gradient(180deg, #34962f, #237523); color: #000; border-color: #8ee07a #0c3a0c #0c3a0c #8ee07a; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) :is(.draft-page, .cxl) button.primary:hover:not(:disabled) { background: linear-gradient(180deg, #3fa83a, #2a852a); color: #000; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) :is(.draft-page, .cxl) input, :is(:root[data-skin='retro'], [data-skin-scope='retro']) :is(.draft-page, .cxl) select { background: #0a1150; color: #fff; border: 1px solid; border-color: var(--cx-btn-lo) var(--cx-btn-hi) var(--cx-btn-hi) var(--cx-btn-lo); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) :is(.draft-page, .cxl) table.grid { background: transparent; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) :is(.draft-page, .cxl) table.grid thead th { background: rgba(160, 165, 180, 0.85); color: #fff; font-size: 11.5px; font-weight: 700; text-transform: none; letter-spacing: 0; padding: 3px 6px; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) :is(.draft-page, .cxl) table.grid tbody td { padding: 3px 6px; font-size: 13px; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) :is(.draft-page, .cxl) table.grid tbody tr:nth-child(even) td { background: rgba(255, 255, 255, 0.025); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) :is(.draft-page, .cxl) table.grid tbody tr.clickable:hover td, :is(:root[data-skin='retro'], [data-skin-scope='retro']) :is(.draft-page, .cxl) table.grid tbody tr.sel td { background: rgba(140, 16, 20, 0.55); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) :is(.draft-page, .cxl) .insight { border-radius: 0; background: rgba(10, 17, 80, 0.85); border: 1px solid var(--cx-line); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) :is(.draft-page, .cxl) .insight.good { background: linear-gradient(180deg, rgba(20, 70, 24, 0.94), rgba(12, 46, 16, 0.94)); border-color: #6cc26a; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) :is(.draft-page, .cxl) b, :is(:root[data-skin='retro'], [data-skin-scope='retro']) :is(.draft-page, .cxl) strong { color: var(--cx-gold); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) :is(.draft-page, .cxl) .tag, :is(:root[data-skin='retro'], [data-skin-scope='retro']) :is(.draft-page, .cxl) .chip, :is(:root[data-skin='retro'], [data-skin-scope='retro']) :is(.draft-page, .cxl) .badge { border-radius: 0; }
 
 /* valgt spiller: klik på en tom plet på banen for at flytte hans plads */
 .cx-tac-pitch.moving { cursor: crosshair; }
@@ -732,7 +732,7 @@
 .cx-ts-buttons { display: grid; grid-template-columns: 3fr 1fr; gap: 4px; margin: 12px 18px 0; }
 .cx-ts-buttons button { min-height: 40px; font-size: 17px; font-weight: 800; }
 @media (max-width: 760px) { .cx-ts-body { margin: 0 6px; padding: 8px; } .cx-ts-label { min-width: 0; } .cx-ts-price { margin-left: 0; flex-wrap: wrap; } .cx-ts-opt { margin-left: 12px; font-size: 14px; } .cx-ts-head { margin-left: 0; } }
-:root[data-skin='retro'] .cx-ts-buttons button { background: linear-gradient(180deg, #b8bcc6, #7e828e); color: #fff; border: 1px solid; border-color: #e2e4ea #4a4e58 #4a4e58 #e2e4ea; text-shadow: 1px 1px 0 #000; box-shadow: none; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-ts-buttons button { background: linear-gradient(180deg, #b8bcc6, #7e828e); color: #fff; border: 1px solid; border-color: #e2e4ea #4a4e58 #4a4e58 #e2e4ea; text-shadow: 1px 1px 0 #000; box-shadow: none; }
 .cx-ts-val.wide { min-width: 300px; }
 
 /* Match Overview (live-kampen i klassisk tema, som i CM 01/02) */
@@ -751,9 +751,9 @@
 @media (max-width: 760px) { .cx-mo { margin: 0 4px; padding: 4px 6px; } .cx-mo-line { margin: 24px 4px 30px; min-height: 70px; } .cx-mo-poss { grid-template-columns: 80px 1fr; margin: 0 0 14px; } .cx-mo-meta span { padding: 3px 8px; } }
 
 /* flere skrifttyper (Game Settings → Fonts) og klubbens logo i titelbjælken */
-:root[data-skin='retro'][data-cxfont='verdana'] body { font-family: Verdana, Geneva, Tahoma, sans-serif; }
-:root[data-skin='retro'][data-cxfont='exo'] body { font-family: 'Exo 2', Tahoma, Verdana, sans-serif; }
-:root[data-skin='retro']:is([data-cxfont='verdana'], [data-cxfont='exo']) :is(button, input, select) { font-family: inherit; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro'])[data-cxfont='verdana'] body { font-family: Verdana, Geneva, Tahoma, sans-serif; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro'])[data-cxfont='exo'] body { font-family: 'Exo 2', Tahoma, Verdana, sans-serif; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']):is([data-cxfont='verdana'], [data-cxfont='exo']) :is(button, input, select) { font-family: inherit; }
 .cx-title-logo { position: absolute; left: 36px; top: 50%; transform: translateY(-50%); display: flex; filter: drop-shadow(1px 2px 1px rgba(0, 0, 0, 0.45)); }
 .cx-title-logo .crest, .cx-title-logo .kit { width: 44px !important; height: 44px !important; object-fit: contain; }
 :root[data-cxlogo='off'] .cx-title-logo { display: none; }
@@ -766,7 +766,7 @@
 
 /* undermenuer (▸) som Competitions-menuen i CM 01/02 */
 .cx-drop-arrow { margin-left: auto; padding-left: 14px; font-size: 11px; }
-:root[data-skin='retro'] .cx-drop-pop button.cx-drop-subbtn.on { background: #fff36a; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-drop-pop button.cx-drop-subbtn.on { background: #fff36a; }
 .cx-drop-sub { z-index: 41; max-height: 80vh; }
 
 /* tekstvalg som i CM 01/02: grå = ikke valgt, hvid = valgt, mørkegrå = ikke muligt */
@@ -775,23 +775,23 @@
 .cx-opt.on, .cx-opt.on:hover { color: #fff; }
 .cx-opt:disabled { color: #6c6f78; cursor: default; }
 @media (max-width: 760px) { .cx-opt { margin-left: 12px; font-size: 15px; } }
-:root[data-skin='retro'] .cx-greybtn.wide { min-width: 220px; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-greybtn.wide { min-width: 220px; }
 
 /* ---------- CM 01/02: fælles byggeklodser (moderne komponenter i klassisk tema) ---------- */
 /* rullemenuer: grøn liste med mørk tekst, gul markering (som originalens) */
-:root[data-skin='retro'] .sel { background: var(--cx-btn); color: #fff; border: 1px solid; border-color: var(--cx-btn-hi) var(--cx-btn-lo) var(--cx-btn-lo) var(--cx-btn-hi); font-weight: 700; box-shadow: none; }
-:root[data-skin='retro'] .sel:hover, :root[data-skin='retro'] .sel.open { background: #1c27a2; }
-:root[data-skin='retro'] .sel-pop { background: linear-gradient(180deg, #2d8a2a, #1f6a1e); border: 1px solid; border-color: #8ee07a #0c3a0c #0c3a0c #8ee07a; border-radius: 0; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); padding: 2px 0; backdrop-filter: none; }
-:root[data-skin='retro'] .sel-search { margin: 3px 4px; width: calc(100% - 8px); background: #e8f4e0; color: #08200a; border: 1px solid; border-color: #0c3a0c #8ee07a #8ee07a #0c3a0c; border-radius: 0; font-weight: 700; }
-:root[data-skin='retro'] .sel-group { color: #fff21f; padding: 5px 10px 2px; font-size: 11px; text-shadow: 1px 1px 0 #000; border-top: 1px solid rgba(0, 0, 0, 0.3); }
-:root[data-skin='retro'] .sel-opt { color: #08200a; border-radius: 0; font-weight: 700; padding: 3px 10px; text-shadow: none; }
-:root[data-skin='retro'] .sel-opt.hi, :root[data-skin='retro'] .sel-opt:hover { background: #ffd21f; color: #10164e; }
-:root[data-skin='retro'] .sel-opt.on { color: #fff; }
-:root[data-skin='retro'] .sel-check { color: #fff; }
-:root[data-skin='retro'] .sel-empty { color: #08200a; }
-:root[data-skin='retro'] .cx-gameopt .cx-drop-pop button { color: #08200a; }
-:root[data-skin='retro'] .cx-gameopt .cx-drop-pop button:hover:not(:disabled), :root[data-skin='retro'] .cx-gameopt .cx-drop-pop button.cx-drop-subbtn.on { background: #ffd21f; color: #10164e; }
-:root[data-skin='retro'] .cx-gameopt .cx-drop-pop button:disabled { color: #5d9a55; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .sel { background: var(--cx-btn); color: #fff; border: 1px solid; border-color: var(--cx-btn-hi) var(--cx-btn-lo) var(--cx-btn-lo) var(--cx-btn-hi); font-weight: 700; box-shadow: none; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .sel:hover, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .sel.open { background: #1c27a2; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .sel-pop { background: linear-gradient(180deg, #2d8a2a, #1f6a1e); border: 1px solid; border-color: #8ee07a #0c3a0c #0c3a0c #8ee07a; border-radius: 0; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); padding: 2px 0; backdrop-filter: none; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .sel-search { margin: 3px 4px; width: calc(100% - 8px); background: #e8f4e0; color: #08200a; border: 1px solid; border-color: #0c3a0c #8ee07a #8ee07a #0c3a0c; border-radius: 0; font-weight: 700; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .sel-group { color: #fff21f; padding: 5px 10px 2px; font-size: 11px; text-shadow: 1px 1px 0 #000; border-top: 1px solid rgba(0, 0, 0, 0.3); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .sel-opt { color: #08200a; border-radius: 0; font-weight: 700; padding: 3px 10px; text-shadow: none; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .sel-opt.hi, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .sel-opt:hover { background: #ffd21f; color: #10164e; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .sel-opt.on { color: #fff; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .sel-check { color: #fff; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .sel-empty { color: #08200a; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-gameopt .cx-drop-pop button { color: #08200a; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-gameopt .cx-drop-pop button:hover:not(:disabled), :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-gameopt .cx-drop-pop button.cx-drop-subbtn.on { background: #ffd21f; color: #10164e; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-gameopt .cx-drop-pop button:disabled { color: #5d9a55; }
 .cx-gameopt .cx-drop-pop .cx-drop-sub, .cx-drop-sub { background: linear-gradient(180deg, #2d8a2a, #1f6a1e); border-color: #8ee07a #0c3a0c #0c3a0c #8ee07a; }
 /* paneler: ingen kort – mørk flade med gul overskrift */
 .shell.cx .main .panel { background: rgba(0, 0, 0, 0.32); border: 0; border-radius: 0; }
@@ -812,7 +812,7 @@
 .shell.cx .main .seg button { border-radius: 0; }
 .shell.cx .main .seg button.on { background: linear-gradient(180deg, #2fae4c, #1b7a32); color: #fff; }
 /* Continue Game er grå, mens en boks (dialog) er åben – som i originalen */
-:root[data-skin='retro'] .cx-continue:disabled { color: #3a46b8; opacity: 1; cursor: default; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-continue:disabled { color: #3a46b8; opacity: 1; cursor: default; }
 
 /* Offer Contract og andre bokse som egne skærme (sidebjælken er fri, Continue Game grå) */
 .cx-dlg { position: fixed; inset: 0 0 0 112px; z-index: 70; display: flex; flex-direction: column; gap: 6px; padding: 8px 10px 10px; background: linear-gradient(rgba(4, 6, 30, 0.55), rgba(4, 6, 30, 0.55)), var(--cx-photo, none) center / cover, #04061e; overflow-y: auto; }
@@ -830,11 +830,11 @@
 .cx-neg-row.off .cx-neg-label { color: #a9adb8; }
 .cx-neg-star { color: #ff9a2a; }
 .cx-neg-static { color: #fff; font-size: 17px; font-weight: 700; text-align: right; text-shadow: 1px 1px 0 #000; }
-:root[data-skin='retro'] .cx-neg-val .cx-drop-btn { width: 100%; background: transparent; border-color: transparent; justify-content: flex-end; font-size: 17px; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-neg-val .cx-drop-btn { width: 100%; background: transparent; border-color: transparent; justify-content: flex-end; font-size: 17px; }
 .cx-neg-msg { color: #fff21f !important; }
 .cx-green .cx-drop-pop { background: linear-gradient(180deg, #2d8a2a, #1f6a1e); border-color: #8ee07a #0c3a0c #0c3a0c #8ee07a; }
-:root[data-skin='retro'] .cx-green .cx-drop-pop button { color: #08200a; }
-:root[data-skin='retro'] .cx-green .cx-drop-pop button:hover:not(:disabled) { background: #ffd21f; color: #10164e; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-green .cx-drop-pop button { color: #08200a; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-green .cx-drop-pop button:hover:not(:disabled) { background: #ffd21f; color: #10164e; }
 @media (max-width: 760px) { .cx-neg-row { grid-template-columns: 1fr 40px 1fr 40px 40px; margin-left: 0; } .cx-neg-label { font-size: 14px; } }
 .cx-confirm { z-index: 90; }
 .cx-confirm .cx-ts-intro { text-align: center; max-width: 760px; white-space: pre-line; }
@@ -899,7 +899,7 @@
 .cx-md-row:has(.cx-md-res) { grid-template-columns: 46px minmax(0, 1fr) 90px minmax(0, 1fr) 46px; }
 .cx-opt.sel, .cx-opt.sel:hover { color: #fff21f; }
 .cx-ts-body.center { align-items: center; justify-content: center; min-height: 50vh; background: transparent; }
-:root[data-skin='retro'] input.cx-nick { width: min(90%, 900px); height: 64px; background: rgba(0, 0, 0, 0.45); border: 2px solid #1d2a8c; color: #fff; font-size: 24px; font-weight: 700; text-align: center; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) input.cx-nick { width: min(90%, 900px); height: 64px; background: rgba(0, 0, 0, 0.45); border: 2px solid #1d2a8c; color: #fff; font-size: 24px; font-weight: 700; text-align: center; }
 .cx-ts-buttons.cx-three { grid-template-columns: 2fr 1fr 1fr; }
 .cx-pl-pager { text-align: right; white-space: nowrap; } .cx-pl-pager .cx-pm { min-width: 32px; height: 22px; margin-left: 2px; }
 .cx-neg-type { background: none; border: 0; cursor: pointer; padding: 0; } .cx-neg-type:hover { color: #6fe3ff; }
@@ -929,11 +929,11 @@
 @media (max-width: 760px) { .cx-tidlg { left: 0; right: 0; } .cx-tidlg-row { grid-template-columns: 1fr repeat(4, auto); } .cx-tidlg-lbl { font-size: 15px; } }
 .cm-agg { position: absolute; right: 110px; bottom: 4px; font-size: 13px; font-weight: 800; color: inherit; opacity: 0.9; } .cm-team.away { position: relative; }
 .cx-menu-pop.cx-menu-clubs { max-height: 80vh; overflow-y: auto; }
-:root[data-skin='retro'] textarea.cx-note { height: 220px; text-align: left; padding: 10px; font-size: 18px; resize: vertical; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) textarea.cx-note { height: 220px; text-align: left; padding: 10px; font-size: 18px; resize: vertical; }
 .cx-capt { cursor: grab; padding: 0 4px; border: 1px dashed transparent; } .cx-capt:hover { border-color: #ff9a2a; }
 .cx-mt .cx-tac-slot[draggable='true'] { cursor: grab; }
 /* sidebjælken må aldrig skubbes ud af skærmen af bredt indhold */
-:root[data-skin='retro'] body { overflow-x: hidden; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) body { overflow-x: hidden; }
 .shell.cx .main { overflow-x: auto; scrollbar-gutter: stable; } /* fast plads til rullebjælken: ellers skifter knaprækkerne bredde, når en fane gør siden højere/lavere end vinduet */
 .cx-mt, .cx-mt-cols > * { min-width: 0; }
 .cx-mt-list { overflow-x: auto; }
@@ -944,7 +944,7 @@
 .cx-mt-tools { display: flex; gap: 4px; align-items: center; margin: 0 0 8px; flex-wrap: wrap; }
 .cx-mt-tools .cx-drop { min-width: 180px; }
 .cx-mt-tools .cx-drop-btn, .cx-mt-tbtn { width: 100%; min-height: 32px; justify-content: center; }
-:root[data-skin='retro'] .cx-mt-tools .cx-drop-btn, :root[data-skin='retro'] .cx-mt-tbtn { background: linear-gradient(180deg, #b8bcc6, #7e828e); color: #fff; border: 1px solid; border-color: #e2e4ea #4a4e58 #4a4e58 #e2e4ea; text-shadow: 1px 1px 0 #000; font-weight: 700; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-mt-tools .cx-drop-btn, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-mt-tbtn { background: linear-gradient(180deg, #b8bcc6, #7e828e); color: #fff; border: 1px solid; border-color: #e2e4ea #4a4e58 #4a4e58 #e2e4ea; text-shadow: 1px 1px 0 #000; font-weight: 700; }
 .cx-mt-tbtn { width: auto; min-width: 180px; }
 .cx-mt-gap { flex: 1; }
 .cx-mt-pcol { display: flex; flex-direction: column; gap: 6px; }
@@ -953,9 +953,9 @@
 .cx-mt-ptabs button.on { border-color: #fff21f; }
 .cx-tac-dot.cx-mt-dot { background: #fff; color: #111; border-color: #222; }
 .cx-tac-dot.cx-mt-dot.gk { background: #2f8f2a; color: #fff; }
-:root[data-skin='retro'] .cx-sbtn.cx-keep:disabled { color: #fff; opacity: 1; }
-:root[data-skin='retro'] .cx-tidlg .cx-tich { transition: none; border: 1px solid transparent; background: none; box-shadow: none; }
-:root[data-skin='retro'] .cx-tidlg .cx-tich.on { border-color: #fff21f; color: #fff21f; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sbtn.cx-keep:disabled { color: #fff; opacity: 1; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-tidlg .cx-tich { transition: none; border: 1px solid transparent; background: none; box-shadow: none; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-tidlg .cx-tich.on { border-color: #fff21f; color: #fff21f; }
 .cx-mo-line.empty { visibility: hidden; }
 /* klassisk resultattavle (CM 01/02): navn til venstre, stillingen i en lys boks yderst til højre, "Agg 0-3" foran den */
 .cm-board.cx-board { grid-template-columns: 1fr 1fr; }
@@ -990,14 +990,14 @@
 .cx-pl .cx-career td { border-bottom: 1px solid rgba(255, 255, 255, 0.14); border-right: 1px solid rgba(255, 255, 255, 0.1); }
 @media (max-width: 760px) { .cx-pl-grid td, .cx-pl-grid th { padding: 2px 5px; font-size: 12px; } }
 /* CM 01/02: navne, klubber og lande får en gul understregning under musen (farven bliver den samme) */
-:root[data-skin='retro'] :is(.cx-link, .link, .club-link):hover, :root[data-skin='retro'] .cx-link:focus-visible { color: inherit; text-decoration: underline; text-decoration-color: #fff21f; text-decoration-thickness: 2px; text-underline-offset: 3px; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) :is(.cx-link, .link, .club-link):hover, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-link:focus-visible { color: inherit; text-decoration: underline; text-decoration-color: #fff21f; text-decoration-thickness: 2px; text-underline-offset: 3px; }
 /* Rep./værdi-felterne: adskilte lilla kasser som i originalen */
-:root[data-skin='retro'] .cx-tbl .c-val { background: #3a1670; color: #fff; text-align: center; font-weight: 600; border: 1px solid; border-color: #5a3196 #1c0838 #1c0838 #5a3196; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-tbl .c-val { background: #3a1670; color: #fff; text-align: center; font-weight: 600; border: 1px solid; border-color: #5a3196 #1c0838 #1c0838 #5a3196; }
 /* den blå rækkeknap yderst til venstre er bred som i originalen */
 .cx-tbl td.btn-col { min-width: 56px; }
-:root[data-skin='retro'] span.cx-rowbtn { display: inline-flex; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) span.cx-rowbtn { display: inline-flex; }
 /* klikbare navne, klubber, lande og ligaer: hånd-ikonet under musen (ikke tekstmarkøren) */
-:root[data-skin='retro'] :is(.cx-link, .link, .club-link, [role='link']), :root[data-skin='retro'] .cx-tbl :is(td.c-name, td.c-club) > span { cursor: pointer; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) :is(.cx-link, .link, .club-link, [role='link']), :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-tbl :is(td.c-name, td.c-club) > span { cursor: pointer; }
 /* nyhederne som CM 01/02: datoknap til venstre (ca. en fjerdedel), overskriften i hele resten af rækken med en linje under;
    den valgte række er rød i hele bredden. (.cx-nrow bruges også af nationsskærmene – derfor .cx-inbox foran) */
 .cx-inbox .cx-nlist { background: rgba(0, 0, 0, 0.35); max-height: calc(5 * 38px + 4px); }
@@ -1032,8 +1032,8 @@
   .cx-date b, .cx-date span { font-size: 14px; font-weight: 500; }
   .cx-arrows { gap: 3px; }
   .cx-arrows button { height: 57px; background: #000076; border: 1px solid; border-color: #0000a5 #00003e #00003e #0000a5; color: #fffe54; }
-  :root[data-skin='retro'] .cx-sbtn, :root[data-skin='retro'] .cx-gameopt > .cx-drop-btn.cx-sbtn { min-height: 57px; background: #00005e; border: 1px solid; border-color: #000085 #00003e #00003e #000085; font-size: 14px; font-weight: 500; text-shadow: none; }
-  .cx-sbtn:hover, .cx-arrows button:hover:not(:disabled), :root[data-skin='retro'] .cx-gameopt > .cx-drop-btn.cx-sbtn:hover { background: #00007a; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sbtn, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-gameopt > .cx-drop-btn.cx-sbtn { min-height: 57px; background: #00005e; border: 1px solid; border-color: #000085 #00003e #00003e #000085; font-size: 14px; font-weight: 500; text-shadow: none; }
+  .cx-sbtn:hover, .cx-arrows button:hover:not(:disabled), :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-gameopt > .cx-drop-btn.cx-sbtn:hover { background: #00007a; }
 
   .cx-title { min-height: 81px; border-width: 3px; }
   .cx-title h2 { font-weight: 600; font-size: clamp(22px, 2.6vw, 38px); }
@@ -1046,9 +1046,9 @@
 }
 @media (min-width: 761px) {
   /* sidebjælkens tekst: hvid; Game Options gul, managerens navn cyan (som originalen) */
-  :root[data-skin='retro'] .cx-gameopt > .cx-drop-btn.cx-sbtn { color: #fff; }
-  :root[data-skin='retro'] .cx-gameopt > .cx-drop-btn.cx-sbtn.cx-gopt { color: #fffe54; }
-  :root[data-skin='retro'] .cx-gameopt > .cx-drop-btn.cx-sbtn.cx-mgr { color: #6fe3ff; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-gameopt > .cx-drop-btn.cx-sbtn { color: #fff; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-gameopt > .cx-drop-btn.cx-sbtn.cx-gopt { color: #fffe54; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-gameopt > .cx-drop-btn.cx-sbtn.cx-mgr { color: #6fe3ff; }
   /* mørke mellemrum mellem knapperne */
   .cx-side { background: linear-gradient(180deg, #000038 0%, #00002a 50%, #00000a 100%); }
   .cx-backnext { grid-template-columns: 3fr 1fr; }
@@ -1060,18 +1060,18 @@
 @media (min-width: 761px) {
   /* værktøjsrækken (View/Sort By/Assistant/Filter …): 200×25 px, 16 px inde i indholdet (målt i originalen) */
   .cx-tools, .cx-tools-inline, .cx-mt-tools { padding: 0 16px; gap: 2px; }
-  :root[data-skin='retro'] .cx-tools .cx-drop-btn, :root[data-skin='retro'] .cx-tools-inline .cx-drop-btn, :root[data-skin='retro'] .cx-mt-tools .cx-drop-btn, :root[data-skin='retro'] .cx-mt-tbtn {
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-tools .cx-drop-btn, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-tools-inline .cx-drop-btn, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-mt-tools .cx-drop-btn, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-mt-tbtn {
     width: 200px; min-width: 200px; height: 26px; justify-content: center; position: relative; font-size: 13px; font-weight: 500; }
-  :root[data-skin='retro'] :is(.cx-tools, .cx-tools-inline, .cx-mt-tools) .cx-drop-caret { position: absolute; right: 4px; }
-  :root[data-skin='retro'] .cx-tools > button:not(.cx-drop-btn) { min-height: 26px; min-width: 200px; font-weight: 500; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) :is(.cx-tools, .cx-tools-inline, .cx-mt-tools) .cx-drop-caret { position: absolute; right: 4px; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-tools > button:not(.cx-drop-btn) { min-height: 26px; min-width: 200px; font-weight: 500; }
   /* truppen: 31 px rækker, navne i normal vægt */
   .cx-sq-row { min-height: 31px; }
-  :root[data-skin='retro'] .cx-sq-name { font-size: 17px; font-weight: 500; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-name { font-size: 17px; font-weight: 500; }
   .cx-sq-info { font-weight: 500; }
 }
 @media (min-width: 761px) {
   /* taktiklisten (CM 01/02): normal vægt, formationen centreret i gult */
-  :root[data-skin='retro'] .cx-tac-name { font-weight: 500; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-tac-name { font-weight: 500; }
 }
 @media (min-width: 761px) {
   /* tabeller som CM 01/02: normal skriftvægt, 25 px rækker */
@@ -1092,7 +1092,7 @@
 .cx-tools .cx-greybtn.on { color: #fff21f; }
 @media (min-width: 761px) {
   /* de grønne menuer (CM 01/02): større tekst i normal vægt, lange lister kan rulles */
-  :root[data-skin='retro'] .cx-drop-pop button { font-size: 14px; font-weight: 500; min-height: 30px; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-drop-pop button { font-size: 14px; font-weight: 500; min-height: 30px; }
   .cx-drop-pop { max-height: calc(100vh - 40px); overflow-y: auto; }
 }
 @media (min-width: 761px) {
@@ -1222,7 +1222,7 @@
   .cx-bid-row .cx-pm { background: #00006e; border: 1px solid; border-color: #000085 #00003e #00003e #000085; color: #fff; font-size: 18px; font-weight: 400; }
   .cx-bid-row .cx-pm:disabled { opacity: 0.6; cursor: default; }
 }
-:root[data-skin='retro'] button.cx-sq-tag.yel { background: #c8c24a; border-color: #e8e27a #7a7420 #7a7420 #e8e27a; color: #10164e; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) button.cx-sq-tag.yel { background: #c8c24a; border-color: #e8e27a #7a7420 #7a7420 #e8e27a; color: #10164e; }
 @media (min-width: 761px) { .cx-mo-line { font-weight: 500; font-size: 22px; } }
 .cx-live-mv { display: inline-block; width: 14px; font-size: 10px; vertical-align: 3px; }
 .cx-live-mv.up::before { content: '▲'; color: #fff21f; } .cx-live-mv.down::before { content: '▼'; color: #ff3b3b; }
@@ -1233,7 +1233,7 @@
 .cx-winbox { width: 260px; background: #8c8a8c; border: 1px solid; border-color: #d6d4d6 #3a383a #3a383a #d6d4d6; text-align: center; padding-bottom: 12px; box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.5); }
 .cx-winbox-head { background: #00006e; color: #fff; text-align: left; padding: 4px 8px; font-size: 13px; }
 .cx-winbox p { margin: 14px 10px; color: #fff; font-size: 12.5px; }
-:root[data-skin='retro'] .cx-winbox button { min-width: 74px; padding: 3px 0; background: #8c8a8c; color: #fff; border: 1px solid; border-color: #d6d4d6 #3a383a #3a383a #d6d4d6; font-size: 13px; box-shadow: none; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-winbox button { min-width: 74px; padding: 3px 0; background: #8c8a8c; color: #fff; border: 1px solid; border-color: #d6d4d6 #3a383a #3a383a #d6d4d6; font-size: 13px; box-shadow: none; }
 .cx-md-tools { display: flex; align-items: center; gap: 4px; margin: -4px 16px 6px; }
 .cx-md-tools .cx-greybtn { min-width: 200px; }
 .cx-md-tools .grow { flex: 1; }
@@ -1318,8 +1318,8 @@
 .cx-sl-row .nm { color: #fff; font-size: 17px; font-weight: 700; text-shadow: 1px 1px 0 #000; }
 .cx-sl-row.lg-sel .nm, .cx-sl-row.lg-own .nm { color: #fff21f; }
 /* SELECTED / BACKGROUND / laveste division: grå tekst, det valgte med gul ramme og orange tekst (CM 01/02) */
-:root[data-skin='retro'] .cx-sl-cell, .cx-sl-cell { display: flex; align-items: center; justify-content: center; min-height: 26px; padding: 0 8px; border: 1px solid transparent; background: none; color: #b8bcc6; font: inherit; font-size: 12px; font-weight: 700; letter-spacing: 0.02em; text-shadow: 1px 1px 0 #000; }
-:root[data-skin='retro'] .cx-sl-cell.on, .cx-sl-cell.on { border-color: #fff21f; color: #ff9a2a; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sl-cell, .cx-sl-cell { display: flex; align-items: center; justify-content: center; min-height: 26px; padding: 0 8px; border: 1px solid transparent; background: none; color: #b8bcc6; font: inherit; font-size: 12px; font-weight: 700; letter-spacing: 0.02em; text-shadow: 1px 1px 0 #000; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sl-cell.on, .cx-sl-cell.on { border-color: #fff21f; color: #ff9a2a; }
 .cx-sl-cell.lw { justify-content: center; font-weight: 600; }
 .cx-sl-cell.lw:not(.on) { color: #9a9ca6; }
 button.cx-sl-cell:not(:disabled) { cursor: pointer; } button.cx-sl-cell:not(:disabled):hover { color: #fff; border-color: rgba(255, 242, 31, 0.5); }
@@ -1344,64 +1344,64 @@ button.cx-sl-cell:disabled { opacity: 1; cursor: default; }
    Skrifterne (Eras Demi / Handel Gothic) bruges, hvis de findes på maskinen – se fontvalget 'original'. */
 @font-face { font-family: CM0102Text; src: local('Eras Demi ITC'), local('ErasITC-Demi'), local('Eras Demi'); font-display: swap; }
 @font-face { font-family: CM0102Heading; src: local('HandelGothic BT'), local('Handel Gothic BT'), local('HandelGothicBT-Regular'), local('Handel Gothic'); font-display: swap; }
-:root[data-skin='retro'][data-cxfont='original'] body { font-family: CM0102Text, 'Eras Demi ITC', 'Saira Semi Condensed', Tahoma, sans-serif; }
-:root[data-skin='retro'][data-cxfont='original'] :is(button, input, select) { font-family: inherit; }
-:root[data-skin='retro'][data-cxfont='original'] .cx-title h2 { font-family: CM0102Heading, 'Handel Gothic', CM0102Text, sans-serif; font-weight: 400; letter-spacing: 0; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro'])[data-cxfont='original'] body { font-family: CM0102Text, 'Eras Demi ITC', 'Saira Semi Condensed', Tahoma, sans-serif; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro'])[data-cxfont='original'] :is(button, input, select) { font-family: inherit; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro'])[data-cxfont='original'] .cx-title h2 { font-family: CM0102Heading, 'Handel Gothic', CM0102Text, sans-serif; font-weight: 400; letter-spacing: 0; }
 @media (min-width: 761px) {
-  :root[data-skin='retro'] .shell.cx { color: #d5d3d5; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .shell.cx { color: #d5d3d5; }
   /* titlen: 3 px affasning i klubbens egen farve (originalen: #ff0000 / #600000 omkring #b40001) */
-  :root[data-skin='retro'] .cx-title { border: 3px solid; border-color: color-mix(in srgb, var(--tb, #b40001) 55%, #fff 45%) color-mix(in srgb, var(--tb, #b40001) 53%, #000) color-mix(in srgb, var(--tb, #b40001) 53%, #000) color-mix(in srgb, var(--tb, #b40001) 55%, #fff 45%); box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.55); }
-  :root[data-skin='retro'] .cx-title:not(.neutral) h2 { text-shadow: 2px 3px 0 color-mix(in srgb, var(--tb, #b40001) 55%, #000), 1px 1px 0 rgba(162, 162, 162, 0.85); }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-title { border: 3px solid; border-color: color-mix(in srgb, var(--tb, #b40001) 55%, #fff 45%) color-mix(in srgb, var(--tb, #b40001) 53%, #000) color-mix(in srgb, var(--tb, #b40001) 53%, #000) color-mix(in srgb, var(--tb, #b40001) 55%, #fff 45%); box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.55); }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-title:not(.neutral) h2 { text-shadow: 2px 3px 0 color-mix(in srgb, var(--tb, #b40001) 55%, #000), 1px 1px 0 rgba(162, 162, 162, 0.85); }
   /* sidebjælken: blå forløb mod sort, knapper med indre affasning */
-  :root[data-skin='retro'] .shell.cx .cx-side { background: linear-gradient(180deg, #000080 0%, #000065 32%, #000024 68%, #000 100%); }
-  :root[data-skin='retro'] .cx-sbtn, :root[data-skin='retro'] .cx-gameopt > .cx-drop-btn.cx-sbtn, :root[data-skin='retro'] .cx-date, :root[data-skin='retro'] .cx-arrows button {
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .shell.cx .cx-side { background: linear-gradient(180deg, #000080 0%, #000065 32%, #000024 68%, #000 100%); }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sbtn, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-gameopt > .cx-drop-btn.cx-sbtn, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-date, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-arrows button {
     background: linear-gradient(rgba(0, 0, 121, 0.9), rgba(0, 0, 84, 0.8)); border: 1.5px solid; border-color: #00002a #00002a #00008c #00008c;
     box-shadow: inset 1px 1px 0 #0000a0, inset -1px -1px 0 #000021; text-shadow: 1px 1px 0 #12121d; }
-  :root[data-skin='retro'] .cx-sbtn:hover, :root[data-skin='retro'] .cx-arrows button:hover:not(:disabled), :root[data-skin='retro'] .cx-gameopt > .cx-drop-btn.cx-sbtn:hover { background: linear-gradient(#080889, #00005f); }
-  :root[data-skin='retro'] .cx-sbtn:active, :root[data-skin='retro'] .cx-arrows button:active { box-shadow: inset 1px 1px 0 #000021; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sbtn:hover, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-arrows button:hover:not(:disabled), :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-gameopt > .cx-drop-btn.cx-sbtn:hover { background: linear-gradient(#080889, #00005f); }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sbtn:active, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-arrows button:active { box-shadow: inset 1px 1px 0 #000021; }
   /* faner */
-  :root[data-skin='retro'] :is(.cx-tabrow, .cx-subrow) button, :root[data-skin='retro'] .shell.cx .main .tabs button {
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) :is(.cx-tabrow, .cx-subrow) button, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .shell.cx .main .tabs button {
     background: #200062; border: 1.5px solid; border-color: #3a0095 #09001b #09001b #3a0095; box-shadow: inset -1px -1px 0 #1a0041; text-shadow: 1px 1px 0 #504064; color: #d5d3d5; }
-  :root[data-skin='retro'] :is(.cx-tabrow, .cx-subrow) button:hover:not(:disabled), :root[data-skin='retro'] .shell.cx .main .tabs button:hover { background: #2b0076; }
-  :root[data-skin='retro'] :is(.cx-tabrow, .cx-subrow) button.on, :root[data-skin='retro'] .shell.cx .main .tabs button.on { border: 1px solid #ffff00; color: #ffff00; box-shadow: 0 0 0 0.3px #ffff00; position: relative; z-index: 1; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) :is(.cx-tabrow, .cx-subrow) button:hover:not(:disabled), :is(:root[data-skin='retro'], [data-skin-scope='retro']) .shell.cx .main .tabs button:hover { background: #2b0076; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) :is(.cx-tabrow, .cx-subrow) button.on, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .shell.cx .main .tabs button.on { border: 1px solid #ffff00; color: #ffff00; box-shadow: 0 0 0 0.3px #ffff00; position: relative; z-index: 1; }
   /* grå knapper (Back/Next, Next Unread, værktøjslinjer) */
-  :root[data-skin='retro'] .cx-backnext button, :root[data-skin='retro'] .cx-grey {
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-backnext button, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-grey {
     background: #838183; border: 1.5px solid; border-color: #d5d5ca #333630 #333630 #d5d5ca; box-shadow: inset -1px -1px 0 #696969; text-shadow: 0.5px 0.5px 0 #acacac; color: #1d1d1d; }
-  :root[data-skin='retro'] .cx-backnext button { color: #d5d3d5; text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5); }
-  :root[data-skin='retro'] :is(.cx-backnext button, .cx-grey):hover:not(:disabled) { background: #969396; }
-  :root[data-skin='retro'] :is(.cx-backnext button, .cx-grey):active:not(:disabled) { border-color: #333630 #d5d5ca #d5d5ca #333630; box-shadow: inset 1px 1px 0 #555; }
-  :root[data-skin='retro'] :is(.cx-backnext button, .cx-grey):disabled { color: #4a504a; text-shadow: 1px 1px 0 #bebebe; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-backnext button { color: #d5d3d5; text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5); }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) :is(.cx-backnext button, .cx-grey):hover:not(:disabled) { background: #969396; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) :is(.cx-backnext button, .cx-grey):active:not(:disabled) { border-color: #333630 #d5d5ca #d5d5ca #333630; box-shadow: inset 1px 1px 0 #555; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) :is(.cx-backnext button, .cx-grey):disabled { color: #4a504a; text-shadow: 1px 1px 0 #bebebe; }
 
   /* nyhederne: 5 rækker à 24 px med originalens grå rullebjælke, datocellen 211 px */
-  :root[data-skin='retro'] .cx-inbox .cx-nlist { height: calc(5 * 24.4px + 2px); max-height: none; overflow-y: scroll; padding: 0; margin: 0 16px; background: rgba(0, 0, 0, 0.4); border: 0; }
-  :root[data-skin='retro'] .cx-inbox .cx-nlist::-webkit-scrollbar { width: 20px; }
-  :root[data-skin='retro'] .cx-inbox .cx-nlist::-webkit-scrollbar-track { background: rgba(119, 119, 119, 0.44); border-left: 1px solid #454545; }
-  :root[data-skin='retro'] .cx-inbox .cx-nlist::-webkit-scrollbar-thumb { background: #838183; border: 1.5px solid; border-color: #dadada #3f3f3f #3f3f3f #dadada; }
-  :root[data-skin='retro'] .cx-inbox .cx-nlist::-webkit-scrollbar-button:single-button { display: block; height: 20px; background: #838183 no-repeat center / 8px 6px; border: 1.5px solid; border-color: #dadada #3f3f3f #3f3f3f #dadada; }
-  :root[data-skin='retro'] .cx-inbox .cx-nlist::-webkit-scrollbar-button:single-button:vertical:decrement { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 6'%3E%3Cpath d='M4 0 8 6H0z'/%3E%3C/svg%3E"); }
-  :root[data-skin='retro'] .cx-inbox .cx-nlist::-webkit-scrollbar-button:single-button:vertical:increment { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 6'%3E%3Cpath d='M0 0h8L4 6z'/%3E%3C/svg%3E"); }
-  :root[data-skin='retro'] .cx-inbox .cx-nrow { grid-template-columns: 211px minmax(0, 1fr); gap: 0; margin: 0; min-height: 24.4px; font-size: 13px; line-height: 22px; }
-  :root[data-skin='retro'] .cx-inbox .cx-ndate { padding: 0 6px; background: #000080; border: 1px solid; border-color: #0000ef #000027 #9c8ec1 #0000d7; color: #d5d3d5; font-size: 12px; text-shadow: 0.5px 0.5px 0 #555067; }
-  :root[data-skin='retro'] .cx-inbox .cx-ntitle { padding: 0 0 0 12px; background: rgba(0, 0, 0, 0.13); border-bottom: 1px solid rgba(164, 160, 149, 0.4); color: #d5d3d5; text-shadow: 0.6px 0.6px 0 #3b3b3b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
-  :root[data-skin='retro'] .cx-inbox .cx-nrow:hover .cx-ntitle { background: rgba(35, 0, 100, 0.66); }
-  :root[data-skin='retro'] .cx-inbox .cx-nrow.on .cx-ntitle { background: #830000; border-bottom-color: #870700; color: #fff; }
-  :root[data-skin='retro'] .cx-inbox .cx-nrow.on:hover .cx-ntitle { background: #930000; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-inbox .cx-nlist { height: calc(5 * 24.4px + 2px); max-height: none; overflow-y: scroll; padding: 0; margin: 0 16px; background: rgba(0, 0, 0, 0.4); border: 0; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-inbox .cx-nlist::-webkit-scrollbar { width: 20px; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-inbox .cx-nlist::-webkit-scrollbar-track { background: rgba(119, 119, 119, 0.44); border-left: 1px solid #454545; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-inbox .cx-nlist::-webkit-scrollbar-thumb { background: #838183; border: 1.5px solid; border-color: #dadada #3f3f3f #3f3f3f #dadada; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-inbox .cx-nlist::-webkit-scrollbar-button:single-button { display: block; height: 20px; background: #838183 no-repeat center / 8px 6px; border: 1.5px solid; border-color: #dadada #3f3f3f #3f3f3f #dadada; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-inbox .cx-nlist::-webkit-scrollbar-button:single-button:vertical:decrement { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 6'%3E%3Cpath d='M4 0 8 6H0z'/%3E%3C/svg%3E"); }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-inbox .cx-nlist::-webkit-scrollbar-button:single-button:vertical:increment { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 6'%3E%3Cpath d='M0 0h8L4 6z'/%3E%3C/svg%3E"); }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-inbox .cx-nrow { grid-template-columns: 211px minmax(0, 1fr); gap: 0; margin: 0; min-height: 24.4px; font-size: 13px; line-height: 22px; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-inbox .cx-ndate { padding: 0 6px; background: #000080; border: 1px solid; border-color: #0000ef #000027 #9c8ec1 #0000d7; color: #d5d3d5; font-size: 12px; text-shadow: 0.5px 0.5px 0 #555067; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-inbox .cx-ntitle { padding: 0 0 0 12px; background: rgba(0, 0, 0, 0.13); border-bottom: 1px solid rgba(164, 160, 149, 0.4); color: #d5d3d5; text-shadow: 0.6px 0.6px 0 #3b3b3b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-inbox .cx-nrow:hover .cx-ntitle { background: rgba(35, 0, 100, 0.66); }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-inbox .cx-nrow.on .cx-ntitle { background: #830000; border-bottom-color: #870700; color: #fff; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-inbox .cx-nrow.on:hover .cx-ntitle { background: #930000; }
   /* "Filter :" med et tekstfelt i midten, Next Unread (201 px) til højre */
-  :root[data-skin='retro'] .cx-inbox .cx-nbar { position: relative; margin: 5px 16px 0; min-height: 29px; padding: 0; background: rgba(0, 0, 0, 0.2); justify-content: flex-end; }
-  :root[data-skin='retro'] .cx-inbox .cx-nfilter { position: absolute; left: 47.2%; top: 0; height: 100%; gap: 4px; color: #d5d3d5; font-size: 12px; }
-  :root[data-skin='retro'] .cx-inbox .cx-nfilter input { width: 180px; height: 23px; padding: 2px 4px; background: transparent; border: 0; color: #d5d3d5; outline: none; }
-  :root[data-skin='retro'] .cx-inbox .cx-nfilter input:focus { background: rgba(0, 0, 0, 0.4); box-shadow: inset 0 -1px 0 rgba(212, 210, 212, 0.4); }
-  :root[data-skin='retro'] .cx-inbox .cx-nbar .cx-grey { min-width: 201px; height: 29px; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-inbox .cx-nbar { position: relative; margin: 5px 16px 0; min-height: 29px; padding: 0; background: rgba(0, 0, 0, 0.2); justify-content: flex-end; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-inbox .cx-nfilter { position: absolute; left: 47.2%; top: 0; height: 100%; gap: 4px; color: #d5d3d5; font-size: 12px; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-inbox .cx-nfilter input { width: 180px; height: 23px; padding: 2px 4px; background: transparent; border: 0; color: #d5d3d5; outline: none; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-inbox .cx-nfilter input:focus { background: rgba(0, 0, 0, 0.4); box-shadow: inset 0 -1px 0 rgba(212, 210, 212, 0.4); }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-inbox .cx-nbar .cx-grey { min-width: 201px; height: 29px; }
   /* artiklen: mørke paneler over fotoet, gul overskrift 18 px, tekst 18/24 px */
-  :root[data-skin='retro'] .cx-inbox .cx-nmsg { margin: 3px 16px 0; padding: 0; background: transparent; border: 0; min-height: 0; display: flex; flex-direction: column; gap: 6px; }
-  :root[data-skin='retro'] .cx-inbox .cx-nhead { margin: 0; min-height: 49px; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.44); color: #ffff00; font-size: 18px; font-weight: 400; text-shadow: 1px 1px 0 #5c5000; }
-  :root[data-skin='retro'] .cx-inbox .cx-nmsg > :not(.cx-nhead) { margin: 0; }
-  :root[data-skin='retro'] .cx-inbox .cx-nbody { min-height: 260px; padding: 11px 16px; background: rgba(0, 0, 0, 0.44); font-size: 18px; line-height: 24px; font-weight: 400; color: #d5d3d5; text-shadow: 0.6px 0.7px 0 #656565; white-space: pre-line; }
-  :root[data-skin='retro'] .cx-inbox .cx-nmsg:not(:has(.cx-nbody))::after { content: ''; display: block; min-height: 260px; background: rgba(0, 0, 0, 0.44); }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-inbox .cx-nmsg { margin: 3px 16px 0; padding: 0; background: transparent; border: 0; min-height: 0; display: flex; flex-direction: column; gap: 6px; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-inbox .cx-nhead { margin: 0; min-height: 49px; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.44); color: #ffff00; font-size: 18px; font-weight: 400; text-shadow: 1px 1px 0 #5c5000; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-inbox .cx-nmsg > :not(.cx-nhead) { margin: 0; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-inbox .cx-nbody { min-height: 260px; padding: 11px 16px; background: rgba(0, 0, 0, 0.44); font-size: 18px; line-height: 24px; font-weight: 400; color: #d5d3d5; text-shadow: 0.6px 0.7px 0 #656565; white-space: pre-line; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-inbox .cx-nmsg:not(:has(.cx-nbody))::after { content: ''; display: block; min-height: 260px; background: rgba(0, 0, 0, 0.44); }
 }
 @media (min-width: 761px) {
   /* fotoet næsten i fuld styrke som i originalen og kittet (panelerne er mørke og gennemsigtige, ikke fotoet) */
-  :root[data-skin='retro'] .shell.cx { background-image: linear-gradient(180deg, rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0.22)), var(--cx-photo, none); }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .shell.cx { background-image: linear-gradient(180deg, rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0.22)), var(--cx-photo, none); }
 }
 /* bokse (Please Confirm, Team Selection …) starter ved sidebjælkens kant (144 px på skrivebordet), så menuen ikke skæres af */
 @media (min-width: 761px) { .cx-dlg { left: 144px; } }
@@ -1425,13 +1425,13 @@ button.cx-sl-cell:disabled { opacity: 1; cursor: default; }
   .cx-title { padding: 4px 40px 4px 64px; }
   .cx-title h2 { font-size: 19px; overflow-wrap: anywhere; }
   .cx-action { top: 50%; right: 4px; transform: translateY(-50%); }
-  :root[data-skin='retro'] .cx-act .cx-drop-btn { width: 34px; min-width: 0; height: 30px; padding: 0; justify-content: center; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-act .cx-drop-btn { width: 34px; min-width: 0; height: 30px; padding: 0; justify-content: center; }
   .cx-act .cx-drop-caret { color: inherit; font-size: 14px; }
   /* nyhedslisten: smal datokolonne og overskrifter over to linjer i stedet for at blive klippet */
   .cx-inbox .cx-nrow { grid-template-columns: 82px minmax(0, 1fr); }
   .cx-inbox .cx-ndate { font-size: 12px; padding: 4px 2px; text-align: center; }
   /* kanter i stedet for polstring: overflow klipper ved polstringen, så en tredje linje ellers kiggede frem */
-  :root[data-skin='retro'] .cx-inbox .cx-ntitle, .cx-inbox .cx-ntitle { padding: 0 8px; border-top: 5px solid transparent; border-bottom: 5px solid transparent; box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.14); font-size: 14px; line-height: 1.25; white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; max-height: calc(2.5em + 10px); }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-inbox .cx-ntitle, .cx-inbox .cx-ntitle { padding: 0 8px; border-top: 5px solid transparent; border-bottom: 5px solid transparent; box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.14); font-size: 14px; line-height: 1.25; white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; max-height: calc(2.5em + 10px); }
 }
 
 /* CM 01/02: Finances / Income / Expenditure / Stats (Finance.tsx ClassicFinances) */
@@ -1486,9 +1486,9 @@ button.cx-sl-cell:disabled { opacity: 1; cursor: default; }
 .cx-fl-attrs { display: grid; grid-template-columns: 1fr 1fr; column-gap: 30px; row-gap: 2px; padding: 8px 12px; border: 1px solid rgba(255, 255, 255, 0.25); background: rgba(0, 0, 0, 0.18); }
 .cx-fl-attr { display: flex; align-items: center; gap: 6px; height: 28px; color: #fff; font-size: 16px; font-weight: 700; text-shadow: 1px 1px 0 #000; }
 .cx-fl-attr > span { flex: 1; }
-:root[data-skin='retro'] .cx-fl-attr button { width: 50px; height: 24px; padding: 0; background: rgba(0, 0, 0, 0.3); border: 1px solid; border-color: #3f8a3c #0a280a #0a280a #3f8a3c; color: #fff; font-size: 15px; font-weight: 700; text-shadow: none; }
-:root[data-skin='retro'] .cx-fl-attr button:hover:not(:disabled) { background: rgba(255, 255, 255, 0.16); }
-:root[data-skin='retro'] .cx-fl-attr button:disabled { opacity: 0.45; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-fl-attr button { width: 50px; height: 24px; padding: 0; background: rgba(0, 0, 0, 0.3); border: 1px solid; border-color: #3f8a3c #0a280a #0a280a #3f8a3c; color: #fff; font-size: 15px; font-weight: 700; text-shadow: none; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-fl-attr button:hover:not(:disabled) { background: rgba(255, 255, 255, 0.16); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-fl-attr button:disabled { opacity: 0.45; }
 .cx-fl-attr > b { width: 34px; text-align: center; color: #7fe07a; text-shadow: none; }
 .cx-fl-attr > b.set { color: #fff21f; }
 @media (max-width: 760px) { .cx-fl-attrs { grid-template-columns: 1fr; } }
@@ -1508,13 +1508,13 @@ button.cx-sl-cell:disabled { opacity: 1; cursor: default; }
 .cx-sq-orig .cx-sq-row { grid-template-columns: 52px 42px minmax(0, 1fr) 34%; gap: 0 6px; min-height: 30px; }
 .cx-sq-orig .cx-sq-head { position: relative; }
 .cx-sq-agroup { position: absolute !important; right: 8px; top: 50%; transform: translateY(-50%); font-size: 13px; }
-:root[data-skin='retro'] .cx-sq-orig .cx-selbtn, :root[data-skin='retro'] .cx-sq-orig .cx-selbtn.xi, :root[data-skin='retro'] .cx-sq-orig .cx-selbtn.bench,
-:root[data-skin='retro'] .cx-sq-orig .cx-selbtn:hover, :root[data-skin='retro'] .cx-sq-orig .cx-selbtn:focus {
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-orig .cx-selbtn, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-orig .cx-selbtn.xi, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-orig .cx-selbtn.bench,
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-orig .cx-selbtn:hover, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-orig .cx-selbtn:focus {
   width: 52px; height: 29px; background: #0000a8; color: #fff; border: 1px solid; border-color: #3030d8 #00004a #00004a #3030d8; font-size: 12px; font-weight: 700; text-shadow: none; filter: none; }
-:root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag, :root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag:hover { height: 29px; background: #8f1010; color: #fff; border: 1px solid; border-color: #d04a3a #3a0404 #3a0404 #d04a3a; font-size: 12px; font-weight: 500; filter: none; }
-:root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.yel { background: #c8c24a; color: #10164e; }
-:root[data-skin='retro'] .cx-sq-orig .cx-sq-name { color: #fff; font-size: 19px; font-weight: 500; text-decoration: none; }
-:root[data-skin='retro'] .cx-sq-orig .cx-sq-name:hover { color: #fff; text-decoration: underline; text-decoration-color: #fff; text-underline-offset: 3px; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-orig button.cx-sq-tag, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-orig button.cx-sq-tag:hover { height: 29px; background: #8f1010; color: #fff; border: 1px solid; border-color: #d04a3a #3a0404 #3a0404 #d04a3a; font-size: 12px; font-weight: 500; filter: none; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-orig button.cx-sq-tag.yel { background: #c8c24a; color: #10164e; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-orig .cx-sq-name { color: #fff; font-size: 19px; font-weight: 500; text-decoration: none; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-orig .cx-sq-name:hover { color: #fff; text-decoration: underline; text-decoration-color: #fff; text-underline-offset: 3px; }
 .cx-sq-orig .cx-sq-info { color: #fff21f; font-size: 14px; font-weight: 500; }
 /* de andre visninger (Contract, Selection, Stats …): én kolonne med kolonneoverskrifter */
 .cx-sq-cols.one { grid-template-columns: 1fr; }
@@ -1522,7 +1522,7 @@ button.cx-sl-cell:disabled { opacity: 1; cursor: default; }
 .cx-sq-colhead { min-height: 22px !important; }
 .cx-sq-colhead .cx-sq-info { color: #fff !important; font-size: 12px; font-weight: 700; }
 /* Print (titelbjælken): mørk knap i klubbens farve med rullemenu */
-:root[data-skin='retro'] .cx-print .cx-drop-btn, :root[data-skin='retro'] .cx-print .cx-drop-btn:hover { min-width: 120px; filter: brightness(0.85); border-color: rgba(0, 0, 0, 0.6) rgba(255, 255, 255, 0.25) rgba(255, 255, 255, 0.25) rgba(0, 0, 0, 0.6); color: #111; text-shadow: none; font-weight: 700; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-print .cx-drop-btn, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-print .cx-drop-btn:hover { min-width: 120px; filter: brightness(0.85); border-color: rgba(0, 0, 0, 0.6) rgba(255, 255, 255, 0.25) rgba(255, 255, 255, 0.25) rgba(0, 0, 0, 0.6); color: #111; text-shadow: none; font-weight: 700; }
 @media (min-width: 761px) {
   .cx-sq-orig .cx-sq-panel { margin: 0 16px; min-height: calc(100vh - 335px); }
   .cx-sq-orig .cx-sq-cols { max-height: calc(100vh - 390px); }
@@ -1561,40 +1561,40 @@ button.cx-sl-cell:disabled { opacity: 1; cursor: default; }
 .cx-finv-orig .cx-fin th { font-weight: 500; }
 /* transferbuddet: blå −/+/= og beløbet med ▾ (grøn liste med faste beløb) */
 .cx-bid .cx-pm { background: #0000a8; border-color: #3030d8 #00004a #00004a #3030d8; font-size: 18px; }
-:root[data-skin='retro'] .cx-bid-amt .cx-drop-btn, :root[data-skin='retro'] .cx-bid-amt .cx-drop-btn:hover { width: 100%; min-width: 0; justify-content: flex-end; gap: 14px; background: transparent; border: none; color: #fff; font-size: 16px; font-weight: 500; text-shadow: 1px 1px 0 #000; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-bid-amt .cx-drop-btn, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-bid-amt .cx-drop-btn:hover { width: 100%; min-width: 0; justify-content: flex-end; gap: 14px; background: transparent; border: none; color: #fff; font-size: 16px; font-weight: 500; text-shadow: 1px 1px 0 #000; }
 .cx-bid-amt .cx-drop-pop { min-width: 190px; }
 /* Exchange: "Add Player To … Transfer Bid" */
 .cx-exch .cx-exch-head { display: block; margin: 8px 16px 0; padding: 6px 0 8px; background: rgba(60, 60, 60, 0.55); text-align: center; color: #fff21f; font-size: 18px; font-weight: 700; }
 .cx-exch-list { margin: 0 16px; min-height: 50vh; background: rgba(0, 0, 0, 0.32); padding: 6px 0; display: flex; flex-direction: column; }
 .cx-exch-list .cx-sq-row { grid-template-columns: 42px 42px minmax(0, 1fr) 34%; }
-:root[data-skin='retro'] .cx-exch .cx-selbtn, :root[data-skin='retro'] .cx-exch .cx-selbtn:hover { width: 42px; height: 25px; font-size: 10px; font-weight: 700; color: #fff; background: #0000a8; border: 1px solid; border-color: #3030d8 #00004a #00004a #3030d8; filter: none; }
-:root[data-skin='retro'] .cx-exch .cx-sq-name { color: #fff; font-size: 19px; font-weight: 500; }
-:root[data-skin='retro'] .cx-exch .cx-sq-name:hover { color: #fff; text-decoration: underline; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-exch .cx-selbtn, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-exch .cx-selbtn:hover { width: 42px; height: 25px; font-size: 10px; font-weight: 700; color: #fff; background: #0000a8; border: 1px solid; border-color: #3030d8 #00004a #00004a #3030d8; filter: none; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-exch .cx-sq-name { color: #fff; font-size: 19px; font-weight: 500; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-exch .cx-sq-name:hover { color: #fff; text-decoration: underline; }
 .cx-exch-none { margin: auto; color: #fff; font-size: 19px; text-shadow: 1px 1px 0 #000; text-align: center; padding: 20px; }
 .cx-finv-orig .cx-fin td:first-child, .cx-finv-orig .cx-fin th:first-child { width: 34%; }
 .cx-finv-orig .cx-fin th:first-child { font-size: 20px; }
 .cx-finv-orig .cx-fin tr.profit td:first-child { color: #fff; }
 .cx-finv-orig .cx-fin-bal { grid-template-columns: 34% 1fr; gap: 6px 0; margin: 22px 0 0; padding: 0 12px; }
 .cx-finv-orig .cx-fin-bal span { font-size: 18px; font-weight: 500; }
-:root[data-skin='retro'] .cx-bid .cx-pm { display: grid; place-items: center; padding: 0; line-height: 1; font-size: 18px; font-weight: 700; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-bid .cx-pm { display: grid; place-items: center; padding: 0; line-height: 1; font-size: 18px; font-weight: 700; }
 /* truppen (ægte tilstand): tomme pladser i strimlen lysere, Condition i grønt, udlejede spillere blå, grå = ikke spilleklar, Fut i grå boks */
 /* strimlen er mørkegrøn #183f0c (målt i originalen), også for tomme pladser */
 .cx-sq-orig .cx-slot:not(.filled):not(.off) { background: #183f0c; border-color: #2c661a #031401 #031401 #2c661a; }
 /* CM 01/02 (ejerens billede 13/11): en optaget plads står trykket ind med gul tekst */
 .cx-sq-orig .cx-slot.filled:not(.off) { color: #fff21f; border-color: #031401 #2c661a #2c661a #031401; box-shadow: inset 1px 1px 0 rgba(0, 0, 0, 0.45); padding-top: 1px; }
 .cx-sq-orig .cx-sq-info.cond { color: #3ef03a; }
-:root[data-skin='retro'] .cx-sq-orig .cx-sq-name.loan, :root[data-skin='retro'] .cx-sq-orig .cx-sq-name.loan:hover { color: #4f9cff; }
-:root[data-skin='retro'] .cx-sq-orig .cx-sq-name.loanin, :root[data-skin='retro'] .cx-sq-orig .cx-sq-name.loanin:hover { color: #3ee8ff; }
-:root[data-skin='retro'] .cx-sq-orig .cx-sq-name.dim, :root[data-skin='retro'] .cx-sq-orig .cx-sq-name.dim:hover { color: #9a9a9a; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-orig .cx-sq-name.loan, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-orig .cx-sq-name.loan:hover { color: #4f9cff; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-orig .cx-sq-name.loanin, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-orig .cx-sq-name.loanin:hover { color: #3ee8ff; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-orig .cx-sq-name.dim, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-orig .cx-sq-name.dim:hover { color: #9a9a9a; }
 /* Mærkefarverne aflæst pixel for pixel af originalens trup (ejerens billede 124): Inj/Sus rød #840000, Wnt grå #424142 med gul tekst, Int blå #000084 */
-:root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag, :root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag:hover { background: #840000; color: #e7e3e7; border-color: #ad0000 #5a0000 #5a0000 #ad0000; }
-:root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.wnt, :root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.wnt:hover { background: #424142; color: #ffff00; border-color: #6b696b #292829 #292829 #6b696b; }
-:root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.int, :root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.int:hover { background: #000084; color: #e7e3e7; border-color: #0000ad #000052 #000052 #0000ad; }
-:root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.fut, :root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.fut:hover,
-:root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.trn, :root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.trn:hover { background: #4a4a4a; color: #fff; border-color: #8a8a8a #1a1a1a #1a1a1a #8a8a8a; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-orig button.cx-sq-tag, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-orig button.cx-sq-tag:hover { background: #840000; color: #e7e3e7; border-color: #ad0000 #5a0000 #5a0000 #ad0000; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-orig button.cx-sq-tag.wnt, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-orig button.cx-sq-tag.wnt:hover { background: #424142; color: #ffff00; border-color: #6b696b #292829 #292829 #6b696b; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-orig button.cx-sq-tag.int, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-orig button.cx-sq-tag.int:hover { background: #000084; color: #e7e3e7; border-color: #0000ad #000052 #000052 #0000ad; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-orig button.cx-sq-tag.fut, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-orig button.cx-sq-tag.fut:hover,
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-orig button.cx-sq-tag.trn, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-orig button.cx-sq-tag.trn:hover { background: #4a4a4a; color: #fff; border-color: #8a8a8a #1a1a1a #1a1a1a #8a8a8a; }
 /* Loa/Unh grå, Inj brun/orange (ejerens billede 18/11: Brøndbys trup) */
-:root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.lon, :root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.lon:hover, :root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.unh, :root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.unh:hover { background: #4a4a4a; color: #f0e6b4; border-color: #8a8a8a #1a1a1a #1a1a1a #8a8a8a; }
-:root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.inj, :root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.inj:hover, :root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.tir, :root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.tir:hover { background: #8c5a1e; color: #f0e6b4; border-color: #bd8a42 #4a2a08 #4a2a08 #bd8a42; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-orig button.cx-sq-tag.lon, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-orig button.cx-sq-tag.lon:hover, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-orig button.cx-sq-tag.unh, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-orig button.cx-sq-tag.unh:hover { background: #4a4a4a; color: #f0e6b4; border-color: #8a8a8a #1a1a1a #1a1a1a #8a8a8a; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-orig button.cx-sq-tag.inj, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-orig button.cx-sq-tag.inj:hover, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-orig button.cx-sq-tag.tir, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-orig button.cx-sq-tag.tir:hover { background: #8c5a1e; color: #f0e6b4; border-color: #bd8a42 #4a2a08 #4a2a08 #bd8a42; }
 .cx-sq-orig .cx-sq-cols { scrollbar-gutter: stable; }
 .cx-sq-orig span.cx-selbtn { display: block; }
 /* standardsættet (originalens billeder): de er allerede mørklagt i RGN-filerne – skallens foto (med et let slør) står alene, som i originalen */
@@ -1680,20 +1680,20 @@ button.cx-sl-cell:disabled { opacity: 1; cursor: default; }
 }
 
 /* Squad Numbers: navnene altid hvide (ikke linkfarven) – som originalen */
-:root[data-skin='retro'] .cx-sqn-row :is(a, .cx-link, .link, .club-link, span[role='link']) { color: #fff !important; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sqn-row :is(a, .cx-link, .link, .club-link, span[role='link']) { color: #fff !important; }
 /* Last Match uden kampe: tekst midt i en mørk flade + bred Ok */
 .cx-norecent-body { display: flex; align-items: center; justify-content: center; min-height: 52vh; margin: 8px 16px; background: rgba(0, 0, 0, 0.5); color: #fff; font-size: clamp(18px, 2vw, 26px); text-shadow: 1px 1px 0 #000; }
 .cx-backnext.cx-onlyok { grid-template-columns: 1fr; }
 
 /* Listerne står i en gennemsigtig sort flade med tynd kant (som truppen og træningen i CM 01/02) – fælles for alle listeskærme */
-:root[data-skin='retro'] .cx-listpanel { background: rgba(0, 0, 0, 0.32); border: 1px solid rgba(255, 255, 255, 0.1); padding: 6px 4px; margin-bottom: 6px; }
-@media (min-width: 761px) { :root[data-skin='retro'] .cx-listpanel { margin-left: 16px; margin-right: 16px; } }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-listpanel { background: rgba(0, 0, 0, 0.32); border: 1px solid rgba(255, 255, 255, 0.1); padding: 6px 4px; margin-bottom: 6px; }
+@media (min-width: 761px) { :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-listpanel { margin-left: 16px; margin-right: 16px; } }
 
 /* Farverne målt i originalens skærmbilleder (r2/301, 303, 309): den blå række-/udtagelsesknap er flad #00007d (let affasning), værdifeltet mørk lilla #3b063f */
-:root[data-skin='retro'] .cx-rowbtn:not(.on), :root[data-skin='retro'] .cx-selbtn:not(.xi):not(.bench), :root[data-skin='retro'] .cx-sq-orig .cx-selbtn:not(.xi):not(.bench),
-:root[data-skin='retro'] .cx-fx-orig .cx-fx-date, :root[data-skin='retro'] .cx-bid .cx-pm, :root[data-skin='retro'] .cx-exch .cx-selbtn {
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-rowbtn:not(.on), :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-selbtn:not(.xi):not(.bench), :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-orig .cx-selbtn:not(.xi):not(.bench),
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-fx-orig .cx-fx-date, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-bid .cx-pm, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-exch .cx-selbtn {
   background: #00007d; border: 1px solid; border-color: #0000bc #00003a #00003a #0000bc; filter: none; }
-:root[data-skin='retro'] .cx-tbl .c-val, :root[data-skin='retro'] .cx-fx-res, .cx-pl-stats td.avr, :root[data-skin='retro'] .cx-ct-total .c-val {
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-tbl .c-val, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-fx-res, .cx-pl-stats td.avr, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-ct-total .c-val {
   background: #3b063f; border: 1px solid; border-color: #59135d #150018 #150018 #59135d; color: #fff; }
 
 /* Træning: valgt række (klik) og hjælpelinjen */
@@ -1701,9 +1701,9 @@ button.cx-sl-cell:disabled { opacity: 1; cursor: default; }
 .cx-tn-hint { margin: 4px 16px; padding: 4px 8px; background: rgba(0, 0, 0, 0.5); color: #fff21f; font-size: 14px; text-align: center; }
 .cx-tbl tr[draggable='true'] { cursor: grab; }
 /* originalens lister er tættere: rækkehøjde ~22 px (målt 30 px på et 2000 px bredt billede), blå knap 20 px */
-:root[data-skin='retro'] .cx-listpanel .cx-tbl { border-spacing: 2px 1px; font-size: 13px; }
-:root[data-skin='retro'] .cx-listpanel .cx-tbl td { padding: 0 6px; height: 22px; line-height: 1.1; }
-:root[data-skin='retro'] .cx-listpanel .cx-tbl .cx-rowbtn { height: 20px; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-listpanel .cx-tbl { border-spacing: 2px 1px; font-size: 13px; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-listpanel .cx-tbl td { padding: 0 6px; height: 22px; line-height: 1.1; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-listpanel .cx-tbl .cx-rowbtn { height: 20px; }
 
 /* skærmens egne knapper i bundbjælken (ClassicFoot): de erstatter Back/Next */
 .cx-foot-slot:empty { display: none; }
@@ -1712,7 +1712,7 @@ button.cx-sl-cell:disabled { opacity: 1; cursor: default; }
 
 /* Continue Game: den grå bjælke i bunden med datoen og en blå fremdriftsbjælke (som originalens Initialising game data) */
 /* :root[data-skin] – ellers vinder den ældre flex-regel ovenfor, og bjælken får bredden 0 (kun en tynd streg – ejerens billede 13/11) */
-.cx-running, :root[data-skin='retro'] .cx-running { display: grid; grid-template-columns: 30% minmax(0, 1fr); align-items: center; gap: 12px; padding: 0 12px 0 0; min-height: 58px; }
+.cx-running, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-running { display: grid; grid-template-columns: 30% minmax(0, 1fr); align-items: center; gap: 12px; padding: 0 12px 0 0; min-height: 58px; }
 .cx-run-l { text-align: center; font-size: 14px; color: #fff; }
 .cx-run-l .cx-run-step { display: block; font-size: 11px; font-weight: 400; opacity: 0.85; }
 .cx-run-bar { display: block; width: 100%; height: 28px; background: #d4d4d8; border: 2px solid; border-color: #6b6b6e #f1f1f3 #f1f1f3 #6b6b6e; }
@@ -1722,11 +1722,11 @@ button.cx-sl-cell:disabled { opacity: 1; cursor: default; }
 .cx-run-bar { position: relative; }
 .cx-run-bar b.cx-run-pct { position: absolute; inset: 0; display: grid; place-items: center; padding: 0; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; color: #fff; text-shadow: 0 0 3px #000, 1px 1px 0 #000; pointer-events: none; }
 .cx-running .cx-running-hint { grid-column: 1 / -1; }
-:root[data-skin='retro'] .cx-sq-orig .cx-selbtn, :root[data-skin='retro'] .cx-sq-orig .cx-selbtn.xi, :root[data-skin='retro'] .cx-sq-orig .cx-selbtn.bench,
-:root[data-skin='retro'] .cx-sq-orig .cx-selbtn:hover, :root[data-skin='retro'] .cx-sq-orig .cx-selbtn:focus { background: #00007d; border-color: #0000bc #00003a #00003a #0000bc; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-orig .cx-selbtn, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-orig .cx-selbtn.xi, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-orig .cx-selbtn.bench,
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-orig .cx-selbtn:hover, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-orig .cx-selbtn:focus { background: #00007d; border-color: #0000bc #00003a #00003a #0000bc; }
 
 /* andre klubbers trup (ægte tilstand): udtagelsesfeltet er en <span> – samme centrerede tekst som knappen */
-:root[data-skin='retro'] .cx-sel > span.cx-selbtn { display: block; text-align: center; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sel > span.cx-selbtn { display: block; text-align: center; }
 
 /* CM 01/02's budskærm (cmTransferBid.ts): etiketterne slår rækken til/fra, N i "Fee after N …" er et link, Yes/No-knappen, bytte-linjerne */
 .cx-bid-tog { background: none; border: 0; padding: 0; text-align: left; cursor: pointer; font: inherit; }
@@ -1737,7 +1737,7 @@ button.cx-sl-cell:disabled { opacity: 1; cursor: default; }
 .cx-bid-yn:disabled { color: #9a9ca6; cursor: default; }
 button.cx-bid-swap { background: none; border: 0; font: inherit; text-align: left; width: auto; }
 button.cx-bid-swap.removing { cursor: pointer; color: #fff21f; }
-:root[data-skin='retro'] .cx-bid-amt.over .cx-drop-btn { color: #ff5a4a; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-bid-amt.over .cx-drop-btn { color: #ff5a4a; }
 .cx-greybtn.on { filter: brightness(0.8); box-shadow: inset 1px 1px 0 #000; }
 .cx-exch-top { position: relative; }
 .cx-exch-btn { position: absolute; right: 0; top: 0; width: 130px; height: 20px; background: linear-gradient(#f4f4f4, #d4d4d4); color: #00007d; border: 1px solid; border-color: #fff #6a6a6a #6a6a6a #fff; font-size: 11px; font-weight: 700; cursor: pointer; padding: 0; }
@@ -1757,7 +1757,7 @@ button.cx-bid-swap.removing { cursor: pointer; color: #fff21f; }
 .cx-sv-foot { grid-template-columns: 2fr 1fr 1fr; }
 
 /* CM 01/02 (ejerens billede 13/11): links i nyhederne (overskrift og brødtekst) har tekstens egen farve – kun understregede */
-:root[data-skin='retro'] .cx-inbox :is(.cx-nbody, .cx-nhead, .cx-ntitle) :is(.cx-link, .link, .club-link, [role='link'], a) { color: inherit !important; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-inbox :is(.cx-nbody, .cx-nhead, .cx-ntitle) :is(.cx-link, .link, .club-link, [role='link'], a) { color: inherit !important; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
 
 /* Stabsprofilen (CM 01/02, StaffClassic.tsx): egenskaberne i to kolonner (etiket · værdi · etiket · værdi), stil-rækkerne under, jobbet i bunden */
 .cx-kv.cx-ruled.cx-st-two { grid-template-columns: minmax(140px, 30%) 1fr minmax(140px, 30%) 1fr; margin-bottom: 0; }
@@ -1780,8 +1780,8 @@ button.cx-bid-swap.removing { cursor: pointer; color: #fff21f; }
   .cx-bid .cx-bid-label, .cx-bid .cx-bid-label.cx-bid-tog, .cx-bid .cx-bid-val, .cx-bid .cx-bid-yn, .cx-bid .cx-bid-total, .cx-bid .cx-bid-swap { font-size: 21px; font-weight: 400; color: #fff; text-shadow: 1px 1px 0 #000; }
   .cx-bid .cx-bid-row.off .cx-bid-label, .cx-bid .cx-bid-row.off .cx-bid-val { color: #9a9ca6; }
   .cx-bid .cx-bid-val.wide { grid-column: 3; text-align: center; }
-  :root[data-skin='retro'] .cx-bid .cx-bid-amt .cx-drop-btn, :root[data-skin='retro'] .cx-bid .cx-bid-amt .cx-drop-btn:hover { position: relative; justify-content: center; font-size: 21px; font-weight: 400; padding: 0 22px; }
-  :root[data-skin='retro'] .cx-bid .cx-bid-amt .cx-drop-btn .cx-drop-caret, :root[data-skin='retro'] .cx-bid .cx-bid-amt .cx-drop-btn > :last-child:not(:first-child) { position: absolute; right: 4px; color: #fff; font-size: 13px; text-shadow: 1px 1px 0 #000; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-bid .cx-bid-amt .cx-drop-btn, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-bid .cx-bid-amt .cx-drop-btn:hover { position: relative; justify-content: center; font-size: 21px; font-weight: 400; padding: 0 22px; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-bid .cx-bid-amt .cx-drop-btn .cx-drop-caret, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-bid .cx-bid-amt .cx-drop-btn > :last-child:not(:first-child) { position: absolute; right: 4px; color: #fff; font-size: 13px; text-shadow: 1px 1px 0 #000; }
   .cx-bid .cx-bid-total { display: grid; grid-template-columns: minmax(0, 1fr) 72px 340px 72px 72px; gap: 6px; margin: 18px 0 0 90px; }
   .cx-bid .cx-bid-total b { grid-column: 3; text-align: left; color: #fff21f; font-weight: 400; }
   .cx-bid .cx-bid-tools { margin-top: 70px; } .cx-bid .cx-bid-tools > * { width: 300px; height: 40px; }
@@ -1804,30 +1804,30 @@ button.cx-bid-swap.removing { cursor: pointer; color: #fff21f; }
   .cx-zone-list, .cx-zone-left > .cx-ti { width: auto; height: auto; min-height: 0; }
 }
 /* beløbslisternes ▾ (Asking Price m.fl.) synlig på den mørke flade som i originalen */
-:root[data-skin='retro'] .cx-bid-amt .cx-drop-caret { color: #fff; text-shadow: 1px 1px 0 #000; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-bid-amt .cx-drop-caret { color: #fff; text-shadow: 1px 1px 0 #000; }
 .cx-tac-tag.capt { cursor: grab; }
 /* egne spillere på landsholdet i gult (CM 01/02) – også i den originale trupvisning */
-:root[data-skin='retro'] .cx-sq-orig .cx-sq-name.mine, :root[data-skin='retro'] .cx-sq-orig .cx-sq-name.mine:hover { color: var(--cx-gold); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-orig .cx-sq-name.mine, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-orig .cx-sq-name.mine:hover { color: var(--cx-gold); }
 
 /* ---------- Startmenuens øvrige skærme, fællesskabet og editoren i klassisk udseende (.cxl) ---------- */
-:root[data-skin='retro'] .cxl { background: linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.55)), var(--cx-photo) center / cover fixed; min-height: 100vh; color: #fff; }
-:root[data-skin='retro'] .cxl .start-aurora { display: none; }
-:root[data-skin='retro'] .cxl .start-box, :root[data-skin='retro'] .cxl .pub-box { background: transparent; border: 0; box-shadow: none; backdrop-filter: none; }
-:root[data-skin='retro'] .cxl .logo h1, :root[data-skin='retro'] .cxl .pub-box > h1 { margin: 0 0 8px; padding: 10px 16px; text-align: center; font-size: clamp(22px, 2.7vw, 32px); font-weight: 900; color: #fff; background: linear-gradient(#ee3827, #d8241a); border: 2px solid; border-color: rgba(255, 255, 255, 0.55) rgba(0, 0, 0, 0.55) rgba(0, 0, 0, 0.55) rgba(255, 255, 255, 0.55); text-shadow: -1px -1px 0 rgba(0, 0, 0, 0.55), 1px 1px 0 rgba(0, 0, 0, 0.55), 2px 3px 3px rgba(0, 0, 0, 0.45); }
-:root[data-skin='retro'] .cxl .logo h1 span { color: #fff; }
-:root[data-skin='retro'] .cxl .logo p, :root[data-skin='retro'] .cxl .pub-box > p { color: #6fe3ff; text-align: center; }
-:root[data-skin='retro'] .cxl .panel > header { background: linear-gradient(#ee3827, #d8241a); border: 2px solid; border-color: rgba(255, 255, 255, 0.55) rgba(0, 0, 0, 0.55) rgba(0, 0, 0, 0.55) rgba(255, 255, 255, 0.55); padding: 8px 12px; }
-:root[data-skin='retro'] .cxl .panel > header h3 { font-size: 20px; font-weight: 900; text-shadow: -1px -1px 0 rgba(0, 0, 0, 0.55), 1px 1px 0 rgba(0, 0, 0, 0.55), 2px 3px 3px rgba(0, 0, 0, 0.45); }
-:root[data-skin='retro'] .cxl .panel { background: rgba(0, 0, 0, 0.35); }
-:root[data-skin='retro'] .cxl .tabs { display: flex; gap: 2px; background: transparent; border: 0; padding: 0; }
-:root[data-skin='retro'] .cxl .tabs button { flex: 1; min-height: 34px; border-radius: 0; background: linear-gradient(#1a1fa3, #0d1170); color: #fff; border: 1px solid; border-color: var(--cx-btn-hi) var(--cx-btn-lo) var(--cx-btn-lo) var(--cx-btn-hi); }
-:root[data-skin='retro'] .cxl .tabs button.on { color: #ffee33; box-shadow: inset 0 0 0 2px #ffee33; }
-:root[data-skin='retro'] .cxl .choice, :root[data-skin='retro'] .cxl .hub-card, :root[data-skin='retro'] .cxl .start-card { border-radius: 0; background: rgba(10, 17, 80, 0.7); border: 1px solid var(--cx-line); color: #fff; }
-:root[data-skin='retro'] .cxl .choice:hover, :root[data-skin='retro'] .cxl .hub-card:hover { background: rgba(140, 16, 20, 0.55); }
-:root[data-skin='retro'] .cxl .muted { color: #6fe3ff; }
-:root[data-skin='retro'] .cxl .start-ghost, :root[data-skin='retro'] .cxl .footer-note { color: #fff; }
-:root[data-skin='retro'] .cxl textarea { background: #0a1150; color: #fff; border: 1px solid; border-color: var(--cx-btn-lo) var(--cx-btn-hi) var(--cx-btn-hi) var(--cx-btn-lo); border-radius: 0; }
-:root[data-skin='retro'] .cxl .footer-note { display: none; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl { background: linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.55)), var(--cx-photo) center / cover fixed; min-height: 100vh; color: #fff; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl .start-aurora { display: none; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl .start-box, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl .pub-box { background: transparent; border: 0; box-shadow: none; backdrop-filter: none; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl .logo h1, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl .pub-box > h1 { margin: 0 0 8px; padding: 10px 16px; text-align: center; font-size: clamp(22px, 2.7vw, 32px); font-weight: 900; color: #fff; background: linear-gradient(#ee3827, #d8241a); border: 2px solid; border-color: rgba(255, 255, 255, 0.55) rgba(0, 0, 0, 0.55) rgba(0, 0, 0, 0.55) rgba(255, 255, 255, 0.55); text-shadow: -1px -1px 0 rgba(0, 0, 0, 0.55), 1px 1px 0 rgba(0, 0, 0, 0.55), 2px 3px 3px rgba(0, 0, 0, 0.45); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl .logo h1 span { color: #fff; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl .logo p, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl .pub-box > p { color: #6fe3ff; text-align: center; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl .panel > header { background: linear-gradient(#ee3827, #d8241a); border: 2px solid; border-color: rgba(255, 255, 255, 0.55) rgba(0, 0, 0, 0.55) rgba(0, 0, 0, 0.55) rgba(255, 255, 255, 0.55); padding: 8px 12px; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl .panel > header h3 { font-size: 20px; font-weight: 900; text-shadow: -1px -1px 0 rgba(0, 0, 0, 0.55), 1px 1px 0 rgba(0, 0, 0, 0.55), 2px 3px 3px rgba(0, 0, 0, 0.45); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl .panel { background: rgba(0, 0, 0, 0.35); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl .tabs { display: flex; gap: 2px; background: transparent; border: 0; padding: 0; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl .tabs button { flex: 1; min-height: 34px; border-radius: 0; background: linear-gradient(#1a1fa3, #0d1170); color: #fff; border: 1px solid; border-color: var(--cx-btn-hi) var(--cx-btn-lo) var(--cx-btn-lo) var(--cx-btn-hi); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl .tabs button.on { color: #ffee33; box-shadow: inset 0 0 0 2px #ffee33; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl .choice, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl .hub-card, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl .start-card { border-radius: 0; background: rgba(10, 17, 80, 0.7); border: 1px solid var(--cx-line); color: #fff; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl .choice:hover, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl .hub-card:hover { background: rgba(140, 16, 20, 0.55); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl .muted { color: #6fe3ff; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl .start-ghost, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl .footer-note { color: #fff; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl textarea { background: #0a1150; color: #fff; border: 1px solid; border-color: var(--cx-btn-lo) var(--cx-btn-hi) var(--cx-btn-hi) var(--cx-btn-lo); border-radius: 0; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl .footer-note { display: none; }
 
 /* Træning som CM 01/02 (TrainingCm.tsx): Edit/Coaches/Select File i den grønne boks */
 .cx-tn { position: relative; }
@@ -1843,27 +1843,27 @@ button.cx-bid-swap.removing { cursor: pointer; color: #fff21f; }
 
 /* Netværksspil/draft/editor (.cxl) som startmenuens felter: samme skrift som resten af det klassiske spil, mørke bokse med blå ramme,
    kantede knapper og grå affasede felter (som Select-menuerne i originalen) */
-:root[data-skin='retro'] .cxl { font-family: inherit; }
-:root[data-skin='retro'] .cxl .logo p { font-size: 14px; }
-:root[data-skin='retro'] .cxl button, :root[data-skin='retro'] .cxl .draft-cta { font-family: inherit; border-radius: 0; background: rgba(0, 0, 0, 0.58); border: 2px solid #1818a6; color: #fff; font-weight: 700; text-shadow: 1px 1px 3px #000; box-shadow: none; }
-:root[data-skin='retro'] .cxl button:hover:not(:disabled), :root[data-skin='retro'] .cxl .draft-cta:hover:not(:disabled) { background: rgba(20, 20, 120, 0.55); color: #fff; }
-:root[data-skin='retro'] .cxl button:disabled { opacity: 0.45; }
-:root[data-skin='retro'] .cxl button.primary { background: rgba(0, 0, 0, 0.58); color: #fff21f; font-size: 18px; padding: 12px 16px; border-color: #1818a6; }
-:root[data-skin='retro'] .cxl button.primary:hover:not(:disabled) { background: rgba(20, 20, 120, 0.55); color: #fff21f; }
-:root[data-skin='retro'] .cxl button.small, :root[data-skin='retro'] .cxl .panel > header button { background: linear-gradient(180deg, #a5a9b3, #7a7f89); border: 2px solid; border-color: #e6e8ee #3e424b #3e424b #e6e8ee; color: #fff; }
-:root[data-skin='retro'] .cxl button.small:hover:not(:disabled), :root[data-skin='retro'] .cxl .panel > header button:hover:not(:disabled) { background: linear-gradient(180deg, #b4b8c2, #868b95); }
-:root[data-skin='retro'] .cxl button.danger { color: #ff8a8a; }
-:root[data-skin='retro'] .cxl .draft-cta { padding: 10px 14px; }
-:root[data-skin='retro'] .cxl .draft-cta b { color: #fff21f; font-size: 18px; }
-:root[data-skin='retro'] .cxl .draft-cta span { color: #d8d8e8; }
-:root[data-skin='retro'] .cxl input, :root[data-skin='retro'] .cxl select, :root[data-skin='retro'] .cxl textarea { font-family: inherit; border-radius: 0; background: linear-gradient(180deg, #a5a9b3, #7a7f89); color: #fff; border: 2px solid; border-color: #3e424b #e6e8ee #e6e8ee #3e424b; }
-:root[data-skin='retro'] .cxl input::placeholder, :root[data-skin='retro'] .cxl textarea::placeholder { color: rgba(255, 255, 255, 0.7); }
-:root[data-skin='retro'] .cxl .invite-code { border-radius: 0; background: #000060; color: #fff21f; border: 2px solid #1818a6; }
-:root[data-skin='retro'] .cxl .tag { border-radius: 0; background: #000060; color: #fff21f; border: 1px solid #1818a6; }
-:root[data-skin='retro'] .cxl .choice, :root[data-skin='retro'] .cxl .grid-choices > * { border-radius: 0; background: rgba(0, 0, 0, 0.58); border: 2px solid #1818a6; color: #fff; }
-:root[data-skin='retro'] .cxl .accent, :root[data-skin='retro'] .cxl h4 { color: #fff21f; }
-:root[data-skin='retro'] .cxl .bad { color: #ff9a9a; }
-:root[data-skin='retro'] .cxl .sim-card, :root[data-skin='retro'] .cxl .insight { border-radius: 0; background: rgba(0, 0, 0, 0.58); border: 2px solid #1818a6; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl { font-family: inherit; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl .logo p { font-size: 14px; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl button, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl .draft-cta { font-family: inherit; border-radius: 0; background: rgba(0, 0, 0, 0.58); border: 2px solid #1818a6; color: #fff; font-weight: 700; text-shadow: 1px 1px 3px #000; box-shadow: none; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl button:hover:not(:disabled), :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl .draft-cta:hover:not(:disabled) { background: rgba(20, 20, 120, 0.55); color: #fff; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl button:disabled { opacity: 0.45; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl button.primary { background: rgba(0, 0, 0, 0.58); color: #fff21f; font-size: 18px; padding: 12px 16px; border-color: #1818a6; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl button.primary:hover:not(:disabled) { background: rgba(20, 20, 120, 0.55); color: #fff21f; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl button.small, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl .panel > header button { background: linear-gradient(180deg, #a5a9b3, #7a7f89); border: 2px solid; border-color: #e6e8ee #3e424b #3e424b #e6e8ee; color: #fff; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl button.small:hover:not(:disabled), :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl .panel > header button:hover:not(:disabled) { background: linear-gradient(180deg, #b4b8c2, #868b95); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl button.danger { color: #ff8a8a; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl .draft-cta { padding: 10px 14px; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl .draft-cta b { color: #fff21f; font-size: 18px; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl .draft-cta span { color: #d8d8e8; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl input, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl select, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl textarea { font-family: inherit; border-radius: 0; background: linear-gradient(180deg, #a5a9b3, #7a7f89); color: #fff; border: 2px solid; border-color: #3e424b #e6e8ee #e6e8ee #3e424b; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl input::placeholder, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl textarea::placeholder { color: rgba(255, 255, 255, 0.7); }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl .invite-code { border-radius: 0; background: #000060; color: #fff21f; border: 2px solid #1818a6; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl .tag { border-radius: 0; background: #000060; color: #fff21f; border: 1px solid #1818a6; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl .choice, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl .grid-choices > * { border-radius: 0; background: rgba(0, 0, 0, 0.58); border: 2px solid #1818a6; color: #fff; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl .accent, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl h4 { color: #fff21f; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl .bad { color: #ff9a9a; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl .sim-card, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl .insight { border-radius: 0; background: rgba(0, 0, 0, 0.58); border: 2px solid #1818a6; }
 
 /* nyt spil: Populære spillere pr. databaseudgave */
 .cxs-popbar { display: flex; justify-content: center; padding: 8px; }
@@ -1919,13 +1919,13 @@ button.cx-bid-swap.removing { cursor: pointer; color: #fff21f; }
 /* Editoren: bekræftelsesbanner ved Save (grøn bjælke øverst, forsvinder af sig selv) */
 .ed-banner { position: fixed; top: 0; left: 0; right: 0; z-index: 120; padding: 6px 12px; text-align: center; background: #1f7a2a; color: #fff; font-weight: bold; border-bottom: 2px solid #5fd36b; box-shadow: 0 2px 6px rgba(0,0,0,0.5); pointer-events: none; }
 /* Start/editor i klassisk (.cxl): det valgte kort skal kunne ses (ejeren 16/11 – "knapperne er ens") */
-:root[data-skin='retro'] .cxl .db-opt.on, :root[data-skin='retro'] .cxl .choice.on {
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl .db-opt.on, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl .choice.on {
   border-color: #ffe14a !important; background: rgba(140, 16, 20, 0.62) !important; box-shadow: inset 0 0 0 1px #ffe14a;
 }
-:root[data-skin='retro'] .cxl .db-opt.on b, :root[data-skin='retro'] .cxl .db-opt.on strong { color: #ffe14a; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl .db-opt.on b, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxl .db-opt.on strong { color: #ffe14a; }
 
 /* Startmenuen: lille forklaring under felterne (ejeren 16/11) */
-:root[data-skin='retro'] .cxs-field .cxs-hint { display: block; margin-top: 6px; font-style: normal; font-size: 12px; font-weight: 400; color: #c9d3ff; opacity: .85; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxs-field .cxs-hint { display: block; margin-top: 6px; font-style: normal; font-size: 12px; font-weight: 400; color: #c9d3ff; opacity: .85; }
 
 /* CM 01/02's venskabskampe (FriendlyClassic.tsx): datoskærmen "Arrange Friendly At Home" (0x470400) og turnéens lande (0x471a90) */
 .cx-frd-row .cx-frd-st { grid-column: 2 / 6; font-size: 15px; font-weight: 700; text-shadow: 1px 1px 0 #000; }
@@ -1949,18 +1949,18 @@ button.cx-bid-swap.removing { cursor: pointer; color: #fff21f; }
 /* News (CM 01/02, ejerens billede 16/11 – images/153.png "Fulham sign Collier"): datoen i listen har listens skrift og tidspunktet (Fri 24th Aug EVE),
    "Filter :" står i en grå boks fra ~43 % af bredden til Next Unread, Next Unread med hvid tekst som Back/Next, overskriften og brødteksten ~20 %
    større end før, overskriften uden understregning (den er ikke et link i originalen) */
-:root[data-skin='retro'] .cx-inbox .cx-ndate { font-size: 13px; }
-:root[data-skin='retro'] .cx-inbox .cx-nbar { background: transparent; }
-:root[data-skin='retro'] .cx-inbox .cx-nfilter { left: 43.4%; right: 203px; padding-left: 3.4%; background: rgba(150, 150, 150, 0.3); font-size: 13px; }
-:root[data-skin='retro'] .cx-inbox .cx-nfilter input { flex: 1; width: auto; min-width: 0; }
-:root[data-skin='retro'] .cx-inbox .cx-nbar .cx-grey:not(.cx-respond) { font-size: 13px; font-weight: 400; color: #eeeeee; text-shadow: 1px 1px 0 #3a3a3a; }
-:root[data-skin='retro'] .cx-inbox .cx-nhead { font-size: 22px; }
-:root[data-skin='retro'] .cx-inbox .cx-nhead :is(.cx-link, [role='link']) { text-decoration: none; }
-:root[data-skin='retro'] .cx-inbox .cx-nbody { font-size: 21px; line-height: 28px; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-inbox .cx-ndate { font-size: 13px; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-inbox .cx-nbar { background: transparent; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-inbox .cx-nfilter { left: 43.4%; right: 203px; padding-left: 3.4%; background: rgba(150, 150, 150, 0.3); font-size: 13px; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-inbox .cx-nfilter input { flex: 1; width: auto; min-width: 0; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-inbox .cx-nbar .cx-grey:not(.cx-respond) { font-size: 13px; font-weight: 400; color: #eeeeee; text-shadow: 1px 1px 0 #3a3a3a; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-inbox .cx-nhead { font-size: 22px; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-inbox .cx-nhead :is(.cx-link, [role='link']) { text-decoration: none; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-inbox .cx-nbody { font-size: 21px; line-height: 28px; }
 @media (max-width: 760px) {
-  :root[data-skin='retro'] .cx-inbox .cx-nfilter { position: static; padding-left: 6px; background: transparent; }
-  :root[data-skin='retro'] .cx-inbox .cx-nhead { font-size: 18px; }
-  :root[data-skin='retro'] .cx-inbox .cx-nbody { font-size: 16px; line-height: 22px; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-inbox .cx-nfilter { position: static; padding-left: 6px; background: transparent; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-inbox .cx-nhead { font-size: 18px; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-inbox .cx-nbody { font-size: 16px; line-height: 22px; }
 }
 /* skadet spiller i kamptaktikken (CM 01/02): gennemsigtig cirkel og gråt navn */
 .cx-tac-slot.inj .cx-tac-dot { opacity: 0.3; }
@@ -2015,11 +2015,11 @@ button.cx-bid-swap.removing { cursor: pointer; color: #fff21f; }
 }
 
 /* shortlistede spillere: gult navn i spillerlisterne (CM 01/02 Player & Staff Search) */
-:root[data-skin='retro'] .cx-tbl td.c-name > span.cx-short { color: #fff21f; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-tbl td.c-name > span.cx-short { color: #fff21f; }
 
 /* Player & Staff Search: beskrivelsen midt i linjen og større bladreknapper som originalen */
 .cx-pager-line .grow { text-align: center; }
-:root[data-skin='retro'] .cx-pager-line button { width: 38px; height: 26px; font-size: 12px; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-pager-line button { width: 38px; height: 26px; font-size: 12px; }
 
 /* tilmelding til fællesspil: klubber, der allerede er taget (Select Team) */
 .cxs-it.taken { opacity: 0.45; cursor: default; pointer-events: none; }
@@ -2028,7 +2028,7 @@ button.cx-bid-swap.removing { cursor: pointer; color: #fff21f; }
 /* rød notifikationsprik (ny ændringslog): på Game Options-knappen og ved punktet "Hvad er nyt" */
 .cx-dot { display: inline-block; width: 9px; height: 9px; margin-left: 7px; border-radius: 50%; background: #ff2a2a; box-shadow: 0 0 0 1px #000, 0 0 5px #ff2a2a; vertical-align: middle; }
 /* Game Settings: større vindue og to kolonner af indstillinger, så alt kan ses uden meget rulning (mobil: som før, én kolonne) */
-:root[data-skin='retro'] .modal.cx-settings:not(.cx-filters) { width: min(1180px, 96vw); max-width: 1180px; }
+:is(:root[data-skin='retro'], [data-skin-scope='retro']) .modal.cx-settings:not(.cx-filters) { width: min(1180px, 96vw); max-width: 1180px; }
 .cx-settings:not(.cx-filters) .modal-body { max-height: min(86vh, 900px); }
 @media (min-width: 1000px) {
   .cx-settings:not(.cx-filters) .cx-set-grid { grid-template-columns: minmax(120px, 190px) 1fr minmax(120px, 190px) 1fr; gap: 6px 14px; }
@@ -2038,20 +2038,20 @@ button.cx-bid-swap.removing { cursor: pointer; color: #fff21f; }
 /* ---------- mobil: trykflader (mobiltest 19/11, scripts/e2e-mobile.mjs) ----------
    Kun smal skærm (≤ 760 px): trykmål på mindst ~34 px, så knapper ikke misses og ikke presses sammen. Indholdet er uændret, desktop uberørt. */
 @media (max-width: 760px) {
-  :root[data-skin='retro'] .cx-drop-btn, :root[data-skin='retro'] .cx-greybtn, :root[data-skin='retro'] .cx-grey, :root[data-skin='retro'] .cx-funds { min-height: 34px !important; }
-  :root[data-skin='retro'] .cx-rowbtn, :root[data-skin='retro'] .cx-sq-orig .cx-selbtn, :root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag, :root[data-skin='retro'] .cx-selbtn { min-height: 34px !important; height: 34px !important; }
-  :root[data-skin='retro'] button.cx-sq-tag { min-width: 40px; }
-  :root[data-skin='retro'] .cx-sl-cell { min-height: 36px !important; min-width: 40px; }
-  :root[data-skin='retro'] .cx-sq-orig .cx-slot, .cx-slot { height: 34px !important; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-drop-btn, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-greybtn, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-grey, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-funds { min-height: 34px !important; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-rowbtn, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-orig .cx-selbtn, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-orig button.cx-sq-tag, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-selbtn { min-height: 34px !important; height: 34px !important; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) button.cx-sq-tag { min-width: 40px; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sl-cell { min-height: 36px !important; min-width: 40px; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-orig .cx-slot, .cx-slot { height: 34px !important; }
   /* pladsrækken (GK DL … SB9): to rækker og mindre skrift, så SB1SB2 ikke løber sammen */
-  :root[data-skin='retro'] .cx-sq-orig .cx-sq-slots, .cx-sq-slots { grid-template-columns: repeat(10, minmax(0, 1fr)) !important; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-sq-orig .cx-sq-slots, .cx-sq-slots { grid-template-columns: repeat(10, minmax(0, 1fr)) !important; }
   .cx-slot { font-size: 12px; letter-spacing: -0.3px; padding: 0; overflow: hidden; }
   .cx-menu-btn { width: 34px; height: 34px; font-size: 14px; }
-  :root[data-skin='retro'] .cx-pl-arrow { min-width: 34px; min-height: 34px; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-pl-arrow { min-width: 34px; min-height: 34px; }
   /* menuerne (Game Options, Competitions, rullelister): højere linjer */
-  :root[data-skin='retro'] .cx-drop-pop button, .cx-menu-pop button { min-height: 38px; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-drop-pop button, .cx-menu-pop button { min-height: 38px; }
   .cx-fl-input { min-height: 34px; }
-  :root[data-skin='retro'] button.cx-sq-name, :root[data-skin='retro'] button.cx-sq-tag, :root[data-skin='retro'] .cx-take, :root[data-skin='retro'] .cxs-btn.small, :root[data-skin='retro'] .cx-arrows button, :root[data-skin='retro'] .cx-pager button { min-height: 34px; }
+  :is(:root[data-skin='retro'], [data-skin-scope='retro']) button.cx-sq-name, :is(:root[data-skin='retro'], [data-skin-scope='retro']) button.cx-sq-tag, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-take, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cxs-btn.small, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-arrows button, :is(:root[data-skin='retro'], [data-skin-scope='retro']) .cx-pager button { min-height: 34px; }
   input[type='checkbox'], input[type='radio'] { width: 22px; height: 22px; }
 }
 

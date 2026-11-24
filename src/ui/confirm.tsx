@@ -1,7 +1,7 @@
 // Spillets egen bekræftelses-popup (i stedet for browserens confirm()).
 import { useEffect, useState } from 'react';
 import { t } from '../i18n';
-import { isRetro } from './theme';
+import { chromeRetro } from './theme';
 import { gs, hasGame } from '../game/state';
 import { titleColors, useClassicDialog } from './classic';
 
@@ -48,7 +48,7 @@ export function ConfirmHost() {
   if (!req) return null;
   const answer = (v: boolean) => { req.resolve(v, val); setReq(null); };
   // klassisk tema i et kørende spil: en hel skærm med teksten i midten og No/Yes i bunden (som CM 01/02)
-  if (isRetro() && hasGame()) {
+  if (chromeRetro() && hasGame()) {
     const g = gs();
     const col = titleColors(g.userClub || undefined);
     return (

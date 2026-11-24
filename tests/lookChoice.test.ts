@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { createGame, type WorldData } from '../src/game/newgame';
 import { gs, setGame } from '../src/game/state';
-import { getTheme, setTheme, setStartSkin, isRetro } from '../src/ui/theme';
+import { getTheme, setTheme, setStartSkin, isRetro, chromeRetro, classicScope } from '../src/ui/theme';
 import { modernOn } from '../src/ui/modernFlag';
 import { authentic, origLogic, legacyExtended } from '../src/game/rules';
 
@@ -41,12 +41,15 @@ describe('udseendet er uafhængigt af tilstanden', () => {
     createGame(world, { managerName: 'T', managerNation: 0, clubId: club, activeNations: [world.clubs[0][3] as number], lang: 'en', masking: true, seed: 1, mode: 'authentic' });
     const before = JSON.stringify([gs().options.mode, gs().options.rules]);
     setTheme('dark');
-    expect(isRetro()).toBe(false);
+    expect(chromeRetro()).toBe(false); // modern ramme ...
+    expect(isRetro()).toBe(true); // ... med originalens klassiske indhold (alle originale funktioner)
+    expect(classicScope()).toBe(true);
     expect(origLogic()).toBe(true);
     expect(legacyExtended()).toBe(false);
-    expect(authentic()).toBe(false); // UI: originalens skærme kun i klassisk udseende ...
+    expect(authentic()).toBe(true); // UI: originalens skærme også i moderne udseende ...
     expect(JSON.stringify([gs().options.mode, gs().options.rules])).toBe(before); // ... men tilstanden og reglerne er uændrede
     setTheme('retro');
-    expect(isRetro()).toBe(true);
+    expect(chromeRetro()).toBe(true);
+    expect(classicScope()).toBe(false);
   }, 300_000);
 });

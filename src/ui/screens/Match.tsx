@@ -28,7 +28,7 @@ import { chant, playSample, preloadMatchSounds, startCrowd, stopCrowd, stopMatch
 import { regionOf } from '../../game/leagues';
 import { Head } from './common';
 import { PlayedMatchClassic } from './PlayedMatchClassic';
-import { isRetro } from '../theme';
+import { chromeRetro as isRetro } from '../theme'; // kampskærmen er altid den moderne i en moderne ramme (den klassiske bruger sidebjælkens kampknapper)
 import { useClassicNext, useClassicMatchSide, useClassicDialog, ClassicSub, CxDrop, cxLongDate } from '../classic';
 import { loadStadiumBgs, matchdayBgUrl } from '../backgrounds';
 import { goalFlashMs, stadiumBackgrounds, titleLogo } from '../classicOptions';
@@ -40,7 +40,7 @@ import { stageLabel } from './Fixtures';
 import { useHotkeys } from '../hotkeys';
 import { TeamTalk } from '../teamtalk';
 import { talkDone } from '../../game/teamtalk';
-import { extended } from '../../game/rules';
+import { extended, origLogic } from '../../game/rules';
 import { isOriginal2001 } from '../../game/rules2001';
 import { realCompName } from '../../i18n/comps';
 import { rebornOn } from '../reborn';
@@ -163,7 +163,7 @@ function PreMatch({ id, onPlay, onQuick }: { id: number; onPlay: () => void; onQ
             <span className="muted">{tac.formation} · {t(`ment.${tac.team.mentality}`)}</span>
           </div>
         </Panel>
-        <Panel title={t('an.opponent', { club: rep.opp.short })}>
+        {!origLogic() && <Panel title={t('an.opponent', { club: rep.opp.short })}>
           <div className="kv">
             <span>{t('an.formation')}</span><span>{rep.oppTactic.formation} ({t(`ment.${rep.oppTactic.team.mentality}`)})</span>
             <span>{t('col.form')}</span><span>{rep.form || '-'}</span>
@@ -172,9 +172,10 @@ function PreMatch({ id, onPlay, onQuick }: { id: number; onPlay: () => void; onQ
           </div>
           <div className="gap" />
           {rep.insights.map((i, k) => <div key={k} className={`insight ${i.tone}`}>{t(i.key, { ...i.params, lane: i.params?.lane ? t(`lane.${i.params.lane}`) : undefined })}</div>)}
-        </Panel>
+        </Panel>}
       </div>
-      {isToday && !awayVsHuman && <OppInstructionsPanel fixture={id} rep={rep} />}
+      {/* analyse, odds og modstanderinstruktioner findes ikke i originalen (kun udvidede gamle spil) */}
+      {isToday && !awayVsHuman && !origLogic() && <OppInstructionsPanel fixture={id} rep={rep} />}
       {isToday && !gs().draft && <TeamTalk fixture={id} stage="pre" pids={[...tac.lineup, ...tac.bench].filter(Boolean)} diff={0} ratings={{}} />}
       {isToday && awayVsHuman ? (
         <div className="insight">{t('mp.h2hAway', { name: humanManager(f.home)?.name ?? '' })}</div>

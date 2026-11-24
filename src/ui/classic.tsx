@@ -66,7 +66,9 @@ export function useClassicFootActive() { return useSyncExternalStore(subFoot, ()
 export function ClassicFoot({ cols, className = '', children }: { cols?: string; className?: string; children: ReactNode }) {
   const el = useSyncExternalStore(subFoot, () => footEl);
   useEffect(() => { footUsers++; emitFoot(); return () => { footUsers--; emitFoot(); }; }, []);
-  return el ? createPortal(<div className={`cx-backnext cx-foot-btns ${className}`} style={cols ? { gridTemplateColumns: cols } : undefined}>{children}</div>, el) : null;
+  // uden klassisk bundbjælke (originalt spil i moderne udseende): knapperne står nederst på skærmen i stedet
+  const bar = <div className={`cx-backnext cx-foot-btns ${className}`} style={cols ? { gridTemplateColumns: cols } : undefined}>{children}</div>;
+  return el ? createPortal(bar, el) : <div className="cx-foot cx-foot-inline">{bar}</div>;
 }
 
 export function useClassicNext(label: string | null, run: () => void) {

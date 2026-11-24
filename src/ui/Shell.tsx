@@ -75,7 +75,7 @@ import { unreadChat } from '../game/chat';
 import { HelpScreen } from './help';
 import { VersionButton } from './Changelog';
 import { prefetchArticles } from './aiArticle';
-import { applyTheme, isRetro, setThemeClub } from './theme';
+import { applyTheme, isRetro, chromeRetro, classicScope, setThemeClub } from './theme';
 import { backgroundUrl, bgPack, clubBgUrl, clubPackUrl, loadClubPacks, compBgUrl, eveningFixture, genericMatchdayUrl, loadScreenBgs, loadStadiumBgs, matchdayBgUrl, miscBgUrl, nationBgUrl, sundayLeague, bgSet, loadOriginalBgs, originalBgUrl, originalBgsReady } from './backgrounds';
 import { MultiplayerSideButtons } from './MultiplayerPanel';
 import { CompetitionsMenu, NationsClubsMenu, FindMenu, GameOptionsMenu, ManagerMenu, bgChanges, modernBackgrounds, stadiumBackgrounds } from './classicOptions';
@@ -158,7 +158,7 @@ export function Shell() {
   const [, setStadiumsReady] = useState(0);
   const venueFix = (route.name === 'match' || route.name === 'matchday' || route.name === 'report') ? g.fixtures?.[Number((route as { id?: number }).id)] : undefined;
   // standardsættet (originalens billeder) bruger ikke stadionbilleder på kampdage – det gør de andre sæt
-  const origBg = isRetro() && bgSet() === 'original' && !bgPack();
+  const origBg = chromeRetro() && bgSet() === 'original' && !bgPack();
   const venue = venueFix && venueFix.stage !== 'F' && stadiumBackgrounds() && !origBg ? g.clubs[venueFix.home]?.stadium : undefined;
   const matchDay = !!venueFix && stadiumBackgrounds() && !origBg;
   useEffect(() => { if (matchDay) void loadStadiumBgs().then(() => setStadiumsReady((x) => x + 1)); }, [matchDay]);
@@ -213,11 +213,11 @@ export function Shell() {
     : k === 'jobs' && g.jobOffers.length > 0 ? <span className="badge">{g.jobOffers.length}</span> : null);
   // klassisk tema: fast venstre-kolonne, titelbjælke + faner pr. skærm og en bred Tilbage/Frem-bjælke
   // klassisk tema også som arbejdsløs (men ikke i online-lobbyen, hvor der endnu ikke er en verden)
-  const cmNav = isRetro() && !g.draft && !(session() && !session()!.inGame);
+  const cmNav = chromeRetro() && !g.draft && !(session() && !session()!.inGame);
   // originalens økonomi (2001-verdenen og nye CM-spil i ægte tilstand, cmFinOn): beløbene vises rundet som i originalen (Cash 0x4426e0)
   setMoneyRounding(cmActive(g) || cmFinOn(g));
   // klassisk udseende: alle beløb som originalens cash_format_money 0x441c10 (flag pr. skærm – se moneyCm i i18n)
-  setCashStyle(isRetro());
+  setCashStyle(chromeRetro());
   const dialogOpen = useClassicDialogOpen();
   const [holiday, setHoliday] = useState<boolean | null>(null);
   const [saveOpen, setSaveOpen] = useState(false);
@@ -468,7 +468,7 @@ export function Shell() {
 
 
   // fællesspil i klassisk: lobbyen er en hel klassisk skærm (ingen moderne venstremenu/topbjælke)
-  if (isRetro() && online && !online.inGame) return <ClassicLobby />;
+  if (chromeRetro() && online && !online.inGame) return <ClassicLobby />;
   return (
     <div className={`shell ${cmNav ? 'cx' : ''} ${cmNav && running ? 'cx-busy' : ''} ${cmNav && matchPhoto && night ? 'cx-night' : ''}`}>
       <div className="topbar">
@@ -585,7 +585,8 @@ export function Shell() {
                 </button>
               )}
               {GROUPS.map((gr) => {
-                const ks = gr.items.filter(allowed);
+                // et originalt spil: Profile, Jobs og Community findes ikke i originalen (Community ligger i Game Options)
+                const ks = gr.items.filter(allowed).filter((k) => !(classicScope() && (k === 'profile' || k === 'jobs' || k === 'community')));
                 if (!ks.length) return null;
                 // menuen viser præcis det, manageren har foldet ud (huskes) – står man på en side i en lukket gruppe, fremhæves overskriften
                 const active = ks.includes(route.name);
@@ -630,6 +631,7 @@ export function Shell() {
       {menuOpen && <div className="menu-backdrop" onClick={() => setMenuOpen(false)} />}
       <ClassicSlotCtx.Provider value={cmNav ? { tabs: tabSlot, sub: subSlot, setTabs: setTabSlot } : null}>
         <main className={`main ${cmNav ? `cx-main cx-bg-${route.name}${matchPhoto ? ' cx-stadium' : ''}${origBg && originalBgsReady() ? ' cx-orig' : ''}${matchPhoto && night ? ' cx-night' : ''}` : modernPhoto ? `mbg${matchPhoto ? ' mbg-stadium' : ''}${matchPhoto && night ? ' mbg-night' : ''}` : ''}`} ref={mainRef}
+          data-skin-scope={classicScope() ? 'retro' : undefined}
           style={!cmNav && modernPhoto ? ({ '--m-photo': `url("${modernPhoto}")` } as CSSProperties) : cmNav && cxPhoto ? ({ '--cx-photo': `url("${cxPhoto}")` } as CSSProperties) : undefined}>
           {online && !online.inGame ? <Lobby /> : <Screen allowed={allowed} />}
           {online?.status === 'error' && <div className="toast">{online.error}</div>}
