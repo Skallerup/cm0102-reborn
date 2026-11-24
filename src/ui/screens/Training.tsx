@@ -9,6 +9,9 @@ import { Bar, Panel, PlayerLink, Stars, posStr } from '../components';
 import { useGame } from '../core';
 import { Head } from './common';
 import { isRetro } from '../theme';
+import { OrigTraining } from './OrigTraining';
+import { cmBodyOn } from '../../game/cmPlayerData';
+import { origLogic } from '../../game/rules';
 import { ClassicTraining } from './TrainingClassic';
 import { scoutStars } from '../../game/scouting';
 import { coachingInfo, trainingAdvice } from '../../game/training';
@@ -21,6 +24,9 @@ export function posGroup(p: { pos: number[] }): string {
 }
 
 export function Training() {
+  const g = useGame()!;
+  // en CM-database i ægte tilstand: originalens træning (skemapladser) – også i det moderne udseende
+  if (!isRetro() && cmBodyOn(g) && g.clubs[g.userClub] && origLogic()) return <OrigTraining />;
   return isRetro() ? <ClassicTraining /> : <ModernTraining />;
 }
 
