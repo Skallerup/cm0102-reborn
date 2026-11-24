@@ -19,6 +19,8 @@
 //                                                  (trupstatus 1–2) / ×0,95 (3–5)
 //   add_cup_winners_record 0x86a800                klubomdømmet mod 500·turneringens omdømme (højst +750)
 //                                                  og truppen (400·omdømmet ≥ klubbens): moral +15, +0x44 +100
+//   0x86b0b0 (finalens taber, status 2)            klubomdømmet mod 500·turneringens omdømme (højst +350)
+//   0x86b710 (bronzekampens vinder, status 3)       klubomdømmet mod 500·turneringens omdømme (højst +200)
 //   forlængelsestilbuddene 0x4cda70 (1,0, art 1)    i de fire og i prisernes 0x86c8c0/0x86c390 (cmAwards.ts) → cmContractManager.ts cmContractRenewals
 // Ikke porteret (se noten): managerens/formandens historik og omdømme i de fire Staff_Records-funktioner (0x58e340, +0x69's +8/+0xa/+0xc),
 // stadionets +0x44 (mester), mediesystemet 0x754a30/0x72c1f0/0x744240/0x733a60/0x735870/
@@ -68,11 +70,12 @@ const setClubRep = (g: GameState, c: number, v: number) => { (g.cmClubRep ??= {}
  *  aldrig managere) */
 const squad50 = (squadOf: (c: number) => Player[], c: number) => squadOf(c).slice(0, 50).filter((p) => !p.regen);
 
-/** 0x868cdb–0x868d36 / 0x86a852–0x86a8ad: mål = 500·omdømme; klubomdømmet under målet → + min(mål − omdømme, 750), 1..10000 */
-function repTowards(g: GameState, c: number, rep: number): void {
+/** 0x868cdb–0x868d36 / 0x86a852–0x86a8ad (0x86b102–0x86b15d: højst 350, 0x86b762–0x86b7bd: højst 200): mål = 500·omdømme; klubomdømmet under
+ *  målet → + min(mål − omdømme, max), 1..10000 */
+function repTowards(g: GameState, c: number, rep: number, max = 750): void {
   const target = 500 * rep, cur = clubRep(g, c);
   if (cur >= target) return;
-  setClubRep(g, c, clampRep(s16(cur + Math.min(target - cur, 750))));
+  setClubRep(g, c, clampRep(s16(cur + Math.min(target - cur, max))));
 }
 /** club +0x7b (tilskuertallets maksimum, cmCrowd[2]): under 150000 og under +0x73 + 500 → + k·omdømme */
 function crowdMax(g: GameState, c: number, add: number): void {
@@ -166,9 +169,30 @@ export function recCupWinners(g: GameState, club: number, comp: Comp, squadOf?: 
   renewalHooks.offer?.(g, renew);
 }
 
+/** 0x86b0b0(klub, finalen, …): finalens taber (status 2 – Cup 0x51a150 0x51afac/0x51b31f; vt+0x44 0x519890 for de nationale pokaler, Charity
+ *  Shield, Super Cup'en og UEFA Cup'en (0x9030e0), Champions League 0x584ae0 i trin 12): klubomdømmet mod 500·turneringens omdømme, højst +350.
+ *  Resten (managerens/formandens/de 20 personers historik 0x58e340, managerens +0x69-tal) er ikke porteret – som i de øvrige Staff_Records. */
+export function recCupFinalist(g: GameState, club: number, comp: Comp): void {
+  repTowards(g, club, compRep(g, comp.id), 350);
+}
+/** 0x86b710(klub, kampen, …): status 3 = vinderen af bronzekampen (rundens id 0x8c, 0x51af63/0x51b2d3 – taberen får 4: ingen rekord; semifinalens
+ *  tabere får 0xff → 0x86c000): klubomdømmet mod 500·turneringens omdømme, højst +200. Ingen af spillets rundetabeller (cmCupTables/cmEuroTables)
+ *  har en bronzekamp, så den gives aldrig – som i originalen med de samme turneringer. */
+export function recCupThird(g: GameState, club: number, comp: Comp): void {
+  repTowards(g, club, compRep(g, comp.id), 200);
+}
+/** finalens taber: den sidste afgjorte runde, vinderen vandt (comp.ties i rundernes rækkefølge) */
+function finalLoser(comp: Comp): number | undefined {
+  for (let i = comp.ties.length - 1; i >= 0; i--) {
+    const t = comp.ties[i];
+    if (t.winner !== undefined && t.winner === comp.winner) return t.winner === t.a ? t.b : t.a;
+  }
+  return undefined;
+}
+
 /** Staff_Records ved turneringernes afslutning (dagligt efter dagens kampe): en færdig liga giver mesterskabet, nedrykningerne (de nederste
  *  LEAGUE_RULES.relegated, når der er en liga under) og oprykningerne fra ligaen under (promotionOrder); en færdig playoff giver vinderens
- *  oprykning, en færdig pokal/europæisk turnering pokalvinderen. Én gang pr. turnering og sæson (g.cmRecDone). */
+ *  oprykning, en færdig pokal/europæisk turnering pokalvinderen og finalens taber (ikke Intertoto). Én gang pr. turnering og sæson (g.cmRecDone). */
 export function cmRecordsDaily(g: GameState, squadOf: (c: number) => Player[]): void {
   if (!cmMediaOn(g) || g.cmFitStart === undefined) return;
   const done = (g.cmRecDone ??= {});
@@ -195,6 +219,13 @@ export function cmRecordsDaily(g: GameState, squadOf: (c: number) => Player[]): 
       // oprykningsplayoff PO-<lavere liga> (playoffFor = ligaen over): vinderen rykker op fra den lavere liga (season.ts promotionRelegation)
       const from = comp.id.startsWith('PO-') ? comp.id.slice(3) : '';
       if (comp.winner && g.comps[from] && LEAGUE_RULES[comp.playoffFor ?? '']?.below === from) recPromotion(g, comp.winner, g.comps[from], squadOf);
-    } else if ((comp.type === 'cup' || comp.type === 'continental') && comp.winner) recCupWinners(g, comp.winner, comp, squadOf);
+    } else if ((comp.type === 'cup' || comp.type === 'continental') && comp.winner) {
+      // Intertoto (0x633c10): vinderne af de tre finaler får kun 0x86bdd0 (UEFA Cup-pladsen), taberne 0x86c000 – ingen pokalvinder-/finalistrekord
+      if (comp.id === 'UIC' || comp.meta?.cmEuro === 'UIC') continue;
+      // 0x51afd3/0x51aff8: vinderen (status 1 → 0x86a800), så taberen (status 2 → 0x86b0b0)
+      recCupWinners(g, comp.winner, comp, squadOf);
+      const ru = finalLoser(comp);
+      if (ru !== undefined && ru !== comp.winner && g.clubs[ru]) recCupFinalist(g, ru, comp);
+    }
   }
 }

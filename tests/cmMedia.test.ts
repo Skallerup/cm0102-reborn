@@ -1,7 +1,7 @@
 // Runde 12: de resterende moralskrivere (cmMedia.ts) – sign_contract 0x4cf720 (+20) og Staff_Records 0x868c50/0x869480/0x86a1c0/0x86a800
 // efter disassemblyen (konstanterne 0x968f78 = 0,33, 0x9689d0 = 0,95, 0x9689d8 = 0,9).
 import { describe, expect, it } from 'vitest';
-import { cmSignContractMorale, recChampions, recCupWinners, recPromotion, recRelegation } from '../src/game/cmMedia';
+import { cmRecordsDaily, cmSignContractMorale, recChampions, recCupFinalist, recCupThird, recCupWinners, recPromotion, recRelegation } from '../src/game/cmMedia';
 import { renewalHooks } from '../src/game/cmTableHooks';
 import type { Competition, GameState, Player } from '../src/game/types';
 
@@ -78,5 +78,26 @@ describe('Staff_Records', () => {
     recCupWinners(g, 1, cup, () => [a]);
     expect(g.cmClubRep![1]).toBe(3750);
     expect(a.morale).toBeGreaterThan(5); expect(a.cmContract!.b44).toBe(100); expect(renewed).toEqual([50]);
+  });
+  it('0x86b0b0/0x86b710: finalens taber mod 500·omdømmet højst +350, bronzekampens vinder højst +200 (1..10000)', () => {
+    const g = game(); g.cmCompRep![351] = 13;
+    const cup = { id: 'CUP-60', name: 'English FA Cup', type: 'cup' } as unknown as Competition;
+    g.comps[cup.id] = cup;
+    g.cmClubRep![1] = 6000; recCupFinalist(g, 1, cup); expect(g.cmClubRep![1]).toBe(6350);
+    g.cmClubRep![1] = 6400; recCupFinalist(g, 1, cup); expect(g.cmClubRep![1]).toBe(6500);
+    g.cmClubRep![1] = 6500; recCupFinalist(g, 1, cup); expect(g.cmClubRep![1]).toBe(6500);
+    g.cmClubRep![1] = 3000; recCupThird(g, 1, cup); expect(g.cmClubRep![1]).toBe(3200);
+  });
+  it('cmRecordsDaily: pokalvinderen (0x86a800) og finalens taber (0x86b0b0); Intertoto (0x633c10) ingen af dem', () => {
+    const g = game(); g.cmCompRep![351] = 13;
+    g.cmClubRep![1] = 3000; g.cmClubRep![2] = 3000;
+    const ties = [{ id: 1, a: 2, b: 3, legs: 1, winner: 2, stage: 'SF', fx: [] }, { id: 2, a: 1, b: 2, legs: 1, winner: 1, stage: 'F', fx: [] }];
+    g.comps['CUP-60'] = { id: 'CUP-60', name: 'English FA Cup', type: 'cup', finished: true, winner: 1, ties } as unknown as Competition;
+    cmRecordsDaily(g, () => []);
+    expect(g.cmClubRep![1]).toBe(3750); expect(g.cmClubRep![2]).toBe(3350);
+    const h = game(); h.cmCompRep![351] = 13; h.cmClubRep![1] = 3000; h.cmClubRep![2] = 3000;
+    h.comps.UIC = { id: 'UIC', name: 'Inter-Toto Cup', type: 'continental', finished: true, winner: 1, ties: [ties[1]], meta: { cmEuro: 'UIC' } } as unknown as Competition;
+    cmRecordsDaily(h, () => []);
+    expect(h.cmClubRep![1]).toBe(3000); expect(h.cmClubRep![2]).toBe(3000);
   });
 });

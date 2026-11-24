@@ -18,6 +18,7 @@ import { ageOn } from './dates';
 import { gs, hasGame } from './state';
 import { origLogic } from './rules';
 import { contractLanguageNibble, languageDay, languageFluency } from './cmLanguage';
+import { x72 } from './engine/grid/gameTable';
 
 /** "2001-verdenen": kun den originale database i ægte tilstand (som cmDatabase i newgame.ts – ikke importeret: cirkulær import) */
 export function cmActive(g: GameState): boolean {
@@ -728,7 +729,7 @@ function clubMood(g: GameState, c: { id: number; league: string }): number {
   const i = rows.findIndex((r) => r.club === c.id);
   if (i < 0 || rows[i].p <= 8) return 0;
   const cr = g.cmCompRep?.[+(c.league.match(/(\d+)$/)?.[1] ?? NaN)] ?? 0;
-  return moodValue(rows[i].p, lastRank(g, c.league, c.id), i + 1, comp.clubs.length, cr, clubRepMem(g, c.id), lg.tier > 1);
+  return moodValue(rows[i].p, x72(g, c.league, c.id), i + 1, comp.clubs.length, cr, clubRepMem(g, c.id), lg.tier > 1);
 }
 /** 0x5cd638–0x5cd745 som ren funktion: kampe, +0x72, placeringen +0x73, holdene (+0x3e), ligaens og klubbens omdømme, og om ligaen svarer ja i 0x98 */
 export function moodValue(played: number, x72: number, pos: number, teams: number, compRep: number, clubRep: number, floor5: boolean): number {
