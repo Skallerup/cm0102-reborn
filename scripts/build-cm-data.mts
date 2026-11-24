@@ -67,7 +67,7 @@ if (Object.keys(DIV_FIXES).length) {
 // moderne: tre rækker læses, så Danmarks 2. division kan komme med (TIERS nedenfor bestemmer, hvad der beholdes)
 // 2026/27 (MODERN_PARITY 13): stabens hukommelse 0x524d70 (staffMem – Staff Search); world.json er uændret (kun world-cm*.json får den)
 // (20/11, Bosman 0.7.2-tjeklisten) 2026/27 også turneringernes historik (compHist → world-cm.json; world.json er uændret)
-const w = parseCM0102(files, ORIGINAL ? { maxTiers: 4, allClubs: true, cmMem: true } : { maxTiers: 3, staffMem: true, compHist: true });
+const w = parseCM0102(files, ORIGINAL ? { maxTiers: 4, allClubs: true, cmMem: true } : { maxTiers: 4, staffMem: true, compHist: true });
 let histNames2026: Record<number, [string, number]> | null = null;
 
 // skub en ISO-dato (yyyy-mm-dd) frem med SHIFT år
@@ -130,8 +130,9 @@ if (ORIGINAL && !/3\.9\.6[05]/.test(dir) && !process.env.NO_LEGACY && existsSync
 
 // Originalen: flere rækker i de lande, hvor de lavere rækker rummer kendte køb (Zamora, Earnshaw, Mexicos 2. række …)
 const EXTRA_TIERS: Record<string, number> = ORIGINAL ? { England: 4, Scotland: 4, Holland: 2, Portugal: 2, Argentina: 2, Mexico: 2, Norway: 2 }
-  // 2026/27: Danmarks 2. division (12 klubber med trupper i datasættet) – rækkerne rettet i divisions-2026.json
-  : { Denmark: 3 };
+  // 2026/27: Danmarks 2. division (12 klubber med trupper i datasættet) – rækkerne rettet i divisions-2026.json; (24/11) Englands fire ligaer som
+  // originalen (Premier, First, Second, Third – datasættets Second/Third er League One/Two 2026/27, 24 + 24 klubber som Wikipedia)
+  : { Denmark: 3, England: 4 };
 const nationName = (idx: number) => w.nations[idx]?.name ?? '';
 const keptLeagues = new Set<string>();
 for (const l of w.leagues) {
@@ -308,6 +309,33 @@ if (!ORIGINAL && files['nation.dat']) {
     }
     if (n) out.leagues.push({ id: lid, name: nm, nation: idx, tier: 9, hidden: true });
   }
+  // (24/11, "Altid som originalen") Englands klubber uden for de fire ligaer (Conference, Northern/Southern Premier, "A Lower Division", U21-holdene
+  // …) som skjulte klubber i én liga HN<England> (som de spilbare landes inaktive divisioner i 2001-byggeriet): originalen har dem i hukommelsen,
+  // EngFaCup::collect_entrants 0x56fab0 tager Conference (22) + 38 andre (cmCups.ts cmFaCupEntrants – før kun de 92 ligaklubber), og Third ↔
+  // Conference-skiftet 0x574e60 (cmNonLeague.ts) finder sin oprykker. Divisionen står i cmRaw.fin (club.dat +0x57). Alle spillere ≤ 40 år.
+  const engIdx = wa.nations.findIndex((x) => x.name === 'England');
+  if (engIdx >= 0 && keptNat.has(engIdx)) {
+    const lid = `HN${engIdx}`;
+    let nc = 0;
+    for (const c of wa.clubs) {
+      if (c[3] !== engIdx || keptLg.has(c[0] as number) || euroKeep.has(c[0] as number) || !(c[0] as number)) continue;
+      const row = c.slice() as typeof c; row[4] = lid;
+      out.clubs.push(row); euroKeep.add(c[0] as number); nc++;
+      if (wa.clubRep[c[0] as number] !== undefined) out.clubRep[c[0] as number] = wa.clubRep[c[0] as number];
+      for (const p of byClub.get(c[0] as number) ?? []) {
+        if (have.has(p[Fa.id] as number) || ageAt(shift(p[Fa.dob] as string)) > 40) continue;
+        const q = w.playerFields.map((f) => p[Fa[f]]) as typeof p;
+        q[F.dob] = shift(q[F.dob] as string);
+        if (q[F.contract]) q[F.contract] = shift(q[F.contract] as string);
+        q[F.value] = 0; q[F.maxValue] = 0;
+        out.players.push(q);
+        const r = wa.ratings[p[Fa.id] as number];
+        if (r) { const rr = { ...r }; delete rr.tc; out.ratings[p[Fa.id] as number] = rr; }
+      }
+    }
+    if (nc) out.leagues.push({ id: lid, name: wa.nations[engIdx].name, nation: engIdx, tier: 9, hidden: true });
+    console.error(`Englands klubber uden for ligaerne: ${nc} skjulte klubber -> world-cm.json`);
+  }
   // klubbernes rå poster (omdømme, tilskuere, økonomi, formand …) fra samme indlæsning – kun til world-cm.json (cmRaw)
   if (w.cmRaw && wa.cmRaw) {
     for (const k of ['clubRep', 'clubStat', 'crowd', 'fin', 'chair', 'chairBoard'] as const) {
@@ -318,6 +346,13 @@ if (!ORIGINAL && files['nation.dat']) {
   for (const id of euroKeep) if (wa.clubFinance?.[id]) (w.clubFinance ??= {})[id] = wa.clubFinance[id];
   euroClubs = out;
   console.error(`Europas klubber uden liga i world.json: ${out.clubs.length} klubber, ${out.players.length} spillere i ${out.leagues.length} lande (${[...missing].map((i) => w.nations[i].name).join(', ')}) -> world-cm.json`);
+}
+// (24/11) 2026/27 indlæses med fire rækker (Englands League One/Two); de øvrige landes 4. række kommer ikke med, og deres spillere bliver som før
+// (indlæsning med tre rækker) fri agenter, når de er gode nok (CA ≥ 120 – parserens regel for klubber uden for de importerede ligaer)
+const tier4Out = new Set<number>();
+if (!ORIGINAL) {
+  const t4 = new Set(w.leagues.filter((l) => l.tier === 4 && !keptLeagues.has(l.id)).map((l) => l.id));
+  for (const c of w.clubs) if (t4.has(c[4] as string)) tier4Out.add(c[0] as number);
 }
 w.leagues = [...w.leagues.filter((l) => keptLeagues.has(l.id)), ...hiddenLeagues];
 const keptClubs = new Set<number>();
@@ -408,7 +443,8 @@ for (const c of w.clubs) {
 // Desuden frasorteres ex-spiller-trænere (staff-poster med en spiller-post, alle 40+ med værdi 0) – ikke i den originale database.
 const before = w.players.length;
 w.players = w.players.filter((p) => {
-  const club = p[F.club] as number;
+  let club = p[F.club] as number;
+  if (club && tier4Out.has(club) && (w.ratings[p[F.id] as number]?.ca ?? 0) >= 120) { p[F.club] = 0; club = 0; }
   if (club && !keptClubs.has(club)) return false;
   if (club && ORIGINAL && hiddenLeagueOf(club) && !hiddenKeep.has(p[F.id] as number)) {
     // (de spilbare landes inaktive divisioner) kun dem, originalens 0x524d70 kan have i hukommelsen (CMRatings.tc)

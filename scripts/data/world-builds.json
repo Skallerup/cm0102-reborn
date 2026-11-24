@@ -34,13 +34,13 @@
   "world.json": {
     "source": ".data-update/October 2026 Data Update",
     "season": 2026,
-    "sha256": "62d556398159d51b3446aa84852806654e757d86bd731d2d18198774e5cc21d7",
+    "sha256": "f6662e1acaf674799eea5f5f804b7d8d803e576a67fa2625f1ee4f5842e597e3",
     "careers": "careers-cm.json",
-    "careersSha256": "352c28a022160e40a07080603ae5562c15b915ee6447696430a099ff6eae48db",
+    "careersSha256": "b23e9bdfbd2a1707d0e3ab3127b636066de0e9fb84e02504faab3ac65337dee7",
     "cm": "world-cm.json",
-    "cmSha256": "750c1efb1d026f47d71c44572f48a4b963ec8f1d416c448f058c0a7afd44c696",
+    "cmSha256": "38509da66f06cfb9d551209d98afd41c6c5ac0c3979ea1a08c6167bddb232ab2",
     "cmStaff": "world-cm-staff.json",
-    "cmStaffSha256": "f8169a9e2a3d873ae6da833160e1596f15b0dbab9d63f0ee4ef8d93d58cd615b",
+    "cmStaffSha256": "7158b523c7b6fe813ad51c89f3ff86a0c9e8b343ac1ec988094d50c18053d6fe",
     "reproducible": true
   }
 }
