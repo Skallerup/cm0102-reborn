@@ -4,12 +4,12 @@ import { useMemo } from 'react';
 import { sortTable } from '../../game/competitions';
 import { hasMatchView } from '../../game/miniReport';
 import { cmInCompSeason } from '../../game/cmEurope';
-import type { Competition, Fixture } from '../../game/types';
+import type { Competition, Fixture, TableRow } from '../../game/types';
 import { dateFmt, t } from '../../i18n';
 import { Tabs } from '../components';
 import { useGame, useNav, useRouteState } from '../core';
-import { ClassicSub, CxDrop, CxLink, clubRoute, type Item } from '../classic';
-import { Scorers } from './Competitions';
+import { ClassicSub, CxDrop, CxLink, clubRoute, cxShortDate, type Item } from '../classic';
+import { Scorers, ordinal } from './Competitions';
 import { stageLabel } from './Fixtures';
 import { rebornOn } from '../reborn';
 
@@ -34,7 +34,7 @@ export function ClassicCup({ comp }: { comp: Competition }) {
   const sub: Item[] = SUB.map((k) => ({ key: k, label: t(`cl.cup.${k}`), on: tab === k, onClick: () => (k === 'history' ? nav({ name: 'competitions', id: comp.id, tab: 'history', state: { [`cup:${comp.id}`]: 'history' } }) : setTab(k)) }));
   return (
     <>
-      <Tabs tabs={MAIN.map((k) => [k, t(`cl.cup.${k}`)] as [string, string])} value={(MAIN as readonly string[]).includes(tab) ? tab : ''} onChange={(v) => setTab(v as CupTab)} />
+      <Tabs tabs={MAIN.map((k) => [k, t(k === 'rounds' && (comp.type === 'continental' || !!comp.groups) ? 'cl.cup.stages' : `cl.cup.${k}`)] as [string, string])} value={(MAIN as readonly string[]).includes(tab) ? tab : ''} onChange={(v) => setTab(v as CupTab)} />
       <ClassicSub items={sub} />
       {tab === 'rounds' && <Rounds comp={comp} />}
       {tab === 'results' && <Days comp={comp} played />}
@@ -47,48 +47,97 @@ export function ClassicCup({ comp }: { comp: Competition }) {
   );
 }
 
+/** Rækkefølgen af faser i Stage-menuen (CM 01/02: First Qualifying Phase … Final); G = 1. gruppespil, G2 = 2. gruppespil */
+const STAGE_ORDER = ['Q', 'Q1', 'Q2', 'Q3', 'R1', 'R2', 'R3', 'R4', 'R5', 'R6', 'LP', 'G', 'G2', 'R32', 'KPO', 'R16', 'QF', 'SF', '3P', 'F2', 'F'];
+/** CM 01/02's Champions League-skærm viser altid alle otte faser */
+const CL_STAGES = ['Q1', 'Q2', 'Q3', 'G', 'G2', 'QF', 'SF', 'F'];
+const stageKey = (f: Fixture) => (f.stage?.startsWith('G') && f.stage !== 'G' ? (f.stage.endsWith('2') ? 'G2' : 'G') : f.stage ?? `R${f.round}`);
+const stageName = (s: string) => (s === 'G' || s === 'G2' ? t(`cl.stg.${s}`) : s === 'QF' || s === 'SF' || s === 'F' ? t(`cl.stg.${s}`) : t(`stage.${s}`));
+
+/** Stages-fanen: Stage-menuen med alle faser, Group-menuen, View (Overall/Home/Away) – gruppetabel med Q-mærke og kampene under (som originalen) */
 function Rounds({ comp }: { comp: Competition }) {
-  const stages = [...new Set(comp.ties.map((x) => x.stage))];
-  const [stage, setStage] = useRouteState(`round:${comp.id}`, stages[stages.length - 1] ?? '');
-  const cur = stages.includes(stage) ? stage : stages[stages.length - 1];
-  const ties = comp.ties.filter((x) => x.stage === cur);
-  if (!stages.length) return <Groups comp={comp} />;
+  const g = useGame()!;
+  const { nav } = useNav();
+  const fx = useMemo(() => Object.values(g.fixtures).filter((f) => f.comp === comp.id && cmInCompSeason(comp, f)).sort((a, b) => a.date.localeCompare(b.date)), [g, comp]);
+  const stages = useMemo(() => {
+    const s = new Set<string>(comp.id === 'CL' ? CL_STAGES : []);
+    for (const f of fx) s.add(stageKey(f));
+    for (const x of comp.ties) s.add(x.stage);
+    if (comp.table.length && !comp.groups) s.add('LP');
+    if (comp.groups && Object.keys(comp.groups).length) { if (Object.keys(comp.groups).some((k) => !k.endsWith('2'))) s.add('G'); if (Object.keys(comp.groups).some((k) => k.endsWith('2'))) s.add('G2'); }
+    return [...s].sort((a, b) => (STAGE_ORDER.indexOf(a) + 1 || 99) - (STAGE_ORDER.indexOf(b) + 1 || 99));
+  }, [fx, comp]);
+  const cur0 = comp.stage && stages.includes(comp.stage) ? comp.stage : [...stages].reverse().find((s) => fx.some((f) => stageKey(f) === s)) ?? stages[0] ?? '';
+  const [stg, setStg] = useRouteState(`stg:${comp.id}`, cur0);
+  const stage = stages.includes(stg) ? stg : cur0;
+  const isGroup = stage === 'G' || stage === 'G2';
+  const gkeys = Object.keys(comp.groups ?? {}).filter((k) => (stage === 'G2') === k.endsWith('2')).sort();
+  const mine = gkeys.find((k) => comp.groups![k].some((r) => r.club === g.userClub));
+  const [grp, setGrp] = useRouteState(`grp:${comp.id}`, mine ?? gkeys[0] ?? '');
+  const group = gkeys.includes(grp) ? grp : mine ?? gkeys[0] ?? '';
+  const [view, setView] = useRouteState(`view:${comp.id}`, 'overall');
+  const rows = isGroup ? comp.groups?.[group] ?? [] : stage === 'LP' ? comp.table : [];
+  const shown = isGroup ? fx.filter((f) => f.stage === `G${group}`) : fx.filter((f) => stageKey(f) === stage);
+  const sorted = sortTable(rows.slice());
+  const done = shown.length > 0 && shown.every((f) => f.result);
+  const venue = (r: TableRow): TableRow => {
+    if (view === 'overall') return r;
+    const o = { ...r, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 };
+    for (const f of shown) if (f.result && (view === 'home' ? f.home : f.away) === r.club) {
+      const a = view === 'home' ? f.result.hg : f.result.ag, b = view === 'home' ? f.result.ag : f.result.hg;
+      o.p++; o.gf += a; o.ga += b; if (a > b) { o.w++; o.pts += 3; } else if (a === b) { o.d++; o.pts++; } else o.l++;
+    }
+    return o;
+  };
+  const title = isGroup ? t(stage === 'G2' ? 'cl.stg.g2h' : 'cl.stg.g1h', { g: group.replace('2', '') }) : stageName(stage);
+  if (!stages.length) return <div className="cx-empty cx-empty-mid">{!rebornOn('helpTexts') ? '' : t('cl.cup.notDrawn')}</div>;
   return (
     <>
-      <div className="cx-tools cx-tools-inline cx-tools-right">
-        <CxDrop label={t('cl.cup.round')} align="right" items={stages.map((s) => ({ key: s, label: t(`stage.${s}`), checked: s === cur, onClick: () => setStage(s) }))} />
+      <div className="cx-tools cx-tools-inline">
+        <CxDrop label={t('cl.sq.view')} items={(['overall', 'home', 'away'] as const).map((k) => ({ key: k, label: t(`cl.lg.v.${k}`), checked: view === k, onClick: () => setView(k) }))} />
+        <span className="grow" />
+        <CxDrop label={group ? `${t('fix.group')} ${group.replace('2', '')}` : t('fix.group')} align="right" items={gkeys.map((k) => ({ key: k, label: `${t('fix.group')} ${k.replace('2', '')}`, checked: k === group, onClick: () => setGrp(k) }))} />
+        <CxDrop label={t('cl.cup.stage')} align="right" items={stages.map((s) => ({ key: s, label: stageName(s), checked: s === stage, onClick: () => setStg(s) }))} />
       </div>
-      <div className="cx-subtitle small">{t(`stage.${cur}`)}</div>
-      <div className="cx-cup cx-listpanel">
-        {ties.map((x) => (
-          <div key={x.id} className="cx-cup-row">
-            <Code club={x.a} /><span /><Club id={x.a} win={x.winner === x.a} /><span className="cx-cup-v">v</span><Club id={x.b} win={x.winner === x.b} /><span /><Code club={x.b} />
-          </div>
-        ))}
+      <div className="cx-subtitle small" data-testid="cup-stage-title">{title}</div>
+      {sorted.length > 0 && (
+        <div className="cx-tbl-wrap cx-listpanel">
+          <table className="cx-tbl cx-league cx-cup-tbl">
+            <thead><tr><th className="btn-col" /><th className="btn-col" /><th /><th />{['cl.lg.pld', 'cl.lg.won', 'cl.lg.drn', 'cl.lg.lst', 'cl.lg.for', 'cl.lg.ag', 'cl.lg.pts'].map((k) => <th key={k} className="c-num">{t(k)}</th>)}</tr></thead>
+            <tbody>
+              {sorted.map((r0, i) => {
+                const r = venue(r0);
+                return (
+                  <tr key={r.club} className={isGroup && i === 2 ? 'zone-start' : ''}>
+                    <td className="btn-col"><span className="cx-lg-pos">{ordinal(i + 1)}</span></td>
+                    <td className="btn-col">{isGroup && i < 2 && done ? <span className="cx-cup-q">{t('cl.cup.q')}</span> : null}</td>
+                    <td className={`cx-lg-club ${r.club === g.userClub ? 'me' : ''}`} onClick={() => nav({ name: 'club', id: r.club })}>{g.clubs[r.club]?.name}</td>
+                    <td className="cx-cup-nat">{g.nations[g.clubs[r.club]?.nation]?.code}</td>
+                    <td className="c-num">{r.p}</td><td className="c-num">{r.w}</td><td className="c-num">{r.d}</td><td className="c-num">{r.l}</td>
+                    <td className="c-num">{r.gf}</td><td className="c-num">{r.ga}</td><td className="c-val">{r.pts}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <div className="cx-cup cx-listpanel cx-stg-fx" data-testid="cup-stage-fixtures">
+        {shown.map((f) => {
+          const open = hasMatchView(g, f.id) ? () => nav({ name: 'report', id: f.id }) : undefined;
+          return (
+            <div key={f.id} className="cx-stg-row">
+              <span className="cx-code wide">{cxShortDate(f.date)}</span>
+              <Club id={f.home} win={!!f.result && f.result.hg > f.result.ag} />
+              <span className={`cx-cup-score ${open ? 'go' : ''}`} onClick={open}>{f.result ? `${f.result.hg}:${f.result.ag}` : 'v'}</span>
+              <Club id={f.away} win={!!f.result && f.result.ag > f.result.hg} />
+              <span className="cx-cup-nat">{g.clubs[f.home]?.stadium ?? ''}</span>
+              <span className="cx-cup-pts">-----</span>
+            </div>
+          );
+        })}
       </div>
     </>
-  );
-}
-
-/** Gruppespil/ligafase uden udslagsrunder endnu: tabellerne */
-function Groups({ comp }: { comp: Competition }) {
-  const g = useGame()!;
-  // rækkerne ligger i lodtrækningens rækkefølge (efter seedning/nation) – vis dem efter point, målforskel og mål
-  const groups = (comp.groups ? Object.entries(comp.groups) : comp.table.length ? [['', comp.table] as const] : []).map(([k, rows]) => [k, sortTable(rows.slice())] as const);
-  if (!groups.length) return <div className="cx-empty cx-empty-mid">{!rebornOn('helpTexts') ? '' : t('cl.cup.notDrawn')}</div>;
-  return (
-    <div className="cx-cup cx-listpanel">
-      {groups.map(([k, rows]) => (
-        <div key={k}>
-          {k && <div className="cx-subtitle small">{t('fix.group')} {k}</div>}
-          {rows.map((r, i) => (
-            <div key={r.club} className="cx-cup-row form">
-              <span className="cx-code">{i + 1}.</span><Club id={r.club} /><span className="cx-cup-nat">{g.nations[g.clubs[r.club]?.nation]?.code}</span><span className="cx-cup-pts">{r.pts}</span>
-            </div>
-          ))}
-        </div>
-      ))}
-    </div>
   );
 }
 

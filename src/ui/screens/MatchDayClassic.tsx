@@ -88,7 +88,13 @@ export function MatchDay({ id }: { id: number }) {
       </div>
       <div className="cx-md-panel">{stages.map((st) => (
         <div key={st} className="cx-md">
-          {comp?.type !== 'league' && <div className="cx-md-stage">{st}</div>}
+          {comp?.type !== 'league' && (() => {
+            // gruppeoverskriften er et link til turneringsskærmen på netop den gruppe (Stage = gruppespillets fase)
+            const gf = list.find((f) => stageLabel(f) === st && f.stage?.startsWith('G') && f.stage.length > 1);
+            if (!gf || !comp) return <div className="cx-md-stage">{st}</div>;
+            const k = gf.stage!.slice(1);
+            return <div className="cx-md-stage cx-link" role="link" data-testid="md-group-link" onClick={() => nav({ name: 'competitions', id: cid, state: { [`cup:${cid}`]: 'rounds', [`stg:${cid}`]: k.endsWith('2') ? 'G2' : 'G', [`grp:${cid}`]: k } })}>{st}</div>;
+          })()}
           {list.filter((f) => stageLabel(f) === st).map((f) => (
             <div key={f.id} className={`cx-md-row ${isMine(f) ? 'mine' : ''}`}>
               <span className="cx-md-code">{code(f.home, f)}</span>

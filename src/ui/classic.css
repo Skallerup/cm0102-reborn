@@ -2100,3 +2100,9 @@ button.cx-bid-swap.removing { cursor: pointer; color: #fff21f; }
   .cxs-field { padding: 4px 8px; }
   .cxs-field.static em, .cxs-field .gold { font-size: 20px; }
 }
+/* Stages-fanen (CM 01/02 Champions League): Q-mærke, gruppens kampliste */
+.cx-cup-q { display: grid; place-items: center; width: 40px; height: 21px; background: #a01818; border: 1px solid #e05050; color: #fff; font-size: 12px; font-weight: 700; }
+.cx-cup-tbl .cx-cup-nat { text-align: center; }
+.cx-stg-row { display: grid; grid-template-columns: 150px minmax(0, 1fr) 56px minmax(0, 1fr) minmax(0, 0.8fr) 70px; gap: 8px; align-items: center; min-height: 28px; }
+.cx-stg-row .cx-cup-score.go { cursor: pointer; }
+@media (max-width: 760px) { .cx-stg-row { grid-template-columns: 90px minmax(0, 1fr) 44px minmax(0, 1fr); } .cx-stg-row .cx-cup-nat, .cx-stg-row .cx-cup-pts { display: none; } }

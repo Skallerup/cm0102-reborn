@@ -1161,6 +1161,29 @@ async function run(look) {
     const bg = await page.locator('.cx-title').first().evaluate((el) => getComputedStyle(el).backgroundColor);
     if (bg === 'rgb(0, 0, 0)') throw new Error('ligaen fik Champions Leagues sorte titelbjælke');
   });
+  if (look === 'klassisk') await step('turneringsskærm: Stages – Stage-menu og gruppelink fra kampdagen', async () => {
+    await go({ name: 'competitions', id: 'CL', state: { 'cup:CL': 'rounds', 'stg:CL': 'G', 'grp:CL': 'A' } });
+    await page.waitForTimeout(200);
+    const title = async () => (await page.locator('[data-testid=cup-stage-title]').first().innerText()).trim();
+    if (!/^Phase 1 Group/.test(await title())) throw new Error(`CL Stages: forkert overskrift "${await title()}"`);
+    await page.locator('.cx-tools-inline .cx-drop-btn', { hasText: /^Stage/ }).first().click();
+    const stages = (await page.locator('.cx-drop-pop button').allInnerTexts()).map((x) => x.trim());
+    for (const s of ['First Qualifying Phase', 'Second Qualifying Phase', 'Third Qualifying Phase', 'Phase 1 Group Stage', 'Phase 2 Group Stage', 'Quarter Final', 'Semi Final', 'Final']) if (!stages.includes(s)) throw new Error(`Stage-menuen mangler "${s}": ${stages.join(' | ')}`);
+    await page.locator('.cx-drop-pop button', { hasText: /^Quarter Final$/ }).click();
+    await page.waitForTimeout(100);
+    if ((await title()) !== 'Quarter Final') throw new Error(`Stage-skift virkede ikke: "${await title()}"`);
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-cl-stages.png` });
+    // kampdagens "Group X"-overskrift er et link til gruppen
+    const link = await gs(() => { const g = window.__cm.gs(); return Object.values(g.fixtures).find((f) => f.comp === 'CL' && f.stage?.startsWith('G') && f.stage.length === 2)?.stage ?? null; });
+    if (link) {
+      const day = await gs(() => { const g = window.__cm.gs(); return Object.values(g.fixtures).find((f) => f.comp === 'CL' && f.stage?.startsWith('G') && f.stage.length === 2).id; });
+      await go({ name: 'matchday', id: day });
+      await page.waitForSelector('[data-testid=md-group-link]', { timeout: 5000 });
+      await page.locator('[data-testid=md-group-link]').first().click();
+      await page.waitForTimeout(200);
+      if (!new RegExp(`Phase 1 Group ${link.slice(1)}$`).test(await title())) throw new Error(`gruppelinket åbnede ikke ${link}: "${await title()}"`);
+    }
+  });
   if (look === 'klassisk') await step('UEFA Coefficients', async () => {
     await go({ name: 'coefficients' });
     await page.waitForSelector('.cx-coef tbody tr', { timeout: 5000 });
