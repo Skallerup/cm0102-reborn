@@ -13,6 +13,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '2026-11-24',
     title: { da: 'Mere af det originale CM 01/02', en: 'More of the original CM 01/02' },
     items: [
+      { da: "Udlejede spillere beholder deres trupstatus og kontraktens øvrige vilkår i moderklubben under lejen, som i originalen – andre klubber kan igen købe dem midt i lejen.", en: "Loaned-out players keep their squad status and other contract terms at their parent club during the loan, as in the original – other clubs can again buy them mid-loan." },
       { da: "Nyt spil på mobil: siden blev genindlæst lige efter \"100 %\" – spillet overdrages nu som et gemt spil, og det første gem skrives under oprettelsen.", en: "New game on mobile: the page reloaded right after \"100%\" – the game is now handed over as a saved game, and the first save is written while it is created." },
     ],
   },
