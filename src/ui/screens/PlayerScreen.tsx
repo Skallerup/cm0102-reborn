@@ -32,6 +32,13 @@ import { guessIntent } from '../../ai/fallback';
 import { useAiAvailable } from '../ai';
 import { statusTags } from './Squad';
 import { contractRows, transferRows } from './PlayerClassic';
+import { OrigBidModal } from './OrigBid';
+import { cmLogic, cmMarketOn } from '../../game/cmPlayerData';
+import { cmScoutOn } from '../../game/cmScout';
+import { cmTalksOpen } from '../../game/cmTransferTalks';
+import { myPendingBid } from '../../game/transfers';
+import { loanBlocked } from '../../game/rules2001';
+import { askNotice } from '../confirm';
 import { agentOf } from '../../game/agents';
 import { realCareer, realMoves, type RealMove, type RealSeason } from '../careers';
 
@@ -44,7 +51,7 @@ function ModernPlayer({ id }: { id: number }) {
   const g = useGame()!;
   const { nav } = useNav();
   const p = g.players[id];
-  const [bid, setBid] = useState<boolean | number>(false);
+  const [bid, setBid] = useState<boolean | number | 'loan' | 'change'>(false);
   const [neg, setNeg] = useState<{ offer?: TransferOffer; renew?: number } | null>(null);
   const [msg, setMsg] = useState('');
   const [loanOutOpen, setLoanOut] = useState(false);
@@ -139,7 +146,40 @@ function ModernPlayer({ id }: { id: number }) {
                 </div>
               </>
             )}
-            {!mine && g.userClub > 0 && (
+            {!mine && g.userClub > 0 && cmMarketOn(g) && !g.draft && (() => {
+              // originalens handlinger (Action-menuen): Approach To Buy/Loan, Change/Withdraw Transfer Bid, Offer Contract, Scout Player, Short List
+              const pending = p.club > 0 ? myPendingBid(p.id) : undefined;
+              const agreed = cmLogic(g) && p.club > 0 && !pending ? g.offers.find((o) => o.player === p.id && cmTalksOpen(g, o)) : undefined;
+              const me = g.clubs[g.userClub];
+              const nm = `${p.first} ${p.last}`.trim();
+              const open = windowOpen();
+              const tip = open ? undefined : t('transfer.windowOpens', { date: dateFmt(nextWindow()) });
+              const withdraw = async () => { if (await askConfirm(t('cl.pl.withdrawBody', { player: nm }), { head: t('cl.pl.withdrawQ', { player: nm }) })) dispatch({ t: 'withdraw', pid: p.id }); };
+              return (
+                <>
+                  <div className="row">
+                    {agreed && <><button className="primary" onClick={() => setNeg({ offer: agreed })}>{t('cl.offerContract')}</button><button onClick={withdraw}>{t('cl.pl.withdrawBid')}</button></>}
+                    {!agreed && pending && <><button className="primary" onClick={() => setBid('change')}>{t('cl.pl.changeBid')}</button><button onClick={withdraw}>{t('cl.pl.withdrawBid')}</button></>}
+                    {!agreed && !pending && p.club > 0 && <>
+                      <button className="primary" disabled={!open} title={tip} onClick={() => setBid(true)}>{t('cl.pl.approachBuy')}</button>
+                      <button disabled={!open} title={tip} onClick={() => { if (me && loanBlocked(p, me)) void askNotice(t('cl.pl.loanNonEu', { club: me.short }), { head: t('cl.pl.cannotLoan', { player: nm }) }); else setBid('loan'); }}>{t('cl.pl.approachLoan')}</button>
+                    </>}
+                    {!p.club && <button className="primary" disabled={!open} title={tip} onClick={() => act(dispatch<TransferOffer | string>({ t: 'bid', pid: p.id, fee: 0, loan: false }))}>{t('player.offerContract')}</button>}
+                    {canPreContract(p) && <button onClick={() => act(dispatch<TransferOffer | string>({ t: 'preContract', pid: p.id }))}>{t('player.preContract')}</button>}
+                    <button onClick={() => dispatch({ t: 'shortlist', pid: p.id, on: !shortlisted })}>{shortlisted ? t('cl.pl.unshortlist') : t('cl.pl.shortlist')}</button>
+                    {cmScoutOn(g) && <button onClick={async () => {
+                      const st = dispatch<number>({ t: 'scoutStatus', pid: p.id });
+                      if (st === 2) void askNotice(t('cmsr.a8b1e4'), { head: t('cmsr.a8b1c8') });
+                      else if (st === 4) void askNotice(t('cmsr.a8b16c'), { head: t('cmsr.a8b1c8') });
+                      else if (st === 3) void askNotice(t('cmsr.a8b144'), { head: t('cmsr.a8b134') });
+                      else if (await askConfirm(t(st === 0 ? 'cmsr.a8b3c4' : 'cmsr.a8b36c', { player: nm }), { head: t('cl.pl.scoutPlayer') })) dispatch({ t: 'scoutReq', pid: p.id });
+                    }}>{t('cl.pl.scoutPlayer')}</button>}
+                  </div>
+                  {!open && <div className="muted">{t('transfer.windowClosed')}</div>}
+                </>
+              );
+            })()}
+            {!mine && g.userClub > 0 && !(cmMarketOn(g) && !g.draft) && (
               <>
                 <div className="row">
                   {p.club > 0 && <button className="primary" disabled={!windowOpen()} title={windowOpen() ? undefined : t('transfer.windowOpens', { date: dateFmt(nextWindow()) })} onClick={() => setBid(true)}>{t('player.bid')}</button>}
@@ -233,7 +273,9 @@ function ModernPlayer({ id }: { id: number }) {
         </Panel>
       </div>
       <div style={{ marginTop: 14 }}><CareerPanel pid={p.id} /></div>
-      {bid !== false && <BidModal pid={p.id} offerId={typeof bid === 'number' ? bid : undefined} onClose={() => setBid(false)} onDone={(r) => { setBid(false); act(r); }} />}
+      {bid !== false && (cmMarketOn(g) && typeof bid !== 'number'
+        ? <OrigBidModal pid={p.id} loan={bid === 'loan'} change={bid === 'change'} onClose={() => setBid(false)} onSent={(o) => { setBid(false); act(o); }} />
+        : <BidModal pid={p.id} offerId={typeof bid === 'number' ? bid : undefined} onClose={() => setBid(false)} onDone={(r) => { setBid(false); act(r); }} />)}
       {listOpen && <ListModal pid={p.id} onClose={() => setListOpen(false)} />}
       {p.loan?.from === g.userClub && loanRecallOn() && (
         <div className="insight" style={{ marginTop: 8 }}>{t('loan.onLoanAt', { club: g.clubs[p.club]?.name ?? '' })} <button className="small" onClick={() => setMsg(t(dispatch<string>({ t: 'recallLoan', pid: p.id })))}>{t('loan.recall')}</button></div>
