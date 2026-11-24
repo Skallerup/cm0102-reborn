@@ -7,7 +7,7 @@ import { act } from '../../game/actions';
 import { ageOn } from '../../game/dates';
 import { nationLanguage } from '../../game/languages';
 import { fireStaff } from '../../game/staff';
-import { cmCapsLine, cmCoachingStyle, cmJobKey, cmStaffClub, cmOtherStyles, cmPrefFormation, cmPrefStyle, cmRolesFor, cmStaffAttrList, cmStaffInterested } from '../../game/cmStaff';
+import { cmCapsLine, cmCoachingStyle, cmExpectedRole, cmJobKey, cmStaffClub, cmOtherStyles, cmPrefFormation, cmPrefStyle, cmRolesFor, cmStaffAttrList, cmStaffInterested } from '../../game/cmStaff';
 import type { Staff, StaffRole } from '../../game/types';
 import { dateFmt, getLang, moneyWage, natName, t } from '../../i18n';
 import { CxDrop, classicDate, titleColors, useClassicDialog, type DropItem } from '../classic';
@@ -118,7 +118,8 @@ export function SetRolePanel({ s, onBack, onSet }: { s: Staff; onBack: () => voi
   useClassicDialog();
   const g = useGame()!;
   const roles = cmRolesFor(s, g.date);
-  const [sel, setSel] = useState<StaffRole | undefined>(roles.includes(s.role) && s.club ? s.role : roles[0]);
+  // 0x4dd0f0: forvalget = 0x4d44e0 (personens nuværende job, fx Physio for en fysioterapeut)
+  const [sel, setSel] = useState<StaffRole | undefined>(() => cmExpectedRole(s, g.date) ?? undefined);
   const col = titleColors(s.club || undefined);
   return (
     <div className="cx-dlg">

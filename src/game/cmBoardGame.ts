@@ -97,12 +97,13 @@ const nmChanged = () => { nmVer++; };
  *  landsholdsjobbet, medmindre det er 11. */
 /** 0x690890 remove_staff_from_club: jobkoden +0x3d bliver stående, når personen forlader klubben (kun ikke-spillerposten fra databasen) */
 export const keepJobCode = (s: Staff) => { if (s.cmNp && !s.cmExtra) s.cmDbJob = JOB[s.role] ?? 8; };
+const dbClublessJob = (s: Staff) => {
+  if (s.cmDbJob) return s.cmDbJob;
+  const j = s.cmNat && s.cmNat[0] >= 0 ? s.cmNat[1] : 0;
+  return j === 5 || j === 12 || j === 11 ? 0 : j === 13 || j === 15 ? 8 : j;
+};
 const clublessJob = (s: Staff) => {
-  if (s.cmDbJob !== undefined && !s.cmExtra) {
-    if (s.cmDbJob) return s.cmDbJob;
-    const j = s.cmNat && s.cmNat[0] >= 0 ? s.cmNat[1] : 0;
-    return j === 5 || j === 12 || j === 11 ? 0 : j === 13 || j === 15 ? 8 : j;
-  }
+  if (s.cmDbJob !== undefined && !s.cmExtra) return dbClublessJob(s);
   return s.cmNat && s.cmNat[1] !== 11 ? s.cmNat[1] : 0;
 };
 
@@ -132,6 +133,17 @@ class StaffPerson implements Person {
 }
 function staffPerson(g: GameState, s: Staff, today: CmDate): Person {
   return new StaffPerson(g, s, today);
+}
+/** en person, der kun er i hukommelsen (cmExtra – databasens ledige, 0x524d70): personposten med ikke-spillerposten og databasens jobkode +0x3d
+ *  (`cmDbJob`, fx Augusto Terzi 10). boardEnv's personliste har dem ikke (kun landstrænerne), så env.person gav noNp (np = NULL) – og 0x844780
+ *  springer ud med 0 ved 0x8447d8. Bruges, hvor originalen læser hans post direkte: menneskets kontrakttilbud (0x4deac0/0x4ce4e0). */
+class MemStaffPerson extends StaffPerson {
+  private readonly dbJob: number;
+  constructor(g: GameState, s: Staff, today: CmDate) { super(g, s, today); this.dbJob = s.cmDbJob !== undefined ? dbClublessJob(s) : s.cmJob || (s.role === 'physio' ? 10 : s.role === 'scout' ? 9 : 0); }
+  override get job() { return this.club ? super.job : this.dbJob; } override set job(_v: number) { /* */ }
+}
+export function memStaffPerson(g: GameState, s: Staff): Person | null {
+  return s.cmNp ? new MemStaffPerson(g, s, isoToCm(g.date)) : null;
 }
 interface HumanRef { get: () => { userClub: number; manager: GameState['manager'] }; k: number }
 function humanPerson(g: GameState, h: HumanRef): Person {

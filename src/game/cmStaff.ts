@@ -177,6 +177,28 @@ export function cmRolesFor(s: Staff, date: string): StaffRole[] {
   return out;
 }
 
+const ROLE_OF_JOB: Record<number, StaffRole> = { 6: 'assistant', 8: 'coach', 9: 'scout', 10: 'physio' };
+/** Set Role At Club's forvalgte job (0x4dd0f0 → skærmparameter 4 = 0x4d44e0(staff), markeret i listen 0x4ddc47): for en ikke-spiller
+ *  (+0x61 = NULL; vores stab har ingen spillerpost – 0xb/0xf er spillernes): manager (+0x3d eller landsholdsjobbet
+ *  +0x28 = 5/12) → 6; ansat i en klub og jobbet +0x3d kan tilbydes (0x4cb990) → +0x3d; landsholdsjobbet +0x28, hvis det kan; ellers +0x3d, hvis
+ *  det kan; ellers træner (8), når Coaching Outfield/Goalkeepers vist (0x544410 af +0x10/+0x11) ≥ 15, ellers spejder (9). Null = intet markeret
+ *  (jobbet er ikke blandt dem, han kan få). Fx Augusto Terzi (ledig, +0x3d = 10) → Physio. */
+export function cmExpectedRole(s: Staff, date: string): StaffRole | null {
+  const roles = cmRolesFor(s, date);
+  const can = (j: number) => !!ROLE_OF_JOB[j] && roles.includes(ROLE_OF_JOB[j]);
+  // spillets genererede stab (uden databasens post): i originalen har de 0x527240's ikke-spillerpost med jobbet som +0x3d
+  const job = s.cmNp ? cmDbJob(s) : s.club ? JOB_CODE[s.role] : cmDbJob(s), nj = s.cmNat?.[1] ?? 0;
+  let e: number;
+  if (!s.cmNp) e = can(job) ? job : 9;
+  else if (job === 5 || job === 12 || nj === 5 || nj === 12) e = 6;
+  else if (s.club && can(job)) e = job;
+  else if (s.cmNat && s.cmNat[0] >= 0 && can(s.cmNat[1])) e = s.cmNat[1];
+  else if (can(job)) e = job;
+  else e = staffShown(s.ca ?? 0, s.cmNp[2] ?? 0) >= 15 || staffShown(s.ca ?? 0, s.cmNp[3] ?? 0) >= 15 ? 8 : 9;
+  const r = ROLE_OF_JOB[e];
+  return r && roles.includes(r) ? r : null;
+}
+
 // ---------------------------------------------------------------- Staff Search
 
 /** "Famous staff and all staff in your region" (0x80af8d) er kun overskriften: søgningen 0x7afa70 (Staff Search, type 3) tager ALLE personer

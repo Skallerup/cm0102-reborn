@@ -42,7 +42,7 @@ import { regionOf } from './leagues';
 import { ATTRS } from './attributes';
 import { ageOn, daysBetween } from './dates';
 import { squadIds } from './state';
-import { boardEnv, staffJobInterest } from './cmBoardGame';
+import { boardEnv, memStaffPerson, staffJobInterest } from './cmBoardGame';
 import { leagueClash } from './cmBoardInterest';
 import type { BoardEnv } from './cmBoard';
 import { registerStaffContractAnswer, registerStaffOfferCheck } from './cmStaff';
@@ -547,7 +547,11 @@ function staffMem(g: GameState, s: import('./types').Staff, clubId: number, job:
       if (adr === 0x597db0) return maxStaffWage_597db0(M.c, a[0] >>> 0, a[a.length - 1] & 0xff);
       // 0x844780(staff, klub, 0, job, a5): viljen af spillets data (cmBoardInterest.ts) – posterne i hukommelsen har ikke viljens inddata
       if (adr === 0x844780 && (a[0] >>> 0) === stAdr && M.c.m.s32(a[1] >>> 0) === clubId) {
-        const env = M.env(), p = env.person(s.id);
+        const env = M.env();
+        let p = env.person(s.id);
+        // en ledig, der kun er i hukommelsen (cmExtra, fx Augusto Terzi): originalen læser hans personpost med ikke-spillerposten og
+        // databasens job (+0x3d) – boardEnv's personliste har ham ikke, så env.person gav np = NULL og viljen 0 (0x8447d8)
+        if (p && !p.np && s.cmExtra && !s.club) p = memStaffPerson(g, s) ?? p;
         if (!p) return 0;
         // egen stab uden databasens ikke-spillerpost (0x527240's genererede trænere/spejdere/fysioterapeuter): i originalen har de posten +0x69
         // (puljens poster 0x527a85), så 0x844780 springer ikke ud ved 0x8447d8. For c == H (Offer New Contract) returnerer den ved 0x8451ca
