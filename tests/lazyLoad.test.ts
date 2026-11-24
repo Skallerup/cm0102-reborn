@@ -8,7 +8,8 @@ const h = vi.hoisted(() => {
   (globalThis as any).window ??= { addEventListener() {}, location: { search: '', hostname: 'localhost', href: '' }, matchMedia: () => ({ matches: false, addEventListener() {} }) };
   return { reload, replace };
 });
-import { lazyRetry, reloadOnce, resetReloadingForTest } from '../src/ui/lazyLoad';
+import { hardReload, lazyRetry, reloadOnce, resetReloadingForTest } from '../src/ui/lazyLoad';
+import { markNewGame } from '../src/online/newGameTrace';
 
 // React.lazy gemmer fabrikken i _payload._result; kald den direkte
 const run = (c: any) => c._payload._result() as Promise<{ default: unknown }>;
@@ -42,5 +43,17 @@ describe('lazyRetry', () => {
     reloadOnce(); resetReloadingForTest();
     const m = await run(lazyRetry(() => Promise.resolve(undefined)));
     expect(typeof m.default).toBe('function');
+  });
+  it('under et nyt spils oprettelse: ingen automatisk genindlæsning – fejlskærm i stedet', async () => {
+    markNewGame(true, 'maximum', 'preview');
+    try {
+      expect(reloadOnce('preloadError')).toBe(false);
+      expect(hardReload('auto', false)).toBe(false);
+      const m = await run(lazyRetry(() => Promise.reject(new Error('Failed to fetch dynamically imported module'))));
+      expect(typeof m.default).toBe('function');
+      await new Promise((r) => setTimeout(r, 30));
+      expect(h.replace).not.toHaveBeenCalled();
+      expect(h.reload).not.toHaveBeenCalled();
+    } finally { markNewGame(false); }
   });
 });

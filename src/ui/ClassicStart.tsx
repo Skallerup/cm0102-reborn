@@ -308,7 +308,7 @@ export function ClassicStart({ onLang, onHome, onGo, onLook, online }: { onLang:
       build.current = { sig, ctl };
       setBp({ sig, frac: 0.02, done: false });
       const opts = { managerName: 'Manager', managerNation: selected[0], clubId: p.clubs[0].id, activeNations: [...selected, ...background], lang: getLang(), masking, seed: seed.current, preview: true };
-      markNewGame(true);
+      markNewGame(true, 'preview');
       createGameAsync(startWorld.current ?? w, opts, (pr) => setBp((cur) => (cur && cur.sig === sig ? { ...cur, frac: pr.frac } : cur)), ctl.signal).finally(() => markNewGame(false)).then(() => {
         if (build.current?.ctl !== ctl || ctl.signal.aborted) return;
         setBp({ sig, frac: 1, done: true });
@@ -363,7 +363,7 @@ export function ClassicStart({ onLang, onHome, onGo, onLook, online }: { onLang:
         return;
       }
       // (21/11) lukker browseren siden undervejs (for lidt hukommelse), meldes det og vises ved næste start (online/errors.ts)
-      markNewGame(true);
+      markNewGame(true, 'game');
       try { await createGameAsync(src, opts, (p) => setProg({ label: t('cxs.initGame'), frac: p.frac, step: p.step }), undefined, { save: true }); } finally { markNewGame(false); }
       notify();
       const lg = world.leagues.find((l) => l.id === club.league);

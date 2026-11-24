@@ -126,6 +126,9 @@ const SL_PARTS = 12;
 /** pause mellem to trins arbejdere (ms) – localStorage['cm0102.ngGap'] overstyrer (til målinger) */
 const PHASE_GAP_MS = 400;
 const phaseGap = () => { try { const v = localStorage.getItem('cm0102.ngGap'); const n = Number(v); return v !== null && v !== '' && n >= 0 && n <= 5000 ? n : PHASE_GAP_MS; } catch { return PHASE_GAP_MS; } };
+/** pause (ms) mellem den sidste arbejders lukning og udpakningen i hovedtråden – localStorage['cm0102.ngUnpackGap'] overstyrer (til målinger) */
+const UNPACK_GAP_MS = 1000;
+const unpackGap = () => { try { const v = localStorage.getItem('cm0102.ngUnpackGap'); const n = Number(v); return v !== null && v !== '' && n >= 0 && n <= 10000 ? n : UNPACK_GAP_MS; } catch { return UNPACK_GAP_MS; } };
 const newWorker = () => new Worker(new URL('./newGameWorker.ts', import.meta.url), { type: 'module' });
 /** kører trinene i hver sin arbejder; den sidste svarer med spillet */
 /** arbejdernes svar: spillet som gzip-bytes (+ det første gem, hvis arbejderen skrev det); `started` = en arbejder nåede at svare (så kører de) */
@@ -147,7 +150,12 @@ function runPhases(first: NewGameJob, stages: NewGameJob['phases'][], pre: Worke
         if (done) return;
         started = true;
         if (m.type === 'progress') onProgress({ step: m.step, frac: m.frac });
-        else if (m.type === 'trace') { if (NG_TRACE) console.log(`ngtrace ${i}: ${m.s}`); }
+        else if (m.type === 'trace') {
+          if (NG_TRACE) console.log(`ngtrace ${i}: ${m.s}`);
+          // (24/11) trinene efter 'done' (pakning, gem, afsendelse) i nyt-spil-sporet – NewGameInterrupted viser, hvor siden blev lukket
+          const sub = m.s.startsWith('pakker') ? 'pack' : m.s === 'gemt' ? 'saved' : m.s.startsWith('gem fejlede') ? 'saveFailed' : m.s.startsWith('sender') ? 'send' : null;
+          if (sub) noteNewGameStep(sub, 0.98);
+        }
         else if (m.type === 'handed' && ch) {
           // (hukommelse) Safari frigiver en afsluttet arbejders heap lidt efter terminate – næste arbejder venter en kort pause, før den tager spillet
           // fra kanalen, så de to ikke er i hukommelsen samtidig (målt i WebKit: toppen ved skiftet). (23/11) Pausen ligger i arbejderen, ikke i en
@@ -189,11 +197,18 @@ export async function createGameAsync(world: WorldData | StartWorld, opts: NewGa
     const res = await runPhases(first, newGameStages(opts), pre, onProgress, signal);
     got = true;
     if (signal?.aborted) return;
+    // (hukommelse, iPhone 24/11) den sidste arbejder er lukket, men Safari frigiver dens heap (spillet + pakningen, ~1–2 GB med Maximum) først lidt
+    // efter: hovedtråden pakker først ud efter en pause, så de to ikke er i hukommelsen samtidig (WebKit, Maximum: toppen 2,6 GB lige efter 'done')
+    noteNewGameStep('wait', 0.99);
+    await new Promise((r) => setTimeout(r, unpackGap()));
+    if (signal?.aborted) return;
+    noteNewGameStep('unpack', 0.99);
     // spillet pakkes ud som et gemt spil (save.ts loadGame) – arbejderen er lukket, før hovedtråden bygger spillet
     const blob = new Blob([res.gz]);
     const game = await deserializeState(blob);
     if (signal?.aborted) return;
     put(game);
+    noteNewGameStep('ready', 1);
     if (res.saved && !opts.preview) { const { adoptWorkerSave } = await import('../game/save'); adoptWorkerSave(res.saved, blob); }
     if (NG_TRACE) console.log('ngtrace main: spillet lagt ind');
   } catch (e) {

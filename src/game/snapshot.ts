@@ -13,6 +13,57 @@ export async function gzipText(text: string): Promise<Blob> {
   return new Response(stream).blob();
 }
 
+/** (hukommelse, iPhone 24/11) Præcis samme tekst som JSON.stringify(v), men i bidder: almindelige objekter/arrays i op til `depth` niveauer skrives
+ *  felt for felt, så hele spillets JSON-tekst (~100 MB+, i WebKit ofte UTF-16) aldrig findes som én streng (spilstartens arbejder: toppen ved pakningen). */
+export function* jsonChunks(v: unknown, depth = 2): Generator<string> {
+  const plain = (x: unknown): x is object => {
+    if (typeof x !== 'object' || x === null || typeof (x as { toJSON?: unknown }).toJSON === 'function') return false;
+    if (Array.isArray(x)) return true;
+    const p = Object.getPrototypeOf(x);
+    return p === Object.prototype || p === null;
+  };
+  if (depth <= 0 || !plain(v)) { const t = JSON.stringify(v); if (t !== undefined) yield t; return; }
+  if (Array.isArray(v)) {
+    yield '[';
+    for (let i = 0; i < v.length; i++) {
+      if (i) yield ',';
+      const x = v[i];
+      if (plain(x)) yield* jsonChunks(x, depth - 1); else yield JSON.stringify(x) ?? 'null';
+    }
+    yield ']';
+    return;
+  }
+  yield '{';
+  let first = true;
+  for (const k of Object.keys(v)) {
+    const x = (v as Record<string, unknown>)[k];
+    if (plain(x)) { yield `${first ? '' : ','}${JSON.stringify(k)}:`; first = false; yield* jsonChunks(x, depth - 1); continue; }
+    const t = JSON.stringify(x);
+    if (t === undefined) continue;
+    yield `${first ? '' : ','}${JSON.stringify(k)}:${t}`; first = false;
+  }
+  yield '}';
+}
+
+/** gzip af tekstbidder (jsonChunks) – bytes skrives til komprimeringen i portioner på ~1 MB */
+export async function gzipChunks(chunks: Iterable<string>): Promise<Blob> {
+  if (typeof CompressionStream === 'undefined') return new Blob([...chunks]);
+  const cs = new CompressionStream('gzip');
+  const out = new Response(cs.readable).blob();
+  const w = cs.writable.getWriter();
+  const enc = new TextEncoder();
+  let buf: string[] = [], n = 0;
+  try {
+    for (const c of chunks) {
+      buf.push(c); n += c.length;
+      if (n >= 1 << 20) { await w.write(enc.encode(buf.join(''))); buf = []; n = 0; }
+    }
+    if (buf.length) await w.write(enc.encode(buf.join('')));
+    await w.close();
+  } catch (e) { void w.abort(e).catch(() => {}); void out.catch(() => {}); throw e; }
+  return out;
+}
+
 export async function gunzipText(blob: Blob): Promise<string> {
   const head = new Uint8Array(await blob.slice(0, 2).arrayBuffer());
   if (head[0] !== 0x1f || head[1] !== 0x8b) return blob.text();
@@ -20,12 +71,15 @@ export async function gunzipText(blob: Blob): Promise<string> {
   return new Response(stream).text();
 }
 
-export async function serializeState(g: GameState): Promise<Blob> {
+/** `streamed` (kun spilstartens arbejder, hvor intet andet ændrer spillet undervejs): teksten skrives i bidder mellem await – i hovedtråden kunne
+ *  spillet ellers ændre sig midt i et gem, så dér er tolkningen ét synkront øjebliksbillede som før */
+export async function serializeState(g: GameState, streamed = false): Promise<Blob> {
   g.rng = rng.state;
   stash(g);
   // modulernes tilstand (carry.ts) følger med det aktive spil, så det indlæste spil fortsætter præcis som dette
   packCarry(g);
-  try { return gzipText(JSON.stringify(g)); } finally { delete g.cmCarry; }
+  // (24/11) i bidder (samme tekst som JSON.stringify) – hele teksten findes aldrig som én streng
+  try { return streamed ? await gzipChunks(jsonChunks(g)) : await gzipText(JSON.stringify(g)); } finally { delete g.cmCarry; }
 }
 
 /** (23/11) nyt spil fra spilstartens arbejder som gzip-bytes (ui/newGameWorker.ts): som den strukturerede kopi før – hovedtråden fortsatte med
@@ -33,7 +87,7 @@ export async function serializeState(g: GameState): Promise<Blob> {
 export async function serializeNewGame(g: GameState): Promise<Blob> {
   const keep = rng.state;
   rng.state = g.rng;
-  try { return await serializeState(g); } finally { rng.state = keep; }
+  try { return await serializeState(g, true); } finally { rng.state = keep; }
 }
 
 export async function deserializeState(blob: Blob): Promise<GameState> {

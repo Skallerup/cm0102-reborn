@@ -9,7 +9,7 @@ import { markNewGame as markNew, readInterrupted } from './newGameTrace';
 export { noteNewGameStep } from './newGameTrace';
 
 /** et nyt spil begynder/er færdigt (markør + spor, online/newGameTrace.ts) */
-export function markNewGame(on: boolean) { markNew(on, readDbSize()); }
+export function markNewGame(on: boolean, kind?: 'preview' | 'game') { markNew(on, readDbSize(), kind); }
 
 const sent = new Map<string, number>();
 let total = 0;
@@ -61,8 +61,8 @@ export function dismissNewGameInterrupted() { interrupted = false; }
 
 export function startErrorReport() {
   newGameInterrupted();
-  window.addEventListener('vite:preloadError', (ev) => { if (reloadOnce()) ev.preventDefault(); });
-  window.addEventListener('unhandledrejection', (ev) => { if (STALE.test(String((ev.reason as Error)?.message ?? ev.reason))) reloadOnce(); });
+  window.addEventListener('vite:preloadError', (ev) => { if (reloadOnce('preloadError')) ev.preventDefault(); });
+  window.addEventListener('unhandledrejection', (ev) => { if (STALE.test(String((ev.reason as Error)?.message ?? ev.reason))) reloadOnce('staleImport'); });
   window.addEventListener('error', (ev) => reportError(ev.error ?? ev.message));
   window.addEventListener('unhandledrejection', (ev) => reportError(ev.reason));
 }

@@ -20,6 +20,10 @@ export interface NewGameTrace {
   cores: number | null;
   standalone: boolean;
   iab: boolean;
+  /** (24/11) den midlertidige verden til Select Team (preview) eller det rigtige spil */
+  kind?: 'preview' | 'game';
+  /** (24/11) vores egne programmatiske genindlæsninger undervejs: årsag (+ ' blocked', når den blev spærret) */
+  self?: string[];
 }
 
 const get = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
@@ -40,11 +44,11 @@ function env(): Pick<NewGameTrace, 'mem' | 'cores' | 'standalone' | 'iab'> {
 }
 
 /** et nyt spil begynder (on) eller er færdigt/fejlet (off) */
-export function markNewGame(on: boolean, size = ''): void {
+export function markNewGame(on: boolean, size = '', kind?: 'preview' | 'game'): void {
   off?.(); off = null;
   if (!on) { cur = null; set(CREATING, null); set(TRACE, null); return; }
   const now = Date.now();
-  cur = { t0: now, size, steps: [], hidden: [], hiddenMs: 0, leave: 0, persisted: false, ...env() };
+  cur = { t0: now, size, steps: [], hidden: [], hiddenMs: 0, leave: 0, persisted: false, ...env(), ...(kind ? { kind } : {}) };
   hiddenAt = 0;
   set(CREATING, String(now)); save();
   if (typeof document === 'undefined' || typeof window === 'undefined') return;
@@ -70,6 +74,19 @@ export function noteNewGameStep(step: string, frac: number): void {
   if (Date.now() - lastWrite > 2000) save();
 }
 
+/** et nyt spil oprettes i denne side lige nu (markøren cm0102.creating er sat af denne side) */
+export function creatingNewGame(): boolean { return !!cur; }
+
+/** (24/11) Før enhver programmatisk genindlæsning: årsagen skrives i sporet (NewGameInterrupted/-Abandoned viser den). Mens et nyt spil oprettes,
+ *  spærres en automatisk genindlæsning (false = genindlæs ikke – kalderen melder fejlen); en genindlæsning, spilleren selv har bedt om, tillades. */
+export function allowSelfReload(reason: string, user = false): boolean {
+  if (!cur) return true;
+  const ok = user;
+  (cur.self ??= []).push(ok ? reason : `${reason} blocked`);
+  save();
+  return ok;
+}
+
 export interface InterruptInfo { abandoned: boolean; text: string }
 
 const sec = (ms: number) => Math.round(ms / 1000);
@@ -86,12 +103,14 @@ export function readInterrupted(now = Date.now(), dbSize = ''): InterruptInfo | 
   try { nav = (performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined)?.type ?? '?'; } catch { /* ignorér */ }
   const abandoned = !!tr && tr.leave > 0;
   const parts = [`database ${tr?.size || dbSize || '?'}`];
+  if (tr?.kind) parts.push(tr.kind === 'preview' ? 'select-team world' : 'game');
   if (tr) {
     const st = tr.steps;
     const last = st[st.length - 1];
     parts.push(last ? `step ${last[0]} ${Math.round(last[2] * 100)}% at ${sec(last[1] - tr.t0)} s` : 'step none');
     if (st.length) parts.push(`times ${st.map((s, i) => `${s[0]} ${sec((st[i + 1]?.[1] ?? (tr!.leave || s[1])) - s[1])}s`).join(' > ')}`);
     parts.push(tr.hidden.length ? `hidden ${tr.hidden.length}x first at ${sec(tr.hidden[0] - tr.t0)} s, ${sec(tr.hiddenMs)} s total` : 'hidden 0 s before');
+    if (tr.self?.length) parts.push(`selfReload ${tr.self.join(' + ')}`);
     parts.push(tr.leave ? `pagehide yes at ${sec(tr.leave - tr.t0)} s${tr.persisted ? ' persisted' : ''}` : 'pagehide no');
     parts.push(`mem ${tr.mem ?? '?'}`, `cores ${tr.cores ?? '?'}`, `standalone ${tr.standalone ? 'yes' : 'no'}`, `iab ${tr.iab ? 'yes' : 'no'}`);
   } else parts.push('no trace');

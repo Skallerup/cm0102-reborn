@@ -3,6 +3,7 @@
 // Den nye version tages i brug ved næste besøg; her kan man vælge at genindlæse med det samme.
 import { useEffect, useState } from 'react';
 import { t } from '../i18n';
+import { allowSelfReload } from '../online/newGameTrace';
 
 let pending: ((reload?: boolean) => Promise<void>) | null = null;
 let stale = false;
@@ -20,6 +21,7 @@ export function swUpdateReady(update: (reload?: boolean) => Promise<void>) {
 /** Genindlæs med den nye version. updateSW(true) genindlæser først, når den ventende service worker tager over – er den allerede
  *  aktiveret (fx i en anden fane) eller væk, sker der intet. Derfor: bed den ventende om at tage over, og genindlæs selv efter kort tid. */
 function reloadNow() {
+  allowSelfReload('updateToast', true); // spilleren trykkede selv – skrives i nyt-spil-sporet
   try { void pending?.(true); } catch { /* falder tilbage nedenfor */ }
   try {
     void navigator.serviceWorker?.getRegistration().then((r) => r?.waiting?.postMessage({ type: 'SKIP_WAITING' }));

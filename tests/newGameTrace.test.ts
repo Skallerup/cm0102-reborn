@@ -12,7 +12,7 @@ const h = vi.hoisted(() => {
   const fire = (n: string, e: any = {}) => (ev.get(n) ?? []).forEach((f) => f(e));
   return { ls, ev, fire };
 });
-import { markNewGame, noteNewGameStep, readInterrupted } from '../src/online/newGameTrace';
+import { allowSelfReload, creatingNewGame, markNewGame, noteNewGameStep, readInterrupted } from '../src/online/newGameTrace';
 
 describe('newGameTrace', () => {
   beforeEach(() => { markNewGame(false); h.ls.clear(); (globalThis as any).document.visibilityState = 'visible'; });
@@ -48,5 +48,19 @@ describe('newGameTrace', () => {
     expect(readInterrupted(Date.now(), 'normal')!.text).toContain('no trace');
     h.ls.set('cm0102.creating', String(Date.now() - 20 * 60_000));
     expect(readInterrupted()).toBeNull();
+  });
+  it('egen genindlæsning: spærres automatisk under oprettelsen, spillerens tilladt – begge i meldingen', () => {
+    expect(allowSelfReload('preloadError')).toBe(true); // intet nyt spil i gang
+    markNewGame(true, 'maximum', 'preview');
+    expect(creatingNewGame()).toBe(true);
+    expect(allowSelfReload('preloadError')).toBe(false);
+    expect(allowSelfReload('updateToast', true)).toBe(true);
+    noteNewGameStep('done', 0.97); noteNewGameStep('pack', 0.98);
+    const r = readInterrupted(Date.now() + 12_000)!;
+    expect(r.text).toContain('select-team world');
+    expect(r.text).toContain('selfReload preloadError blocked + updateToast');
+    expect(r.text).toContain('pack');
+    markNewGame(false);
+    expect(creatingNewGame()).toBe(false);
   });
 });

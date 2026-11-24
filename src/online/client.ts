@@ -8,6 +8,7 @@
 //  4. De andre opdager den nye version, henter den og genanvender egne handlinger der ikke nåede med.
 import { track } from '../analytics';
 import { upload } from '@vercel/blob/client';
+import { allowSelfReload } from './newGameTrace';
 import { applyActionAs, setActionSink, type Action } from '../game/actions';
 import { activate, enableMultiplayer, withHuman } from '../game/humans';
 import { setupBots, type BotScope } from '../game/bots';
@@ -110,6 +111,8 @@ let reloading = false;
  *  Højst 3 gange på 10 min. pr. fane, så en forældet cache ikke giver en genindlæsningsløkke. */
 function outdatedClient() {
   if (reloading || typeof window === 'undefined') return;
+  // (24/11) aldrig midt i et nyt spils oprettelse (online/newGameTrace.ts) – næste kald efter oprettelsen genindlæser
+  if (!allowSelfReload('mpProtocol')) return;
   let n: number[] = [];
   try { n = (JSON.parse(sessionStorage.getItem('cm0102.mpReload') ?? '[]') as number[]).filter((x) => Date.now() - x < 600_000); } catch { /* ignorer */ }
   if (n.length >= 3) return;

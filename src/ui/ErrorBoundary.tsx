@@ -2,6 +2,7 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { t } from '../i18n';
 import { reportError } from '../online/errors';
+import { allowSelfReload } from '../online/newGameTrace';
 import { SendToDev } from './SendToDev';
 
 export class ErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
@@ -14,7 +15,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, { failed: 
       <div className="crash-box">
         <h2>{t('crash.title')}</h2>
         <p>{t('crash.text')}</p>
-        <button className="primary" onClick={() => location.reload()}>{t('crash.reload')}</button>
+        <button className="primary" onClick={() => { allowSelfReload('crashButton', true); location.reload(); }}>{t('crash.reload')}</button>
         <div style={{ marginTop: 14 }}><SendToDev compact /></div>
       </div>
     );
