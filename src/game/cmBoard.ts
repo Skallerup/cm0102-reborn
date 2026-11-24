@@ -246,7 +246,8 @@ export type BoardNews =
   | { t: 'rumour'; club: number; staff: Person; variant: number }
   | { t: 'protest'; club: number }
   | { t: 'pressure'; club: number; kind: number }
-  | { t: 'match'; club: number; opp: number; flags: number; gf: number; ga: number }
+  /** 0x6a5fa0 (0x138c): bestyrelsens reaktion på kampen – `tpl` = skabelonen i 0x6a69c0 (MATCH_TEXT), `run` = stimens sætning (MATCH_RUN, '' = ingen) */
+  | { t: 'match'; club: number; opp: number; flags: number; gf: number; ga: number; tpl: number; run: string; comp: string }
   | { t: 'ultimatum'; club: number; opp: number }
   /** 0x6a44a0 (0x177e): forbundets forventninger – kode (vtable +0x70) og turneringen (−1 = ingen) */
   | { t: 'faExpect'; club: number; code: number; comp: number }
@@ -975,6 +976,46 @@ export interface MatchIn {
   /** landskampe: spillestedets by +0x1f (nationen, −1 = ukendt/intet stadion) */
   venueNation?: number;
   sides: [MatchSide, MatchSide] | null;
+  /** turneringens korte navn (comp +0x38) til nyheden */
+  compName?: string;
+}
+
+/** 0x6a69c0 build_board_match_reaction_text: flag → [skabelon ved venskabskamp (0x5c6710), ellers] (indeks i pakkens `match.t`, samme
+ *  rækkefølge som exe'ens strenge 0xa0fbac…0xa0c560). Flag uden tilfælde: ingen tekst (0x695240 sender ingen nyhed). */
+export const MATCH_TEXT: Record<number, [number, number]> = {
+  0x401: [8, 9], 0x402: [4, 5], 0x408: [25, 26], 0x420: [14, 15], 0x441: [6, 7], 0x442: [2, 3], 0x444: [0, 1], 0x448: [12, 13], 0x450: [19, 20],
+  0x460: [23, 24], 0x481: [10, 11], 0x482: [8, 18], 0x484: [16, 17], 0x488: [21, 22], 0x4a0: [25, 26], 0x501: [8, 9], 0x502: [4, 5], 0x541: [6, 7],
+  0x542: [2, 3], 0x544: [0, 1], 0x581: [10, 11], 0x582: [8, 18], 0x584: [16, 17], 0x608: [25, 26], 0x620: [14, 15], 0x648: [12, 13], 0x650: [19, 20],
+  0x660: [23, 24], 0x688: [21, 22], 0x6a0: [25, 26], 0x808: [29, 29], 0x810: [37, 37], 0x820: [34, 34], 0x848: [30, 31], 0x850: [35, 36],
+  0x860: [32, 33], 0x888: [38, 39], 0x890: [42, 43], 0x8a0: [40, 41], 0x948: [27, 27], 0x988: [28, 28], 0xa08: [29, 29], 0xa10: [37, 37],
+  0xa20: [34, 34], 0xa48: [30, 31], 0xa50: [35, 36], 0xa60: [32, 33], 0xa88: [38, 39], 0xa90: [42, 43], 0xaa0: [40, 41], 0x1001: [61, 62],
+  0x1002: [56, 56], 0x1008: [44, 45], 0x1020: [50, 51], 0x1041: [57, 58], 0x1042: [54, 55], 0x1044: [52, 53], 0x1048: [46, 47], 0x1060: [48, 49],
+  0x1081: [59, 60], 0x1082: [63, 64], 0x1084: [70, 71], 0x1088: [65, 66], 0x10a0: [68, 69], 0x1101: [61, 62], 0x1102: [56, 56], 0x1120: [50, 51],
+  0x1141: [57, 58], 0x1142: [54, 55], 0x1144: [52, 53], 0x1148: [46, 47], 0x1160: [48, 49], 0x1181: [59, 60], 0x1182: [63, 64], 0x1184: [70, 71],
+  0x1188: [65, 66], 0x11a0: [68, 69], 0x1208: [67, 67], 0x1220: [72, 72], 0x1248: [73, 73], 0x1260: [75, 75], 0x1288: [74, 74], 0x12a0: [76, 76],
+};
+/** 0x6a708a/0x6a7fd3: standardsætningerne (sejr 0xa0e94c, uafgjort 0xa0be98, nederlag 0xa0bdd0) – indeks 77, 78, 79 */
+export const MATCH_DEF_WIN = 77;
+
+/** 0x6a7c8f…0x6a7f95: stimens sætning (kun ligakampe, når formandens terning lykkedes): `run` = 2 (to sejre i træk, e+0x19) / −2 (to
+ *  nederlag, e+0x2d), `exp` = forventet placering (rec +0x2c), `pos` = placeringen (e+0x73), `best` = e+0x74, `e` = rec +0x0e (forventningerne).
+ *  Sammenligningerne er originalens (s8); sejrsgrenens første sætning og forventningssætningerne kan ikke nås (exp ≥ pos er krævet først). */
+export function matchRunSentence(run: number, exp: number, pos: number, best: number, e: number, L: LeagueInfo | null): string {
+  if (run === 2) {
+    if (exp < pos) return '';
+    if (pos > exp + 4) return 'hope';
+    if (pos > exp - 4) return 'impressed';
+    if (pos <= exp) return '';
+    return e & 1 ? 'wEuro' : e & 2 ? 'wChamp' : e & 4 ? 'wPromo' : e & 8 ? 'wPlayoff' : e & 0x40 ? 'wMid' : e & 0x20 ? 'wReleg' : 'wComfort';
+  }
+  if (run === -2) {
+    if (exp < best) return '';
+    if (pos > exp + 4) return 'newMgr';
+    if (pos < exp - 4 && L) return (e & 0x20) && L.relegation !== 0 && pos > s8(L.teams) - s8(L.relegation) ? 'danger' : 'goodPos';
+    if (pos <= exp + 2) return '';
+    return e & 1 ? 'lEuro' : e & 2 ? 'lChamp' : e & 4 ? 'lPromo' : e & 8 ? 'lPlayoff' : e & 0x40 ? 'lMid' : e & 0x20 ? 'lReleg' : 'lComfort';
+  }
+  return '';
 }
 
 /** 0x6951e0 → 0x695240 for begge hold med manager */
@@ -1093,17 +1134,32 @@ function afterMatchSide(env: BoardEnv, st: CmBoardState, m: MatchIn, isHome: boo
   else if (s16(delta) > 120 && C6 > 6500) flags |= 8;
   else if (s16(delta) > 75) flags |= 0x20;
   else if (s16(delta) > 30) flags |= 0x10;
-  if (!(m.w38 & 0x10) && !(m.w38 & 0x800) && !(m.w38 & 0x2000) && env.isHumanClub(club) && (flags & 0x3f)) {
+  // 0x6a69c0 med de oprindelige flag: kun "findes der en tekst" (turnering ≠ NULL og et af tilfældene i MATCH_TEXT)
+  if (!(m.w38 & 0x10) && !(m.w38 & 0x800) && !(m.w38 & 0x2000) && m.compRep !== null && MATCH_TEXT[flags] && env.isHumanClub(club)) {
     let fl = flags;
     if (C6 > 6750) { if (fl & 1) fl ^= 5; else if (fl & 2) fl ^= 6; }
     else if (C6 > 5250) { if (fl & 1) fl ^= 3; }
     else if (C6 < 5250) { if (fl & 8) fl ^= 0x28; }
     if ((fl & 7) === 0 || crep >= s16(orep + 500 + 1250 * (away ? 1 : 0)) || m.gh !== m.ga) {
-      // 0x6aaee0: formandens yndlinge/uvenner (listerne findes ikke) – rand(np+0x16) og rand(10) trækkes, før listen læses
+      // 0x6aaee0: formandens terning (np+0x16 mod 10); lykkes den, læses ligaens stilling til stimens sætning. Formandens yndlinge/uvenner
+      // (staff_get_favoured/disliked_staff) findes ikke i dataene → ingen spillere i nyheden og ingen ±10·Ambition på w6.
       const ch = env.chair(club);
-      if (ch) { rand(s8(ch.b16)); rand(10); }
+      let run = '';
+      if (ch && !nat) {
+        const r1 = rand(s8(ch.b16)), r2 = rand(10);
+        if (r1 >= r2 && isDiv) {
+          const e = env.entry(club);
+          if (e && (e.played & 0xff) > 8) {
+            const div = env.division(club);
+            run = matchRunSentence(e.winRun === 2 ? 2 : e.lossRun === 2 ? -2 : 0, s8(R.t2c), s8(e.p73), s8(e.p74), R.e, div ? env.league(div) : null);
+          }
+        }
+      }
       rand(4);
-      env.news({ t: 'match', club, opp, flags: fl, gf: GF, ga: GA });
+      // visningen (0x6a6310 → 0x6a69c0) bruger de ændrede flag: uden eget tilfælde står standardsætningen (sejr/uafgjort/nederlag) uden stime
+      const t = MATCH_TEXT[fl];
+      env.news({ t: 'match', club, opp, flags: fl, gf: GF, ga: GA, tpl: t ? t[m.friendly ? 0 : 1] : fl & 0x800 ? MATCH_DEF_WIN : fl & 0x400 ? MATCH_DEF_WIN + 1 : MATCH_DEF_WIN + 2,
+        run: t ? run : '', comp: m.compName ?? '' });
     }
   }
   // pressehistorien efter et dårligt resultat

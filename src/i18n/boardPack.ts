@@ -26,6 +26,15 @@ export interface BoardPack {
   faPerf: string[];
   faOffer: string[];
   faDep: Record<'tSack' | 'tResign' | 'tRetire' | 'resign' | 'retire' | 'sack' | 'relieved' | 'pressure' | 'poor', string>;
+  /** bestyrelsens kampreaktion (0x138c): afsenderen (0x6a69c0's start), overskrifterne 0x6a6310, stimens sætninger og de 80 skabeloner
+   *  ({b} afsender, {sc} resultat, {opp} modstander, {comp} turnering) – mangler den i et sprog, bruges engelsk */
+  match?: MatchPack;
+}
+export interface MatchPack {
+  b: Record<'club' | 'fa', string>;
+  h: Record<'dDel' | 'dHappy' | 'dFury' | 'dUnhappy' | 'dReact' | 'del' | 'pleases' | 'fury' | 'unhappy' | 'react', string>;
+  run: Record<string, string>;
+  t: string[];
 }
 
 const packs: Record<string, BoardPack> = {};

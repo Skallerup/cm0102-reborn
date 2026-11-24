@@ -197,7 +197,10 @@ export type BoardCmDesc =
   | { k: 'x'; nat: string; code: number; c: FaComp | ''; tg: FaComp | ''; u21?: boolean }
   | { k: 'p'; nat: string; grade: number; c: FaComp | '' }
   | { k: 'o'; nat: string; nation: string; st: number }
-  | { k: 'd'; type: number; reason: number; m: string; nation: string; nat: string };
+  | { k: 'd'; type: number; reason: number; m: string; nation: string; nat: string }
+  /** bestyrelsens kampreaktion (0x138c): de ændrede flag, skabelonen og stimens sætning (cmBoard.ts MATCH_TEXT/matchRunSentence), lange og
+   *  korte navne, resultatet (største tal først) og turneringens korte navn; `nat` = nationaliteten, når det er et landshold */
+  | { k: 'm'; f: number; tpl: number; run: string; club: string; nat: string; opp: string; cs: string; os: string; sc: string; comp: string };
 
 export function boardCmText(d: BoardCmDesc): { title: string; body: string } {
   switch (d.k) {
@@ -209,5 +212,22 @@ export function boardCmText(d: BoardCmDesc): { title: string; body: string } {
     case 'd': return faDepText(d.type, d.reason, d.m, d.nation, d.nat);
     case 'r': return { title: requestTitle(d.req), body: requestReply(d.club, d.req, d.code) };
     case 'u': return { title: ultimatumTitle(d.type, d.req, d.res, d.short), body: ultimatumBody(d.type, d.req, d.sub, d.club, d.m, d.st, d.small, d.poor) };
+    case 'm': return matchReactionText(d);
   }
+}
+
+// ---------------------------------------------------------------- bestyrelsens kampreaktion (0x6a6310 / 0x6a69c0)
+
+/** 0x6a6310: overskriften efter flagenes lave byte (0x40 = lokalderby) og brødteksten 0x6a69c0 ("%s %s" med stimens sætning) */
+export function matchReactionText(d: Extract<BoardCmDesc, { k: 'm' }>): { title: string; body: string } {
+  const M = P().match ?? EN.match!;
+  const h = M.h, f = d.f;
+  const title = f & 0x40
+    ? (f & 8 ? h.dDel : f & 0x20 ? h.dHappy : f & 1 ? h.dFury : f & 2 ? h.dUnhappy : h.dReact)
+    : (f & 8 ? h.del : f & 0x20 ? h.pleases : f & 1 ? h.fury : f & 2 && f & 0x1000 ? h.unhappy : h.react).replace('{opp}', d.os).replace('{club}', d.cs);
+  const b = d.nat ? M.b.fa.replace('{nat}', d.nat) : M.b.club.replace('{club}', d.club);
+  const tpl = M.t[d.tpl] ?? EN.match!.t[d.tpl] ?? '';
+  const main = tpl.replace('{b}', b).replace('{sc}', d.sc).replace('{opp}', d.opp).replace('{comp}', d.comp);
+  const run = d.run ? M.run[d.run] ?? EN.match!.run[d.run] ?? '' : '';
+  return { title, body: run ? `${main} ${run}` : main };
 }

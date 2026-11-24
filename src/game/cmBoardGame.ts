@@ -37,7 +37,7 @@ import {
 import type { CMWorld } from './data/cm0102';
 import { appointText, boardCmText, confidenceText, type BoardCmDesc, type ConfidenceIn } from './cmBoardText';
 import { boardRequestAvailable, issueUltimatum, ultimatumOffered, type UltimatumIn } from './cmBoardUltimatum';
-import { projectPositions, staffInterest, type InterestEnv } from './cmBoardInterest';
+import { leagueClash, projectPositions, staffInterest, type InterestEnv } from './cmBoardInterest';
 import { msvcQsort } from './engine/grid/subs';
 import { registerPrerun } from './cmPrerun';
 import { personKey } from './cmRelations';
@@ -52,6 +52,10 @@ import { NO_CARRY, registerCarry } from './carry';
 import { natPlayers } from './cmN88';
 export { natPlayers };
 import { FRIENDLY_COMP } from './cmFriendlyOffers';
+import COMP_SHORT from './data/cmCompShort.json';
+
+/** turneringens korte navn (club_comp.dat +0x38; scripts/build-cm-comp-short.py) – ellers det lange */
+const compShort = (n: string) => (COMP_SHORT as Record<string, string>)[n] ?? n;
 
 /** club_comp.dat "Friendly" (Friendly +4 – 0x5c6710) */
 const CC_FRIENDLY = 72;
@@ -704,6 +708,16 @@ function boardNews(g: GameState, _env: BoardEnv, n: BoardNews): void {
       if (n.manager.human ? clubNewsToMe(g, n.club, true) : newsOn(g, n.club)) addNews({ cat: 'job', key: 'news.cmAppoint', params: { club: g.clubs[n.club]?.short ?? clubName(n.club), manager: mname(n.manager), full: clubName(n.club), prev: n.prev > 0 && n.kind === 3 ? clubName(n.prev) : '',
         body: appointBody(clubName(n.club), mname(n.manager), n.prev > 0 && n.kind === 3 ? clubName(n.prev) : '') }, link: { kind: 'club', id: n.club } });
       return;
+    case 'match': {
+      // 0x6a5fa0 (0x138c) til klubbens menneskemanager; overskrift 0x6a6310 og brødtekst 0x6a69c0 bygges ved visning (cmBoardText.ts)
+      const nn = natOfClub(n.club);
+      if (!mine(n.club) && myNat(n.club) === null) return;
+      const short = (c: number) => (natOfClub(c) !== null ? clubName(c) : g.clubs[c]?.short || clubName(c));
+      const sc = `${Math.max(n.gf, n.ga)}-${Math.min(n.gf, n.ga)}`;
+      addNews({ cat: 'board', key: 'board.cm', params: boardParams({ k: 'm', f: n.flags, tpl: n.tpl, run: n.run, club: clubName(n.club), nat: nn !== null ? natAdj(g, nn) : '',
+        opp: clubName(n.opp), cs: short(n.club), os: short(n.opp), sc, comp: n.comp }), ...(nn === null ? { link: { kind: 'club' as const, id: n.club } } : {}) });
+      return;
+    }
     case 'pressure': case 'ultimatum': case 'protest':
       if (mine(n.club)) addNews({ cat: 'board', key: 'board.warning', params: { club: clubName(n.club) } });
       return;
@@ -1168,11 +1182,13 @@ export function cmBoardAfterMatch(g: GameState, f: Fixture, rep: MatchReport): v
       const riv = cr ? cr.slice(6, 9) : [];
       const sameCity = cr && or && cr[4] === or[4] && cr[4] > 0;
       if (sameCity) return riv.includes(o) ? 0x40 : 0x80;
+      // rivaler i en anden by: 0x40 også ved afstand ≤ 25 (byernes koordinater +0x23/+0x2b findes ikke i dataene – kun 0x80)
       if (riv.includes(o)) return 0x80;
-      return 0;
+      return leagueClash(env, c, o) ? 0x80 : 0;                          // 0x4b02e0: titel-/oprykningskamp i samme division
     },
     venueHome: true,
     sides: [sideOf(0), sideOf(1)],
+    compName: comp ? compShort(comp.name) : '',
   };
   // (ydelse 14/11) afterMatch læser kun manageren (om der er en, og .np) – uden boardEnv's allPersons (alle personer pr. kamp)
   const touched = { done: false };
@@ -1183,7 +1199,7 @@ export function cmBoardAfterMatch(g: GameState, f: Fixture, rep: MatchReport): v
 /** international.ts playNation (ægte tilstand, efter landskampen og kamprapporten): 0x6951e0 for begge A-landshold. `venue` = spillestedets
  *  nation (hjemmeholdets land; slutrunderne: værtslandet). *Afvigelse*: de internationale turneringers omdømme (club_comp +0x69 for nation_comp)
  *  findes ikke i world-filen (0 som i gamePostReport). */
-export function cmBoardNationalAfterMatch(g: GameState, home: number, away: number, rep: MatchReport, x: { b3a: number; w30: number; compId: number; friendly: boolean; venue: number }): void {
+export function cmBoardNationalAfterMatch(g: GameState, home: number, away: number, rep: MatchReport, x: { b3a: number; w30: number; compId: number; friendly: boolean; venue: number; name?: string }): void {
   if (!cmBoardOn(g) || !g.cmBoard?.nm) return;
   const st = stateOf(g), env = boardEnv(g, g.date, undefined, true);
   const [hs, as] = rep.stats;
@@ -1205,7 +1221,7 @@ export function cmBoardNationalAfterMatch(g: GameState, home: number, away: numb
     home: natClub(home), away: natClub(away), len: rep.et ? 120 : 90, b3a: x.b3a, w30: x.w30, w32: 0, w38: 0,
     gh: hs.goals, ga: as.goals, aggH: 0xff, aggA: 0xff, penH: rep.pens?.[0] ?? 0, penA: rep.pens?.[1] ?? 0,
     compRep: g.cmCompRep?.[x.compId] ?? 0, isDivision: () => false, friendly: x.friendly, inContention: () => true, derby: () => 0,
-    venueHome: true, venueNation: x.venue, sides: [sideOf(0), sideOf(1)],
+    venueHome: true, venueNation: x.venue, sides: [sideOf(0), sideOf(1)], compName: x.name ?? '',
   };
   const touched = { done: false };
   afterMatch({ ...env, manager: (c) => managerPerson(g, c, env.today, touched) }, st, m, rnd(g, dayNum(g.date), 0x695240, 1000 + home, away));

@@ -186,5 +186,10 @@ intlHooks.boardMatch = (home, away, rep, kind, stage) => {
     const hosts = (HOSTS[`${kind}:${g.date.slice(0, 4)}`] ?? []).map((nm) => g.nations.findIndex((x) => x.name === nm)).filter((n) => n >= 0);
     venue = hosts.find((n) => n === home || n === away) ?? hosts[0] ?? -1;
   }
-  cmBoardNationalAfterMatch(g, home, away, rep, { b3a: kind === 'friendly' ? 9 : 10, w30: kind === 'friendly' ? 0 : w30, compId: COMPS[kind] ?? 72, friendly: kind === 'friendly', venue });
+  cmBoardNationalAfterMatch(g, home, away, rep, { b3a: kind === 'friendly' ? 9 : 10, w30: kind === 'friendly' ? 0 : w30, compId: COMPS[kind] ?? 72, friendly: kind === 'friendly', venue,
+    name: kind === 'wcq' ? `World Cup Quals (${WCQ_CONT[g.cmNationCont?.[home] ?? -1] ?? 'EUR'})` : NAT_COMP_SHORT[kind] ?? '' });
 };
+/** nation_comp.dat +0x38 (3.9.68) – turneringens korte navn i bestyrelsens kampreaktion; VM-kvalifikationen efter verdensdelen (continent.dat 0–5) */
+const NAT_COMP_SHORT: Record<string, string> = { friendly: 'Friendly', euroq: "Euro Ch'ship Quals", wc: 'World Cup', euro: 'European Championship', copa: 'Copa America',
+  afcon: 'African Nations', asian: 'Asian Cup' };
+const WCQ_CONT = ['AFR', 'ASI', 'EUR', 'CON', 'OCE', 'SAM'];
