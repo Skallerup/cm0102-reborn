@@ -7,7 +7,7 @@ import { splitReserves } from './reserves';
 import { clubsChanged, hasReserveTeam, trimLinkedSquads } from './cmBTeam';
 import { initialTransferList } from './transfers';
 import { startScoreSeason } from './rating';
-import { naturalRole } from './attributes';
+import { ATTRS, naturalRole } from './attributes';
 import { cupFirstDate, europeanQualifiers, setupChampionsLeague, setupCmCharity, setupCmLeagueCup, setupCup, setupLeague, setupSuperCup, setupUefaCup } from './competitions';
 import { addDays, ageOn } from './dates';
 import {
@@ -34,7 +34,7 @@ import { initKnowledge } from './scouting';
 import { CHALLENGES } from './challenges';
 import { monthlyDevelopment, recordDevelopment } from './training';
 import { cmRand, fillReputation } from './cmPlayerData';
-import { npFromWorld, npTemplate, staffConvert, staffInitRecord, type NpTemplate } from './cmStaffInit';
+import { npFromWorld, npTemplate, personality_535ea4, staffConvert, staffInitRecord, type NpTemplate } from './cmStaffInit';
 import { initialLanguages } from './cmLanguage';
 import { cmActive, cmLogic, cmMarketOn, cmMatchOn, cmMediaOn } from './cmPlayerData';
 import { cmAwNewGame } from './cmAwards';
@@ -112,6 +112,8 @@ export const setOriginalIncome = (v: number) => { ORIGINAL_INCOME = v; };
 
 /** pund → spillets interne euro (samme kurs som valutavisningen i i18n) */
 const GBP = 0.86;
+/** personpostens +0x56..+0x5d (sub_535a80 0x535ea4) → egenskabernes indeks */
+const PERS_IX = (['adaptability', 'ambition', 'determination', 'loyalty', 'pressure', 'professionalism', 'sportsmanship', 'temperament'] as const).map((k) => ATTRS.indexOf(k));
 
 const PALETTE = ['#c8102e', '#003399', '#ffffff', '#111111', '#ffd200', '#00843d', '#6cabdd', '#7a263a', '#f68b1f', '#5c2d91', '#0057b8', '#e30613'];
 
@@ -397,6 +399,14 @@ export function createGameBase(world: WorldData, o: NewGameOptions): NewGameCtx 
       const pos11 = [...rt.pos, rt.side[2], rt.side[0], rt.side[1]];
       if (stored) repairPositions(pos11, rand);
       const rec = { ca, pos: pos11.slice(0, 8), side: [pos11[9], pos11[10], pos11[8]], attrs: rt.attrs.slice(), stored };
+      // sub_535a80 0x535ea4–0x536195 (før PA og skabelonen): personpostens personlige egenskaber – de manglende (0 i databasen) trækkes, og
+      // Sportsmanship/Temperament flyttes efter nationens +0x76 (cmStaffInit.ts personality_535ea4). Alle CM-databaser i ægte tilstand; egen
+      // talrække, så kædens øvrige træk står, hvor de stod. Determination er udfyldt, før skabelonen (0x537640) ser den.
+      if (mode === 'authentic') {
+        const n76 = p.nation >= 0 && g.nations[p.nation] ? cm?.cmRaw?.nation76?.[p.nation] ?? 0 : null;
+        const pv = personality_535ea4(PERS_IX.map((i) => rec.attrs[i] ?? 0), n76, cmRand(seed, p.id, 0x535ea4));
+        PERS_IX.forEach((i, k) => { rec.attrs[i] = pv[k]; });
+      }
       fillMissing(rec, age, initPool ??= makePool(Object.values(cm!.ratings).filter((x) => x.tf === undefined || x.tf === 0 || x.ca >= 120).map((x) => ({ ...x, stored }))), rand);
       if (rt.rep) p.cmRep = rt.rep;
       // sub_535a80 0x536270–0x536ec6: manglende omdømme udfyldes (egen talrække – spillets rng røres ikke) og Free Role (+0x1a)

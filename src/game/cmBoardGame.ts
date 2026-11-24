@@ -19,7 +19,7 @@ import type { Club, Fixture, GameState, MatchReport, Staff } from './types';
 import { squad, addNews } from './state';
 import { cmActive, cmBoardLogic, cmLogic, cmRand, clubRepMem, postHooks } from './cmPlayerData';
 import { cmGbp } from './cmMoney';
-import { personalFill_535a80 } from './cmStaffInit';
+import { personalFill_535a80, personality_535ea4 } from './cmStaffInit';
 import { financeStatus } from './cmSquadPlan';
 import { cmClubPredictValue, cmSquadPlanNewManager } from './cmSquadPlanGame';
 import { clubSeason } from './cmFitness';
@@ -926,7 +926,10 @@ export function cmInitStaffRep(g: GameState, s: Staff, row: NonNullable<CMWorld[
   // personpostens skjulte egenskaber +0x56..+0x5d som sub_535a80 (0x535ea4–0x5360xx) udfylder dem uden for 1..20: +0x56 og Loyalty +0x59 den
   // mindste af to terninger, de andre gennemsnittet (personalFill_535a80; oraklet 14/7-01: Warwick Rimmer 6,9,4,14,14,20,15,11 – databasen
   // har kun +0x5b = 20). +0x22 (landskampe) som databasen.
-  s.cmHid = bx.slice(2, 11).map((v, k) => (k < 8 ? personalFill_535a80(v, cmRand(g.seed ?? 0, row[9], 0x535ea4 + k), k === 0 || k === 3 ? 'min' : 'avg') : v));
+  // (24/11) hele blokken som for spillerne (personality_535ea4): Sportsmanship +0x5c er også den mindste, Temperament +0x5d har sine egne
+  // terninger, og nationens +0x76 flytter Sportsmanship/Temperament
+  const n76 = s.nation >= 0 && g.nations[s.nation] ? g.cmNation76?.[s.nation] ?? 0 : null;
+  s.cmHid = [...personality_535ea4(bx.slice(2, 10), n76, cmRand(g.seed ?? 0, row[9], 0x535ea4)), bx[10]];
   s.cmJoined = row[13] || '';
 }
 

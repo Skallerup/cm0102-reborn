@@ -19,7 +19,9 @@ const ONLY_ORACLE = !!process.env.ONLY_ORACLE;
 const CLUB = 'Arsenal';
 /** pr. spiller: nøgle, alder, CA, PA, klub, klubbens land, division, (vores) regen/ny, kampe i sæsonen, trænere i klubben */
 export interface DRow { key: string; age: number; ca: number; pa: number; club: string; nat: string; div: string; nw?: boolean; rg?: boolean; apps?: number; coaches?: number; fac?: number;
-  /** PlayerStats kat. 6 og 1: [kampe, karaktersum] (udviklingens s1/s2 og s4/s3 – 0x7c1e30) */ st6?: [number, number]; st1?: [number, number] }
+  /** PlayerStats kat. 6 og 1: [kampe, karaktersum] (udviklingens s1/s2 og s4/s3 – 0x7c1e30) */ st6?: [number, number]; st1?: [number, number];
+  /** kampe i kat. 2 (liga), 3 (pokal), 4 (Europa) */ c234?: [number, number, number];
+  /** trætheden (konditionspostens +0xc, 0x62c3d0) */ fat?: number }
 
 const yrs = (date: string, dob: string) => (Date.parse(date) - Date.parse(dob)) / (365.25 * 86400000);
 const str = (m: SparseMem, a: number, n = 60) => { let s = ''; if (!a) return s; for (let i = 0; i < n; i++) { const c = m.u8(a + i); if (!c) break; s += String.fromCharCode(c); } return s.trim(); };
@@ -28,6 +30,7 @@ const dayIso = (d: number, y: number) => (y > 1850 && y < 2100 ? new Date(Date.U
 function oracleRows(m: SparseMem): { date: string; rows: DRow[] } {
   const S = m.u32(0xae23bc), n = m.s32(0xae2364), C = m.u32(0xae23b4), nc = m.s32(0xae235c);
   const date = dayIso(m.s16(0xae2c90), m.s16(0xae2c92));
+  const injBase = m.u32(0xb63d28) ? m.u32(m.u32(0xb63d28)) : 0;
   const rows: DRow[] = [];
   const PS = m.u32(0xb74350), nP = m.s32(0xae236c), sidx = m.u32(PS + 0x30), srec = m.u32(PS + 4);
   const stOf = (pid: number, c: number): [number, number] | undefined => {
@@ -44,7 +47,7 @@ function oracleRows(m: SparseMem): { date: string; rows: DRow[] } {
     const ok = cix >= 0 && cix < nc;
     const adr = C + 0x245 * cix, dv = ok ? m.u32(adr + 0x57) : 0;
     rows.push({ key: `${common || f + ' ' + l}|${dob}`, age: yrs(date, dob), ca: m.s16(pr + 5), pa: m.s16(pr + 7), club: ok ? str(m, adr + 4, 51) : '',
-      nat: ok ? str(m, m.u32(adr + 0x53) + 4, 51) : '', div: dv ? str(m, dv + 4, 51) : '', st6: stOf(m.s32(pr), 6), st1: stOf(m.s32(pr), 1) });
+      nat: ok ? str(m, m.u32(adr + 0x53) + 4, 51) : '', div: dv ? str(m, dv + 4, 51) : '', st6: stOf(m.s32(pr), 6), st1: stOf(m.s32(pr), 1), c234: [2, 3, 4].map((c) => stOf(m.s32(pr), c)?.[0] ?? 0) as [number, number, number], fat: injBase ? m.s16(injBase + 31 * id + 0xc) : undefined });
   }
   return { date, rows };
 }
@@ -61,7 +64,7 @@ function ourRows(date: string): DRow[] {
     const c = g.clubs[p.club];
         rows.push({ key: `${p.first} ${p.last}|${p.dob}`, age: yrs(date, p.dob), ca: p.ca, pa: p.pa, club: c?.name ?? '', nat: c ? g.nations[c.nation]?.name ?? '' : '', div: p.club ? divOf(p.club) : '',
       nw: p.id >= top0, rg: !!p.regen, apps: p.stats?.apps, coaches: p.club ? coaches.get(p.club) ?? 0 : undefined, fac: c?.facilities,
-      st6: p.cmStats?.[6] ? [p.cmStats[6][ST.apps], p.cmStats[6][ST.rating]] : undefined, st1: p.cmStats?.[1] ? [p.cmStats[1][ST.apps], p.cmStats[1][ST.rating]] : undefined });
+      st6: p.cmStats?.[6] ? [p.cmStats[6][ST.apps], p.cmStats[6][ST.rating]] : undefined, st1: p.cmStats?.[1] ? [p.cmStats[1][ST.apps], p.cmStats[1][ST.rating]] : undefined, c234: [2, 3, 4].map((c) => p.cmStats?.[c]?.[ST.apps] ?? 0) as [number, number, number], fat: p.cmFit?.fat });
   }
   return rows;
 }

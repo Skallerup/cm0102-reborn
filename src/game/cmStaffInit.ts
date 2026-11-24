@@ -267,3 +267,39 @@ export function personalFill_535a80(v: number, rand: Rand, kind: 'avg' | 'min'):
   const a = rand(20) + 1, b = rand(20) + 1;
   return kind === 'min' ? Math.min(a, b) : trunc((a + b) / 2);
 }
+
+/** sub_535a80 0x535ea4–0x536195 for én person (staff-løkken – spillere og stab): personpostens 8 personlige egenskaber `v` = +0x56 Adaptability,
+ *  +0x57 Ambition, +0x58 Determination, +0x59 Loyalty, +0x5a Pressure, +0x5b Professionalism, +0x5c Sportsmanship, +0x5d Temperament (databasens
+ *  rå, s8). En værdi uden for 1..20: −1 → rand(16) + 5 (Temperament rand(11) + 10); ellers a = rand(20) + 1, b = rand(20) + 1 (Temperament
+ *  rand(11) + 5 begge): +0x56, +0x59 og +0x5c den mindste (0x535edb/0x535fa6/0x536071 cmp bl, al; jle), de andre trunc((a + b)/2). Bagefter for
+ *  personer med en nationalitet (+0x1a ≠ 0) efter nationens +0x76 (springtabellen 0x538b54 for +0x76 − 4): 4 og 12 (Mellem-/Sydamerika)
+ *  Sportsmanship/Temperament −rand(15), +rand(8), −rand(5) (0x5360f4 falder igennem); 6 og 8 (Østeuropa, Nordafrika) Sportsmanship −rand(10);
+ *  11 (Norden) +rand(8), −rand(5); 13 (Middelhavet) −rand(5); de øvrige intet – og Sportsmanship/Temperament klemmes til 1..20 (byte-regning).
+ *  `n76` = null: ingen nationalitet (0x5360c7 springer det hele over). */
+export function personality_535ea4(v: readonly number[], n76: number | null, rand: Rand): number[] {
+  const out = v.slice(0, 8).map((x) => s8(x));
+  for (let k = 0; k < 8; k++) {
+    const x = out[k];
+    if (x >= 1 && x <= 20) continue;
+    if (k === 7) {                                                            // 0x53607d: Temperament
+      if (x === -1) { out[k] = rand(11) + 10; continue; }
+      const a = rand(11) + 5, b = rand(11) + 5;
+      out[k] = trunc((a + b) / 2);
+      continue;
+    }
+    if (x === -1) { out[k] = rand(16) + 5; continue; }
+    const a = rand(20) + 1, b = rand(20) + 1;
+    out[k] = k === 0 || k === 3 || k === 6 ? (a <= b ? a : b) : trunc((a + b) / 2);
+  }
+  if (n76 === null) return out;
+  let sp = out[6], te = out[7];
+  const c = n76 - 4;                                                          // 0x5360d1: jmp [0x538b54 + 4·(+0x76 − 4)], > 9 (uden fortegn) → klem
+  if (c === 0 || c === 8 || c === 7 || c === 9) {
+    if (c === 0 || c === 8) { sp = s8(sp - rand(15)); te = s8(te - rand(15)); }   // 0x5360f4
+    if (c !== 9) { sp = s8(sp + rand(8)); te = s8(te + rand(8)); }                // 0x536115
+    sp = s8(sp - rand(5)); te = s8(te - rand(5));                                 // 0x536136
+  } else if (c === 2 || c === 4) sp = s8(sp - rand(10));                          // 0x5360e0
+  out[6] = sp < 1 ? 1 : sp > 20 ? 20 : sp;                                        // 0x536157
+  out[7] = te < 1 ? 1 : te > 20 ? 20 : te;
+  return out;
+}
