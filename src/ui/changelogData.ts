@@ -9,6 +9,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.37.0',
+    date: '2026-11-25',
+    title: { da: 'Mere af det originale CM 01/02', en: 'More of the original CM 01/02' },
+    items: [
+      { da: "Taktikskærmen går ikke længere ned, når spillerne sorteres efter rolle (fx efter en computerholdudtagelse med en ukendt plads).", en: "The tactics screen no longer crashes when players are sorted by role (e.g. after a computer team selection with an unknown slot)." },
+    ],
+  },
+  {
     version: '0.36.0',
     date: '2026-11-24',
     title: { da: 'Mere af det originale CM 01/02', en: 'More of the original CM 01/02' },
