@@ -28,12 +28,20 @@ describe('Scout Player i en baggrundsklub (ægte tilstand, original DB)', () => 
     const old = new Set(g.news);
     const watch0 = { ...(g.cmScoutWatch ?? {}) };
     const reps = () => g.news.filter((n) => !old.has(n) && n.key.startsWith('cmsr.'));
-    for (let i = 0; i < 40 && !reps().some((n) => n.link?.id === target.id); i++) step();
+    // (24/11) efter datoen, ikke antal skridt: continueGame standser også ved nyheder (fx bestyrelsens), så 40 skridt kan være < 30 dage
+    const until = addDays(g.date, 45);
+    // 0x7f8750 sletter anmodningen uden rapport, hvis spilleren er skadet efter de 30 dage (0x62c400 = 2) – det sker for nogle talrækker
+    // (24/11: frø 5 med formændenes udfyldte Patience → Gallardo, Monaco, skadet 20/9)
+    let hurt = false;
+    for (let i = 0; i < 400 && g.date < until && !reps().some((n) => n.link?.id === target.id); i++) {
+      step();
+      if (target.injury && target.injury.key !== 'awol' && !(g.cmScoutReq ?? []).some((r) => r.pid === target.id)) { hurt = true; break; }
+    }
     // en spejderliste, der har set en kamp (0x7b5be0 sætter +0x1a5 = i morgen), har set en af klubbens kampe i kampprogrammet – ingen baggrundskamp
     const days = new Set(Object.values(g.fixtures).filter((f) => f.home === fra.id || f.away === fra.id).map((f) => addDays(f.date, 1)));
     const seen = Object.entries(g.cmScoutWatch ?? {}).filter(([id, d]) => watch0[+id] !== d).map(([, d]) => d);
     expect(seen.filter((d) => !days.has(d)), 'spejderne så en baggrundskamp').toEqual([]);
     expect(reps().map((n) => n.link?.id).filter((id) => id !== target.id), 'rapporter om andre spillere').toEqual([]);
-    expect(reps().some((n) => n.link?.id === target.id), 'rapport om den bestilte spiller').toBe(true);
+    expect(hurt || reps().some((n) => n.link?.id === target.id), 'rapport om den bestilte spiller').toBe(true);
   }, 600_000);
 });
