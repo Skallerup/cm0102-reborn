@@ -113,6 +113,17 @@ export function removeTraining(r: CmRec, e: CmTrainEntry): number[] {
   applyTraining(r, e, saved.map((v) => s8(-v)));
   return saved;
 }
+/** 0x8b37c0 (træningsskærmens egenskabsfarve): fortegnet på (viste egenskab − egenskaben med træningens effekter trukket fra via 0x8b2be0) – >0 grøn,
+ *  0 gul, <0 rød. Regnes på en kopi; spilleren røres ikke. Ingen træningspost (endnu) = 0 for alle. */
+export function trainEffectSigns(g: GameState, p: Player): (attrKey: string) => number {
+  const e = p.cmTrain;
+  if (!e || !cmLogic(g)) return () => 0;
+  const q = { ...p, attrs: [...p.attrs], cmInt: p.cmInt ? [...p.cmInt] : p.cmInt } as Player;
+  const r = recOf(q);
+  removeTraining(r, { ...e });
+  recInto(g, q, r);
+  return (k) => { const i = ATTRS.indexOf(k as never); return i < 0 ? 0 : Math.sign(Math.round(p.attrs[i]) - Math.round(q.attrs[i])); };
+}
 /** 0x538bc0 (staff_normalise_player_attributes) på spillerposten: 0x8b3640(0), re-centreringen af de 18 interne (playerInit.ts sub_538bc0), 0x8b3640(1) */
 export function normaliseRec(r: CmRec, e: CmTrainEntry | null): void {
   const saved = e ? removeTraining(r, e) : null;

@@ -509,6 +509,27 @@ async function run(look) {
     await rows.nth(4).locator('.cx-ts-row .cx-drop-btn').click();
     await page.locator('.cx-drop-pop button', { hasText: 'Tactics' }).first().click();
     if ((await n(sub('Tactics ('))) !== tac0 + 1) throw new Error('rækkens skemamenu flyttede ikke spilleren');
+    // View ▾ → Attributes, og Attributes ▾ (kun i egenskabsvisningen): kolonnerne skifter pr. gruppe, Value står til sidst
+    if (await page.locator('.cx-ts-attrs').count()) throw new Error('Attributes-menuen skal kun vises i egenskabsvisningen');
+    await top('General (').click();
+    const heads = async () => (await page.locator('.cx-tbl thead th').allInnerTexts()).map((x) => x.trim()).filter(Boolean);
+    const viewBtn = page.locator('.cx-drop-btn', { hasText: /^\s*View/ }).first();
+    await viewBtn.click();
+    await page.locator('.cx-drop-pop button', { hasText: 'Attributes' }).first().click();
+    await page.waitForSelector('.cx-ts-attrs', { timeout: 3000 });
+    const phys = await heads();
+    if (phys.join(',') !== 'Inf,Name,Acc,Agi,Bal,Hea,Jum,Pac,Sta,Str,Tec,Value') throw new Error(`Physical-kolonnerne er ${phys.join(',')}`);
+    if (!(await page.locator('.cx-tbl td[class*="col-acceleration"] span[class^="cx-tn-"]').count())) throw new Error('egenskabstallene har ingen træningsfarve');
+    await page.locator('.cx-ts-attrs .cx-drop-btn, .cx-ts-attrs').first().click();
+    if (!(await page.locator('.cx-drop-pop button', { hasText: 'Goalkeeping' }).count())) throw new Error('Attributes-menuen har ikke Goalkeeping');
+    for (const l of ['Physical', 'Mental', 'Goalkeeping', 'Defensive', 'Attacking']) if (!(await page.locator('.cx-drop-pop button', { hasText: l }).count())) throw new Error(`Attributes-menuen mangler ${l}`);
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-traening-attributter.png` });
+    await page.locator('.cx-drop-pop button', { hasText: 'Mental' }).click();
+    const ment = await heads();
+    if (ment.join(',') !== 'Inf,Name,Agg,Ant,Bra,Dec,Det,Inf,Ref,Tea,Wor,Value') throw new Error(`Mental-kolonnerne er ${ment.join(',')}`);
+    await viewBtn.click();
+    await page.locator('.cx-drop-pop button', { hasText: 'General' }).first().click();
+    await top('Overview').click();
     // et eget skema på den første Unused-plads: Edit → navn og intensiteter
     await sub('Unused').click();
     if (await page.locator('.cx-ts-sched').isDisabled()) throw new Error('Schedule er grå på et skema');

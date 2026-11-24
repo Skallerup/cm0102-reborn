@@ -12,8 +12,8 @@ import { act } from '../../game/actions';
 import { ageOn } from '../../game/dates';
 import { squad } from '../../game/state';
 import { A } from '../../game/attributes';
-import { CM_AREAS, CM_INTENSITIES, CM_SCHED_SLOTS, clubCoaches, newHumanSchedules, playerSlot, scheduleNameKey } from '../../game/cmTraining';
-import type { CmSchedule, CoachArea, Player } from '../../game/types';
+import { CM_AREAS, CM_INTENSITIES, CM_SCHED_SLOTS, clubCoaches, newHumanSchedules, playerSlot, scheduleNameKey, trainEffectSigns } from '../../game/cmTraining';
+import type { CmSchedule, CoachArea, GameState, Player } from '../../game/types';
 import { money, t } from '../../i18n';
 import { ClassicFoot, ClassicSub, CxDrop, useClassicDialog, type DropItem } from '../classic';
 import { Tabs, posStr } from '../components';
@@ -58,6 +58,24 @@ const VIEW_IDS: Record<string, number[]> = {
 const attrLabel = (k: string) => (k === 'setPieces' ? t('cl.fl.setPieces') : t(`attr.${k}`));
 const attrVal = (p: Player, k: string) => Math.round(k === 'setPieces' ? Math.max(p.attrs[A.freeKicks], p.attrs[A.corners], p.attrs[A.penalties]) : p.attrs[A[k as keyof typeof A]]);
 
+/** View ▾ → Attributes: de fem grupper i menuen (0x8b6612…) og deres tekster */
+export const ATTR_GROUPS = ['phys', 'ment', 'gk', 'def', 'att'] as const;
+export const groupLabel = (k: string) => t(`cl.ts.v${k === 'phys' ? 'Phys' : k === 'ment' ? 'Ment' : k === 'gk' ? 'Gk' : k === 'def' ? 'Def' : 'Att'}`);
+/** gruppens egenskaber i originalens rækkefølge (0x8b784f: efter navn) */
+export const groupAttrs = (view: string): string[] => (VIEW_IDS[view] ?? VIEW_IDS.phys).map((id) => ATTR_ID[id]).sort((a, b) => attrLabel(a).localeCompare(attrLabel(b)));
+export { attrLabel, attrVal };
+/** egenskabens farve (0x8b37c0 → 0x8b8184): grøn = træningen har hævet den, gul = uændret, rød = sænket (cmTraining.ts trainEffectSigns) */
+export function trainTone(g: GameState, p: Player): (k: string) => 'up' | 'eq' | 'dn' {
+  const f = trainEffectSigns(g, p);
+  return (k) => {
+    const sg = k === 'setPieces'
+      ? ['freeKicks', 'corners', 'penalties'].sort((a, b) => attrVal(p, b) - attrVal(p, a))[0]
+      : k;
+    const v = f(sg);
+    return v > 0 ? 'up' : v < 0 ? 'dn' : 'eq';
+  };
+}
+
 const moraleShort = (m: number) => t(`morale.${m >= 16 ? 'superb' : m >= 13 ? 'good' : m >= 9 ? 'okay' : 'poor'}`);
 const formAvg = (p: Player) => (p.form.length ? p.form.slice(-5).reduce((s, x) => s + x, 0) / Math.min(5, p.form.length) : 0);
 /** side: +0x17 højre (side[2]), +0x18 venstre (side[0]), +0x19 midten (side[1]) – "sidet" ved 15+ (*estimeret*) */
@@ -84,6 +102,7 @@ export function CmTraining() {
   const [tabS, setTab] = useRouteState('ctab', '0');
   const tab = Math.max(0, Math.min(CM_SCHED_SLOTS - 1, Number(tabS) || 0));
   const [view, setView] = useRouteState('cview', 'gen');
+  const [lastGroup, setLastGroup] = useState('phys');
   const [pos, setPos] = useRouteState('cpos', '');
   const [side, setSide] = useRouteState('cside', '');
   const [dlg, setDlg] = useState<null | 'edit' | 'coaches' | 'load' | 'delete'>(null);
@@ -136,11 +155,12 @@ export function CmTraining() {
   ];
 
   // ---------------------------------------------------------------- View ▾ og Filter ▾
+  // View ▾: General / Attributes; Attributes ▾ (kun i egenskabsvisningen): Physical, Mental, Goalkeeping, Defensive, Attacking (0x8b6467 …)
   const viewMenu: DropItem[] = [
     { key: 'gen', label: t('cl.ts.vGeneral'), checked: view === 'gen', onClick: () => setView('gen') },
-    { key: 'h', head: t('cl.ts.vAttr') },
-    ...(['phys', 'ment', 'gk', 'def', 'att'] as const).map((k) => ({ key: k, label: t(`cl.ts.v${k === 'phys' ? 'Phys' : k === 'ment' ? 'Ment' : k === 'gk' ? 'Gk' : k === 'def' ? 'Def' : 'Att'}`), checked: view === k, onClick: () => setView(k) })),
+    { key: 'attr', label: t('cl.ts.vAttr'), checked: view !== 'gen', onClick: () => view === 'gen' && setView(lastGroup) },
   ];
+  const attrMenu: DropItem[] = ATTR_GROUPS.map((k) => ({ key: k, label: groupLabel(k), checked: view === k, onClick: () => { setLastGroup(k); setView(k); } }));
   const filterMenu: DropItem[] = [
     ...([['', 'fAll'], ['gk', 'fGk'], ['def', 'fDef'], ['mid', 'fMid'], ['att', 'fAtt']] as const).map(([k, l]) => ({ key: `p${k}`, label: t(`cl.ts.${l}`), checked: pos === k, onClick: () => setPos(k) })),
     { key: 's', sep: true },
@@ -150,6 +170,8 @@ export function CmTraining() {
   const name: CxCol<Player> = { key: 'name', label: t('cl.ts.name'), cls: 'c-name', render: (p) => <span className="link" onClick={() => nav({ name: 'player', id: p.id })}>{p.last}{p.first ? `, ${p.first}` : ''}</span>, sort: (p) => `${p.last} ${p.first}` };
   const inf: CxCol<Player> = { key: 'inf', label: t('cl.tn.inf'), render: (p) => <Tag p={p} tag={originalTag(p)} /> };
   const value: CxCol<Player> = { key: 'val', label: t('col.value'), cls: 'c-val', render: (p) => money(p.value), sort: (p) => p.value };
+  const tones = new Map<number, ReturnType<typeof trainTone>>();
+  const tone = (p: Player) => { let f = tones.get(p.id); if (!f) { f = trainTone(g, p); tones.set(p.id, f); } return f; };
   const cols: CxCol<Player>[] = view === 'gen' ? [inf, name,
     { key: 'pos', label: t('cl.ts.position'), cls: 'c-cyan', render: (p) => posStr(p), sort: (p) => -p.pos.indexOf(Math.max(...p.pos)) },
     { key: 'age', label: t('col.age'), cls: 'c-num c-yel', render: (p) => ageOn(p.dob, g.date), sort: (p) => ageOn(p.dob, g.date) },
@@ -157,8 +179,8 @@ export function CmTraining() {
     { key: 'mor', label: t('col.morale'), cls: 'c-num', render: (p) => <span className={`cx-mor m${p.morale >= 16 ? 4 : p.morale >= 13 ? 3 : p.morale >= 9 ? 2 : 1}`}>{moraleShort(p.morale)}</span>, sort: (p) => p.morale },
     { key: 'cond', label: t('col.cond'), cls: 'c-num', render: (p) => (p.injury ? <span className="cx-mor m1">{t('tag.inj')}</span> : <span className={p.condition >= 90 ? 'c-good' : 'cx-mor m2'}>{Math.round(p.condition)}%</span>), sort: (p) => p.condition },
     value]
-    : [inf, name, ...(VIEW_IDS[view] ?? VIEW_IDS.phys).map((id) => ATTR_ID[id]).sort((a, b) => attrLabel(a).localeCompare(attrLabel(b)))
-      .map((k): CxCol<Player> => ({ key: k, label: attrLabel(k).slice(0, 3), title: attrLabel(k), cls: 'c-num', render: (p) => attrVal(p, k), sort: (p) => attrVal(p, k) })), value];
+    : [inf, name, ...groupAttrs(view).map((k): CxCol<Player> => ({ key: k, label: attrLabel(k).slice(0, 3), title: attrLabel(k), cls: 'c-num',
+      render: (p) => <span className={`cx-tn-${tone(p)(k)}`}>{attrVal(p, k)}</span>, sort: (p) => attrVal(p, k) })), value];
 
   const rowMenu = (p: Player): DropItem[] => d.sched.map((s, k) => ({ k, s })).filter(({ k, s }) => k > 0 && s.t !== 7)
     .map(({ k, s }) => ({ key: String(k), label: schedName(s), checked: d.slot[p.id] === k, onClick: () => move(k, String(p.id)) }));
@@ -180,6 +202,7 @@ export function CmTraining() {
       <Head title={t('nav.training')}>
         <CxDrop label={t('cl.ts.schedule')} items={schedMenu} btn={{ disabled: tab === 0, className: 'cx-ts-sched' }} />
         <CxDrop label={t('cl.ts.view')} items={viewMenu} />
+        {view !== 'gen' && <CxDrop label={t('cl.ts.vAttr')} items={attrMenu} className="cx-ts-attrs" />}
         <span className="grow" />
         {tab === 0
           ? <button className="cx-greybtn cx-ts-coaches" onClick={() => setDlg('coaches')}>{t('cl.tn.coaches')}</button>

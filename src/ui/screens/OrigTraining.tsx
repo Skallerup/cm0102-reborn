@@ -6,13 +6,13 @@ import { ageOn } from '../../game/dates';
 import { squad } from '../../game/state';
 import { CM_AREAS, CM_INTENSITIES, CM_SCHED_SLOTS, clubCoaches, newHumanSchedules, playerSlot } from '../../game/cmTraining';
 import type { CmSchedule, CoachArea, Player } from '../../game/types';
-import { t } from '../../i18n';
+import { money, t } from '../../i18n';
 import { Modal, Panel, PlayerLink, Tabs, posStr } from '../components';
 import { askConfirm, askNotice, askText } from '../confirm';
 import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
 import { posGroup } from './Training';
-import { schedName, tshFiles, tshWrite } from './TrainingCm';
+import { ATTR_GROUPS, attrLabel, attrVal, groupAttrs, groupLabel, schedName, trainTone, tshFiles, tshWrite } from './TrainingCm';
 import { originalTag } from './SquadClassic';
 
 const copy = (x: CmSchedule[]) => x.map((s) => ({ ...s, lv: [...s.lv] }));
@@ -78,6 +78,7 @@ export function OrigTraining() {
   const [tabS, setTab] = useRouteState('ctab', '0');
   const tab = Math.max(0, Math.min(CM_SCHED_SLOTS - 1, Number(tabS) || 0));
   const [pos, setPos] = useRouteState('cpos', '');
+  const [view, setView] = useRouteState('cview', 'gen');
   const [dlg, setDlg] = useState<null | 'edit' | 'coaches' | 'load' | 'delete'>(null);
   const [, bump] = useState(0);
   const cur = d.sched[tab];
@@ -118,6 +119,7 @@ export function OrigTraining() {
     setChanged(false);
     back();
   };
+  const attrs = view === 'gen' ? [] : groupAttrs(view);
   const slots = d.sched.map((s, k) => ({ k, s })).filter(({ k, s }) => k > 0 && s.t !== 7);
   return (
     <div>
@@ -131,6 +133,10 @@ export function OrigTraining() {
             <button disabled={!names.length} onClick={() => setDlg('delete')}>{t('cl.ts.delete')}</button>
           </>
         )}
+        <select value={view} onChange={(e) => setView(e.target.value)} aria-label={t('cl.ts.view')}>
+          <option value="gen">{t('cl.ts.vGeneral')}</option>
+          {ATTR_GROUPS.map((k) => <option key={k} value={k}>{t('cl.ts.vAttr')}: {groupLabel(k)}</option>)}
+        </select>
         <select value={pos} onChange={(e) => setPos(e.target.value)} aria-label={t('cl.ts.filter')}>
           {([['', 'fAll'], ['gk', 'fGk'], ['def', 'fDef'], ['mid', 'fMid'], ['att', 'fAtt']] as const).map(([k, l]) => <option key={k} value={k}>{t(`cl.ts.${l}`)}</option>)}
         </select>
@@ -138,14 +144,21 @@ export function OrigTraining() {
       <Tabs tabs={Array.from({ length: CM_SCHED_SLOTS }, (_, k) => [String(k), label(k)] as [string, string])} value={String(tab)} onChange={(k) => setTab(k)} />
       <Panel className="flush">
         <table className="grid">
-          <thead><tr><th>{t('cl.tn.inf')}</th><th>{t('cl.ts.name')}</th><th>{t('cl.ts.position')}</th><th className="num">{t('col.age')}</th><th className="num">{t('col.cond')}</th><th>{t('nav.training')}</th></tr></thead>
+          <thead><tr><th>{t('cl.tn.inf')}</th><th>{t('cl.ts.name')}</th>
+            {view === 'gen' ? <><th>{t('cl.ts.position')}</th><th className="num">{t('col.age')}</th><th className="num">{t('col.cond')}</th></>
+              : attrs.map((k) => <th key={k} className="num" title={attrLabel(k)}>{attrLabel(k).slice(0, 3)}</th>)}
+            <th className="num">{t('col.value')}</th><th>{t('nav.training')}</th></tr></thead>
           <tbody>
             {rows.map((p: Player) => {
               const o = originalTag(p);
+              const tone = view === 'gen' ? null : trainTone(g, p);
               return (
                 <tr key={p.id}>
                   <td>{o && <span className="tag" title={o.title}>{t(`cl.tag.${o.k}`)}</span>}</td>
-                  <td><PlayerLink p={p} /></td><td>{posStr(p)}</td><td className="num">{ageOn(p.dob, g.date)}</td><td className="num">{p.injury ? t('tag.inj') : `${Math.round(p.condition)}%`}</td>
+                  <td><PlayerLink p={p} /></td>
+                  {tone ? attrs.map((k) => <td key={k} className={`num ${tone(k) === 'up' ? 'good' : tone(k) === 'dn' ? 'bad' : 'tn-eq'}`}>{attrVal(p, k)}</td>)
+                    : <><td>{posStr(p)}</td><td className="num">{ageOn(p.dob, g.date)}</td><td className="num">{p.injury ? t('tag.inj') : `${Math.round(p.condition)}%`}</td></>}
+                  <td className="num">{money(p.value)}</td>
                   <td><select value={d.slot[p.id] ?? 1} onChange={(e) => upd((x) => ({ ...x, slot: { ...x.slot, [p.id]: Number(e.target.value) } }))}>
                     {slots.map(({ k, s }) => <option key={k} value={k}>{schedName(s)}</option>)}
                   </select></td>

@@ -1490,3 +1490,4 @@ input[type='color'] { width: 44px; height: 30px; padding: 2px; }
 .gs .cx-set-seg button:hover { background: var(--rowhover); }
 .gs .cx-set-seg button.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
 @media (max-width: 640px) { .gs-row { grid-template-columns: 1fr; } .gs-cols { gap: 10px; } }
+table.grid td.tn-eq { color: var(--warn, #d68a00); font-weight: 700; }

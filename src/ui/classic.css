@@ -2121,3 +2121,8 @@ button.cx-bid-swap.removing { cursor: pointer; color: #fff21f; }
 :is(:root[data-skin='retro'], [data-skin-scope='retro']) .gs .cx-set-seg button:hover { color: #fff; background: transparent; }
 :is(:root[data-skin='retro'], [data-skin-scope='retro']) .gs .cx-set-seg button.on { color: #fff21f; border-color: #fff21f; background: rgba(0, 0, 0, 0.15); }
 :is(:root[data-skin='retro'], [data-skin-scope='retro']) .gs-ver { color: #cfe8cf; }
+
+/* Træning, egenskabsvisningen (0x8b37c0): grøn = træningen har hævet egenskaben, gul = uændret, rød = sænket */
+.cx-tn .cx-tn-up { color: #3fb23f; }
+.cx-tn .cx-tn-eq { color: #fff21f; font-weight: 800; }
+.cx-tn .cx-tn-dn { color: #ff3b30; font-weight: 800; }
