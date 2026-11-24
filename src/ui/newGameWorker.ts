@@ -73,7 +73,12 @@ self.onmessage = async (e: MessageEvent<NewGameJob | LoadJob>) => {
     if (job.from) {
       if (job.gapMs) await new Promise((r) => setTimeout(r, job.gapMs));
       // forrige trins spil (med modulernes tilstand og talrækken) – setGame lægger carry.ts' tilstand tilbage
-      const h = await new Promise<PhaseHandoff>((resolve) => { job.from!.onmessage = (m) => resolve(m.data as PhaseHandoff); });
+      // (24/11) kan spillet ikke pakkes ud i denne arbejder (messageerror – fx for lidt hukommelse til kopien), meldes fejlen; før ventede
+      // arbejderen for evigt ("step fitness 17 %" i 150 s, så "NewGameWorkerFailed: worker")
+      const h = await new Promise<PhaseHandoff>((resolve, reject) => {
+        job.from!.onmessage = (m) => resolve(m.data as PhaseHandoff);
+        job.from!.onmessageerror = () => reject(new Error(`handoff messageerror before ${(job.phases ?? []).join(' ')}`));
+      });
       job.from.close();
       tr('modtaget');
       setGame(h.game);

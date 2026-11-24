@@ -3075,4 +3075,5 @@ export const en: Record<string, string> = {
   "gs.h.searchPresets": "Ready-made filters in the search screens.",
   "gs.h.helpTexts": "Hints and explanations on empty screens.",
   "gs.h.seed": "The number the game world was created from. Share it to start the same world.",
+  'ui.staleBuild': "A new version of CM Reborn has been released while this page was open, so the game could not be created. Reload the page and start the game again.",
 };

@@ -3106,4 +3106,5 @@ export const da: Record<string, string> = {
   "gs.h.searchPresets": "Færdige filtre i søgeskærmene.",
   "gs.h.helpTexts": "Hints og forklaringer på tomme skærme.",
   "gs.h.seed": "Tallet, spilverdenen er skabt ud fra. Del det for at starte samme verden.",
+  'ui.staleBuild': "En ny version af CM Reborn er udkommet, mens siden var åben, så spillet kunne ikke oprettes. Genindlæs siden, og start spillet igen.",
 };

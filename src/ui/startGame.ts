@@ -129,16 +129,42 @@ const phaseGap = () => { try { const v = localStorage.getItem('cm0102.ngGap'); c
 /** pause (ms) mellem den sidste arbejders lukning og udpakningen i hovedtråden – localStorage['cm0102.ngUnpackGap'] overstyrer (til målinger) */
 const UNPACK_GAP_MS = 1000;
 const unpackGap = () => { try { const v = localStorage.getItem('cm0102.ngUnpackGap'); const n = Number(v); return v !== null && v !== '' && n >= 0 && n <= 10000 ? n : UNPACK_GAP_MS; } catch { return UNPACK_GAP_MS; } };
-const newWorker = () => new Worker(new URL('./newGameWorker.ts', import.meta.url), { type: 'module' });
+const WORKER_URL = new URL('./newGameWorker.ts', import.meta.url);
+const newWorker = () => new Worker(WORKER_URL, { type: 'module' });
+/** (24/11, "NewGameWorkerFailed: worker") arbejderen fejlede uden besked (onerror uden message – typisk et script, der ikke kunne hentes):
+ *  fejlteksten får arbejderens nummer og trin, fejlens fil/linje, arbejderscriptets HTTP-status (404 = siden er fra en ældre udgivelse – de gamle
+ *  filer findes ikke længere), hovedtrådens heap og enhedens hukommelse. `stale` = scriptet findes ikke længere (siden skal genindlæses). */
+export async function workerFailure(e: Event | null, where: string): Promise<{ text: string; stale: boolean }> {
+  const ev = e as Partial<ErrorEvent> | null;
+  const parts = [where];
+  if (ev?.message) parts.push(`"${String(ev.message).slice(0, 160)}"`); else parts.push('no message');
+  if (ev?.filename) parts.push(`at ${String(ev.filename).replace(/^.*\/assets\//, '')}:${ev.lineno ?? 0}:${ev.colno ?? 0}`);
+  let stale = false;
+  try {
+    const r = await fetch(WORKER_URL, { method: 'HEAD', cache: 'no-store' });
+    stale = r.status === 404;
+    parts.push(`script ${r.status}${stale ? ' (stale build)' : ''}`);
+  } catch (x) { parts.push(`script fetch failed (${(x as Error).message?.slice(0, 60) ?? '?'})`); }
+  try {
+    const m = (performance as unknown as { memory?: { usedJSHeapSize: number; jsHeapSizeLimit: number } }).memory;
+    if (m) parts.push(`heap ${Math.round(m.usedJSHeapSize / 1048576)}/${Math.round(m.jsHeapSizeLimit / 1048576)} MB`);
+    const n = navigator as Navigator & { deviceMemory?: number };
+    parts.push(`mem ${n.deviceMemory ?? '?'}`, `online ${n.onLine ? 'yes' : 'no'}`, `page ${typeof document !== 'undefined' ? document.visibilityState : '?'}`);
+  } catch { /* ignorér */ }
+  return { text: `worker: ${parts.join(', ')}`, stale };
+}
+/** en arbejder, der ikke kunne hentes, fordi siden er fra en ældre udgivelse (workerFailure stale) – teksten til spilleren er ui.staleBuild */
+export class StaleBuildError extends Error { stale = true; }
 /** kører trinene i hver sin arbejder; den sidste svarer med spillet */
 /** arbejdernes svar: spillet som gzip-bytes (+ det første gem, hvis arbejderen skrev det); `started` = en arbejder nåede at svare (så kører de) */
 type PhasesResult = { gz: ArrayBuffer; saved: SaveMeta | null };
-class PhasesError extends Error { started = false; }
+class PhasesError extends Error { started = false; stale = false; }
 function runPhases(first: NewGameJob, stages: NewGameJob['phases'][], pre: Worker | null, onProgress: (p: NewGameProgress) => void, signal?: AbortSignal): Promise<PhasesResult> {
   return new Promise<PhasesResult>((resolve, reject) => {
-    let cur: Worker | null = null, done = false, started = false;
+    let cur: Worker | null = null, done = false, started = false, step = '', frac = 0;
+    const t0 = Date.now();
     const gap = phaseGap();
-    const fail = (e: Error) => { if (done) return; done = true; cur?.terminate(); cur = null; const pe = Object.assign(new PhasesError(e.message), { name: e.name, stack: e.stack, started }); reject(pe); };
+    const fail = (e: Error) => { if (done) return; done = true; cur?.terminate(); cur = null; const pe = Object.assign(new PhasesError(e.message), { name: e.name, stack: e.stack, started, stale: !!(e as StaleBuildError).stale }); reject(pe); };
     signal?.addEventListener('abort', () => fail(new DOMException('aborted', 'AbortError')));
     const start = (i: number, w: Worker, job: NewGameJob) => {
       cur = w;
@@ -149,7 +175,7 @@ function runPhases(first: NewGameJob, stages: NewGameJob['phases'][], pre: Worke
         const m = e.data;
         if (done) return;
         started = true;
-        if (m.type === 'progress') onProgress({ step: m.step, frac: m.frac });
+        if (m.type === 'progress') { step = m.step; frac = m.frac; onProgress({ step: m.step, frac: m.frac }); }
         else if (m.type === 'trace') {
           if (NG_TRACE) console.log(`ngtrace ${i}: ${m.s}`);
           // (24/11) trinene efter 'done' (pakning, gem, afsendelse) i nyt-spil-sporet – NewGameInterrupted viser, hvor siden blev lukket
@@ -167,7 +193,13 @@ function runPhases(first: NewGameJob, stages: NewGameJob['phases'][], pre: Worke
         else if (m.type === 'done') fail(new Error('worker: no game'));
         else if (m.type === 'error') fail(new Error(m.message));
       };
-      w.onerror = (e) => fail(new Error(e.message || 'worker'));
+      w.onerror = (e) => {
+        e.preventDefault();
+        if (done) return;
+        const where = `${i + 1}/${stages.length} [${(stages[i] ?? ['all']).join(' ')}] after ${Math.round((Date.now() - t0) / 1000)} s, step ${step || 'none'} ${Math.round(frac * 100)}%`;
+        void workerFailure(e, where).then((r) => fail(r.stale ? new StaleBuildError(r.text) : new Error(r.text)));
+      };
+      w.onmessageerror = () => fail(new Error(`worker ${i + 1}/${stages.length}: messageerror`));
       const ports = [...(ch ? [ch.port1] : []), ...(job.from ? [job.from] : [])];
       w.postMessage({ ...job, phases: stages[i], ...(ch ? { to: ch.port1 } : {}), ...(first.save ? { save: true } : {}) } satisfies NewGameJob, ports);
     };
@@ -216,7 +248,9 @@ export async function createGameAsync(world: WorldData | StartWorld, opts: NewGa
     // (iPhone/Android 23/11) Er arbejderne først gået i gang, bygges spillet ikke igen i hovedtråden: den hentede og tolkede hele databasen og
     // byggede spillet selv – på en telefon lukkede browseren siden (NewGameInterrupted 20–40 s efter 'done'). Fejlen vises og meldes i stedet.
     if (got || (e as PhasesError).started) {
-      try { const { reportError } = await import('../online/errors'); reportError(new Error(`NewGameWorkerFailed: ${(e as Error).message.slice(0, 300)}`)); } catch { /* ignorér */ }
+      try { const { reportError } = await import('../online/errors'); reportError(new Error(`NewGameWorkerFailed: ${(e as Error).message.slice(0, 400)}`)); } catch { /* ignorér */ }
+      // siden er fra en ældre udgivelse (arbejderens fil findes ikke længere): bed spilleren genindlæse i stedet for "worker"
+      if ((e as StaleBuildError).stale) { const { t } = await import('../i18n'); throw new Error(t('ui.staleBuild')); }
       throw e;
     }
     console.warn('Nyt spil i en Worker fejlede – opretter i hovedtråden', e);

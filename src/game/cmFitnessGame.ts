@@ -66,7 +66,10 @@ export const intlOnDuty = (p: Player): boolean => intlDuty?.(p) ?? false;
  *  Hos os: en ufærdig kontinental turnering, klubben er med i og ikke slået ud af (seneste dobbeltkamp ikke tabt; i ligafasen alle;
  *  efter ligafasen uden dobbeltkamp: de 8 bedste i tabellen) → CL 326, UEFA 328, andre 330. Læses af 0x62ce30 og 0x83cb40. */
 export function cmClubEuro(g: GameState, club: number): number {
-  for (const c of Object.values(g.comps)) {
+  // (hastighed 24/11) for…in i stedet for Object.values: samme rækkefølge, men intet nyt array pr. kald – kaldes for hver spiller hver dag i
+  // forkørslen (closeSeason); med Maximum og alle ligaer var det forhåndsvisningens tungeste del af fitness-trinnet
+  for (const k in g.comps) {
+    const c = g.comps[k];
     if (c.type !== 'continental' || c.finished || !c.clubs.includes(club)) continue;
     const mine = c.ties.filter((t) => t.a === club || t.b === club);
     let alive: boolean;

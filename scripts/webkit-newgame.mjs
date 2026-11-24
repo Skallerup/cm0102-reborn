@@ -74,6 +74,8 @@ try {
   await page.waitForSelector('.cxs-lrow', { timeout: 120000 });
   await page.waitForTimeout(3000);
   console.log(`Select League(s) ${T()} fp nu ${rssNow().toFixed(0)} MB top ${peakRss.toFixed(0)} MB${await mainHeap()}`); phase = 'preview';
+  // ALL=1: alle ligaer (Select All) – den midlertidige verden til Select Team med alle lande (NewGameWorkerFailed 24/11)
+  if (process.env.ALL) { await page.locator('.cxs-btn.small').first().click(); await page.waitForTimeout(500); }
   await page.locator('.cx-foot .cx-next').click();
   if (await page.locator('[data-season]').first().waitFor({ timeout: 3000 }).then(() => true).catch(() => false)) await page.locator('.cx-foot .cx-next').click();
   await page.waitForSelector('[data-name=first]', { timeout: 20000 });
@@ -83,6 +85,8 @@ try {
   await page.locator('.cx-foot .cx-next').click();
   await page.waitForSelector('[data-club]', { timeout: 300000 });
   await page.waitForTimeout(3000); console.log(`Select Team ${T()} fp-top ${peakRss.toFixed(0)} MB (${peakAt}) nu ${rssNow().toFixed(0)} MB${await mainHeap()}`); phase = 'take control';
+  // PREVIEWONLY=1: stop ved Select Team (kun den midlertidige verden)
+  if (process.env.PREVIEWONLY) throw Object.assign(new Error('previewonly'), { previewOnly: true });
   await page.locator('[data-club="Arsenal"]').click();
   await page.waitForSelector('[data-take]', { timeout: 60000 });
   await page.locator('[data-take]').click();

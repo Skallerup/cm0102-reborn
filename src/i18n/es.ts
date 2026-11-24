@@ -4990,4 +4990,5 @@ Object.assign(es, {
   'sb.msg': "CM Reborn es gratis y seguirá siéndolo. Las donaciones pagan los servidores y el desarrollo futuro.",
   'sb.btn': "Apoyar en Ko-fi",
   'cl.cup.stages': "Fases", 'cl.cup.stage': "Fase", 'cl.cup.q': "Q", 'cl.stg.G': "Fase 1 de grupos", 'cl.stg.G2': "Fase 2 de grupos", 'cl.stg.QF': "Cuartos de final", 'cl.stg.SF': "Semifinal", 'cl.stg.F': "Final", 'cl.stg.g1h': "Fase 1 Grupo {g}", 'cl.stg.g2h': "Fase 2 Grupo {g}",
+  'ui.staleBuild': "Se publicó una nueva versión de CM Reborn mientras esta página estaba abierta, así que no se pudo crear la partida. Recarga la página y vuelve a empezar la partida.",
 });

@@ -545,7 +545,10 @@ function rollRecurring(c: FitCtx, r: CmFit, e: CmInjury): void {
   if (x !== 0) return;
   r.rl = x; r.rt = e.t;
   let best = 0, bestP: Player | null = null;
-  for (const q of Object.values(c.g.players)) {
+  // (hastighed 24/11) for…in: samme rækkefølge som Object.values (heltalsnøgler stigende), uden et nyt array med alle spillere pr. kald
+  const all = c.g.players;
+  for (const k in all) {
+    const q = all[k];
     if (!real(q) || !q.cmFit || q.cmFit.rt === -1) continue;
     const v = s8(c.rand(101) + s8(-5 * q.cmFit.rl) - IP(q));
     if (v > best) { best = v; bestP = q; }

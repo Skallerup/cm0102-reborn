@@ -7,16 +7,17 @@ import { createGameBase, createGamePhase, NEW_GAME_PHASES, setNewGameProgress, t
 import { gs } from '../src/game/state';
 const [file = 'public/data/world-original-normal.json', nat = 'England', until = 'alle'] = process.argv.slice(2);
 const w = JSON.parse(readFileSync(file, 'utf8')) as WorldData;
-const act = [w.nations.findIndex((x) => x.name === nat)];
+// land=ALL: alle lande med ligaer (Select All); PREVIEW=1: Select Teams midlertidige verden (opts.preview)
+const act = nat === 'ALL' ? [...new Set(w.leagues.filter((l) => !l.hidden).map((l) => l.nation))].filter((x) => w.nations[x]) : [w.nations.findIndex((x) => x.name === nat)];
 const eng = w.nations.findIndex((x) => x.name === 'England');
-const clubId = w.clubs.find((c) => c[3] === act[0])![0];
+const clubId = w.clubs.find((c) => c[3] === (nat === 'ALL' ? eng : act[0]))![0];
 const times: Record<string, number> = {};
 let cur = '', t = performance.now();
 class Stop extends Error {}
 setNewGameProgress((st) => { if (st === cur) return; if (until === 'players' && st === 'squads') throw new Stop(); const n = performance.now(); if (cur) times[cur] = (times[cur] ?? 0) + n - t; cur = st; t = n; });
 const T0 = performance.now();
 let ctx: ReturnType<typeof createGameBase> | null = null;
-try { ctx = createGameBase(w, { managerName: 'T', managerNation: eng, clubId, activeNations: act, lang: 'en', masking: true, seed: 1, mode: 'authentic' }); } catch (e) { if (!(e instanceof Stop)) throw e; }
+try { ctx = createGameBase(w, { managerName: 'T', managerNation: eng, clubId, activeNations: act, lang: 'en', masking: true, seed: 1, mode: 'authentic', ...(process.env.PREVIEW ? { preview: true } : {}) }); } catch (e) { if (!(e instanceof Stop)) throw e; }
 if (ctx && until !== 'base') for (const ph of NEW_GAME_PHASES) createGamePhase(ph, ctx!);
 const n = performance.now(); if (cur) times[cur] = (times[cur] ?? 0) + n - t;
 const { id: _id, ...g } = gs() as unknown as Record<string, unknown>;
