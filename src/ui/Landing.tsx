@@ -9,6 +9,7 @@ import { fetchBoard, rankingAvailable, type RankRow } from '../online/rank';
 import './landing.css';
 import { shot } from './shots';
 import { SupportBox } from './SupportBox';
+import { KOFI_URL } from '../online/kofi';
 
 const img = shot;
 
@@ -283,6 +284,7 @@ export function Landing({ onPlay, onLang, onDraft }: { onPlay: () => void; onLan
               <Cta big />
               <button className="lp-ghost" onClick={() => go('screens')}>{t('land.seeScreens')}</button>
             </div>
+            <p className="lp-donate reveal"><span className="lp-heart" aria-hidden="true">♥</span> {t('sb.msg')} <a href={KOFI_URL} target="_blank" rel="noopener noreferrer">{t('sb.btn')} →</a></p>
             <ul className="lp-checks reveal">
               {['free', 'online', 'nodl', 'beta', 'lang'].map((k) => <li key={k}>✓ {t(`land.check.${k}`)}</li>)}
             </ul>

@@ -114,7 +114,7 @@ export function Options() {
         </Panel>
         {rankingAvailable() && !g.humans?.length && <Panel title={t('sendDev.title')}><SendToDev /></Panel>}
         <Panel title={t('info.title')}><GameInfoTable route="options" /></Panel>
-        <Panel title={t('sb.menu')}><SupportBox full /></Panel>
+        <Panel title={'♥ ' + t('sb.menu')}><SupportBox full /></Panel>
         <Panel title={t('opt.about')}>
           <p>{t('opt.aboutText')}</p>
           <p className="muted">{t('opt.dataCredit')}</p>

@@ -8388,4 +8388,6 @@ Object.assign(sv, {
   'news.cmNotPromoted': "{club} flyttas inte upp",
   'news.cmNotPromoted.body': "Uppflyttningen av {club} till {comp} har ställts in eftersom deras arena inte har den kapacitet som krävs.",
   'storage.saveFailed': "Spelet kan inte sparas på den här enheten (webbläsaren vägrar lagra det – privat läge, en inbyggd webbläsare eller rensad webbplatsdata kan orsaka detta). Öppna spelet i ett vanligt webbläsarfönster eller använd Export för att spara en kopia.",
+  'sb.msg': "CM Reborn är gratis och förblir det. Donationer betalar servrar och vidareutveckling.",
+  'sb.btn': "Stöd på Ko-fi",
 });

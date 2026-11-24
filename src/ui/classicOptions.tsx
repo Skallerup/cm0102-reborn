@@ -130,8 +130,8 @@ export function GameOptionsMenu({ onSave, onQuit, online, allowed }: { onSave: (
   const inApp = inAppBrowser();
   const canInst = !standalone && (canInstall() || ios || inApp);
   items.push({ key: 'sepR', sep: true });
+  items.push({ key: 'support', label: <>♥ {t('sb.menu')}</>, onClick: () => setShow('support') });
   if (canInst) items.push({ key: 'install', label: t('cl.go.install'), onClick: () => { if (inApp) showInAppHelp(); else if (canInstall()) void installApp(); else void askNotice(t('cl.go.installIos'), { head: t('cl.go.install') }); } });
-  items.push({ key: 'support', label: t('sb.menu'), onClick: () => setShow('support') });
   if (!online) items.push({ key: 'cloud', label: t('cl.go.cloud'), onClick: () => { if (getAccount()) void cloudSave(); else setLogin(true); } });
   items.push({ key: 'sep', sep: true }, { key: 'restart', label: t('cl.go.restart'), onClick: onQuit }, { key: 'quit', label: t('cl.go.exit'), onClick: onQuit });
   return (

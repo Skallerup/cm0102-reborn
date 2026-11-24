@@ -3,6 +3,7 @@
 // spil på Mac/iPad/Chromebook, spil online). Skriver public/<side>/index.html, public/sitemap.xml og public/llms.txt.
 // Kør: npx tsx scripts/build-seo.ts  (køres også før build: "prebuild" i package.json)
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { KOFI_URL } from '../src/online/kofi';
 import { CTA, SITE, TODAY, esc, render, shotFig, slugify, type Page } from './seo/layout';
 import { contentDate, dateOf, saveLastmod } from './seo/lastmod';
 import { langDevices } from './seo/i18nDevices';
@@ -557,7 +558,8 @@ const ABOUT: Page = {
 <h2>How it is built</h2>
 <ul><li><b>The databases</b> are read directly from the original game files, so every player has the attributes, CA and PA, contract and value from the real database (<a href="/cm-01-02/">browse them</a>).</li><li><b>The match engine</b> is calibrated against a full season of the original: goals per game, home wins, cards, corners and shots on target match the real thing (<a href="/cm-01-02-match-engine/">how it works</a>).</li><li><b>Player development, regens, finances and transfers</b> follow the rules found in the original game and documented by the community (<a href="/cm-01-02-regens/">regens</a>, <a href="/cm-01-02-player-values/">values</a>).</li><li><b>The guides</b> on this site are generated from the same databases – the numbers are read from the data, not from memory.</li></ul>
 <h2>Free, no ads, no tracking you did not agree to</h2>
-<p>CM Reborn is free, with no ads and no in-game purchases. Your saved games live in your own browser (and in the cloud only if you create an account). Anonymous usage statistics are collected only with your consent. There are no third-party trackers in the game.</p>
+<p>CM Reborn is free and always will be: no ads, no in-game purchases and no advantages for money. The running costs (servers and database, about 150 € a month) and the further development are paid by voluntary donations – you can <a href="${KOFI_URL}" rel="noopener">support the project on Ko-fi</a> if you want to help, and the game stays exactly the same for everyone either way.</p>
+<p> Your saved games live in your own browser (and in the cloud only if you create an account). Anonymous usage statistics are collected only with your consent. There are no third-party trackers in the game.</p>
 <h2>Where it came from</h2>
 <p>The project started in 2026 as a way to play CM 01/02 on a Mac, an iPad and a phone – devices the 2001 Windows game never ran on. It grew into a full remake with the classic screens, two databases, online multiplayer, a fantasy draft league and global rankings, released as <a href="/changelog/">frequent updates</a>.</p>
 <h2>Help, feedback and credits</h2>
@@ -565,7 +567,7 @@ const ABOUT: Page = {
   faq: [
     ['Is CM Reborn the official Championship Manager 01/02?', 'No. It is an independent fan remake, built from scratch and not affiliated with Sports Interactive, SEGA or Eidos. It uses the original database, which has been freeware since 2008.'],
     ['Who makes CM Reborn?', 'One developer in Denmark, with help from the CM 01/02 community. The source code is public on GitHub.'],
-    ['Does it cost anything?', 'No. CM Reborn is free, with no ads and no in-game purchases.'],
+    ['Does it cost anything?', 'No. CM Reborn is free, with no ads and no in-game purchases, and it stays free. Voluntary donations on Ko-fi pay for the servers and further development, but give no advantages in the game.'],
   ], faqSchema: true,
 };
 mkdirSync('public/about', { recursive: true });
@@ -604,7 +606,7 @@ writeFileSync('public/llms.txt', `# CM Reborn
 > CM Reborn (cm0102reborn.com) is a free fan remake of Championship Manager 01/02 that runs in any web browser – no download, no ads. It has the original CM 01/02 database for 2001/02 in all three official versions (3.9.60, 3.9.65 and 3.9.68; ${nO} players in 3.9.68) and a 2026/27 database (${nM} players), the classic CM 01/02 look or a modern look, online multiplayer, a fantasy draft league and global rankings. It works on Mac, Windows, Linux, Chromebook, iPad, iPhone and Android, and in ten languages.
 
 Key facts:
-- Price: free. No ads, no in-game purchases.
+- Price: free, and it stays free. No ads, no in-game purchases. Supported by voluntary donations (${KOFI_URL}) that pay for servers and further development – donors get no advantages in the game.
 - Play: open https://cm0102reborn.com, choose New game, pick a database and a look.
 - Databases: original CM 01/02 for 2001/02 – 3.9.60 (default), 3.9.65 or 3.9.68 (${leaguesO} leagues) – and 2026/27 (${leaguesM} leagues); real squad numbers, managers, clubs and stadiums; attributes, random potential (PA -1/-2) and starting finances as in the original game.
 - Classic CM 01/02 screens: blue menus, Match Overview with commentary, squad selection, tactics with player runs, Staff Search, Find, stadium backgrounds on matchdays.

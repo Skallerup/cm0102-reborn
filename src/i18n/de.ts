@@ -4962,4 +4962,6 @@ Object.assign(de, {
   'news.cmNotPromoted': "{club} steigt nicht auf",
   'news.cmNotPromoted.body': "Der Aufstieg von {club} in die {comp} wurde abgesagt, da ihr Stadion nicht die erforderliche Kapazität hat.",
   'storage.saveFailed': "Das Spiel kann auf diesem Gerät nicht gespeichert werden (der Browser verweigert das Speichern – privater Modus, ein In-App-Browser oder gelöschte Websitedaten können die Ursache sein). Öffne das Spiel in einem normalen Browserfenster oder nutze Export, um eine Kopie zu behalten.",
+  'sb.msg': "CM Reborn ist kostenlos und bleibt es. Spenden bezahlen die Server und die Weiterentwicklung.",
+  'sb.btn': "Auf Ko-fi unterstützen",
 });

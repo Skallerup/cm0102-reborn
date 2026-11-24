@@ -4962,4 +4962,6 @@ Object.assign(tr, {
   'news.cmNotPromoted': "{club} yükselemedi",
   'news.cmNotPromoted.body': "{club} takımının {comp} ligine yükselmesi, stadyumu gerekli kapasiteyi karşılamadığı için iptal edildi.",
   'storage.saveFailed': "Oyun bu cihazda kaydedilemiyor (tarayıcı kaydetmeyi reddediyor – gizli mod, uygulama içi tarayıcı veya silinmiş site verileri buna neden olabilir). Oyunu normal bir tarayıcı penceresinde açın veya bir kopya saklamak için Dışa Aktar'ı kullanın.",
+  'sb.msg': "CM Reborn ücretsizdir ve öyle kalacak. Bağışlar sunucuları ve oyunun geliştirilmesini karşılar.",
+  'sb.btn': "Ko-fi'de destekle",
 });

@@ -12,6 +12,7 @@ export function SupportBox({ full }: { full?: boolean }) {
   return (
     <div className="sb">
       {full && <>
+        <p><b>{t('sb.msg')}</b></p>
         <p>{t('sb.about')}</p>
         <p>{t('sb.cost')}</p>
       </>}

@@ -61,6 +61,10 @@
 @keyframes lp-shine { to { background-position: 220% center; } }
 .lp .lp-lead { font-size: clamp(16px, 1.6vw, 19px); color: #c2cbe6; margin: 28px 0 32px; max-width: 560px; }
 .lp-hero-ctas { display: flex; flex-wrap: wrap; gap: 14px; }
+.lp-hero-text .lp-donate { margin: 18px 0 0; font-size: 14px; line-height: 1.5; color: var(--muted); }
+.lp-hero-text .lp-donate a { color: #ffd479; font-weight: 600; white-space: nowrap; }
+.lp-hero-text .lp-donate a:hover { text-decoration: underline; }
+.lp-heart { color: #ff5a6e; }
 .lp-checks { list-style: none; padding: 0; margin: 26px 0 0; display: flex; flex-wrap: wrap; gap: 8px 20px; color: var(--muted); font-size: 14px; }
 .lp-hero-visual { position: relative; min-height: 470px; perspective: 1400px; }
 .lp-pitch { position: absolute; width: 74%; right: 0; top: 0; border-radius: 16px; box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.7); opacity: 0.95; transform: rotate(3deg); }

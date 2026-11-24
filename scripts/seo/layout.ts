@@ -3,7 +3,28 @@
 // CSS'en ligger inline i hver side (≈3 KB): ingen ekstra blokerende forespørgsel før første tegning – de fleste
 // besøg fra søgemaskinerne er førstegangsbesøg uden cache.
 
+import { KOFI_URL } from '../../src/online/kofi';
+
 export const SITE = 'https://cm0102reborn.com';
+
+/** Støtte-linjen i sidefoden (budskabet fra sb.msg i spillet): sprog → [tekst, linktekst] */
+export const SUPPORT_LINE: Record<string, [string, string]> = {
+  en: ['CM Reborn is free and always will be. Donations pay for servers and further development.', 'Support on Ko-fi'],
+  da: ['CM Reborn er gratis og bliver ved med at være det. Donationer betaler servere og videreudvikling.', 'Støt på Ko-fi'],
+  sv: ['CM Reborn är gratis och förblir det. Donationer betalar servrar och vidareutveckling.', 'Stöd på Ko-fi'],
+  nb: ['CM Reborn er gratis og forblir det. Donasjoner betaler servere og videreutvikling.', 'Støtt på Ko-fi'],
+  de: ['CM Reborn ist kostenlos und bleibt es. Spenden bezahlen die Server und die Weiterentwicklung.', 'Auf Ko-fi unterstützen'],
+  es: ['CM Reborn es gratis y seguirá siéndolo. Las donaciones pagan los servidores y el desarrollo futuro.', 'Apoyar en Ko-fi'],
+  fr: ['CM Reborn est gratuit et le restera. Les dons financent les serveurs et le développement futur.', 'Soutenir sur Ko-fi'],
+  it: ['CM Reborn è gratuito e lo resterà. Le donazioni pagano i server e lo sviluppo futuro.', 'Sostieni su Ko-fi'],
+  pt: ['O CM Reborn é gratuito e sempre será. As doações pagam os servidores e o desenvolvimento futuro.', 'Apoie no Ko-fi'],
+  tr: ['CM Reborn ücretsizdir ve öyle kalacak. Bağışlar sunucuları ve oyunun geliştirilmesini karşılar.', "Ko-fi'de destekle"],
+};
+/** Sidefodens støttelinje som HTML (sprogkode som Page.lang, fx 'pt-BR') */
+export function supportHtml(lang?: string): string {
+  const [txt, link] = SUPPORT_LINE[(lang ?? 'en').slice(0, 2)] ?? SUPPORT_LINE.en;
+  return `<p class="support">♥ ${esc(txt)} <a href="${KOFI_URL}" rel="noopener" target="_blank">${esc(link)}</a></p>`;
+}
 export const TODAY = new Date().toISOString().slice(0, 10);
 
 /** Titler ud over ~65 tegn skæres af i Google: drop " | CM Reborn" og derefter en sæson i parentes */
@@ -168,7 +189,7 @@ ${p.body}
 ${p.faq ? `<h2>${p.lang && p.lang !== 'en' ? 'FAQ' : 'Frequently asked questions'}</h2>${p.faq.map(([q, a]) => `<h3>${esc(q)}</h3><p>${esc(a)}</p>`).join('')}` : ''}
 ${p.cta ?? CTA}
 </main>
-<footer><p>${p.footer ?? `CM Reborn is an independent, free fan project inspired by Championship Manager 01/02. It is not affiliated with Sports Interactive, SEGA or Eidos. Player data from the original CM 01/02 database (patch 3.9.68).`}</p><p>${nav.map(([h, l]) => `<a href="${h}">${esc(l)}</a>`).join(' · ')}</p><p class="note">${FOOT_GUIDES.map(([h, l]) => `<a href="${h}">${esc(l)}</a>`).join(' · ')}</p></footer>
+<footer><p>${p.footer ?? `CM Reborn is an independent, free fan project inspired by Championship Manager 01/02. It is not affiliated with Sports Interactive, SEGA or Eidos. Player data from the original CM 01/02 database (patch 3.9.68).`}</p>${supportHtml(p.lang)}<p>${nav.map(([h, l]) => `<a href="${h}">${esc(l)}</a>`).join(' · ')}</p><p class="note">${FOOT_GUIDES.map(([h, l]) => `<a href="${h}">${esc(l)}</a>`).join(' · ')}</p></footer>
 ${p.script ? `<script>${p.script}</script>` : ''}
 </body>
 </html>

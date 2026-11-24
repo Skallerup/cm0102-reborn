@@ -35,7 +35,7 @@ export default defineConfig({
       manifest: {
         name: 'CM Reborn',
         short_name: 'CM Reborn',
-        description: 'Football manager with real players, free in your browser',
+        description: 'Football manager with real players, free in your browser – supported by voluntary donations',
         theme_color: '#070b16',
         background_color: '#070b16',
         display: 'standalone',

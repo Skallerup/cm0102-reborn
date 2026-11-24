@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { dateFmt, getLang, t } from '../i18n';
 import { APP_VERSION, CHANGELOG } from './changelogData';
 import { Modal } from './components';
+import { KOFI_URL } from '../online/kofi';
 
 const SEEN = 'cm0102.seenVersion';
 
@@ -63,6 +64,7 @@ export function ChangelogModal({ onClose }: { onClose: () => void }) {
             <ul>{e.items.map((it, k) => <li key={k}>{it[lang]}</li>)}</ul>
           </section>
         ))}
+        <p className="cl-donate muted">♥ {t('sb.msg')} <a href={KOFI_URL} target="_blank" rel="noopener noreferrer">{t('sb.btn')}</a></p>
       </div>
     </Modal>
   );
