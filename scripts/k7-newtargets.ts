@@ -28,9 +28,11 @@ function report(tag: string, ts: T[]) {
     const C = m.u32(0xae23b4), nc = m.s32(0xae235c), St = m.u32(0xae23bc);
     const grp = (cix: number) => { if (cix < 0 || cix >= nc) return '-'; const a = C + 0x245 * cix; if (str(m, m.u32(a + 0x53) + 4) !== 'England') return 'X'; const dv = m.u32(a + 0x57); return TIER[dv ? str(m, dv + 4) : ''] ?? 'NL'; };
     const slm = m.u32(m.u32(0xde1f54) + 0x856);
+    const wk = { built: 0, budget: 0, n: 0 };
     for (let cix = 0; cix < nc; cix++) {
       const bg = grp(cix); if (bg === 'X') continue;
       const base = m.u32(m.u32(slm + 0xdc) + 9 * cix); if (!base) continue;
+      if (bg === 'NL') { wk.n++; let pl = 0, bu = 0; for (let i = 0; i < 40; i++) { const s = base + 0x25 * i; if (m.u8(s) === 0xb) { pl++; if (m.s32(s + 7) > 0) bu++; } } if (pl === 25) wk.built++; if (bu) wk.budget++; }
       for (let i = 0; i < 40; i++) {
         const s = base + 0x25 * i; if (m.u8(s) !== 0xb) continue;
         const f = m.s32(s + 0xf), h = m.s32(s + 0x13), key = `${cix}/${i}`;
@@ -42,6 +44,7 @@ function report(tag: string, ts: T[]) {
         out.push({ buyer: bg, tg: k ? grp(m.s32(k + 4)) : '-', bb: m.s32(s + 0xb), b7: m.s32(s + 7), mask: m.u16(s + 1), g: (m.u8(s + 0x24) >> 1) & 0xf });
       }
     }
+    if (new Date(e.iso).getUTCDay() === 6) console.log(`O ${e.iso} NL-klubber ${wk.n}: plan bygget ${wk.built}, med budget ${wk.budget}`);
   }
   report('ORAKLET', out);
 }
@@ -58,9 +61,11 @@ if (!process.env.ONLY_ORACLE) {
   const prev = new Map<string, number>(), out: T[] = [];
   for (;;) {
     const iso = g.date.slice(0, 10);
+    const wk = { built: 0, budget: 0, n: 0 };
     for (const c of Object.values(g.clubs)) {
       const bg = grp(c.id); if (bg === 'X') continue;
       const st = g.cmPlan?.[c.id]; if (!st) continue;
+      if (bg === 'NL') { wk.n++; const sl = st.s.map(fromRow); if (sl.filter((s) => s.role === 0xb).length === 25) wk.built++; if (sl.some((s) => s.role === 0xb && (s.b7 ?? 0) > 0)) wk.budget++; }
       st.s.map(fromRow).forEach((s, i) => {
         if (s.role !== 0xb) return;
         const key = `${c.id}/${i}`;
@@ -72,6 +77,7 @@ if (!process.env.ONLY_ORACLE) {
         out.push({ buyer: bg, tg: p?.club ? grp(p.club) : '-', bb: s.bb ?? 0, b7: s.b7 ?? 0, mask: s.mask, g: (s.b24 >> 1) & 0xf });
       });
     }
+    if (new Date(iso).getUTCDay() === 6) console.log(`V ${iso} NL-klubber ${wk.n}: plan bygget ${wk.built}, med budget ${wk.budget}`);
     if (iso >= TO) break;
     const r = continueGame(); if (r?.match) quickPlayUserMatch(); g = gs();
   }
