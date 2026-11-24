@@ -8397,4 +8397,5 @@ Object.assign(nb, {
   'storage.saveFailed': "Spillet kan ikke lagres på denne enheten (nettleseren nekter å lagre det – privat modus, en innebygd nettleser eller slettede nettstedsdata kan forårsake dette). Åpne spillet i et vanlig nettleservindu, eller bruk Eksporter for å ta vare på en kopi.",
   'sb.msg': "CM Reborn er gratis og forblir det. Donasjoner betaler servere og videreutvikling.",
   'sb.btn': "Støtt på Ko-fi",
+  'cl.cup.stages': "Faser", 'cl.cup.stage': "Fase", 'cl.cup.q': "Q", 'cl.stg.G': "Fase 1 gruppespill", 'cl.stg.G2': "Fase 2 gruppespill", 'cl.stg.QF': "Kvartfinale", 'cl.stg.SF': "Semifinale", 'cl.stg.F': "Finale", 'cl.stg.g1h': "Fase 1 Gruppe {g}", 'cl.stg.g2h': "Fase 2 Gruppe {g}",
 });

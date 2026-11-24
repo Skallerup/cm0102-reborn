@@ -4971,4 +4971,5 @@ Object.assign(it, {
   'storage.saveFailed': "Impossibile salvare la partita su questo dispositivo (il browser si rifiuta di memorizzarla – la modalità privata, un browser integrato o i dati del sito cancellati possono esserne la causa). Apri il gioco in una normale finestra del browser oppure usa Esporta per conservarne una copia.",
   'sb.msg': "CM Reborn è gratuito e lo resterà. Le donazioni pagano i server e lo sviluppo futuro.",
   'sb.btn': "Sostieni su Ko-fi",
+  'cl.cup.stages': "Fasi", 'cl.cup.stage': "Fase", 'cl.cup.q': "Q", 'cl.stg.G': "Fase 1 a gironi", 'cl.stg.G2': "Fase 2 a gironi", 'cl.stg.QF': "Quarti di finale", 'cl.stg.SF': "Semifinale", 'cl.stg.F': "Finale", 'cl.stg.g1h': "Fase 1 Girone {g}", 'cl.stg.g2h': "Fase 2 Girone {g}",
 });

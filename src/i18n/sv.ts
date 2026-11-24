@@ -8397,4 +8397,5 @@ Object.assign(sv, {
   'storage.saveFailed': "Spelet kan inte sparas på den här enheten (webbläsaren vägrar lagra det – privat läge, en inbyggd webbläsare eller rensad webbplatsdata kan orsaka detta). Öppna spelet i ett vanligt webbläsarfönster eller använd Export för att spara en kopia.",
   'sb.msg': "CM Reborn är gratis och förblir det. Donationer betalar servrar och vidareutveckling.",
   'sb.btn': "Stöd på Ko-fi",
+  'cl.cup.stages': "Faser", 'cl.cup.stage': "Fas", 'cl.cup.q': "Q", 'cl.stg.G': "Fas 1 gruppspel", 'cl.stg.G2': "Fas 2 gruppspel", 'cl.stg.QF': "Kvartsfinal", 'cl.stg.SF': "Semifinal", 'cl.stg.F': "Final", 'cl.stg.g1h': "Fas 1 Grupp {g}", 'cl.stg.g2h': "Fas 2 Grupp {g}",
 });

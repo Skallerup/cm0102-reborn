@@ -4971,4 +4971,5 @@ Object.assign(es, {
   'storage.saveFailed': "No se puede guardar la partida en este dispositivo (el navegador se niega a almacenarla – el modo privado, un navegador integrado o datos del sitio borrados pueden causarlo). Abre el juego en una ventana normal del navegador o usa Exportar para conservar una copia.",
   'sb.msg': "CM Reborn es gratis y seguirá siéndolo. Las donaciones pagan los servidores y el desarrollo futuro.",
   'sb.btn': "Apoyar en Ko-fi",
+  'cl.cup.stages': "Fases", 'cl.cup.stage': "Fase", 'cl.cup.q': "Q", 'cl.stg.G': "Fase 1 de grupos", 'cl.stg.G2': "Fase 2 de grupos", 'cl.stg.QF': "Cuartos de final", 'cl.stg.SF': "Semifinal", 'cl.stg.F': "Final", 'cl.stg.g1h': "Fase 1 Grupo {g}", 'cl.stg.g2h': "Fase 2 Grupo {g}",
 });

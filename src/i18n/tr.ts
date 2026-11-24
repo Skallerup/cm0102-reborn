@@ -4971,4 +4971,5 @@ Object.assign(tr, {
   'storage.saveFailed': "Oyun bu cihazda kaydedilemiyor (tarayıcı kaydetmeyi reddediyor – gizli mod, uygulama içi tarayıcı veya silinmiş site verileri buna neden olabilir). Oyunu normal bir tarayıcı penceresinde açın veya bir kopya saklamak için Dışa Aktar'ı kullanın.",
   'sb.msg': "CM Reborn ücretsizdir ve öyle kalacak. Bağışlar sunucuları ve oyunun geliştirilmesini karşılar.",
   'sb.btn': "Ko-fi'de destekle",
+  'cl.cup.stages': "Aşamalar", 'cl.cup.stage': "Aşama", 'cl.cup.q': "Q", 'cl.stg.G': "1. Aşama Grup Etabı", 'cl.stg.G2': "2. Aşama Grup Etabı", 'cl.stg.QF': "Çeyrek Final", 'cl.stg.SF': "Yarı Final", 'cl.stg.F': "Final", 'cl.stg.g1h': "1. Aşama Grup {g}", 'cl.stg.g2h': "2. Aşama Grup {g}",
 });
