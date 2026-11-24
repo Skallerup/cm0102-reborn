@@ -14,6 +14,8 @@ import { ATTRS } from '../../game/attributes';
 import { ClubLink, Panel, PlayerLink, RecTag, Stars, posStr } from '../components';
 import { useGame, useRouteState } from '../core';
 import { Head } from './common';
+import { OrigScouting } from './OrigScouting';
+import { cmScoutLogic } from '../../game/cmPlayerData';
 
 export function Scouting() {
   const g = useGame()!;
@@ -24,7 +26,7 @@ export function Scouting() {
     <div>
       <Head title={<>{t('nav.scouting')}<Info topic="scouting" /></>} />
       {!g.options.masking && <div className="insight">{t('scout.maskingOff')}</div>}
-      <div className="cols">
+      {!(origLogic() && cmScoutLogic(g)) && <div className="cols">
         <Panel title={t('scout.overview')}>
           <div className="kv">
             <span>{t('scout.scouts')}</span><span>{scouts.length}</span>
@@ -32,9 +34,10 @@ export function Scouting() {
           </div>
           <p className="muted">{t('scout.explain')}</p>
         </Panel>
-      </div>
+      </div>}
       {/* prøvespillere findes ikke i CM 01/02 */}
       {!isRetro() && !origLogic() && <TrialsPanel />}
+      {origLogic() && cmScoutLogic(g) ? <OrigScouting /> : <>
       <Panel title={t('scout.assignments')} className="flush">
         <table className="grid">
           <thead><tr><th>{t('col.name')}</th><th>{t('scout.assignment')}</th></tr></thead>
@@ -47,6 +50,7 @@ export function Scouting() {
       <Panel title={t('scout.found')} right={<span className="muted">{t('scout.foundHint')}</span>} className="flush">
         <ScoutFinds />
       </Panel>
+      </>}
     </div>
   );
 }
