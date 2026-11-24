@@ -4,7 +4,7 @@ import { cmLogic, cmMarketOn, cmMediaOn, cmRand, setRequestHooks, setStatusCode 
 import { cmBidChance, cmInterested, cmRequestNews } from './cmTransferList';
 import { transferNewsToMe } from './cmNewsScope';
 import { cmSignContractMorale } from './cmMedia';
-import { isOriginal2001, loanBlocked, loanRecallOn, noteLoan, noteLoanEnd, permitOk } from './rules2001';
+import { cmLoanRulesOk, isOriginal2001, loanBlocked, loanRecallOn, noteLoan, noteLoanEnd, permitOk } from './rules2001';
 import { A, naturalRole } from './attributes';
 import { addDays, ageOn, daysBetween, month, year } from './dates';
 import { makePlayer, randomDob, randomName, roundValue, wageFor } from './data/generate';
@@ -13,7 +13,7 @@ import { NO_CARRY, registerCarry } from './carry';
 import { Rng, hash, hash01, rng } from './rng';
 import { recordDevelopment } from './training';
 import { merchStarSigning } from './finance';
-import { addNews, addPlayer, gs, inSetup, newsRelevant, setClub, squad } from './state';
+import { addNews, addPlayer, gs, inSetup, loanedOut, newsRelevant, setClub, squad } from './state';
 import { clubLevel, knowFull, registerAskingPrice } from './scouting';
 import { clubStrategy } from './strategy';
 import { SHIFT_WEEKS } from './board';
@@ -2006,6 +2006,8 @@ export function cmShortlistApply(events: SlEvent[]) {
     g.offers.push(o);
   }
 }
+/** lejekontraktens tilbud (0x85e590: +0x35 = (… & 0xc6) | 6) – 0x4ce4e0 læser kun typen (6 → 0x846920) */
+const LOAN_K: number[] = Array.from({ length: 0x50 }, (_, i) => (i === 0x35 ? 6 : 0));
 /** målinger (fejlsøgning): computer → computer-svarene på ønskelisternes bud */
 export const CM_AIAI = { declined: 0, noContract: 0, free: 0, freeRefused: 0, freeDone: 0, pre: 0, preFut: 0, preDone: 0, loan: 0, loanOk: 0, bid: 0, accept: 0, counter: 0, counterOk: 0, reject: 0, refused: 0, withdrawn: 0, review: 0, rebid: 0, rules: 0, done: 0, open: 0, openDays: 0 };
 const cmOpen = (o: TransferOffer) => o.status === 'pending' || o.status === 'countered' || o.status === 'negotiating';
@@ -2102,11 +2104,18 @@ function cmAiAiDue(cx: SlDueCtx) {
         continue;
       }
       if (o.loan) {
+        // process_due_offer 0x8c6538 (tilstand 0, +0x1f = 1): sælgerens svar 0x84af00; ja → CONTRACT_MANAGER 0x4cc930: lejekontraktens tilbud
+        // (make_loan_offer 0x8bed60 → 0x85e590 type 6 → add_contract_offer 0x4cc490, job 0xb) får sin beslutningsdato (+0x62 = 1, 0x4cd230), og
+        // svaret (omdømme/500 > lejeklubbens) → 0x8d8310 (tilstand 0xf); ellers tilstand 8 (0x8c6581). Lejen sker FØRST, når spilleren på
+        // beslutningsdagen vælger lejekontrakten (0x4ce4e0 – 0x846920 ≥ 3,15, i konkurrence med hans andre tilbud) og 0x8c2180's lejegren
+        // godkender den (truppen ≤ 50, køberlandets TRANSFER_RULES +0x20 – nu, ikke da buddet blev givet). Før skete lejen samme dag som svaret:
+        // oraklet sæson 1 226 lejer af 330 lejebud (60 falder i 0x8c2180, 0x10), vi 278 af 294.
         CM_AIAI.loan++;
-        if (cx.loanAnswer(p.id, buyer.id, o.seller) !== 0) cmTmClose(o, 2, 10, 'rejected');
-        else if (cmLoanRefuses(g, p, buyer.id)) { cmLoanRejectsMove(o, p); cmTmClose(o, 0xf, 10); }
-        else { CM_AIAI.loanOk++; o.status = 'negotiating'; cmTmCollapseOthers(o); completeTransfer(o, p.contract?.wage ?? 0, 0); cmTmClose(o, 0x14, 10); }
-        closed = true;
+        if (cx.loanAnswer(p.id, buyer.id, o.seller) !== 0) { cmTmClose(o, 2, 10, 'rejected'); closed = true; continue; }
+        if (cmLoanRefuses(g, p, buyer.id)) { cmLoanRejectsMove(o, p); cmTmClose(o, 0xf, 10); closed = true; continue; }
+        o.status = 'negotiating';
+        o.cmK = LOAN_K;
+        o.respondBy = addDays(g.date, Math.min(cx.rand(p.id, buyer.id)(5) + 1, Math.max(1, cx.delay(p.id, buyer.id, 0x4cd230))));
         continue;
       }
       CM_AIAI.bid++;
@@ -2147,15 +2156,31 @@ function cmAiAiDue(cx: SlDueCtx) {
     // 0x4ce4e0 på beslutningsdagen: venter et andet bud på ham i tilstand 0/1/5/6 (0x8cd150), udsættes beslutningen 2 dage. Ellers gennemgår
     // han ALLE sine åbne kontrakttilbud (listen +0x34) og tager det bedste over 2,75 (0x4ce9xx: t > best, det første ved lighed); de andre
     // afvises – handle_player_rejected_terms 0x8c28c0 (tilstand 0xf). Før afgjorde det første forfaldne tilbud alene, om han skrev under.
-    if (o.cmK && !o.loan) {
+    if (o.cmK) {
       if (g.offers.some((x) => x !== o && x.player === p.id && (x.status === 'pending' || x.status === 'countered' || (x.status === 'negotiating' && !x.cmK)))) { o.respondBy = addDays(g.date, 2); continue; }
-      const cands = g.offers.filter((x) => x.cmAi && x.player === p.id && x.status === 'negotiating' && x.cmK && !x.loan && !!g.clubs[x.buyer] && !humanClub0(g, x.buyer));
+      // (lejekontrakterne er med: tilbudslisten +0x34 har dem som alle andre – type 6 → 0x846920(staff, klub, 0, 1, 0x849f00, 0))
+      const cands = g.offers.filter((x) => x.cmAi && x.player === p.id && x.status === 'negotiating' && x.cmK && !!g.clubs[x.buyer] && !humanClub0(g, x.buyer));
       let best = 2.75, win: TransferOffer | null = null;
       for (const x of cands) { const t = cx.decide(p.id, x.buyer, x.cmK!); if (t > best) { best = t; win = x; } }
       for (const x of cands) if (x !== win) { CM_AIAI.declined++; cmTmClose(x, 0xf, 10, 'collapsed'); }
       if (!win) { closed = true; continue; }
       o = win;
       buyer = g.clubs[o.buyer];
+    }
+    // handle_player_accepted_terms 0x8c2180, lejegrenen (+0x1f = 1, 0x8c23e6): 0x53c590(køber, 0, 0) + 1 > 50 → grund 4; ellers køberlandets
+    // TRANSFER_RULES +0x20 (TM +0x8ac, nationen +0x53 – England 0x579d60: højst 5 lejer i sæsonen, 2 lejede i truppen, vinduet) → grund ≠ 0:
+    // 0x8e23d0 og tilstand 0x10 (0x8c24ac, 20 dage). Ellers lejen (0x4d01e0) og tilstand 0x14 (0x8c27cd).
+    if (o.loan) {
+      const home = g.clubs[o.seller];
+      if (squad(buyer.id).filter((x) => !x.virtual).length + loanedOut(g, buyer.id).length + 1 > 50 || !cmLoanRulesOk(buyer, home)) {
+        CM_AIAI.rules++; cmTmClose(o, 0x10, 20, 'collapsed'); closed = true; continue;
+      }
+      CM_AIAI.loanOk++;
+      cmTmCollapseOthers(o);
+      completeTransfer(o, p.contract?.wage ?? 0, 0);
+      cmTmClose(o, 0x14, 10);
+      closed = true;
+      continue;
     }
     // accepteret, og spilleren har besluttet sig: handlen (køberen skal stadig have råd – rater: kun første rate)
     if (!o.loan && !(o.months && o.months > 0) && buyer.transferBudget < o.fee) { cmTmClose(o, 0x10, 20, 'collapsed'); closed = true; continue; }

@@ -568,7 +568,7 @@ function writeOffers(S: SlMem): void {
     const fut = o.status === 'accepted' && !!o.cmFut;   // add_future_transfer 0x8cb9a0: tilstand 0x13 (19), til skiftet 0x8cbbe0
     if (!fut && !['pending', 'negotiating', 'countered'].includes(o.status) || isHumanClub(o.buyer) && isHumanClub(o.seller)) continue;
     const GBP = cmGbp(g, o.buyer);   // buddets beløb: køberens penge (cmMoney.ts)
-    const st = fut ? 0x13 : o.status === 'pending' ? 0 : o.status === 'countered' ? (o.cmAi ? 1 : 2) : o.cmK ? 7 : 5;
+    const st = fut ? 0x13 : o.status === 'pending' ? 0 : o.status === 'countered' ? (o.cmAi ? 1 : 2) : o.cmK ? (o.loan ? 8 : 7) : 5;   // lejen: 8 (0x8c6581) til spillerens beslutning
     const a = rec(o.id, o.buyer, o.player, o.created, o.fee, o.loan, st, 0, o.pub);
     if (!a) continue;
     m.w32(a + 0x35, Math.round((o.lgFee ?? 0) * GBP)); m.w8(a + 0x39, o.lgApps ?? 10);
