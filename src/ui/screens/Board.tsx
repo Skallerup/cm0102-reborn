@@ -5,7 +5,7 @@ import { FA_REQUESTS, MEET_BOARD, boardAskInfo, boardStatementCodes, faAvailable
 import { CAMP_DESTS, campCost, campWindows, type CampDest } from '../../game/camp';
 import type { BoardAsk } from '../../game/types';
 import { dateFmt, money, t } from '../../i18n';
-import { Bar, Panel } from '../components';
+import { Bar, Modal, Panel } from '../components';
 import { gs } from '../../game/state';
 import { useGame, useNav, useRouteState } from '../core';
 import { isRetro } from '../theme';
@@ -22,8 +22,53 @@ export function BoardScreen() {
   return isRetro() ? <ClassicBoard /> : <ModernBoard />;
 }
 
+/** Originalens bestyrelse (CM 01/02): Board Confidence-udtalelsen og knapperne Board Request / FA Request (Meet with Board / Meet with the Football Association) */
+function OrigBoard() {
+  const [view, setView] = useState<'' | 'request' | 'fa'>('');
+  const [sel, setSel] = useState<string | null>(null);
+  const [answer, setAnswer] = useState<string | null>(null);
+  const close = () => { setView(''); setSel(null); setAnswer(null); };
+  const isBoard = view === 'request';
+  const kinds = (isBoard ? MEET_BOARD : FA_REQUESTS) as string[];
+  const avail = (k: string) => (isBoard ? meetBoardAvailable(k as never) : faAvailable(k as never));
+  const confirm = () => {
+    if (!sel) return;
+    const r = isBoard ? act<string>({ t: 'meetBoard', kind: sel as never }) : act<string>({ t: 'faRequest', kind: sel as never });
+    if (isBoard ? cmBoardOn(gs()) : authentic()) close(); else setAnswer(t(r));
+  };
+  return (
+    <div>
+      <Head title={gs().clubs[gs().userClub]?.name ?? t('nav.board')} />
+      <Panel title={t('cl.ba.confidence')}>
+        <div className="col">{boardStatement().map((x) => <p key={x} style={{ margin: 0 }}>{x}</p>)}</div>
+        <div className="row" style={{ marginTop: 12, gap: 8 }}>
+          <button onClick={() => setView('request')}>{t('cl.ba.request')}</button>
+          <button onClick={() => setView('fa')}>{t('cl.ba.fa')}</button>
+        </div>
+      </Panel>
+      {view && (
+        <Modal title={isBoard ? t('cl.mb.title') : t('cl.fa.title')} onClose={close}>
+          <div className="col">
+            {answer ? <p>{answer}</p> : <>
+              <p>{isBoard ? t('cl.mb.intro') : t('cl.fa.intro')}</p>
+              <div className="col" style={{ gap: 6 }}>
+                {kinds.map((k) => <button key={k} className={sel === k ? 'primary' : ''} disabled={!avail(k)} style={{ textAlign: 'left' }} onClick={() => setSel(sel === k ? null : k)}>{isBoard ? t(`cl.mb.${k}`) : t(`cl.fa.${k}`)}</button>)}
+              </div>
+            </>}
+            <div className="row" style={{ justifyContent: 'flex-end', gap: 8 }}>
+              <button onClick={close}>{answer ? t('common.back') : t('common.cancel')}</button>
+              {!answer && <button className="primary" disabled={!sel} onClick={confirm}>{t('cl.mb.confirm')}</button>}
+            </div>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
 function ModernBoard() {
   const g = useGame()!;
+  if (origLogic()) return <OrigBoard />;
   const conf = Math.round(g.board.confidence);
   const tone = conf >= 60 ? 'good' : conf >= 35 ? 'warn' : 'bad';
   return (
