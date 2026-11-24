@@ -34,14 +34,16 @@ import { contractDailyUpdate_4c7ac0, daysSince_54cdb0, fixedDates_4c7ac0, offerC
 import { humanClub_600a50 } from './cmWageGame';
 import { slCall } from './cmShortlist';
 import { cmSlOffer842c00 } from './cmShortlistGame';
-import { cmActive, cmInDeal, cmLogic, cmRand, newCmContract, statusCode } from './cmPlayerData';
+import { cmActive, cmFlagClear, cmFlagSet, cmHid, cmInDeal, cmLogic, cmRand, contractExtHook, curRep, newCmContract, statusCode, withFlagCtx, type CmContract } from './cmPlayerData';
+import { contractSatisfaction_866620, deservedStatus_4ca470 } from './cmContractWant';
+import type { CmCtx } from './cmMem';
 import { isHumanClub } from './humans';
 import { holidayClub } from './cmHoliday';
 import { recordFreeTransfer, setClub } from './state';
 import { ageOn } from './dates';
 import { ATTRS } from './attributes';
 import { HEAP0, HEAP_PTR } from './cmGen/x86';
-import { addFavClub, addFavPerson, managerStaff, personKey } from './cmRelations';
+import { addDisClub, addDisPerson, addFavClub, addFavPerson, managerStaff, personKey } from './cmRelations';
 import { cmSignContractMorale } from './cmMedia';
 import { renewalHooks } from './cmTableHooks';
 
@@ -154,7 +156,123 @@ const FORCE = new Set([0x7875e0, 0x7a7eb0, 0x8d0a70, 0x842c00, 0x4d6790, 0x4da59
 
 /** En dag af CONTRACT_MANAGER::daily_update 0x4c7ac0 for computerklubberne (sim.ts newDay og spilstarten) */
 export function cmContractManagerDay(g: GameState): void {
-  cmContractManagerRun(g);
+  const ext = extQueue.filter((p) => g.players[p.id] === p && !!p.contract && !!p.cmContract && !!p.club && !!g.clubs[p.club]);
+  extQueue = [];
+  cmContractManagerRun(g, undefined, ext);
+}
+
+// ---------------------------------------------------------------- 0x5ce2d0's forlængelsesgren 0x5d188f–0x5d1eea
+/** dagens spillere, der nåede 0x5d188f i 0x5ce2d0 (cmPlayerData.ts contractLengthDay D: rand(50) = 0 m.m.) – køres i dagens kontraktmanager */
+let extQueue: Player[] = [];
+contractExtHook.queue = (g, p) => { if (cmCmOn(g)) extQueue.push(p); };
+
+const s8 = (v: number) => ((v << 24) >> 24);
+const s16 = (v: number) => ((v << 16) >> 16);
+const cl100 = (v: number) => (v > 100 ? 100 : v < -100 ? -100 : v);
+const daysIso = (a: string, b: string) => dayNum(a) - dayNum(b);
+
+/** 0x5ce2d0 0x5d188f–0x5d1eea for spilleren (staff st, kontrakt con i CONTRACT_MANAGER's hukommelse; spillets +0x44/+0x45 i c):
+ *  ebx = Shortlist_Manager 0x849ce0(klub, staff, 0, 0) (trupplanens plads), r = 0x866620(kontrakten, staff) (1 under 50 % af det ønskede, 3 under 80 %, ellers 2).
+ *  r = 2: flag 2 → +0x44 += 10, flag 2 ryddes.
+ *  r = 1 (plads): uden flag 2 – kontrakten mindst 10·(Loyalty + 25) dage gammel; > 180 dage tilbage og 0x4ca470 = 7 → +0x44 −5; ældre end 31 (målmand 34)
+ *    og +0x44 > −(Professionalism + Loyalty) → kun med højst 5·(Loyalty + 30) dage tilbage; under 21 og +0x3d < 2·Loyalty + 15 → kun med højst
+ *    10·(25 − Loyalty) dage tilbage; menneskets klub (0x600a50(klub, 0, 1, 0, 0)) eller intet tilbud (0x4cda70(staff, 0, 0, −1, 1,0, art) – status 1:
+ *    art = pladsens +0xf er ham, 2–6: art 0) → flag 2 (uden klager), ellers +0x44 −5. Med flag 2 – computerklub og (dag + id) % 45 = 0: tilbuddet
+ *    (status 1–3 art som før, 4–6 art 0) → +0x44 +15; id % 8 = 0, kun flag 2, intet tilbud fra klubben (0x4cc9e0), nuværende omdømme > 5250,
+ *    Ambition > 5, Temperament < 15, Sportsmanship < 15, Professionalism < 10, rand(14) = 0 → rand(10) = 0 ? klubben uven (0x547e70) : managerens
+ *    uven (0x547af0); til sidst +0x44 −10.
+ *  r = 3 (plads): uden flag 2 – mindst 10·(Loyalty + 25) dage gammel, +0x44 < −25, under 565 dage tilbage, Ambition > 10, Loyalty < 10,
+ *    +0x3d > 75 og s16(25·(Ambition − 2·Loyalty) + 10·Pressure + verdensomdømme) > 6500 → menneskets klub eller intet tilbud (status 1: art som
+ *    før, 2–3: art 0, ellers intet) → flag 2 (uden klager) ellers +0x44 −5. Med flag 2 – (dag + id) % 8 = 0, kun flag 2, intet tilbud fra klubben,
+ *    omdømme > 5250, Ambition > 5, Temperament < 10, Sportsmanship < 15, Professionalism < 10, rand(14) = 0 → uven som ovenfor.
+ *  Ikke porteret: nyheden 0xbc2 "vil have ny kontrakt" (0x4d9f80 – kun til klubbens indbakke; menneskets klub). */
+function contractExt_5d188f(g: GameState, c: CmCtx, self: number, slm: number, p: Player, st: number, con: number, k: CmContract, rand: (n: number) => number): void {
+  const m = c.m;
+  const club = clubAt(m, m.s32(con + 4));
+  const id = m.s32(st);
+  const slot = c.call(0x849ce0, slm, club, st, 0, 0) >>> 0;
+  const r = s8(contractSatisfaction_866620(c, con, st));
+  const loy = s8(cmHid(p, 'loyalty')), amb = s8(cmHid(p, 'ambition')), pres = s8(cmHid(p, 'pressure')), prof = s8(cmHid(p, 'professionalism'));
+  const sport = s8(cmHid(p, 'sportsmanship')), temp = s8(cmHid(p, 'temperament'));
+  const age = s8(ageOn(p.dob, g.date));
+  const start = p.contract!.cmStart ?? p.joined ?? p.cmJoined;
+  const sinceStart = start ? daysIso(g.date, start) : 0x7fff;
+  const left = daysIso(p.contract!.expires, g.date);
+  const rep = p.cmRepMem ?? p.cmRep ?? [p.rep * 2, p.rep * 2, p.rep * 2];
+  const worldRep = Math.round(rep[2] * 50);
+  const human = () => humanClub_600a50(c, club, 0);
+  const status = () => (m.u8(slot + 0x24) >> 1) & 0xf;
+  const art = () => (m.s32(slot + 0xf) === id ? 1 : 0);
+  const offer = (a: number) => offerContract_4cda70(c, self, st, 0, 0, -1, 1.0, a) !== 0;
+  const add44 = (d: number) => { k.b44 = cl100(s8(k.b44) + d); m.w8(con + 0x44, k.b44); };
+  const sync45 = () => m.w32(con + 0x45, k.b45);
+  // 0x5d19e4: uden klager flag 2 (0x867700), ellers +0x44 −5 (0x5d1bc1)
+  const noOffer = () => { if (k.b45 !== 0) add44(-5); else { withFlagCtx(g, p, rand, () => cmFlagSet(k, 2)); sync45(); } };
+  // 0x4cc9e0: et tilbud fra klubben i CONTRACT_MANAGER's liste +0x34
+  const hasOffer = () => {
+    const L = m.u32(self + 0x34);
+    if (!L) return false;
+    m.w32(L + 0xa, m.u32(L + 2));
+    for (let d = listNext_68d1b0(m, L); d; d = listNext_68d1b0(m, L)) if (m.s32(d) === id && m.s32(d + 4) === m.s32(con + 4)) return true;
+    return false;
+  };
+  // 0x5d1aa6/0x5d1e71: uven med klubben eller managerens (0x4d9f80's nyhed før – ikke porteret)
+  const grudge = (tempMax: number) => {
+    if (hasOffer()) return;
+    if (!(curRep(p) > 0x1482) || !(amb > 5) || !(temp < tempMax) || !(sport < 15) || !(prof < 10)) return;
+    if (rand(14) !== 0) return;
+    if (rand(10) !== 0) addDisPerson(p, personKey(managerStaff(g, p.club)), true, rand);
+    else addDisClub(g, p, p.club, true, rand);
+  };
+  const day = s16(m.u16(G.TODAY));
+  if (r === 2) {                                                            // 0x5d1b06
+    if (!(k.b45 & 2)) return;
+    add44(10);
+    cmFlagClear(k, 2); sync45();
+    return;
+  }
+  if (r === 1) {                                                            // 0x5d1b5a
+    if (!slot) return;
+    if (k.b45 & 2) {                                                        // 0x5d1d46
+      if (!human()) {
+        if ((day + id) % 45 === 0) {
+          const s = status();
+          if (s >= 1 && s <= 6 && offer(s <= 3 ? art() : 0)) add44(15);
+        }
+      }
+      if ((id & 7) === 0 && k.b45 === 2) grudge(15);                         // 0x5d1e34
+      add44(-10);                                                           // 0x5d1ec0
+      return;
+    }
+    if (sinceStart < 10 * (loy + 25)) return;
+    if (left > 0xb4 && s8(deservedStatus_4ca470(m, st, con)) === 7) { add44(-5); return; }
+    const gk = p.pos[0] === 20;
+    if (gk ? age > 0x22 : age > 0x1f) {                                     // 0x5d1bf6
+      if (s8(k.b44) > s8(-(prof + loy)) && left > 5 * (loy + 30)) return;
+    }
+    if (age < 0x15 && s8(k.b3d) < s8(2 * loy + 15) && left > 10 * (25 - loy)) return;   // 0x5d1c2d
+    if (human()) { noOffer(); return; }                                     // 0x5d1d0c
+    const s = status();
+    if (s === 0 || s > 6) return;
+    if (offer(s === 1 ? art() : 0)) return;
+    noOffer();
+    return;
+  }
+  if (r !== 3) return;
+  if (!slot) return;                                                        // 0x5d18c8
+  if (k.b45 & 2) {                                                          // 0x5d1a47
+    if (((day + id) & 7) !== 0 || k.b45 !== 2) return;
+    grudge(10);
+    return;
+  }
+  if (sinceStart < 10 * (loy + 25) || s8(k.b44) >= -25 || left >= 0x235 || amb <= 10 || loy >= 10 || s8(k.b3d) <= 75) return;
+  if (s16(25 * (amb - 2 * loy) + 10 * pres + worldRep) <= 0x1964) return;
+  if (!human()) {
+    const s = status();
+    if (s === 0 || s > 3) return;
+    if (offer(s === 1 ? art() : 0)) return;
+  }
+  noOffer();
 }
 
 /** Staff_Records' forlængelsestilbud (add_league_champions_record 0x8692a7, add_promotion_record 0x869972, add_relegation_record 0x86a61a,
@@ -172,7 +290,7 @@ export function cmContractRenewals(g: GameState, ps: Player[]): void {
 
 renewalHooks.offer = cmContractRenewals;
 
-function cmContractManagerRun(g: GameState, renew?: Player[]): void {
+function cmContractManagerRun(g: GameState, renew?: Player[], ext?: Player[]): void {
   if (!cmCmOn(g)) return;
   const t0 = typeof performance !== 'undefined' ? performance.now() : 0;
   const S: CmCmState = (g.cmCm ??= { dec: [], off: [], row: {} });
@@ -185,6 +303,7 @@ function cmContractManagerRun(g: GameState, renew?: Player[]): void {
     for (const d of S.dec) if (dayNum(dayIso(d[1], d[2])) <= T) due.add(d[0]);
   }
   const clubs = new Set<number>((renew ?? cands).map((p) => p.club));
+  for (const p of ext ?? []) clubs.add(p.club);
   for (const pid of due) { const p = g.players[pid]; if (p?.club && g.clubs[p.club]) clubs.add(p.loan?.from ?? p.club); }
   if (!renew) CMD_STATS.days++;
   if (!clubs.size) { if (t0) CMD_STATS.ms += performance.now() - t0; return; }
@@ -293,6 +412,19 @@ function cmContractManagerRun(g: GameState, renew?: Player[]): void {
       const club = clubAt(m, m.s32(con + 4));
       if (!club || !c.call(0x849ce0, slm, club, st, 0, 0)) continue;
       offerContract_4cda70(c, self, st, 0, 0, -1, 1.0, 1);
+    }
+  }
+  // 0x5ce2d0's forlængelsesgren 0x5d188f for dagens spillere (0x5cccd0 – tidspunkt 0, før 0x4c7ac0's tidspunkter), i personernes rækkefølge
+  if (ext?.length) {
+    m.w8(G.SLICE, 0);
+    m.w8(G.B_AE233C, cmAfter2330(g.date, true));
+    fixedDates_4c7ac0(m, G.TODAY);
+    const slm = m.u32(m.u32(0xde1f54) + 0x856);
+    for (const p of ext) {
+      const st = W.staffOf(p);
+      const con = st ? getContract(m, st) : 0;
+      if (!con || !p.cmContract) continue;
+      contractExt_5d188f(g, c, self, slm, p, st, con, p.cmContract, cmRand(g.seed ?? 0, p.id, T, 0x5d188f));
     }
   }
   // de tre tidspunkter (0: de faste datoer, 2: personløkken – kun kandidaterne, i id-rækkefølge)

@@ -310,6 +310,8 @@ export function cmContractOf(p: Player): CmContract {
 }
 
 const sh = (p: Player, k: string) => p.attrs[ATTRS.indexOf(k as never)] || 10;
+/** staffpostens skjulte egenskab (+0x56..+0x5d) som 0x5ce2d0 læser den (cmContractManager.ts' forlængelsesgren 0x5d188f) */
+export const cmHid = sh;
 const daysClamp = (from: string | undefined, today: string) => {
   const d = from ? dayNum(today) - dayNum(from) : 400;
   return d < 0 ? 0 : d > 400 ? 400 : d;
@@ -814,14 +816,18 @@ const doyOf = (iso: string): [number, number] => { const y = +iso.slice(0, 4); r
 /** Date::days_between 0x54cdb0 (this − other) */
 const daysBetween54cdb0 = (a: string, b: string) => dayNum(a.slice(0, 10)) - dayNum(b.slice(0, 10));
 
+/** 0x5ce2d0's forlængelsesgren 0x5d188f–0x5d1eea (efter D): kræver CONTRACT_MANAGER's hukommelse (0x849ce0/0x866620/0x4cda70) – cmContractManager.ts
+ *  registrerer køen og kører grenen for dagens spillere i dagens kontraktmanager (lige efter 0x5ce2d0, før 0x4c7ac0's tidspunkter) */
+export const contractExtHook: { queue?: (g: GameState, p: Player) => void } = {};
+
 /** 0x5ce2d0's kontraktlængde-klager 0x5d1448–0x5d1fcf (efter R4): flag 1 (vil have ny kontrakt) og flag 2 (kontrakten er udløbet/for kort).
  *  A 0x5d1448 (uden flag 1): x = +0x44 + 10·(moral − 10) < 25 (eller landsholdsspiller: staff +0x24 – 0 hos os, som i cmSlMem) og rand(50) = 0 →
  *    flag 1 efter 0x545e90 (klubbens omdømme – ikke porteret) og videre til 0x5d2392 (alle grene).
  *  B 0x5d15b5 (med flag 1): rand(50) = 0 eller over 31 år → flag 1 ryddes efter 0x545e90 (ikke porteret) og videre til 0x5d2392.
  *  C 0x5d16e8: flag 2 og under 60 dage siden kontraktens start (+0x25) → flag 2 ryddes.
  *  D 0x5d1713: spilstarten + 2·Loyalty + 5 dage og starten + 20·Loyalty + 250 dage er passeret, intet flag 1, ikke listet, trupstatus ≠ 7,
- *    rand(50) = 0, ingen skade med +0x2c > 60, intet aftalt skifte (0x8cca10) og ingen handel (0x8c1870) → forlængelsen 0x5d188f (0x849ce0/
- *    0x866620/0x4cda70 – ikke porteret) og videre til 0x5d2392.
+ *    rand(50) = 0, ingen skade med +0x2c > 60, intet aftalt skifte (0x8cca10) og ingen handel (0x8c1870) → forlængelsen 0x5d188f
+ *    (cmContractManager.ts contractExt_5d188f via contractExtHook) og videre til 0x5d2392.
  *  E 0x5d1eef: kontrakten er udløbet (type 1), ingen leje (0x4cf6d0), ingen bud/handel (0x8c5cf0/0x8c5e40/0x8c1870): n = (år − udløbsår)·365 −
  *    udløbsdag + dag i året; n > rand(100) → flag 2 (0x867700, hvis det ikke er sat) og +0x44 += s8(−n). Ellers 0x5d1fd4's flag 0x100
  *    (udlandet – ikke porteret). */
@@ -842,7 +848,7 @@ function contractLengthDay(g: GameState, p: Player, c: CmContract, rand: (n: num
     const d1 = dayNum((g.cmFitStart ?? g.date).slice(0, 10)) + s16(2 * loy + 5);
     const d2 = start ? dayNum(start.slice(0, 10)) + s16(20 * loy + 250) : Infinity;
     if (d1 < t && d2 < t && !(c.b45 & 1) && !listedOrRequest(p) && statusCode(p) !== 7 && rand(50) === 0 && !(w2c !== null && s16(w2c) > 60)
-      && !k.futureClub && !cmInDeal(g, p)) return;
+      && !k.futureClub && !cmInDeal(g, p)) { contractExtHook.queue?.(g, p); return; }
   }
   // E
   if ((k.cmType ?? 2) !== 1 || p.loan || cmInDeal(g, p)) return;
