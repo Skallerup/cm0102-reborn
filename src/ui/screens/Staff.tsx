@@ -16,8 +16,8 @@ import type { DropItem } from '../classic';
 import { ClubLink, Modal, Panel, Tabs } from '../components';
 import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
-import { ClassicStaffProfile, SetRolePanel } from './StaffClassic';
-import { ClassicStaffNegotiation } from './NegotiationClassic';
+import { ClassicStaffProfile } from './StaffClassic';
+import { OrigStaffNegotiation, OrigStaffRole } from './OrigStaffNegotiation';
 import { cmRolesFor } from '../../game/cmStaff';
 import { cmStaffOn } from '../../game/cmPlayerData';
 
@@ -55,7 +55,9 @@ function StaffList() {
     act({ t: 'fireStaff', id: s.id });
     setMsg({ text: t('staff.fired', { name: `${s.first} ${s.last}` }), tone: 'neutral' });
   };
-  const hire = (s: Staff) => setOfferFor(s);
+  // originalens ansættelse (CM 01/02): Offer Contract fra stabspersonens profil (Set Role At Club → forhandling → svar som nyhed)
+  const { nav } = useNav();
+  const hire = (s: Staff) => (cmStaffOn(g) ? nav({ name: 'staff', id: s.id }) : setOfferFor(s));
   const sendOffer = async (s: Staff, wage: number) => {
     if (s.club && !(await askConfirm(t('staff.poachConfirm', { name: `${s.first} ${s.last}`, club: g.clubs[s.club]?.name ?? '', fee: money(poachFee(s)) })))) return;
     const r = act<string>({ t: 'hireStaff', id: s.id, wage });
@@ -71,7 +73,7 @@ function StaffList() {
           {list.length === 0 && <tr><td colSpan={12} className="muted">{t('common.none')}</td></tr>}
           {list.map((s) => (
             <tr key={s.id}>
-              <td>{s.first} {s.last}{s.exPlayer && <span className={`tag ${s.exPlayer.legendOf ? 'good' : ''}`} style={{ marginLeft: 6 }} title={s.exPlayer.legendOf ? t('recb.legendOf', { club: gs().clubs[s.exPlayer.legendOf]?.name ?? '' }) : undefined}>{s.exPlayer.legendOf ? `⭐ ${t('recb.legend')}` : t('recb.exPlayer')}</span>}</td>
+              <td>{cmStaffOn(g) ? <a className="link" onClick={() => nav({ name: 'staff', id: s.id })}>{s.first} {s.last}</a> : <>{s.first} {s.last}</>}{s.exPlayer && <span className={`tag ${s.exPlayer.legendOf ? 'good' : ''}`} style={{ marginLeft: 6 }} title={s.exPlayer.legendOf ? t('recb.legendOf', { club: gs().clubs[s.exPlayer.legendOf]?.name ?? '' }) : undefined}>{s.exPlayer.legendOf ? `⭐ ${t('recb.legend')}` : t('recb.exPlayer')}</span>}</td>
               <td>{t(`role.staff.${s.role}`)}</td>
               {showClub && <td><ClubLink id={s.club} /></td>}
               <td className="num">{ageOn(s.dob, g.date)}</td>
@@ -154,12 +156,10 @@ function StaffProfile({ id }: { id: number }) {
   else if (g.userClub) {
     const broke = s.club > 0 && (g.clubs[g.userClub]?.balance ?? 0) < poachFee(s);
     items.push({ key: 'hire', label: s.club ? t('staff.buyOut') : t('staff.hireBtn'), disabled: !role || full || broke,
-      title: !role ? t('staff.noManagerHire') : full ? t('staff.limit') : broke ? t('staff.noMoney') : undefined, onClick: () => setOffer(true) });
+      title: !role ? t('staff.noManagerHire') : full ? t('staff.limit') : broke ? t('staff.noMoney') : undefined, onClick: () => (cmStaffOn(g) ? setRenew('pick') : setOffer(true)) });
   }
   if (s.club) items.push({ key: 'club', label: t('staff.viewClub', { club: g.clubs[s.club]?.short ?? '' }), onClick: () => nav(s.club === g.userClub ? { name: 'squad' } : { name: 'club', id: s.club }) });
   const action = items.length ? <ActionMenu items={items} clubId={s.club || undefined} /> : null;
-  if (renew === 'pick') return <div><SetRolePanel s={s} onBack={() => setRenew(null)} onSet={(r) => setRenew(r)} /></div>;
-  if (renew) return <div><ClassicStaffNegotiation staffId={s.id} role={renew} onClose={() => setRenew(null)} /></div>;
   return (
     <div>
       <Head title={`${name}${s.club ? ` (${g.clubs[s.club]?.short ?? ''})` : ''}`} action={action} />
@@ -206,6 +206,8 @@ function StaffProfile({ id }: { id: number }) {
       </div>
       )}
       {offer && <StaffOfferModal s={s} onClose={() => setOffer(false)} onSend={send} />}
+      {renew === 'pick' && <OrigStaffRole staffId={s.id} onBack={() => setRenew(null)} onSet={(r) => setRenew(r)} />}
+      {renew && renew !== 'pick' && <OrigStaffNegotiation staffId={s.id} role={renew} onClose={() => setRenew(null)} />}
     </div>
   );
 }
