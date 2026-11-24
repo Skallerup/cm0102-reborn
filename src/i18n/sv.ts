@@ -2,6 +2,7 @@
 export const sv: Record<string, string> = {
   'cl.tag.Tir': "Trö",
   'cl.tag.Abs': 'Frå', 'cl.tag.Wpm': 'Arb', 'cl.tag.Cup': 'Cup', 'cl.tag.Ine': 'Ej', 'cl.tag.Sct': 'Spa', 'cl.tag.Req': 'Beg', 'cl.tag.Ctr': 'Mån', 'cl.tag.Ret': 'Pen', 'cl.tag.Bos': 'Bos',
+  'cl.pl.ctExpired': "Contract Expired", 'cl.pl.ctFree': "Free", 'cl.pl.ctFullMonthly': "Full Time Monthly Contract", 'cl.pl.ctFullTrial': "Full Time Trial Contract", 'cl.pl.ctInvalid': "Invalid Contract Type", 'cl.pl.ctNA': "N/A", 'cl.pl.ctPartMonthly': "Part Time Monthly Contract", 'cl.pl.ctPartTrial': "Part Time Trial Contract", 'cl.pl.offerArranged': " - transfer arranged for {date}.", 'cl.pl.rolling': "Rolling",
   'transfer.cmLoanRejected': "{last}: lånebud avslaget",
   'transfer.cmLoanRejected.body': "{seller} har avslagit lånebudet från {buyer} på {player}.",
   'transfer.cmLoanAccepted': "{last}: lånebud accepterat",
