@@ -2,8 +2,8 @@
  * (runde 9) Ligatabellens poster af SPILLETS tabel og kampprogram – originalens Comp_Stats-række 0x4a4850 (post 0x76) som tilskuertallet
  * sub_85cba0 (crowd.ts) og computerens tilstand 0x6df460 (aiMode.ts' `league`) læser:
  *   +4 kampe (byte), stimerne +0x19 sejre i træk, +0x2d nederlag i træk, +0x41 ubesejret i træk, +0x55 uden sejr i træk (dword) med hver sin
- *   blok på 0x14 bytes (+4 første dato, +0xc seneste kamp i stimen: +0x4d for +0x41, +0x61 for +0x55 – dag/år-ord), +0x72 sæsonens
- *   udgangsplacering (sidste sæson – cmPlayerData.lastRank), +0x73 placeringen nu, +0x74/+0x75 den bedst/dårligst mulige slutplacering.
+ *   blok på 0x14 bytes (+4 første dato, +0xc seneste kamp i stimen: +0x4d for +0x41, +0x61 for +0x55 – dag/år-ord), +0x72 den forudsagte
+ *   placering (League::set_predicted_positions 0x68a850 → 0x4a2540 0x4a25d8 – cmBoardGame.ts predictLeagues, g.cmBoard.pp; `x72`), +0x73 placeringen nu, +0x74/+0x75 den bedst/dårligst mulige slutplacering.
  * Afkodet af oraklets rækker (crowd1.txt KO-linjerne – Arsenal hele sæsonen): før ligaens første kamp er +0x73..+0x75 = 0; stimerne følger
  * resultaterne (sejr: +0x19/+0x41 op, +0x2d/+0x55 nul; uafgjort: +0x41/+0x55 op; nederlag: +0x2d/+0x55 op).
  * +0x74/+0x75 er ligaens opdatering 0x684cd0 (0x684ef7–0x6850dc, porteret her – `possiblePositions`): rækkefølgen er tabellens, maks.point =
@@ -13,6 +13,14 @@
  */
 import type { GameState, TableRow } from '../../types';
 import { lastRank } from '../../cmPlayerData';
+
+/** Comp_Stats +0x72: den forudsagte placering, som League::set_predicted_positions 0x68a850 skriver ved ligaens opsætning (0x68a95b →
+ *  0x4a2540, `mov byte [row+0x72], cl` 0x4a25d8) – g.cmBoard.pp (cmBoardGame.ts predictLeagues). Uden bestyrelsens modul: sidste sæsons
+ *  placering (cmPlayerData.lastRank). */
+export function x72(g: GameState, compId: string, club: number): number {
+  const pp = g.cmBoard?.pp?.[club];
+  return pp !== undefined && g.comps[compId]?.clubs.includes(club) ? pp : lastRank(g, compId, club);
+}
 
 export interface GameLeagueRow {
   played: number; pos: number; best: number; worst: number; x72: number;
@@ -70,5 +78,5 @@ export function gameLeagueRow(g: GameState, compId: string, club: number): GameL
   const roundsPer = g.customRules?.[compId]?.rounds ?? 2;
   const total = (rows.length - 1) * roundsPer;
   const [best, worst] = anyPlayed ? possiblePositions(rows, i, total) : [0, 0];
-  return { played: me.p, pos: anyPlayed ? i + 1 : 0, best, worst, x72: lastRank(g, compId, club), runs, end41, end55 };
+  return { played: me.p, pos: anyPlayed ? i + 1 : 0, best, worst, x72: x72(g, compId, club), runs, end41, end55 };
 }

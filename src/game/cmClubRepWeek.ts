@@ -5,10 +5,10 @@
 //   klubbens Comp_Stats-række 0x4a4850 findes, antal hold n = turneringens +0x3e ≠ 0, den bedst/dårligst mulige slutplacering +0x74 ≠ +0x75,
 //   placeringen nu +0x73 ≠ udgangsplaceringen +0x72 og kampe +4 > 6 (byte, uden fortegn).
 // Så (x87, double): x = 400 − kampe·300/(2n − 2), højst ned til 100; omdømme = ftol(omdømme · (1 + (+0x72 − +0x73)/(n·x))) som word – intet loft.
-// Tabellens felter er spillets (engine/grid/gameTable.ts: +0x72 = cmPlayerData.lastRank, +0x73 placeringen, +0x74/+0x75 possiblePositions).
+// Tabellens felter er spillets (engine/grid/gameTable.ts: +0x72 = den forudsagte placering 0x68a850 – x72, +0x73 placeringen, +0x74/+0x75 possiblePositions).
 import type { GameState } from './types';
-import { cmMediaOn, lastRank } from './cmPlayerData';
-import { possiblePositions, sorted } from './engine/grid/gameTable';
+import { cmMediaOn } from './cmPlayerData';
+import { possiblePositions, sorted, x72 as compStatsX72 } from './engine/grid/gameTable';
 
 const s16 = (v: number) => (v << 16) >> 16;
 
@@ -38,7 +38,7 @@ export function cmClubRepWeekly(g: GameState): void {
       const cid = r.club;
       if (g.clubs[cid]?.league !== compId || reps[cid] === undefined) return;       // klubbens division +0x57
       const [best, worst] = possiblePositions(rows, i, total);
-      const pos = i + 1, x72 = lastRank(g, compId, cid);
+      const pos = i + 1, x72 = compStatsX72(g, compId, cid);
       if (best === worst || pos === x72 || !((r.p & 0xff) > 6)) return;
       reps[cid] = repByPosition(reps[cid], r.p, n, x72, pos);
     });

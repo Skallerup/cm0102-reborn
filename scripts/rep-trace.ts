@@ -44,7 +44,7 @@ if (!ONLY_ORACLE) {
   const w = JSON.parse(readFileSync(process.env.WORLD!, 'utf8')) as WorldData;
   const eng = w.nations.findIndex((x) => x.name === 'England');
   const user = w.clubs.find((c) => c[1] === 'Arsenal')![0];
-  createGame(w, { managerName: 'Test Smoke', managerNation: eng, clubId: user, activeNations: [eng], lang: 'en', masking: true, seed: 1, mode: 'authentic' });
+  createGame(w, { managerName: 'Test Smoke', managerNation: eng, clubId: user, activeNations: [eng], lang: 'en', masking: true, seed: Number(process.env.SEED ?? 1), mode: 'authentic' });
 }
 for (const s of snaps) {
   let u: Record<string, [number, string, string]> | undefined;
