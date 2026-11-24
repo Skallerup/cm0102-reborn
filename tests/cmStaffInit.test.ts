@@ -2,7 +2,7 @@
 // kontraktens sprognibble (0x7bfd50, 0x7c6930, 0x7c6830 – cmLanguage.ts). Forventningerne er originalens hukommelse ved kampstarten i
 // ~/cm0102-engine/oracle/runs/ls20.txt (MG-linjerne): de to managere i Premier League med alle 21 egenskaber i databasen.
 import { describe, expect, it } from 'vitest';
-import { npFromWorld, rebalance539490, staffConvert, staffInitRecord, gridTacOf, npShown, NP_START } from '../src/game/cmStaffInit';
+import { npFromWorld, rebalance539490, staffConvert, staffInitRecord, gridTacOf, npShown, NP_START, personality_535ea4 } from '../src/game/cmStaffInit';
 import { nativePoints, languageDay } from '../src/game/cmLanguage';
 
 const noRand = () => { throw new Error('ingen tilfældige tal ventet'); };
@@ -85,5 +85,24 @@ describe('sprogene (0x7c6930, 0x5d2fb3)', () => {
     languageDay(g, p, c, () => 0);
     expect(c.b4f).toBe((2 << 4) | 10);
     expect(p.cmLang?.[8]).toBe(1);                                                   // improve_language uden post = add_language(L, 1)
+  });
+});
+
+describe('personligheden sub_535a80 0x535ea4–0x536195', () => {
+  // talrække: hvert kald giver det næste tal (højst n − 1)
+  const seq = (xs: number[]) => { let i = 0; return (n: number) => Math.min(n - 1, xs[i++] ?? 0); };
+  it('gyldige står; manglende: mindste for +0x56/+0x59/+0x5c, gennemsnit for de andre, Temperament egne terninger; −1 → rand(16) + 5', () => {
+    expect(personality_535ea4([5, 6, 7, 8, 9, 10, 11, 12], null, noRand)).toEqual([5, 6, 7, 8, 9, 10, 11, 12]);
+    const r = seq([9, 3, 9, 3, 9, 3, 9, 3, 9, 3, 9, 3, 9, 3, 10, 0]);
+    expect(personality_535ea4([0, 0, 0, 0, 0, 0, 0, 0], null, r)).toEqual([4, 7, 7, 4, 7, 7, 4, 10]);
+    expect(personality_535ea4([-1, 0xff, 1, 1, 1, 1, 1, 0xff], null, seq([2, 15, 10]))).toEqual([7, 20, 1, 1, 1, 1, 1, 20]);
+  });
+  it('nationens +0x76 flytter Sportsmanship/Temperament og klemmer til 1..20', () => {
+    const v = [10, 10, 10, 10, 10, 10, 10, 10];
+    expect(personality_535ea4(v, 12, seq([14, 2, 0, 7, 4, 1])).slice(6)).toEqual([1, 14]);   // Sydamerika: −rand(15), +rand(8), −rand(5)
+    expect(personality_535ea4(v, 6, seq([9])).slice(6)).toEqual([1, 10]);                    // Østeuropa: Sportsmanship −rand(10)
+    expect(personality_535ea4(v, 11, seq([7, 7, 0, 4])).slice(6)).toEqual([17, 13]);         // Norden: +rand(8), −rand(5)
+    expect(personality_535ea4(v, 13, seq([4, 4])).slice(6)).toEqual([6, 6]);                 // Middelhavet: −rand(5)
+    expect(personality_535ea4(v, 14, noRand).slice(6)).toEqual([10, 10]);                    // de britiske øer: intet
   });
 });
