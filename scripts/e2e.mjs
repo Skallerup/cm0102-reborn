@@ -1167,7 +1167,7 @@ async function run(look) {
     const title = async () => (await page.locator('[data-testid=cup-stage-title]').first().innerText()).trim();
     if (!/^Phase 1 Group/.test(await title())) throw new Error(`CL Stages: forkert overskrift "${await title()}"`);
     await page.locator('.cx-tools-inline .cx-drop-btn', { hasText: /^Stage/ }).first().click();
-    const stages = (await page.locator('.cx-drop-pop button').allInnerTexts()).map((x) => x.trim());
+    const stages = (await page.locator('.cx-drop-pop button').allInnerTexts()).map((x) => x.replace(/^✓\s*/, '').trim());
     for (const s of ['First Qualifying Phase', 'Second Qualifying Phase', 'Third Qualifying Phase', 'Phase 1 Group Stage', 'Phase 2 Group Stage', 'Quarter Final', 'Semi Final', 'Final']) if (!stages.includes(s)) throw new Error(`Stage-menuen mangler "${s}": ${stages.join(' | ')}`);
     await page.locator('.cx-drop-pop button', { hasText: /^Quarter Final$/ }).click();
     await page.waitForTimeout(100);
