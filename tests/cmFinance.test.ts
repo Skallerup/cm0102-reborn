@@ -41,6 +41,12 @@ describe('originalens økonomi (cmFinance)', () => {
     expect(r.wk).toBe(3);
     expect(r.share).toBeCloseTo(0.1, 6);
     expect(r.wb).toBeGreaterThan(0);
+    // formændene: Interference +0x16 og Patience +0x1d som den udfyldte ikke-spillerpost (sub_535a80) – oraklet 14/7-01 har alle i 1..20
+    // (databasen har 0 hos ~3/4; rand(0) = 0 slog overtagelsens port 0x59ea41 fra). Everton: databasens Interference 3 bevares.
+    const chairs = Object.entries(g.cmChair ?? {}).filter(([cid]) => g.cmFin![+cid]?.chair);
+    expect(chairs.length).toBeGreaterThan(100);
+    for (const [, x] of chairs) { expect(x[0]).toBeGreaterThanOrEqual(1); expect(x[0]).toBeLessThanOrEqual(20); expect(x[1]).toBeGreaterThanOrEqual(1); expect(x[1]).toBeLessThanOrEqual(20); }
+    expect(g.cmChair![club('Everton').id][0]).toBe(3);
   }, 300_000);
 
   it('dagene: søndagens løn og merchandise, månedens poster rulles til sidste måned', async () => {

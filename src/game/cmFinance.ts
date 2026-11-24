@@ -278,6 +278,11 @@ export function cmFinanceNewGame(g: GameState, world: CMWorld, seed: number): vo
       if (pool.length) staffInitRecord({ np, job: ch[23], nation: g.nations[ch[25]]?.name ?? null, clubRep: repOf(g, c), name: '', hasPlayer: false }, pool, cmRand(seed, c.id, 0x537d59));
       // Ambition +0x57 og Loyalty +0x59 som sub_535a80 udfylder dem, når databasen har 0 (samme talrække som cmBoardGame.ts' formand)
       chair = [np.a[0x0f - 0x0e], np.a[0x20 - 0x0e], personalFill_535a80(ch[26], cmRand(seed, c.id, 0x535f04), 'avg'), personalFill_535a80(ch[27], cmRand(seed, c.id, 0x535f8f), 'min')];
+      // (24/11) Interference +0x16 og Patience +0x1d fra den SAMME udfyldte post (cmBoardInit satte databasens rå værdier – 0 hos ~3/4 af
+      // formændene; oraklet 14/7-01 har dem alle i 1..20). rand(0) = 0 gjorde overtagelsens port 0x59ea41 rand(np+0x16) ≠ 0 → afvis virkningsløs.
+      // cmBoardInit (før os i createGame) bruger dem ikke ved spilstarten (initRecords 0x68f130).
+      const cc = g.cmChair?.[c.id];
+      if (cc && pool.length) { cc[0] = np.a[0x16 - 0x0e]; cc[1] = np.a[0x1d - 0x0e]; }
     }
     // 0x5965a2: +0x166 efter velstanden (ejer stadion: 5 rig / 15 gæld, ellers 10)
     const band = wealthBand(bal, repOf(g, c));
