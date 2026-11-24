@@ -2,9 +2,11 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 vi.hoisted(() => { (globalThis as { window?: unknown }).window ??= { addEventListener() {}, removeEventListener() {}, location: { search: '', hostname: 'localhost', href: '' }, matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }) }; });
 const notice = vi.hoisted(() => vi.fn(async () => {}));
-vi.mock('../src/ui/confirm', () => ({ askNotice: notice }));
+const confirm = vi.hoisted(() => vi.fn(async () => true));
+vi.mock('../src/ui/confirm', () => ({ askNotice: notice, askConfirm: confirm }));
+vi.mock('../src/game/saveStore', () => ({ saveStoreDiagText: async () => 'saves=1', usingSmallChunks: () => true }));
 vi.mock('../src/online/errors', () => ({ reportError: vi.fn() }));
-import { describeStorageError, guardWrite, isQuotaError, resetStorageGuard, retry, StorageFullError } from '../src/game/storageGuard';
+import { describeStorageError, guardWrite, isBlobWriteError, isQuotaError, isStorageProblem, resetStorageGuard, retry, StorageFullError } from '../src/game/storageGuard';
 import { reportError } from '../src/online/errors';
 
 retry.delayMs = 0;
@@ -68,5 +70,47 @@ describe('afbrudt transaktion (iOS/WebKit: fejlen er null)', () => {
   it('describeStorageError', () => {
     expect(describeStorageError(new DOMException('x', 'AbortError'))).toMatch(/^AbortError/);
     expect(describeStorageError('streng')).toMatch(/string streng/);
+  });
+});
+
+describe('Chrome kan ikke skrive blob-filen (Windows 24/11: DataError Failed to write blobs (IOError))', () => {
+  const blobErr = () => Object.assign(new Error('Failed to write blobs (IOError)'), { name: 'DataError' });
+  // saveStore pakker fejlen i SavePhaseError (name + cause)
+  const phaseErr = () => Object.assign(new Error('phase=chunk#2 size=17.8MB small cause=DataError Failed to write blobs (IOError)'), { name: 'SavePhaseError', cause: blobErr() });
+  beforeEach(() => { resetStorageGuard(); notice.mockClear(); confirm.mockClear(); vi.mocked(reportError).mockClear(); });
+  it('genkendes som lagerproblem (også pakket); andre fejl ikke', () => {
+    expect(isBlobWriteError(blobErr())).toBe(true);
+    expect(isBlobWriteError(phaseErr())).toBe(true);
+    expect(isStorageProblem(phaseErr())).toBe(true);
+    expect(isStorageProblem(quota())).toBe(true);
+    expect(isStorageProblem(Object.assign(new Error('The I/O read operation failed.'), { name: 'NotReadableError' }))).toBe(false);
+    expect(isStorageProblem(null)).toBe(false);
+    expect(isStorageProblem(new Error('db closed'))).toBe(false);
+  });
+  it('StorageFullError uden genforsøg; én melding (SaveFailed med diagnose) og én besked pr. session; skyen hver gang, Eksport ved klik', async () => {
+    const cloud = vi.fn(() => true), download = vi.fn();
+    let n = 0;
+    for (let i = 0; i < 3; i++) await expect(guardWrite(async () => { n++; throw phaseErr(); }, false, { cloud, download })).rejects.toBeInstanceOf(StorageFullError);
+    expect(n).toBe(3);
+    expect(cloud).toHaveBeenCalledTimes(3);
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(String((confirm.mock.calls[0] as unknown[])[0])).toMatch(/Cannot save/);
+    expect(String((confirm.mock.calls[0] as unknown[])[0])).toMatch(/cloud save/);
+    expect(download).toHaveBeenCalledTimes(1);
+    expect(reportError).toHaveBeenCalledTimes(1);
+    expect(String(vi.mocked(reportError).mock.calls[0][0])).toMatch(/SaveFailed: SavePhaseError .*Failed to write blobs.* \| .*small=true.* saves=1/);
+    // manuelt gem viser beskeden igen; ikke logget ind = ingen sky-linje; Luk = ingen download
+    confirm.mockResolvedValueOnce(false);
+    await expect(guardWrite(async () => { throw blobErr(); }, true, { cloud: () => false, download })).rejects.toBeInstanceOf(StorageFullError);
+    expect(confirm).toHaveBeenCalledTimes(2);
+    expect(String((confirm.mock.calls[1] as unknown[])[0])).not.toMatch(/cloud save/);
+    expect(download).toHaveBeenCalledTimes(1);
+    expect(reportError).toHaveBeenCalledTimes(1);
+  });
+  it('anden gemmefejl med nødgem: Eksport tilbydes også', async () => {
+    const download = vi.fn();
+    await expect(guardWrite(async () => { throw new Error('db closed'); }, false, { cloud: () => false, download })).rejects.toThrow('db closed');
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(download).toHaveBeenCalledTimes(1);
   });
 });

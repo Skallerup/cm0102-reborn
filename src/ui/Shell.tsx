@@ -110,6 +110,13 @@ const GROUPS: { key: string; items: ScreenName[] }[] = [
 ];
 const ALL_ITEMS = { ...Object.fromEntries([...MENU, ...MENU2]), draft: 'nav.draft' } as Record<ScreenName, string>;
 const DRAFT_SCREENS: ScreenName[] = ['inbox', 'squad', 'tactics', 'assistant', 'draft', 'fixtures', 'competitions', 'community', 'help', 'options', 'managers'];
+/** (24/11) Save and quit: kunne spillet ikke gemmes (fuld disk, "Failed to write blobs"), lukkes det ikke uden spørgsmål – ellers er fremdriften
+ *  siden sidste gem tabt (beskeden med Eksport er allerede vist af storageGuard) */
+async function saveBeforeQuit(): Promise<boolean> {
+  try { await saveGame({ cloud: true }); return true; }
+  catch { return askConfirm(t('storage.quitUnsaved'), { danger: true }); }
+}
+
 export const GROUP_KEY = 'cm-nav-closed';
 // Standard: kun "Holdet" er foldet ud ved spilstart (resten huskes derefter)
 export const NAV_CLOSED_DEFAULT = ['matches', 'market', 'club', 'manager', 'community'];
@@ -507,7 +514,7 @@ export function Shell() {
         const date = tod === null ? date0 : `${date0} ${t(`cl.tod.${tod}`)}`;
         const quit = async () => {
           if (online) { if (await askConfirm(t('mp.leaveConfirm'))) { void stopVoice(); closeSession(); forgetLast(); setGame(null); } return; }
-          if (await askConfirm(t('top.quitConfirm'))) { await saveGame({ cloud: true }).catch(() => {}); forgetLast(); setGame(null); }
+          if (await askConfirm(t('top.quitConfirm')) && await saveBeforeQuit()) { forgetLast(); setGame(null); }
         };
         // kampskærmen (CM 01/02): minuttet øverst og kampens knapper i stedet for de almindelige
         if (matchSide && (route.name === 'match' || route.name === 'report')) {
@@ -612,7 +619,7 @@ export function Shell() {
         {online && <div className="muted nav-note" title={t('mp.autosaveHint')}><Icon name="save" />{t('mp.autosave')}</div>}
         <button onClick={async () => {
           if (online) { if (await askConfirm(t('mp.leaveConfirm'))) { void stopVoice(); closeSession(); forgetLast(); setGame(null); } return; }
-          if (await askConfirm(t('top.quitConfirm'))) { await saveGame({ cloud: true }).catch(() => {}); forgetLast(); setGame(null); }
+          if (await askConfirm(t('top.quitConfirm')) && await saveBeforeQuit()) { forgetLast(); setGame(null); }
         }}><Icon name="quit" />{t('nav.quit')}</button>
         <BugReportButton screen={route.name} version={APP_VERSION} date={g.date} />
         <VersionButton />

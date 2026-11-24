@@ -7,13 +7,20 @@
 // komprimeringen (snapshot.ts GzBytes) og deles op i sidens egen hukommelse – en Blob i WebKit kan blive ulæselig (iOS smider dens data væk i
 // baggrunden), og genforsøget læste den samme døde Blob. Blob-input (et gem hentet fra skyen) læses som før.
 // Forældreløse bidder (en generation uden manifest – appen lukket midt i et gem eller før oprydningen) ryddes af sweepSaveChunks.
-import { del, get, keys, set } from 'idb-keyval';
+// (Windows/Chrome 24/11 "phase=chunk#2 … DataError Failed to write blobs (IOError)") Chrome lægger en IndexedDB-værdi over 64 KB i en egen blob-fil
+// i profilmappen; kan den fil ikke skrives (fuld disk, antivirus, rettigheder), skrives gemmet igen i bidder under 64 KB (SMALL_CHUNK_BYTES), som
+// Chrome lægger direkte i LevelDB uden blob-fil – resten af sessionen. Manifestet får `cs` (bidstørrelsen); læsningen er den samme (bidderne sættes sammen).
+import { del, delMany, get, getMany, keys, set, setMany } from 'idb-keyval';
 import type { UseStore } from 'idb-keyval';
-import { isQuotaError } from './storageGuard';
+import { isBlobWriteError, isQuotaError } from './storageGuard';
 
 export const CHUNK_BYTES = 4 * 1048576;
+/** under Chromes grænse (64 KB, blink IDBValueWrapper::kWrapThreshold) for værdier, der lægges i en blob-fil */
+export const SMALL_CHUNK_BYTES = 60 * 1024;
+/** små bidder skrives/læses/slettes i transaktioner à så mange (≈2,3 MB) */
+const SMALL_BATCH = 40;
 
-export interface SaveManifest { v: 2; gen: string; n: number; size: number }
+export interface SaveManifest { v: 2; gen: string; n: number; size: number; cs?: number }
 const isManifest = (x: unknown): x is SaveManifest => !!x && typeof x === 'object' && !(x instanceof Blob) && (x as SaveManifest).v === 2;
 
 export type SavePhase = 'buffer' | 'chunk' | 'commit';
@@ -23,9 +30,10 @@ const dataSize = (d: SaveData) => (d instanceof Blob ? d.size : d.reduce((n, b) 
 /** Et gem fejlede i en bestemt fase (buffer = data → bidens ArrayBuffer, chunk = put af en bid, commit = manifest + metadata) */
 export class SavePhaseError extends Error {
   phase: SavePhase;
-  constructor(phase: SavePhase, size: number, chunk: number, cause: unknown) {
-    super(`phase=${phase}${phase === 'chunk' ? `#${chunk}` : ''} size=${(size / 1048576).toFixed(1)}MB cause=${cause === null || cause === undefined ? 'null (aborted, no cause)' : `${String((cause as Error).name ?? '')} ${String((cause as Error).message ?? cause).slice(0, 100)}`}`);
-    this.name = 'SavePhaseError'; this.phase = phase;
+  cause: unknown;
+  constructor(phase: SavePhase, size: number, chunk: number, cause: unknown, small = false) {
+    super(`phase=${phase}${phase === 'chunk' ? `#${chunk}` : ''} size=${(size / 1048576).toFixed(1)}MB${small ? ' small' : ''} cause=${cause === null || cause === undefined ? 'null (aborted, no cause)' : `${String((cause as Error).name ?? '')} ${String((cause as Error).message ?? cause).slice(0, 100)}`}`);
+    this.name = 'SavePhaseError'; this.phase = phase; this.cause = cause;
   }
 }
 
@@ -57,27 +65,64 @@ function sliceParts(parts: Uint8Array<ArrayBuffer>[], start: number, end: number
   return out.buffer;
 }
 
+/** Blob-skrivningen fejlede i denne session (Chrome "Failed to write blobs"): resten af sessionen gemmes i små bidder */
+let smallChunks = false;
+/** Kun til tests */
+export function resetSaveStore() { smallChunks = false; }
+export const usingSmallChunks = () => smallChunks;
+
 async function writeSaveNow(id: string, blob: SaveData, meta: unknown, st?: UseStore): Promise<void> {
+  try { await writeGen(id, blob, meta, st, smallChunks); return; }
+  catch (e) {
+    if (smallChunks || !isBlobWriteError((e as SavePhaseError).cause ?? e)) { await freeSpace(id, st, e); throw e; }
+  }
+  // blob-filen kunne ikke skrives: samme gem igen i bidder under 64 KB (ingen blob-fil)
+  smallChunks = true;
+  try { await writeGen(id, blob, meta, st, true); }
+  catch (e) { await freeSpace(id, st, e); throw e; }
+}
+
+/** et fejlet gem af et lagerproblem: ryd forældreløse bidder (også dette spils egne gamle generationer), så disken ikke fyldes yderligere */
+async function freeSpace(id: string, st: UseStore | undefined, e: unknown) {
+  if (isQuotaError(e) || isBlobWriteError((e as SavePhaseError).cause ?? e)) await sweepSaveChunks(true, st, id).catch(() => {});
+}
+
+/** skriv én generation af bidder + manifest + metadata; en halvt skrevet generation ryddes. Kvotefejl kastes uændret, andre som SavePhaseError */
+async function writeGen(id: string, blob: SaveData, meta: unknown, st: UseStore | undefined, small: boolean): Promise<void> {
   let phase: SavePhase = 'buffer';
   let i = 0;
   const gen = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   const size = dataSize(blob);
-  const n = Math.max(1, Math.ceil(size / CHUNK_BYTES));
+  const cs = small ? SMALL_CHUNK_BYTES : CHUNK_BYTES;
+  const n = Math.max(1, Math.ceil(size / cs));
   try {
-    for (i = 0; i < n; i++) {
-      phase = 'buffer';
-      const a = i * CHUNK_BYTES, z = Math.min(size, (i + 1) * CHUNK_BYTES);
-      const buf = blob instanceof Blob ? await blob.slice(a, z).arrayBuffer() : sliceParts(blob, a, z);
-      phase = 'chunk';
-      await set(chunkKey(id, gen, i), buf, st);
+    const buf = async (k: number) => {
+      const a = k * cs, z = Math.min(size, (k + 1) * cs);
+      return blob instanceof Blob ? await blob.slice(a, z).arrayBuffer() : sliceParts(blob, a, z);
+    };
+    if (!small) {
+      for (i = 0; i < n; i++) {
+        phase = 'buffer';
+        const b = await buf(i);
+        phase = 'chunk';
+        await set(chunkKey(id, gen, i), b, st);
+      }
+    } else {
+      for (i = 0; i < n; i += SMALL_BATCH) {
+        phase = 'buffer';
+        const batch: [IDBValidKey, ArrayBuffer][] = [];
+        for (let k = i; k < Math.min(n, i + SMALL_BATCH); k++) batch.push([chunkKey(id, gen, k), await buf(k)]);
+        phase = 'chunk';
+        await setMany(batch, st);
+      }
     }
     phase = 'commit';
-    await set(`save:${id}`, { v: 2, gen, n, size } satisfies SaveManifest, st);
+    await set(`save:${id}`, { v: 2, gen, n, size, ...(small ? { cs } : {}) } satisfies SaveManifest, st);
     await set(`meta:${id}`, meta, st);
   } catch (e) {
     await cleanupChunks(id, gen, st, true); // en halvt skrevet generation ryddes (det forrige gem er urørt)
     if (isQuotaError(e)) throw e;
-    throw new SavePhaseError(phase, size, i, e);
+    throw new SavePhaseError(phase, size, i, e, small);
   }
   await cleanupChunks(id, gen, st, false);
 }
@@ -86,12 +131,21 @@ async function writeSaveNow(id: string, blob: SaveData, meta: unknown, st?: UseS
 async function cleanupChunks(id: string, gen: string, st: UseStore | undefined, drop: boolean) {
   try {
     const prefix = `savec:${id}:`;
-    for (const k of (await keys(st)) as string[]) {
-      if (typeof k !== 'string' || !k.startsWith(prefix)) continue;
+    const doomed = ((await keys(st)) as unknown[]).filter((k): k is string => {
+      if (typeof k !== 'string' || !k.startsWith(prefix)) return false;
       const g = k.slice(prefix.length).split(':')[0];
-      if (drop ? g === gen : g !== gen) await del(k, st).catch(() => {});
-    }
+      return drop ? g === gen : g !== gen;
+    });
+    await delKeys(doomed, st);
   } catch { /* ignorér */ }
+}
+
+/** slet nøgler i transaktioner à SMALL_BATCH (et gem i små bidder har hundredvis); bedste bud, kaster aldrig */
+async function delKeys(ks: string[], st?: UseStore) {
+  for (let i = 0; i < ks.length; i += SMALL_BATCH) {
+    const part = ks.slice(i, i + SMALL_BATCH);
+    await delMany(part, st).catch(async () => { for (const k of part) await del(k, st).catch(() => {}); });
+  }
 }
 
 /** en generations alder: gen = Date.now() i base 36 + 4 tilfældige tegn */
@@ -102,8 +156,9 @@ export const SWEEP_MIN_AGE_MS = 10 * 60_000;
 /** orphans = forældreløse bidder (højst 4 MB hver) i orphanGens generationer; swept = slettet nu */
 export interface SaveStoreDiag { saves: number; chunks: number; gens: number; orphans: number; orphanGens: number; swept: number; liveMB: number }
 /** Lagerets gemte spil: manifester/gamle Blob-gem, bidder i alt, generationer og forældreløse (generationer, intet manifest peger på).
- *  sweep=true sletter de forældreløse, der er ældre end SWEEP_MIN_AGE_MS (og ikke tilhører et gem i gang her). Kaster ikke ved sletning. */
-export async function sweepSaveChunks(sweep = true, st?: UseStore): Promise<SaveStoreDiag> {
+ *  sweep=true sletter de forældreløse, der er ældre end SWEEP_MIN_AGE_MS (og ikke tilhører et gem i gang her – undtagen `own`, spillet, hvis gem netop
+ *  er fejlet i køen: dets gamle forældreløse generationer ryddes også). Kaster ikke ved sletning. */
+export async function sweepSaveChunks(sweep = true, st?: UseStore, own?: string): Promise<SaveStoreDiag> {
   const all = ((await keys(st)) as unknown[]).filter((k): k is string => typeof k === 'string');
   const live = new Map<string, string>();
   let saves = 0, liveBytes = 0;
@@ -125,9 +180,9 @@ export async function sweepSaveChunks(sweep = true, st?: UseStore): Promise<Save
     gens.add(`${id}:${gen}`);
     if (live.get(id) === gen) continue;
     orphans++; orphanGens.add(`${id}:${gen}`);
-    if (sweep && !queue.has(id) && genAge(gen) > SWEEP_MIN_AGE_MS) doomed.push(k);
+    if (sweep && (id === own || !queue.has(id)) && genAge(gen) > SWEEP_MIN_AGE_MS) doomed.push(k);
   }
-  for (const k of doomed) await del(k, st).catch(() => {});
+  await delKeys(doomed, st);
   return { saves, chunks, gens: gens.size, orphans, orphanGens: orphanGens.size, swept: doomed.length, liveMB: Math.round(liveBytes / 1048576) };
 }
 
@@ -152,10 +207,12 @@ export async function readSaveBlob(id: string): Promise<Blob | undefined> {
   if (v instanceof ArrayBuffer) return new Blob([v]);
   if (!isManifest(v)) return undefined;
   const parts: ArrayBuffer[] = [];
-  for (let i = 0; i < v.n; i++) {
-    const b = await get<ArrayBuffer>(chunkKey(id, v.gen, i));
-    if (!b) return undefined;
-    parts.push(b);
+  // små bidder (cs): hundredvis – læses i transaktioner à SMALL_BATCH
+  const step = v.cs ? SMALL_BATCH : 1;
+  for (let i = 0; i < v.n; i += step) {
+    const ks = Array.from({ length: Math.min(step, v.n - i) }, (_, k) => chunkKey(id, v.gen, i + k));
+    const bs = step === 1 ? [await get<ArrayBuffer>(ks[0])] : await getMany<ArrayBuffer>(ks);
+    for (const b of bs) { if (!b) return undefined; parts.push(b); }
   }
   return new Blob(parts);
 }

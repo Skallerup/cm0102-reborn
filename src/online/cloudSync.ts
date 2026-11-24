@@ -21,8 +21,9 @@ async function run(meta: SaveMeta, blob: Blob) {
 }
 
 setCloudHook((meta, blob, force) => {
-  if (!getAccount()) return;
-  if (!force && Date.now() - lastAt < EVERY) return;
-  if (busy) { queued = { meta, blob }; return; }
+  if (!getAccount()) return false;
+  if (!force && Date.now() - lastAt < EVERY) return true;
+  if (busy) { queued = { meta, blob }; return true; }
   void run(meta, blob);
+  return true;
 });

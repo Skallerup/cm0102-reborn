@@ -13,7 +13,7 @@ import { cmCupName, cmLeagueRules, cmPlayoffRules } from './cmCalendar';
 import { cashRound } from './cmTransferBid';
 import { deserializeState, gunzipText, gzSize, serializeBytes, serializeState } from './snapshot';
 import { rng } from './rng';
-import { guardWrite, isQuotaError } from './storageGuard';
+import { guardWrite, isQuotaError, StorageFullError, type SaveRescue } from './storageGuard';
 import { legacyExtendedFromText, saveKindFromText, saveKindOf, type SaveKind } from './saveKind';
 import type { GameState, Player } from './types';
 import { cmSlRepairHung } from './cmShortlistGame';
@@ -46,7 +46,8 @@ export async function serialize(g: GameState): Promise<Blob> {
 }
 
 // gem også i skyen, når man er logget ind (sættes af src/online/cloudSync.ts – motoren kender ikke kontoen)
-type CloudHook = (meta: SaveMeta, blob: Blob, force: boolean) => void;
+/** true = logget ind (gemmet uploades eller står i kø) */
+type CloudHook = (meta: SaveMeta, blob: Blob, force: boolean) => boolean | void;
 let cloudHook: CloudHook | null = null;
 export function setCloudHook(h: CloudHook | null) { cloudHook = h; }
 
@@ -84,12 +85,38 @@ export async function saveGame(opts?: { cloud?: boolean; name?: string }): Promi
     ext: extOf(g),
   };
   requestPersistentStorage();
-  await guardWrite((st) => writeSave(id, parts, meta, st), !!opts?.cloud);
+  await guardWrite((st) => writeSave(id, parts, meta, st), !!opts?.cloud, rescueOf(g, meta, parts, !!opts?.cloud));
   // "seneste spil" sættes først, når spillet er gemt (så den aldrig peger på et spil, der ikke findes)
   rememberLast({ kind: 'local', id });
+  fullUntil = 0;
   if (tr) console.log('ngtrace save: gemt');
   cloudHook?.(meta, new Blob(parts), !!opts?.cloud);
   return meta;
+}
+
+/** (Windows/Chrome 24/11 "Failed to write blobs"/fuld disk) gemmet kunne ikke skrives lokalt: spillet kører videre i hukommelsen, og nødgemmet er
+ *  skyen (logget ind: tvunget upload højst hvert 5. minut, ellers skyens egen takt) og en Eksport-knap i beskeden (de samme bytes som fil). */
+let rescueAt = 0;
+function rescueOf(g: GameState, meta: SaveMeta, parts: Uint8Array<ArrayBuffer>[], manual: boolean): SaveRescue {
+  return {
+    cloud: () => {
+      const force = manual || Date.now() - rescueAt > 5 * 60_000;
+      if (force) rescueAt = Date.now();
+      return !!cloudHook?.(meta, new Blob(parts), force);
+    },
+    download: () => downloadSave(new Blob(parts), g),
+  };
+}
+
+/** gem spillet som fil (Eksport) */
+function downloadSave(blob: Blob, g: GameState): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const club = (g.clubs[g.userClub]?.short ?? 'cm').replace(/[^\w]+/g, '-');
+  a.download = `cm0102-${club}-${g.date}.cm0102`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
 const extOf = (g: GameState): boolean => !g.humans?.length && !g.draft && legacyExtended(g);
@@ -174,6 +201,10 @@ export { forgetLast, getLast, rememberLast, type LastGame } from './last';
 let timer: ReturnType<typeof setTimeout> | null = null;
 let saving = false;
 let dirty = false;
+/** (24/11) lageret er fuldt / kan ikke skrives: autogemmet holder pause så længe (hver dag ~20 MB skrevet og slettet igen fylder kun disken);
+ *  Save Game prøver altid, og et vellykket gem ophæver pausen */
+let fullUntil = 0;
+export const AUTOSAVE_FULL_PAUSE_MS = 3 * 60_000;
 
 /** Gem kort efter ændringer (debounced), så intet går tabt ved genindlæsning */
 export function scheduleAutosave(delay = 2500) {
@@ -184,10 +215,10 @@ export function scheduleAutosave(delay = 2500) {
 
 export async function flushAutosave() {
   if (timer) { clearTimeout(timer); timer = null; }
-  if (!dirty || saving) return;
+  if (!dirty || saving || Date.now() < fullUntil) return;
   saving = true;
   dirty = false;
-  try { await saveGame(); } catch { dirty = true; } finally { saving = false; }
+  try { await saveGame(); fullUntil = 0; } catch (e) { dirty = true; if (e instanceof StorageFullError) fullUntil = Date.now() + AUTOSAVE_FULL_PAUSE_MS; } finally { saving = false; }
 }
 
 /** (ResumeMissing, 23/11) hvad lageret har for det seneste spil: antal nøgler i alt/gemte spil (meta:), om manifestet/metadata/bidderne findes –
@@ -433,14 +464,7 @@ export async function deleteSave(id: string) {
 
 export async function exportSave(): Promise<void> {
   const g = gs();
-  const blob = await serialize(g);
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  const club = (g.clubs[g.userClub]?.short ?? 'cm').replace(/[^\w]+/g, '-');
-  a.download = `cm0102-${club}-${g.date}.cm0102`;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  downloadSave(await serialize(g), g);
 }
 
 export async function importSave(file: File): Promise<boolean> {
