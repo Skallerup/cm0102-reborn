@@ -3,6 +3,7 @@ import { compName, dateFmt, getLang, has, money, moneyCm, moneyWage, natName, t 
 import { useNav } from '../core';
 import { ClubLink, PlayerLink } from '../components';
 import type { NewsItem } from '../../game/types';
+import { offerAnswerFee } from '../../game/offerFee';
 import { gs, onGameSwitch } from '../../game/state';
 import { cmScoutReportBody } from '../cmScoutNews';
 import { cmScoutAsgParams } from '../cmScoutAsgNews';
@@ -277,7 +278,7 @@ function offerAnswer(n: NewsItem): string {
   if (!o || o.seller !== g.userClub || o.status === 'pending') return '';
   const club = g.clubs[g.userClub]?.short ?? '';
   const k = o.status === 'rejected' ? 'transfer.ans.rejected' : o.status === 'countered' ? 'transfer.ans.countered' : o.status === 'negotiating' || o.status === 'accepted' || o.status === 'completed' ? 'transfer.ans.accepted' : '';
-  return k ? `\n\n${t(k, { club, fee: moneyCm(o.counter ?? o.fee, 6) })}` : ''; // 0x8d3520: flag 6
+  return k ? `\n\n${t(k, { club, fee: moneyCm(offerAnswerFee(o), 6) })}` : ''; // 0x8d3520: flag 6
 }
 
 /** CM 01/02's transferanmodning (0xbbf, 0x4d8990): brødteksten af grundene i nyhedens pladser, og svaret under den */

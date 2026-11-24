@@ -16,6 +16,7 @@ import { cmBoardRequest } from '../src/game/cmBoardGame';
 import { termsOf } from '../src/game/cmTransferBid';
 import { STAFF_LIMITS } from '../src/game/staff';
 import type { TransferOffer } from '../src/game/types';
+import { offerAnswerFee } from '../src/game/offerFee';
 
 describe('ejerens fund 16/11 – afsnit A (3.9.60, ægte tilstand, Vejle)', { timeout: 600_000 }, () => {
   const world = JSON.parse(readFileSync('public/data/world-original.json', 'utf8')) as WorldData;
@@ -108,6 +109,9 @@ describe('ejerens fund 16/11 – afsnit A (3.9.60, ægte tilstand, Vejle)', { ti
     act({ t: 'respond', pid: p.id, buyer: buyer.id, action: 'counter', terms, changed: true });
     expect(o.status).toBe('countered');
     expect(g.news.filter((n) => n.id >= from).map((n) => n.key)).not.toContain('transfer.aiFinalOffer');
+    // ejerens fund 24/11 (Beckham): svaret under buddets nyhed viser modbuddet, ikke køberens bud
+    expect(offerAnswerFee(o)).toBe(terms.fee);
+    expect(o.fee).not.toBe(terms.fee);
     const d0 = g.date;
     g.date = addDays(d0, 1); processOffers();
     expect(o.status).toBe('countered');

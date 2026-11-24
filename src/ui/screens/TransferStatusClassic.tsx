@@ -726,6 +726,8 @@ function CmIncomingBidPanel({ offer, onClose }: { offer: TransferOffer; onClose:
   const [terms, setTerms] = useState<BidTerms>(orig);
   const [exch, setExch] = useState(false);
   const [rejecting, setRejecting] = useState(false);
+  // 0x8ef240: Negotiate (0x1c), Accept (0x1d) og Delay (0x23) spørger først – "Transfer offer for X" med No/Yes
+  const [ask, setAsk] = useState<'counter' | 'accept' | 'delay' | null>(null);
   const age = p ? ageOn(p.dob, g.date) : 30;
   const sameLeague = !!buyer && !!me && buyer.league === me.league;
   // rival (0x8c5560): køberen styres af et menneske, eller klubberne står som rivaler (klub +0xb3/+0xb7/+0xbb = club.dat 179–187, cmCrowd[6..8]);
@@ -760,6 +762,17 @@ function CmIncomingBidPanel({ offer, onClose }: { offer: TransferOffer; onClose:
       </ClassicFoot>
     </div>
   );
+  if (ask) return (
+    <div className="cx-tstatus cx-bid cx-bid-confirm">
+      <div className="cx-subtitle">{t('cl.bid.offerFor', { player: name })}</div>
+      <div className="cx-ts-body center"><p className="cx-ts-intro">{ask === 'counter' ? t('cl.bid.negotiateQ', { player: name })
+        : ask === 'accept' ? t('cl.bid.acceptQ', { player: name }) : t('cl.bid.delayQ', { player: name, club: buyer.short || buyer.name })}</p></div>
+      <ClassicFoot cols="3fr 1fr">
+        <button onClick={() => setAsk(null)}>{t('common.no')}</button>
+        <button className="primary" onClick={() => (ask === 'delay' ? onClose() : send(ask))}>{t('common.yes')}</button>
+      </ClassicFoot>
+    </div>
+  );
   return (
     <div className="cx-tstatus cx-bid">
       <div className="cx-subtitle">{t('cl.bid.negotiate', { club: buyer.short, player: p.last })}</div>
@@ -768,8 +781,8 @@ function CmIncomingBidPanel({ offer, onClose }: { offer: TransferOffer; onClose:
       <ClassicFoot cols="3fr 1fr 1fr 1fr" className="cx-bid-answer">
         <button onClick={() => onClose()}>{t('common.back')}</button>
         <button onClick={() => { setWhy(reasonForStatus(statusCode(p))); setRejecting(true); }}>{t('cl.bid.reject')}</button>
-        <button onClick={() => onClose()}>{t('cl.bid.delay')}</button>
-        <button className="primary" onClick={() => send(changed ? 'counter' : 'accept')}>{t(changed ? 'cl.bid.negotiateBtn' : 'cl.bid.accept')}</button>
+        <button onClick={() => setAsk('delay')}>{t('cl.bid.delay')}</button>
+        <button className="primary" onClick={() => setAsk(changed ? 'counter' : 'accept')}>{t(changed ? 'cl.bid.negotiateBtn' : 'cl.bid.accept')}</button>
       </ClassicFoot>
     </div>
   );
