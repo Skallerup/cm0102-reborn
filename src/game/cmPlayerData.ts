@@ -748,24 +748,83 @@ function sortTable(rows: { club: number; p: number; pts: number; gf: number; ga:
 /** [0xae2d14] + 6·klub +5 – 0x5cccd0 (hver dag med dag-i-året % 7 = 0, 0x5cd776–0x5cd82e): truppens spillere med klager (+0x45 ≠ 0) og trupstatus
  *  1–3, verdensomdømme over 4750 eller +0x3d over 65, hvis kontrakt er med klubben (ikke dem med begivenhed +0x40 = 4 og Professionalism ≥ 10 –
  *  +0x40 har vi ikke). Kun klubber i et land med kontinent (+0x71), som ikke er landshold, og som enten spiller i en aktiv liga eller har omdømme
- *  ≥ 4500 (0x5cd5bd–0x5cd602). +4 = stemningen (clubMood, g.cmClubMood). */
+ *  ≥ 4500 (0x5cd5bd–0x5cd602). +4 = stemningen (clubMood, g.cmClubMood).
+ *  Samme løkke 0x5cd832–0x5cd95e, klagen 0x10000000 ("ikke tilfreds med managerens resultater"): klubben har en manager (+0xcf) med over 100
+ *  dage i jobbet (0x54cdb0 mod hans +0x3e), Comp_Stats' nederlag i træk (+0x2d) ≥ 2, spilleren uden flaget har over 30 dage i klubben, stemningen
+ *  +4 ≤ −3, trupstatus 1–3, manageren har ham ikke som yndling (0x547810), Loyalty < 18, Loyalty − nederlag < 5 og Ambition + nederlag > 15 →
+ *  0x867700(0x10000000). Med flaget: ingen sejre i træk (+0x19) → bestyrelsens tillid −5 (0x5cdde0: MANAGER_MANAGER-posten +6, 1..10000);
+ *  ellers Loyalty + sejre > 15, sejre > 2 eller stemningen > 0 → flaget ryddes (0x8674e0), ellers rand(Loyalty) > 5 → ryddes, ellers −5.
+ *  Stimerne læses kun for klubber med over 8 kampe – de andre beholder den forrige behandlede klubs værdier (sic), fra 0 hver dag. */
 function clubGrievanceCounts(g: GameState, squadOf: (club: number) => Player[]): void {
   const tab: Record<number, number> = (g.cmClubUnhappy = {});
   const mood: Record<number, number> = (g.cmClubMood = {});
+  const runs = leagueRuns(g);
+  const day = dayNum(g.date);
+  let wins = 0, losses = 0;                                                     // [esp+0x20]/[esp+0x2c] – 0x5cd57b
   for (const c of Object.values(g.clubs)) {
     const active = !!c.league && !g.leagues[c.league]?.hidden;
     if (!active && clubRepMem(g, c.id) < 4500) continue;
     mood[c.id] = clubMood(g, c);
+    if (active && g.comps[c.league]?.type === 'league') {
+      const row = g.comps[c.league].table.find((r) => r.club === c.id);
+      if (row && row.p > 8) { const r = runs.get(c.id); wins = r?.[0] ?? 0; losses = r?.[1] ?? 0; }
+    }
+    // klubbens manager (+0xcf): menneskets (manager −1) eller computerens staffpost
+    const mid = c.manager ?? 0;
+    const mgr = mid === -1 ? { joined: g.manager?.cmJoined || g.date, rel: undefined as number[] | undefined } : mid > 0 && g.staff[mid] ? { joined: g.staff[mid].cmJoined, rel: g.staff[mid].cmRel } : null;
+    const mgrDays = mgr ? (mgr.joined ? day - dayNum(mgr.joined.slice(0, 10)) : 10000) : 0;
     let n = 0;
     for (const p of squadOf(c.id)) {
       const k = p.cmContract;
-      if (!k || !k.b45 || cmGenerated(g, p) || p.loan) continue;                 // 0x5cd794: staff-id < [0xae2364]
-      const st = statusCode(p);
-      const wr = Math.round((p.cmRepMem ?? p.cmRep ?? [0, 0, p.rep * 2])[2] * 50);
-      if (st === 1 || st === 2 || st === 3 || wr > 4750 || s8(k.b3d) > 65) n = (n + 1) & 0xff;
+      if (cmGenerated(g, p)) continue;                                           // 0x5cd794: staff-id < [0xae2364]
+      if (k && k.b45 && !p.loan) {
+        const st = statusCode(p);
+        const wr = Math.round((p.cmRepMem ?? p.cmRep ?? [0, 0, p.rep * 2])[2] * 50);
+        if (st === 1 || st === 2 || st === 3 || wr > 4750 || s8(k.b3d) > 65) n = (n + 1) & 0xff;
+      }
+      if (!k) continue;
+      const loy = s8(Math.round(sh(p, 'loyalty'))), md = s8(mood[c.id]);
+      // 0x5cd832–0x5cd8f5
+      if (mgr && mgrDays > 100 && losses > 1 && !(k.b45 & 0x10000000)) {
+        const j = staffJoined(p);
+        const pDays = j ? day - dayNum(j.slice(0, 10)) : 10000;
+        const st = statusCode(p);
+        const fav = !!mgr.rel && (mgr.rel[6] === p.id || mgr.rel[7] === p.id || mgr.rel[8] === p.id);
+        if (pDays > 30 && md < -2 && (st === 1 || st === 2 || st === 3) && !fav && loy < 18 && loy - losses < 5
+          && s8(Math.round(sh(p, 'ambition'))) + losses > 15) {
+          const rand = cmRand(g.seed, p.id, day, 0x5cd8f5);
+          withFlagCtx(g, p, rand, () => cmFlagSet(k, 0x10000000));
+        }
+      }
+      // 0x5cd8fa–0x5cd95e
+      if (!(k.b45 & 0x10000000)) continue;
+      let penalty = wins === 0;
+      if (!penalty) {
+        if (loy + wins > 15 || wins > 2 || md > 0) penalty = false;
+        else penalty = cmRand(g.seed, p.id, day, 0x5cd935)(loy) <= 5;
+        if (!penalty) { cmFlagClear(k, 0x10000000); continue; }
+      }
+      const R = g.cmBoard?.rec[c.id];
+      if (R) { let v = s16(R.w6 - 5); if (v < 1) v = 1; else if (v > 10000) v = 10000; R.w6 = v; }
     }
     tab[c.id] = n;
   }
+}
+/** Comp_Stats +0x19/+0x2d (sejre/nederlag i træk) for hver klub i dens liga af spillets kampprogram (som engine/grid/gameTable.ts) */
+function leagueRuns(g: GameState): Map<number, [number, number]> {
+  const out = new Map<number, [number, number]>();
+  const fx = Object.values(g.fixtures).filter((f) => f.result && g.comps[f.comp]?.type === 'league')
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.id - b.id));
+  for (const f of fx) {
+    const r = f.result!;
+    for (const [club, gf, ga] of [[f.home, r.hg, r.ag], [f.away, r.ag, r.hg]] as const) {
+      if (g.clubs[club]?.league !== f.comp) continue;
+      const x = out.get(club) ?? [0, 0];
+      if (gf > ga) { x[0]++; x[1] = 0; } else if (gf === ga) { x[0] = 0; x[1] = 0; } else { x[0] = 0; x[1]++; }
+      out.set(club, x);
+    }
+  }
+  return out;
 }
 
 /** 0x5ce2d0 for én spiller med kontrakt (esi) i sin klub (edi) – de dele, der skriver +0x44/+0x45, og som kun læser det, vi har:
@@ -831,15 +890,82 @@ export const contractExtHook: { queue?: (g: GameState, p: Player) => void } = {}
  *  E 0x5d1eef: kontrakten er udløbet (type 1), ingen leje (0x4cf6d0), ingen bud/handel (0x8c5cf0/0x8c5e40/0x8c1870): n = (år − udløbsår)·365 −
  *    udløbsdag + dag i året; n > rand(100) → flag 2 (0x867700, hvis det ikke er sat) og +0x44 += s8(−n). Ellers 0x5d1fd4's flag 0x100
  *    (udlandet – ikke porteret). */
+/** 0x545e90(klub, staff): klubbens tiltrækning for spilleren (s16). Uden division (+0x57) klubbens omdømme +0x80; divisionen ikke indlæst
+ *  eller 500·divisionens omdømme (+0x69) ≤ klubbens → omdømmet ±500 for spillerens yndlings-/uvenklub (+0x65 +4..+0xc/+0x10..+0x18). Ellers
+ *  (uden række i tabellen 0) f = T[(placering − 1)·20/hold] (T 0x9b59c0: 2,1 … 0,9 – point pr. kamp), under 20 kampe vægtet med sidste sæsons
+ *  plads i samme division (+0x5b/+0x5f, ellers 1,3): ((20 − k)·L + k·f)·0,05; spilleren i klubben: f = (PlayerStats 0x7c1e30(6, 0x14, f) + f)·0,5
+ *  og ±500; v = klem(f·14 − 18, 0, 10); trunc(((10 − v)·omdømme + v·s16(500·divisionens))·0,1) + bonus. */
+export function clubPull_545e90(g: GameState, club: number, p: Player | null): number {
+  const c = g.clubs[club];
+  if (!c) return 0;
+  const rep = s16(clubRepMem(g, club));
+  const divRep = clubDivRep(g, club);
+  if (divRep === null) return rep;                                              // 0x545ea4
+  const rel = p?.cmRel;
+  const bonus = !p || p.club !== club ? 0 : rel && (rel[0] === club || rel[1] === club || rel[2] === club) ? 500
+    : rel && (rel[3] === club || rel[4] === club || rel[5] === club) ? -500 : 0;
+  const comp = g.comps[c.league];
+  const loaded = !!comp && comp.type === 'league' && !g.leagues[c.league]?.hidden;
+  if (!loaded || 500 * s16(divRep) <= rep) return s16(rep + bonus);           // 0x546116
+  const rows = sortTable(comp.table);
+  const i = rows.findIndex((r) => r.club === club);
+  if (i < 0) return 0;
+  const teams = comp.clubs.length;
+  const played = rows[i].p;
+  const pos = rows.some((r) => r.p > 0) ? i + 1 : 0;                            // +0x73 = 0 før første kamp
+  const idx = (k: number) => (k < 0 ? 0 : k > 19 ? 19 : k);
+  let e = pos - 1;
+  if (teams !== 0 && teams !== 20) e = Math.trunc((e * 20) / teams);
+  let f = T9b59c0[idx(e)];
+  if (played < 20) {
+    const st = g.cmClubStat?.[club];
+    const cid = +(c.league.match(/(\d+)$/)?.[1] ?? NaN);
+    let L = 1.3;
+    if (st && st.length > 3 && st[2] === cid) {
+      const lp = s8(st[3] ?? 0);
+      if (teams !== 0 && teams !== 20) L = T9b59c0[idx(Math.trunc((20 * lp - 20) / teams))];
+      else if (lp > 0 && lp < 21) L = T9b59c0[lp - 1];
+    }
+    f = ((20 - played) * L + played * f) * 0.05;
+  }
+  if (p && p.club === club) f = (statAvg(p, 6, 0x14, Math.fround(f)) + f) * 0.5;
+  let v = f * 14 - 18;
+  if (!(v >= 0)) v = 0; else if (v > 10) v = 10;
+  return s16(Math.trunc(((10 - v) * rep + s16(500 * s16(divRep)) * v) * 0.1) + bonus);
+}
+/** 0x9b59c0: point pr. kamp efter tabelplads (20-holds skala) */
+const T9b59c0 = [2.1, 2.025, 1.95, 1.85, 1.75, 1.65, 1.55, 1.45, 1.4, 1.35, 1.35, 1.3, 1.25, 1.2, 1.15, 1.1, 1.05, 1.0, 0.95, 0.9];
+
 function contractLengthDay(g: GameState, p: Player, c: CmContract, rand: (n: number) => number, age: number, w2c: number | null): void {
   const k = p.contract!;
   const loy = s8(sh(p, 'loyalty'));
   const start = k.cmStart ?? p.joined ?? p.cmJoined;
   // A / B
+  const mor = s8(Math.round(p.morale ?? 10));
   if (!(c.b45 & 1)) {
-    const x = s8(c.b44) + 10 * (s8(Math.round(p.morale ?? 10)) - 10);
-    if (x < 25 && rand(50) === 0) return;
-  } else if (rand(50) === 0 || age > 31) return;
+    const x = s8(c.b44) + 10 * (mor - 10);
+    if (x < 25 && rand(50) === 0) {                                             // 0x5d1483
+      let n = start ? daysBetween54cdb0(g.date, start) : 0;
+      if (n < 0) return;
+      if (n > 650) n = 650;                                                     // (landsholdsbonussen 0x5d14db: staff +0x24 – 0 hos os)
+      if (n < 250) return;
+      let v = curRep(p) + 2 * (n - 25 * (mor + 2 * loy + 22));
+      if (v > 9000) v = 9000;
+      if (v <= s16(clubRepMem(g, p.club)) || v <= clubPull_545e90(g, p.club, p) || age >= 31) return;
+      c.b44 = clamp100(s8(c.b44) - 50);
+      cmFlagSet(c, 1);
+      cmFlagClear(c, 2);
+      return;
+    }
+  } else if (rand(50) === 0 || age > 31) {                                     // 0x5d15cd
+    let n = start ? daysBetween54cdb0(g.date, start) : 0;
+    if (n < 0) n = 0; else if (n > 650) n = 650;
+    let v = curRep(p) + 2 * (n - 25 * (mor + 2 * loy + 22));
+    if (age > 31) v += 150 * (31 - age);
+    const pull = clubPull_545e90(g, p.club, p);
+    if (rand(400) + v + 200 < pull) { c.b44 = clamp100(s8(c.b44) + 50); cmFlagClear(c, 1); }
+    return;
+  }
   // C
   if (c.b45 & 2 && start && daysBetween54cdb0(g.date, start) < 60) { cmFlagClear(c, 2); return; }
   // D

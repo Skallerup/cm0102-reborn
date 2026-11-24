@@ -53,7 +53,9 @@ describe('Europa i originalens format', () => {
     const oDays = new Set(ORACLE_UEFA.split(' ').map((x) => x.split(':')[0]));
     const uefa = Object.values(g.fixtures).filter((x) => x.comp === 'UEFA');
     expect(uefa.length).toBe(ORACLE_UEFA.split(' ').reduce((a, x) => a + +x.split(':')[1], 0));
-    expect(uefa.filter((f) => !oDays.has(f.date) && g.clubs[f.home].nation !== eng && g.clubs[f.away].nation !== eng).map((f) => f.date)).toEqual([]);
+    // (24/11) og hjemmeholdet har fælles stadion med en anden klub, der spiller hjemme samme uge (Inter/Milan – 0x522610 tor → ons)
+    const shared = (cid: number) => Object.values(g.clubs).some((c) => c.id !== cid && !!c.stadium && c.stadium === g.clubs[cid].stadium);
+    expect(uefa.filter((f) => !oDays.has(f.date) && g.clubs[f.home].nation !== eng && g.clubs[f.away].nation !== eng && !shared(f.home)).map((f) => f.date)).toEqual([]);
     expect(g.comps.CL.finished && g.comps.UEFA.finished).toBe(true);
     // koderne som oraklets poster: 3. kvalifikationsrunde (273/274, +0x38 1024 → 1027 i andet ben), grupperne (+0x32 1085.., +0x34 = spilledag),
     // finalen (150, 131, neutral bane), UEFA Cup'ens 1. runde (+0x3a = 7) og 3. runde (8)
