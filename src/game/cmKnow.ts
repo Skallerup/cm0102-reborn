@@ -19,6 +19,7 @@ import type { GameState, Player } from './types';
 import { cmRand, cmScoutLogic, nationRepMem } from './cmPlayerData';
 import { addDays, ageOn, daysBetween } from './dates';
 import { intlOnDuty } from './cmFitnessGame';
+import { natPlayers } from './cmN88';
 
 /** niveau → GameState.knowledge (procent) */
 export const KNOW_PCT = [0, 33, 66, 100];
@@ -67,13 +68,8 @@ function capsKnown(g: GameState, p: Player): boolean {
 }
 /** 0x4cf5a0 → kontraktens klub (+4): moderklubben for en udlejet, 0 uden kontrakt */
 const contractClub = (p: Player): number => (p.club ? (p.loan?.from ?? p.club) : 0);
-/** nation +0x88: antal indlæste spillere af nationaliteten (0x524d70) */
-const N88 = new WeakMap<GameState, Map<number, number>>();
-function nat88(g: GameState, n: number): number {
-  let m = N88.get(g);
-  if (!m) { m = new Map(); for (const p of Object.values(g.players)) if (!p.virtual) m.set(p.nation, (m.get(p.nation) ?? 0) + 1); N88.set(g, m); }
-  return m.get(n) ?? 0;
-}
+/** nation +0x88: antal indlæste spillere af nationaliteten (0x524d70) – fælles optælling (cmN88.ts, følger med gem) */
+const nat88 = (g: GameState, n: number): number => natPlayers(g, n);
 /** 0x7c6e30 (spiller, klub): 0 i klubben nu, ellers år siden han sidst spillede der (spillerhistorikken 0x7c3e40), −1 aldrig.
  *  Historikkens år = sæsonens startår (*estimeret*: originalens årstal i historikposten +0xd7 er ikke målt) */
 function yearsSince(g: GameState, p: Player, club: number): number {

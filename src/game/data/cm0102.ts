@@ -93,6 +93,8 @@ export interface CMWorld extends WorldData {
     /** 0x5267c0 database_trim_club_table: pr. klub-id 1 = altid i hukommelsen, ellers de nationer (indeks), hvis valg beholder den (cm0102.ts) –
      *  byggescriptet beholder kun de skjulte klubber i de spilbare lande; newgame.ts lægger dem på verdenen efter de valgte lande */
     clubMem?: Record<number, 1 | number[]>;
+    /** clubMem og CMRatings.tc gælder alle klubber/klubspillere (også de spilbare landes ligaer) – build-cm-data.mts, newgame.ts */
+    memAll?: 1;
     /** (MODERN_PARITY 5+6, kun 2026/27's world-cm.json – byggescriptet) stabens hele ikke-spillerpost (CMWorld.staff[11]) pr. person-id (staff[9]):
      *  originalens spilstart cmStaffInit.ts → Staff.cmNp/ca, som træningen 0x8b2880, udviklingen 0x5ce2d0 og fysioterapeuterne i injury.cpp læser.
      *  (Den originale database har posten i staff[11] i world-filen.) */

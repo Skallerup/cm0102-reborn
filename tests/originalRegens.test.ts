@@ -34,7 +34,9 @@ describe('regens som i originalen', () => {
     for (const p of old) { const i = pas.indexOf(Math.max(20, p.pa)); // makePlayer: PA mindst 20
       expect(i).toBeGreaterThanOrEqual(0); pas.splice(i, 1); }
     expect(g.regenQueue ?? []).toHaveLength(0);
-    for (const p of fresh) { expect(ageOn(p.dob, g.date)).toBeLessThanOrEqual(26); expect(p.ca).toBeLessThanOrEqual(p.pa); }
+    // (24/11) ≤ 27: et ikke-indlæst land med under 350 spillere i hukommelsen (0x7abea0, sti 1: rand(5) + 23) – med 0x524d70 for alle lande har
+    // udlandet kun hukommelsens spillere, så stien bruges som i originalen
+    for (const p of fresh) { expect(ageOn(p.dob, g.date)).toBeLessThanOrEqual(27); expect(p.ca).toBeLessThanOrEqual(p.pa); }
     // ingen årgang i marts
     const n = Object.keys(g.players).length;
     youthIntake();

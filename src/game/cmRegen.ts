@@ -22,15 +22,10 @@ import { isHumanClub } from './humans';
 import { npShown } from './cmStaffInit';
 import { KEY_CLUB_GLOBALS } from './cmKeyIds';
 import { squad } from './state';
+// nation +0x88 (0x524d70): én optælling pr. spil, fælles med bestyrelsen (cmBoardGame.ts natPlayers – følger med gem via carry.ts)
+import { natPlayers } from './cmN88';
 
 type Rand = (n: number) => number;
-/** nation +0x88: de indlæste spillere af nationaliteten (0x524d70) – én optælling pr. spil (som cmBoardGame.ts natPlayers) */
-const n88Cache = new WeakMap<GameState, Record<number, number>>();
-function natPlayers(g: GameState, n: number): number {
-  let m = n88Cache.get(g);
-  if (!m) { m = {}; for (const p of Object.values(g.players)) if (!p.virtual) m[p.nation] = (m[p.nation] ?? 0) + 1; n88Cache.set(g, m); }
-  return m[n] ?? 0;
-}
 const ftol = Math.trunc;
 const s16 = (v: number) => ((v & 0xffff) << 16) >> 16;
 const dayNo = (iso: string) => Math.round(Date.parse(iso + 'T00:00:00Z') / 86400000);

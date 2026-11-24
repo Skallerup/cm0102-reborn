@@ -345,13 +345,15 @@ if (playableNat.size) {
   }
   w.clubs = w.clubs.filter((c) => !lgOf.get(c[4] as string)?.hidden || (cmem ? (c[0] as number) !== 0 && memOk(c[0] as number) : withP.has(c[0] as number)));
   if (cmem) {
-    const keepMem = new Set(w.clubs.filter((c) => lgOf.get(c[4] as string)?.hidden).map((c) => c[0] as number));
+    // (24/11) for ALLE klubber (også de spilbare landes ligaer): newgame.ts trimmer dem for de ikke-valgte lande (cmRaw.memAll)
+    const keepMem = new Set(w.clubs.map((c) => c[0] as number));
     for (const k of Object.keys(cmem)) {
       const id = Number(k), v = cmem[id];
       if (!keepMem.has(id)) delete cmem[id];
       else if (Array.isArray(v)) cmem[id] = v.filter((n) => playableNat.has(n));
     }
   }
+  if (cmem) (w.cmRaw as { memAll?: 1 }).memAll = 1;
 } else if (w.cmRaw?.clubMem) delete w.cmRaw.clubMem;
 // (20/11, UEFA-pladserne 0x904580/0x902b90) den originale database: originalens hukommelse har ALLE de europæiske landes klubber – også uden
 // spillere (oraklet 14/7-01, størrelse 2: Albaniens, Færøernes, Liechtensteins … klubber i UEFA Cup'en med 0 spillere; fyldspillerne 0x90d2f0 stiller
@@ -453,9 +455,15 @@ for (const [league, fix] of Object.entries(DIV_FIXES)) {
 const keptPlayers = new Set(w.players.map((p) => p[F.id] as number));
 for (const k of Object.keys(w.ratings)) if (!keptPlayers.has(Number(k))) delete w.ratings[Number(k)];
 // tc kun for spillerne i de skjulte ligaer uden for talentudvalget (de øvrige er altid med)
+// (24/11) med klubtrimmet for alle (cmRaw.memAll): tc for ALLE klubspillere – 0x524d70 beholder ved spilstart kun de valgte landes og udvalget fra
+// de øvrige (fx Serie A uden Italien valgt: oraklet 222 spillere, før alle 1.725); newgame.ts dropper de øvrige. 0 = aldrig i hukommelsen
+const memAll = !!(w.cmRaw as { memAll?: 1 } | undefined)?.memAll;
 for (const p of w.players) {
   const r = w.ratings[p[F.id] as number], club = p[F.club] as number;
-  if (r && r.tc !== undefined && !(club && hiddenLeagueOf(club) && !hiddenKeep.has(p[F.id] as number))) delete r.tc;
+  if (!r || r.tc === undefined) continue;
+  if (memAll && club) {
+    if (Array.isArray(r.tc)) { r.tc = r.tc.filter((n) => playableNat.has(n)); if (!r.tc.length) r.tc = 0; }
+  } else if (!(club && hiddenLeagueOf(club) && !hiddenKeep.has(p[F.id] as number))) delete r.tc;
 }
 for (const k of Object.keys(w.clubRep)) if (!keptClubs.has(Number(k))) delete w.clubRep[Number(k)];
 for (const k of Object.keys(w.clubColors)) if (!keptClubs.has(Number(k))) delete w.clubColors[Number(k)];

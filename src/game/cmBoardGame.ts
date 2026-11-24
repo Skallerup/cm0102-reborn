@@ -49,6 +49,8 @@ import { DEMONYM } from '../ui/demonyms';
 import { natCompHook } from './hooks';
 import { holidayHooks, holidayOpt } from './cmHoliday';
 import { NO_CARRY, registerCarry } from './carry';
+import { natPlayers } from './cmN88';
+export { natPlayers };
 import { FRIENDLY_COMP } from './cmFriendlyOffers';
 
 /** club_comp.dat "Friendly" (Friendly +4 – 0x5c6710) */
@@ -463,13 +465,6 @@ function clubList(g: GameState): number[] {
   if (g.cmBoard?.nm) for (let n = 0; n < g.nations.length; n++) if ((g.cmNationCont?.[n] ?? -1) >= 0) out.push(natClub(n));
   return out;
 }
-/** nation +0x88: de indlæste spillere af nationaliteten (0x524d70) – én optælling pr. spil */
-const n88Cache = new WeakMap<GameState, Record<number, number>>();
-export function natPlayers(g: GameState, n: number): number {
-  let m = n88Cache.get(g);
-  if (!m) { m = {}; for (const p of Object.values(g.players)) if (!p.virtual) m[p.nation] = (m[p.nation] ?? 0) + 1; n88Cache.set(g, m); }
-  return m[n] ?? 0;
-}
 
 /** spillets genererede stab: ingen ikke-spillerpost (np = NULL) */
 function noNp(s: Staff): Person {
@@ -492,6 +487,9 @@ function interestEnv(g: GameState, b: BoardEnv): InterestEnv {
       italy: nIdx('Italy'), croatia: nIdx('Croatia'), yugoslavia: nIdx('Yugoslavia') };
     idCache.set(g, ids);
   }
+  // (24/11) [0x9cf764] "A Lower Division" og "Europe" læses levende: cmFinanceNewGame sætter g.cmLowerDiv EFTER cmBoardInit i createGame, så et
+  // cachet −1 gav et nyt spil en anden vilje (0x844780 8b: klubber i Lower Division ×0,1) end det samme spil gemt og indlæst (357)
+  ids.lowerDiv = g.cmLowerDiv ?? -1; ids.europe = g.cmEurope ?? -1;
   const staffOf = (p: Person) => (p.human ? null : g.staff[p.id] ?? null);
   return {
     b,

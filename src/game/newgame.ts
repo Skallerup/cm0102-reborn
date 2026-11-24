@@ -303,6 +303,7 @@ export function createGameBase(world: WorldData, o: NewGameOptions): NewGameCtx 
   // 0x5267c0 database_trim_club_table (world-filens cmRaw.clubMem: 1 = altid, ellers de nationer, hvis valg beholder klubben) – de spilbare
   // landes skjulte klubber også uden spillere i hukommelsen (fx Englands non-league med omdømme over 500)
   const clubMem = cm?.cmRaw?.clubMem;
+  const memAll = !!cm?.cmRaw?.memAll && !!clubMem;
   const memKeep = (id: number) => { const v = clubMem?.[id]; return v === undefined ? hiddenWithPlayers.has(id) : v === 1 || v.some((n) => o.activeNations.includes(n)); };
   // Klubber
   for (const [id, name, short, nation, league, stadium, seats] of world.clubs) {
@@ -310,6 +311,9 @@ export function createGameBase(world: WorldData, o: NewGameOptions): NewGameCtx 
     // hukommelsen også uden spillere, og Europas pladser går til dem (fyldspillerne 0x90d2f0 stiller holdet)
     // (24/11) world-filer med klubtrimmet (clubMem) har det for alle lande – dér afgør det også HE<land>
     if (cm && leagueById.get(league)?.hidden && !memKeep(id) && !(mode === 'authentic' && league.startsWith('HE') && clubMem?.[id] === undefined)) continue;
+    // (24/11) world-filer med trimmet for alle klubber (cmRaw.memAll): også de spilbare, ikke-valgte landes ligaer (fx Serie A uden Italien) – kun
+    // klubberne, 0x5267c0 beholder for de valgte lande; deres spillere kun dem, 0x524d70 beholder (tcOk nedenfor)
+    if (memAll && !memKeep(id)) continue;
     const h = hash(id);
     g.clubs[id] = {
       id, name, short, nation, league, stadium: stadium || `${short} Stadium`, seats: seats || 5000,
@@ -401,7 +405,8 @@ export function createGameBase(world: WorldData, o: NewGameOptions): NewGameCtx 
         if (rt.fr) p.cmFree = rt.fr;
         // staff +0x1e (anden nationalitet) og +0x3e (kom til klubben) – arbejdstilladelsens historik (cmPermit.ts)
         if (rt.n2 !== undefined) p.cmNation2 = rt.n2;
-        if (cmStartGame && (rt.tm === 1 || rt.tf === 1)) p.cmMem = 1;
+        // (24/11) med trimmet for alle (memAll) er alle, der kommer med, i originalens hukommelse – også fx en englænder i Celtic (tc [England])
+        if (cmStartGame && (rt.tm === 1 || rt.tf === 1 || memAll)) p.cmMem = 1;
         // oraklet (K8): ankomstdatoen står som databasens, dog højst 5 uger før spilstarten (9/6-2001 for 14/7: databasens senere datoer, fx 27/7,
         // klippes); klubløse får databasens indlæsningsdato (1/1) – før stod de fremtidige datoer og 1996-01-02 uændret
         // (2026/27) databasens ankomstdato står med 2001-uret – skubbes som fødsels- og kontraktdatoerne (build-cm-data.mts SHIFT)
@@ -465,6 +470,9 @@ export function createGameBase(world: WorldData, o: NewGameOptions): NewGameCtx 
     // ægte CM 01/02 med den originale database: truppen er databasens (Man Utd 48 på listen club+0xd7, ikke 50 – 0x8cd450 tæller dem mod
     // grænsen på 50, så opdigtede positionsfyld gav "not enough space" ved hvert køb); kun tynde trupper fyldes op
     if (cmStartGame && sq.length >= 22) continue;
+    // (24/11) trimmet for alle (memAll): de ikke-valgte landes klubber har kun hukommelsens spillere (0x524d70) – som de skjulte klubber ingen opdigtede
+    // (oraklet 14/7-01, England valgt: Italiens klubber 222 spillere); kampene stiller fyldspillerne 0x90dae0 (cmVirtual.ts)
+    if (cmStartGame && memAll && !o.activeNations.includes(c.nation)) continue;
     const lvl = sq.length >= 12 ? median(sq.map((p) => p.ca)) : (leagueLevel.get(c.league) ?? 90) - 4;
     fillSquad(c, sq, lvl, date, seed);
   }

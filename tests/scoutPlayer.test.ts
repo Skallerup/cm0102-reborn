@@ -17,7 +17,7 @@ describe('Scout Player (ægte tilstand, original DB, masking)', () => {
     const g = gs();
     const scout = Object.values(g.staff).find((s) => s.club === g.userClub && s.role === 'scout');
     expect(scout, 'klubben har en spejder').toBeTruthy();
-    const unknown = Object.values(g.players).filter((p) => p.club && p.club !== g.userClub && knowledgeOf(p) < 45 && p.ca > 100 && p.ca < 140);
+    const unknown = Object.values(g.players).filter((p) => p.club && p.club !== g.userClub && g.clubs[p.club].nation === eng && knowledgeOf(p) < 45 && p.ca > 100 && p.ca < 140);
     const [target, second] = unknown;
     // en igangværende søgning må ikke afbrydes af en spillerbestilling
     scout!.assignment = { kind: 'nation', target: eng, since: g.date, found: [] };

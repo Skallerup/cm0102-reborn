@@ -35,7 +35,9 @@ const g = gs();
 const key = (n: string, nat: string) => `${n}|${nat}`;
 const U = new Map(Object.values(g.clubs).map((c) => [key(c.name, g.nations[c.nation]?.name ?? ''), c]));
 const OK = new Map([...O.values()].map((r) => [key(r.name, r.nat), r]));
-const nplay = new Map<number, number>(); for (const p of Object.values(g.players)) if (p.club) nplay.set(p.club, (nplay.get(p.club) ?? 0) + 1);
+// DBONLY=1: kun databasens spillere (uden spillets opdigtede trupfyld og fyldspillerne cmVirtual.ts til Europas kampe før startdatoen)
+const dbIds = new Set(w.players.map((r) => r[0] as number));
+const nplay = new Map<number, number>(); for (const p of Object.values(g.players)) if (p.club && (!process.env.DBONLY || dbIds.has(p.id))) nplay.set(p.club, (nplay.get(p.club) ?? 0) + 1);
 const onlyO = [...O.values()].filter((r) => !U.has(key(r.name, r.nat))), onlyU = [...U.entries()].filter(([k]) => !OK.has(k)).map(([, c]) => c);
 const nameMis: R[] = [];
 console.log(`oraklet ${O.size} klubber, vi ${U.size}; kun oraklet ${onlyO.length}, kun os ${onlyU.length}, navn forskelligt ${nameMis.length}`);
