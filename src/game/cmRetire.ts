@@ -251,8 +251,12 @@ function findNew(g: GameState): void {
   const st = stateOf(g);
   const rand = cmRand(g.seed ?? 0, dayNo(g.date), 0x7a5790);
   const have = new Set([...st.list, ...(st.ext ?? [])].map((e) => e.id));
+  // 0x7a8050/0x7a80ce: Shortlist_Manager 0x842080(staff, 0) – personen står i et af ønskelisternes par (spiller, klub) (0x757ea0: klub −1 =
+  // enhver klub). Med ønskelisterne (cmShortlistGame.ts) er det parrene i g.cmSlPairs – før spillets egen Club.shortlist (noteInterest: alle,
+  // en computerklub nogensinde har budt på), så langt flere klubløse slap for 0x10-pensionen dag 80 (K7: klubløse <21 år 30/3-02 56 mod 41)
   const listed = new Set<number>();
-  for (const c of Object.values(g.clubs)) for (const id of c.shortlist ?? []) listed.add(id);
+  if (g.cmSlPairs) for (const [id] of g.cmSlPairs) listed.add(id);
+  else for (const c of Object.values(g.clubs)) for (const id of c.shortlist ?? []) listed.add(id);
   for (const p of Object.values(g.players)) {
     if (p.virtual || have.has(p.id) || p.cmRetire || p.contract?.cmB49) continue;
     const club = p.club ? g.clubs[p.club] : undefined;

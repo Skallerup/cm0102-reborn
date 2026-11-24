@@ -605,11 +605,13 @@ function writeOffers(S: SlMem): void {
     i = j;
   }
   // 0x8cb9a0 (0x8cbb34): et aftalt fremtidigt skifte – spillerens +0x86e-byte |= 0x10 (get_future_transfer 0x8cca10; ønskelisterne springer ham over)
+  const futFree = new Set<number>();
+  for (const o of S.g.offers) if (o.cmAi && o.status === 'accepted' && o.cmFut && !o.seller) futFree.add(o.player);
   for (const [p] of S.M.W.players) {
     const pm = memOf.get(p.id);
     if (pm === undefined) continue;
     const f = (T86E0 + 8 * pm) >>> 0, b = m.u8(f);
-    if (p.contract?.futureClub) { if (!(b & 0x10)) m.w8(f, b | 0x10); } else if (b & 0x10) m.w8(f, b & ~0x10);
+    if (p.contract?.futureClub || (!p.club && futFree.has(p.id))) { if (!(b & 0x10)) m.w8(f, b | 0x10); } else if (b & 0x10) m.w8(f, b & ~0x10);
   }
 }
 
@@ -1923,7 +1925,9 @@ function addBid(S: SlMem, r: number, loan: boolean, lt?: { until: string; share:
   // vinduet åbner (0x8ced40 svarede grund 9), 3/4 = forkontrakt, 5 = kompensation); før kun for kontrakttilbuddene (+0x2f)
   const tmN = m.u8(r + 0x30) & 0xf;
   const until = k && (tmN === 3 || tmN === 4) ? isoOf(m.s16(k + 0x2d), m.u16(k + 0x2f)) : undefined;
-  const tmx = !loan && k ? { tm: tmN, ...(until ? { until } : {}) } : {};
+  // (også de klubløse: 0x8c2f50 → 0x8c3310(bud, 0) bekræfter for den manglende sælger, og nibble 1 i det lukkede vindue giver 0x8cee70's dato =
+  // vinduets første dag → add_future_transfer 0x8cb9a0 – oraklets klubløse, der skriver under 4/6-02)
+  const tmx = !loan && (k || free7) ? { tm: tmN, ...(until ? { until } : {}) } : {};
   if (free7) {
     const rr = cmRand(g.seed ?? 0, p.id, buyer, dayNum(g.date), 0x4cd230); const dd = rr(5) + 1;
     f7 = { free7: true, dd, bl: days, r4: rr(2) + 4, ...(k ? { ct: ((m.u8(k + 0x35) << 26) >> 26), exp: isoOf(m.s16(k + 0x2d), m.u16(k + 0x2f)) } : {}) };

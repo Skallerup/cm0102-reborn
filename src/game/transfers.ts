@@ -1994,7 +1994,8 @@ export function cmShortlistApply(events: SlEvent[]) {
     o.cmAi = true;
     o.respondBy = addDays(g.date, e.days ?? 0);
     // build_bid's tidsnibble +0x30 (0x8cee70) og kontraktens udløb – alle køb hos en klub (ikke kun forkontrakterne)
-    if (p.club && !e.loan && e.tm !== undefined) { o.cmTime = e.tm; if (e.until) o.cmUntil = e.until; }
+    // (også de klubløse: 0x8c3310 kører 0x8cee70 for alle bud med nibble ≠ 0)
+    if (!e.loan && e.tm !== undefined) { o.cmTime = e.tm; if (e.until) o.cmUntil = e.until; }
     // (K7c #3) også en spiller med kontrakt hos en computerklub (forkontrakt/Bosman, 0x8be81e: +0x2f → tilstand 7) – ingen sælger svarer
     if (e.free7 && e.k && (!p.club || !isHumanClub(p.club) || human7)) {
       if (p.club) CM_AIAI.pre++;
@@ -2218,7 +2219,9 @@ function cmAiAiDue(cx: SlDueCtx) {
     // i købers vindue fra i dag/kontraktens udløb, 0x8cf0e0; 3: dagen efter udløbet; 5: 0x8d0bb0). Senere end i dag → de andre bud falder
     // (0x8c47d0) og add_future_transfer 0x8cb9a0 (tilstand 0x13): skiftet sker på datoen (0x8cbbe0 – cmFutureDue). Et køb i det lukkede
     // vindue (build_bid: 0x8ced40 grund 9 → nibble 1) gennemføres altså, når vinduet åbner – oraklets spids 4/6-02, 3/6-03, 1/6-04.
-    if (o.seller && o.cmK && o.cmTime) {
+    // Klubløs (ingen sælger): 0x8c2f50's 0x8c3310(bud, 0) bekræfter for sælgeren (0x8c3367 → tilstand 0xe), så også hans aftale i det lukkede
+    // vindue (nibble 1) bliver et fremtidigt skifte på vinduets første dag – 0x8cbbe0: 0x8c7690 og handlen 0x8c9390 (klubløs, art 0).
+    if (o.cmK && o.cmTime) {
       const date = cmCompletionDate(g, o);
       if (date > g.date) {
         CM_AIAI.preFut++;
@@ -2237,17 +2240,7 @@ function cmAiAiDue(cx: SlDueCtx) {
     CM_AIAI.done++;
     cmTmCollapseOthers(o);
     if (!o.seller) {
-      // klubløs: computerklubbens kontrakt (0x4cda70/0x85fc50 – aiNewContract), som før samme dag
-      CM_AIAI.freeDone++;
-      p.contract = aiNewContract(p, buyer, () => ({ wage: wageDemand(p, buyer), expires: `${year(g.date) + preferredYears(p)}-06-30` }));
-      recordMove(p, buyer.id, 0);
-      cmSlMoved(g, p, buyer.id, buyer.id);   // 0x8c9720/0x8c9390: ønskelisterne (før skiftet)
-      setClub(p, buyer.id);
-      cmMovedToClub(g, p);
-      p.joined = g.date;
-      o.status = 'completed';
-      cmTmClose(o, 0x14, 10);
-      forEachHuman(() => { originalTransferNews(p, buyer, undefined, 0, false); });
+      cmSignFree(o, p, buyer);
       closed = true;
       continue;
     }
@@ -2262,6 +2255,20 @@ function cmAiAiDue(cx: SlDueCtx) {
   if (closed || g.offers.some((o) => o.cmAi && !cmOpen(o) && !cmFutOpen(o))) g.offers = g.offers.filter((o) => !o.cmAi || cmOpen(o) || cmFutOpen(o));
 }
 const cmFutOpen = (o: TransferOffer) => o.status === 'accepted' && !!o.cmFut;
+/** klubløs skriver under hos computerklubben: computerklubbens kontrakt (0x4cda70/0x85fc50 – aiNewContract) og handlen 0x8c9390 */
+function cmSignFree(o: TransferOffer, p: Player, buyer: Club): void {
+  const g = gs();
+  CM_AIAI.freeDone++;
+  p.contract = aiNewContract(p, buyer, () => ({ wage: wageDemand(p, buyer), expires: `${year(g.date) + preferredYears(p)}-06-30` }));
+  recordMove(p, buyer.id, 0);
+  cmSlMoved(g, p, buyer.id, buyer.id);   // 0x8c9720/0x8c9390: ønskelisterne (før skiftet)
+  setClub(p, buyer.id);
+  cmMovedToClub(g, p);
+  p.joined = g.date;
+  o.status = 'completed';
+  cmTmClose(o, 0x14, 10);
+  forEachHuman(() => { originalTransferNews(p, buyer, undefined, 0, false); });
+}
 /** TRANSFER_MANAGER::process_due_future_transfers 0x8cbbe0 (fra daily_update 0x8c5880 efter buddene): de aftalte skifter, hvis dato er kommet –
  *  arbejdstilladelsen (0x8c7690 – completeTransfer) og handlen 0x8c9390 (beløb 0, art 4 – 0x8c9996); buddet får tilstand 0x14 (10 dage).
  *  Er han ikke længere i sælgerens klub, eller er skiftet væk, falder buddet; ellers check_offer_restrictions 0x8cfc90 (grund 9 tæller ikke). */
@@ -2278,6 +2285,7 @@ function cmFutureDue(): boolean {
     if (cmAiRulesReason(g, o, true)) { CM_AIAI.rules++; o.status = 'collapsed'; cmTmClose(o, 0x10, 20); continue; }
     o.status = 'negotiating';
     CM_AIAI.preDone++;
+    if (!o.seller) { cmSignFree(o, p, buyer); continue; }
     if (completeTransfer(o, wageDemand(p, buyer), preferredYears(p))) { o.status = 'completed'; cmTmClose(o, 0x14, 10); }
     else cmTmClose(o, 0x10, 20);
   }
