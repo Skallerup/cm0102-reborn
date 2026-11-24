@@ -63,6 +63,8 @@ export interface CMWorld extends WorldData {
     crowd?: Record<number, [number, number, number, number, number, number, number, number, number]>;
     /** city.dat (56 bytes pr. by, i fil-rækkefølge = hukommelsens [0xae23ac]): +0x23 og +0x2b (doubles) fladt [c23, c2b, c23, c2b, …] */
     cities?: number[];
+    /** city.dat +4 (navn, 31 bytes) for de byer, som spillende klubbers stadioner ligger i: by-id (= crowd[4]) → navn – Stages-skærmens by-kolonne */
+    cityNames?: Record<number, string>;
     /** nation.dat +0x7e pr. nationsindeks (udeholdets land i afstandsleddet sub_85d8a0) */
     nation7e?: number[];
     /** nation.dat +0x85 (s8) pr. nationsindeks – staffStatens ungdomsled 0x5ce8f0 ((+0x85·0,2 + 0,6)·klubbens omdømme) */
@@ -343,6 +345,8 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
   const nationVal = new Map<number, [number, number, number]>(); // nation +0x7E (økonomisk niveau 1-3), +0x8E (omdømme, i16), +0x85 (s8 – staffState 0x5ce8f0)
   // bestyrelse/managerjob (cmBoard.ts): nation +0x75 (u8), +0x85 (s8), +0x88 (i32) pr. nationsindeks
   const nationBoard: [number, number, number][] = [];
+  const cityName: string[] = [];
+  if (files['city.dat']) { const Ci = new Reader(files['city.dat']); for (let o = 0; o + 56 <= files['city.dat'].byteLength; o += 56) cityName.push(Ci.str(o + 4, 31).trim()); }
   // viljen 0x844780: nation +0x71 (verdensdelen, continent.dat-id) og "Europe"s id
   const nationCont: number[] = [];
   const nation76: number[] = [];
@@ -1109,6 +1113,7 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
         return [c.id, [c.avgAtt, c.minAtt, c.maxAtt, st ? c.stadium : -1, st ? st[0] : -1, st ? st[1] : -1, ...c.rivals.map((r) => (r >= 0 ? r : -1))] as [number, number, number, number, number, number, number, number, number]];
       })),
       ...(cities ? { cities } : {}),
+      ...(cityName.length ? { cityNames: Object.fromEntries([...new Set(rawClubs.filter((c) => clubRep[c.id] !== undefined && inGame.has(c.id)).map((c) => stadiumRaw.get(c.stadium)?.[0] ?? -1))].filter((i) => i >= 0 && cityName[i]).map((i) => [i, cityName[i]])) } : {}),
       seats: Object.fromEntries([...new Set(rawClubs.filter((c) => clubRep[c.id] !== undefined && inGame.has(c.id) && stadiumRaw.has(c.stadium)).map((c) => c.stadium))]
         .filter((id) => stadiumSeats.has(id)).map((id) => [id, stadiumSeats.get(id)!])),
       stadNear: Object.fromEntries([...new Set(rawClubs.filter((c) => clubRep[c.id] !== undefined && inGame.has(c.id) && stadiumRaw.has(c.stadium)).map((c) => c.stadium))]

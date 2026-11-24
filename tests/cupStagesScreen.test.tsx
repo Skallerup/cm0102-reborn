@@ -50,7 +50,11 @@ describe('Champions League: Stages-fanen', () => {
     expect(html).toContain('Klub1');
     expect(html).not.toContain('Phase 1 Group D');
     expect((html.match(/<span class="cx-cup-q">/g) ?? []).length).toBe(2);
+    // by-kolonnen: bynavnet fra city.dat (cmCityNames via cmCrowd[klub][4]), ellers stadionnavnet
     expect(html).toContain('Klub1 Arena');
+    g.cmCrowd = { 1: [0, 0, 0, 0, 7, 0, -1, -1, -1] }; g.cmCityNames = { 7: 'Nantes' };
+    expect(renderToString(createElement(ClassicCup, { comp }))).toContain('>Nantes<');
+    delete g.cmCrowd; delete g.cmCityNames;
     // standard: brugerens egen gruppe
     route.current = { name: 'competitions', state: { 'cup:CL': 'rounds' } };
     expect(renderToString(createElement(ClassicCup, { comp }))).toContain('Phase 1 Group D');

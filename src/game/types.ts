@@ -1338,6 +1338,8 @@ export interface GameState {
   cmLastCupWin?: Record<number, number>;
   cmCrowd?: Record<number, [number, number, number, number, number, number, number, number, number]>;
   cmCities?: number[];
+  /** by-id (cmCrowd[klub][4]) → bynavn (city.dat +4) – turneringsskærmens by-kolonne; mangler i ældre spil (så stadionnavnet) */
+  cmCityNames?: Record<number, string>;
   cmNation7e?: number[];
   /** nation +0x85 pr. nationsindeks (staffStatens ungdomsled 0x5ce8f0 – cmPlayerData.ts) */
   cmNation85?: number[];

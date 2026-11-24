@@ -236,6 +236,7 @@ export function createGameBase(world: WorldData, o: NewGameOptions): NewGameCtx 
     if (raw.crowd) g.cmCrowd = Object.fromEntries(Object.entries(raw.crowd).map(([k, v]) => [k, v.slice()])) as GameState['cmCrowd'];
     if (raw.stadNear) g.cmStadNear = { ...raw.stadNear };
     if (raw.cities) g.cmCities = raw.cities.slice();
+    if (raw.cityNames) g.cmCityNames = { ...raw.cityNames };
     if (raw.nation7e) g.cmNation7e = raw.nation7e.slice();
     // (MODERN_PARITY 1+4) kontrakt-/lønlaget og spillerens vilje 0x846920 (cmWageGame/cmSlMem/cmContractGame): klubstatus +0x64, divisionen og
     // PLC (club.dat), nation +0x85/+0x76
@@ -287,6 +288,7 @@ export function createGameBase(world: WorldData, o: NewGameOptions): NewGameCtx 
     if (cm.cmRaw.stadNear) g.cmStadNear = { ...cm.cmRaw.stadNear };
     if (cm.cmRaw.seats) g.cmStadium = Object.fromEntries(Object.entries(cm.cmRaw.seats).map(([k, v]) => [k, v.slice()])) as GameState['cmStadium'];
     if (cm.cmRaw.cities) g.cmCities = cm.cmRaw.cities.slice();
+    if (cm.cmRaw.cityNames) g.cmCityNames = { ...cm.cmRaw.cityNames };
     if (cm.cmRaw.nation7e) g.cmNation7e = cm.cmRaw.nation7e.slice();
     if (cm.cmRaw.nation85) g.cmNation85 = cm.cmRaw.nation85.slice();
     if (cm.cmRaw.nation76) g.cmNation76 = cm.cmRaw.nation76.slice();

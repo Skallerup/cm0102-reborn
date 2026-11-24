@@ -78,6 +78,7 @@ function Rounds({ comp }: { comp: Competition }) {
   const [view, setView] = useRouteState(`view:${comp.id}`, 'overall');
   const rows = isGroup ? comp.groups?.[group] ?? [] : stage === 'LP' ? comp.table : [];
   const shown = isGroup ? fx.filter((f) => f.stage === `G${group}`) : fx.filter((f) => stageKey(f) === stage);
+  const cityOf = (club: number) => g.cmCityNames?.[g.cmCrowd?.[club]?.[4] ?? -1] ?? g.clubs[club]?.stadium ?? '';
   const sorted = sortTable(rows.slice());
   const done = shown.length > 0 && shown.every((f) => f.result);
   const venue = (r: TableRow): TableRow => {
@@ -131,7 +132,7 @@ function Rounds({ comp }: { comp: Competition }) {
               <Club id={f.home} win={!!f.result && f.result.hg > f.result.ag} />
               <span className={`cx-cup-score ${open ? 'go' : ''}`} onClick={open}>{f.result ? `${f.result.hg}:${f.result.ag}` : 'v'}</span>
               <Club id={f.away} win={!!f.result && f.result.ag > f.result.hg} />
-              <span className="cx-cup-nat">{g.clubs[f.home]?.stadium ?? ''}</span>
+              <span className="cx-cup-nat">{cityOf(f.home)}</span>
               <span className="cx-cup-pts">-----</span>
             </div>
           );

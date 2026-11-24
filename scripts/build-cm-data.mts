@@ -342,6 +342,9 @@ if (!ORIGINAL && files['nation.dat']) {
       const src = wa.cmRaw[k] as Record<number, unknown> | undefined, dst = (w.cmRaw[k] ??= {} as never) as Record<number, unknown>;
       if (src) for (const id of euroKeep) if (src[id] !== undefined) dst[id] = src[id];
     }
+    // byernes navne (city.dat +4) for de tilkomne klubbers stadioner
+    const cn = wa.cmRaw.cityNames as Record<number, string> | undefined;
+    if (cn) { const dn = ((w.cmRaw as { cityNames?: Record<number, string> }).cityNames ??= {}); for (const id of euroKeep) { const ci = wa.cmRaw.crowd?.[id]?.[4]; if (ci !== undefined && cn[ci]) dn[ci] = cn[ci]; } }
   }
   for (const id of euroKeep) if (wa.clubFinance?.[id]) (w.clubFinance ??= {})[id] = wa.clubFinance[id];
   euroClubs = out;
