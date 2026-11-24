@@ -13,6 +13,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '2026-11-24',
     title: { da: 'Mere af det originale CM 01/02', en: 'More of the original CM 01/02' },
     items: [
+      { da: "Gemning på iPhone fejler ikke længere med 'I/O read operation failed': spillet gemmes direkte fra hukommelsen, og rester af afbrudte gem ryddes automatisk op.", en: "Saving on iPhone no longer fails with 'I/O read operation failed': the game is now saved straight from memory, and leftovers from interrupted saves are cleaned up automatically." },
       { da: "Computerklubbernes trupplan tæller og planlægger nu også med de spillere, klubben har lejet ud, som i originalen – klubbens styrkemål følger truppens størrelse.", en: "Computer clubs' squad planning now counts and plans with players they have loaned out, as in the original – the club's strength target follows the squad size." },
       { da: "⚠ Kræver et nyt spil: Spillerne bliver nu utilfredse med managerens resultater efter en dårlig stime og beder om ny kontrakt, som i originalen – det koster bestyrelsens tillid.", en: "⚠ Requires a new game: Players now grow unhappy with the manager's results after a poor run and ask for a new contract, as in the original – costing board confidence." },
       { da: "⚠ Kræver et nyt spil: Non-league-klubberne har nu databasens rigtige manager og stab som i originalen, så deres spilleres værdier passer.", en: "⚠ Requires a new game: Non-league clubs now have the database's real manager and staff, as in the original, so their players' values are correct." },
