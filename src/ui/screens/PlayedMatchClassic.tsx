@@ -4,11 +4,13 @@
 // har en kompakt rapport (g.miniReports, miniReport.ts) uden kommentar – Match Report er så tom som i en kamp uden rapport.
 // Sidebjælkens taktikknapper viser holdets Team Stats (rapporten gemmer ikke taktikken), Continue går tilbage.
 import { useEffect, useState } from 'react';
-import { matchViewReport } from '../../game/miniReport';
+import { matchViewReport, unpackReport } from '../../game/miniReport';
+import type { IntlResult } from '../../game/international';
+import type { Fixture } from '../../game/types';
 import { ZONES } from '../../game/engine/match';
 import { fixturesOn, gs, notify } from '../../game/state';
 import { cmVirtualView } from '../../game/cmVirtual';
-import { compName, t } from '../../i18n';
+import { compName, natName, t } from '../../i18n';
 import { useClassicMatchSide } from '../classic';
 import { commentaryText } from '../commentary';
 import { Tabs } from '../components';
@@ -18,23 +20,31 @@ import { loadMatchTexts } from '../matchTexts';
 import { Head } from './common';
 import { CmScoreboard, CxLiveTable, CxMatchStats, CxOverview, CxRatings, CxReport, CxScores, CxTeamStats, CxZones, aggText, cxRowsReport, teamColors } from './Match';
 
-export function PlayedMatchClassic({ id }: { id: number }) {
+/** en landskamp som kampskærmen (samme skærm som en ligakamp): en virtuel kamp bygget af landskampens resultat (IntlResult) og slutrundekampens kompakte rapport */
+function intlFixture(r: IntlResult): Fixture {
+  return { id: -1, comp: '', date: r.date, home: r.home, away: r.away, round: 0, ...(r.stage ? { stage: r.stage } : {}),
+    result: { hg: r.hg, ag: r.ag, scorers: [], ...(r.pens ? { pens: r.pens } : {}) } };
+}
+
+export function PlayedMatchClassic({ id, intl }: { id: number; intl?: IntlResult }) {
   const g = useGame()!;
   const { back, nav } = useNav();
-  const f = g.fixtures[id];
+  const nat = !!intl;
+  const f = intl ? intlFixture(intl) : g.fixtures[id];
   // menneskets fulde rapport eller computerkampens kompakte (miniReport.ts); ældre gemte spil har kun resultatet
-  const rep = matchViewReport(g, id);
+  const rep = intl ? (intl.mini ? unpackReport(intl.mini, -1, intl.home, intl.away, undefined, intl.pens) : undefined) : matchViewReport(g, id);
   // originalens kommentarlinjer (CM 01/02) – tegn igen, når de er hentet
   const [, setTexts] = useState(0);
   useEffect(() => { void loadMatchTexts().then(() => setTexts((x) => x + 1)); }, []);
   // originalens genererede fyldspillere (cmVirtual.ts) er væk efter kampdagen – de samme laves igen, så rapportens navne kan vises
-  useEffect(() => { if (!f) return; const a = cmVirtualView(gs(), f.home), b = cmVirtualView(gs(), f.away); if (a || b) notify(); }, [f?.home, f?.away]);
+  useEffect(() => { if (!f || nat) return; const a = cmVirtualView(gs(), f.home), b = cmVirtualView(gs(), f.away); if (a || b) notify(); }, [f?.home, f?.away]);
   const [tab, setTab] = useRouteState('tab', 'overview');
   const me: 0 | 1 = f && f.away === g.userClub ? 1 : 0;
-  const home = f ? g.clubs[f.home]?.short ?? '?' : '', away = f ? g.clubs[f.away]?.short ?? '?' : '';
+  const nm = (n: number) => nat ? natName(g.nations[n]?.name) : g.clubs[n]?.short ?? '?';
+  const home = f ? nm(f.home) : '', away = f ? nm(f.away) : '';
   const minute = (rep?.et ?? f?.result?.et) ? 120 : 90;
   useClassicMatchSide(f && (rep || f.result) ? {
-    minute: String(minute), venue: `${g.clubs[f.home]?.stadium ?? ''}${g.clubs[f.home]?.short ? `, ${g.clubs[f.home].short}` : ''}`, comp: f.comp,
+    minute: String(minute), venue: nat ? g.intl?.info?.[f.home]?.stadium ?? '' : `${g.clubs[f.home]?.stadium ?? ''}${g.clubs[f.home]?.short ? `, ${g.clubs[f.home].short}` : ''}`, comp: f.comp,
     kicked: true, paused: false, finished: true, home, away, me, speed: 1,
   } : null, {
     kick: () => {}, pause: () => {}, speed: () => {}, ok: () => {}, cancel: () => {},
@@ -45,26 +55,26 @@ export function PlayedMatchClassic({ id }: { id: number }) {
     // en kamp uden kamprapport (computerklubbernes kampe gemmer kun resultatet): Match Overview med målscorerne – klik på resultatet
     // i Evening Results/Latest Scores som i CM 01/02
     const r = f.result;
-    const colors = teamColors(f.home, f.away, me);
+    const colors = teamColors(f.home, f.away, me, nat);
     const goals = r.scorers.map(([m, side, p, og]) => ({ t: side, p, m, og: og === 1 }));
     const ht: [number, number] = [goals.filter((e) => e.t === 0 && e.m <= 45).length, goals.filter((e) => e.t === 1 && e.m <= 45).length];
     return (
       <div className="match-screen">
-        <CmScoreboard home={f.home} away={f.away} hg={r.hg} ag={r.ag} colors={colors} classic minute={t('match.ft')} agg={aggText(f, r.hg, r.ag)} />
+        <CmScoreboard nat={nat} home={f.home} away={f.away} hg={r.hg} ag={r.ag} colors={colors} classic minute={t('match.ft')} agg={aggText(f, r.hg, r.ag)} />
         <Tabs tabs={[['overview', t('match.overview')]]} value="overview" onChange={() => {}} />
-        <CxOverview f={f} colors={colors} line={undefined} poss={[]} half={t('match.ft')} ht={ht} quiet flash={false} injuries={[]} reds={[]}
+        <CxOverview nat={nat} f={f} colors={colors} line={undefined} poss={[]} half={t('match.ft')} ht={ht} quiet flash={false} injuries={[]} reds={[]}
           shootout={undefined} goals={goals} />
       </div>
     );
   }
   if (!f || !rep) return <Head title={t('report.missing')} />;
-  const colors = teamColors(f.home, f.away, me);
+  const colors = teamColors(f.home, f.away, me, nat);
   const st = rep.stats;
   const ctx = { home, away, score: `${home} ${st[0].goals}-${st[1].goals} ${away}`, ref: rep.referee?.name };
   // kommentaren som på kampskærmen (spil-for-spil-linjerne "pl-…" vises ikke i Match Overview)
   const lines = rep.commentary.map((l, i) => ({ l, i })).filter(({ l }) => !l.k.startsWith('pl-'))
     .map(({ l, i }) => ({ text: commentaryText(l, ctx, i), cls: l.k.startsWith('goal') && l.k !== 'goal-offside' ? 'goal' : l.hi ? 'hi' : '', m: l.m, k: l.k, t: l.t, ci: i }));
-  const others = fixturesOn(f.date).map((fid) => g.fixtures[fid]).filter((x) => x && x.id !== id && x.result && x.comp === f.comp);
+  const others = nat ? [] : fixturesOn(f.date).map((fid) => g.fixtures[fid]).filter((x) => x && x.id !== id && x.result && x.comp === f.comp);
   // Action Zones: hvor bolden var (tredjedele) fra rapportens varmekort – samme inddeling som den kørende kamp
   const z: [number, number, number] = [0, 0, 0];
   const zp: [number, number][] = [[0, 0], [0, 0], [0, 0]];
@@ -74,10 +84,10 @@ export function PlayedMatchClassic({ id }: { id: number }) {
   const rows = [cxRowsReport(rep, 0), cxRowsReport(rep, 1)] as const;
   return (
     <div className="match-screen">
-      <CmScoreboard home={f.home} away={f.away} hg={st[0].goals} ag={st[1].goals} colors={colors} classic minute={t('match.ft')} agg={aggText(f, st[0].goals, st[1].goals)} />
+      <CmScoreboard nat={nat} home={f.home} away={f.away} hg={st[0].goals} ag={st[1].goals} colors={colors} classic minute={t('match.ft')} agg={aggText(f, st[0].goals, st[1].goals)} />
       <Tabs tabs={[['overview', t('match.overview')], ['stats', t('cl.mt.stats')], ['zones', t('cl.mt.zones')], ['report', t('cl.mt.report')]]} value={tab} onChange={setTab} />
       {tab === 'overview' && (
-        <CxOverview f={f} colors={colors} line={lines.at(-1)} poss={[]} half={t('match.ft')} ht={ht} quiet flash={false}
+        <CxOverview nat={nat} f={f} colors={colors} line={lines.at(-1)} poss={[]} half={t('match.ft')} ht={ht} quiet flash={false}
           injuries={rep.events.filter((e) => e.k === 'injury' && e.p).map((e) => ({ t: e.t, p: e.p!, m: e.m }))}
           reds={rep.events.filter((e) => e.k === 'red' && e.p).map((e) => ({ t: e.t, p: e.p!, m: e.m }))}
           shootout={rep.shootout} goals={goals.map((e) => ({ t: e.t, p: e.p ?? 0, m: e.m, og: e.og, pen: e.pen }))} />
@@ -89,7 +99,7 @@ export function PlayedMatchClassic({ id }: { id: number }) {
       {tab === 'astats' && <CxTeamStats rows={rows[1]} />}
       {tab === 'ratings' && <CxRatings rows={rows} mom={rep.mom} noCond />}
       {tab === 'table' && <CxLiveTable f={f} live={[st[0].goals, st[1].goals]} others={others} minute={minute} finished kicked />}
-      {tab === 'scores' && <CxScores own={{ f, scorers: goals.map((e) => [e.m, e.t, e.og ? undefined : e.p] as [number, number, number?]) }} others={others} minute={minute} finished title={t('cl.mt.latest', { comp: compName(g.comps[f.comp]?.name) })} open={(o) => nav({ name: 'report', id: o.id })} />}
+      {tab === 'scores' && <CxScores own={{ f, scorers: goals.map((e) => [e.m, e.t, e.og ? undefined : e.p] as [number, number, number?]) }} others={others} minute={minute} finished title={t('cl.mt.latest', { comp: nat ? (['wc', 'euro', 'copa', 'afcon', 'asian'].includes(intl!.kind) ? t(`intl.name.${intl!.kind}`) : t(`intl.kind.${intl!.kind}`)) : compName(g.comps[f.comp]?.name) })} open={(o) => nav({ name: 'report', id: o.id })} />}
       <ClassicSub items={[['hstats', t('cl.mt.teamStats', { club: home })], ['ratings', t('match.ratings')], ['scores', t('cl.mt.scores')], ...(g.comps[f.comp]?.type === 'league' ? [['table', t('cl.mt.leagueTable')]] : []), ['astats', t('cl.mt.teamStats', { club: away })]].map(([k, l]) => ({ key: k, label: l, on: tab === k, onClick: () => setTab(k) }))} />
     </div>
   );

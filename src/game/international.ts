@@ -725,6 +725,14 @@ const TOUR_KINDS = new Set<IntlResult['kind']>(['wc', 'euro', 'copa', 'afcon', '
  * Dagens slutrundekampe (CM 01/02: "FIFA World Cup – Afternoon Result"): resultaterne med gruppe/runde og placering i gruppen.
  * Slutrunderne spilles i newDay, så dagens resultater findes, når spillet stopper på dagen.
  */
+/** landskampens rute-id (`intlday`): hjemme:ude:dato:slags – bruges af alle steder, hvor en landskamp kan åbnes som kampskærm */
+export const intlMatchKey = (r: IntlResult): string => `${r.home}:${r.away}:${r.date}:${r.kind}`;
+/** landskampen bag et rute-id (alle slags: slutrunder, kvalifikation, venskabskampe) */
+export function intlMatchByKey(key: string): IntlResult | undefined {
+  const [h, a, date, kind] = key.split(':');
+  return state().results.find((r) => String(r.home) === h && String(r.away) === a && r.date === date && r.kind === kind);
+}
+
 export function intlDayResults(date: string): { r: IntlResult; t?: IntlTournament; group?: number; pos?: [number, number] }[] {
   const st = state();
   const tours = [st.tournament, ...(st.cont ?? [])].filter((x): x is IntlTournament => !!x);

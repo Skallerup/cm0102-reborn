@@ -19,7 +19,7 @@ import { session, skippedMatches, type LiveCmd } from '../../online/client';
 import { runCatchUp } from '../matchCatchUp';
 import { fixturesOn, gs, notify, squad } from '../../game/state';
 import type { Fixture, TableRow, MatchReport, MatchStatsSide, Tactic, OppInstructions, OppKind, PlayerMatchLine, CommentaryLine } from '../../game/types';
-import { compName, t } from '../../i18n';
+import { compName, natName, t } from '../../i18n';
 import { Bar, ClubLink, Crest, Panel, Pct, PlayerLink, posStr, Rating, Tabs } from '../components';
 import { useGame, useNav } from '../core';
 import { commentaryText, lineSounds, reportLines } from '../commentary';
@@ -51,9 +51,10 @@ import { rebornOn } from '../reborn';
 /** 2D-banen og dens højdepunkter (skjult for nu) */
 const HIGHLIGHTS_2D = false;
 
-export function teamColors(home: number, away: number, _me: number): [string, string, string, string] {
+export function teamColors(home: number, away: number, _me: number, nat?: boolean): [string, string, string, string] {
   const g = gs();
-  const kit = (id: number, fb: [string, string]): [string, string] => { const c = g.clubs[id]?.colors; return c?.[0] ? [c[0], c[1] ?? '#fff'] : fb; };
+  // landshold: nationens titelbjælkefarver (nation.dat), ellers som et hold uden farver
+  const kit = (id: number, fb: [string, string]): [string, string] => { const c = nat ? g.nations[id]?.col : g.clubs[id]?.colors; return c?.[0] ? [c[0], c[1] ?? '#fff'] : fb; };
   const h = kit(home, ['#d7263d', '#ffffff']);
   let a = kit(away, ['#f4f4f4', '#1b2233']);
   const dist = (x: string, y: string) => { const p = rgbOf(x), q = rgbOf(y); return p && q ? Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]) : 999; };
@@ -256,26 +257,28 @@ function lastLines<T>(lines: T[], n: number): [T, number][] {
 }
 
 /** CM-stil: holdbjælker i holdfarverne med stor score og minuttet til venstre */
-export function CmScoreboard({ home, away, hg, ag, minute, colors, agg, classic }: { home: number; away: number; hg: number; ag: number; minute: string; colors: [string, string, string, string]; agg?: string; classic?: boolean }) {
+export function CmScoreboard({ home, away, hg, ag, minute, colors, agg, classic, nat }: { nat?: boolean; home: number; away: number; hg: number; ag: number; minute: string; colors: [string, string, string, string]; agg?: string; classic?: boolean }) {
   const g = gs();
+  // landshold: nationens navn (natName) i stedet for klubbens korte navn
+  const nm = (id: number, long?: boolean) => nat ? natName(g.nations[id]?.name) : long ? g.clubs[id]?.name : g.clubs[id]?.short;
   // klassisk (CM 01/02): kun klubbernes korte navn og stillingen yderst til højre i hver boks – minuttet står i sidebjælken
   if (classic) return (
     <div className="cm-board cx-board">
       {/* klublogoet ved navnet (ikke i originalen – følger indstillingen "logo i titelbjælken") */}
-      <div className="cm-team" style={{ background: colors[0], color: colors[1] }}><span className="cm-name">{titleLogo() && <Crest id={home} size={40} />}{g.clubs[home]?.short}</span><span className="cm-score">{hg}</span></div>
-      <div className="cm-team" style={{ background: colors[2], color: colors[3] }}><span className="cm-name">{titleLogo() && <Crest id={away} size={40} />}{g.clubs[away]?.short}</span>{agg && <span className="cm-agg">{agg}</span>}<span className="cm-score">{ag}</span></div>
+      <div className="cm-team" style={{ background: colors[0], color: colors[1] }}><span className="cm-name">{titleLogo() && !nat && <Crest id={home} size={40} />}{nm(home)}</span><span className="cm-score">{hg}</span></div>
+      <div className="cm-team" style={{ background: colors[2], color: colors[3] }}><span className="cm-name">{titleLogo() && !nat && <Crest id={away} size={40} />}{nm(away)}</span>{agg && <span className="cm-agg">{agg}</span>}<span className="cm-score">{ag}</span></div>
     </div>
   );
   return (
     <div className="cm-board">
       <div className="cm-minute">{minute}</div>
       <div className="cm-team" style={{ background: colors[0], color: colors[1] }}>
-        <span className="cm-name"><Crest id={home} size={30} /><span className="name-long">{g.clubs[home]?.name}</span><span className="name-short">{g.clubs[home]?.short}</span></span>
+        <span className="cm-name">{!nat && <Crest id={home} size={30} />}<span className="name-long">{nm(home, true)}</span><span className="name-short">{nm(home)}</span></span>
         <span className="cm-score">{hg}</span>
       </div>
       <div className="cm-team away" style={{ background: colors[2], color: colors[3] }}>
         <span className="cm-score">{ag}</span>
-        <span className="cm-name"><span className="name-long">{g.clubs[away]?.name}</span><span className="name-short">{g.clubs[away]?.short}</span><Crest id={away} size={30} /></span>
+        <span className="cm-name"><span className="name-long">{nm(away, true)}</span><span className="name-short">{nm(away)}</span>{!nat && <Crest id={away} size={30} />}</span>
         {agg && <span className="cm-agg">{agg}</span>}
       </div>
     </div>
@@ -304,7 +307,7 @@ function cxLineStyle(line: { cls: string; t?: number; k?: string } | undefined, 
   return line?.cls === 'goal' ? { background: '#fff21f', color: '#0b1a5c' } : team === 0 || team === 1 ? { background: colors[team * 2], color: colors[team * 2 + 1] } : compLine(comp) ?? { background: '#ffffff', color: '#000000' };
 }
 
-export function CxOverview({ f, colors, line, poss, half, goals, injuries = [], reds = [], shootout, ht, flash, quiet }: { quiet?: boolean; flash?: number | false; reds?: { t: number; p: number; m: number }[]; ht?: [number, number]; shootout?: { t: number; p: number; outcome: string }[]; f: Fixture; colors: [string, string, string, string]; line?: { text: string; cls: string; t?: number; k?: string }; poss: [number, number][]; half: string; goals: { t: number; p: number; m: number; og?: boolean; pen?: boolean }[]; injuries?: { t: number; p: number; m: number }[] }) {
+export function CxOverview({ nat, f, colors, line, poss, half, goals, injuries = [], reds = [], shootout, ht, flash, quiet }: { nat?: boolean; quiet?: boolean; flash?: number | false; reds?: { t: number; p: number; m: number }[]; ht?: [number, number]; shootout?: { t: number; p: number; outcome: string }[]; f: Fixture; colors: [string, string, string, string]; line?: { text: string; cls: string; t?: number; k?: string }; poss: [number, number][]; half: string; goals: { t: number; p: number; m: number; og?: boolean; pen?: boolean }[]; injuries?: { t: number; p: number; m: number }[] }) {
   const g = gs();
   const { nav } = useNav();
   const home = poss.length ? Math.round((poss.filter(([, p]) => p === 0).length / poss.length) * 100) : 50;
@@ -351,7 +354,7 @@ export function CxOverview({ f, colors, line, poss, half, goals, injuries = [], 
           <span style={{ width: `${100 - home}%`, background: colors[2], color: colors[3] }}>{100 - home}%</span>
         </div>
       </div>
-      <div className="cx-mo-foot"><span>{t('ref.label')} - {refereeFor(f).name}</span>{/* tilskuertallet kommer først ved pausen (CM 01/02: "Attendance - 40200") */}{ht && <span className="cx-mo-att">{t('cl.mt.att')} - {f.result?.att ?? estimateGate(g.clubs[f.home], g.clubs[f.home].ticketPrice).attendance}</span>}<span>{t('match.weather')} - {wText}</span></div>
+      {!nat && <div className="cx-mo-foot"><span>{t('ref.label')} - {refereeFor(f).name}</span>{/* tilskuertallet kommer først ved pausen (CM 01/02: "Attendance - 40200") */}{ht && <span className="cx-mo-att">{t('cl.mt.att')} - {f.result?.att ?? estimateGate(g.clubs[f.home], g.clubs[f.home].ticketPrice).attendance}</span>}<span>{t('match.weather')} - {wText}</span></div>}
     </div>
   );
 }

@@ -19,6 +19,7 @@ import { cmIntlOn } from '../../game/cmPlayerData';
 import { Head } from './common';
 import { ClassicSub, CxDrop, CxLink, clubRoute, type Item } from '../classic';
 import { ClassicClubSquad } from './SquadClassic';
+import { IntlKoScore, IntlScore } from './IntlScore';
 import { ClassicTournament, TOUR_KEYS, type TourKey } from './IntlTourClassic';
 import { rebornOn } from '../reborn';
 import { applyJobAsk, canApplyForJob } from './applyJob';
@@ -60,7 +61,7 @@ export function International({ nation }: { nation?: number }) {
         <Panel className="flush">
           {!st?.results.length ? <div className="muted" style={{ padding: 12 }}>{t('intl.noResults')}</div> : (
             <table className="grid"><tbody>{st.results.slice(0, 60).map((r, i) => (
-              <tr key={i}><td className="muted">{dateFmt(r.date)}</td><td>{N(r.home)}</td><td className="num"><b>{r.hg}-{r.ag}</b></td><td>{N(r.away)}</td><td className="muted">{t(`intl.kind.${r.kind}`)}{r.stage ? ` · ${t(`stage.${r.stage}`)}` : ''}</td></tr>
+              <tr key={i}><td className="muted">{dateFmt(r.date)}</td><td>{N(r.home)}</td><td className="num"><b><IntlScore r={r} sep="-" /></b></td><td>{N(r.away)}</td><td className="muted">{t(`intl.kind.${r.kind}`)}{r.stage ? ` · ${t(`stage.${r.stage}`)}` : ''}</td></tr>
             ))}</tbody></table>
           )}
         </Panel>
@@ -102,7 +103,7 @@ function Tournament({ t: tour, N }: { t: IntlTournament; N: (n: number) => JSX.E
       {tour.ko.length > 0 && (
         <Panel title={t('intl.knockout')} className="flush">
           <table className="grid"><tbody>{tour.ko.map((k, i) => (
-            <tr key={i}><td className="muted">{t(`stage.${k.stage}`)}</td><td>{N(k.a)}</td><td className="num"><b>{k.hg !== undefined ? `${k.hg}-${k.ag}${k.pens ? ` (${t('intl.pens')})` : ''}` : '–'}</b></td><td>{N(k.b)}</td></tr>
+            <tr key={i}><td className="muted">{t(`stage.${k.stage}`)}</td><td>{N(k.a)}</td><td className="num"><b>{k.hg !== undefined ? <IntlKoScore tour={tour} k={k} text={`${k.hg}-${k.ag}${k.pens ? ` (${t('intl.pens')})` : ''}`} /> : '–'}</b></td><td>{N(k.b)}</td></tr>
           ))}</tbody></table>
         </Panel>
       )}
@@ -152,7 +153,7 @@ function NationTeam({ n }: { n: number }) {
       {results.length > 0 && (
         <Panel title={t('intl.tab.results')} className="flush">
           <table className="grid"><tbody>{results.map((r, i) => (
-            <tr key={i}><td className="muted">{dateFmt(r.date)}</td><td>{natName(g.nations[r.home]?.name)}</td><td className="num"><b>{r.hg}-{r.ag}</b></td><td>{natName(g.nations[r.away]?.name)}</td><td className="muted">{t(`intl.kind.${r.kind}`)}</td></tr>
+            <tr key={i}><td className="muted">{dateFmt(r.date)}</td><td>{natName(g.nations[r.home]?.name)}</td><td className="num"><b><IntlScore r={r} sep="-" /></b></td><td>{natName(g.nations[r.away]?.name)}</td><td className="muted">{t(`intl.kind.${r.kind}`)}</td></tr>
           ))}</tbody></table>
         </Panel>
       )}
@@ -218,7 +219,7 @@ function ClassicNationTeam({ n }: { n: number }) {
           <div className="cx-subtitle">{t('intl.tab.results')}</div>
           {!results.length ? <div className="cx-empty">{!rebornOn('helpTexts') ? '' : t('intl.noResults')}</div> : (
             <table className="grid"><tbody>{results.map((r, i) => (
-              <tr key={i}><td className="muted">{dateFmt(r.date)}</td><td><Nn id={r.home} /></td><td className="num"><b>{r.hg} - {r.ag}</b></td><td><Nn id={r.away} /></td><td className="muted">{t(`intl.kind.${r.kind}`)}</td></tr>
+              <tr key={i}><td className="muted">{dateFmt(r.date)}</td><td><Nn id={r.home} /></td><td className="num"><b><IntlScore r={r} /></b></td><td><Nn id={r.away} /></td><td className="muted">{t(`intl.kind.${r.kind}`)}</td></tr>
             ))}</tbody></table>
           )}
         </>
@@ -321,7 +322,7 @@ function CxTournament({ tour }: { tour: IntlTournament }) {
           <div className="cx-subtitle">{t('intl.knockout')}</div>
           <div className="cx-tbl-wrap cx-listpanel"><table className="cx-tbl"><tbody>{tour.ko.map((k, i) => (
             <tr key={i}><td className="btn-col"><span className="cx-rowbtn">{t(`stage.${k.stage}`)}</span></td><td style={{ textAlign: 'right' }}><CxNat n={k.a} /></td>
-              <td className="c-val">{k.hg !== undefined ? `${k.hg} - ${k.ag}${k.pens ? ` (${t('intl.pens')})` : ''}` : 'v'}</td><td><CxNat n={k.b} /></td></tr>
+              <td className="c-val">{k.hg !== undefined ? <IntlKoScore tour={tour} k={k} text={`${k.hg} - ${k.ag}${k.pens ? ` (${t('intl.pens')})` : ''}`} /> : 'v'}</td><td><CxNat n={k.b} /></td></tr>
           ))}</tbody></table></div>
         </>
       )}
@@ -336,7 +337,7 @@ function CxResults({ results }: { results: import('../../game/international').In
       <thead><tr><th className="btn-col" /><th style={{ textAlign: 'right' }}>{t('cl.nt.home')}</th><th className="c-num">{t('cl.nt.score')}</th><th>{t('cl.nt.away')}</th><th>{t('cl.nt.comp')}</th></tr></thead>
       <tbody>{results.slice(0, 60).map((r, i) => (
         <tr key={i}><td className="btn-col"><span className="cx-rowbtn">{dateFmt(r.date)}</span></td><td style={{ textAlign: 'right' }}><CxNat n={r.home} /></td>
-          <td className="c-val">{r.hg} - {r.ag}</td><td><CxNat n={r.away} /></td><td className="c-cyan">{t(`intl.kind.${r.kind}`)}{r.stage ? ` · ${t(`stage.${r.stage}`)}` : ''}</td></tr>
+          <td className="c-val"><IntlScore r={r} /></td><td><CxNat n={r.away} /></td><td className="c-cyan">{t(`intl.kind.${r.kind}`)}{r.stage ? ` · ${t(`stage.${r.stage}`)}` : ''}</td></tr>
       ))}</tbody>
     </table></div>
   );

@@ -8,6 +8,7 @@ import { ClassicSub, CxDrop, type Item } from '../classic';
 import { Tabs } from '../components';
 import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
+import { IntlScore } from './IntlScore';
 import { rebornOn } from '../reborn';
 
 export type TourKey = IntlName | 'olympic';
@@ -102,7 +103,7 @@ export function ClassicTournament({ k }: { k: TourKey }) {
                     <tr key={`${round}-${a}-${b}`}>
                       <td className="btn-col"><span className="cx-rowbtn">{dateFmt(date)}</span></td>
                       <td>{N(r ? r.home : ha)}</td>
-                      <td className="c-val">{r ? `${r.hg}:${r.ag}` : 'v'}</td>
+                      <td className="c-val">{r ? <IntlScore r={r} sep=":" /> : 'v'}</td>
                       <td>{N(r ? r.away : hb)}</td>
                       <td className="c-pos">{g.intl?.info?.[r ? r.home : ha]?.stadium ?? ''}</td>
                     </tr>
@@ -116,7 +117,7 @@ export function ClassicTournament({ k }: { k: TourKey }) {
       {(tab === 'results' || tab === 'fixtures') && (() => {
         const rows = tab === 'results'
           ? results.slice().sort((a, b) => b.date.localeCompare(a.date)).map((r, i) => (
-            <tr key={i}><td className="btn-col"><span className="cx-rowbtn">{dateFmt(r.date)}</span></td><td style={{ textAlign: 'right' }}>{N(r.home)}</td><td className="c-val">{r.hg} - {r.ag}</td><td>{N(r.away)}</td></tr>))
+            <tr key={i}><td className="btn-col"><span className="cx-rowbtn">{dateFmt(r.date)}</span></td><td style={{ textAlign: 'right' }}>{N(r.home)}</td><td className="c-val"><IntlScore r={r} /></td><td>{N(r.away)}</td></tr>))
           : (tour?.ko ?? []).filter((x) => x.hg === undefined).map((x, i) => (
             <tr key={i}><td className="btn-col"><span className="cx-rowbtn">{t(`stage.${x.stage}`)}</span></td><td style={{ textAlign: 'right' }}>{N(x.a)}</td><td className="c-val">v</td><td>{N(x.b)}</td></tr>));
         return rows.length ? <div className="cx-tbl-wrap cx-listpanel"><table className="cx-tbl"><tbody>{rows}</tbody></table></div>

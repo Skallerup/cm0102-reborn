@@ -1189,6 +1189,12 @@ async function run(look) {
     await page.locator('[data-testid=intl-result]').first().click();
     await page.waitForSelector('[data-testid=intl-match]', { timeout: 5000 });
     if (await page.locator('[data-testid=intl-match] .cx-greybtn').count()) throw new Error('den løse Back-knap på landskampen er tilbage (bundbjælkens Back findes)');
+    // samme kampskærm som en ligakamp (scoreboard + faner), ikke en egen tegning
+    await page.waitForSelector('[data-testid=intl-match] .match-screen .cx-board', { timeout: 5000 });
+    // og resultaterne på turneringssiden/nationens skærm åbner den samme skærm
+    await go({ name: 'international', state: { itab: 'results' } });
+    await page.locator('[data-testid=intl-score]').first().click();
+    await page.waitForSelector('[data-testid=intl-match] .match-screen .cx-board', { timeout: 5000 });
     await gs(() => { window.__cm.gs().intl.results.shift(); });
     // en dag uden slutrundekampe viser ikke en tom skærm uden turneringsnavn – tilbage til indbakken
     await go({ name: 'intlday' });
