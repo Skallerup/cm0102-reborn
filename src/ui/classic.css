@@ -2076,3 +2076,27 @@ button.cx-bid-swap.removing { cursor: pointer; color: #fff21f; }
   .cx-tabrow[data-more='l'], .cx-subrow[data-more='l'], .shell.cx .main .tabs[data-more='l'] { -webkit-mask-image: linear-gradient(270deg, #000 calc(100% - 34px), transparent); mask-image: linear-gradient(270deg, #000 calc(100% - 34px), transparent); }
   .cx-tabrow[data-more='lr'], .cx-subrow[data-more='lr'], .shell.cx .main .tabs[data-more='lr'] { -webkit-mask-image: linear-gradient(90deg, transparent, #000 34px, #000 calc(100% - 34px), transparent); mask-image: linear-gradient(90deg, transparent, #000 34px, #000 calc(100% - 34px), transparent); }
 }
+
+/* ===== Liggende telefon (lav højde, fx 915×412): kromen (titel, faner, knapper, sidebjælke) fylder ellers hele skærmen (spillerfejlmelding 24/11) =====
+   Samme opbygning, bare lavere elementer – indholdet i midten kan ses og rulles. Gælder alle liggende vinduer under 520 px i højden. */
+@media (max-height: 520px) and (orientation: landscape) {
+  .shell.cx .main.cx-main { padding: 8px 10px 4px; }
+  .cx-head { margin: -8px -10px 6px; padding: 8px 10px 0; gap: 6px; }
+  .cx-foot { padding: 0 10px 6px; gap: 6px; }
+  .cx-title { min-height: 40px; border-width: 2px; padding-top: 2px; padding-bottom: 2px; }
+  .cx-title h2 { font-size: clamp(16px, 2.4vw, 22px); }
+  .cx-title-logo .crest, .cx-title-logo .kit { width: 28px !important; height: 28px !important; }
+  .cx-tabrow button, .cx-subrow button, .shell.cx .main .tabs button { min-height: 32px; padding: 3px 10px; font-size: 13px; }
+  .cx-backnext button { min-height: 34px; font-size: 18px; }
+  .cx-side { padding: 4px; gap: 2px; }
+  .cx-date { min-height: 34px; padding: 2px; }
+  .cx-date b, .cx-date span { font-size: 12.5px; }
+  .cx-arrows button { height: 34px; }
+  :root[data-skin='retro'] .cx-sbtn, :root[data-skin='retro'] .cx-gameopt > .cx-drop-btn.cx-sbtn { min-height: 36px; padding: 3px 4px; font-size: 13px; }
+  .cx-continue { min-height: 40px; }
+  /* startmenuen: felterne bliver lavere, og listen kan rulles, så ingen punkter skjules */
+  .cxs-body { overflow-y: auto; }
+  .cxs-grid { flex: none; max-height: none; grid-template-rows: none; grid-auto-rows: minmax(52px, auto); }
+  .cxs-field { padding: 4px 8px; }
+  .cxs-field.static em, .cxs-field .gold { font-size: 20px; }
+}

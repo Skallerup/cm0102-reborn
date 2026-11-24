@@ -2416,7 +2416,49 @@ async function danish() {
   await ctx.close();
 }
 
+// Liggende telefon (OnePlus 13, 915×412, Android-Chrome): startmenuen skal kunne bruges – alle felter kan nås ved rulning, bundknapperne ligger
+// inden for skærmen, titelbjælken er lav, og siden bliver ikke bredere end skærmen (spillerfejlmelding 24/11: "kan ikke bruges i liggende")
+async function landscapePhone() {
+  const ctx = await browser.newContext({ viewport: { width: 915, height: 412 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true,
+    userAgent: 'Mozilla/5.0 (Linux; Android 15; CPH2655) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36' });
+  const page = await ctx.newPage();
+  await page.addInitScript(() => { localStorage.setItem('cm0102.lang', 'en'); localStorage.setItem('cm-theme', 'retro'); sessionStorage.setItem('cm0102.play', '1'); });
+  const errors = []; page.on('pageerror', (e) => errors.push(e.message));
+  try {
+    await page.goto(URL);
+    await page.waitForSelector('.cxs [data-field=new]');
+    await page.waitForTimeout(400);
+    const m = await page.evaluate(() => {
+      const r = (q) => document.querySelector(q)?.getBoundingClientRect();
+      const foot = r('.cx-foot .cx-backnext'), title = r('.cxs-main .cx-title, .cxs-main .cx-head');
+      return { footBottom: foot?.bottom, titleH: title?.height, sw: document.documentElement.scrollWidth, iw: innerWidth, ih: innerHeight };
+    });
+    if (!(m.footBottom <= m.ih + 1)) throw new Error(`Back/Next ligger uden for skærmen (bund ${m.footBottom} > ${m.ih})`);
+    if (m.titleH > 60) throw new Error(`titelbjælken er ${m.titleH} px høj i liggende format`);
+    if (m.sw > m.iw + 1) throw new Error(`siden er bredere end skærmen (${m.sw} > ${m.iw})`);
+    // alle startmenuens felter kan nås ved rulning og ligger over bundknapperne
+    for (const f of ['new', 'quick', 'restore', 'delete', 'network', 'settings', 'opts', 'extras']) {
+      const loc = page.locator(`[data-field="${f}"]`);
+      await loc.scrollIntoViewIfNeeded();
+      const b = await loc.boundingBox(); const foot = await page.locator('.cx-foot .cx-backnext').boundingBox();
+      if (!b || b.y + b.height > foot.y + 2) throw new Error(`startmenuens felt "${f}" ligger bag bundknapperne i liggende format`);
+    }
+    await page.locator('[data-field=new]').click();
+    await page.waitForSelector('.cxs-lrow', { timeout: 60000 });
+    const lh = await page.locator('.cxs-list').first().evaluate((el) => el.getBoundingClientRect().height);
+    if (lh < 120) throw new Error(`Select League(s): listen er kun ${Math.round(lh)} px høj i liggende format`);
+    if (errors.length) throw new Error(`sidefejl: ${errors.join(' | ')}`);
+    console.log('  ✓ liggende telefon (915×412): startmenu og Select League(s) kan bruges');
+  } catch (e) {
+    failures.push(`liggende telefon: ${e.message.split('\n')[0]}`);
+    console.log(`  ✗ liggende telefon: ${e.message.split('\n')[0]}`);
+    await page.screenshot({ path: `${OUT}/liggende-telefon-fejl.png` }).catch(() => {});
+  }
+  await ctx.close();
+}
+
 for (const look of ['klassisk', 'moderne']) if (only === look || (!only && (look === 'klassisk' || process.env.E2E_MODERN))) await run(look);
+if (!only || only === 'landscape') await landscapePhone();
 if (!only || only === 'editor') await editor();
 if (!only || only === 'multiplayer') await multiplayer();
 if (ENGINE_GRID && (!only || only === 'danish')) await danish();
