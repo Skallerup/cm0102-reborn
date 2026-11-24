@@ -528,6 +528,30 @@
   ],
   "keys": [
     {
+      "key": "cl.tag.Abs",
+      "reason": "Trupmærket fra exe-strengen 0x98e988 (0x456900/0x4849f0) – 3 tegn, som strengudtrækket (≥ 4 tegn) ikke har med; teksten ER originalens"
+    },
+    {
+      "key": "cl.tag.Wpm",
+      "reason": "Trupmærket fra exe-strengen 0x98e9c8 (0x456900/0x4849f0) – 3 tegn, som strengudtrækket (≥ 4 tegn) ikke har med; teksten ER originalens"
+    },
+    {
+      "key": "cl.tag.Ine",
+      "reason": "Trupmærket fra exe-strengen 0x98e994 (0x456900/0x4849f0) – 3 tegn, som strengudtrækket (≥ 4 tegn) ikke har med; teksten ER originalens"
+    },
+    {
+      "key": "cl.tag.Ctr",
+      "reason": "Trupmærket fra exe-strengen 0x98e900 (0x456900/0x4849f0) – 3 tegn, som strengudtrækket (≥ 4 tegn) ikke har med; teksten ER originalens"
+    },
+    {
+      "key": "cl.tag.Lon",
+      "reason": "Trupmærket fra exe-strengen 0x98e904 (Loa) (0x456900/0x4849f0) – 3 tegn, som strengudtrækket (≥ 4 tegn) ikke har med; teksten ER originalens"
+    },
+    {
+      "key": "cl.tag.Fgn",
+      "reason": "Trupmærket fra exe-strengen 0x98e984 (0x456900/0x4849f0) – 3 tegn, som strengudtrækket (≥ 4 tegn) ikke har med; teksten ER originalens"
+    },
+    {
       "key": "info.title",
       "reason": "Game Options → \"Om spillet\"-punktet (GameInfoTable) – CM Reborn-område, ikke en original skærm"
     },

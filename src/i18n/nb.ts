@@ -1,6 +1,7 @@
 // Norsk (bokmål) (oversat af Claude fra dansk/engelsk, 2026-11-07)
 export const nb: Record<string, string> = {
   'cl.tag.Tir': "Trø",
+  'cl.tag.Abs': 'Fra', 'cl.tag.Wpm': 'Arb', 'cl.tag.Cup': 'Cup', 'cl.tag.Ine': 'Ute', 'cl.tag.Sct': 'Spe', 'cl.tag.Req': 'Anm', 'cl.tag.Ctr': 'Mnd', 'cl.tag.Ret': 'Pen', 'cl.tag.Bos': 'Bos',
   'transfer.cmLoanRejected': "{last}: lånebud avslått",
   'transfer.cmLoanRejected.body': "{seller} har avslått lånebudet fra {buyer} på {player}.",
   'transfer.cmLoanAccepted': "{last}: lånebud akseptert",

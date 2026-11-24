@@ -456,7 +456,7 @@ function retire(g: GameState, p: Player, e: CmRetEntry, today: string, rand: Ran
 }
 
 /** under bud (TRANSFER_MANAGER::is_player_under_offer 0x8cde70) */
-const underOffer = (g: GameState, p: Player) => g.offers.some((o) => o.player === p.id && (o.status === 'pending' || o.status === 'negotiating' || o.status === 'countered' || o.status === 'accepted'));
+export const underOffer = (g: GameState, p: Player) => g.offers.some((o) => o.player === p.id && (o.status === 'pending' || o.status === 'negotiating' || o.status === 'countered' || o.status === 'accepted'));
 
 /** en forfalden post (0x7a5a73–0x7a6587): aflyst eller gennemført – posten fjernes fra listen */
 function settle(g: GameState, L: CmRetEntry[], i: number, today: number, rand: Rand): void {

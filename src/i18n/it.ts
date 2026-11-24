@@ -396,6 +396,7 @@ export const it: Record<string, string> = {
   'cl.tag.Inj': 'Inf', 'cl.tag.Sus': 'Squ', 'cl.tag.Fut': 'Fut', 'cl.tag.Trn': 'Trn', 'cl.tag.Lst': 'Lis', 'cl.tag.Lon': 'Pre', 'cl.tag.Unh': 'Sco', 'cl.tag.Wnt': 'Ric', 'cl.tag.Fgn': 'Str', 'cl.tag.Fre': 'Svi', 'cl.tag.Exp': 'Sca',
   'cl.tr.famous': "Giocatori famosi della tua regione",
   'cl.tag.Bid': 'Off',
+  'cl.tag.Abs': 'Ass', 'cl.tag.Wpm': 'PL', 'cl.tag.Cup': 'Cop', 'cl.tag.Ine': 'Ine', 'cl.tag.Sct': 'Oss', 'cl.tag.Req': 'Ric', 'cl.tag.Ctr': 'Men', 'cl.tag.Ret': 'Rit', 'cl.tag.Bos': 'Bos',
   'cl.pl.career': 'Carriera da giocatore', 'career.sourceCm': 'Stagioni precedenti dal database di Championship Manager 01/02.',
   'cl.fd.nation': 'Nazione', 'cl.fd.club': 'Club', 'cl.fd.staff': 'Non giocatore', 'cl.fd.player': 'Giocatore', 'cl.fd.searchFor': 'Cerca', 'cl.fd.noClub': 'Nessun club', 'cl.fd.noDiv': 'Nessuna divisione', 'cl.fd.all.nation': 'Tutte le nazioni', 'cl.fd.all.club': 'Tutti i club', 'cl.fd.all.staff': 'Tutti i non giocatori', 'cl.fd.all.player': 'Tutti i giocatori', 'cl.fd.none': 'Nessun risultato', 'cl.fd.found': '{n} trovati',
   'cl.tac.capt': 'cap', 'cl.tac.pen': 'rig','cl.tac.fromBench': 'Togli dalla panchina', 'cl.tac.toBench': 'Metti in panchina', 'cl.tac.formation': 'Modulo','cl.tac.v.cond': 'Condizione', 'cl.tac.v.fit': 'Adattabilità al ruolo', 'cl.tac.v.pos': 'Ruoli', 'cl.tac.v.value': 'Valore', 'cl.tac.edit': 'Modifica', 'cl.tac.overview': 'Panoramica', 'cl.tac.with': 'Con palla', 'cl.tac.without': 'Senza palla',

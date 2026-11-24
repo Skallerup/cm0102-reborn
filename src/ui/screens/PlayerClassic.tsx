@@ -24,6 +24,8 @@ import { cmScoutOn } from '../../game/cmScout';
 import { ClassicNegotiation } from './NegotiationClassic';
 import { DEMONYM } from '../demonyms';
 import { cmAvailability, cmFutureLines } from '../../game/cmTransferList';
+import { arrangedMove } from '../../game/cmStatusCode';
+import { cmLongDate } from '../cmBanText';
 import { trialOf } from '../../game/trials';
 import type { Player, TransferOffer } from '../../game/types';
 import { POSITIONS, SIDES } from '../../game/types';
@@ -302,7 +304,13 @@ function ContractTab({ p, mine }: { p: Player; mine: boolean }) {
   const permitText = permit ? permitLine(permit.w4, permit.w6) : '';
   // CM 01/02 (0x85e960): originalens klausuler med det fælles beløb +0x21 (Manager Job Release Clause har intet beløb)
   const cmCl = c?.cmClauses ? c.cmClauses.map((v, i) => (v ? (i < 4 && c.cmClauseFee ? t('cm.clause.fee', { name: t(`cm.clause.${i}`), v: money(c.cmClauseFee) }) : t(`cm.clause.${i}`)) : '')).filter(Boolean).join(', ') : '';
-  const type = p.loan ? <>{t('cl.pl.ctLoan')} <ClubLink id={p.loan.from} /> ({dateFmt(p.loan.until)})</> : !c ? t('common.none') : t(c.partTime ? 'cl.pl.ctPart' : 'cl.pl.ctFull');
+  // CM 01/02 0x87cee4: typen +0x35 & 0x3f (bit 7 = Part Time) – 1 Monthly, 2 almindelig, 3/4 N/A, 5 Trial, 0 ugyldig; udløbet 0x85fa30: type 1
+  // "Rolling", 3 "Contract Expired", 4 "Free", ellers datoen (ejerens billede 24/11: Steven Robinson, "Full Time Monthly Contract"/"Rolling")
+  const ct = c?.cmType ?? 2;
+  const CT_KEY: Record<number, string> = { 0: 'Invalid', 1: c?.partTime ? 'PartMonthly' : 'FullMonthly', 3: 'NA', 4: 'NA', 5: c?.partTime ? 'PartTrial' : 'FullTrial' };
+  const type = p.loan ? <>{t('cl.pl.ctLoan')} <ClubLink id={p.loan.from} /> ({dateFmt(p.loan.until)})</> : !c ? t('common.none')
+    : CT_KEY[ct] ? t(`cl.pl.ct${CT_KEY[ct]}`) : t(c.partTime ? 'cl.pl.ctPart' : 'cl.pl.ctFull');
+  const expires = !c ? '-' : p.loan ? classicDate(c.expires)[1] : ct === 1 ? t('cl.pl.rolling') : ct === 3 ? t('cl.pl.ctExpired') : ct === 4 ? t('cl.pl.ctFree') : classicDate(c.expires)[1];
   const rows: [string, ReactNode, string?][] = [
     [t('cl.pl.ctType'), type],
     [t('cl.pl.wages'), c ? `${moneyWage(c.wage)} ${t('cl.pl.perWeek')}` : t('common.none')], // 0x87cd90 → 0x85e750 fuldt
@@ -310,7 +318,7 @@ function ContractTab({ p, mine }: { p: Player; mine: boolean }) {
       [t('cl.pl.started'), before ? t('cl.pl.beforeSystem') : p.joined ? classicDate(p.joined)[1] : '-'],
       [t('cl.pl.protected'), t(isProtected ? 'common.yes' : 'common.no')],
     ] as [string, ReactNode][] : []),
-    [t('col.expires'), c ? classicDate(c.expires)[1] : '-'],
+    [t('col.expires'), expires],
     [t('cl.pl.squadStatus'), status ? t(`cl.ts.s.${status}`) : '-'],
     ...(bonuses.length ? bonuses.map((b, i): [string, ReactNode] => [i === 0 ? t('cl.pl.bonuses') : '', b]) : [[t('cl.pl.bonuses'), t('common.none')] as [string, ReactNode]]),
     [t('cl.pl.clauses'), (mine || k >= 40) && cmCl ? cmCl : (mine || k >= 40) && c && clauseText(c) ? clauseText(c) : c?.release && (mine || k >= 40) ? `${t('clause.release')} ${money(c.release)}` : t('common.none')],
@@ -342,6 +350,11 @@ function futureLines(p: Player, mine: boolean, k: number): string[] {
   return out;
 }
 
+/** ugedagen ("Sunday") i spillerens sprog */
+function weekday(iso: string): string {
+  try { return new Date(iso + 'T00:00:00Z').toLocaleDateString(t('cl.locale'), { weekday: 'long', timeZone: 'UTC' }); } catch { return ''; }
+}
+
 function TransferTab({ p, mine }: { p: Player; mine: boolean }) {
   const g = useGame()!;
   const k = knowledgeOf(p);
@@ -358,7 +371,10 @@ function TransferTab({ p, mine }: { p: Player; mine: boolean }) {
   // alle åbne bud på spilleren (TRANSFER_OFFER-listen: også andre klubbers og bud, der forhandles/venter på modbud) – computer → computer-buddene
   // findes kun, når ønskelisterne er slået til (cmShortlistGame.ts SL_ON)
   const offers = g.offers.filter((o) => o.player === p.id && (o.status === 'pending' || o.status === 'negotiating' || o.status === 'countered'));
-  const offerText = <ClubList ids={offers.map((o) => o.buyer)} empty={t('common.none')} suffix={(_, i) => ` (${offers[i].loan ? t('tag.loan') : money(offers[i].fee)})`} />;
+  // CM 01/02 0x87e659–0x87e828: et aftalt skifte (0x8cca10) er hele rækken – "<klub> - transfer arranged for <ugedag dato>." (ejerens billede 24/11)
+  const arranged = arrangedMove(g, p);
+  const offerText = arranged ? <><ClubLink id={arranged.club} />{t('cl.pl.offerArranged', { date: `${weekday(arranged.date)} ${cmLongDate(arranged.date)}` })}</>
+    : <ClubList ids={offers.map((o) => o.buyer)} empty={t('common.none')} suffix={(_, i) => ` (${offers[i].loan ? t('tag.loan') : money(offers[i].fee)})`} />;
   const interestIds = interestedClubs(p).map((i) => i.club);
   // hele Future-blokken (0x87ee70–0x8853ba) inkl. den tilfredse blok og "Unknown" (0x8852f9), når intet er skrevet
   const cmFut = cm ? cmFutureLines(g, p, interestIds.length).map((x) => t(`cm.fut.${x.k}`, x.p?.date ? { ...x.p, date: dateFmt(String(x.p.date)) } : x.p?.pos ? { ...x.p, pos: t(`cm.fut.pos.${x.p.pos}`) } : x.p)) : [];

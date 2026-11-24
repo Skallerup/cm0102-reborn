@@ -12,6 +12,7 @@ import { autoSelect, available, newTactic } from '../../game/tactics';
 import { authentic, benchSize } from '../../game/rules';
 import { A, type AttrKey } from '../../game/attributes';
 import { interestedClubs } from '../../game/transfers';
+import { playerStatusTag } from '../../game/cmStatusCode';
 import { avgRating } from '../../game/season';
 import type { GameState, Player, Slot, Tactic } from '../../game/types';
 import { POSITIONS, SIDES } from '../../game/types';
@@ -154,24 +155,25 @@ function tagOf(p: Player, g: GameState, clubId = g.userClub): { k: string; title
   return null;
 }
 
-/** Ægte CM 01/02: get_player_status_code 0x4849f0 – det første, der passer, i originalens rækkefølge (de mærker, spillet har):
- *  Int (0x7757d0), Sus, Inj (0x62c400), Tir (kondition 0x62c590 under 65 %), Yel (0x55d360), Trn (aftalt skifte 0x8cca10 → kode 0x18, strengen 0x98e970 i 0x456900;
- *  originalens "Fut " 0x98e8e0 er kode 0x14 – hovedkontrakt med trupstatus 0 – og ikke porteret),
- *  Wnt (interesse 0x842180), Lst (0x5444a0), Loa (lejelisten 0x544590: hovedkontraktens +0x4e bit 2 – også under lejen), Unh. De sidste
- *  (fra Tir) kun for databasens spillere – ikke de genererede fyldspillere (staff-id ≥ [0xae2364]). */
-export function originalTag(p: Player): { k: string; title: string } | null {
-  if (isInternational(p)) return { k: 'Int', title: t('cl.tag.intTitle', { nation: natName(gs()?.nations[p.nation]?.name) ?? '' }) };
-  if (p.banned > 0) return { k: 'Sus', title: `${t('tag.ban')} ${p.banned}` };
-  if (p.injury) return { k: 'Inj', title: `${t(`injury.${p.injury.key}`)} (${p.injury.days} ${t('common.days')})` };
-  if (p.virtual) return null;
-  if (p.condition < 65) return { k: 'Tir', title: '' };
-  if (p.yellowCount === 4) return { k: 'Yel', title: !rebornOn('helpTexts') ? '' : t('cl.tag.yelTitle') };
-  if (p.contract?.futureClub) return { k: 'Trn', title: t('tag.leaving') };
-  if (interestedClubs(p).length) return { k: 'Wnt', title: !rebornOn('helpTexts') ? '' : t('cl.sq.wanted') };
-  if (p.listed) return { k: 'Lst', title: t('tag.listed') };
-  if (p.loanListed) return { k: 'Lon', title: t('tag.loan') };
-  if ((p.unhappy ?? 0) > 60 || p.wantsAway) return { k: 'Unh', title: t('tag.unhappy') };
-  return null;
+/** Ægte CM 01/02: get_player_status_code 0x4849f0 (game/cmStatusCode.ts – alle koder i originalens rækkefølge) → mærket og dets hjælpetekst */
+export function originalTag(p: Player, club = p.club): { k: string; title: string } | null {
+  const g = gs();
+  const k = g ? playerStatusTag(g, p, club) : null;
+  if (!k) return null;
+  const help = rebornOn('helpTexts');
+  switch (k) {
+    case 'Int': return { k, title: t('cl.tag.intTitle', { nation: natName(g.nations[p.nation]?.name) ?? '' }) };
+    case 'Sus': return { k, title: `${t('tag.ban')} ${p.banned}` };
+    case 'Inj': return { k, title: p.injury ? `${t(`injury.${p.injury.key}`)} (${p.injury.days} ${t('common.days')})` : '' };
+    case 'Abs': return { k, title: p.injury ? `${t(`injury.${p.injury.key}`)} (${p.injury.days} ${t('common.days')})` : '' };
+    case 'Yel': return { k, title: help ? t('cl.tag.yelTitle') : '' };
+    case 'Trn': return { k, title: t('tag.leaving') };
+    case 'Wnt': return { k, title: help ? t('cl.sq.wanted') : '' };
+    case 'Lst': return { k, title: t('tag.listed') };
+    case 'Lon': return { k, title: t('tag.loan') };
+    case 'Unh': return { k, title: t('tag.unhappy') };
+    default: return { k, title: '' };
+  }
 }
 
 /** Landsholdstruppen: kun skader og karantæner (ingen "Fgn") */
@@ -182,7 +184,8 @@ function nationalTag(p: Player): { k: string; title: string } | null {
 }
 
 /** Hvilken fane på spillerprofilen der forklarer mærket */
-const TAG_TAB: Record<string, string> = { Inj: 'injuries', Sus: 'injuries', Yel: 'injuries', Tir: 'profile', Fut: 'transfer', Lst: 'transfer', Lon: 'contract', Trn: 'transfer', Unh: 'transfer', Wnt: 'transfer', Fgn: 'profile' };
+const TAG_TAB: Record<string, string> = { Abs: 'injuries', Inj: 'injuries', Sus: 'injuries', Yel: 'injuries', Cup: 'contract', Ine: 'contract', Wpm: 'contract', Int: 'profile', Tir: 'profile',
+  Fut: 'contract', Lst: 'transfer', Req: 'transfer', Lon: 'contract', Trn: 'transfer', Bid: 'transfer', Sct: 'transfer', Unh: 'transfer', Wnt: 'transfer', Ctr: 'contract', Ret: 'profile', Bos: 'contract', Fgn: 'profile' };
 
 /** Mærket foran navnet – et klik åbner den del af spillerprofilen, der handler om det */
 export function Tag({ p, tag }: { p: Player; tag: { k: string; title: string } | null }) {
@@ -491,10 +494,8 @@ export function ClassicFirstSquad({ reserves = false, cid, pick }: { reserves?: 
     const lbl = labelOf(p.id);
     const pl = placeOf(tac, p.id);
     const loanedOut = p.loan?.from === clubId && p.club !== clubId;
-    // andre klubber (originalen): kun Inj og Lst
-    // andre klubber og egen trup (ejerens billeder 18/11): Inj, Lst, Loa, Unh og Int – ikke Wnt/Fut/Yel
-    // 0x456900 bruger samme 0x4849f0 for alle klubber (egen og andres trup)
-    const tag = ro || orig ? originalTag(p) : tagOf(p, g);
+    // 0x456900 bruger samme 0x4849f0 for alle klubber (egen og andres trup, også reserverne) – med den viste klub (ejerens billeder 18/11 og 24/11)
+    const tag = ro || orig ? originalTag(p, clubId) : tagOf(p, g);
     // grå navn (0x45b984: farven 0xae317e): kun originalens genererede fyldspillere (staff-id ≥ [0xae2364] – cmVirtual.ts, ejerens billeder 85 og 18/11)
     const dim = orig && !!p.virtual;
     const selCls = `cx-selbtn ${pl?.kind ?? ''} ${orig ? 'cx-orig' : ''}`;

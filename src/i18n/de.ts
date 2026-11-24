@@ -396,6 +396,7 @@ export const de: Record<string, string> = {
   'cl.tag.Inj': 'Verl', 'cl.tag.Sus': 'Gesp', 'cl.tag.Fut': 'Zuk', 'cl.tag.Trn': 'Trf', 'cl.tag.Lst': 'TL', 'cl.tag.Lon': 'Leih', 'cl.tag.Unh': 'Unz', 'cl.tag.Wnt': 'Ges', 'cl.tag.Fgn': 'Ausl', 'cl.tag.Fre': 'Frei', 'cl.tag.Exp': 'Vertr',
   'cl.tr.famous': "Bekannte Spieler in deiner Region",
   'cl.tag.Bid': 'Geb',
+  'cl.tag.Abs': 'Abw', 'cl.tag.Wpm': 'AE', 'cl.tag.Cup': 'Pok', 'cl.tag.Ine': 'Nsp', 'cl.tag.Sct': 'Sct', 'cl.tag.Req': 'Wun', 'cl.tag.Ctr': 'Mon', 'cl.tag.Ret': 'Rück', 'cl.tag.Bos': 'Bos',
   'cl.pl.career': 'Spielerkarriere', 'career.sourceCm': 'Frühere Spielzeiten aus der Datenbank von Championship Manager 01/02.',
   'cl.fd.nation': 'Nation', 'cl.fd.club': 'Verein', 'cl.fd.staff': 'Personal', 'cl.fd.player': 'Spieler', 'cl.fd.searchFor': 'Suchen nach', 'cl.fd.noClub': 'Kein Verein', 'cl.fd.noDiv': 'Keine Liga', 'cl.fd.all.nation': 'Alle Nationen', 'cl.fd.all.club': 'Alle Vereine', 'cl.fd.all.staff': 'Gesamtes Personal', 'cl.fd.all.player': 'Alle Spieler', 'cl.fd.none': 'Nichts gefunden', 'cl.fd.found': '{n} gefunden',
   'cl.tac.capt': 'Kap', 'cl.tac.pen': 'Elf','cl.tac.fromBench': 'Von der Bank nehmen', 'cl.tac.toBench': 'Auf die Bank setzen', 'cl.tac.formation': 'Formation','cl.tac.v.cond': 'Kondition', 'cl.tac.v.fit': 'Eignung für die Position', 'cl.tac.v.pos': 'Positionen', 'cl.tac.v.value': 'Marktwert', 'cl.tac.edit': 'Bearbeiten', 'cl.tac.overview': 'Übersicht', 'cl.tac.with': 'Mit Ball', 'cl.tac.without': 'Gegen den Ball',
