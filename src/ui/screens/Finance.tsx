@@ -38,10 +38,9 @@ export function Finance() {
     <div>
       {talk && <BudgetModal onClose={() => setTalk(false)} />}
       <Head title={t('nav.finance')}>
-        {/* originalens økonomi (også i moderne ramme): ingen ekstra fanepille – View-menuen i ClassicFinances klarer visningerne */}
-        {<Tabs tabs={orig ? [['overview', t('fin.tab.overview')], ['stadium', t('fin.tab.attendance')], ['history', t('fin.tab.history')]]
+        <Tabs tabs={orig ? [['overview', t('fin.tab.overview')], ['stadium', t('fin.tab.attendance')], ['history', t('fin.tab.history')]]
           : noExt ? [['overview', t('fin.tab.overview')], ['stadium', t('fin.tab.attendance')], ['history', t('fin.tab.history')]]
-          : [['overview', t('fin.tab.overview')], ['stadium', t('fin.tab.stadium')], ['facilities', t('fin.tab.facilities')], ['history', t('fin.tab.history')]]} value={tab} onChange={setTab} />}
+          : [['overview', t('fin.tab.overview')], ['stadium', t('fin.tab.stadium')], ['facilities', t('fin.tab.facilities')], ['history', t('fin.tab.history')]]} value={tab} onChange={setTab} />
       </Head>
       {tab === 'stadium' && <AttendanceTab ticketPanel={extended() && !noExt ? <TicketPanel /> : null} />}
       {tab === 'facilities' && <FacilitiesTab />}

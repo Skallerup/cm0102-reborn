@@ -3,7 +3,6 @@
 // Valget er personligt og gemmes i browseren – ikke i spillet.
 import { loadLogos, logoUrl } from './logos';
 import { gs, hasGame, notify } from '../game/state';
-import { origLogic } from '../game/rules';
 
 export type Theme = 'club' | 'clubDark' | 'light' | 'dark' | 'gold' | 'retro';
 const KEY = 'cm-theme';
