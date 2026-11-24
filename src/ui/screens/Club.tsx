@@ -24,12 +24,13 @@ import { ProposeEditModal, dbOf } from '../communityActions';
 import { ClassicClubSquad } from './SquadClassic';
 import { ClassicFixtures } from './Fixtures';
 import { ClassicFinanceBody } from './Finance';
-import { authentic } from '../../game/rules';
+import { authentic, origLogic } from '../../game/rules';
+import { OrigClub } from './OrigClub';
 import { LEGEND_APPS, LEGEND_GOALS } from '../../game/records';
 import { rebornOn } from '../reborn';
 
 export function ClubScreen({ id }: { id?: number }) {
-  return isRetro() ? <ClassicClub id={id} /> : <ModernClub id={id} />;
+  return isRetro() ? <ClassicClub id={id} /> : origLogic() ? <OrigClub id={id} /> : <ModernClub id={id} />;
 }
 
 /** Klassisk tema: "Finances & Info" med View ▾ (General Info · Stats · Finances · Income · Expenditure) */
