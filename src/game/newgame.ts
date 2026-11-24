@@ -308,7 +308,8 @@ export function createGameBase(world: WorldData, o: NewGameOptions): NewGameCtx 
   for (const [id, name, short, nation, league, stadium, seats] of world.clubs) {
     // (20/11, UEFA-pladserne 0x904580) undtagen Europas lande uden spillet liga (HE<land>, build-cm-data.mts): originalen har deres klubber i
     // hukommelsen også uden spillere, og Europas pladser går til dem (fyldspillerne 0x90d2f0 stiller holdet)
-    if (cm && leagueById.get(league)?.hidden && !memKeep(id) && !(mode === 'authentic' && league.startsWith('HE'))) continue;
+    // (24/11) world-filer med klubtrimmet (clubMem) har det for alle lande – dér afgør det også HE<land>
+    if (cm && leagueById.get(league)?.hidden && !memKeep(id) && !(mode === 'authentic' && league.startsWith('HE') && clubMem?.[id] === undefined)) continue;
     const h = hash(id);
     g.clubs[id] = {
       id, name, short, nation, league, stadium: stadium || `${short} Stadium`, seats: seats || 5000,

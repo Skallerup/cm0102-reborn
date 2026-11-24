@@ -2,7 +2,7 @@
   "world-original-3965.json": {
     "source": "/Applications/CM 01-02 Bosman Edition.app/Contents/Resources/game/Data-3.9.65",
     "season": 2001,
-    "sha256": "42e937c0b74f207235e78893608b33ce5b94aa67c327239282cb28e2402b264c",
+    "sha256": "cfb8e38417c0782d2e4f42761da673b98b8546ee93cfb748d6ecb74acba9802d",
     "careers": "careers-original-3965.json",
     "careersSha256": "14367da34131630226aec0d925b9098340269c205d2bdae89e9bf3066fe4d88f",
     "reproducible": true
@@ -11,24 +11,24 @@
     "source": ".orig-db/Original-3.9.68-Database",
     "season": 2001,
     "noLegacy": true,
-    "sha256": "d78b3fa48bfe45699dc4849cac78698490b0149673e79db246babdf21a3a799b",
+    "sha256": "1335a2e744e55d4cb089ec5bac4d41aaa2d63bc3c0b9002630673c504c6c7081",
     "careers": "careers-original-3968.json",
-    "careersSha256": "3a68a2cd5b7a4b72cee5fb8c0570e8e4b86d8cfcac227a3843ec3e5442e0de09",
+    "careersSha256": "8acb7fc3b8ed62f468ea9d6a8a8b0480bd2e74399d37c5104cd8fccb03b739db",
     "reproducible": true
   },
   "world-original-normal.json": {
     "source": ".orig-db/Original-3.9.60-Database-Swedish_fixed",
     "season": 2001,
     "dbSize": 2,
-    "sha256": "21990e406377e927d6e677af40978210f38504ac904cfec6516ca27045e508c4",
+    "sha256": "e2bf03ccc72811b6c9d4e79dbd093488f2bbcf8a00543a5cc87abdfb5f6cb0eb",
     "reproducible": true
   },
   "world-original.json": {
     "source": ".orig-db/Original-3.9.60-Database-Swedish_fixed",
     "season": 2001,
-    "sha256": "87fcd8b6121cdeffaf6658feac2b5379711b83c17c6885b32e4c7141068a3b63",
+    "sha256": "adc335233abd052c085fd0f02ab1183a4e9b3568ed6f932817a1d85e42c253a6",
     "careers": "careers-original.json",
-    "careersSha256": "ab8140f443d3ffb5fec5c738d4094603ae494f52b260e3188d297e1ada763d80",
+    "careersSha256": "48c58b7adbfa70dd1d7601124e2243f5574efbaf4a44dd0710a04eecfa06896f",
     "reproducible": true
   },
   "world.json": {
@@ -38,7 +38,7 @@
     "careers": "careers-cm.json",
     "careersSha256": "352c28a022160e40a07080603ae5562c15b915ee6447696430a099ff6eae48db",
     "cm": "world-cm.json",
-    "cmSha256": "4a89518e8d35818ee2e972c97f946d1e88f4e104760b586eac970bf34b1575ea",
+    "cmSha256": "750c1efb1d026f47d71c44572f48a4b963ec8f1d416c448f058c0a7afd44c696",
     "cmStaff": "world-cm-staff.json",
     "cmStaffSha256": "f8169a9e2a3d873ae6da833160e1596f15b0dbab9d63f0ee4ef8d93d58cd615b",
     "reproducible": true

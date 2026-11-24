@@ -186,6 +186,17 @@ if (ORIGINAL) {
       const club = p[F.club] as number, tc = w.ratings[p[F.id] as number]?.tc;
       if (club && !keptLeagues.has(clubLeague.get(club) ?? '') && (tc === 1 || (Array.isArray(tc) && tc.some((n) => playableNat.has(n))))) keep.add(club);
     }
+    // (24/11) 0x5267c0 database_trim_club_table gælder ALLE lande: også de ikke-spilbare landes klubber, trimmet beholder uden spillere – (b) pr. land
+    // de 15/20 med højest omdømme (størrelse 2 uden for nøglelandene: de første 5 i tabellen), (c) en beholdt persons klub/landshold, (d) klubber i
+    // club_comp_history, (f) originalens navngivne klubber (cm0102.ts clubMem). Før kun de spilbare landes klubber og de ikke-spilbares med en
+    // spiller, så oraklets udenlandske klubber uden spillere i hukommelsen manglede (størrelse 2 14/7-01, uden landsholdene: oraklet 1.920 klubber,
+    // vi 2.252, fælles 1.020 → vi 2.122, fælles 1.758 – fx Togos, Kenyas og Vanuatus klubber, Argentinas og Spaniens navngivne klubber);
+    // scripts/club-set-oracle.ts
+    const cmem0 = w.cmRaw?.clubMem;
+    if (cmem0) for (const c of w.clubs) {
+      const v = cmem0[c[0] as number];
+      if (!keptLeagues.has(c[4] as string) && (v === 1 || (Array.isArray(v) && v.some((n) => playableNat.has(n))))) keep.add(c[0] as number);
+    }
     // de spilbare landes inaktive divisioner har ingen talentudvalg (HIDDEN_SQUAD): også deres talenter er kun med, når 0x524d70 har dem i
     // hukommelsen for de valgte lande (tc) – før beholdt udvalget op til 16 pr. klub uden for hukommelsen (størrelse 2: 2.215 spillere i Englands
     // non-league mod oraklets 1.673 15/7-01, fx Bromsgrove Rovers 16 mod 3, Grantham Town 16 mod 1), så trupperne var for store og klubberne
@@ -327,9 +338,14 @@ if (playableNat.size) {
   const cmem = w.cmRaw?.clubMem;
   const memOk = (id: number) => { const v = cmem?.[id]; return v === 1 || (Array.isArray(v) && v.some((n) => playableNat.has(n))); };
   // klub-id 0 (club.dat's første klub, 3.9.60: 1.FC Bocholt) kan ikke være med: spillets klub 0 = ingen klub (spillernes klub 0 = klubløs i world-filen)
-  w.clubs = w.clubs.filter((c) => !lgOf.get(c[4] as string)?.hidden || (cmem && playableNat.has(c[3] as number) ? (c[0] as number) !== 0 && memOk(c[0] as number) : withP.has(c[0] as number)));
+  // (24/11) trimmet gælder alle lande (også de ikke-spilbare: klubber uden spillere i hukommelsen)
   if (cmem) {
-    const keepMem = new Set(w.clubs.filter((c) => lgOf.get(c[4] as string)?.hidden && playableNat.has(c[3] as number)).map((c) => c[0] as number));
+    const lost = w.clubs.filter((c) => lgOf.get(c[4] as string)?.hidden && withP.has(c[0] as number) && !memOk(c[0] as number));
+    console.error(`klubtrim: ${lost.length} skjulte klubber med en spiller i hukommelsen, men uden for clubMem${lost.length ? ` (fx ${lost.slice(0, 5).map((c) => c[1]).join(', ')})` : ''}`);
+  }
+  w.clubs = w.clubs.filter((c) => !lgOf.get(c[4] as string)?.hidden || (cmem ? (c[0] as number) !== 0 && memOk(c[0] as number) : withP.has(c[0] as number)));
+  if (cmem) {
+    const keepMem = new Set(w.clubs.filter((c) => lgOf.get(c[4] as string)?.hidden).map((c) => c[0] as number));
     for (const k of Object.keys(cmem)) {
       const id = Number(k), v = cmem[id];
       if (!keepMem.has(id)) delete cmem[id];
@@ -352,7 +368,9 @@ if (ORIGINAL && w.cmRaw?.nationCont && (w.cmRaw.europe ?? -1) >= 0) {
   let added = 0, moved = 0, nats = 0;
   w.cmRaw.nationCont.forEach((cont, idx) => {
     if (cont !== w.cmRaw!.europe || real.has(idx)) return;
-    const cs = parsedClubs.filter((c) => c[3] === idx).sort((a, b) => (rawRep[b[0] as number] ?? 0) - (rawRep[a[0] as number] ?? 0) || (a[0] as number) - (b[0] as number)).slice(0, EURO_CLUBS_ORIG);
+    // (24/11) med klubtrimmet (clubMem) netop dets klubber – før de 8 med højest omdømme (et skøn)
+    const cmemE = w.cmRaw!.clubMem;
+    const cs = cmemE ? w.clubs.filter((c) => c[3] === idx) : parsedClubs.filter((c) => c[3] === idx).sort((a, b) => (rawRep[b[0] as number] ?? 0) - (rawRep[a[0] as number] ?? 0) || (a[0] as number) - (b[0] as number)).slice(0, EURO_CLUBS_ORIG);
     if (!cs.length) return;
     const lid = `HE${idx}`;
     const lg = { id: lid, name: nationName(idx), nation: idx, tier: 9, hidden: true };

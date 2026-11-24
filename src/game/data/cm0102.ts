@@ -5,6 +5,7 @@
 // Filformatet (index.dat + faste poststørrelser) er beskrevet af fællesskabets værktøjer
 // (TransferTool, CM0102Patcher); omregningen af "intrinsiske" evner følger CM0102Patcher.
 import type { WorldData } from '../newgame';
+import { CM_SPECIAL_CLUBS } from './cmSpecialClubs';
 
 export const CM_REQUIRED = ['index.dat', 'staff.dat', 'club.dat', 'nation.dat', 'club_comp.dat', 'first_names.dat', 'second_names.dat', 'common_names.dat'];
 
@@ -841,8 +842,11 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
    *  (b) pr. land en liste (0x5269ea–0x526bc9, tabellens rækkefølge inkl. landsholdene i nat_club.dat): op til 20 (størrelse 2: 15) efter
    *      omdømme (fuld liste → erstat den første laveste, når strengt højere); ved størrelse 2 for et ikke-valgt land uden for de 15
    *      nøglelande (England, Italien, … 0x526a14–0x526a94) kun de første 5 i tabellen;
-   *  (c) en beholdt persons klub +0x39 eller landshold +0x24 (0x526c53), (d) klub_comp_history +10/+14/+18 (0x526c95),
-   *  (e) kun Maximum: staff_history +10, når personen er beholdt og hans nationalitet er valgt (0x526cfd – klubbens eget land er (a)). */
+   *  (c) en beholdt persons klub +0x39 eller landshold +0x24 (0x526c53), (d) klub_comp_history +10/+14/+18 (0x526c95) – kun posterne, 0x539ae0
+   *  har beholdt (internationale turneringer altid, ellers turneringens land valgt),
+   *  (e) kun Maximum: staff_history +10, når personen er beholdt og hans nationalitet er valgt (0x526cfd – klubbens eget land er (a)),
+   *  (f) originalens navngivne klubber (0x60ba80, cmSpecialClubs.ts) altid. Landsholdene (de sidste 2 × antal lande i tabellen, 0x526dcc) er
+   *  ikke klubber i world-filen. */
   let clubMem: Record<number, 1 | number[]> | undefined;
   if (opts.cmMem && cmTrim) {
     const size12 = cmTrim.pct === 0.02;
@@ -895,7 +899,16 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
     // (d)
     if (files['club_comp_history.dat']) {
       const H = new Reader(files['club_comp_history.dat']);
-      for (let o = 0; o + 26 <= files['club_comp_history.dat'].byteLength; o += 26) for (const k of [10, 14, 18]) { const c = H.i32(o + k); if (c >= 0 && c < table.length) add(c, true); }
+      // (24/11) 0x539ae0 (kaldt før 0x524d70/0x5267c0) har allerede fjernet posterne, hvis turnering (+4) mangler eller hører til et ikke-valgt land
+      // (turneringens land +0x5d med +0x11c = 0) – kun de internationale turneringers poster (intet land) gælder altid. Før talte alle poster,
+      // så fx Sveriges og Belgiens lavere klubber med en gammel divisionstitel var med uden landet (oraklet 14/7-01, England valgt)
+      for (let o = 0; o + 26 <= files['club_comp_history.dat'].byteLength; o += 26) {
+        const comp = comps.get(H.i32(o + 4));
+        if (!comp) continue;
+        const nat: number | true | undefined = comp.nation < 0 ? true : nationIdx.get(comp.nation);
+        if (nat === undefined) continue;
+        for (const k of [10, 14, 18]) { const c = H.i32(o + k); if (c >= 0 && c < table.length) add(c, nat); }
+      }
     }
     // (e)
     if (!size12 && files['staff_history.dat']) {
@@ -907,6 +920,11 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
         if (x !== undefined && (m === 1 || (Array.isArray(m) && m.includes(x)))) add(club, x);
       }
     }
+    // (f) (24/11) originalens navngivne klubber (0x6146b0: navnet stricmp en af exe'ens klubnavne – River Plate, Argentino de Rosario, Real Madrid B
+    // …): 0x60ba80 beholder dem altid (0x526d94), før alle andre regler. Før manglede fx Argentinas, Spaniens og Tysklands B-hold og lavere klubber
+    const fold = (s: string) => s.replace(/[A-Z]/g, (ch) => ch.toLowerCase());
+    const special = new Set(CM_SPECIAL_CLUBS.map(fold));
+    for (const c of rawClubs) if (special.has(fold(c.name))) add(c.id, true);
     clubMem = {};
     for (const c of rawClubs) { const v = acc.get(c.id); if (v && nationIdx.has(c.nation)) clubMem[c.id] = v === true ? 1 : [...v].sort((a, b) => a - b); }
   }
