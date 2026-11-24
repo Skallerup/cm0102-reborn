@@ -21,12 +21,12 @@ import { coarse } from './runs';
 
 export function Tactics() {
   const g = useGame()!;
+  const [lastOpen, setLastOpen] = useState(false); // (hooks før det tidlige return, så skift af udseende ikke ændrer hook-rækkefølgen)
   if (isRetro() && !g.draft) return <ClassicTactics />;
   if (!g.tactic) g.tactic = autoSelect(newTactic('4-4-2'), squad(g.userClub));
   const set = (tac: Tactic) => act({ t: 'tactic', tactic: tac });
   // originale spil (CM 01/02): ingen er udtaget fra start – assistenten udtager holdet; originalens egne valg (Last Match, Clear Squad)
   const orig = origLogic();
-  const [lastOpen, setLastOpen] = useState(false);
   const empty = orig && !g.tactic.lineup.some(Boolean);
   return (
     <div>

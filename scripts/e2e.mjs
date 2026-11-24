@@ -737,7 +737,8 @@ async function run(look) {
       }
     }
     // 24/11 del 2: originalens taktik i det moderne design – Overview/With Ball/Without Ball, SB1-SB9, Team Instructions (originalens syv + dødboldsskytter), Penalty Takers, ingen kemi
-    {
+    let origErr = null;
+    try {
       await go({ name: 'tactics' });
       await page.waitForSelector('main .pitch');
       if (await page.locator('main .insight').count()) throw new Error('moderne taktik (originalt spil): kemipanelet (CM Reborn) vises');
@@ -759,14 +760,16 @@ async function run(look) {
       for (const k of ['Load', 'Save', 'Save As', 'Delete']) if (!(await page.locator('main .head button, main button', { hasText: new RegExp(`^${k}$`) }).count())) throw new Error(`moderne træning (originalt spil): Schedule-knappen ${k} mangler`);
       // Next Match (klub og Assistant): originalens rækker
       await go({ name: 'assistant' });
-      for (const k of ['Date', 'Venue', 'Rules', 'Last']) if (!(await page.locator('main .kv span', { hasText: new RegExp(`^${k}`) }).count())) throw new Error(`moderne Next Match (originalt spil): ${k} mangler`);
-    }
+      await page.waitForSelector('main .kv, main .muted', { timeout: 10000 });
+      for (const k of ['Date', 'Venue', 'Match Rules', 'Last Meeting']) if (!(await page.locator('main .kv span', { hasText: new RegExp(`^${k}`) }).count())) throw new Error(`moderne Next Match (originalt spil): ${k} mangler`);
+    } catch (e) { origErr = e; }
     // tilbage til klassisk via Options-skærmen
     await go({ name: 'options' });
     await page.locator('select').filter({ has: page.locator('option[value="retro"]') }).first().selectOption('retro');
     await page.waitForSelector('.cx-side', { timeout: 10000 });
     if ((await page.evaluate(() => document.documentElement.dataset.skin)) !== 'retro') throw new Error('kom ikke tilbage til det klassiske udseende');
     await gs((m) => { window.__cm.gs().options.mode = m; }, mode0);
+    if (origErr) throw origErr;
   });
   // Game Options: rød prik ved ny ændringslog (forsvinder, når loggen er åbnet) og én samlet feedback/fejl-knap med typevalg
   if (look === 'klassisk') await step('Game Options: ændringslog-prik og samlet feedback', async () => {
