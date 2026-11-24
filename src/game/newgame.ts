@@ -642,9 +642,22 @@ export function createGameBase(world: WorldData, o: NewGameOptions): NewGameCtx 
   // 0x527240 tæller klubbens pladser (+0x19f/+0x1b3/+0x1cf) med databasens folk – også dem, der her kun er i Staff Search (staffX: klubber uden for
   // spillets ligaer), så de genererede kun fylder op
   extraSlots = new Map();
+  // 0x524d70/0x5267c0: en klub i spillet uden for spillets ligaer (de skjulte – fx Englands non-league, bygget efter databasens stab: staffX med
+  // klubben i [16]) har databasens stab, når personen er i originalens hukommelse – klubbens manager +0xcf, trænere +0x19f, spejdere +0x1b3 og
+  // fysioterapeuter +0x1cf er databasens personer, som i spillets ligaer (oraklet 14/7-01, størrelse 2: 122 af Englands 174 non-league-klubber har
+  // databasens manager). Før fik de en genereret manager uden for hukommelsen (+0xcf = 0 i cmValueMem/trupplanen: omdømmet 0x5407e0 med kendskab
+  // 4 = verdensomdømmet, så fx Bill Edwards/Margate +0x52 £5.562 mod oraklets £24.601)
+  const clubX = new Set<NonNullable<CMWorld['staff']>[number]>();
   if (memSel && cm?.staffX) for (const row of cm.staffX) {
     const cj = row[16];
-    if (!cj || cj[0] < 0 || ![8, 9, 10].includes(cj[1]) || !memOf(row)) continue;
+    if (!cj || cj[0] <= 0 || !g.clubs[cj[0]] || ![5, 6, 8, 9, 10, 12].includes(cj[1]) || !memOf(row)) continue;
+    clubX.add(row);
+    const l = dbStaff.get(cj[0]);
+    if (l) l.push(row); else dbStaff.set(cj[0], [row]);
+  }
+  if (memSel && cm?.staffX) for (const row of cm.staffX) {
+    const cj = row[16];
+    if (!cj || cj[0] < 0 || ![8, 9, 10].includes(cj[1]) || !memOf(row) || clubX.has(row)) continue;
     const e = extraSlots.get(cj[0]) ?? extraSlots.set(cj[0], { 8: 0, 9: 0, 10: 0 }).get(cj[0])!;
     e[cj[1] as 8 | 9 | 10]++;
   }
@@ -671,7 +684,7 @@ export function createGameBase(world: WorldData, o: NewGameOptions): NewGameCtx 
     g.cmClubNames = {};
     const ROLE: Record<number, StaffRole> = { 5: 'manager', 12: 'manager', 6: 'assistant', 13: 'assistant', 7: 'coach', 8: 'coach', 14: 'coach', 15: 'coach', 9: 'scout', 10: 'physio' };
     for (const row of cm.staffX) {
-      if (!memOf(row)) continue;
+      if (!memOf(row) || clubX.has(row)) continue;
       const s = addDbStaff(row, 0, ROLE[row[5]] ?? 'coach', date, seed);
       const club = row[16]?.[0] ?? -1;
       s.cmExtra = true;
