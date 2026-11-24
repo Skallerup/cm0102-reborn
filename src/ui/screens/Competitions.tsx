@@ -15,6 +15,7 @@ import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
 import { isRetro } from '../theme';
 import { authentic, origLogic } from '../../game/rules';
+import { OrigStages } from './OrigStages';
 import { resultStr, stageLabel } from './Fixtures';
 import { ClassicCup } from './CupClassic';
 import { ClassicCompHistory } from './CompHistoryClassic';
@@ -76,8 +77,8 @@ export function Competitions({ id }: { id?: string }) {
       )}
       {comp && !isRetro() && (
         <>
-          <Tabs tabs={[['table', comp.type === 'league' ? t('comp.table') : t('comp.overview')], ['fixtures', t('comp.fixtures')], ['scorers', t('comp.scorers')], ...(comp.type === 'league' ? [['stats', t('comp.stats')] as [string, string]] : []), ['history', t('comp.history')]]} value={tab} onChange={setTab} />
-          {tab === 'table' && (comp.type === 'league' ? <LeagueTables comp={comp} /> : <CupView comp={comp} />)}
+          <Tabs tabs={[['table', comp.type === 'league' ? t('comp.table') : origLogic() ? t('cl.cup.stages') : t('comp.overview')], ['fixtures', t('comp.fixtures')], ['scorers', t('comp.scorers')], ...(comp.type === 'league' ? [['stats', t('comp.stats')] as [string, string]] : []), ['history', t('comp.history')]]} value={tab} onChange={setTab} />
+          {tab === 'table' && (comp.type === 'league' ? <LeagueTables comp={comp} /> : origLogic() ? <OrigStages comp={comp} /> : <CupView comp={comp} />)}
           {tab === 'fixtures' && <CompFixtures comp={comp} />}
           {tab === 'scorers' && <Scorers comp={comp} />}
           {tab === 'stats' && comp.type === 'league' && <LeagueStats comp={comp} />}

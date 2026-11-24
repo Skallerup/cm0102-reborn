@@ -10,7 +10,8 @@ import { isRetro } from '../theme';
 import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
 import { CxDrop, cxShortDate } from '../classic';
-import { authentic } from '../../game/rules';
+import { authentic, origLogic } from '../../game/rules';
+import { OrigFriendlies } from './OrigFriendlies';
 import { cmRsvRows } from '../../game/cmReserveMatches';
 import { cmFriendlyOn } from '../../game/cmFriendly';
 import { FriendlyDates, FriendlyTourClubs, FriendlyTourNations, cmFrCancelRow, cmFrCancellable, cmFrFixtureRows } from './FriendlyClassic';
@@ -173,7 +174,7 @@ function ModernFixtures() {
   return (
     <div>
       <Head title={t('nav.fixtures')} />
-      {!g.draft && <FriendliesPanel />}
+      {!g.draft && (origLogic() ? <OrigFriendlies /> : <FriendliesPanel />)}
       {!g.draft && <ReservePanel />}
       <Panel className="flush">
         <table className="grid">
