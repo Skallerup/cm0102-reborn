@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { benchSize } from '../../game/rules';
 import { Info } from '../help';
-import { roleScore, slotFit, slotRole, roleProfile } from '../../game/attributes';
+import { A, roleScore, slotFit, slotRole, roleProfile } from '../../game/attributes';
 import { gs, squad } from '../../game/state';
 import { act } from '../../game/actions';
 import { autoSelect, available, changeFormation, FORMATIONS, newTactic, runTarget, shapeName } from '../../game/tactics';
@@ -12,6 +12,10 @@ import { Bar, Panel, PlayerLink, posStr } from '../components';
 import { useGame } from '../core';
 import { Head } from './common';
 import { isRetro } from '../theme';
+import { origLogic } from '../../game/rules';
+import { movePost } from '../../game/engine/grid/tacticPositions';
+import { ZonePitch, type Zone } from './ZonePitch';
+import { TAKERS, TI_CHOICES, TI_LABEL, tiSetValue } from './Match';
 import { ClassicTactics } from './TacticsClassic';
 import { coarse } from './runs';
 
@@ -20,10 +24,16 @@ export function Tactics() {
   if (isRetro() && !g.draft) return <ClassicTactics />;
   if (!g.tactic) g.tactic = autoSelect(newTactic('4-4-2'), squad(g.userClub));
   const set = (tac: Tactic) => act({ t: 'tactic', tactic: tac });
+  // originale spil (CM 01/02): ingen er udtaget fra start – assistenten udtager holdet; originalens egne valg (Last Match, Clear Squad)
+  const orig = origLogic();
+  const [lastOpen, setLastOpen] = useState(false);
+  const empty = orig && !g.tactic.lineup.some(Boolean);
   return (
     <div>
       <Head title={t('nav.tactics')}>
-        <button onClick={() => set(autoSelect(g.tactic!, squad(g.userClub)))}>{t('tac.assistantPick')}</button>
+        <button className={empty ? 'primary' : ''} onClick={() => set(autoSelect(g.tactic!, squad(g.userClub)))}>{t('tac.assistantPick')}</button>
+        {orig && <button onClick={() => set({ ...g.tactic!, lineup: g.tactic!.lineup.map(() => 0), bench: [] })}>{t('cl.sq.clear')}</button>}
+        {orig && <button disabled={!g.lastMatchTactic} onClick={() => setLastOpen(!lastOpen)}>{t('cl.lastMatch')}</button>}
         <button onClick={() => act({ t: 'savedTactics', list: [...g.savedTactics.filter((x) => x.formation !== g.tactic!.formation), structuredClone(g.tactic!)].slice(-6) })}>{t('tac.save')}</button>
         {g.savedTactics.length > 0 && (
           <select value="" onChange={(e) => { const s = g.savedTactics[Number(e.target.value)]; if (s) set({ ...structuredClone(s), lineup: g.tactic!.lineup.length === s.lineup.length ? g.tactic!.lineup : s.lineup }); }}>
@@ -32,7 +42,8 @@ export function Tactics() {
           </select>
         )}
       </Head>
-      {!g.draft && <ChemistryPanel />}
+      {!g.draft && !orig && <ChemistryPanel />}
+      {orig && lastOpen && g.lastMatchTactic && <LastMatchPanel tac={g.lastMatchTactic} />}
       <TacticEditor tactic={g.tactic} players={squad(g.userClub)} onChange={set} />
     </div>
   );
@@ -57,6 +68,12 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub, cond
   cond?: Record<number, number>;
 }) {
   const condOf = (p: Player) => cond?.[p.id] ?? p.condition;
+  // originale spil: CM 01/02's taktik (Overview · With Ball · Without Ball, SB1-SB9, Team Instructions, Penalty Takers)
+  const orig = origLogic();
+  const [pane, setPane] = useState<'overview' | 'with' | 'without'>('overview');
+  const [zone, setZone] = useState<Zone>({ zx: 0, zy: 0 });
+  const [pick, setPick] = useState<number | null>(null);
+  const [penOpen, setPenOpen] = useState(false);
   const [sel, setSel] = useState<number | null>(null);
   const [drag, setDrag] = useState<number | null>(null);
   // fortryd: de seneste ændringer gemmes, så man kan klikke sig tilbage
@@ -191,7 +208,16 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub, cond
           {!gs().draft && <button className={`small ${editPos ? 'primary' : ''}`} onClick={() => { setEditPos(!editPos); setSel(null); }} title={t('tac.movePosHint')}>✥ {t(editPos ? 'tac.movePosDone' : 'tac.movePos')}</button>}
           <span className="muted">{t(editPos ? 'tac.movePosHint' : coarse() ? 'tac.hint2Touch' : 'tac.hint2')}</span>
         </div>
-        <div className={`pitch ${editPos ? 'editing' : ''}`} ref={pitchRef}
+        {orig && !matchMode && (
+          <div className="seg" role="tablist">
+            {(['overview', 'with', 'without'] as const).map((k) => <button key={k} type="button" role="tab" aria-selected={pane === k} className={pane === k ? 'on' : ''} onClick={() => setPane(k)}>{t(`cl.tac.${k}`)}</button>)}
+          </div>
+        )}
+        {orig && !matchMode && pane !== 'overview' && (
+          <ZonePitch modern colors={gs().clubs[gs().userClub]?.colors as [string, string] | undefined} tac={tactic} att={pane === 'with' ? 1 : 0} zone={zone} onZone={setZone} sel={sel}
+            byId={(id) => byId.get(id)} onSelect={(i) => setSel(sel === i ? null : i)} onMove={gs().draft ? null : (i, x, y) => { if (tactic.slots[i]?.pos !== 'GK') change(movePost(tactic, i, pane === 'with' ? 1 : 0, zone.zx, zone.zy, x, y)); }} />
+        )}
+        <div className={`pitch ${editPos ? 'editing' : ''}`} ref={pitchRef} style={orig && !matchMode && pane !== 'overview' ? { display: 'none' } : undefined}
           onDragOver={(e) => { if (drag !== null && tactic.lineup.includes(drag)) e.preventDefault(); }}
           onDrop={(e) => {
             // sluppet på en tom plet: flyt spillerens plads dertil (egen formation)
@@ -325,17 +351,33 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub, cond
                 ))}
               </div>
               {ins.run && <div className="ctx-row"><button className="small" onClick={(e) => { e.stopPropagation(); setIndFor(i, { run: undefined }); }}>{t('cl.tac.run.none')}</button></div>}
-              {tri('longShots', t('pi.longShots'))}
-              {tri('crossing', t('pi.crossing'))}
-              <div className="ctx-toggles">
-                {tog('runWithBall', t('pi.runWithBall'))}
-                {tog('throughBalls', t('pi.throughBalls'))}
-                {tog('tightMarking', t('pi.tightMarking'))}
-                {tog('freeRole', t('pi.freeRole'))}
-              </div>
+              {!orig && tri('longShots', t('pi.longShots'))}
+              {!orig && tri('crossing', t('pi.crossing'))}
+              {!orig && (
+                <div className="ctx-toggles">
+                  {tog('runWithBall', t('pi.runWithBall'))}
+                  {tog('throughBalls', t('pi.throughBalls'))}
+                  {tog('tightMarking', t('pi.tightMarking'))}
+                  {tog('freeRole', t('pi.freeRole'))}
+                </div>
+              )}
             </div>
           );
         })()}
+        {orig && <OrigBench tactic={tactic} byId={byId} pick={pick} setPick={setPick} change={change} matchMode={!!matchMode} />}
+        {orig ? (
+          <Panel title={t('tac.setPieces')}>
+            <div className="col">
+              <label className="row setpiece-row"><span>{t('tac.captain')}</span>
+                <select value={tactic.captain} onChange={(e) => change({ ...tactic, captain: Number(e.target.value) })}>
+                  <option value={0}>—</option>
+                  {tactic.lineup.map((id) => byId.get(id)).filter(Boolean).map((p) => <option key={p!.id} value={p!.id}>{p!.last}</option>)}
+                </select>
+              </label>
+              <button className={penOpen ? 'primary' : ''} onClick={() => setPenOpen(!penOpen)}>{t('cl.tac.penTakers')}</button>
+            </div>
+          </Panel>
+        ) : (
         <Panel title={t('tac.setPieces')}>
           <div className="col">
             {(['captain', 'penalties', 'freeKicks', 'corners'] as const).map((k) => (
@@ -356,8 +398,11 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub, cond
             ))}
           </div>
         </Panel>
+        )}
+        {orig && penOpen && <PenaltyPanel tactic={tactic} players={players} change={change} />}
       </div>
       <div className="col">
+        {orig ? <OrigTeamPanel tactic={tactic} players={players} change={change} /> : (
         <Panel title={t('tac.team')}>
           <div className="ti-groups">
             <div className="ti-group">
@@ -378,7 +423,8 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub, cond
             </div>
           </div>
         </Panel>
-        {ind && selSlot && (
+        )}
+        {ind && selSlot && !orig && (
           <Panel title={`${t('tac.individual')}: ${selSlot.pos}${selSlot.side !== 'C' ? ' ' + selSlot.side : ''} – ${byId.get(tactic.lineup[sel!])?.last ?? ''}`}>
             <div className="ti-groups">
               <div className="ti-group">
@@ -414,12 +460,12 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub, cond
                   const suit = selSlot ? Math.round(roleScore(p, slotRole(selSlot)) * slotFit(p, selSlot) * 10) / 10 : 0;
                   return (
                     <tr key={p.id} className={`clickable ${!available(p) ? 'injured' : ''}`} draggable onDragStart={() => setDrag(p.id)} onDragEnd={() => setDrag(null)}
-                      onClick={() => { if (sel !== null && available(p)) assign(sel, p.id); }}>
-                      <td>{xi >= 0 ? <span className="tag good">{tactic.slots[xi].pos}</span> : onBench ? <span className="tag">{t('tac.sub')}</span> : ''}</td>
+                      onClick={() => { if (sel !== null && available(p)) assign(sel, p.id); else if (orig && !matchMode) setPick(pick === p.id ? null : p.id); }}>
+                      <td>{xi >= 0 ? <span className="tag good">{orig ? (p.number ?? tactic.slots[xi].pos) : tactic.slots[xi].pos}</span> : onBench ? <span className="tag">{orig ? `SB${tactic.bench.indexOf(p.id) + 1}` : t('tac.sub')}</span> : ''}{orig && tactic.captain === p.id && <span className="tag warn">{t('cl.tac.capt')}</span>}{orig && pick === p.id && <span className="tag good">✓</span>}</td>
                       <td>{posStr(p)}</td>
                       <td><PlayerLink p={p} short />{p.injury && <span className="tag bad">{t('tag.inj')}</span>}{p.banned > 0 && <span className="tag bad">{t('tag.ban')}</span>}
                         {p.reserves && <span className="tag" title={t('cl.pl.inReserves')}>{t('cl.tag.Res')}</span>}
-                        {selSlot && <RoleNote p={p} slot={selSlot} />}</td>
+                        {selSlot && !orig && <RoleNote p={p} slot={selSlot} />}</td>
                       <td><Bar value={condOf(p)} /></td>
                       {selSlot && <td className="num">{suit.toFixed(1)}</td>}
                       <td>{!matchMode && p.reserves && <button className="small" title={t('cl.pl.inReserves')} onClick={(e) => { e.stopPropagation(); act({ t: 'reserves', pid: p.id, on: false }); }}>↑ {t('cl.pl.callUp')}</button>}{!matchMode && xi < 0 && available(p) && <button className="small" onClick={(e) => { e.stopPropagation(); toggleBench(p.id); }}>{onBench ? '−' : '+'} {t('tac.sub')}</button>}</td>
@@ -480,5 +526,103 @@ function ChemistryPanel() {
         </table>
       </details>
     </div>
+  );
+}
+
+/** CM 01/02: de tomme/besatte bænkpladser SB1 … SB9 (en valgt spiller i listen sættes på en plads; en besat plads fjernes ved klik uden valgt spiller) */
+function OrigBench({ tactic, byId, pick, setPick, change, matchMode }: { tactic: Tactic; byId: Map<number, Player>; pick: number | null; setPick: (n: number | null) => void; change: (t: Tactic) => void; matchMode: boolean }) {
+  if (matchMode) return null;
+  const n = Math.max(9, benchSize());
+  return (
+    <Panel title={t('match.subsTitle')}>
+      <div className="orig-bench">
+        {Array.from({ length: n }, (_, i) => {
+          const id = tactic.bench[i];
+          const p = id ? byId.get(id) : undefined;
+          return (
+            <button key={i} type="button" className={`orig-sb ${p ? 'full' : ''}`} disabled={!p && (pick === null || tactic.lineup.includes(pick))}
+              onClick={() => {
+                if (pick !== null && !tactic.lineup.includes(pick)) {
+                  const bench = tactic.bench.filter((x) => x !== pick);
+                  bench.splice(Math.min(i, bench.length), 0, pick);
+                  change({ ...tactic, bench: bench.slice(0, n) }); setPick(null);
+                } else if (p) change({ ...tactic, bench: tactic.bench.filter((x) => x !== id) });
+              }}>
+              <b>SB{i + 1}</b><span>{p ? `${p.number ?? ''} ${p.last}`.trim() : ''}</span>
+            </button>
+          );
+        })}
+      </div>
+    </Panel>
+  );
+}
+
+/** CM 01/02 "Team Instructions": Mentality, Passing, Tackling, Pressing, Offside Trap, Counter Attack, Men Behind Ball + frispark/hjørner/playmaker */
+function OrigTeamPanel({ tactic, players, change }: { tactic: Tactic; players: Player[]; change: (t: Tactic) => void }) {
+  const tm = tactic.team;
+  const byId = new Map(players.map((p) => [p.id, p]));
+  const val = (k: (typeof TI_CHOICES)[number]['k']) => { const v = tm[k]; return typeof v === 'boolean' ? (v ? 1 : 0) : (v ?? 0); };
+  const taker = (k: (typeof TAKERS)[number]) => k === 'playmaker' ? (tm.playmaker ?? 0) : k === 'freeKicksR' ? (tactic.freeKicksR ?? tactic.freeKicks) : k === 'cornersR' ? (tactic.cornersR ?? tactic.corners) : tactic[k];
+  const setTaker = (k: (typeof TAKERS)[number], id: number) => change(k === 'playmaker' ? { ...tactic, team: { ...tm, playmaker: id || undefined } } : { ...tactic, [k]: id });
+  return (
+    <Panel title={t('cl.mt.teamInstr')}>
+      <div className="ti-groups">
+        <div className="ti-group">
+          {TI_CHOICES.map((c) => (
+            <div key={c.k} className="ti-row">
+              <div className="ti-label"><b>{t(TI_LABEL[c.k])}</b></div>
+              <div className="seg" role="radiogroup">
+                {[...c.opts].sort((x, y) => x[1] - y[1]).map(([l, o]) => <button key={l} type="button" role="radio" aria-checked={c.is(val(c.k), o)} className={c.is(val(c.k), o) ? 'on' : ''} onClick={() => change({ ...tactic, team: tiSetValue(tm, c.k, o) })}>{t(l)}</button>)}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="ti-group">
+          {TAKERS.map((k) => (
+            <label key={k} className="row setpiece-row"><span>{t(`cl.mt.ti.${k}`)}</span>
+              <select value={taker(k)} onChange={(e) => setTaker(k, Number(e.target.value))}>
+                <option value={0}>—</option>
+                {tactic.lineup.map((id) => byId.get(id)).filter(Boolean).map((p) => <option key={p!.id} value={p!.id}>{p!.number ?? ''} {p!.last}</option>)}
+              </select>
+            </label>
+          ))}
+        </div>
+      </div>
+    </Panel>
+  );
+}
+
+/** CM 01/02 "Penalty Takers": klik på spillerne i den rækkefølge, de skal sparke */
+function PenaltyPanel({ tactic, players, change }: { tactic: Tactic; players: Player[]; change: (t: Tactic) => void }) {
+  const order = tactic.penOrder !== undefined ? tactic.penOrder.filter((id) => players.some((p) => p.id === id)) : tactic.penalties ? [tactic.penalties] : [];
+  const set = (next: number[]) => change({ ...tactic, penOrder: next, penalties: next[0] ?? tactic.penalties });
+  const toggle = (id: number) => set(order.includes(id) ? order.filter((x) => x !== id) : [...order, id].slice(0, 50));
+  const list = players.filter((p) => !p.reserves).sort((a, b) => (order.indexOf(a.id) < 0 ? 999 : order.indexOf(a.id)) - (order.indexOf(b.id) < 0 ? 999 : order.indexOf(b.id)) || b.ca - a.ca);
+  return (
+    <Panel title={t('cl.tac.penTitle')}>
+      <div className="row" style={{ marginBottom: 8 }}>
+        <button className="small" onClick={() => set([...players].filter(available).sort((a, b) => b.attrs[A.penalties] + b.attrs[A.pressure] - a.attrs[A.penalties] - a.attrs[A.pressure]).slice(0, 11).map((p) => p.id))}>{t('tac.assistantPick')}</button>
+        <button className="small" onClick={() => set([])}>{t('cl.tac.clearSquad')}</button>
+      </div>
+      <div className="orig-pens">
+        {list.map((p) => {
+          const i = order.indexOf(p.id);
+          return <button key={p.id} type="button" className={`orig-pen ${i >= 0 ? 'on' : ''}`} onClick={() => toggle(p.id)}><b>{i >= 0 ? i + 1 : ''}</b><span>{p.last}</span></button>;
+        })}
+      </div>
+    </Panel>
+  );
+}
+
+/** Last Match (CM 01/02): startopstillingen fra sidste kamp – kun til at se på */
+function LastMatchPanel({ tac }: { tac: Tactic }) {
+  const g = useGame()!;
+  return (
+    <Panel title={t('cl.mt.lastMatch')}>
+      <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>
+        <span className="tag">{tac.formation}</span>
+        {tac.lineup.filter(Boolean).map((id) => <span key={id} className="tag">{g.players[id]?.number ?? ''} {g.players[id]?.last ?? ''}</span>)}
+      </div>
+    </Panel>
   );
 }

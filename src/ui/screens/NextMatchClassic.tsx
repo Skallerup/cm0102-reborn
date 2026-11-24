@@ -38,6 +38,35 @@ function clubNews(g: GameState, club: number, f: Fixture): string[] {
   return out;
 }
 
+/** Originalens Next Match (0x45e76a–0x45e9a8) som rækker – bruges af det moderne udseende i originale spil (samme data som den klassiske skærm) */
+export function origNextMatchRows(g: GameState, f: Fixture): { rows: [string, string | string[]][]; meetings: Fixture[]; score: (x: Fixture) => string } {
+  const me = g.userClub;
+  const home = f.home === me;
+  const opp = home ? f.away : f.home;
+  const club = (id: number) => g.clubs[id];
+  const meetings = Object.values(g.fixtures).filter((x) => x.result && ((x.home === me && x.away === opp) || (x.home === opp && x.away === me))).sort((a, b) => b.date.localeCompare(a.date));
+  const score = (x: Fixture) => `${club(x.home)?.short} ${x.result!.hg}-${x.result!.ag} ${club(x.away)?.short}, ${compName(g.comps[x.comp]?.name)} ${classicDate(x.date)[1]}`;
+  const today = f.date === g.date;
+  const days = daysBetween(g.date, f.date);
+  const w = weatherFor(f);
+  const cmWx = cmWxOn(g) ? cmFixtureWeather(g, f) : null;
+  const when = `${cxLongDate(f.date).replace(/,? \d{4}$/, '')}${today ? ` (${t('cl.nm.today')})` : days === 1 ? ` (${t('cl.nm.tomorrow')})` : days > 1 ? ` ${t('cl.nm.days', { n: days })}` : ''}`;
+  const myNews = clubNews(g, me, f);
+  const oppNews = clubNews(g, opp, f);
+  const rows: [string, string | string[]][] = [
+    [t('cl.nm.date'), when],
+    [t('cl.nm.venue'), club(f.home)?.stadium ?? '-'],
+    [t('cl.nm.rules'), [t('cl.nm.noRestr'), t('cl.nm.subs', { named: benchSize(), used: maxSubs() })]],
+    [t('cl.nm.last'), meetings[0] ? score(meetings[0]) : '-'],
+    ...(cmWx ? [[t(days <= 0 ? 'cl.nm.weather' : 'cl.nm.forecast'), days <= 1 ? cmWeatherText(cmWx.rec, t) : t('cl.nm.unknown')] as [string, string]]
+      : days <= 7 ? [[t('cl.nm.weather'), t(`wx.${w}`)] as [string, string]] : [[t('cl.nm.forecast'), t('cl.nm.unknown')] as [string, string]]),
+    ...(days <= 0 ? [[t('cl.nm.pitch'), cmWx ? cmPitchText(cmWx.pitch, t) : t(`pitch.${pitchFor(f, w)}`)], [t('cl.nm.referee'), refereeFor(f).name]] as [string, string][] : []),
+    [t('cl.nm.news', { club: club(me)?.short ?? '' }), myNews.length ? myNews : '-'],
+    [t('cl.nm.news', { club: club(opp)?.short ?? '' }), oppNews.length ? oppNews : '-'],
+  ];
+  return { rows, meetings, score };
+}
+
 export function ClassicNextMatch({ onAssistant }: { onAssistant?: () => void }) {
   const g = useGame()!;
   const { nav } = useNav();

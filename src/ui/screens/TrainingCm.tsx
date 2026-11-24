@@ -28,12 +28,12 @@ import { Tag, originalTag } from './SquadClassic';
 
 /** originalen skriver skemaerne som .tsh-filer (0x8b53d0: header 0x6a bytes, +4..+8, navnet 12 bytes, +0x15, +0x16, +0x18 17 bytes) i spillets
  *  mappe; i browseren ligger de i localStorage (*estimeret* – kun niveauerne, navnet og typen; positionstræningen er ikke porteret) */
-type TshFile = { t: number; n: string; lv: number[] };
+export type TshFile = { t: number; n: string; lv: number[] };
 const TSH_KEY = 'cm0102.tsh';
-function tshFiles(): Record<string, TshFile> {
+export function tshFiles(): Record<string, TshFile> {
   try { const v = JSON.parse(localStorage.getItem(TSH_KEY) ?? '{}'); return v && typeof v === 'object' ? v : {}; } catch { return {}; }
 }
-function tshWrite(files: Record<string, TshFile>): boolean {
+export function tshWrite(files: Record<string, TshFile>): boolean {
   try { localStorage.setItem(TSH_KEY, JSON.stringify(files)); return true; } catch { return false; }
 }
 

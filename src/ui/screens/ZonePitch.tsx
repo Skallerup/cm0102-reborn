@@ -11,13 +11,15 @@ const topOf = (y: number) => T0 - ((y + 0.5) / 36) * TH;
 
 export interface Zone { zx: number; zy: number }
 
-export function ZonePitch({ tac, att, zone, onZone, sel, onSelect, onMove, byId, dotClass = '', dropCapt }: {
+export function ZonePitch({ tac, att, zone, onZone, sel, onSelect, onMove, byId, dotClass = '', dropCapt, modern, colors }: {
   tac: Tactic; att: 0 | 1; zone: Zone; onZone: (z: Zone) => void; sel: number | null; onSelect: (slot: number) => void;
   /** null = skrivebeskyttet */
   onMove: ((slot: number, x: number, y: number) => void) | null;
   byId: (id: number) => Player | undefined; dotClass?: string;
   /** sat, mens "capt" trækkes: en spiller kan tage imod den */
   dropCapt?: (slot: number) => void;
+  /** det moderne udseende (originale spil): moderne bane og trøjer i klubbens farver i stedet for de klassiske klasser */
+  modern?: boolean; colors?: [string, string];
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<{ slot: number; x: number; y: number } | null>(null);
@@ -32,7 +34,7 @@ export function ZonePitch({ tac, att, zone, onZone, sel, onSelect, onMove, byId,
   };
   const zw = (9 / 27) * LW, zh = (9 / 36) * TH;
   return (
-    <div className="cx-tac-pitch cx-zone-pitch" ref={ref}
+    <div className={modern ? 'pitch zone-pitch-m' : 'cx-tac-pitch cx-zone-pitch'} ref={ref}
       onClick={(e) => {
         if (dragged.current) { dragged.current = false; return; }
         if ((e.target as Element).closest('.cx-tac-slot')) return;
@@ -45,7 +47,7 @@ export function ZonePitch({ tac, att, zone, onZone, sel, onSelect, onMove, byId,
           <rect x="14" y="1" width="40" height="16" /><rect x="14" y="83" width="40" height="16" /><rect x="25" y="1" width="18" height="6" /><rect x="25" y="93" width="18" height="6" />
         </g>
       </svg>
-      <svg className="zones" viewBox="0 0 100 100" preserveAspectRatio="none">
+      <svg className="zones" viewBox="0 0 100 100" preserveAspectRatio="none" style={modern ? { position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' } : undefined}>
         <g stroke="#9fd38f66" strokeWidth="0.6" strokeDasharray="1.6 1.2" fill="none" vectorEffect="non-scaling-stroke">
           <rect x={L0} y={T0 - TH} width={LW} height={TH} vectorEffect="non-scaling-stroke" />
           {[1, 2].map((k) => <line key={`x${k}`} x1={L0 + k * zw} y1={T0 - TH} x2={L0 + k * zw} y2={T0} vectorEffect="non-scaling-stroke" />)}
@@ -57,7 +59,7 @@ export function ZonePitch({ tac, att, zone, onZone, sel, onSelect, onMove, byId,
         const [x, y] = drag?.slot === i ? [drag.x, drag.y] : unpackXY(r[postIdx(att, zone.zx, zone.zy)]);
         const gk = pos.masks[i] === 0x1, p = byId(tac.lineup[i]);
         return (
-          <div key={i} className={`cx-tac-slot cx-zone-slot ${sel === i ? 'on' : ''} ${p ? '' : 'empty'}`} style={{ left: `${leftOf(x)}%`, top: `${topOf(y)}%` }}
+          <div key={i} className={modern ? `slot ${sel === i ? 'picked' : ''} ${p ? '' : 'empty'}` : `cx-tac-slot cx-zone-slot ${sel === i ? 'on' : ''} ${p ? '' : 'empty'}`} style={{ left: `${leftOf(x)}%`, top: `${topOf(y)}%`, ...(modern ? { cursor: 'grab', touchAction: 'none', width: 40 } : {}) }}
             title={p ? `${maskName(pos.masks[i])} – ${p.first} ${p.last}` : maskName(pos.masks[i])}
             onDragOver={(e) => { if (dropCapt && p) e.preventDefault(); }} onDrop={(e) => { if (dropCapt && p) { e.preventDefault(); e.stopPropagation(); dropCapt(i); } }}
             onClick={(e) => { e.stopPropagation(); if (dragged.current) { dragged.current = false; return; } onSelect(i); }}
@@ -83,7 +85,9 @@ export function ZonePitch({ tac, att, zone, onZone, sel, onSelect, onMove, byId,
               };
               window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
             }}>
-            <span className={`cx-tac-dot cx-zone-dot ${gk ? 'gk' : ''} ${dotClass}`}>{p?.number ?? ''}</span>
+            {modern
+              ? <div className="shirt" style={{ background: gk ? '#1d6b2a' : colors?.[0] ?? '#c00', color: colors?.[1] ?? '#fff' }}>{p?.number ?? ''}</div>
+              : <span className={`cx-tac-dot cx-zone-dot ${gk ? 'gk' : ''} ${dotClass}`}>{p?.number ?? ''}</span>}
           </div>
         );
       })}

@@ -736,6 +736,31 @@ async function run(look) {
         await page.locator('.modal .x').click();
       }
     }
+    // 24/11 del 2: originalens taktik i det moderne design – Overview/With Ball/Without Ball, SB1-SB9, Team Instructions (originalens syv + dødboldsskytter), Penalty Takers, ingen kemi
+    {
+      await go({ name: 'tactics' });
+      await page.waitForSelector('main .pitch');
+      if (await page.locator('main .insight').count()) throw new Error('moderne taktik (originalt spil): kemipanelet (CM Reborn) vises');
+      await page.getByRole('button', { name: 'Assistant picks team' }).click();
+      await page.waitForTimeout(200);
+      if ((await gs(() => window.__cm.gs().tactic.lineup.filter(Boolean).length)) !== 11) throw new Error('moderne taktik (originalt spil): assistenten udtog ikke 11 spillere');
+      for (const k of ['With Ball', 'Without Ball', 'Overview']) {
+        await page.getByRole('tab', { name: k }).click();
+        if (k !== 'Overview' && !(await page.locator('main .zone-pitch-m .slot').count())) throw new Error(`moderne taktik (originalt spil): ${k} viser ingen spillere`);
+      }
+      for (const k of ['Mentality', 'Offside Trap', 'Men Behind Ball', 'Free Kicks (L)', 'Playmaker']) if (!(await page.locator('main', { hasText: k }).count())) throw new Error(`moderne taktik (originalt spil): Team Instructions mangler ${k}`);
+      if (await page.locator('main', { hasText: 'Tempo' }).count()) throw new Error('moderne taktik (originalt spil): ikke-originale holdinstruktioner (Tempo)');
+      if ((await page.locator('main .orig-sb').count()) < 9) throw new Error('moderne taktik (originalt spil): SB1-SB9 mangler');
+      await page.getByRole('button', { name: 'Penalty Takers' }).click();
+      if (!(await page.locator('main .orig-pen').count())) throw new Error('moderne taktik (originalt spil): Penalty Takers mangler');
+      // træning: skemaer kan gemmes og hentes (.tsh)
+      await go({ name: 'training' });
+      await page.getByRole('button', { name: /^General \(/ }).first().click();
+      for (const k of ['Load', 'Save', 'Save As', 'Delete']) if (!(await page.locator('main .head button, main button', { hasText: new RegExp(`^${k}$`) }).count())) throw new Error(`moderne træning (originalt spil): Schedule-knappen ${k} mangler`);
+      // Next Match (klub og Assistant): originalens rækker
+      await go({ name: 'assistant' });
+      for (const k of ['Date', 'Venue', 'Rules', 'Last']) if (!(await page.locator('main .kv span', { hasText: new RegExp(`^${k}`) }).count())) throw new Error(`moderne Next Match (originalt spil): ${k} mangler`);
+    }
     // tilbage til klassisk via Options-skærmen
     await go({ name: 'options' });
     await page.locator('select').filter({ has: page.locator('option[value="retro"]') }).first().selectOption('retro');

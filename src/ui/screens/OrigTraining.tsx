@@ -8,11 +8,11 @@ import { CM_AREAS, CM_INTENSITIES, CM_SCHED_SLOTS, clubCoaches, newHumanSchedule
 import type { CmSchedule, CoachArea, Player } from '../../game/types';
 import { t } from '../../i18n';
 import { Modal, Panel, PlayerLink, Tabs, posStr } from '../components';
-import { askConfirm } from '../confirm';
+import { askConfirm, askNotice, askText } from '../confirm';
 import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
 import { posGroup } from './Training';
-import { schedName } from './TrainingCm';
+import { schedName, tshFiles, tshWrite } from './TrainingCm';
 import { originalTag } from './SquadClassic';
 
 const copy = (x: CmSchedule[]) => x.map((s) => ({ ...s, lv: [...s.lv] }));
@@ -78,12 +78,36 @@ export function OrigTraining() {
   const [tabS, setTab] = useRouteState('ctab', '0');
   const tab = Math.max(0, Math.min(CM_SCHED_SLOTS - 1, Number(tabS) || 0));
   const [pos, setPos] = useRouteState('cpos', '');
-  const [dlg, setDlg] = useState<null | 'edit' | 'coaches'>(null);
+  const [dlg, setDlg] = useState<null | 'edit' | 'coaches' | 'load' | 'delete'>(null);
+  const [, bump] = useState(0);
   const cur = d.sched[tab];
   const upd = (f: (x: typeof d) => typeof d) => { setD((x) => f(x)); setChanged(true); };
   const count = (k: number) => players.filter((p) => d.slot[p.id] === k).length;
   const label = (k: number) => { const s = d.sched[k]; return s.t < 0 || s.t === 7 ? schedName(s) : `${schedName(s)} (${count(k)})`; };
   const rows = players.filter((p) => (tab === 0 || d.slot[p.id] === tab) && (!pos || posGroup(p) === pos)).sort((a, b) => b.ca - a.ca);
+  // Schedule ▾ (originalen skriver skemaerne som .tsh-filer; i browseren ligger de i localStorage): Load · Save · Save As · Delete
+  const files = tshFiles();
+  const names = Object.keys(files).sort((a, b) => a.localeCompare(b));
+  const loadFile = (file: string) => {
+    const f = files[file];
+    if (!f) { void askNotice(t('cl.ts.notLoaded', { file }), { head: t('cl.ts.unableLoad') }); return; }
+    upd((x) => {
+      const sched = copy(x.sched);
+      sched[tab] = { t: f.t >= 0 && f.t <= 8 ? f.t : 8, n: String(f.n ?? '').slice(0, 11), lv: [0, 1, 2, 3, 4].map((i) => ((CM_INTENSITIES as readonly number[]).includes(f.lv?.[i]) ? f.lv[i] : 0)), f: file };
+      return { ...x, sched };
+    });
+  };
+  const saveTo = (file: string) => {
+    const all = tshFiles();
+    all[file] = { t: cur.t, n: cur.n, lv: [...cur.lv] };
+    if (!tshWrite(all)) { void askNotice(t('cl.ts.saveHead')); return; }
+    upd((x) => { const sched = copy(x.sched); sched[tab] = { ...sched[tab], f: file }; return { ...x, sched }; });
+    bump((n) => n + 1);
+  };
+  const saveAs = async () => {
+    const v = await askText(t('cl.ts.enterFile'), cur.f ?? schedName(cur), { head: t('cl.ts.saveHead') });
+    if (v) saveTo(v.replace(/\.tsh$/i, '').slice(0, 40));
+  };
   const cancel = async () => {
     if (changed && !(await askConfirm(t('cl.ts.changes'), { title: t('cl.ts.changesHead') }))) return;
     setD(init()); setChanged(false); back();
@@ -99,6 +123,14 @@ export function OrigTraining() {
     <div>
       <Head title={t('nav.training')}>
         {tab === 0 ? <button onClick={() => setDlg('coaches')}>{t('cl.tn.coaches')}</button> : <button disabled={cur.t === 0} onClick={() => setDlg('edit')}>{t('cl.ts.edit')}</button>}
+        {tab > 0 && (
+          <>
+            <button onClick={() => setDlg('load')} disabled={!names.length}>{t('cl.ts.load')}</button>
+            <button disabled={!cur.f} onClick={() => cur.f && saveTo(cur.f)}>{t('cl.ts.save')}</button>
+            <button disabled={cur.t === 7} onClick={() => void saveAs()}>{t('cl.ts.saveAs')}</button>
+            <button disabled={!names.length} onClick={() => setDlg('delete')}>{t('cl.ts.delete')}</button>
+          </>
+        )}
         <select value={pos} onChange={(e) => setPos(e.target.value)} aria-label={t('cl.ts.filter')}>
           {([['', 'fAll'], ['gk', 'fGk'], ['def', 'fDef'], ['mid', 'fMid'], ['att', 'fAtt']] as const).map(([k, l]) => <option key={k} value={k}>{t(`cl.ts.${l}`)}</option>)}
         </select>
@@ -129,6 +161,21 @@ export function OrigTraining() {
       </div>
       {dlg === 'edit' && <EditSchedule s={cur} onClose={() => setDlg(null)}
         onOk={(s) => { upd((x) => { const sched = copy(x.sched); sched[tab] = s; return { ...x, sched }; }); setDlg(null); }} />}
+      {(dlg === 'load' || dlg === 'delete') && (
+        <Modal title={t(dlg === 'load' ? 'cl.ts.loadHead' : 'cl.ts.deleteHead')} onClose={() => setDlg(null)}>
+          <div className="col">
+            {names.map((n, i) => (
+              <button key={n} className="small" style={{ textAlign: 'left' }} onClick={async () => {
+                const mode = dlg; setDlg(null);
+                if (mode === 'load') { loadFile(n); return; }
+                if (!(await askConfirm(t('cl.ts.deleteQ', { file: n }), { title: t('cl.ts.deleteHead'), danger: true }))) return;
+                const all = tshFiles(); delete all[n]; tshWrite(all); bump((x) => x + 1);
+              }}>{i + 1}. {n}</button>
+            ))}
+            {!names.length && <div className="muted">{t('common.none')}</div>}
+          </div>
+        </Modal>
+      )}
       {dlg === 'coaches' && <CoachesDialog ids={coaches.map((c) => c.id)} areas={d.areas} onClose={() => setDlg(null)} onOk={(areas) => { upd((x) => ({ ...x, areas })); setDlg(null); }} />}
     </div>
   );

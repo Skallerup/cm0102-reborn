@@ -1,6 +1,6 @@
 // Originalens klubside (CM 01/02 "Finances & Info"/klubben) i det moderne udseende: Info (Nation · Status · Finances · Stadium · Facilities · Training Ground + stab),
 // Squad, Transfers (Players In/Out, Loans, Staff, Future), Next Match, Fixtures samt Stats · Finances · Income · Expenditure.
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { futureTransfers } from '../../game/futureTransfers';
 import { squad } from '../../game/state';
 import { compName, dateFmt, money, natName, t } from '../../i18n';
@@ -10,6 +10,7 @@ import { Head } from './common';
 import { SquadTable } from './Squad';
 import { ClassicFinanceBody } from './Finance';
 import { stageLabel } from './Fixtures';
+import { origNextMatchRows } from './NextMatchClassic';
 
 type Mv = { season: number; date: string; from: number; to: number; fee: number; loan?: boolean; swap?: boolean };
 type CtView = 'in' | 'out' | 'future' | 'loansIn' | 'loansOut' | 'staffIn' | 'staffOut';
@@ -91,23 +92,45 @@ function Fixtures({ cid }: { cid: number }) {
   );
 }
 
-function NextMatch({ cid }: { cid: number }) {
+export function OrigNextMatch({ cid }: { cid: number }) {
   const g = useGame()!;
   const { nav } = useNav();
+  const mine = cid === g.userClub;
   const list = Object.values(g.fixtures).filter((f) => f.home === cid || f.away === cid).sort((a, b) => a.date.localeCompare(b.date));
-  const next = list.find((f) => !f.result);
-  const recent = list.filter((f) => f.result).slice(-5).reverse();
+  const upcoming = list.filter((f) => !f.result);
+  const [i, setI] = useState(0);
+  const [past, setPast] = useState(false);
+  const next = upcoming[Math.min(i, upcoming.length - 1)];
   if (!next) return <Panel><div className="muted">{t('cl.cn.none')}</div></Panel>;
   const home = next.home === cid, opp = home ? next.away : next.home;
-  const form = recent.map((f) => { const h = f.home === cid, r = f.result!; const my = h ? r.hg : r.ag, th = h ? r.ag : r.hg; return my > th ? t('cl.cn.w') : my < th ? t('cl.cn.l') : t('cl.cn.d'); }).join(' ');
+  if (!mine) {
+    const recent = list.filter((f) => f.result).slice(-5).reverse();
+    const form = recent.map((f) => { const h = f.home === cid, r = f.result!; const my = h ? r.hg : r.ag, th = h ? r.ag : r.hg; return my > th ? t('cl.cn.w') : my < th ? t('cl.cn.l') : t('cl.cn.d'); }).join(' ');
+    return (
+      <Panel><div className="kv">
+        <span>{t('col.date')}</span><span>{dateFmt(next.date)}</span>
+        <span>{t('fix.opponent')}</span><span><a className="link" onClick={() => nav({ name: 'club', id: opp })}>{g.clubs[opp]?.name ?? '?'}</a></span>
+        <span>{t('fix.venue')}</span><span>{next.stage === 'F' ? t('fix.neutral') : home ? t('fix.home') : t('fix.away')}</span>
+        <span>{t('col.comp')}</span><span>{compName(g.comps[next.comp]?.name) ?? ''}</span>
+        {form && <><span>{t('cl.cn.form')}</span><span>{form}</span></>}
+      </div></Panel>
+    );
+  }
+  // egen klub: originalens Next Match (dato, stadion, regler, sidste opgør, vejr, bane, dommer, klubnyt) med << Date / Date >> og Past Meetings
+  const { rows, meetings, score } = origNextMatchRows(g, next);
   return (
-    <Panel><div className="kv">
-      <span>{t('col.date')}</span><span>{dateFmt(next.date)}</span>
-      <span>{t('fix.opponent')}</span><span><a className="link" onClick={() => nav({ name: 'club', id: opp })}>{g.clubs[opp]?.name ?? '?'}</a></span>
-      <span>{t('fix.venue')}</span><span>{next.stage === 'F' ? t('fix.neutral') : home ? t('fix.home') : t('fix.away')}</span>
-      <span>{t('col.comp')}</span><span>{compName(g.comps[next.comp]?.name) ?? ''}</span>
-      {form && <><span>{t('cl.cn.form')}</span><span>{form}</span></>}
-    </div></Panel>
+    <Panel title={`${g.clubs[opp]?.short ?? ''} (${t(home ? 'cl.nm.home' : 'cl.nm.away')}) – ${compName(g.comps[next.comp]?.name) ?? ''}`}
+      right={<span className="row">
+        <button className="small" disabled={i <= 0} onClick={() => setI(i - 1)}>{t('cl.nm.prev')}</button>
+        <button className="small" disabled={i >= upcoming.length - 1} onClick={() => setI(i + 1)}>{t('cl.nm.next')}</button>
+        <button className={`small ${past ? 'primary' : ''}`} onClick={() => setPast(!past)}>{t('cl.nm.past')}</button>
+      </span>}>
+      <div className="kv">
+        {past
+          ? (meetings.length ? meetings.slice(0, 12).map((x) => <Fragment key={x.id}><span /><span>{score(x)}</span></Fragment>) : <><span /><span className="muted">{t('common.none')}</span></>)
+          : rows.map(([l, v]) => (Array.isArray(v) ? v : [v]).map((x, k) => <Fragment key={`${l}${k}`}><span>{k === 0 ? l : ''}</span><span>{x}</span></Fragment>))}
+      </div>
+    </Panel>
   );
 }
 
@@ -150,7 +173,7 @@ export function OrigClub({ id }: { id?: number }) {
       )}
       {v === 'squad' && <SquadTable players={squad(cid)} view="general" userClub={g.userClub} />}
       {v === 'transfers' && <Transfers cid={cid} />}
-      {v === 'next' && <NextMatch cid={cid} />}
+      {v === 'next' && <OrigNextMatch cid={cid} />}
       {v === 'fixtures' && <Fixtures cid={cid} />}
       {['stats', 'finances', 'income', 'expenditure'].includes(v) && <ClassicFinanceBody view={v as 'stats'} clubId={cid} modern />}
     </div>

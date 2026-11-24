@@ -1324,9 +1324,9 @@ const instrVal = (tac: Tactic, slot: number, k: InstrKey): number => {
 };
 const instrLabel = (k: InstrKey, v: number, n: number) => (n === 2 ? t(v ? 'common.yes' : 'common.no') : t(`cl.mt.lvl.${k === 'passing' ? 'p' : k === 'tackling' ? 't' : 'g'}${v}`));
 
-type TiKey = 'mentality' | 'passing' | 'tackling' | 'closingDown' | 'offside' | 'counter' | 'menBehind';
+export type TiKey = 'mentality' | 'passing' | 'tackling' | 'closingDown' | 'offside' | 'counter' | 'menBehind';
 /** Valgmulighederne i Team Instructions (CM 01/02): [tekst, værdi]; markeret = værdien passer (ekstremerne tæller med) */
-const TI_CHOICES: { k: TiKey; opts: [string, number][]; is: (v: number, o: number) => boolean }[] = [
+export const TI_CHOICES: { k: TiKey; opts: [string, number][]; is: (v: number, o: number) => boolean }[] = [
   { k: 'mentality', opts: [['cl.mt.ti.m2', 2], ['cl.mt.ti.m1', 1], ['cl.mt.ti.m3', 3]], is: (v, o) => (o === 2 ? v === 2 : o === 1 ? v <= 1 : v >= 3) },
   { k: 'passing', opts: [['cl.mt.ti.p1', 1], ['cl.mt.ti.p0', 0], ['cl.mt.ti.p2', 2]], is: (v, o) => v === o },
   { k: 'tackling', opts: [['cl.mt.ti.t1', 1], ['cl.mt.ti.t0', 0], ['cl.mt.ti.t2', 2]], is: (v, o) => v === o },
@@ -1335,9 +1335,18 @@ const TI_CHOICES: { k: TiKey; opts: [string, number][]; is: (v: number, o: numbe
   { k: 'counter', opts: [['common.no', 0], ['common.yes', 1]], is: (v, o) => v === o },
   { k: 'menBehind', opts: [['common.no', 0], ['common.yes', 1]], is: (v, o) => v === o },
 ];
-const TI_LABEL: Record<TiKey, string> = { mentality: 'cl.mt.ti.mentality', passing: 'cl.mt.ti.passing', tackling: 'cl.mt.ti.tackling', closingDown: 'cl.mt.ti.pressing', offside: 'cl.mt.ti.offside', counter: 'cl.mt.ti.counter', menBehind: 'cl.mt.ti.menBehind' };
-type TakerKey = 'freeKicks' | 'freeKicksR' | 'corners' | 'cornersR' | 'playmaker';
-const TAKERS: TakerKey[] = ['freeKicks', 'freeKicksR', 'corners', 'cornersR', 'playmaker'];
+export const TI_LABEL: Record<TiKey, string> = { mentality: 'cl.mt.ti.mentality', passing: 'cl.mt.ti.passing', tackling: 'cl.mt.ti.tackling', closingDown: 'cl.mt.ti.pressing', offside: 'cl.mt.ti.offside', counter: 'cl.mt.ti.counter', menBehind: 'cl.mt.ti.menBehind' };
+export type TakerKey = 'freeKicks' | 'freeKicksR' | 'corners' | 'cornersR' | 'playmaker';
+export const TAKERS: TakerKey[] = ['freeKicks', 'freeKicksR', 'corners', 'cornersR', 'playmaker'];
+
+/** Team Instructions: sæt ét valg (ja/nej-felter som boolsk, Pressing 1/2) */
+export function tiSetValue(x: Tactic['team'], k: TiKey, o: number): Tactic['team'] {
+  const n = { ...x };
+  if (k === 'offside' || k === 'counter' || k === 'menBehind') n[k] = o === 1;
+  else if (k === 'closingDown') n.closingDown = o === 2 ? 2 : Math.min(x.closingDown, 1);
+  else n[k] = o;
+  return n;
+}
 
 /** Den grønne Team Instructions-boks fra CM 01/02: valg i kolonner (det valgte i en gul ramme), dødboldsskytter og
  *  playmaker via ◂-knappen (grøn liste), Cancel/Ok nederst. Ændringerne gælder først ved Ok. */
@@ -1351,13 +1360,7 @@ export function TeamInstrDialog({ tac, on, editable, onClose, onOk }: { tac: Tac
   const val = (k: TiKey) => { const v = ti[k]; return typeof v === 'boolean' ? (v ? 1 : 0) : (v ?? 0); };
   const set = (k: TiKey, o: number) => {
     if (!editable) return;
-    setTi((x) => {
-      const n = { ...x };
-      if (k === 'offside' || k === 'counter' || k === 'menBehind') n[k] = o === 1;
-      else if (k === 'closingDown') n.closingDown = o === 2 ? 2 : Math.min(x.closingDown, 1);
-      else n[k] = o;
-      return n;
-    });
+    setTi((x) => tiSetValue(x, k, o));
   };
   return (
     <div className="cx-tidlg" role="dialog" onClick={() => setPick(null)}>

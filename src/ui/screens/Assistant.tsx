@@ -15,11 +15,14 @@ import { Head } from './common';
 import { ClassicNextMatch } from './NextMatchClassic';
 import { isRetro } from '../theme';
 import { authentic } from '../../game/rules';
+import { OrigNextMatch } from './OrigClub';
 
 export function Assistant({ tab: initial }: { tab?: string }) {
   const [tab, setTab] = useRouteState('tab', initial ?? (isRetro() ? 'classic' : 'opponent'));
   // klassisk (CM 01/02): kampens data som i originalen; assistentens rapport kun i den udvidede udgave
   if (isRetro() && tab === 'classic') return <ClassicNextMatch onAssistant={authentic() ? undefined : () => setTab('opponent')} />;
+  // originale spil (moderne udseende): originalens Next Match i stedet for assistentens egne rapporter (CM Reborns tilføjelse)
+  if (!isRetro() && authentic()) return <div><Head title={t('nav.assistant')} /><OrigNextMatch cid={gs().userClub} /></div>;
   return (
     <div>
       <Head title={t('nav.assistant')}>
