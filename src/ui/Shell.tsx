@@ -799,7 +799,7 @@ function AppButtons({ onMsg }: { onMsg: (m: string) => void }) {
           onMsg(t(ok ? 'top.notifyOn' : 'top.notifyDenied'));
         }}>🔔 <span className="app-btn-label">{t('top.notify')}</span></button>
       )}
-      {inst && <button className="small app-btn" title={t('top.installHint')} onClick={async () => { if (await installApp()) onMsg(t('top.installed')); }}>⬇ <span className="app-btn-label">{t('top.install')}</span></button>}
+      {inst && <button className="small app-btn" title={t('cl.go.installWhy')} onClick={async () => { if (await installApp()) onMsg(t('top.installed')); }}>⬇ <span className="app-btn-label">{t('top.install')}</span></button>}
     </>
   );
 }

@@ -37,7 +37,12 @@ let installEvent: InstallEvent | null = null;
 const listeners = new Set<() => void>();
 if (typeof window !== 'undefined') {
   window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEvent = e as InstallEvent; listeners.forEach((f) => f()); });
-  window.addEventListener('appinstalled', () => { installEvent = null; listeners.forEach((f) => f()); });
+  window.addEventListener('appinstalled', () => { installEvent = null; listeners.forEach((f) => f()); requestPersist(); });
+}
+
+/** Varigt lager (browseren rydder ikke gemte spil) – efter installation; saveGame beder også ved første gem */
+export function requestPersist(): void {
+  try { void navigator.storage?.persisted?.().then((p) => (p ? undefined : navigator.storage.persist?.())).catch(() => {}); } catch { /* ikke understøttet */ }
 }
 
 export function canInstall(): boolean {

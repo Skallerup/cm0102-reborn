@@ -25,8 +25,8 @@ import { saveGame } from '../game/save';
 import { useGame, useNav } from './core';
 import { REBORN_KEYS, rebornOn } from './reborn';
 import type { RebornKey } from '../game/types';
-import { inAppBrowser, showInAppHelp } from './InAppBanner';
-import { canInstall, installApp, notifyEnabled, notifySupported, onInstallChange, setNotify } from './notify';
+import { installPossible, runInstall } from './installTip';
+import { notifyEnabled, notifySupported, onInstallChange, setNotify } from './notify';
 import { getTheme, setTheme, type Theme } from './theme';
 import { authentic } from '../game/rules';
 import { bTeamOf, hasReserveTeam } from '../game/cmBTeam';
@@ -102,8 +102,6 @@ export function GameOptionsMenu({ onSave, onQuit, online, allowed }: { onSave: (
   const [, setInst] = useState(0);
   useEffect(() => onInstallChange(() => setInst((x) => x + 1)), []);
   const [login, setLogin] = useState(false);
-  const standalone = (() => { try { return window.matchMedia('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true; } catch { return false; } })();
-  const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   const cloudSave = async () => {
     try { await saveGame({ cloud: true }); await askNotice(t('cl.go.cloudSaved'), { head: t('cl.go.cloud') }); }
     catch (e) { if ((e as Error).name === 'StorageFullError') return; await askNotice(t('cl.go.cloudFail', { err: String((e as Error).message ?? e) }), { head: t('cl.go.cloud') }); }
@@ -127,11 +125,10 @@ export function GameOptionsMenu({ onSave, onQuit, online, allowed }: { onSave: (
   if (communityAvailable()) items.push({ key: 'feedback', label: t('cm.feedbackBug'), onClick: () => setShow('feedback') }); // feedback og fejl i én formular
   // CM Reborns egne punkter (ikke i originalen): installér som app, gem i skyen (ikke i fællesspil – det gemmes allerede online)
   // i en indbygget browser (Facebook, Instagram …) kan spillet ikke installeres: knappen viser vejledningen med "Åbn i Safari/Chrome"
-  const inApp = inAppBrowser();
-  const canInst = !standalone && (canInstall() || ios || inApp);
+  const canInst = installPossible();
   items.push({ key: 'sepR', sep: true });
   items.push({ key: 'support', label: <>♥ {t('sb.menu')}</>, onClick: () => setShow('support') });
-  if (canInst) items.push({ key: 'install', label: t('cl.go.install'), onClick: () => { if (inApp) showInAppHelp(); else if (canInstall()) void installApp(); else void askNotice(t('cl.go.installIos'), { head: t('cl.go.install') }); } });
+  if (canInst) items.push({ key: 'install', label: <>{t('cl.go.install')}<small className="cx-install-why">{t('cl.go.installWhy')}</small></>, onClick: runInstall });
   if (!online) items.push({ key: 'cloud', label: t('cl.go.cloud'), onClick: () => { if (getAccount()) void cloudSave(); else setLogin(true); } });
   items.push({ key: 'sep', sep: true }, { key: 'restart', label: t('cl.go.restart'), onClick: onQuit }, { key: 'quit', label: t('cl.go.exit'), onClick: onQuit });
   return (

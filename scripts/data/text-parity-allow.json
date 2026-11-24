@@ -2,6 +2,10 @@
   "minLetters": 2,
   "prefixes": [
     {
+      "prefix": "tip.install.",
+      "reason": "Forslag om at installere som app efter første gem – CM Reborn-område (diskret besked), ikke en original skærm"
+    },
+    {
       "prefix": "sb.",
       "reason": "Støt projektet (Ko-fi): forside og Game Options → Om projektet og støt – CM Reborn-område, ikke en original skærm"
     },

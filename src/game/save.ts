@@ -91,6 +91,7 @@ export async function saveGame(opts?: { cloud?: boolean; name?: string }): Promi
   fullUntil = 0;
   if (tr) console.log('ngtrace save: gemt');
   cloudHook?.(meta, new Blob(parts), !!opts?.cloud);
+  try { window.dispatchEvent(new Event('cm-saved')); } catch { /* ingen window */ }
   return meta;
 }
 

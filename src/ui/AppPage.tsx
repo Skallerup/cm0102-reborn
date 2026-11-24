@@ -19,6 +19,7 @@ import type { HubTab } from './CommunityHub';
 import { loadLogos } from './logos';
 import { ConsentBanner } from './ConsentBanner';
 import { InAppBanner } from './InAppBanner';
+import { InstallTip } from './InstallTipBar';
 import { clearPlay, markPlay, playMarked } from './playFlag';
 import { reportError } from '../online/errors';
 import { UpdateToast } from './UpdateToast';
@@ -34,7 +35,7 @@ export default function AppPage() {
   // login via linket i mailen (?login=…)
   const [toast, setToast] = useState('');
   useLoginLink((m) => { setToast(m); setTimeout(() => setToast(''), 6000); });
-  return <><AppInner /><ConsentBanner /><InAppBanner /><UpdateToast /><ConfirmHost />{toast && <div className="acc-toast" role="status" onClick={() => setToast('')}>{toast}</div>}</>;
+  return <><AppInner /><ConsentBanner /><InAppBanner /><InstallTip /><UpdateToast /><ConfirmHost />{toast && <div className="acc-toast" role="status" onClick={() => setToast('')}>{toast}</div>}</>;
 }
 
 function AppInner() {

@@ -2107,3 +2107,4 @@ button.cx-bid-swap.removing { cursor: pointer; color: #fff21f; }
 .cx-stg-row .cx-cup-score.go { cursor: pointer; }
 @media (max-width: 760px) { .cx-stg-row { grid-template-columns: 90px minmax(0, 1fr) 44px minmax(0, 1fr); } .cx-stg-row .cx-cup-nat, .cx-stg-row .cx-cup-pts { display: none; } }
 .cx-cup-tbl .cx-cup-nat, .cx-stg-row .cx-cup-nat { color: #ff9a2a; }
+.cx-gameopt .cx-install-why { display: block; font-size: 10px; font-weight: 400; opacity: .8; white-space: normal; max-width: 220px; line-height: 1.2; }
