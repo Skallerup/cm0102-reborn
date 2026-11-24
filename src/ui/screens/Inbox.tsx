@@ -84,7 +84,7 @@ export function Inbox() {
   const item = g.news.find((n) => n.id === sel);
   if (item && !item.read) queueMicrotask(() => act({ t: 'read', ids: [item.id] }));
   // CM 01/02 (0x789044 → 0x75db00(4, 1)): viser skærmen en nyhed, der kræver svar, er Continue Game grå
-  useClassicDialog(classic && newsMustRespond(g, item));
+  useClassicDialog((classic || origLogic()) && newsMustRespond(g, item));
   const listRef = useRef<HTMLDivElement>(null);
   // klassisk "Filter :" (CM 01/02): fritekst i overskrifterne
   const [q, setQ] = useState('');

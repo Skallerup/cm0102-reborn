@@ -699,7 +699,7 @@ async function run(look) {
   });
   // Game Options → Game Settings → Skin: det moderne udseende kan vælges i ALLE spil (også et originalt spil i ægte tilstand) og skiftes tilbage;
   // valget ændrer kun udseendet – spillets tilstand er uændret, og udvidede funktioner vises ikke i et originalt spil
-  if (look === 'klassisk') await step('Game Settings: moderne udseende i et originalt spil og tilbage', async () => {
+  if (look === 'klassisk') await step('Game Settings: moderne udseende i et originalt spil (moderne komponenter) og tilbage', async () => {
     await go({ name: 'inbox' });
     // altid et ORIGINALT spil (ægte tilstand): udvidede gamle spil har ikke de klassiske skærme i moderne ramme
     const mode0 = await gs(() => { const o = window.__cm.gs().options; const m = o.mode; o.mode = 'authentic'; return m; });
@@ -715,7 +715,26 @@ async function run(look) {
     for (const r of [{ name: 'inbox' }, { name: 'squad' }, { name: 'tactics' }, { name: 'fixtures' }, { name: 'competitions' }, { name: 'transfers' }, { name: 'finance' }, { name: 'board' }, { name: 'club', id: await gs(() => window.__cm.gs().userClub) }, { name: 'international' }, { name: 'staff' }, { name: 'options' }]) {
       await go(r);
       await checkScreen(`moderne ${r.name}`);
-      if (!(await page.locator('[data-skin-scope="retro"] .cx-head, [data-skin-scope="retro"] .cx-title').count()) && !['options'].includes(r.name)) throw new Error(`moderne ${r.name}: originalens klassiske indhold mangler`);
+      // 24/11: det moderne udseende bruger moderne komponenter også i et originalt spil – ingen klassisk indhold i moderne ramme
+      if (await page.locator('[data-skin-scope]').count()) throw new Error(`moderne ${r.name}: klassisk indhold i moderne ramme (data-skin-scope)`);
+      if (await page.locator('main .cx-head, main .cx-title, main .cx-tabrow, main .cx-foot').count()) throw new Error(`moderne ${r.name}: klassiske komponenter vises i det moderne udseende`);
+      if (!(await page.locator('main .panel, main table.grid, main .head, main h1, main h2').count()) && !['options'].includes(r.name)) throw new Error(`moderne ${r.name}: ingen moderne komponenter`);
+    }
+    // originalens funktioner i det moderne design: bud (Approach To Buy → Transfer Fee-rækker), Contract/Transfer-paneler på spillerprofilen og originale statusmærker
+    {
+      const other = await gs(() => { const g = window.__cm.gs(); return Object.values(g.players).find((p) => p.club > 0 && p.club !== g.userClub && p.value > 500000)?.id; });
+      await go({ name: 'player', id: other });
+      await page.waitForSelector('main .panel');
+      for (const k of ['Contract', 'Transfer']) if (!(await page.locator('main .panel header h3', { hasText: new RegExp(`^${k}$`, 'i') }).count())) throw new Error(`moderne spillerprofil (originalt spil): ${k}-panelet mangler`);
+      const buy = page.getByRole('button', { name: 'Approach To Buy' });
+      // (spil uden originalens transfermarked, cmMarketOn, har spillets eget 'Make offer')
+      if (!(await buy.count()) && !(await page.getByRole('button', { name: 'Make offer' }).count())) throw new Error('moderne spillerprofil (originalt spil): bud-knappen mangler');
+      if ((await buy.count()) && (await buy.isEnabled())) {
+        await buy.click();
+        await page.waitForSelector('.modal');
+        for (const k of ['Transfer Fee', 'Monthly Installments', 'Percentage of Next Sale', 'Total Value']) if (!(await page.locator('.modal', { hasText: k }).count())) throw new Error(`moderne budskærm (originalt spil): ${k} mangler`);
+        await page.locator('.modal .x').click();
+      }
     }
     // tilbage til klassisk via Options-skærmen
     await go({ name: 'options' });
