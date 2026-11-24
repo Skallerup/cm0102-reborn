@@ -849,6 +849,9 @@ export interface TransferOffer {
   cmUntil?: string;
   /** add_future_transfer 0x8cb9a0: aftalt skifte på datoen (tilstand 0x13, status 'accepted'); process_due_future_transfers 0x8cbbe0 */
   cmFut?: string;
+  /** build_bid's kontrakttilbud (+0x2f ≠ 0, tilstand 7 – 0x8be81e) til en spiller hos MENNESKETS klub: ingen Respond (sælgeren spørges aldrig),
+   *  kun nyheden 0x8d3090; spilleren beslutter selv (0x4ce4e0) som hos computerens klubber */
+  cm7?: boolean;
 }
 
 /** En AI-klub der jagter en spiller (vender tilbage med højere bud) */

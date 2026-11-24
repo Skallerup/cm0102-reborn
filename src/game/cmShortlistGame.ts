@@ -103,6 +103,8 @@ export interface SlBid {
    *  add_contract_offer 0x4cc490 – `k` = kontraktens 0x50 bytes), og beslutningen planlægges (0x4cd230): `dd` = rand(5) + 1 (personens nye
    *  beslutningspost), `bl` = 0x8cc5b0's svartid (dage), `r4` = rand(2) + 4 (+0x2f-reglen 0x4cd4xx: under 4 dage frem → i dag + 4–5) */
   free7?: boolean; k?: number[]; dd?: number; bl?: number; r4?: number;
+  /** (free7, spiller med kontrakt) nyheden 0x8d3090's pladser: kontrakttypen +0x35 (6 bit, plads 0xf) og udløbet +0x2d/+0x2f (plads 0xc/0xd) */
+  ct?: number; exp?: string;
   /** build_bid's tidsnibble +0x30 & 0xf (0x8e75bd/0x8e76c5: kontrakttilbud til en spiller MED kontrakt (forkontrakt/Bosman) 3 → 4, ellers 0 → 1;
    *  5 = med kompensation 0x8d0780) og kontraktens udløb +0x2d (nibble 3/4: get_offer_completion_date 0x8cee70 → det fremtidige skifte) */
   tm?: number; until?: string;
@@ -1924,7 +1926,7 @@ function addBid(S: SlMem, r: number, loan: boolean, lt?: { until: string; share:
   const tmx = !loan && k ? { tm: tmN, ...(until ? { until } : {}) } : {};
   if (free7) {
     const rr = cmRand(g.seed ?? 0, p.id, buyer, dayNum(g.date), 0x4cd230); const dd = rr(5) + 1;
-    f7 = { free7: true, dd, bl: days, r4: rr(2) + 4 };
+    f7 = { free7: true, dd, bl: days, r4: rr(2) + 4, ...(k ? { ct: ((m.u8(k + 0x35) << 26) >> 26), exp: isoOf(m.s16(k + 0x2d), m.u16(k + 0x2f)) } : {}) };
   }
   S.events.push({ kind: 'bid', id, buyer, player: p.id, fee: loan ? 0 : eur(m.s32(r + 0x1b)), loan: loan || m.u8(r + 0x1f) === 1,
     months: Math.max(0, s8(m.u8(r + 0x40))), sellOn: Math.max(0, s8(m.u8(r + 0x3f))), lgFee: eur(m.s32(r + 0x35)), lgApps: m.u8(r + 0x39) || 10,

@@ -7,7 +7,7 @@ import { offerAnswerFee } from '../../game/offerFee';
 import { gs, onGameSwitch } from '../../game/state';
 import { cmScoutReportBody } from '../cmScoutNews';
 import { cmScoutAsgParams } from '../cmScoutAsgNews';
-import { cmBanAnswerBody, cmBanBody, cmBanParams } from '../cmBanText';
+import { cmBanAnswerBody, cmBanBody, cmBanParams, cmLongDate } from '../cmBanText';
 import { requestBodyKind, requestReasons } from '../../game/cmTransferList';
 import { boardCmText } from '../../game/cmBoardText';
 import { appointBody } from '../../game/cmBoardGame';
@@ -60,6 +60,8 @@ export function newsParams(n: NewsItem): Record<string, string | number> {
   }
   // budet på menneskets stab (0x8d3520, 0xa91afc): "… a job as {job}" – jobnavnet uden artikel
   if (n.key === 'cm.stBid' && typeof p.job === 'number') p.job = t(`cm.stm.j.${p.job}`);
+  // kontrakttilbuddet til menneskets spiller (0x8d3520) og aftalen (0xfb3, 0xa9bbec): originalens datoform "10th November 1998"
+  if ((n.key === 'transfer.cm7' || n.key === 'transfer.cmAgreed') && typeof p.date === 'string') p.date = cmLongDate(p.date);
   // PLAYER_REGEN (cmRetire.ts): stabsjobbet i brødteksten – 0x53ac40 ("Coach") eller 0x53ad00 ("coach", jl)
   if (n.key.startsWith('cmret.') && typeof p.job === 'number') p.job = t(`cmret.${p.jl ? 'jl' : 'j'}.${p.job}`);
   if (n.key.startsWith('cm.stm.') && typeof p.job === 'number') { const jn = t(`cm.stm.j.${p.job}`); p.job = getLang() === 'en' ? `${/^[aeiou]/i.test(jn) ? 'an' : 'a'} ${jn}` : jn; }
@@ -247,6 +249,9 @@ function bodyKey(n: NewsItem): string {
   if (n.key.startsWith('cm.stm.')) return n.params?.from ? 'cm.stm.bodyFrom' : 'cm.stm.body';
   // budet på menneskets stab: kompensationslinjen 0xa8f6ec kun med et beløb (+0x1b ≠ 0)
   if (n.key === 'cm.stBid') return n.params?.fee ? 'cm.stBid.body' : 'cm.stBid.body0';
+  // build_bid's kontrakttilbud til menneskets spiller (tilstand 7, 0x8d3520): brødteksten er valgt i spillet; aftalen 0xfb3 med/uden beløb
+  if (n.key === 'transfer.cm7') return `transfer.cm7.b.${String(n.params?.body ?? 'plain')}`;
+  if (n.key === 'transfer.cmAgreed') return n.params?.fee ? 'transfer.cmAgreed.bodyFee' : 'transfer.cmAgreed.body';
   // 0xfaf (0x8d8af0): "The transfer fee will be adjusted to …" kun, når beløbet steg
   if (n.key === 'transfer.cmSwapOut') return n.params?.adj ? 'transfer.cmSwapOut.bodyFee' : 'transfer.cmSwapOut.body';
   return `${n.key}.body`;
@@ -305,7 +310,9 @@ export function newsBody(n: NewsItem) {
   if (n.key === 'cm.rum') return cmRumBody(n);
   const k = bodyKey(n);
   if (!has(k)) return '';
-  const body = t(k, newsParams(n)) + offerAnswer(n);
+  // 0x8d4dd0: kompensationslinjen 0xa8f6ec, når +0x2f ≠ 0 og +0x1b ≠ 0
+  const comp = n.key === 'transfer.cm7' && n.params?.fee ? t('transfer.cm7.comp', newsParams(n)) : '';
+  const body = t(k, newsParams(n)) + comp + offerAnswer(n);
   // ældre nyheder uden de felter, brødteksten bruger: ingen brødtekst frem for {pladsholdere}
   return /\{[a-zA-Z]+\}/.test(body) ? '' : body;
 }
