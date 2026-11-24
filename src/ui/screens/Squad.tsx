@@ -13,8 +13,17 @@ import { Head } from './common';
 import { isRetro } from '../theme';
 import { ClassicSquad } from './SquadClassic';
 import { SquadNumbers } from './SquadNumbers';
+import { origLogic } from '../../game/rules';
+import { originalTag } from './SquadClassic';
+
+/** Originalens statusmærker (get_player_status_code 0x4849f0) som moderne badges: farven følger alvoren */
+const TAG_TONE: Record<string, string> = { Inj: 'bad', Sus: 'bad', Abs: 'bad', Unh: 'bad', Wpm: 'bad', Ine: 'bad', Cup: 'bad', Tir: 'warn', Yel: 'warn', Fut: 'warn', Trn: 'warn', Lst: 'warn', Req: 'warn', Ret: 'warn', Lon: '', Int: '', Wnt: 'good', Sct: 'good', Bid: 'good', Ctr: '', Bos: '' };
 
 export function statusTags(p: Player, userClub: number) {
+  if (origLogic()) {
+    const o = originalTag(p, p.club);
+    return (<>{o && <span className={`tag ${TAG_TONE[o.k] ?? ''}`} title={o.title}>{t(`cl.tag.${o.k}`)}</span>}{p.club === userClub && !!userClub && p.loan && p.loan.from === userClub && <span className="tag">{t('tag.loanOut')}</span>}</>);
+  }
   return (
     <>
       {p.injury && <span className="tag bad" title={t(`injury.${p.injury.key}`)}>{t('tag.inj')} {p.injury.days}d</span>}

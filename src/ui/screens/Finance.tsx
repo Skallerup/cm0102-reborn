@@ -45,7 +45,7 @@ export function Finance() {
       {tab === 'stadium' && <AttendanceTab ticketPanel={extended() && !noExt ? <TicketPanel /> : null} />}
       {tab === 'facilities' && <FacilitiesTab />}
       {tab === 'history' && <FinanceHistoryTab />}
-      {tab === 'overview' && orig && <ClassicFinances />}
+      {tab === 'overview' && orig && (isRetro() ? <ClassicFinances /> : <OrigFinances />)}
       {tab === 'overview' && !orig && <>
       <div className="cols">
         <Panel title={t('fin.overview')}>
@@ -332,8 +332,20 @@ function ClassicFinances() {
   );
 }
 
+/** Originalens økonomi (Finances · Income · Expenditure · Stats) i det moderne udseende */
+function OrigFinances() {
+  const [view, setView] = useRouteState<'finances' | 'income' | 'expenditure' | 'stats'>('fview', 'finances');
+  const views = ['finances', 'income', 'expenditure', 'stats'] as const;
+  return (
+    <div className="col">
+      <Tabs tabs={views.map((k) => [k, t(`cl.fin.v.${k}`)] as [string, string])} value={view} onChange={(v) => setView(v as typeof view)} />
+      <ClassicFinanceBody view={view} modern />
+    </div>
+  );
+}
+
 /** Tabellerne under Finances & Info (CM 01/02): Finances · Income · Expenditure · Stats – ens egen klub (og Stats for alle klubber) */
-export function ClassicFinanceBody({ view, clubId }: { view: 'finances' | 'income' | 'expenditure' | 'stats'; clubId?: number }) {
+export function ClassicFinanceBody({ view, clubId, modern }: { view: 'finances' | 'income' | 'expenditure' | 'stats'; clubId?: number; modern?: boolean }) {
   const g = useGame()!;
   const c = g.clubs[clubId ?? g.userClub];
   const cmKey = (rows: [keyof ClubFinance | null, string][], i: number) => (g.cmFin?.[c.id] ? (rows === INCOME ? CM_IN : CM_OUT)[i] : null);
@@ -343,7 +355,16 @@ export function ClassicFinanceBody({ view, clubId }: { view: 'finances' | 'incom
     return k ? financePeriod(c, k, p) : 0;
   };
   const sum = (rows: [keyof ClubFinance | null, string][], p: Period) => rows.reduce((s, _r, i) => s + val(rows, i, p), 0);
-  const table = (rows: [string, (p: Period) => number, string?][]) => (
+  const table = (rows: [string, (p: Period) => number, string?][]) => modern ? (
+    <Panel className="flush">
+      <table className="grid fin-grid">
+        <thead><tr><th>{t('cl.fin.item')}</th>{PERIODS.map((p) => <th key={p} className="num">{t(`cl.fin.p.${p}`)}</th>)}</tr></thead>
+        <tbody>{rows.map(([label, v, cls], i) => label === '' ? null : (
+          <tr key={i} className={cls === 'total' || cls === 'profit' ? 'strong' : ''}><td>{cls === 'profit' || cls === 'total' ? <b>{label}</b> : label}</td>{PERIODS.map((p) => { const x = v(p); return <td key={p} className={`num ${cls === 'profit' ? (x < 0 ? 'bad' : 'good') : ''}`}>{moneyCx(x)}</td>; })}</tr>
+        ))}</tbody>
+      </table>
+    </Panel>
+  ) : (
     <table className="cx-fin">
       <thead><tr><th>{t('cl.fin.item')}</th>{PERIODS.map((p) => <th key={p}>{t(`cl.fin.p.${p}`)}</th>)}</tr></thead>
       <tbody>{rows.map(([label, v, cls], i) => label === '' ? <tr key={i} className="gap"><td colSpan={5} /></tr> : (
@@ -360,17 +381,20 @@ export function ClassicFinanceBody({ view, clubId }: { view: 'finances' | 'incom
     <>
       {view === 'finances' && <>
         {table([[t('cl.fin.v.income'), (p) => sum(INCOME, p)], [t('cl.fin.v.expenditure'), (p) => sum(EXPENSE, p)], ['', () => 0], [t('cl.fin.profit'), (p) => sum(INCOME, p) - sum(EXPENSE, p), 'profit']])}
-        <div className="cx-fin-bal"><span>{t('cl.fin.balance')}</span><b className={c.balance < 0 ? 'neg' : ''}>{moneyCx(c.balance)}</b><span>{t('cl.fin.funds')}</span><b className={c.transferBudget < 0 ? 'neg' : ''}>{moneyCxFunds(c.transferBudget) ?? t('cl.fin.noneAvail')}</b></div>
+        {modern ? <Panel><div className="kv">
+          <span>{t('cl.fin.balance')}</span><b className={c.balance < 0 ? 'bad' : 'good'}>{moneyCx(c.balance)}</b>
+          <span>{t('cl.fin.funds')}</span><b className={c.transferBudget < 0 ? 'bad' : 'good'}>{moneyCxFunds(c.transferBudget) ?? t('cl.fin.noneAvail')}</b>
+        </div></Panel> : <div className="cx-fin-bal"><span>{t('cl.fin.balance')}</span><b className={c.balance < 0 ? 'neg' : ''}>{moneyCx(c.balance)}</b><span>{t('cl.fin.funds')}</span><b className={c.transferBudget < 0 ? 'neg' : ''}>{moneyCxFunds(c.transferBudget) ?? t('cl.fin.noneAvail')}</b></div>}
       </>}
       {view === 'income' && table(line(INCOME, 'in'))}
       {view === 'expenditure' && table(line(EXPENSE, 'out'))}
-      {view === 'stats' && <ClubStatsCx c={c} />}
+      {view === 'stats' && <ClubStatsCx c={c} modern={modern} />}
     </>
   );
 }
 
 /** CM 01/02's Stats under Finances & Info */
-function ClubStatsCx({ c }: { c: Club }) {
+function ClubStatsCx({ c, modern }: { c: Club; modern?: boolean }) {
   const g = useGame()!;
   const sq = squad(c.id);
   const first = sq.filter((p) => !p.reserves);
@@ -407,5 +431,6 @@ function ClubStatsCx({ c }: { c: Club }) {
     [t('cl.fin.s.foreign'), String(sq.filter((p) => p.nation !== own).length)],
     [t('cl.fin.s.nonEu'), String(sq.filter((p) => !eu.has(g.nations[p.nation]?.name ?? '')).length)],
   ];
+  if (modern) return <Panel><div className="kv">{rows.map(([k, v]) => [<span key={`k${k}`}>{k}</span>, <b key={`v${k}`}>{v}</b>])}</div></Panel>;
   return <div className="cx-fin-stats">{rows.map(([k, v]) => <div key={k}><span>{k}</span><b>{v}</b></div>)}</div>;
 }
