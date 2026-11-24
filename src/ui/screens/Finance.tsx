@@ -16,7 +16,6 @@ import { useGame, useNav, useRouteState } from '../core';
 import { AttendanceTab, FacilitiesTab, FinanceHistoryTab } from './Stadium';
 import { Head } from './common';
 import { authentic, extended, origLogic } from '../../game/rules';
-import { classicScope } from '../theme';
 import { isRetro } from '../theme';
 
 export function Finance() {
@@ -40,7 +39,7 @@ export function Finance() {
       {talk && <BudgetModal onClose={() => setTalk(false)} />}
       <Head title={t('nav.finance')}>
         {/* originalens økonomi (også i moderne ramme): ingen ekstra fanepille – View-menuen i ClassicFinances klarer visningerne */}
-        {!classicScope() && <Tabs tabs={orig ? [['overview', t('fin.tab.overview')], ['stadium', t('fin.tab.attendance')], ['history', t('fin.tab.history')]]
+        {<Tabs tabs={orig ? [['overview', t('fin.tab.overview')], ['stadium', t('fin.tab.attendance')], ['history', t('fin.tab.history')]]
           : noExt ? [['overview', t('fin.tab.overview')], ['stadium', t('fin.tab.attendance')], ['history', t('fin.tab.history')]]
           : [['overview', t('fin.tab.overview')], ['stadium', t('fin.tab.stadium')], ['facilities', t('fin.tab.facilities')], ['history', t('fin.tab.history')]]} value={tab} onChange={setTab} />}
       </Head>

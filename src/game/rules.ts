@@ -25,7 +25,7 @@ export const origLogic = (g?: GameState): boolean => !legacyExtended(g);
 /** KUN UI (src/ui): "originalens skærme" = originalens logik i det klassiske udseende. Motoren (src/game) bruger origLogic/legacyExtended
  *  – tests/originalGate.test.ts fejler, hvis src/game importerer authentic/extended. I Node/Web Worker findes intet tema. */
 export function authentic(): boolean {
-  return origLogic(); // også i det moderne udseende: originalens skærme vises da som klassisk indhold i en moderne ramme (theme.ts classicScope)
+  return origLogic(); // også i det moderne udseende: originale spil skjuler de udvidede funktioner
 }
 /** KUN UI: modsat authentic() (ekstra visninger som xG …) */
 export const extended = () => !authentic();

@@ -24,7 +24,7 @@ import { runUntil, watchedDay } from '../game/sim';
 import { GameRunError, runDays } from './dayRunner';
 import { reportError } from '../online/errors';
 import { realCompName, setCompEra } from '../i18n/comps';
-import { authentic } from '../game/rules';
+import { authentic, origLogic } from '../game/rules';
 import { cmTimeOfDay } from '../game/cmCalendar';
 import { compLogoUrl } from './logos';
 import { isOriginal2001 } from '../game/rules2001';
@@ -75,7 +75,7 @@ import { unreadChat } from '../game/chat';
 import { HelpScreen } from './help';
 import { VersionButton } from './Changelog';
 import { prefetchArticles } from './aiArticle';
-import { applyTheme, isRetro, chromeRetro, classicScope, setThemeClub } from './theme';
+import { applyTheme, isRetro, chromeRetro, setThemeClub } from './theme';
 import { backgroundUrl, bgPack, clubBgUrl, clubPackUrl, loadClubPacks, compBgUrl, eveningFixture, genericMatchdayUrl, loadScreenBgs, loadStadiumBgs, matchdayBgUrl, miscBgUrl, nationBgUrl, sundayLeague, bgSet, loadOriginalBgs, originalBgUrl, originalBgsReady } from './backgrounds';
 import { MultiplayerSideButtons } from './MultiplayerPanel';
 import { CompetitionsMenu, NationsClubsMenu, FindMenu, GameOptionsMenu, ManagerMenu, bgChanges, modernBackgrounds, stadiumBackgrounds } from './classicOptions';
@@ -593,7 +593,7 @@ export function Shell() {
               )}
               {GROUPS.map((gr) => {
                 // et originalt spil: Profile, Jobs og Community findes ikke i originalen (Community ligger i Game Options)
-                const ks = gr.items.filter(allowed).filter((k) => !(classicScope() && (k === 'profile' || k === 'jobs' || k === 'community')));
+                const ks = gr.items.filter(allowed).filter((k) => !(origLogic() && (k === 'profile' || k === 'community')));
                 if (!ks.length) return null;
                 // menuen viser præcis det, manageren har foldet ud (huskes) – står man på en side i en lukket gruppe, fremhæves overskriften
                 const active = ks.includes(route.name);
@@ -638,7 +638,6 @@ export function Shell() {
       {menuOpen && <div className="menu-backdrop" onClick={() => setMenuOpen(false)} />}
       <ClassicSlotCtx.Provider value={cmNav ? { tabs: tabSlot, sub: subSlot, setTabs: setTabSlot } : null}>
         <main className={`main ${cmNav ? `cx-main cx-bg-${route.name}${matchPhoto ? ' cx-stadium' : ''}${origBg && originalBgsReady() ? ' cx-orig' : ''}${matchPhoto && night ? ' cx-night' : ''}` : modernPhoto ? `mbg${matchPhoto ? ' mbg-stadium' : ''}${matchPhoto && night ? ' mbg-night' : ''}` : ''}`} ref={mainRef}
-          data-skin-scope={classicScope() ? 'retro' : undefined}
           style={!cmNav && modernPhoto ? ({ '--m-photo': `url("${modernPhoto}")` } as CSSProperties) : cmNav && cxPhoto ? ({ '--cx-photo': `url("${cxPhoto}")` } as CSSProperties) : undefined}>
           {online && !online.inGame ? <Lobby /> : <Screen allowed={allowed} />}
           {online?.status === 'error' && <div className="toast">{online.error}</div>}

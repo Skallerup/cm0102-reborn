@@ -34,15 +34,9 @@ export function chromeRetro(): boolean {
   return hasGame() && !holdDark && getTheme() === 'retro';
 }
 
-/** Skal skærmenes INDHOLD være originalens klassiske komponenter? Ja i det klassiske udseende – og i et originalt spil (origLogic) også i det moderne
- *  udseende, så alle originalens funktioner (kontrakttilbud, shortlist, transfermarked, scouting, venskabskampe, økonomi …) findes. Indholdet
- *  vises da i en ramme med data-skin-scope='retro' (classic.css), så det ser ud som i originalen midt i det moderne udseende. */
-export function isRetro(): boolean {
-  if (chromeRetro()) return true;
-  return hasGame() && !holdDark && origLogic() && !gs().draft;
-}
-/** Klassisk indhold i en moderne ramme (originalt spil + moderne udseende) */
-export const classicScope = () => isRetro() && !chromeRetro();
+/** Klassiske skærme (indhold + ramme) kun i det klassiske udseende. Det moderne udseende bruger altid de moderne skærme – også i originale spil
+ *  (originalens funktioner er bygget i det moderne design). */
+export function isRetro(): boolean { return chromeRetro(); }
 
 export function setTheme(t: Theme) {
   try { localStorage.setItem(KEY, t); localStorage.setItem(CHOSEN, '1'); } catch { /* privat vindue */ }
