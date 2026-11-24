@@ -15,7 +15,7 @@
 import type { GameState, Player } from './types';
 import { ATTRS } from './attributes';
 import { ageOn } from './dates';
-import { recordFreeTransfer, setClub, squad } from './state';
+import { loanedOut, recordFreeTransfer, setClub, squad } from './state';
 import { isHumanClub } from './humans';
 import { holidayClub } from './cmHoliday';
 import { cmActive, cmGenerated, cmLogic, cmMarketOn, cmContractOf, cmRand, cmUnhappy, clubRepMem, clubDivRep, nationRepMem, staffJoined, squadPlacement, statusCode } from './cmPlayerData';
@@ -125,7 +125,10 @@ export function cmSquadPlanClub(g: GameState, cid: number, daily: boolean, first
   const leagueRep = clubDivRep(g, cid);
   const euro = cmClubEuro(g, cid);
   const euroRep = euro > -1 ? g.cmCompRep?.[euro] ?? EURO_REP[euro] ?? null : null;
-  const count = all.filter((p) => !cmGenerated(g, p)).length;
+  // 0x53c590(klub, 0, 0): klubbens trupliste +0xd7 – alle poster, også de udlejede (de står i begge klubbers liste). Før talte de udlejede
+  // ikke med: oraklet 14/7-01 Chelsea 39 (3 udlejede), vi 36 – og 0x7bca90's T faldt 5 % pr. manglende spiller under divisionens 1,35·+0x69 + 20
+  const lent = loanedOut(cid).filter((p) => !cmGenerated(g, p) && (mem || p.cmMem === 1));
+  const count = all.filter((p) => !cmGenerated(g, p)).length + lent.length;
   const { T, R } = clubStrength({ rep, minAtt, status, leagueRep, leagueActive: !!lg && !lg.hidden && !!g.comps[club.league], euroRep, squadCount: count,
     finance: financeStatus(Math.round(club.balance * cmGbp(g, cid)), rep) });
   const st = g.staff[club.manager ?? -1];

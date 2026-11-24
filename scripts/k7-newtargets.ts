@@ -9,6 +9,7 @@ import type { WorldData } from '../src/game/newgame';
 const FROM = process.env.FROM ?? '2001-07-14', TO = process.env.TO ?? '2001-08-31';
 const TIER: Record<string, string> = { 'English Premier Division': 'P', 'English First Division': '1', 'English Second Division': '2', 'English Third Division': '3' };
 const str = (m: SparseMem, a: number, n = 54) => { let s = ''; if (!a) return s; for (let i = 0; i < n; i++) { const c = m.u8(a + i); if (!c) break; s += String.fromCharCode(c); } return s.trim(); };
+const DETAIL = new Set((process.env.DETAIL ?? '').split(',').filter(Boolean));
 interface T { buyer: string; tg: string; bb: number; b7: number; mask: number; g: number }
 const q = (a: number[], p: number) => { const s = [...a].sort((x, y) => x - y); return s.length ? s[Math.floor(p * (s.length - 1))] : 0; };
 function report(tag: string, ts: T[]) {
@@ -42,6 +43,7 @@ function report(tag: string, ts: T[]) {
         if (e.iso === FROM) continue;
         const k = getContract(m, St + 0x6e * f);
         out.push({ buyer: bg, tg: k ? grp(m.s32(k + 4)) : '-', bb: m.s32(s + 0xb), b7: m.s32(s + 7), mask: m.u16(s + 1), g: (m.u8(s + 0x24) >> 1) & 0xf });
+        if (DETAIL.has(bg)) { const nm = (id: number) => id < 0 ? '-' : `${str(m, m.u32(St + 0x6e * id + 4))} ${str(m, m.u32(St + 0x6e * id + 8))}`; console.log(`O ${e.iso} ${str(m, C + 0x245 * cix + 4).padEnd(22)} #${i} g${(m.u8(s + 0x24) >> 1) & 0xf} m${m.u16(s + 1).toString(16)} bb ${m.s32(s + 0xb)} b3 ${m.s32(s + 3)} b7 ${m.s32(s + 7)} h ${nm(h)} → ${nm(f)} (${k ? grp(m.s32(k + 4)) : '-'})`); }
       }
     }
     if (new Date(e.iso).getUTCDay() === 6) console.log(`O ${e.iso} NL-klubber ${wk.n}: plan bygget ${wk.built}, med budget ${wk.budget}`);
@@ -75,6 +77,7 @@ if (!process.env.ONLY_ORACLE) {
         if (iso === FROM) return;
         const p = g.players[s.f];
         out.push({ buyer: bg, tg: p?.club ? grp(p.club) : '-', bb: s.bb ?? 0, b7: s.b7 ?? 0, mask: s.mask, g: (s.b24 >> 1) & 0xf });
+        if (DETAIL.has(bg)) { const h = g.players[s.s13]; console.log(`V ${iso} ${c.name.padEnd(22)} #${i} g${(s.b24 >> 1) & 0xf} m${s.mask.toString(16)} bb ${s.bb} b3 ${s.b3} b7 ${s.b7} h ${h ? h.first + ' ' + h.last : '-'} → ${p ? p.first + ' ' + p.last : '-'} (${p?.club ? grp(p.club) : '-'})`); }
       });
     }
     if (new Date(iso).getUTCDay() === 6) console.log(`V ${iso} NL-klubber ${wk.n}: plan bygget ${wk.built}, med budget ${wk.budget}`);

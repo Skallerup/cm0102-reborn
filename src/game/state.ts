@@ -100,6 +100,7 @@ let squadIndex = new Map<number, number[]>();
 let fixturesByDate = new Map<string, number[]>();
 
 export function rebuildIndexes() {
+  moveGen++;
   squadIndex = new Map();
   fixturesByDate = new Map();
   if (!G) return;
@@ -149,6 +150,22 @@ export function squadIds(clubId: number): number[] {
   return squadIndex.get(clubId) ?? [];
 }
 
+/** klubskifter (setClub, rebuildIndexes) – udlejedes opslag nedenfor bygges igen efter et skifte */
+let moveGen = 0;
+let loanOut: { g: GameState; gen: number; by: Map<number, number[]> } | null = null;
+/** spillerne, klubben har lejet ud (Player.loan.from = klubben, Player.club = lejeklubben) – i originalen står de i begge klubbers trupliste
+ *  (klub +0xd7; oraklet 14/7-01: Chelseas Rhys Evans i både Chelseas og Leyton Orients). Opslaget bygges efter hvert klubskifte og kontrolleres
+ *  ved hvert kald (en lejeaftale, der ender uden skifte – købsoptionen – falder ud) */
+export function loanedOut(clubId: number): Player[] {
+  const g = gs();
+  if (!loanOut || loanOut.g !== g || loanOut.gen !== moveGen) {
+    const by = new Map<number, number[]>();
+    for (const p of Object.values(g.players)) if (p.loan && p.club) { const a = by.get(p.loan.from); if (a) a.push(p.id); else by.set(p.loan.from, [p.id]); }
+    loanOut = { g, gen: moveGen, by };
+  }
+  return (loanOut.by.get(clubId) ?? []).map((id) => g.players[id]).filter((p) => p && p.loan?.from === clubId && p.club !== clubId);
+}
+
 /** cmMedia.ts registrerer sign_contract's moral (en direkte import giver en cirkulær import) */
 export const signHooks: { onSign?: (g: GameState, p: Player) => void } = {};
 
@@ -162,6 +179,7 @@ export function recordFreeTransfer(g: GameState, p: Player) {
 
 /** Flyt spiller mellem klubber og hold indekset opdateret */
 export function setClub(p: Player, club: number) {
+  moveGen++;
   if (p.club) {
     const arr = squadIndex.get(p.club);
     if (arr) squadIndex.set(p.club, arr.filter((id) => id !== p.id));
