@@ -31,14 +31,16 @@ const SEASONS = Number(process.env.SEASONS ?? 3);
 const Y23 = process.env.Y23 ?? `${E}/oracle/daysnap/s1-3.9.60-y23-e14`;
 const ONLY_ORACLE = !!process.env.ONLY_ORACLE;
 const LOANS = process.env.LOANS;
-const BUYS = process.env.BUYS;   // fil: alle handler (begge sider) med alder/CA/land/division – k7-købsanalyse   // fil: lejeaftalerne (begge sider) + lejelisten pr. billede (engelske klubber) – k7-loans-analyse
+const BUYS = process.env.BUYS;
+const STAFF = process.env.STAFF;   // fil: stabsskifterne (art 5 / Staff.moves, begge sider) med divisionerne – opdeling efter måned/type
+   // fil: alle handler (begge sider) med alder/CA/land/division – k7-købsanalyse   // fil: lejeaftalerne (begge sider) + lejelisten pr. billede (engelske klubber) – k7-loans-analyse
 const llSeries: { o: { iso: string; keys: string[] }[]; u: { iso: string; keys: string[] }[] } = { o: [], u: [] };
 const CLUB = 'Arsenal';
 
 // ------------------------------------------------------------------ normaliseret verden (begge sider)
 interface PRow { key: string; id: number; age: number; ca: number; pa: number; club: string; eng: boolean; div: string; nat: string; exp: string; wage: number; loan: boolean; loanFromEng: boolean; mem: boolean; ll?: boolean }
 interface CRow { name: string; div: string; bal: number; wb: number; rep: number; mgr: string; squad: number }
-interface TRow { key: string; date: string; from: string; to: string; fee: number; loan: boolean; free: boolean; eng: boolean; staff?: boolean; bosman?: boolean; pkey?: string; age?: number; ca?: number; fromNat?: string; toNat?: string; fromDiv?: string; toDiv?: string }
+interface TRow { key: string; date: string; from: string; to: string; fee: number; loan: boolean; free: boolean; eng: boolean; staff?: boolean; bosman?: boolean; pkey?: string; age?: number; ca?: number; fromNat?: string; toNat?: string; fromDiv?: string; toDiv?: string; role?: string }
 interface LRow { div: string; club: string; p: number; gf: number; ga: number; pos: number }
 // reps: omdømmet for ALLE engelske klubber uanset division (omdømme Δ: oraklets 30/6-billede har allerede næste sæsons divisioner, og
 // Conference er ingen turnering i oraklet – en nedrykket klub ville ellers falde ud af mængden på den ene side)
@@ -109,6 +111,7 @@ function oracleWorld(m: SparseMem): World {
     const cNat = (ix: number) => (ix >= 0 && ix < nc ? str(m, m.u32(C + 0x245 * ix + 0x53) + 4, 51) : '');
     const pp = byId.get(pid);
     oTransfers.set(key, { key, date: d, from: from >= 0 ? cName(from) : '', to: to >= 0 ? cName(to) : '', fee: m.s32(r + 0x18), loan: art === 2, free: art === 3 || art === 4 || from < 0, ...(art === 4 ? { bosman: true } : {}), eng: cEng(to) || cEng(from), staff: art === 5,
+      ...(STAFF && art === 5 ? { fromDiv: from >= 0 ? cDiv(from) : '', toDiv: to >= 0 ? cDiv(to) : '', fromNat: cNat(from), toNat: cNat(to) } : {}),
       ...((LOANS && art === 2) || BUYS ? { pkey: pp?.key, age: pp ? yrs(d, pp.key.split('|')[1]) : undefined, ca: pp?.ca, fromNat: cNat(from), toNat: cNat(to), fromDiv: from >= 0 ? cDiv(from) : '', toDiv: to >= 0 ? cDiv(to) : '' } : {}) });
   }
   return { date, players, clubs, league, reps };
@@ -142,7 +145,8 @@ function ourWorld(date: string): World {
   for (const s of Object.values(g.staff)) for (const mv of s.moves ?? []) {
     const key = `s${s.id}|${mv.date}|${mv.to}`;
     if (uTransfers.has(key)) continue;
-    uTransfers.set(key, { key, date: mv.date, from: g.clubs[mv.from]?.name ?? '', to: g.clubs[mv.to]?.name ?? '', fee: Math.round(mv.fee * GBP), loan: false, free: false, eng: g.clubs[mv.from]?.nation === eng || g.clubs[mv.to]?.nation === eng, staff: true });
+    uTransfers.set(key, { key, date: mv.date, from: g.clubs[mv.from]?.name ?? '', to: g.clubs[mv.to]?.name ?? '', fee: Math.round(mv.fee * GBP), loan: false, free: false, eng: g.clubs[mv.from]?.nation === eng || g.clubs[mv.to]?.nation === eng, staff: true,
+      ...(STAFF ? { fromDiv: g.comps[g.clubs[mv.from]?.league ?? '']?.name ?? '', toDiv: g.comps[g.clubs[mv.to]?.league ?? '']?.name ?? '', fromNat: g.nations[g.clubs[mv.from]?.nation ?? -1]?.name ?? '', toNat: g.nations[g.clubs[mv.to]?.nation ?? -1]?.name ?? '', role: s.role } : {}) });
   }
   const clubs: CRow[] = [], reps: Record<string, number> = {};
   for (const c of Object.values(g.clubs)) {
@@ -420,5 +424,6 @@ out(`\n${((Date.now() - t0) / 1000).toFixed(0)} s`);
 if (process.env.REPORT) writeFileSync(process.env.REPORT, lines.join('\n') + '\n');
 if (process.env.JSON) writeFileSync(process.env.JSON, JSON.stringify({ keyDates: Object.fromEntries(keyDates), metrics, names }, null, 1));
 if (!existsSync(Y23)) process.exitCode = 0;
+if (STAFF) writeFileSync(STAFF, JSON.stringify({ o: [...oTransfers.values()].filter((t) => t.staff && t.eng), u: [...uTransfers.values()].filter((t) => t.staff && t.eng) }));
 if (BUYS) writeFileSync(BUYS, JSON.stringify({ keyDates: Object.fromEntries(keyDates), o: [...oTransfers.values()].filter((t) => !t.staff), u: [...uTransfers.values()].filter((t) => !t.staff) }));
 if (LOANS) writeFileSync(LOANS, JSON.stringify({ keyDates: Object.fromEntries(keyDates), o: { loans: [...oTransfers.values()].filter((t) => t.loan), ll: llSeries.o }, u: { loans: [...uTransfers.values()].filter((t) => t.loan), ll: llSeries.u } }));
