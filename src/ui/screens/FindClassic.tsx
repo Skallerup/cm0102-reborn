@@ -15,6 +15,9 @@ export const FIND_TABS = ['nation', 'club', 'staff', 'player'] as const;
 type FindTab = (typeof FIND_TABS)[number];
 type Row = { key: string; name: string; sort: string; a: ReactNode; b: ReactNode; go?: Route };
 
+// søgefeltet er aktivt med det samme (og efter hvert fanevalg) – på telefoner ikke, så tastaturet ikke dækker listen
+const finePointer = typeof matchMedia === 'function' && matchMedia('(pointer: fine)').matches;
+
 export function ClassicFind({ tab: initial }: { tab?: string }) {
   const g = useGame()!;
   const { nav } = useNav();
@@ -60,7 +63,7 @@ export function ClassicFind({ tab: initial }: { tab?: string }) {
       </Head>
       <div className="cx-tools cx-tools-inline">
         <span className="cx-find-label">{t('cl.fd.searchFor')}</span>
-        <input className="cx-fl-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('tr.name')} />
+        <input className="cx-fl-input" key={tab} autoFocus={finePointer} value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('tr.name')} />
       </div>
       <Pager desc="" pg={Math.min(pg, pages - 1)} pages={pages} setPg={setPg} />
       <div className="cx-subtitle small">{t(`cl.fd.all.${tab}`)}</div>
