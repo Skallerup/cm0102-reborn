@@ -2450,11 +2450,14 @@ export function cmShortlistStartPart(g: GameState, part: number, parts: number, 
   const S = buildSlMem(g, resume ? { resume } : {});
   // stabens mål (cmStaffMove.ts afterBudget → staffSearch) deler personlisten for hele løkken (cmBoardGame.ts withSharedPersons)
   const clubs = Object.values(g.clubs), prog = SL_START_PROGRESS.cb;
+  let progT = 0;
   const from = resume ? resume.next : 0, to = part >= parts - 1 ? clubs.length : Math.trunc((clubs.length * (part + 1)) / parts);
   // (hastighed, 25/11) hukommelsernes faste opslag (klubbernes højeste id/antal, landene) delt af løkkens hukommelser (cmWageGame.ts withMemScope)
   withMemScope(g, () => withSharedPersons(g, () => {
     for (let i = from; i < to; i++) {
-      if (prog && (i & 63) === 0) prog(i / clubs.length);                          // fremdriftsbjælken ved nyt spil (rører intet i spillet)
+      // fremdriftsbjælken ved nyt spil (rører intet i spillet): (25/11) hver klub, højst hvert 200. ms – før hver 64. klub, og bjælken stod stille i
+      // minutter på en langsom telefon (de store klubber har de længste lister)
+      if (prog) { const t = now(); if (t - progT >= 200 || i === from) { progT = t; prog(i / clubs.length); } }
       if (g.cmPlan![clubs[i].id]) afterPlan(S, clubs[i].id, []);
     }
   }));
