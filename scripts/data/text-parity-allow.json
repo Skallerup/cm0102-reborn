@@ -134,6 +134,10 @@
       "reason": "Moderne nyt spil-forløb"
     },
     {
+      "prefix": "ui.outOfMemory",
+      "reason": "CM Reborns egen fejltekst: enheden har for lidt hukommelse til nyt spil (startGame.ts) – intet modstykke i originalen"
+    },
+    {
       "prefix": "ui.staleBuild",
       "reason": "CM Reborns egen fejltekst: siden er fra en ældre udgivelse, så nyt spil-arbejderens fil findes ikke længere (startGame.ts workerFailure) – intet modstykke i originalen"
     },

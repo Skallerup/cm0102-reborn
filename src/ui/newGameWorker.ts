@@ -14,7 +14,7 @@ import { convertOriginal, restartInOriginal, type ConvertReport } from '../game/
 import type { CMWorld } from '../game/data/cm0102';
 import type { GameState } from '../game/types';
 import type { CustomDb } from '../game/dbEdit';
-import { gzConcat, serializeNewGame } from '../game/snapshot';
+import { deserializeState, gzConcat, serializeNewGame } from '../game/snapshot';
 import { saveMetaOf, type SaveMeta } from '../game/save';
 import { writeSave } from '../game/saveStore';
 import { applyCommunityEdits, fetchModernWorld, fetchOriginalWorld, fetchSlimWorld, slimWorld, type CommunityEdit, type OriginalVersion } from './worldFetch';
@@ -35,7 +35,7 @@ export type NewGameJob = { world?: WorldData; src?: WorldSrc; opts: NewGameOptio
   /** (hukommelse, iPhone 23/11) arbejderen skriver selv nyt spils første gem i IndexedDB (kun et lokalt spil – ikke fællesspil eller den midlertidige verden) */
   save?: boolean };
 /** `rng` = talrækkens tilstand (g.rng røres ikke – som i ét forløb, hvor g.rng ikke opdateres undervejs) */
-export type PhaseHandoff = { game: GameState; ctx: NewGameCtx; rng: number };
+export type PhaseHandoff = { game: GameState; ctx: NewGameCtx; rng: number } | { gz: ArrayBuffer; ctx: NewGameCtx; rng: number };
 /** `slimOnly`: kun listerne – arbejderen lukkes bagefter (startGame.ts openStartWorld), så databasen tolkes ikke hel (worldFetch.ts fetchSlimWorld) */
 export type LoadJob = { type: 'load'; src: WorldSrc; slimOnly?: boolean };
 
@@ -81,7 +81,8 @@ self.onmessage = async (e: MessageEvent<NewGameJob | LoadJob>) => {
       });
       job.from.close();
       tr('modtaget');
-      setGame(h.game);
+      // (25/11) nødvej (se afsenderen): spillet som gzip-bytes, når den strukturerede kopi løb tør for hukommelse
+      setGame('game' in h ? h.game : await deserializeState(new Blob([h.gz])));
       rng.state = h.rng;
       ctx = h.ctx;
     } else if (!job.world) {
@@ -102,7 +103,16 @@ self.onmessage = async (e: MessageEvent<NewGameJob | LoadJob>) => {
         releasePagePool();
         // (ønskelisternes portioner) hukommelsens sider og tabellerne flyttes (Transferable) – ingen kopi
         tr('overdrager');
-        job.to.postMessage({ game: g, ctx: ctx!, rng: rng.state } satisfies PhaseHandoff, slResumeTransfer(ctx!.sl ?? null));
+        const rs = rng.state, sl = slResumeTransfer(ctx!.sl ?? null);
+        try { job.to.postMessage({ game: g, ctx: ctx!, rng: rs } satisfies PhaseHandoff, sl); }
+        catch (err) {
+          // (25/11, "Data cannot be cloned, out of memory" på en 32-bit browser) den strukturerede kopi af hele spillet kan løbe tør for hukommelse:
+          // spillet sendes i stedet som gemt-spil-bytes (gzip-JSON i bidder, Transferable – ingen kopi; g.rng røres ikke, talrækken følger med
+          // for sig). Modtageren pakker det ud som et gemt spil (setGame lægger modulernes tilstand tilbage).
+          tr(`overdragelse fejlede (${String((err as Error)?.message ?? err).slice(0, 80)}) – sender bytes`);
+          const gz = gzConcat(await serializeNewGame(g));
+          job.to.postMessage({ gz, ctx: ctx!, rng: rs } satisfies PhaseHandoff, [gz, ...sl]);
+        }
         tr('overdraget');
         job.to.close();
         setGame(null);

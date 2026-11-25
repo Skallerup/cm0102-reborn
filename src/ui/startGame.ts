@@ -144,8 +144,14 @@ async function staleBuild(): Promise<boolean | null> {
 /** (24/11, "NewGameWorkerFailed: worker") arbejderen fejlede uden besked (onerror uden message – typisk et script, der ikke kunne hentes):
  *  fejlteksten får arbejderens nummer og trin, fejlens fil/linje, arbejderscriptets HTTP-status (404 = siden er fra en ældre udgivelse – de gamle
  *  filer findes ikke længere), hovedtrådens heap og enhedens hukommelse. `stale` = scriptet findes ikke længere (siden skal genindlæses). */
-export async function workerFailure(e: Event | null, where: string): Promise<{ text: string; stale: boolean }> {
+export const WORKER_DIED_MS = 30000;
+/** (25/11) fejl, der skyldes for lidt hukommelse (postMessage "Data cannot be cloned, out of memory", allokeringsfejl, messageerror) */
+export const isMemoryText = (s: string): boolean => /out of memory|cannot be cloned|allocation failed|invalid array length|messageerror/i.test(s);
+export async function workerFailure(e: Event | null, where: string, elapsedMs = 0): Promise<{ text: string; stale: boolean; died: boolean; memory: boolean }> {
   const ev = e as Partial<ErrorEvent> | null;
+  // (25/11) en arbejder, der dør uden besked og uden fil efter lang tid, er et nedbrud (næsten altid hukommelse) – en 404 på scriptet bagefter
+  // skyldes en udgivelse i mellemtiden, ikke at arbejderen ikke kunne hentes
+  const died = !ev?.message && !ev?.filename && elapsedMs > WORKER_DIED_MS;
   const parts = [where];
   if (ev?.message) parts.push(`"${String(ev.message).slice(0, 160)}"`); else parts.push('no message');
   if (ev?.filename) parts.push(`at ${String(ev.filename).replace(/^.*\/assets\//, '')}:${ev.lineno ?? 0}:${ev.colno ?? 0}`);
@@ -156,34 +162,37 @@ export async function workerFailure(e: Event | null, where: string): Promise<{ t
       stale = r.status === 404;
       parts.push(`script ${r.status}${stale ? ' (stale build)' : ''}`);
     } catch (x) { parts.push(`script fetch failed (${(x as Error).message?.slice(0, 60) ?? '?'})`); }
-  } else {
+  } else if (!died) {
     const st = await staleBuild();
     if (st) stale = true;
     parts.push(st === null ? 'build ?' : st ? 'stale build' : 'build current');
   }
+  let lowMem = false;
   try {
     const m = (performance as unknown as { memory?: { usedJSHeapSize: number; jsHeapSizeLimit: number } }).memory;
     if (m) parts.push(`heap ${Math.round(m.usedJSHeapSize / 1048576)}/${Math.round(m.jsHeapSizeLimit / 1048576)} MB`);
     const n = navigator as Navigator & { deviceMemory?: number };
+    lowMem = n.deviceMemory !== undefined && n.deviceMemory <= 2;
     parts.push(`mem ${n.deviceMemory ?? '?'}`, `online ${n.onLine ? 'yes' : 'no'}`, `page ${typeof document !== 'undefined' ? document.visibilityState : '?'}`);
   } catch { /* ignorér */ }
-  return { text: `worker: ${parts.join(', ')}`, stale };
+  return { text: `worker${died ? ' died' : ''}: ${parts.join(', ')}`, stale, died, memory: (died && lowMem) || isMemoryText(ev?.message ?? '') };
 }
 /** en arbejder, der ikke kunne hentes, fordi siden er fra en ældre udgivelse (workerFailure stale) – teksten til spilleren er ui.staleBuild */
 export class StaleBuildError extends Error { stale = true; }
 /** kører trinene i hver sin arbejder; den sidste svarer med spillet */
 /** arbejdernes svar: spillet som gzip-bytes (+ det første gem, hvis arbejderen skrev det); `started` = en arbejder nåede at svare (så kører de) */
 type PhasesResult = { gz: ArrayBuffer; saved: SaveMeta | null };
-class PhasesError extends Error { started = false; stale = false; }
+class PhasesError extends Error { started = false; stale = false; memory = false; }
 function runPhases(first: NewGameJob, stages: NewGameJob['phases'][], pre: Worker | null, onProgress: (p: NewGameProgress) => void, signal?: AbortSignal): Promise<PhasesResult> {
   return new Promise<PhasesResult>((resolve, reject) => {
     let cur: Worker | null = null, done = false, started = false, step = '', frac = 0;
     const t0 = Date.now();
     const gap = phaseGap();
-    const fail = (e: Error) => { if (done) return; done = true; cur?.terminate(); cur = null; const pe = Object.assign(new PhasesError(e.message), { name: e.name, stack: e.stack, started, stale: !!(e as StaleBuildError).stale }); reject(pe); };
+    const fail = (e: Error) => { if (done) return; done = true; cur?.terminate(); cur = null; const pe = Object.assign(new PhasesError(e.message), { name: e.name, stack: e.stack, started, stale: !!(e as StaleBuildError).stale, memory: !!(e as PhasesError).memory || isMemoryText(e.message) }); reject(pe); };
     signal?.addEventListener('abort', () => fail(new DOMException('aborted', 'AbortError')));
     const start = (i: number, w: Worker, job: NewGameJob) => {
       cur = w;
+      const wStart = Date.now();
       const last = i === stages.length - 1;
       // næste trins arbejder startes først, når denne er færdig og lukket: spillet venter imens i kanalen (uden om hovedtråden)
       const ch = last ? null : new MessageChannel();
@@ -213,7 +222,7 @@ function runPhases(first: NewGameJob, stages: NewGameJob['phases'][], pre: Worke
         e.preventDefault();
         if (done) return;
         const where = `${i + 1}/${stages.length} [${(stages[i] ?? ['all']).join(' ')}] after ${Math.round((Date.now() - t0) / 1000)} s, step ${step || 'none'} ${Math.round(frac * 100)}%`;
-        void workerFailure(e, where).then((r) => fail(r.stale ? new StaleBuildError(r.text) : new Error(r.text)));
+        void workerFailure(e, where, Date.now() - wStart).then((r) => fail(r.stale ? new StaleBuildError(r.text) : Object.assign(new Error(r.text), { memory: r.memory })));
       };
       w.onmessageerror = () => fail(new Error(`worker ${i + 1}/${stages.length}: messageerror`));
       const ports = [...(ch ? [ch.port1] : []), ...(job.from ? [job.from] : [])];
@@ -267,6 +276,12 @@ export async function createGameAsync(world: WorldData | StartWorld, opts: NewGa
       try { const { reportError } = await import('../online/errors'); reportError(new Error(`NewGameWorkerFailed: ${(e as Error).message.slice(0, 400)}`)); } catch { /* ignorér */ }
       // siden er fra en ældre udgivelse (arbejderens fil findes ikke længere): bed spilleren genindlæse i stedet for "worker"
       if ((e as StaleBuildError).stale) { const { t } = await import('../i18n'); throw new Error(t('ui.staleBuild')); }
+      // (25/11) for lidt hukommelse (32-bit browser, 2 GB enhed): en klar besked, og næste forsøg bruger den mindste database (dbSize.ts)
+      if ((e as PhasesError).memory || isMemoryText((e as Error).message)) {
+        const { t } = await import('../i18n'); const { dbSizeAfterInterrupt } = await import('./dbSize');
+        dbSizeAfterInterrupt();
+        throw Object.assign(new Error(t('ui.outOfMemory')), { memory: true });
+      }
       throw e;
     }
     console.warn('Nyt spil i en Worker fejlede – opretter i hovedtråden', e);

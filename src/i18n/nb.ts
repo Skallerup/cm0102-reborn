@@ -8437,5 +8437,6 @@ Object.assign(nb, {
   'sb.btn': "Støtt på Ko-fi",
   'cl.cup.stages': "Faser", 'cl.cup.stage': "Fase", 'cl.cup.q': "Q", 'cl.stg.G': "Fase 1 gruppespill", 'cl.stg.G2': "Fase 2 gruppespill", 'cl.stg.QF': "Kvartfinale", 'cl.stg.SF': "Semifinale", 'cl.stg.F': "Finale", 'cl.stg.g1h': "Fase 1 Gruppe {g}", 'cl.stg.g2h': "Fase 2 Gruppe {g}",
   'ui.staleBuild': "En ny versjon av CM Reborn ble lansert mens siden var åpen, så spillet kunne ikke opprettes. Last inn siden på nytt og start spillet igjen.",
+  'ui.outOfMemory': "Denne enheten har for lite minne til å opprette spillet. Lukk andre faner og programmer, velg færre ligaer og databasen Minimum (Preferences), eller bruk en 64-biters nettleser. Den minste databasen velges automatisk når du prøver igjen.",
   "cl.run.day": "Dag {d} av {n}", "cl.run.ph.daily": "Daglige oppdateringer", "cl.run.ph.transfers": "Transfers og ønskelister …", "cl.run.ph.contracts": "Kontrakter …", "cl.run.ph.finance": "Økonomi …", "cl.run.ph.market": "Overgangsmarkedet …", "cl.run.ph.news": "Nyheter og speidere …", "cl.run.ph.matches": "Spiller kamper",
 });

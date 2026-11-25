@@ -5009,5 +5009,6 @@ Object.assign(es, {
   'sb.btn': "Apoyar en Ko-fi",
   'cl.cup.stages': "Fases", 'cl.cup.stage': "Fase", 'cl.cup.q': "Q", 'cl.stg.G': "Fase 1 de grupos", 'cl.stg.G2': "Fase 2 de grupos", 'cl.stg.QF': "Cuartos de final", 'cl.stg.SF': "Semifinal", 'cl.stg.F': "Final", 'cl.stg.g1h': "Fase 1 Grupo {g}", 'cl.stg.g2h': "Fase 2 Grupo {g}",
   'ui.staleBuild': "Se publicó una nueva versión de CM Reborn mientras esta página estaba abierta, así que no se pudo crear la partida. Recarga la página y vuelve a empezar la partida.",
+  'ui.outOfMemory': "Este dispositivo no tiene memoria suficiente para crear la partida. Cierra otras pestañas y programas, elige menos ligas y la base de datos «Minimum» (Preferences), o usa un navegador de 64 bits. Al reintentar se elige automáticamente la base de datos más pequeña.",
   "cl.run.day": "Día {d} de {n}", "cl.run.ph.daily": "Actualizaciones diarias", "cl.run.ph.transfers": "Traspasos y listas de deseos …", "cl.run.ph.contracts": "Contratos …", "cl.run.ph.finance": "Finanzas …", "cl.run.ph.market": "Mercado de fichajes …", "cl.run.ph.news": "Noticias y ojeadores …", "cl.run.ph.matches": "Jugando partidos",
 });

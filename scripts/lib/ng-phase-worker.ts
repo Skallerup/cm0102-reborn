@@ -8,7 +8,7 @@ import { gs, packCarry, setGame } from '../../src/game/state';
 import { rng } from '../../src/game/rng';
 import type { GameState } from '../../src/game/types';
 import { slResumeTransfer } from '../../src/game/cmShortlistGame';
-import { gzConcat, serializeNewGame } from '../../src/game/snapshot';
+import { deserializeState, gzConcat, serializeNewGame } from '../../src/game/snapshot';
 
 const wd = workerData as { kind: 'phases' | 'all' | 'continue'; phases?: ('base' | NewGamePhase)[]; file?: string; opts?: NewGameOptions; days?: number; last?: boolean; json?: boolean; canon?: boolean };
 const port = parentPort!;
@@ -21,7 +21,9 @@ const canonRepl = (_k: string, v: unknown) => {
 };
 const sha = (x: unknown) => createHash('sha256').update(JSON.stringify(x, canonRepl)).digest('hex').slice(0, 16);
 
-port.once('message', async (msg: { game?: GameState; ctx?: NewGameCtx; rng?: number }) => {
+port.once('message', async (msg: { game?: GameState; gz?: ArrayBuffer; ctx?: NewGameCtx; rng?: number }) => {
+  // (25/11) BYTES=1: trinenes overdragelse som gzip-bytes (newGameWorker.ts' nødvej, når den strukturerede kopi løber tør for hukommelse)
+  if (msg.gz) msg.game = await deserializeState(new Blob([msg.gz]));
   if (wd.kind === 'continue') {
     const { continueGame, quickPlayUserMatch } = await import('../../src/game/sim');
     setGame(msg.game!);
@@ -45,6 +47,7 @@ port.once('message', async (msg: { game?: GameState; ctx?: NewGameCtx; rng?: num
   const g = gs();
   // (23/11) som ui/newGameWorker.ts: det færdige spil som det gemte spils gzip-bytes (serializeState) – hovedtråden pakker det ud (deserializeState)
   if (wd.last && wd.json) { const gz = gzConcat(await serializeNewGame(g)); port.postMessage({ gz }, [gz]); return; }
+  if (process.env.BYTES === '1') { const rs = rng.state, sl = slResumeTransfer(ctx?.sl ?? null); const gz = gzConcat(await serializeNewGame(g)); port.postMessage({ gz, ctx, rng: rs }, [gz, ...sl]); return; }
   packCarry(g);
   port.postMessage({ game: g, ctx, rng: rng.state }, slResumeTransfer(ctx?.sl ?? null));
 });

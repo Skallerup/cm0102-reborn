@@ -366,7 +366,7 @@ export function ClassicStart({ onLang, onHome, onGo, onLook, online }: { onLang:
       notify();
       const lg = world.leagues.find((l) => l.id === club.league);
       notifyNewCareer({ manager: opts.managerName, club: club.short, league: lg?.name, nation: natName(world.nations[club.nation]?.name), bots: 0, db: db.startsWith('custom:') ? 'custom' : db, lang: opts.lang });
-    } catch (e) { setProg(null); setErr(String((e as Error).message ?? e)); launching.current = false; go('leagues'); }
+    } catch (e) { setProg(null); setErr(String((e as Error).message ?? e)); launching.current = false; go('leagues'); if ((e as { memory?: boolean }).memory && dbSize !== 'normal') setDbSize('normal'); }
   };
 
   // ---------- gemte spil ----------
