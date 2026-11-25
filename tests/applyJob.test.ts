@@ -5,6 +5,7 @@ import { createGame, type WorldData } from '../src/game/newgame';
 import { gs } from '../src/game/state';
 import { applyForJob, canApplyForJob } from '../src/game/board';
 import { boardEnv } from '../src/game/cmBoardGame';
+import { scoreStaffForJob } from '../src/game/cmBoard';
 import { natClub } from '../src/game/cmVirtual';
 
 describe('jobansøgning hos en klub/et landshold uden manager', () => {
@@ -37,5 +38,24 @@ describe('jobansøgning hos en klub/et landshold uden manager', () => {
     expect(applyForJob(nc)).toBe('sent');
     expect(g.news.filter((n) => n.id >= n0).some((n) => n.key === 'job.cmAck')).toBe(true);
     expect(g.cmBoard!.vac.some((v) => v.club === nc)).toBe(true);
+  });
+  it('menneskets score 0x69d1b0 som originalen (unicorn på oraklets øjebliksbilleder 19/7-01 og 29/6-02, Arsenal-mennesket)', () => {
+    // omdømme (+0xa) – ved klubber med omdømme > 4250 + 25·CA + 5·PA af ikke-spillerposten (CA 3, PA 151 → +830); ikke-engelsksproget nation:
+    // sproget 0x7c6830 = 0 (×0,5) og udlænding ×(0,5 + verden·5e-5)
+    const g = gs();
+    const club = (n: string) => Object.values(g.clubs).find((c) => c.name === n)!.id;
+    const nat0 = g.manager.nation, rep0 = g.manager.cmRep;
+    const score = (nat: string, rep: [number, number, number], c: string) => {
+      g.manager.nation = g.nations.findIndex((n) => n.name === nat);
+      g.manager.cmRep = [...rep];
+      const env = boardEnv(g);
+      return scoreStaffForJob(env, env.persons().find((p) => p.human)!, club(c), 5);
+    };
+    expect(score('England', [4675, 5401, 4583], 'Darlington')).toBe(5401);
+    expect(score('England', [4675, 5401, 4583], 'Burnley')).toBe(6231);
+    expect(score('England', [7665, 8064, 5740], 'Burnley')).toBe(8894);
+    expect(score('Italy', [7665, 8064, 5740], 'Darlington')).toBe(3173);
+    expect(score('Italy', [7665, 8064, 5740], 'Burnley')).toBe(3499);
+    g.manager.nation = nat0; g.manager.cmRep = rep0;
   });
 });
