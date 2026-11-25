@@ -17,7 +17,7 @@ export const tr: Record<string, string> = {
 
   'start.pill': 'Yeni sezon · 40.000+ gerçek oyuncu', 'start.loadDesc': 'Kayıtlı bir kariyere devam et', 'start.onlineDesc': 'Aynı dünyada arkadaşlarına karşı oyna', 'start.challengesDesc': 'Süreli net hedefler', 'start.subtitle': "Klasik futbol menajerliği – 2026/27'den 22.700 ve orijinal 2001/02 veritabanından 35.000 gerçek oyuncuyla",
   'start.new': 'Yeni oyun', 'start.load': 'Oyun yükle', 'start.challenges': 'Meydan okumalar', 'start.import': 'Kayıt dosyası içe aktar',
-  'start.importFailed': 'Bu dosya yüklenemedi.', 'start.loading': 'Yükleniyor…', 'start.resuming': 'Oyunun devam ettiriliyor…', 'start.loadingDb': 'Oyuncu veritabanı yükleniyor…',
+  'start.importFailed': 'Bu dosya yüklenemedi.', 'start.loading': 'Yükleniyor…', 'start.resuming': 'Oyunun devam ettiriliyor…', 'start.lastMissing': "Son oyunun bu tarayıcıda bulunamadı. Yeni bir oyun başlat veya bir kayıt dosyası içe aktar.", 'start.lastMissingCloud': "Son oyunun bu tarayıcıda bulunamadı. Yeni bir oyun başlat, buluttan bir kayıt al veya bir dosya içe aktar.", 'start.loadingDb': 'Oyuncu veritabanı yükleniyor…',
   'start.noSaves': 'Henüz kayıtlı oyun yok.', 'start.savedAt': 'kaydedildi', 'start.confirmDelete': 'Bu kayıtlı oyun silinsin mi?',
   'start.seasons': '{n} sezon', 'start.managerName': 'Menajer adı', 'start.managerPlaceholder': 'Adın',
   'start.nations': 'Oynanabilir ülkeler', 'start.nationsHint': 'Seçili ülkelerdeki ligler tam olarak simüle edilir',

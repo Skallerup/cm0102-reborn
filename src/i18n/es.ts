@@ -17,7 +17,7 @@ export const es: Record<string, string> = {
 
   'start.pill': 'Nueva temporada · más de 40.000 jugadores reales', 'start.loadDesc': 'Continúa una carrera guardada', 'start.onlineDesc': 'Juega contra tus amigos en el mismo mundo', 'start.challengesDesc': 'Objetivos claros con fecha límite', 'start.subtitle': 'El mánager de fútbol clásico – con 22.700 jugadores reales de 2026/27 y 35.000 de la base de datos original de 2001/02',
   'start.new': 'Nueva partida', 'start.load': 'Cargar partida', 'start.challenges': 'Desafíos', 'start.import': 'Importar partida guardada',
-  'start.importFailed': 'No se pudo cargar ese archivo.', 'start.loading': 'Cargando…', 'start.resuming': 'Reanudando tu partida…', 'start.loadingDb': 'Cargando base de datos de jugadores…',
+  'start.importFailed': 'No se pudo cargar ese archivo.', 'start.loading': 'Cargando…', 'start.resuming': 'Reanudando tu partida…', 'start.lastMissing': "Tu última partida no se encontró en este navegador. Empieza una nueva o importa un archivo guardado.", 'start.lastMissingCloud': "Tu última partida no se encontró en este navegador. Empieza una nueva, carga un guardado de la nube o importa un archivo.", 'start.loadingDb': 'Cargando base de datos de jugadores…',
   'start.noSaves': 'Aún no hay partidas guardadas.', 'start.savedAt': 'guardada', 'start.confirmDelete': '¿Eliminar esta partida guardada?',
   'start.seasons': '{n} temporada(s)', 'start.managerName': 'Nombre del mánager', 'start.managerPlaceholder': 'Tu nombre',
   'start.nations': 'Países jugables', 'start.nationsHint': 'Las ligas de los países seleccionados se simulan por completo',

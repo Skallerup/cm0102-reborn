@@ -44,6 +44,8 @@ export const nb: Record<string, string> = {
   "start.importFailed": "Filen kunne ikke leses inn.",
   "start.loading": "Laster…",
   "start.resuming": "Fortsetter spillet ditt…",
+  "start.lastMissing": "Det siste spillet ditt ble ikke funnet i denne nettleseren. Start et nytt spill eller importer en lagringsfil.",
+  "start.lastMissingCloud": "Det siste spillet ditt ble ikke funnet i denne nettleseren. Start et nytt spill, hent en lagring fra skyen eller importer en fil.",
   "start.loadingDb": "Laster spillerdatabasen…",
   "start.noSaves": "Ingen lagrede spill ennå.",
   "start.savedAt": "lagret",

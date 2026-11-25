@@ -44,6 +44,8 @@ export const sv: Record<string, string> = {
   "start.importFailed": "Filen kunde inte läsas in.",
   "start.loading": "Laddar…",
   "start.resuming": "Fortsätter ditt spel…",
+  "start.lastMissing": "Ditt senaste spel hittades inte i den här webbläsaren. Starta ett nytt spel eller importera en sparfil.",
+  "start.lastMissingCloud": "Ditt senaste spel hittades inte i den här webbläsaren. Starta ett nytt spel, hämta en sparning från molnet eller importera en fil.",
   "start.loadingDb": "Laddar spelardatabasen…",
   "start.noSaves": "Inga sparade spel ännu.",
   "start.savedAt": "sparat",

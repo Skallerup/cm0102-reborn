@@ -17,7 +17,7 @@ export const it: Record<string, string> = {
 
   'start.pill': 'Nuova stagione · oltre 40.000 giocatori reali', 'start.loadDesc': 'Continua una carriera salvata', 'start.onlineDesc': 'Gioca contro i tuoi amici nello stesso mondo', 'start.challengesDesc': 'Obiettivi chiari con una scadenza', 'start.subtitle': 'Il manageriale di calcio classico – con 22.700 giocatori reali del 2026/27 e 35.000 dal database originale del 2001/02',
   'start.new': 'Nuova partita', 'start.load': 'Carica partita', 'start.challenges': 'Sfide', 'start.import': 'Importa salvataggio',
-  'start.importFailed': 'Impossibile caricare il file.', 'start.loading': 'Caricamento…', 'start.resuming': 'Ripresa della partita…', 'start.loadingDb': 'Caricamento database giocatori…',
+  'start.importFailed': 'Impossibile caricare il file.', 'start.loading': 'Caricamento…', 'start.resuming': 'Ripresa della partita…', 'start.lastMissing': "L'ultima partita non è stata trovata in questo browser. Inizia una nuova partita o importa un file di salvataggio.", 'start.lastMissingCloud': "L'ultima partita non è stata trovata in questo browser. Inizia una nuova partita, scarica un salvataggio dal cloud o importa un file.", 'start.loadingDb': 'Caricamento database giocatori…',
   'start.noSaves': 'Nessuna partita salvata.', 'start.savedAt': 'salvata', 'start.confirmDelete': 'Eliminare questa partita salvata?',
   'start.seasons': '{n} stagione/i', 'start.managerName': "Nome dell'allenatore", 'start.managerPlaceholder': 'Il tuo nome',
   'start.nations': 'Nazioni giocabili', 'start.nationsHint': 'I campionati delle nazioni scelte sono simulati per intero',

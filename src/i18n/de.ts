@@ -17,7 +17,7 @@ export const de: Record<string, string> = {
 
   'start.pill': 'Neue Saison · über 40.000 echte Spieler', 'start.loadDesc': 'Eine gespeicherte Karriere fortsetzen', 'start.onlineDesc': 'Spiel gegen deine Freunde in derselben Welt', 'start.challengesDesc': 'Klare Ziele mit Frist', 'start.subtitle': 'Der klassische Fußballmanager – mit 22.700 echten Spielern aus 2026/27 und 35.000 aus der Original-Datenbank von 2001/02',
   'start.new': 'Neues Spiel', 'start.load': 'Spiel laden', 'start.challenges': 'Herausforderungen', 'start.import': 'Spielstand importieren',
-  'start.importFailed': 'Die Datei konnte nicht geladen werden.', 'start.loading': 'Lädt…', 'start.resuming': 'Dein Spiel wird fortgesetzt…', 'start.loadingDb': 'Spielerdatenbank wird geladen…',
+  'start.importFailed': 'Die Datei konnte nicht geladen werden.', 'start.loading': 'Lädt…', 'start.resuming': 'Dein Spiel wird fortgesetzt…', 'start.lastMissing': "Dein letztes Spiel wurde in diesem Browser nicht gefunden. Starte ein neues Spiel oder importiere eine Speicherdatei.", 'start.lastMissingCloud': "Dein letztes Spiel wurde in diesem Browser nicht gefunden. Starte ein neues Spiel, lade einen Spielstand aus der Cloud oder importiere eine Datei.", 'start.loadingDb': 'Spielerdatenbank wird geladen…',
   'start.noSaves': 'Noch keine gespeicherten Spiele.', 'start.savedAt': 'gespeichert', 'start.confirmDelete': 'Diesen Spielstand löschen?',
   'start.seasons': '{n} Saison(s)', 'start.managerName': 'Trainername', 'start.managerPlaceholder': 'Dein Name',
   'start.nations': 'Spielbare Nationen', 'start.nationsHint': 'Ligen in den gewählten Nationen werden vollständig simuliert',

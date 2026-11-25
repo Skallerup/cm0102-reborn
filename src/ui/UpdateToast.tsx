@@ -3,7 +3,7 @@
 // Den nye version tages i brug ved næste besøg; her kan man vælge at genindlæse med det samme.
 import { useEffect, useState } from 'react';
 import { t } from '../i18n';
-import { allowSelfReload } from '../online/newGameTrace';
+import { allowSelfReload, creatingNewGame } from '../online/newGameTrace';
 
 let pending: ((reload?: boolean) => Promise<void>) | null = null;
 let stale = false;
@@ -32,12 +32,16 @@ function reloadNow() {
 export function UpdateToast() {
   const [ready, setReady] = useState(() => !!pending || stale);
   const [hidden, setHidden] = useState(false);
+  const [creating, setCreating] = useState(() => creatingNewGame());
   useEffect(() => {
     const on = () => setReady(true);
+    const tick = () => setCreating(creatingNewGame());
     window.addEventListener('cm-sw-update', on);
-    return () => window.removeEventListener('cm-sw-update', on);
+    window.addEventListener('cm-creating', tick);
+    return () => { window.removeEventListener('cm-sw-update', on); window.removeEventListener('cm-creating', tick); };
   }, []);
-  if (!ready || hidden || (!pending && !stale)) return null;
+  // (25/11, NewGameAbandoned) et tryk på toasten midt i oprettelsen genindlæste siden: skjult, til spillet er oprettet
+  if (creating || creatingNewGame() || !ready || hidden || (!pending && !stale)) return null;
   return (
     <div className="acc-toast sw-toast" role="status">
       {t('update.ready')}{' '}

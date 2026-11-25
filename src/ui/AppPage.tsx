@@ -8,6 +8,7 @@ import { applyTheme, getTheme, modernOn, setTheme } from './theme';
 import { hasGame, inSetup, notify, previewInfo } from '../game/state';
 import { forgetLast, loadGame } from '../game/save';
 import { getLast } from '../game/last';
+import { getAccount } from '../online/account';
 import { fetchRoom, forgetRoom, openSession, savedRooms, session } from '../online/client';
 import { Shell } from './Shell';
 import { Start } from './Start';
@@ -34,8 +35,10 @@ void loadLogos().then(() => notify());
 export default function AppPage() {
   // login via linket i mailen (?login=…)
   const [toast, setToast] = useState('');
+  const [missing, setMissing] = useState(false);
+  useEffect(() => { const on = () => setMissing(true); window.addEventListener('cm-resume-missing', on); return () => window.removeEventListener('cm-resume-missing', on); }, []);
   useLoginLink((m) => { setToast(m); setTimeout(() => setToast(''), 6000); });
-  return <><AppInner /><ConsentBanner /><InAppBanner /><InstallTip /><UpdateToast /><ConfirmHost />{toast && <div className="acc-toast" role="status" onClick={() => setToast('')}>{toast}</div>}</>;
+  return <><AppInner /><ConsentBanner /><InAppBanner /><InstallTip /><UpdateToast /><ConfirmHost />{toast && <div className="acc-toast" role="status" onClick={() => setToast('')}>{toast}</div>}{missing && <div className="acc-toast" role="status" onClick={() => setMissing(false)}>{t(getAccount() ? 'start.lastMissingCloud' : 'start.lastMissing')} <button className="small">OK</button></div>}</>;
 }
 
 function AppInner() {
@@ -103,8 +106,10 @@ function AppInner() {
             // (23/11) lageret pr. nøgle: kunne IndexedDB slet ikke læses (fx et midlertidigt låst/ødelagt lager), er spillet måske ikke væk – så
             // huskes det seneste spil, og næste genindlæsning prøver igen (før: saves=0 og "glemt", som om det var slettet)
             const rd = await resumeDiag(last.id);
-            reportError(new Error(`ResumeMissing: the last local game was not found in storage | ${await storageDiag({ saves: n })} ${rd.text} id=${last.id.slice(0, 40)}`));
-            if (!rd.idbError) forgetLast();
+            // (25/11) et ryddet lager er ikke en kodefejl (browseren sletter, persisted=false): ingen fejlmelding – pegeren ryddes stille og spilleren får en
+            // venlig besked. Kun et lager, der slet ikke kunne læses (idbError), meldes og huskes.
+            if (rd.idbError) reportError(new Error(`ResumeMissing: the last local game could not be read from storage | ${await storageDiag({ saves: n })} ${rd.text} id=${last.id.slice(0, 40)}`));
+            else { forgetLast(); window.dispatchEvent(new Event('cm-resume-missing')); }
             // var det en lokal kopi af et online-spil, så åbn det seneste online-spil i stedet
             const room = savedRooms()[0];
             if (room) await openSession(room);

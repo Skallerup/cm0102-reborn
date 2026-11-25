@@ -7,7 +7,7 @@ const h = vi.hoisted(() => {
   const rm = (n: string, f: (e: any) => void) => ev.set(n, (ev.get(n) ?? []).filter((x) => x !== f));
   (globalThis as any).localStorage = { getItem: (k: string) => ls.get(k) ?? null, setItem: (k: string, v: string) => void ls.set(k, v), removeItem: (k: string) => void ls.delete(k) };
   (globalThis as any).document = { visibilityState: 'visible', addEventListener: add, removeEventListener: rm };
-  (globalThis as any).window = { addEventListener: add, removeEventListener: rm, matchMedia: () => ({ matches: false }) };
+  (globalThis as any).window = { dispatchEvent: (e: any) => (ev.get(e.type) ?? []).forEach((f) => f(e)), addEventListener: add, removeEventListener: rm, matchMedia: () => ({ matches: false }) };
   Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { userAgent: 'Mozilla/5.0 (Linux; Android 13)', deviceMemory: 4, hardwareConcurrency: 8 } });
   const fire = (n: string, e: any = {}) => (ev.get(n) ?? []).forEach((f) => f(e));
   return { ls, ev, fire };
@@ -16,6 +16,14 @@ import { allowSelfReload, creatingNewGame, markNewGame, noteNewGameStep, readInt
 
 describe('newGameTrace', () => {
   beforeEach(() => { markNewGame(false); h.ls.clear(); (globalThis as any).document.visibilityState = 'visible'; });
+  it('cm-creating meldes ved start og slut (opdaterings-toasten skjules under oprettelsen)', () => {
+    const seen: boolean[] = [];
+    const f = () => seen.push(creatingNewGame());
+    (globalThis as any).window.addEventListener('cm-creating', f);
+    markNewGame(true, 'normal'); markNewGame(false);
+    (globalThis as any).window.removeEventListener('cm-creating', f);
+    expect(seen).toEqual([true, false]);
+  });
   it('ingen markør: ingen afbrydelse', () => { expect(readInterrupted()).toBeNull(); });
   it('færdigt spil rydder markør, spor og lyttere', () => {
     markNewGame(true, 'normal'); markNewGame(false);

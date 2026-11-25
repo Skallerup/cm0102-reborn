@@ -46,11 +46,12 @@ function env(): Pick<NewGameTrace, 'mem' | 'cores' | 'standalone' | 'iab'> {
 /** et nyt spil begynder (on) eller er færdigt/fejlet (off) */
 export function markNewGame(on: boolean, size = '', kind?: 'preview' | 'game'): void {
   off?.(); off = null;
-  if (!on) { cur = null; set(CREATING, null); set(TRACE, null); return; }
+  if (!on) { cur = null; set(CREATING, null); set(TRACE, null); creatingChanged(); return; }
   const now = Date.now();
   cur = { t0: now, size, steps: [], hidden: [], hiddenMs: 0, leave: 0, persisted: false, ...env(), ...(kind ? { kind } : {}) };
   hiddenAt = 0;
   set(CREATING, String(now)); save();
+  creatingChanged();
   if (typeof document === 'undefined' || typeof window === 'undefined') return;
   const vis = () => {
     if (!cur) return;
@@ -73,6 +74,9 @@ export function noteNewGameStep(step: string, frac: number): void {
   last[2] = frac;
   if (Date.now() - lastWrite > 2000) save();
 }
+
+/** (25/11) opdaterings-toasten (ui/UpdateToast.tsx) skjules, mens et nyt spil oprettes, og vises igen bagefter */
+function creatingChanged() { try { window.dispatchEvent(new Event('cm-creating')); } catch { /* ingen window */ } }
 
 /** et nyt spil oprettes i denne side lige nu (markøren cm0102.creating er sat af denne side) */
 export function creatingNewGame(): boolean { return !!cur; }

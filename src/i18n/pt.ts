@@ -17,7 +17,7 @@ export const pt: Record<string, string> = {
 
   'start.pill': 'Nova temporada · 40.000+ jogadores reais', 'start.loadDesc': 'Continue uma carreira salva', 'start.onlineDesc': 'Jogue contra seus amigos no mesmo mundo', 'start.challengesDesc': 'Metas claras com prazo', 'start.subtitle': 'O clássico jogo de técnico de futebol – com 22.700 jogadores reais de 2026/27 e 35.000 do banco de dados original de 2001/02',
   'start.new': 'Novo jogo', 'start.load': 'Carregar jogo', 'start.challenges': 'Desafios', 'start.import': 'Importar arquivo salvo',
-  'start.importFailed': 'Não foi possível carregar esse arquivo.', 'start.loading': 'Carregando…', 'start.resuming': 'Retomando seu jogo…', 'start.loadingDb': 'Carregando banco de dados de jogadores…',
+  'start.importFailed': 'Não foi possível carregar esse arquivo.', 'start.loading': 'Carregando…', 'start.resuming': 'Retomando seu jogo…', 'start.lastMissing': "O seu último jogo não foi encontrado neste navegador. Comece um novo jogo ou importe um ficheiro guardado.", 'start.lastMissingCloud': "O seu último jogo não foi encontrado neste navegador. Comece um novo jogo, obtenha um guardado da nuvem ou importe um ficheiro.", 'start.loadingDb': 'Carregando banco de dados de jogadores…',
   'start.noSaves': 'Nenhum jogo salvo ainda.', 'start.savedAt': 'salvo', 'start.confirmDelete': 'Excluir este jogo salvo?',
   'start.seasons': '{n} temporada(s)', 'start.managerName': 'Nome do técnico', 'start.managerPlaceholder': 'Seu nome',
   'start.nations': 'Países jogáveis', 'start.nationsHint': 'As ligas dos países selecionados são totalmente simuladas',

@@ -17,7 +17,7 @@ export const fr: Record<string, string> = {
 
   'start.pill': "Nouvelle saison · plus de 40 000 vrais joueurs", 'start.loadDesc': "Reprendre une carrière sauvegardée", 'start.onlineDesc': "Affrontez vos amis dans le même monde", 'start.challengesDesc': "Des objectifs clairs avec une échéance", 'start.subtitle': "Le jeu de management de football classique – avec 22 700 vrais joueurs de 2026/27 et 18 700 de la base de données originale de 2001/02",
   'start.new': "Nouvelle partie", 'start.load': "Charger une partie", 'start.challenges': "Défis", 'start.import': "Importer une sauvegarde",
-  'start.importFailed': "Impossible de charger ce fichier.", 'start.loading': "Chargement…", 'start.resuming': "Reprise de votre partie…", 'start.loadingDb': "Chargement de la base de données des joueurs…",
+  'start.importFailed': "Impossible de charger ce fichier.", 'start.loading': "Chargement…", 'start.resuming': "Reprise de votre partie…", 'start.lastMissing': "Votre dernière partie est introuvable dans ce navigateur. Commencez une nouvelle partie ou importez un fichier de sauvegarde.", 'start.lastMissingCloud': "Votre dernière partie est introuvable dans ce navigateur. Commencez une nouvelle partie, récupérez une sauvegarde dans le cloud ou importez un fichier.", 'start.loadingDb': "Chargement de la base de données des joueurs…",
   'start.noSaves': "Aucune partie sauvegardée pour l'instant.", 'start.savedAt': "sauvegardée", 'start.confirmDelete': "Supprimer cette partie sauvegardée ?",
   'start.seasons': "{n} saison(s)", 'start.managerName': "Nom de l'entraîneur", 'start.managerPlaceholder': "Votre nom",
   'start.nations': "Pays jouables", 'start.nationsHint': "Les championnats des pays sélectionnés sont entièrement simulés",
