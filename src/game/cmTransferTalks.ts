@@ -26,7 +26,8 @@ import { asOwner } from './humans';
 import { addDays, year } from './dates';
 import { cmLogic, cmRand } from './cmPlayerData';
 import { cmGbp } from './cmMoney';
-import { cmContractAnswer, cmMoveCheck, cmTalkDemand, cmTalkStatus, type CmOfferTerms, type CmTerms } from './cmContractGame';
+import { cmContractAnswer, cmMoveCheck, cmOfferScreenData, cmTalkDemand, cmTalkStatus, type CmOfferTerms, type CmTerms } from './cmContractGame';
+import { cmBoardWageAllowGbp } from './cmBudget';
 import { isHumanClub } from './humans';
 import { regionOf } from './leagues';
 import { cmCheckOffer } from './cmOfferCheck';
@@ -143,6 +144,43 @@ export function cmNoInterest(g: GameState, p: Player, buyer: number, role?: Squa
   const why = chk && chk.x > 1.25 ? cmWhy(g, p, buyer, chk.mask).join('|') : '';
   const base = st === 3 ? 'cm.neg.noIntRot' : st === 4 ? 'cm.neg.noIntBackup' : st === 5 ? 'cm.neg.noIntProspect' : st === 6 ? 'cm.neg.noIntYouth' : 'cm.neg.noIntTerms';
   return { key: why ? `${base}.because` : base, why };
+}
+
+/** 0x4e06e0 0x4e0950–0x4e0ab4: lønloftet `bx` efter trupstatussen og køberens omdømme (+0x80) – ftol; status 4 og 6: 0 */
+function statusWageBx(status: number, rep: number): number {
+  const t = (x: number) => Math.trunc(x) | 0;
+  if (status === 1) return rep > 0x1c52 ? t(rep * 1.25 + 10000) : rep > 0x186a ? t(rep + 7500) : rep > 0x128e ? t(rep * 0.75 + 2500) : 0;
+  if (status === 2) return rep > 0x1c52 ? t(rep + 7500) : rep > 0x186a ? t(rep * 0.75 + 5000) : rep > 0x128e ? t(rep * 0.5) : 0;
+  if (status === 3) return rep > 0x1c52 ? t(rep * 0.75 + 5000) : rep > 0x186a ? t(rep * 0.5 + 2500) : rep > 0x128e ? t(rep * 0.25) : 0;
+  if (status === 5) return rep > 0x1c52 ? t(rep * 0.5) : rep > 0x186a ? t(rep * 0.25) : 0;
+  return 0;
+}
+
+/** Offer Contract 0x4e06e0 for en spiller fra en anden klub eller en klubløs (ikke forlængelse): står kravet ("expects a wage of …"), eller en
+ *  "no interest"-tekst? Null = kravet. W = kravets løn (+0xc, £), p18 = bestyrelsens loft (0x5968d0), p16 = 0x4ce450, vilje = parameter 0x1a · 0,001:
+ *  – W < 1,5·p18 (0x4e0ad5): vilje > 2,75 → kravet; ellers (job 0xb) alder ≥ 24 → no interest; W ≥ bx + 3250 (statusWageBx) → no interest; ellers kravet
+ *  – no interest (0x4e0d97 → 0x4e0ef4): grundene 0x8e4ae0 (bl). 1,5·p18 ≥ p16 → teksten efter trupstatussen (0x4e0ff9: 1–2 uden tilføjelse, 3 rotation,
+ *    4 backup, 5 hot prospect, 6 youngster; "because he …", når der er grunde og viljen er over 1,25); ellers (0x4e0f1f) vilje ≥ 3,15, W < 175.000 og
+ *    kontrakttype ≠ 1 → kravet; grunde → "… because he …"; vilje < 0,75 → "has absolutely no interest in joining {club}"; ellers "no interest". */
+export function cmOfferScreen(g: GameState, p: Player, buyer: number, role?: SquadStatus): { key: string; why: string } | null {
+  const d = cmOfferScreenData(g, p, buyer, role);
+  const p18 = cmBoardWageAllowGbp(g, p, buyer, role);
+  if (!d || p18 === null) return null;
+  const W = d.wageGbp, will = d.will;
+  if (p18 * 1.5 > W) {
+    if (will > 2.75) return null;
+    if (d.age < 0x18 && W < statusWageBx(d.status, d.rep) + 0xcb2) return null;
+  }
+  const why = cmWhy(g, p, buyer, d.mask).join('|');
+  if (p18 * 1.5 >= d.p16) {
+    const st = d.status;
+    const base = st === 3 ? 'cm.neg.noIntRot' : st === 4 ? 'cm.neg.noIntBackup' : st === 5 ? 'cm.neg.noIntProspect' : st === 6 ? 'cm.neg.noIntYouth' : 'cm.neg.noIntTerms';
+    return why && will > 1.25 ? { key: `${base}.because`, why } : { key: base, why: '' };
+  }
+  if (!(will < 3.15) && W < 0x2ab98 && d.type !== 1) return null;
+  if (why) return { key: 'cm.neg.noIntTerms.because', why };
+  if (will < 0.75) return { key: 'cm.neg.noIntJoin', why: '' };
+  return { key: 'cm.neg.noIntTerms', why: '' };
 }
 
 const expiryOf = (g: GameState, years: number) => `${year(g.date) + Math.max(1, years)}-06-30`;

@@ -7355,6 +7355,7 @@ Object.assign(nb, {
   "cl.bid.acceptQ": "Akseptere overgangsbudet på {player} ?",
   "cl.bid.delayQ": "Utsette avgjørelsen om overgangsbudet på {player} fra {club} ?",
   "cm.neg.noIntTerms": "{player} er ikke interessert i å forhandle om vilkår.",
+  "cm.neg.noIntJoin": "{player} er overhodet ikke interessert i å gå til {club}.",
   "cm.neg.noIntTerms.because": "{player} er ikke interessert i å forhandle om vilkår fordi han {reasons}.",
   "cm.neg.noIntRot": "{player} er ikke interessert i å forhandle om vilkår som rotasjonsspiller.",
   "cm.neg.noIntRot.because": "{player} er ikke interessert i å forhandle om vilkår som rotasjonsspiller fordi han {reasons}.",

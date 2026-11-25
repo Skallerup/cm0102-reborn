@@ -2357,6 +2357,7 @@ export const da: Record<string, string> = {
   "cl.bid.acceptQ": "Accepter transferbuddet på {player}?",
   "cl.bid.delayQ": "Udskyd beslutningen om transferbuddet på {player} fra {club}?",
   "cm.neg.noIntTerms": "{player} har ingen interesse i at forhandle.",
+  "cm.neg.noIntJoin": "{player} har absolut ingen interesse i at skifte til {club}.",
   "cm.neg.noIntTerms.because": "{player} har ingen interesse i at forhandle, fordi han {reasons}.",
   "cm.neg.noIntRot": "{player} har ingen interesse i at forhandle som rotationsspiller.",
   "cm.neg.noIntRot.because": "{player} har ingen interesse i at forhandle som rotationsspiller, fordi han {reasons}.",

@@ -3945,6 +3945,7 @@ Object.assign(tr, {
   "cl.bid.acceptQ": "{player} için gelen transfer teklifi kabul edilsin mi ?",
   "cl.bid.delayQ": "{club} kulübünün {player} için transfer teklifiyle ilgili karar ertelensin mi ?",
   "cm.neg.noIntTerms": "{player}, şartları görüşmekle ilgilenmiyor.",
+  "cm.neg.noIntJoin": "{player}, {club} kulübüne katılmakla kesinlikle ilgilenmiyor.",
   "cm.neg.noIntTerms.because": "{player}, şartları görüşmekle ilgilenmiyor, çünkü {reasons}.",
   "cm.neg.noIntRot": "{player}, rotasyon oyuncusu olarak şartları görüşmekle ilgilenmiyor.",
   "cm.neg.noIntRot.because": "{player}, rotasyon oyuncusu olarak şartları görüşmekle ilgilenmiyor, çünkü {reasons}.",

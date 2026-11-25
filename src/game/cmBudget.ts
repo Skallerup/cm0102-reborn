@@ -117,6 +117,12 @@ export function humanClubIds(g: GameState): number[] {
  *  0x5968d0(klubbens finanspost, spilleren, −1) – for menneskets egen spiller læser 0x5968d0 trupstatussen i kontrakten (+0x4f, sat af Set Role
  *  At Club); for en spiller fra en anden klub den rolle, han er tilbudt (`role`; uden rolle hans forventede plads – som ønskekontrakten, cmTalkStatus). Ugeløn i € (null uden for ægte tilstand). */
 export function cmBoardWageAllow(g: GameState, p: Player, clubId: number, role?: import('./squadStatus').SquadStatus): number | null {
+  const w = cmBoardWageAllowGbp(g, p, clubId, role);
+  return w === null ? null : w / cmGbp(g, clubId);
+}
+
+/** som cmBoardWageAllow, i £ (skærmparameterens heltal) */
+export function cmBoardWageAllowGbp(g: GameState, p: Player, clubId: number, role?: import('./squadStatus').SquadStatus): number | null {
   if (!cmLogic(g) || !g.clubs[clubId]) return null;
   const M = buildWantMem(g, p.club && p.club !== clubId ? [clubId, p.club] : [clubId]);
   const fin = M.W.finOf(clubId);
@@ -127,7 +133,7 @@ export function cmBoardWageAllow(g: GameState, p: Player, clubId: number, role?:
   // et tilbud efter Set Role At Club: originalens forhandling har den valgte rolle i kontraktposten (+0x4f), som 0x5968d0 læser for menneskets klub
   const status = p.club === clubId ? (role ? roleCode(role) : -1) : cmTalkStatus(g, p, clubId, role);
   const w = getMaxWage_5968d0(M.c, fin, st, status);
-  return Math.max(0, w) / cmGbp(g, clubId);
+  return Math.max(0, w);
 }
 
 /** stabens Offer Contract (0x4de1f0/0x4de5d0 med et stabsjob): Finance::max_staff_wage 0x597db0(finansposten, jobbet) – og for en, der allerede

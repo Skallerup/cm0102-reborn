@@ -487,6 +487,38 @@ export function cmTalkDemand(g: GameState, p: Player, clubId: number, role?: Squ
   return termsOf(T.M.c, LOCAL, false, valueOf(g, p, clubId), cmGbp(g, clubId));
 }
 
+/** Offer Contract-skærmens tal for et tilbud til en spiller fra en anden klub eller en klubløs (0x4deac0 → 0x4e06e0): kravet 0x85fc50 med den
+ *  valgte trupstatus og ud-felterne – viljen (*outF = 0x846920(staff, klub, 0, 0, status, &grunde)) som skærmparameter 0x1a = ftol(vilje · 1000)
+ *  og grundene som parameter 0x19 – samt spillerens alder (+0x18), køberens omdømme (+0x80) og 0x4ce450 (skærmparameter 0x16, sat af 0x4de5d0):
+ *  min(10.000.000, 0x85fc50's værdi ved status 1, ved status 2). Beløb i £. Null uden for cmLogic. */
+export function cmOfferScreenData(g: GameState, p: Player, clubId: number, role?: SquadStatus):
+  { wageGbp: number; type: number; status: number; will: number; mask: number; age: number; rep: number; p16: number } | null {
+  const T = talkMem(g, p, clubId, 0x85fc50, role);
+  if (!T) return null;
+  const c = T.M.c, m = c.m;
+  const FOUT = OUT + 0x60, IOUT = OUT + 0x64;
+  m.wf32(FOUT, 0); m.w32(IOUT, 0);
+  constructContract_85e410(m, LOCAL);
+  setToDesiredContract_85fc50(c, LOCAL, T.st, T.club, -1, T.status, 0xb, IOUT, FOUT);
+  const wageGbp = m.s32(LOCAL + 0xc), type = m.u8(LOCAL + 0x35) & 0x3f;
+  // 0x4dece5: ftol([outF] · 1000.0) → parameter 0x1a; 0x4e0844: fild · 0.001f → float [esp+0x20]
+  const p1a = Math.trunc(m.f32(FOUT) * 1000.0) | 0;
+  const will = Math.fround(p1a * Math.fround(0.001));
+  const mask = m.u32(IOUT) >>> 0;
+  const age = m.s8(T.st + 0x18), rep = m.s16(T.club + 0x80);
+  // 0x4ce450: to krav (status 1 og 2, a2 −1, job 0xb) i en ny kontraktpost
+  const T2 = talkMem(g, p, clubId, 0x4ce450);
+  let p16 = 10_000_000;
+  if (T2) {
+    constructContract_85e410(T2.M.c.m, LOCAL);                          // (én kontraktpost til begge kald, som 0x4ce450)
+    for (const s of [1, 2]) {
+      const v = setToDesiredContract_85fc50(T2.M.c, LOCAL, T2.st, T2.club, -1, s, 0xb, 0, 0) | 0;
+      if (v < p16) p16 = v;
+    }
+  }
+  return { wageGbp, type, status: T.status, will, mask, age, rep, p16 };
+}
+
 /** Menneskets tilbud i spillets enheder */
 export interface CmOfferTerms { wage: number; expires: string; signOn?: number; bonusGbp?: [number, number, number]; clauses?: number[]; clauseFee?: number; partTime?: boolean }
 

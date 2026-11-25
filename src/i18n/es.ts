@@ -3945,6 +3945,7 @@ Object.assign(es, {
   "cl.bid.acceptQ": "¿Aceptar la oferta de traspaso por {player}?",
   "cl.bid.delayQ": "¿Aplazar la decisión sobre la oferta de traspaso por {player} del {club}?",
   "cm.neg.noIntTerms": "{player} no tiene interés en negociar condiciones.",
+  "cm.neg.noIntJoin": "{player} no tiene ningún interés en fichar por el {club}.",
   "cm.neg.noIntTerms.because": "{player} no tiene interés en negociar condiciones porque {reasons}.",
   "cm.neg.noIntRot": "{player} no tiene interés en negociar condiciones como jugador de rotación.",
   "cm.neg.noIntRot.because": "{player} no tiene interés en negociar condiciones como jugador de rotación porque {reasons}.",

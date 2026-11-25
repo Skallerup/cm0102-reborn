@@ -38,6 +38,7 @@ import { origLogic, legacyExtended } from './rules';
 import { aiRespond, aiReview, applyRejectReason, clauseOptIn, newTerms, putTerms, termsOf, valueCtx, MAX_SWAP, type BidTerms, type RejectKey } from './cmTransferBid';
 import { bookBlockEur, K as CMK } from './cmFinance';
 import { cmGbp } from './cmMoney';
+import { cashRound, cashUnits } from '../i18n';
 import { cmNeedsPermit, cmPermitOn, cmWorkPermit } from './cmPermit';
 
 /** (MODERN_PARITY 3) € ↔ originalens £ med faktoren for klubben, pengene tilhører (cmMoney.ts – den originale database: 0,86 som toGbp/fromGbp) */
@@ -705,7 +706,9 @@ export function clausesWorthFor(p: Player, clubId: number, wage: number, years: 
  *  (cmBudget.ts – originalen har intet samlet lønbudget), ellers spillets lønbudget (`fallback`) */
 function overBoardWage(p: Player, clubId: number, wage: number, fallback: boolean, role?: TransferOffer['cmRole']): boolean {
   const a = cmBoardWageAllow(gs(), p, clubId, role);
-  return a !== null ? wage > a + 1 : fallback;
+  // som Offer Contract-skærmens + (0x4e2280: det næste trin 0x43f460 flag 8 mod loftet): lønnen må nå loftet afrundet til lønnens trin – ellers
+  // kunne det tilbud, skærmen tillader (fx £90,000 ved et loft på £89,7xx), afvises (ejerens fund 25/11, Ronaldinho)
+  return a !== null ? cashRound(cashUnits(wage), 8) > cashRound(cashUnits(a), 8) : fallback;
 }
 
 export function negotiate(offerId: number, wage: number, years: number, clauses?: ContractClauses): 'accepted' | 'counter' | 'refused' | 'budget' | 'pending' | 'cmSent' {

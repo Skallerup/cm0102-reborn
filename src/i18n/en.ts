@@ -2326,6 +2326,7 @@ export const en: Record<string, string> = {
   "cl.bid.acceptQ": "Accept transfer bid for {player} ?",
   "cl.bid.delayQ": "Delay decision over transfer bid for {player} from {club} ?",
   "cm.neg.noIntTerms": "{player} has no interest in negotiating terms.",
+  "cm.neg.noIntJoin": "{player} has absolutely no interest in joining {club}.",
   "cm.neg.noIntTerms.because": "{player} has no interest in negotiating terms because he {reasons}.",
   "cm.neg.noIntRot": "{player} has no interest in negotiating terms as a squad rotation player.",
   "cm.neg.noIntRot.because": "{player} has no interest in negotiating terms as a squad rotation player because he {reasons}.",

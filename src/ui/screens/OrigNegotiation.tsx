@@ -12,7 +12,7 @@ import { cashRound, cashStepEur, cashUnits, moneyCm, moneyFull, moneyWage, t } f
 import { SQUAD_STATUSES, expectedStatus, statusAllowed, type SquadStatus } from '../../game/squadStatus';
 import { ageOn, year } from '../../game/dates';
 import { authentic } from '../../game/rules';
-import { cmNoInterest, cmRoleExpected, cmTalksDemand } from '../../game/cmTransferTalks';
+import { cmNoInterest, cmOfferScreen, cmRoleExpected, cmTalksDemand } from '../../game/cmTransferTalks';
 import { cmWhyText } from './common';
 import { Modal } from '../components';
 
@@ -108,7 +108,10 @@ export function OrigNegotiation({ offer, renewPid, onClose }: { offer?: Transfer
   useEffect(() => { if (cmAllow !== null && wage > cmAllow) setWage(Math.floor(cmAllow / 50) * 50); }, [cmAllow]); // eslint-disable-line react-hooks/exhaustive-deps
   const noInt = useMemo(() => {
     if (noRenew) return { key: 'cm.neg.noRenewNow', reasons: '' };
-    if ((!cmWant && !rw) || roleStep || demand < 1.5 * allow) return null;
+    if ((!cmWant && !rw) || roleStep) return null;
+    // tilbud efter et accepteret bud / til en klubløs: hele grenstrukturen i 0x4e06e0 (cmOfferScreen)
+    if (cmWant && offer) { const o = cmOfferScreen(g, p, offer.buyer, offer.cmRole); return o ? { key: o.key, reasons: o.why ? cmWhyText(o.why) : '' } : null; }
+    if (demand < 1.5 * allow) return null;
     const r = cmNoInterest(g, p, club.id, offer ? offer.cmRole : p.squadStatus);
     return { key: r.key, reasons: r.why ? cmWhyText(r.why) : '' };
   }, [roleStep, rw]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -167,7 +170,7 @@ export function OrigNegotiation({ offer, renewPid, onClose }: { offer?: Transfer
           {msg && <div className="insight warn">{msg}</div>}
           {tab === 'basic' && (
             <>
-              <p>{noInt ? t(noInt.key, { player: name, reasons: noInt.reasons })
+              <p>{noInt ? t(noInt.key, { player: name, reasons: noInt.reasons, club: club.name })
                 : t(signReq ? 'cl.neg.wantsSign' : 'cl.neg.wants', { player: name, wage: moneyWage(demand), until: end(wantYears), fee: moneyFull(signReq) })}</p>
               <p className="muted">{t('cl.neg.allow', { allow: moneyWage(allow) })}</p>
               <Row label={t('cl.neg.wage')} value={wage} show={moneyWage} options={wageOpts} onSet={setWage} reset={demand}
@@ -199,7 +202,7 @@ export function OrigNegotiation({ offer, renewPid, onClose }: { offer?: Transfer
           )}
           <div className="row" style={{ justifyContent: 'flex-end', gap: 8 }}>
             <button onClick={onClose}>{t('common.cancel')}</button>
-            <button className="primary" disabled={noInt?.key === 'cm.neg.noRenewNow' || (!!offer?.cmTalks && wage > allow)} onClick={() => setAsk(true)}>{t('cl.neg.offer')}</button>
+            <button className="primary" disabled={noInt?.key === 'cm.neg.noRenewNow'} onClick={() => setAsk(true)}>{t('cl.neg.offer')}</button>
           </div>
         </div>
       )}
