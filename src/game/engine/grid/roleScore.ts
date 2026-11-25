@@ -108,12 +108,10 @@ export function roleScore(i: RoleInput): number {
   const P = positionFactor(r, i.pos, i.att, flags);
   // ---------------------------------------------------------------- gennemsnitsleddene
   let sum = 0, cnt = 0;
-  const recentJoin = () => !!i.mgrJoined && i.atClub && before(i.mgrJoined, i.joined) && before(i.yearAgo, i.joined);
-  const daysAt = () => 365 * (i.today.year - i.joined.year) - i.joined.day + i.today.day;
   if (flags & 0x40) {                                                   // 0x6e362e: nuværende omdømme / 50
     let v = tdiv(W(rec, 0xb), 50);
     cnt = 1;
-    if (recentJoin()) v = ftol((1.375 - 0.001 * daysAt()) * v);         // 0x968fa8, 0x96a350
+    if (recentJoin(i)) v = ftol((1.375 - 0.001 * daysAt(i)) * v);         // 0x968fa8, 0x96a350
     sum = v;
   }
   if (flags & 0x10) { cnt++; sum += ftol(W(rec, 9) / ((2 - 0.0001 * (i.nationRep ?? 0)) * 50)); }   // 0x6e3770: hjemmeomdømme (landshold)
@@ -138,11 +136,11 @@ export function roleScore(i: RoleInput): number {
   }
   if (flags & 0x40000 && real) {                                        // 0x6e3c0e: formen
     let f = f32(s8(d.form()) * 0.2);
-    if (recentJoin()) { const dd = daysAt(); f = f32(((365 - dd) * 7.5 + dd * f) * (1 / 365)); }
+    if (recentJoin(i)) { const dd = daysAt(i); f = f32(((365 - dd) * 7.5 + dd * f) * (1 / 365)); }
     if (f > 6.8) sum += s8(ftol((f * 3.125 - 21) * cnt));
     else if (f > 0) sum += s8(ftol((f * 6.25 - 42) * cnt));
   }
-  if (flags & 2 && real) sum += ratingsTerm(i, sum, cnt, recentJoin, daysAt);   // 0x6e3dcf
+  if (flags & 2 && real) sum += ratingsTerm(i, sum, cnt);   // 0x6e3dcf
   // 0x6e42a1: gennemsnittet, over 150 strakt
   let Q = 0;
   if (cnt) { Q = tdiv(sum, cnt); if (Q > 150) Q = ftol((Q - 150) * 1.5 + 150); }
@@ -175,20 +173,11 @@ export function roleScore(i: RoleInput): number {
     if (C.b45 & 0x2808) b = ftol(Math.min(s8(C.b44) * (2 / 3), -25));
     else if (C.b45) b = ftol(Math.min(s8(C.b44) * 0.4, -5));
     const status = (C.b4f >> 4) & 0xf;
-    const appearances = () => {                                         // 0x6e5c3f: 0x8c7260 / 0x8c7560 – under 70 % af kampene → +50 − pct/2
-      if (flags & 0x800000) return;
-      const h = d.history();
-      if (!h || !h.ok) return;
-      const tot = h.w4 + h.w6;
-      const pct = tot ? s8(tdiv(100 * h.w4, tot)) : 0;
-      if (tot && pct >= 70) return;
-      b += 50 - tdiv(pct, 2);
-    };
-    if (status === 1) { b += 25; appearances(); }
-    else if (status === 2) { b += 15; appearances(); }
+    if (status === 1) { b += 25; b += appearances(flags, d); }
+    else if (status === 2) { b += 15; b += appearances(flags, d); }
     else if (status === 3) {
       if (flags & 0x800000) b += 10;
-      else { b += ftol(5 * (s8(C.b3e) - s8(C.b3f)) + (cond100 * 2.5 - 225)); appearances(); }   // 0x6e5cbb (0x968e18, 0x96d570)
+      else { b += ftol(5 * (s8(C.b3e) - s8(C.b3f)) + (cond100 * 2.5 - 225)); b += appearances(flags, d); }   // 0x6e5cbb (0x968e18, 0x96d570)
     } else if (status === 7) b -= 20;
     if (i.match) b = ftol((1 - i.match.ctx.clock * 0.0008333333333333334) * b);
     Q += b;
@@ -209,7 +198,20 @@ export function roleScore(i: RoleInput): number {
 
 
 /** flag 0x2 (0x6e3dcf–0x6e42a1): kampkaraktererne (0x7c1e30 kategori 6/1, art 0x12/0x14) mod 6,8 */
-function ratingsTerm(i: RoleInput, sum: number, cnt: number, recentJoin: () => boolean, daysAt: () => number): number {
+// (hastighed, 25/11) hjælperne uden for roleScore – før lukninger pr. kald (roleScore kaldes millioner af gange pr. dag)
+const recentJoin = (i: RoleInput) => !!i.mgrJoined && i.atClub && before(i.mgrJoined, i.joined) && before(i.yearAgo, i.joined);
+const daysAt = (i: RoleInput) => 365 * (i.today.year - i.joined.year) - i.joined.day + i.today.day;
+/** 0x6e5c3f: 0x8c7260 / 0x8c7560 – under 70 % af kampene → +50 − pct/2 (ellers 0) */
+function appearances(flags: number, d: RoleInput['data']): number {
+  if (flags & 0x800000) return 0;
+  const h = d.history();
+  if (!h || !h.ok) return 0;
+  const tot = h.w4 + h.w6;
+  const pct = tot ? s8(tdiv(100 * h.w4, tot)) : 0;
+  if (tot && pct >= 70) return 0;
+  return 50 - tdiv(pct, 2);
+}
+function ratingsTerm(i: RoleInput, sum: number, cnt: number): number {
   const d = i.data;
   let def = f32(6.8);                                                   // 0x40d9999a
   const base = cnt ? tdiv(sum, cnt) : s16(d.repSeen);
@@ -218,8 +220,8 @@ function ratingsTerm(i: RoleInput, sum: number, cnt: number, recentJoin: () => b
   const L = d.leagueAvg;
   if (i.age > 33 && L + 0.125 < avg) avg = f32(L + 0.125);
   let add = 0;
-  if (recentJoin()) {
-    const dd = daysAt();
+  if (recentJoin(i)) {
+    const dd = daysAt(i);
     avg = f32(((365 - dd) * 7.5 + avg * dd) * (1 / 365));
     if (i.age > tdiv(s8(i.rec[0xf]), 10) + 34 && avg > L) avg = f32((L + avg) * 0.5);
   }
@@ -239,29 +241,28 @@ function ratingsTerm(i: RoleInput, sum: number, cnt: number, recentJoin: () => b
 
 /** flag 0x8000 (0x6e4321–0x6e4860): egenskaberne, pladsens instruktioner (lo), taktikbyte (tb) og holdflag (tf) beder om */
 export function instructionTerm(rec: Rec, lo: number, tb: number, tf: number): number {
-  const a = (o: number) => R(rec, o);
   let q = 0;
   // 0x6e4344: den første gruppe tester holdflagene (arg13, bl = [esp+0x94]) – ikke taktikbyten
-  if (lo & 4 || (lo & 1 && tf & 2)) q += tdiv(a(0x37), 7) - ftol((a(0x40) - 10) * -0.6666666666666666);
-  else if (lo & 8 || (lo & 1 && tf & 4)) q += ftol((a(0x36) - 10) * 0.4) - ftol((a(0x3c) - 10) * -0.4) - ftol((a(0x2e) - 10) * -0.4);
-  else if (lo & 0x10 || (lo & 1 && tf & 8)) q += ftol((a(0x36) - 10) * 0.6666666666666666) - ftol((a(0x3c) - 10) * -0.6666666666666666) - ftol((a(0x2e) - 10) * -0.6666666666666666);
+  if (lo & 4 || (lo & 1 && tf & 2)) q += tdiv(R(rec, 0x37), 7) - ftol((R(rec, 0x40) - 10) * -0.6666666666666666);
+  else if (lo & 8 || (lo & 1 && tf & 4)) q += ftol((R(rec, 0x36) - 10) * 0.4) - ftol((R(rec, 0x3c) - 10) * -0.4) - ftol((R(rec, 0x2e) - 10) * -0.4);
+  else if (lo & 0x10 || (lo & 1 && tf & 8)) q += ftol((R(rec, 0x36) - 10) * 0.6666666666666666) - ftol((R(rec, 0x3c) - 10) * -0.6666666666666666) - ftol((R(rec, 0x2e) - 10) * -0.6666666666666666);
   if (lo & 0x8000 || (lo & 0x2000 && tf & 0x100)) {
-    const s = a(0x3c) - 15, w = a(0x44) - 15;
-    q += tdiv(a(0x1e), 10) + ftol(Math.abs(w) * w * 0.4) - ftol(Math.abs(s) * s * -0.4);
-  } else if (tb & 1) q += tdiv(a(0x43), 12) - ftol((a(0x28) - 10) * -0.6666666666666666) + tdiv(a(0x33), 12);   // 0x2aaaaaab sar 1
-  if (tb & 2) q += tdiv(a(0x39), 7);
-  else if (tb & 4) q += tdiv(a(0x32), 7);
-  if (lo & 0x40) q += ftol((a(0x3b) - 20) * 0.2857142857142857);
-  else if (lo & 0x100) q += ftol((a(0x30) - 20) * 0.2857142857142857);
-  if (lo & 0x200000) q += tdiv(a(0x43), 10) + tdiv(a(0x33), 9) + a(0x1a) - 20;
-  if (lo & 0x20000) q += tdiv(a(0x2e) - 10, 4);
-  else if (lo & 0x40000000) q += tdiv(10 - a(0x2e), 4);
-  if (lo & 0x80000000) q += tdiv(10 - a(0x2e), 4);
-  else if (lo & 0x80000) q += tdiv(a(0x2e) - 10, 4);
-  if (lo & 0x800000) q += tdiv(a(0x43), 15) + tdiv(a(0x3c) - 10, 2) + tdiv(a(0x27), 15);
-  if (lo & 0x2000000) q += tdiv(a(0x26), 7);
-  if (lo & 0x8000000) q += tdiv(a(0x40) - 10, 3) + tdiv(a(0x3d) - 10, 2);
-  if (lo & 0x20000000) q += tdiv(a(0x28) - 10, 2) + tdiv(a(0x31), 14) + tdiv(a(0x27), 14);
+    const s = R(rec, 0x3c) - 15, w = R(rec, 0x44) - 15;
+    q += tdiv(R(rec, 0x1e), 10) + ftol(Math.abs(w) * w * 0.4) - ftol(Math.abs(s) * s * -0.4);
+  } else if (tb & 1) q += tdiv(R(rec, 0x43), 12) - ftol((R(rec, 0x28) - 10) * -0.6666666666666666) + tdiv(R(rec, 0x33), 12);   // 0x2aaaaaab sar 1
+  if (tb & 2) q += tdiv(R(rec, 0x39), 7);
+  else if (tb & 4) q += tdiv(R(rec, 0x32), 7);
+  if (lo & 0x40) q += ftol((R(rec, 0x3b) - 20) * 0.2857142857142857);
+  else if (lo & 0x100) q += ftol((R(rec, 0x30) - 20) * 0.2857142857142857);
+  if (lo & 0x200000) q += tdiv(R(rec, 0x43), 10) + tdiv(R(rec, 0x33), 9) + R(rec, 0x1a) - 20;
+  if (lo & 0x20000) q += tdiv(R(rec, 0x2e) - 10, 4);
+  else if (lo & 0x40000000) q += tdiv(10 - R(rec, 0x2e), 4);
+  if (lo & 0x80000000) q += tdiv(10 - R(rec, 0x2e), 4);
+  else if (lo & 0x80000) q += tdiv(R(rec, 0x2e) - 10, 4);
+  if (lo & 0x800000) q += tdiv(R(rec, 0x43), 15) + tdiv(R(rec, 0x3c) - 10, 2) + tdiv(R(rec, 0x27), 15);
+  if (lo & 0x2000000) q += tdiv(R(rec, 0x26), 7);
+  if (lo & 0x8000000) q += tdiv(R(rec, 0x40) - 10, 3) + tdiv(R(rec, 0x3d) - 10, 2);
+  if (lo & 0x20000000) q += tdiv(R(rec, 0x28) - 10, 2) + tdiv(R(rec, 0x31), 14) + tdiv(R(rec, 0x27), 14);
   return q;
 }
 

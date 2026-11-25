@@ -89,17 +89,22 @@ function drain(q: GP, tab: number): void {
   q.condition = v < 0 ? 0 : v;
 }
 
+// (hastighed, 25/11) sideStrengths' hjælpere uden for løkken – før fire lukninger pr. spiller pr. kald
+/** pladsens bidrag til styrke k: T[k][side] += ftol(v) (s16) */
+const add = (T: number[][], s: 0 | 1, k: number, v: number) => { T[k][s] = s16(T[k][s] + ftol(v)); };
+/** egenskab r > 15 → ×a, < 6 → ×b, < 10 → ×c (float32) */
+const t3 = (v: number, r: number, a: number, b: number, c: number) => (r > 15 ? f(v * a) : r < 6 ? f(v * b) : r < 10 ? f(v * c) : v);
+/** pladsens drift: −d og så ±5 mod niveauet (fild karakteren; fcomp: ≤ niveau → +5, ellers −5) */
+const drift = (q: GP, d: number, lvl: number) => { const r = s16(q.rating + d); q.rating = s16(r > lvl ? r - 5 : r + 5); };
 /** 0x6c0c60: siden's syv styrker T[k][side] (engine+0x1da + 4k + 2·side) af de 20 – konditionstrækket og karakterens drift pr. plads */
 function sideStrengths(e: QuickEnv, T: number[][], s: 0 | 1): void {
   const { rand, rec } = e;
   for (let k = 0; k < 7; k++) T[k][s] = 0;
-  const add = (k: number, v: number) => { T[k][s] = s16(T[k][s] + ftol(v)); };
   for (const q of e.sides[s]) {
     if (q.slot < 0) continue;
     const F = fl(q);
     drain(q, f(30 - s8(rec(q, 0x3c))));                                                     // 0x6c0ce1: 6f56c0(p, (float)(30 − Stamina), −1)
     const bl = q.pos & 0xff;
-    const cons = () => rand(s8(rec(q, 0x21))) < rand(20);                                    // rand(Consistency) < rand(20) → ×0,75
     // v14 (0x6c0d0b–0x6c0fbf): Tackling, Positioning, Pace, Anticipation
     let v14 = f((((F.tackling + F.positioning) + F.pace) + F.anticipation + 50) * 0.5 + 48 + q.condition * 0.01 - 100);
     {
@@ -107,12 +112,11 @@ function sideStrengths(e: QuickEnv, T: number[][], s: 0 | 1): void {
       const S = x + v14;
       const k = bl & 4 ? 0.1 : bl & 2 ? 0.1 : bl & 8 ? 0.028 : 0.01;
       v14 = f(e.ca(q) * k + S);
-      const t3 = (o: number, a: number, b: number, c: number) => { const r = s8(rec(q, o)); if (r > 15) v14 = f(v14 * a); else if (r < 6) v14 = f(v14 * b); else if (r < 10) v14 = f(v14 * c); };
-      t3(0x32, F1_05, F0_95, F0_98); t3(0x3c, F1_05, F0_9, F0_95); t3(0x44, F1_02, F0_95, F0_98); t3(0x3e, F1_05, F0_95, F0_98);
-      t3(0x1e, F1_05, F0_95, F0_98); t3(0x2e, F1_02, F0_95, F0_98); t3(0x2b, F1_02, F0_95, F0_98);
+      v14 = t3(v14, s8(rec(q, 0x32)), F1_05, F0_95, F0_98); v14 = t3(v14, s8(rec(q, 0x3c)), F1_05, F0_9, F0_95); v14 = t3(v14, s8(rec(q, 0x44)), F1_02, F0_95, F0_98); v14 = t3(v14, s8(rec(q, 0x3e)), F1_05, F0_95, F0_98);
+      v14 = t3(v14, s8(rec(q, 0x1e)), F1_05, F0_95, F0_98); v14 = t3(v14, s8(rec(q, 0x2e)), F1_02, F0_95, F0_98); v14 = t3(v14, s8(rec(q, 0x2b)), F1_02, F0_95, F0_98);
       const sp = s8(rec(q, 0x36) + rec(q, 0x1b));
       if (sp > 35) v14 = f(v14 * F1_02); else if (sp < 10) v14 = f(v14 * F0_9); else if (sp < 20) v14 = f(v14 * F0_98);
-      if (cons()) v14 = f(v14 * F0_75);
+      if (rand(s8(rec(q, 0x21))) < rand(20)) v14 = f(v14 * F0_75);
     }
     // v10 (0x6c0fc3–0x6c129f): Creativity, Passing, Flair, Heading, Crossing
     let v10 = f(((F.creativity * 2 + F.passing * 2) + F.flair + F.heading + F.crossing * 1.5 + 50) * 0.5 + q.condition * 0.01 + 57 - 100);
@@ -122,15 +126,14 @@ function sideStrengths(e: QuickEnv, T: number[][], s: 0 | 1): void {
       const r44 = s8(rec(q, 0x44)); if (r44 > 15) v10 = f(v10 * F1_05); else if (r44 <= 5) v10 = f(v10 * F0_92);
       const r3c = s8(rec(q, 0x3c)); if (r3c > 15) v10 = f(v10 * F1_02); else if (r3c <= 5) v10 = f(v10 * F0_95);
       const r35 = s8(rec(q, 0x35)); if (r35 > 15) v10 = f(v10 * F1_1); else if (r35 <= 5) v10 = f(v10 * F0_9);
-      const t3 = (o: number, a: number, b: number, c: number) => { const r = s8(rec(q, o)); if (r > 15) v10 = f(v10 * a); else if (r < 6) v10 = f(v10 * b); else if (r < 10) v10 = f(v10 * c); };
-      t3(0x37, F1_15, F0_8, F0_92); t3(0x43, F1_15, F0_8, F0_92);
+      v10 = t3(v10, s8(rec(q, 0x37)), F1_15, F0_8, F0_92); v10 = t3(v10, s8(rec(q, 0x43)), F1_15, F0_8, F0_92);
       const sp = s8(rec(q, 0x40) + rec(q, 0x36) + rec(q, 0x26) + rec(q, 0x1b));
       if (sp > 75) v10 = f(v10 * F1_08); else if (sp > 65) v10 = f(v10 * F1_05); else if (sp > 50) v10 = f(v10 * F1_02);
       else if (sp <= 35) v10 = f(v10 * (sp > 25 ? F0_98 : F0_92));
       const r1e = s8(rec(q, 0x1e)); if (r1e > 15) v10 = f(v10 * F1_1); else if (r1e < 10) v10 = f(v10 * F0_95);
-      t3(0x33, F1_05, F0_95, F0_98);
+      v10 = t3(v10, s8(rec(q, 0x33)), F1_05, F0_95, F0_98);
       const r3f = s8(rec(q, 0x3f)); if (r3f > 15) v10 = f(v10 * F1_02); else if (r3f < 10) v10 = f(v10 * F0_95);
-      if (cons()) v10 = f(v10 * F0_75);
+      if (rand(s8(rec(q, 0x21))) < rand(20)) v10 = f(v10 * F0_75);
     }
     // v20 (0x6c12a3–0x6c1516): Dribbling, Acceleration, Off the Ball, Finishing, Anticipation, Heading, Pace – kæden i st0 til 0x6c1470
     let v20 = f(((((F.dribbling + F.acceleration) + F.offTheBall * 1.5) + F.finishing * 2) + F.anticipation * 1.5 + F.heading + F.pace + 50) * 0.5 + q.condition * 0.01 + 76 - 100);
@@ -148,7 +151,7 @@ function sideStrengths(e: QuickEnv, T: number[][], s: 0 | 1): void {
       const r1e = s8(rec(q, 0x1e)); if (r1e > 15) v20 = f(v20 * F1_08); else if (r1e < 6) v20 = f(v20 * F0_9); else if (r1e < 10) v20 = f(v20 * F0_97);
       const r33 = s8(rec(q, 0x33)); if (r33 > 15) v20 = f(v20 * F1_08); else if (r33 > 10) v20 = f(v20 * F1_02); else if (r33 < 6) v20 = f(v20 * F0_92);
       if (tech > 15) v20 = f(v20 * F1_05);
-      if (cons()) v20 = f(v20 * F0_75);
+      if (rand(s8(rec(q, 0x21))) < rand(20)) v20 = f(v20 * F0_75);
     }
     // 0x6c151a–0x6c15f9: keeperen (Reflexes, Positioning, Handling), A (temperamentet 0x7165b0 + Aggression – bliver i st0), hovedstød og B
     const c01 = q.condition * 0.01;
@@ -158,15 +161,14 @@ function sideStrengths(e: QuickEnv, T: number[][], s: 0 | 1): void {
     const v1c = f((B + F.heading + 50) * 0.5 + 50 + c01 - 100);
     const v24 = f((B + F.handling + 50) * 0.5 + 50 + c01 - 100);
     // pladsens drift: −d og så ±5 mod niveauet (fild karakteren; fcomp: ≤ niveau → +5, ellers −5), og bidragene til de syv styrker
-    const drift = (d: number, lvl: number) => { const r = s16(q.rating + d); q.rating = s16(r > lvl ? r - 5 : r + 5); };
     // niveauerne er float32 (0x96d35c 7920,0005, 0x96d34c 6929,9995 …) – karakteren er et heltal
-    if (bl & 1) { drift(-3, 7920.00048828125); add(0, v14 * 0.16); add(3, v2c * 2); add(4, A * 0.1); add(6, v24 * 0.16); }
-    else if (bl & 2) { drift(-13, 5940); add(0, v14 * 1.05); add(1, v10 * 0.2); add(2, v20 * 0.1); add(3, v2c * 0.25); add(4, A * 0.5); add(5, v1c * 0.75); add(6, v24 * 0.5); }
-    else if (bl & 4) { drift(-13, 5940); add(0, v14); add(1, v10 * 0.15); add(2, v20 * 0.1); add(3, v2c * 0.2); add(4, A * 0.5); add(5, v1c * 0.75); add(6, v24 * 0.5); }
-    else if (bl & 8) { drift(-12, 5610); add(0, v14 * 0.85); add(1, v10 * 0.255); add(2, v20 * 0.235); add(3, v2c * 0.15); add(4, A * 0.5); add(5, v1c * 0.75); add(6, v24 * 0.5); }
-    else if (bl & 0x10) { drift(-8, 6270); add(0, v14 * 0.4); add(1, v10 * 0.75); add(2, v20 * 0.68); add(3, v2c * 0.05); add(4, A * 0.5); add(5, v1c * 0.75); add(6, v24 * 0.5); }
-    else if (bl & 0x20) { drift(-11, 6929.99951171875); add(0, v14 * 0.15); add(1, v10 * 1.2); add(2, v20 * 0.95); add(3, v2c * 0.02); add(4, A * 0.5); add(5, v1c * 0.75); add(6, v24 * 0.35); }
-    else if (bl & 0x40) { drift(-25, 7590); add(0, v14 * 0.05); add(1, v10 * 1.02); add(2, v20 * 1.5); add(3, v2c * 0.02); add(4, A * 0.5); add(5, v1c * 1.5); add(6, v24 * 0.2); }
+    if (bl & 1) { drift(q, -3, 7920.00048828125); add(T, s, 0, v14 * 0.16); add(T, s, 3, v2c * 2); add(T, s, 4, A * 0.1); add(T, s, 6, v24 * 0.16); }
+    else if (bl & 2) { drift(q, -13, 5940); add(T, s, 0, v14 * 1.05); add(T, s, 1, v10 * 0.2); add(T, s, 2, v20 * 0.1); add(T, s, 3, v2c * 0.25); add(T, s, 4, A * 0.5); add(T, s, 5, v1c * 0.75); add(T, s, 6, v24 * 0.5); }
+    else if (bl & 4) { drift(q, -13, 5940); add(T, s, 0, v14); add(T, s, 1, v10 * 0.15); add(T, s, 2, v20 * 0.1); add(T, s, 3, v2c * 0.2); add(T, s, 4, A * 0.5); add(T, s, 5, v1c * 0.75); add(T, s, 6, v24 * 0.5); }
+    else if (bl & 8) { drift(q, -12, 5610); add(T, s, 0, v14 * 0.85); add(T, s, 1, v10 * 0.255); add(T, s, 2, v20 * 0.235); add(T, s, 3, v2c * 0.15); add(T, s, 4, A * 0.5); add(T, s, 5, v1c * 0.75); add(T, s, 6, v24 * 0.5); }
+    else if (bl & 0x10) { drift(q, -8, 6270); add(T, s, 0, v14 * 0.4); add(T, s, 1, v10 * 0.75); add(T, s, 2, v20 * 0.68); add(T, s, 3, v2c * 0.05); add(T, s, 4, A * 0.5); add(T, s, 5, v1c * 0.75); add(T, s, 6, v24 * 0.5); }
+    else if (bl & 0x20) { drift(q, -11, 6929.99951171875); add(T, s, 0, v14 * 0.15); add(T, s, 1, v10 * 1.2); add(T, s, 2, v20 * 0.95); add(T, s, 3, v2c * 0.02); add(T, s, 4, A * 0.5); add(T, s, 5, v1c * 0.75); add(T, s, 6, v24 * 0.35); }
+    else if (bl & 0x40) { drift(q, -25, 7590); add(T, s, 0, v14 * 0.05); add(T, s, 1, v10 * 1.02); add(T, s, 2, v20 * 1.5); add(T, s, 3, v2c * 0.02); add(T, s, 4, A * 0.5); add(T, s, 5, v1c * 1.5); add(T, s, 6, v24 * 0.2); }
   }
   // 0x6c1aba–0x6c1c2a: hjemmeklubbens land = turneringens: side's +0x1de = hjemmeholdets +0x1de ·k (sic – også for side 1)
   const fx = e.fx;
