@@ -59,6 +59,8 @@ export interface QuickEnv {
   blk: [number[], number[]];
   /** spillerposten [+0x6d] (byte med fortegn) og dens +5 (word, CA) */
   rec: (q: GP, off: number) => number;
+  /** (hastighed, 25/11) spillerposten som tabel (quickSimulate's mellemlager – samme bytes som rec, med fortegn) */
+  row?: (q: GP) => Int8Array;
   ca: (q: GP) => number;
   fx: QuickFixture;
   sendOff: (q: GP) => void;
@@ -96,62 +98,65 @@ const add = (T: number[][], s: 0 | 1, k: number, v: number) => { T[k][s] = s16(T
 const t3 = (v: number, r: number, a: number, b: number, c: number) => (r > 15 ? f(v * a) : r < 6 ? f(v * b) : r < 10 ? f(v * c) : v);
 /** pladsens drift: −d og så ±5 mod niveauet (fild karakteren; fcomp: ≤ niveau → +5, ellers −5) */
 const drift = (q: GP, d: number, lvl: number) => { const r = s16(q.rating + d); q.rating = s16(r > lvl ? r - 5 : r + 5); };
+/** posten som tabel med fortegn (som quickSimulate's recOf) – når miljøet ikke har sin egen */
+const rowOf = (e: QuickEnv, q: GP) => { const r = new Int8Array(0x46); for (let o = 0; o < 0x46; o++) r[o] = e.rec(q, o); return r; };
 /** 0x6c0c60: siden's syv styrker T[k][side] (engine+0x1da + 4k + 2·side) af de 20 – konditionstrækket og karakterens drift pr. plads */
 function sideStrengths(e: QuickEnv, T: number[][], s: 0 | 1): void {
-  const { rand, rec } = e;
+  const { rand } = e;
   for (let k = 0; k < 7; k++) T[k][s] = 0;
   for (const q of e.sides[s]) {
     if (q.slot < 0) continue;
     const F = fl(q);
-    drain(q, f(30 - s8(rec(q, 0x3c))));                                                     // 0x6c0ce1: 6f56c0(p, (float)(30 − Stamina), −1)
+    const R = e.row ? e.row(q) : rowOf(e, q);                                               // posten (rec) én gang pr. spiller
+    drain(q, f(30 - s8(R[0x3c])));                                                     // 0x6c0ce1: 6f56c0(p, (float)(30 − Stamina), −1)
     const bl = q.pos & 0xff;
     // v14 (0x6c0d0b–0x6c0fbf): Tackling, Positioning, Pace, Anticipation
     let v14 = f((((F.tackling + F.positioning) + F.pace) + F.anticipation + 50) * 0.5 + 48 + q.condition * 0.01 - 100);
     {
-      const x = s8(rec(q, 0x2f)) >> 2;                                                       // sar cl, 2 (Influence)
+      const x = s8(R[0x2f]) >> 2;                                                       // sar cl, 2 (Influence)
       const S = x + v14;
       const k = bl & 4 ? 0.1 : bl & 2 ? 0.1 : bl & 8 ? 0.028 : 0.01;
       v14 = f(e.ca(q) * k + S);
-      v14 = t3(v14, s8(rec(q, 0x32)), F1_05, F0_95, F0_98); v14 = t3(v14, s8(rec(q, 0x3c)), F1_05, F0_9, F0_95); v14 = t3(v14, s8(rec(q, 0x44)), F1_02, F0_95, F0_98); v14 = t3(v14, s8(rec(q, 0x3e)), F1_05, F0_95, F0_98);
-      v14 = t3(v14, s8(rec(q, 0x1e)), F1_05, F0_95, F0_98); v14 = t3(v14, s8(rec(q, 0x2e)), F1_02, F0_95, F0_98); v14 = t3(v14, s8(rec(q, 0x2b)), F1_02, F0_95, F0_98);
-      const sp = s8(rec(q, 0x36) + rec(q, 0x1b));
+      v14 = t3(v14, s8(R[0x32]), F1_05, F0_95, F0_98); v14 = t3(v14, s8(R[0x3c]), F1_05, F0_9, F0_95); v14 = t3(v14, s8(R[0x44]), F1_02, F0_95, F0_98); v14 = t3(v14, s8(R[0x3e]), F1_05, F0_95, F0_98);
+      v14 = t3(v14, s8(R[0x1e]), F1_05, F0_95, F0_98); v14 = t3(v14, s8(R[0x2e]), F1_02, F0_95, F0_98); v14 = t3(v14, s8(R[0x2b]), F1_02, F0_95, F0_98);
+      const sp = s8(R[0x36] + R[0x1b]);
       if (sp > 35) v14 = f(v14 * F1_02); else if (sp < 10) v14 = f(v14 * F0_9); else if (sp < 20) v14 = f(v14 * F0_98);
-      if (rand(s8(rec(q, 0x21))) < rand(20)) v14 = f(v14 * F0_75);
+      if (rand(s8(R[0x21])) < rand(20)) v14 = f(v14 * F0_75);
     }
     // v10 (0x6c0fc3–0x6c129f): Creativity, Passing, Flair, Heading, Crossing
     let v10 = f(((F.creativity * 2 + F.passing * 2) + F.flair + F.heading + F.crossing * 1.5 + 50) * 0.5 + q.condition * 0.01 + 57 - 100);
     {
       const k = bl & 0x40 ? 0.1 : bl & 0x20 ? 0.26 : bl & 0x10 ? 0.21 : bl & 8 ? 0.0125 : 0.01;
       v10 = f(e.ca(q) * k + v10);
-      const r44 = s8(rec(q, 0x44)); if (r44 > 15) v10 = f(v10 * F1_05); else if (r44 <= 5) v10 = f(v10 * F0_92);
-      const r3c = s8(rec(q, 0x3c)); if (r3c > 15) v10 = f(v10 * F1_02); else if (r3c <= 5) v10 = f(v10 * F0_95);
-      const r35 = s8(rec(q, 0x35)); if (r35 > 15) v10 = f(v10 * F1_1); else if (r35 <= 5) v10 = f(v10 * F0_9);
-      v10 = t3(v10, s8(rec(q, 0x37)), F1_15, F0_8, F0_92); v10 = t3(v10, s8(rec(q, 0x43)), F1_15, F0_8, F0_92);
-      const sp = s8(rec(q, 0x40) + rec(q, 0x36) + rec(q, 0x26) + rec(q, 0x1b));
+      const r44 = s8(R[0x44]); if (r44 > 15) v10 = f(v10 * F1_05); else if (r44 <= 5) v10 = f(v10 * F0_92);
+      const r3c = s8(R[0x3c]); if (r3c > 15) v10 = f(v10 * F1_02); else if (r3c <= 5) v10 = f(v10 * F0_95);
+      const r35 = s8(R[0x35]); if (r35 > 15) v10 = f(v10 * F1_1); else if (r35 <= 5) v10 = f(v10 * F0_9);
+      v10 = t3(v10, s8(R[0x37]), F1_15, F0_8, F0_92); v10 = t3(v10, s8(R[0x43]), F1_15, F0_8, F0_92);
+      const sp = s8(R[0x40] + R[0x36] + R[0x26] + R[0x1b]);
       if (sp > 75) v10 = f(v10 * F1_08); else if (sp > 65) v10 = f(v10 * F1_05); else if (sp > 50) v10 = f(v10 * F1_02);
       else if (sp <= 35) v10 = f(v10 * (sp > 25 ? F0_98 : F0_92));
-      const r1e = s8(rec(q, 0x1e)); if (r1e > 15) v10 = f(v10 * F1_1); else if (r1e < 10) v10 = f(v10 * F0_95);
-      v10 = t3(v10, s8(rec(q, 0x33)), F1_05, F0_95, F0_98);
-      const r3f = s8(rec(q, 0x3f)); if (r3f > 15) v10 = f(v10 * F1_02); else if (r3f < 10) v10 = f(v10 * F0_95);
-      if (rand(s8(rec(q, 0x21))) < rand(20)) v10 = f(v10 * F0_75);
+      const r1e = s8(R[0x1e]); if (r1e > 15) v10 = f(v10 * F1_1); else if (r1e < 10) v10 = f(v10 * F0_95);
+      v10 = t3(v10, s8(R[0x33]), F1_05, F0_95, F0_98);
+      const r3f = s8(R[0x3f]); if (r3f > 15) v10 = f(v10 * F1_02); else if (r3f < 10) v10 = f(v10 * F0_95);
+      if (rand(s8(R[0x21])) < rand(20)) v10 = f(v10 * F0_75);
     }
     // v20 (0x6c12a3–0x6c1516): Dribbling, Acceleration, Off the Ball, Finishing, Anticipation, Heading, Pace – kæden i st0 til 0x6c1470
     let v20 = f(((((F.dribbling + F.acceleration) + F.offTheBall * 1.5) + F.finishing * 2) + F.anticipation * 1.5 + F.heading + F.pace + 50) * 0.5 + q.condition * 0.01 + 76 - 100);
     {
       const k = bl & 0x40 ? 0.2 : bl & 0x20 ? 0.11 : bl & 0x10 ? 0.06 : bl & 8 ? 0.015 : 0.01;
       let st = e.ca(q) * k + v20;
-      const r44 = s8(rec(q, 0x44)); if (r44 > 15) st *= F1_02; else if (r44 < 6) st *= F0_95; else if (r44 < 10) st *= F0_98;
-      const r3c = s8(rec(q, 0x3c)); if (r3c > 15) st *= F1_02; else if (r3c < 6) st *= F0_95; else if (r3c < 10) st *= F0_98;
-      const r35 = s8(rec(q, 0x35)); if (r35 > 15) st *= F1_05; else if (r35 > 10) st *= F1_02; else if (r35 < 6) st *= F0_92;
-      const r31 = s8(rec(q, 0x31)); if (r31 > 15) st *= F1_04; else if (r31 > 10) st *= F1_02; else if (r31 < 6) st *= F0_98;
-      const tech = s8(rec(q, 0x40));
-      const sp = s8(rec(q, 0x36) + rec(q, 0x26) + rec(q, 0x1b) + tech);
+      const r44 = s8(R[0x44]); if (r44 > 15) st *= F1_02; else if (r44 < 6) st *= F0_95; else if (r44 < 10) st *= F0_98;
+      const r3c = s8(R[0x3c]); if (r3c > 15) st *= F1_02; else if (r3c < 6) st *= F0_95; else if (r3c < 10) st *= F0_98;
+      const r35 = s8(R[0x35]); if (r35 > 15) st *= F1_05; else if (r35 > 10) st *= F1_02; else if (r35 < 6) st *= F0_92;
+      const r31 = s8(R[0x31]); if (r31 > 15) st *= F1_04; else if (r31 > 10) st *= F1_02; else if (r31 < 6) st *= F0_98;
+      const tech = s8(R[0x40]);
+      const sp = s8(R[0x36] + R[0x26] + R[0x1b] + tech);
       st *= sp > 75 ? F1_08 : sp > 65 ? F1_05 : sp > 50 ? F1_02 : sp < 10 ? F0_65 : sp < 25 ? F0_85 : F0_95;
       v20 = f(st);
-      const r1e = s8(rec(q, 0x1e)); if (r1e > 15) v20 = f(v20 * F1_08); else if (r1e < 6) v20 = f(v20 * F0_9); else if (r1e < 10) v20 = f(v20 * F0_97);
-      const r33 = s8(rec(q, 0x33)); if (r33 > 15) v20 = f(v20 * F1_08); else if (r33 > 10) v20 = f(v20 * F1_02); else if (r33 < 6) v20 = f(v20 * F0_92);
+      const r1e = s8(R[0x1e]); if (r1e > 15) v20 = f(v20 * F1_08); else if (r1e < 6) v20 = f(v20 * F0_9); else if (r1e < 10) v20 = f(v20 * F0_97);
+      const r33 = s8(R[0x33]); if (r33 > 15) v20 = f(v20 * F1_08); else if (r33 > 10) v20 = f(v20 * F1_02); else if (r33 < 6) v20 = f(v20 * F0_92);
       if (tech > 15) v20 = f(v20 * F1_05);
-      if (rand(s8(rec(q, 0x21))) < rand(20)) v20 = f(v20 * F0_75);
+      if (rand(s8(R[0x21])) < rand(20)) v20 = f(v20 * F0_75);
     }
     // 0x6c151a–0x6c15f9: keeperen (Reflexes, Positioning, Handling), A (temperamentet 0x7165b0 + Aggression – bliver i st0), hovedstød og B
     const c01 = q.condition * 0.01;
@@ -304,7 +309,7 @@ export function quickSimulate(e0: QuickEnv): QuickResult {
   // (ydelse) spillerposten ændres ikke i kampen: posten og CA'en læses én gang pr. spiller (0x6c0c60 læser dem hvert minut)
   const recs = new Map<GP, Int8Array>(), cas = new Map<GP, number>();
   const recOf = (q: GP) => { let r = recs.get(q); if (!r) { r = new Int8Array(0x46); for (let o = 0; o < 0x46; o++) r[o] = e0.rec(q, o); recs.set(q, r); } return r; };
-  const e: QuickEnv = { ...e0, rec: (q, o) => recOf(q)[o], ca: (q) => { let v = cas.get(q); if (v === undefined) { v = e0.ca(q); cas.set(q, v); } return v; } };
+  const e: QuickEnv = { ...e0, rec: (q, o) => recOf(q)[o], row: recOf, ca: (q) => { let v = cas.get(q); if (v === undefined) { v = e0.ca(q); cas.set(q, v); } return v; } };
   const { m, rand, blk, fx } = e;
   const T: number[][] = Array.from({ length: 7 }, () => [0, 0]);
   const goals = m.goals;
