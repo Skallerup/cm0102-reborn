@@ -115,6 +115,16 @@ describe('computerens svar (0x8c8090) og klausul-muligheden (0x8c8fd0)', () => {
     const r = aiRespond(base({ fee: gbp(100_000) }), ctx({ value: 5_000_000 }), { asking: 5_000_000, rivals: [], unwanted: false, final: false, base: base({ fee: 0 }), clause });
     expect(r).toEqual({ kind: 'reject', reason: 10 });
   });
+  it('afvisningens grund = 0x4d1600s ud-parameter (0x8c8291), et højere andet bud nulstiller den (0x8c8305), 10 går forud', () => {
+    // £40M mod en udbudspris på £60M (nyligt købt 0x100 + uundværlig 0x200): afvist med grunden – intet modbud under 0,75 · prisen
+    const r = aiRespond(base({ fee: gbp(40_000_000) }), ctx({ value: 12_000_000 }), { asking: 60_000_000, rivals: [], unwanted: false, final: false, base: base({ fee: 0 }), clause: { ...clause, buyerRep: 5000 }, reason: 0x300 });
+    expect(r).toEqual({ kind: 'reject', reason: 0x300 });
+    const rv = aiRespond(base({ fee: gbp(400_000) }), ctx(), { asking: 1_000_000, rivals: [base({ fee: gbp(2_000_000) })], unwanted: false, final: false, base: base({ fee: 0 }), clause: { ...clause, buyerRep: 5000 }, reason: 0x400 });
+    expect(rv).toEqual({ kind: 'reject', reason: 0 });
+    expect(aiRespond(base({ fee: gbp(100_000) }), ctx({ value: 5_000_000 }), { asking: 5_000_000, rivals: [], unwanted: false, final: false, base: base({ fee: 0 }), clause, reason: 0x200 })).toEqual({ kind: 'reject', reason: 10 });
+    // mellem 0,75 og 0,85 af prisen: modbud ("{club} want £X for {player}")
+    expect(aiRespond(base({ fee: gbp(48_000_000) }), ctx({ value: 12_000_000 }), { asking: 60_000_000, rivals: [], unwanted: false, final: false, base: base({ fee: 0 }), clause: { ...clause, buyerRep: 5000 }, reason: 0x300 }).kind).toBe('counter');
+  });
   it('klausul-muligheden: ligakampe (0,3·fee efter 20, fee·0,8, appel 60) for en mindre spiller hos en større køber', () => {
     const o = clauseOption(base({ fee: gbp(1_000_000) }), ctx({ nationRep: 4000 }), clause)!;
     expect(o.appeal).toBe(60);

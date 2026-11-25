@@ -82,7 +82,7 @@ export function newsVisual(key: string, cat: string): { icon: string; tone: Tone
   if (key.startsWith('trophy.captain')) return { icon: 'chat', tone: 'orange' };
   if (key.startsWith('rumour.')) return { icon: 'rumour', tone: 'blue' };
   if (key.startsWith('transfer.digest')) return { icon: 'digest', tone: 'blue' };
-  if (/^transfer\.(bidRejected|notForSale|talksCollapsed|refuse|lostBiddingWar|aiWithdrew|loanRejected|playerRefusedMove)/.test(key)) return { icon: 'bid', tone: 'red' };
+  if (/^transfer\.(bidRejected|cmBidRej|notForSale|talksCollapsed|refuse|lostBiddingWar|aiWithdrew|loanRejected|playerRefusedMove)/.test(key)) return { icon: 'bid', tone: 'red' };
   if (key === 'board.sacked' || key === 'board.sackedSeason' || key === 'board.warning' || key === 'news.applyRejected' || key === 'job.withdrawn') return { icon: 'warning', tone: 'red' };
   if (key.startsWith('will.') || key.startsWith('reject.r.') || key.startsWith('complaint')) return { icon: 'chat', tone: 'purple' };
   if (key.startsWith('enquiry.')) return { icon: 'chat', tone: 'blue' };

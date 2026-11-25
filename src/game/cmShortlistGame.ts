@@ -2319,7 +2319,7 @@ export function cmInterestedClubs(g: GameState, p: Player): number[] {
 }
 
 /** 0x4d1600 calc_asking_price(sælger, køber, staff, 0, 1, 1) i £ – på en hukommelse af spillerens og køberens klubber (null uden for ønskelisterne) */
-export function cmAskingPrice(g: GameState, p: Player, buyer?: number): number | null {
+export function cmAskingPrice(g: GameState, p: Player, buyer?: number, why?: { reason: number }): number | null {
   if (!cmShortlistOn(g) || !p.club) return null;
   const home = p.loan?.from ?? p.club;
   const hold: { S?: SlMem } = {};
@@ -2337,8 +2337,13 @@ export function cmAskingPrice(g: GameState, p: Player, buyer?: number): number |
     const k = getContract(m, st), cl = k ? clubAt(m, m.s32(k + 4)) : 0;
     m.w32(st + 0x52, k && cl ? playerValue_4d0c60(M.c, st, cl, 0, -1, humanClub_600a50(M.c, cl) ? 1 : 0) | 0 : 0);
   }
-  // CONTRACT_MANAGER (this = [0xae1050]) ::calc_asking_price(sælger, køber, staff, 0, 1, 1) – som 0x840bfb/0x8402fe kalder den
-  const v = slCall(M.c, 0x4d1600, m.u32(G.CM), club, b, st, 0, 1, 1);
+  // CONTRACT_MANAGER (this = [0xae1050]) ::calc_asking_price(sælger, køber, staff, 0, 1, 1) – som 0x840bfb/0x8402fe kalder den. Med `why`:
+  // som ai_respond_to_bid 0x8c8291 kalder den – med grunden (&[esp+0x14], sat til 0 ved 0x8c817e) som ud-parameter: 0x4d1600 sætter bittene
+  // 0x100–0x2000 (0x8d5420's grunde), og 0x4d2585-grenen (ud & 0x800) regner kun med en ud-parameter
+  const outAdr = why ? ASK_OUT : 0;
+  if (outAdr) m.w32(outAdr, 0);
+  const v = slCall(M.c, 0x4d1600, m.u32(G.CM), club, b, st, outAdr, 1, 1);
+  if (why) why.reason = m.u16(outAdr);
   // (hastighed) siderne tilbage til puljen – hukommelsen bruges ikke mere
   (m as SparseMem).release();
   return v | 0;

@@ -40,6 +40,20 @@ export function Head({ title, children, action, menu, club }: { title: ReactNode
   );
 }
 
+/** 0x8d5420: grundene i "They <reasons>." – 0x200 indispensible, ellers 0x400 valuable; 0x100 recently purchased; 0x800 rival, ellers 0x1000
+ *  same division ({comp}); 0x2000 future (kun uden 0x200/0x400); højst to ("A and B"). Grund 10 (& 0xa i den lave byte) har ingen. */
+export function cmRejWhy(why: number, comp: string): string {
+  const r: string[] = [];
+  if (why & 0xa) return '';
+  if (why & 0x200) r.push(t('transfer.rejWhy.200'));
+  else if (why & 0x400) r.push(t('transfer.rejWhy.400'));
+  if (r.length < 2 && why & 0x100) r.push(t('transfer.rejWhy.100'));
+  if (r.length < 2 && why & 0x800) r.push(t('transfer.rejWhy.800'));
+  else if (r.length < 2 && why & 0x1000) r.push(t('transfer.rejWhy.1000', { comp }));
+  if (r.length < 2 && why & 0x2000 && !(why & 0x600)) r.push(t('transfer.rejWhy.2000'));
+  return r.length === 2 ? t('transfer.rejWhy.and', { a: r[0], b: r[1] }) : r[0] ?? '';
+}
+
 export function newsParams(n: NewsItem): Record<string, string | number> {
   const p: Record<string, string | number> = { ...n.params };
   // bestyrelsens nyheder (cmBoardText.ts) og ansættelsen: teksten bygges igen på det valgte sprog (ældre nyheder uden `bd`/`full` beholder den gemte)
@@ -132,6 +146,8 @@ export function newsParams(n: NewsItem): Record<string, string | number> {
   if (typeof p.id === 'string' && n.key.startsWith('challenge.')) p.id = t(`challenge.${p.id}.title`);
   if (typeof p.round === 'string' && n.key.startsWith('comp.')) p.round = t(`stage.${p.round}`).toLowerCase();
   if (typeof p.targetKey === 'string') p.target = t(p.targetKey);
+  // CM 01/02 0x8d5420: sælgerens afvisning – grundene af bittene (højst 2)
+  if (n.key === 'transfer.cmBidRej' && typeof p.why === 'number') p.reasons = cmRejWhy(p.why, String(p.comp ?? ''));
   if (n.key.startsWith('staffrep.')) for (const k of ['prone', 'cond', 'inj', 'now', 'future']) if (typeof p[k] === 'string' && p[k]) p[k] = t(String(p[k]));
   if (n.key.startsWith('intl.')) { if (typeof p.nation === 'string') p.nation = natName(p.nation); if (typeof p.runnerUp === 'string') p.runnerUp = natName(p.runnerUp); if (typeof p.opp === 'string' && p.opp) p.opp = natName(p.opp); }
   // "Ryan Giggs and Matthew Williams" (navnene gemmes med & imellem)
@@ -209,6 +225,7 @@ export function possessiveName(x: string): string {
 }
 
 function bodyKey(n: NewsItem): string {
+  if (n.key === 'transfer.cmBidRej') return `transfer.cmBidRej.b${n.params?.body ?? ''}`;
   // pokalvinderen (competitions.ts finalBodyParams): comp_util.cpp 0x99f324 – med resultatet, samlet resultat eller blot "championship"
   if (n.key === 'news.cupWin' || n.key === 'news.playoffWin') return n.params?.body === 'win' ? 'news.cupWin.body' : n.params?.body === 'agg' ? 'news.cupWin.bodyAgg' : 'news.cupWin.bodyPlain';
   if ((n.key === 'cm.staffRenewOk' || n.key === 'cm.staffRenewNo') && typeof n.params?.body === 'string') return `cm.rn.${n.params.body}`;

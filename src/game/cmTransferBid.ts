@@ -235,9 +235,11 @@ export type AiAnswer = { kind: 'accept' } | { kind: 'counter'; terms: BidTerms }
 
 /** TRANSFER_MANAGER::ai_respond_to_bid 0x8c8090 (computerens klub sælger). `asking` = asking price 0x4d1600 (£, *estimeret*), `rivals` =
  *  de andre åbne buds vilkår, `unwanted` = en bytte-spiller, sælgeren ikke vil have (0x843800, *estimeret*), `final` = buddet er endeligt. */
-export function aiRespond(t: BidTerms, c: ValueCtx, o: { asking: number; rivals: BidTerms[]; unwanted: boolean; final: boolean; base: BidTerms; clause: ClauseOptIn }): AiAnswer {
+export function aiRespond(t: BidTerms, c: ValueCtx, o: { asking: number; rivals: BidTerms[]; unwanted: boolean; final: boolean; base: BidTerms; clause: ClauseOptIn; reason?: number }): AiAnswer {
   let P = o.asking;
-  for (const r of o.rivals) { const w = weightedValue(r, c, false, false, false, true); if (w > P) P = w; }
+  // grunden [esp+0x14]: 0x4d1600's ud-parameter (0x8c8291); et højere andet bud sætter den til 0 (0x8c8305)
+  let why = o.reason ?? 0;
+  for (const r of o.rivals) { const w = weightedValue(r, c, false, false, false, true); if (w > P) { P = w; why = 0; } }
   const T = totalValue(t, c, true, false, true);
   const full = weightedValue(t, c, false, false, true, true);
   const noSwap = weightedValue(t, c, false, true, true, true);
@@ -254,7 +256,7 @@ export function aiRespond(t: BidTerms, c: ValueCtx, o: { asking: number; rivals:
   if (weightedValue(best.terms, c, false, false, false, true) * 0.75 < full && !o.final) return { kind: 'counter', terms: best.terms };
   // 0x8c8676: "totally unacceptable"
   const v = c.value;
-  const reason = (T < v * 0.55 && v - T > 2_000_000) || (T < v * 0.1 && v - T > 100_000) ? 10 : 0;
+  const reason = (T < v * 0.55 && v - T > 2_000_000) || (T < v * 0.1 && v - T > 100_000) ? 10 : why;
   return { kind: 'reject', reason };
 }
 

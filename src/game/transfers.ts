@@ -35,7 +35,7 @@ import { asOwner, forEachHuman, isHumanClub, isMultiplayer } from './humans';
 import { AGENT_RULES, agentOf } from './agents';
 import { econ } from './econ';
 import { origLogic, legacyExtended } from './rules';
-import { aiRespond, aiReview, applyRejectReason, clauseOptIn, newTerms, putTerms, termsOf, valueCtx, MAX_SWAP, type BidTerms, type RejectKey } from './cmTransferBid';
+import { aiRespond, aiReview, applyRejectReason, clauseOptIn, newTerms, putTerms, termsOf, totalValue, valueCtx, GBP, MAX_SWAP, type BidTerms, type RejectKey } from './cmTransferBid';
 import { bookBlockEur, K as CMK } from './cmFinance';
 import { cmGbp } from './cmMoney';
 import { cashRound, cashUnits } from '../i18n';
@@ -1276,13 +1276,15 @@ function cmAiAnswer(o: TransferOffer, p: Player, buyer: Club) {
   // (MODERN_PARITY 3) buddets beløb med køberens €→£-faktor, værdien/saldoen sælgerens (cmMoney.ts; den originale database 0,86)
   const c = valueCtx(g, p, buyer.id);
   // asking price 0x4d1600 er ikke porteret: spillets askingPrice (med 'ikke til salg'-tillægget som ved en forespørgsel), *estimeret*
-  const asking = cmAskingPrice(g, p, buyer.id) ?? toK(askingPrice(p) * Math.max(1, notForSaleMult(p, buyer)), p.club);
+  // 0x8c8291: 0x4d1600 med grunden som ud-parameter (0x100 nyligt købt, 0x200/0x400 trupstatus, 0x800 rival, 0x1000 samme division, 0x2000 lovende)
+  const why = { reason: 0 };
+  const asking = cmAskingPrice(g, p, buyer.id, why) ?? toK(askingPrice(p) * Math.max(1, notForSaleMult(p, buyer)), p.club);
   const rivals = g.offers.filter((x) => x !== o && x.player === p.id && x.status === 'pending' && !x.loan).map(termsOf);
   const t = termsOf(o);
   const wanted = swapCandidates(o.seller, p.id, o.buyer).map((x) => x.id);
   const unwanted = t.swap.some((id) => !wanted.includes(id));
   const base = newTerms(g, p, buyer.id, 0);
-  const r = aiRespond(t, c, { asking, rivals, unwanted, final: !!o.final, base, clause: clauseOptIn(g, p, buyer.id) });
+  const r = aiRespond(t, c, { asking, rivals, unwanted, final: !!o.final, base, clause: clauseOptIn(g, p, buyer.id), reason: why.reason });
   if (r.kind === 'accept') {
     // 0x8c0080: "<Player> transfer offer accepted" og "Offer contract to <Player>" (cmTransferTalks.ts)
     cmAcceptBid(o, p);
@@ -1295,7 +1297,13 @@ function cmAiAnswer(o: TransferOffer, p: Player, buyer: Club) {
       params: { player: pname(p), club: sellerName(o.seller), fee: o.counter, fee2: Math.max(0, r.terms.lgFee) + Math.max(0, r.terms.intFee), pct: Math.max(0, r.terms.sellOn) }, link: { kind: 'offer', id: o.id } });
   } else {
     o.status = 'rejected';
-    addNews({ cat: 'transfer', key: r.reason === 10 ? 'transfer.bidUnacceptable' : 'transfer.bidRejected', params: { player: pname(p), club: sellerName(o.seller) }, link: { kind: 'player', id: p.id } });
+    // reject_transfer_offer 0x8bf680 → nyheden 0xfa1 (0x8d5170, teksten 0x8d5420): beløbet = get_total_value(0,0,0,1) 0x8d537f (med
+    // bytte-spillerne), grunden (param 8), bytte (param 6) og sælgerens division (param 11, "another Serie B club")
+    const sel = g.clubs[o.seller];
+    const fee = Math.max(0, Math.round(totalValue(t, c, false, false, true) / (c.k ?? GBP)));
+    const kind = (t.swap.length ? 'px' : '') + (r.reason === 10 ? 'Dis' : r.reason ? 'Why' : '') + (fee ? 'Fee' : '');
+    addNews({ cat: 'transfer', key: 'transfer.cmBidRej', params: { player: pname(p), club: sellerName(o.seller), buyer: buyer.name, fee, why: r.reason, body: kind,
+      comp: sel ? g.comps[sel.league]?.name ?? g.leagues[sel.league]?.name ?? '' : '' }, link: { kind: 'player', id: p.id } });
   }
 }
 
