@@ -13,6 +13,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '2026-11-25',
     title: { da: 'Mere af det originale CM 01/02', en: 'More of the original CM 01/02' },
     items: [
+      { da: "Nyt spil starter igen normalt (særligt på telefoner): siden fra i nat kom oprettelsen ikke i gang og blev bygget i selve siden, hvilket fik telefoner til at genindlæse.", en: "New games start normally again (especially on phones): since last night the setup didn't start and was built on the page itself, which made phones reload." },
       { da: "Klubbens Staff In/Out viser kun stabsskifter som i originalen: fyringer og managerskifter uden spillende manager skrives ikke længere i historikken.", en: "Club Staff In/Out now lists staff moves as in the original: sackings and manager changes (other than player-managers) are no longer recorded in the history." },
       { da: "Klubberne leder nu efter klubløse spillere som i originalen – også unge regens og rutinerede veteraner uden klub får igen tilbud (især fra non-league).", en: "Clubs now scout free agents like the original – unattached youngsters (regens) and experienced veterans get offers again, especially from non-league clubs." },
       { da: "⚠ Kræver et nyt spil: 2026/27: Stadionerne har databasens siddepladser (også non-league), så Conference-oprykkerens stadionkrav og tribunelukninger følger originalen.", en: "⚠ Requires a new game: 2026/27: Stadiums now use the database's seating (non-league too), so the Conference promotion ground check and stand closures follow the original." },
