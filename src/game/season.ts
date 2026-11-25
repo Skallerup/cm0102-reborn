@@ -16,6 +16,7 @@ import { storeSeasonRecords } from './clubHistory';
 import { storeCompRecords } from './compHistory';
 import { boardEventsSeason, isOriginal2001, noteLoanEnd } from './rules2001';
 import { recordsAfterMove, recordsSeasonEnd, retireIntoStaff } from './records';
+import { cmNpAssign } from './cmStaffRetire';
 import { achievementsSeasonEnd, unlock } from './achievements';
 import { storyAdd, storySeasonEnd } from './story';
 import { finalOrder, promotionOrder, leagueRows } from './competitions';
@@ -330,6 +331,8 @@ export function spawnDueRegens() {
   if (originalRegens() && g.regenQueue?.some((s) => !s.due || s.due <= g.date)) spawnRegenQueue();
   // (cmRegen.ts) køens forfaldne poster med puljens første spillerpost (0x7a65d0 → 0x7abac0)
   if (originalRegens() && g.cmRegenQ?.length) for (const { q, rec } of cmRegenDue(g)) spawnCmRegen(rec, q.id);
+  // (cmStaffRetire.ts) 0x7a66bd: reservepuljens poster ud over 2 til aktive spillere på 31+
+  if (originalRegens() && g.cmNpRes) cmNpAssign(g);
 }
 
 /** 0x7abac0: en regen af puljens spillerpost rec på den pensioneredes plads (cmRegen.ts cmRegenPlan) – egenskaberne efter forbilledet som spawnRegen */

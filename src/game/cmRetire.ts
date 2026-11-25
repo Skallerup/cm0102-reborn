@@ -34,6 +34,7 @@ import { JOB_CODE } from './cmStaff';
 import { ATTRS } from './attributes';
 import { playerRecordInto } from './engine/grid/aiTeam';
 import { cmHasCaPost } from './cmDevelop';
+import { cmNpResInit, cmNpResOn, findStaffRetirements, npOnRetire, settleStaff } from './cmStaffRetire';
 
 export interface CmRetEntry {
   /** spillerens id */ id: number;
@@ -41,6 +42,7 @@ export interface CmRetEntry {
   /** +8 meldingsdatoen og +0x10 stopdatoen: år·1000 + dag i året (0 = 1/1) */ a: number; r: number;
   /** +0x18 årsagen (1, 2, 8, 0x10) */ why: number;
   /** +0x19 meldt */ ann: 0 | 1;
+  /** en ikke-spiller (årsag 0x20 – id er Staff.id, cmStaffRetire.ts) */ st?: 1;
 }
 export interface CmRetState { list: CmRetEntry[]; n?: number;
   /** de spillere, originalen ikke har i hukommelsen (0x524d70 – Player.cmMem / ikke indlæste lande): samme regler uden for listen (se hovedets liste) */
@@ -51,7 +53,7 @@ export const cmRetireOn = (g: GameState) => !g.draft && (cmActive(g) || (cmLogic
 
 // ------------------------------------------------------------------------------------------------ datoer (Date: dag i året + år)
 const D0 = (y: number) => Date.UTC(y, 0, 1) / 86400000;
-const pairOf = (iso: string) => { const y = +iso.slice(0, 4); return y * 1000 + Math.round(Date.parse(iso + 'T00:00:00Z') / 86400000 - D0(y)); };
+export const pairOf = (iso: string) => { const y = +iso.slice(0, 4); return y * 1000 + Math.round(Date.parse(iso + 'T00:00:00Z') / 86400000 - D0(y)); };
 const yearOf = (p: number) => Math.floor(p / 1000);
 const dayOf = (p: number) => p % 1000;
 /** 0x54cdb0 Date::days_since(this = a, b) = a − b i dage (dag 365 i et almindeligt år = 1/1 året efter) */
@@ -95,14 +97,15 @@ const IX = (k: string) => ATTRS.indexOf(k as never);
 const A_AMB = IX('ambition'), A_LOY = IX('loyalty');
 const attr = (p: Player, ix: number) => Math.round(p.attrs[ix] || 10);
 const REC: number[] = new Array(0x46).fill(0);
-interface Pr { ca: number; pa: number; cur: number; world: number; gk: number; am: number; f: number; stamina: number }
-function prOf(p: Player): Pr {
+interface Pr { ca: number; pa: number; home: number; cur: number; world: number; gk: number; am: number; f: number; infl: number; stamina: number }
+/** spillerposten (+0x61): CA +5, PA +7, omdømmerne +9/+0xb/+0xd, positionerne +0xf/+0x14/+0x15, Influence +0x2f, Stamina +0x3c */
+export function prOf(p: Player): Pr {
   const r = playerRecordInto(p, REC);
   const w = (o: number) => s16(r[o] | (r[o + 1] << 8));
-  return { ca: w(5), pa: w(7), cur: w(0xb), world: w(0xd), gk: r[0xf], am: r[0x14], f: r[0x15], stamina: r[0x3c] };
+  return { ca: w(5), pa: w(7), home: w(9), cur: w(0xb), world: w(0xd), gk: r[0xf], am: r[0x14], f: r[0x15], infl: s8(r[0x2f]), stamina: r[0x3c] };
 }
 /** klubbens division er indlæst ([0xadadfc][club +0x57] ≠ 0) */
-function divisionActive(g: GameState, c: Club): boolean {
+export function divisionActive(g: GameState, c: Club): boolean {
   const comp = g.comps[c.league];
   return !!comp && comp.type === 'league' && !g.leagues[c.league]?.hidden && nationLoaded(g, comp.nation >= 0 ? comp.nation : c.nation);
 }
@@ -118,8 +121,8 @@ const contractOf = (p: Player): CmContract => p.cmContract ?? newCmContract(stat
 type Rand = (n: number) => number;
 
 /** datoerne (0x7a7778–0x7a7990 / 0x7a7ca1–0x7a7e87): meldingen inden for 95 dage, stoppet ved landets sæsonopdatering + rand(30) */
-function dates(g: GameState, p: Player, club: Club | undefined, today: number, rand: Rand): [number, number] {
-  const [upd, cross] = club ? rowOfClub(g, club) : rowOfNation(g, p.nation);
+export function dates(g: GameState, nation: number, club: Club | undefined, today: number, rand: Rand): [number, number] {
+  const [upd, cross] = club ? rowOfClub(g, club) : rowOfNation(g, nation);
   const y = yearOf(today);
   let ad = rand(95) + dayOf(today) + 1, ay = y;
   if (ad > 365) { ad = rand(60); ay = y + 1; }
@@ -143,7 +146,7 @@ export function checkRetirement(g: GameState, p: Player, todayIso: string, rand:
   let T = pr.gk >= 15 ? 34 : pr.f < 15 && pr.am < 15 ? 31 : 30;
   if (age <= T) return null;
   const mk = (why: number): CmRetEntry => {
-    const [a, r] = dates(g, p, club, today, rand);
+    const [a, r] = dates(g, p.nation, club, today, rand);
     return { id: p.id, club: club ? club.id : 0, a, r, why, ann: 0 };
   };
   if (initial) {
@@ -221,7 +224,7 @@ function add(g: GameState, p: Player, e: CmRetEntry): void {
 /** 0x7ae2a0: næste dato – meldingen, hvis den ikke er passeret, ellers stoppet; så personen */
 function sortList(list: CmRetEntry[], today: number) {
   const key = (e: CmRetEntry) => (e.a >= today ? e.a : e.r);
-  list.sort((x, y) => key(x) - key(y) || x.id - y.id);
+  list.sort((x, y) => key(x) - key(y) || x.id - y.id || (x.st ?? 0) - (y.st ?? 0));
 }
 const dayNo = (iso: string) => Math.round(Date.parse(iso + 'T00:00:00Z') / 86400000);
 
@@ -243,6 +246,9 @@ export function cmRetireInit(g: GameState): void {
     const e = checkRetirement(g, p, ref, rand, true);
     if (e) add(g, p, e);
   }
+  // (cmStaffRetire.ts) ikke-spillerne (0x7a79c0's stabsgren) og reservepuljens 10 tomme poster (0x7a54e8) – kun nye spil
+  cmNpResInit(g);
+  findStaffRetirements(g, ref, rand, true, new Set(), (e) => st.list.push(e));
   sortList(st.list, pairOf(ref));
 }
 
@@ -250,7 +256,7 @@ export function cmRetireInit(g: GameState): void {
 function findNew(g: GameState): void {
   const st = stateOf(g);
   const rand = cmRand(g.seed ?? 0, dayNo(g.date), 0x7a5790);
-  const have = new Set([...st.list, ...(st.ext ?? [])].map((e) => e.id));
+  const have = new Set([...st.list, ...(st.ext ?? [])].filter((e) => !e.st).map((e) => e.id));
   // 0x7a8050/0x7a80ce: Shortlist_Manager 0x842080(staff, 0) – personen står i et af ønskelisternes par (spiller, klub) (0x757ea0: klub −1 =
   // enhver klub). Med ønskelisterne (cmShortlistGame.ts) er det parrene i g.cmSlPairs – før spillets egen Club.shortlist (noteInterest: alle,
   // en computerklub nogensinde har budt på), så langt flere klubløse slap for 0x10-pensionen dag 80 (K7: klubløse <21 år 30/3-02 56 mod 41)
@@ -264,6 +270,8 @@ function findNew(g: GameState): void {
     const e = checkRetirement(g, p, g.date, rand) ?? checkUnemployed(g, p, g.date, rand, listed);
     if (e) add(g, p, e);
   }
+  // (cmStaffRetire.ts) ikke-spillerne (0x7a7310's stabsgren)
+  findStaffRetirements(g, g.date, rand, false, new Set(st.list.filter((e) => e.st).map((e) => e.id)), (e) => st.list.push(e));
   sortList(st.list, pairOf(g.date));
 }
 
@@ -271,8 +279,8 @@ function findNew(g: GameState): void {
 export function cmRetireInjury(g: GameState, p: Player, injuryDays: number, today = dayNo(g.date)): void {
   if (!cmRetireOn(g)) { p.cmRetire = true; return; }
   const st = stateOf(g);
-  st.list = st.list.filter((e) => e.id !== p.id);
-  if (st.ext) st.ext = st.ext.filter((e) => e.id !== p.id);
+  st.list = st.list.filter((e) => e.id !== p.id || e.st);
+  if (st.ext) st.ext = st.ext.filter((e) => e.id !== p.id || e.st);
   // dagen er skadens dag – i forkørslen (0x5cc850) forkørslens dato, ikke spilstartens
   const rand = cmRand(g.seed ?? 0, today, p.id, 0x7a7f20);
   const due = today + rand(Math.trunc(injuryDays / 2)) + 1;
@@ -436,11 +444,13 @@ function retire(g: GameState, p: Player, e: CmRetEntry, today: string, rand: Ran
   const club = p.club;
   if (club) dropFromTactic(g, p, club);
   const age = ageOn(p.dob, today);
+  // 0x7a5cdb (cmStaffRetire.ts): uden ikke-spillerpost evt. reservepuljens første (spil startet med puljen)
+  const np = s ?? (mem && cmNpResOn(g) ? npOnRetire(g, p, rand) ?? undefined : undefined);
   // 0x7a62c2: med ikke-spillerpost bliver han stab (samme person) – ingen regen (0x7a87d0 kaldes ikke)
-  if (s) becomeStaff(g, p, s, after);
+  if (np) becomeStaff(g, p, np, after);
   // 0x7a6397: regen-køen – under 30 år samme dag, ellers i dag + 1 + rand(65) (over nytår: rand(35) året efter)
   let due = today;
-  if (!s && age >= 30) {
+  if (!np && age >= 30) {
     const t = pairOf(today);
     let d = rand(65) + dayOf(t) + 1, y = yearOf(t);
     if (d > 365) { d = rand(35); y++; }
@@ -449,8 +459,8 @@ function retire(g: GameState, p: Player, e: CmRetEntry, today: string, rand: Ran
   const seed: RegenSeed = { from: pname(p), nation: p.nation, pos: p.pos.slice(), side: p.side.slice(), foot: p.foot === 'L' ? 'L' : p.foot === 'B' ? 'B' : 'R', pa: p.pa, attrs: p.attrs.map((a) => Math.round(a)), fromId: p.id };
   // (cmRegen.ts) i originalens hukommelse: posten i puljen (0x7a6335 – også når han bliver stab) og uden ikke-spillerpost en kø-post (0x7a64e2);
   // de øvrige (uden for hukommelsen – findes ikke i originalen): som før – regen'en af hans egen post på datoen
-  if (mem) cmRegenRetired(g, { ...seed, ...(p.cmNation2 !== undefined && p.cmNation2 >= 0 ? { n2: p.cmNation2 } : {}) }, !s, due, p.id);
-  else if (!s && p.pa > 0) (g.regenQueue ??= []).push({ ...seed, due });
+  if (mem) cmRegenRetired(g, { ...seed, ...(p.cmNation2 !== undefined && p.cmNation2 >= 0 ? { n2: p.cmNation2 } : {}) }, !np, due, p.id);
+  else if (!np && p.pa > 0) (g.regenQueue ??= []).push({ ...seed, due });
   removePlayer(p);
   const st = stateOf(g);
   st.n = (st.n ?? 0) + 1;
@@ -466,6 +476,7 @@ export const underOffer = (g: GameState, p: Player) => g.offers.some((o) => o.pl
 function settle(g: GameState, L: CmRetEntry[], i: number, today: number, rand: Rand): void {
   const e = L[i];
   L.splice(i, 1);
+  if (e.st) { settleStaff(g, e, rand); return; }
   const p = g.players[e.id];
   if (!p) return;
   const age = ageOn(p.dob, g.date);
@@ -493,7 +504,7 @@ function process(g: GameState): void {
     const e = L[i];
     if (today > e.r) { settle(g, L, i, today, rand); continue; }
     if (e.ann || !(today > e.a)) break;                                                     // 0x7a64f4
-    const p = g.players[e.id];
+    const p = e.st ? undefined : g.players[e.id];
     if (p) { if (!p.cmRetire) announceNews(g, p, e.why); p.cmRetire = true; }              // staffState +0xb: &0xdf | 0x10
     e.ann = 1;
     i++;

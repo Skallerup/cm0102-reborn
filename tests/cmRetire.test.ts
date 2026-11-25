@@ -12,6 +12,7 @@ import type { GameState, Player } from '../src/game/types';
 
 let g: GameState;
 let eng = -1;
+let staff0 = 0, res0 = 0;
 const day = () => { const d0 = g.date; while (g.date === d0 || !g.dayDone) { const r = continueGame(); if (r?.match) quickPlayUserMatch(); } };
 
 beforeAll(() => {
@@ -19,11 +20,12 @@ beforeAll(() => {
   eng = world.nations.findIndex((x) => x.name === 'England');
   createGame(world, { managerName: 'T', managerNation: eng, clubId: world.clubs.find((c) => c[1] === 'Arsenal')![0], activeNations: [eng], lang: 'en', masking: true, seed: 1, mode: 'authentic' });
   g = gs();
+  staff0 = g.nextId.staff; res0 = g.cmNpRes?.length ?? -1;
 }, 600_000);
 
 describe('PLAYER_REGEN ved spilstarten (0x7a58f0 → 0x7a79c0)', () => {
   it('listen har de ældre spillere i klubberne, dateret som originalen', () => {
-    const L = g.cmRet!.list;
+    const L = g.cmRet!.list.filter((e) => !e.st);
     const inEng = L.filter((e) => e.why === 1 && e.club && g.clubs[e.club]?.nation === eng);
     // oraklet (databasestørrelse 2, 14/7-01): 267 engelske – 61 i de synlige ligaer, 206 i Conference og nedefter (non-league, nu i world-filen);
     // spillet med en world bygget med CM_DBSIZE=2: 258 (54 + 204). Her Maximum (ejerens størrelse): flere non-league-spillere i hukommelsen
@@ -66,13 +68,28 @@ describe('dagene (0x7a59e0)', () => {
     // originalen; oraklets liste 14/7 har ingen, så de tages ud her
     g.cmRet!.list = g.cmRet!.list.filter((e) => e.why !== 8);
     day();
-    const L = g.cmRet!.list;
+    const L = g.cmRet!.list.filter((e) => !e.st);
     const passed = L.filter((e) => e.a < 2001195);
     expect(passed.length).toBeGreaterThan(0);
     for (const e of passed) { expect(e.ann).toBe(1); expect(g.players[e.id]?.cmRetire).toBe(true); }
     const ars = L.filter((e) => e.club === g.userClub && (e.why === 1 || e.why === 2) && e.a < 2001195);
     const news = g.news.filter((n) => n.key === 'cmret.ann');
     expect(news.length).toBe(ars.length);
+    // (cmStaffRetire.ts) reservepuljen: 10 tomme poster ved spilstarten (0x7a54e8); dag 1 får (10 − 2) spillere på 31+ en post (0x7a66bd –
+    // oraklet 16/7-01: Kahn, Pagliuca, Aldair, John Durnin …)
+    expect(res0).toBe(10);
+    expect(g.cmNpRes!.length).toBe(2);
+    // (en spiller, der går på pension samme dag, kan tage en først – 0x7a5cdb – så bliver han ledig stab: i alt stadig 8)
+    const got = Object.values(g.staff).filter((s) => s.id >= staff0 && (s.cmExtra || s.exPlayer));
+    expect(got.length).toBe(8);
+    for (const s of got.filter((x) => x.cmExtra)) {
+      const p = g.players[s.cmId!];
+      expect(p).toBeDefined();
+      expect(ageOn(p.dob, g.date)).toBeGreaterThanOrEqual(31);
+      expect(npStaffOf(g, p)).toBe(s);
+      expect([11, 13, 15]).toContain(s.cmJob);
+      expect(s.ca).toBe(0);                                                  // de tomme poster: CA/PA 0
+    }
   }, 600_000);
   it('en fremtidig post først i rækkefølgen blokerer meldingerne (0x7a64f4)', () => {
     const L = g.cmRet!.list;
@@ -82,11 +99,11 @@ describe('dagene (0x7a59e0)', () => {
     L.push({ id: p.id, club: p.club, a: 2001300, r: 2001300, why: 8, ann: 0 });
     day();
     expect(e.ann).toBe(0);
-    L.splice(L.findIndex((x) => x.id === p.id), 1);
+    L.splice(L.findIndex((x) => x.id === p.id && !x.st), 1);
   }, 600_000);
   it('dagen efter stopdatoen: pensioneret, nyhed til klubben og en regen i køen', () => {
     const L = g.cmRet!.list;
-    const e = L.find((x) => x.club === g.userClub) ?? L.find((x) => x.club)!;
+    const e = L.find((x) => x.club === g.userClub && !x.st) ?? L.find((x) => x.club && !x.st)!;
     const p = g.players[e.id];
     e.r = e.a = 2001100;                                                     // stopdatoen passeret
     const before = g.regenQueue?.length ?? 0;
@@ -99,7 +116,7 @@ describe('dagene (0x7a59e0)', () => {
   it('0x7a7f20: skaden giver en post med årsag 8 inden for skadens halve længde', () => {
     const p = Object.values(g.players).find((x) => x.club && g.clubs[x.club].nation === eng && !g.cmRet!.list.some((e) => e.id === x.id))!;
     cmRetireInjury(g, p, 40);
-    const e = g.cmRet!.list.find((x) => x.id === p.id)!;
+    const e = g.cmRet!.list.find((x) => x.id === p.id && !x.st)!;
     expect(e.why).toBe(8);
     expect(e.a).toBe(e.r);
     expect(p.cmRetire).toBeFalsy();                                          // meldes ikke (melding = stop)
@@ -135,5 +152,30 @@ describe('spilleren med ikke-spillerpost bliver stab (0x7a59e0 0x7a62c2, 0x7aace
     // spiller (job 11) → ledig; spillende assistent/træner → klubbens stab
     if (s.club) expect(['manager', 'assistant', 'coach']).toContain(s.role);
     else expect(s.cmJob).toBe(0);
+  }, 600_000);
+});
+
+describe('stabens pensioner (cmStaffRetire.ts – årsag 0x20)', () => {
+  it('listen har ikke-spillere med årsag 0x20 og en ny person eller reservepuljen + regen-køen på stopdagen', () => {
+    const L = g.cmRet!.list;
+    const st = L.filter((e) => e.st);
+    expect(st.length).toBeGreaterThan(0);
+    for (const e of st) { expect(e.why).toBe(0x20); expect(g.staff[e.id]).toBeDefined(); }
+    const e = st[0];
+    const s = g.staff[e.id];
+    const name = `${s.first} ${s.last}`, dob = s.dob;
+    e.r = e.a = 2001100;
+    const q0 = g.cmRegenQ?.length ?? 0;
+    day();
+    expect(L.includes(e)).toBe(false);
+    if (g.staff[e.id]) {
+      // 0x7ab340: en ny person på pladsen – yngre, nyt navn, samme klub
+      expect(`${s.first} ${s.last}` !== name || s.dob !== dob).toBe(true);
+      expect(ageOn(s.dob, g.date)).toBeLessThan(65);
+    } else {
+      // 0x7aaeb0 + 0x7a87d0: væk og i køen (posten i reservepuljen – 0x7a66bd giver den samme dag videre, så puljen står igen på 2)
+      expect(g.cmRegenQ?.some((q) => q.id === e.id) || (g.cmRegenQ?.length ?? 0) < q0 + 1).toBe(true);
+      expect(g.cmNpRes!.length).toBe(2);
+    }
   }, 600_000);
 });

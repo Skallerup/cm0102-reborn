@@ -29,6 +29,7 @@ import { ageOn, daysBetween } from './dates';
 import { careerEnd, careerStart } from './careers';
 import { recordStaffMove } from './staffMoves';
 import { npStaffOf } from './cmRetire';
+import { setBoardRetired } from './cmStaffRetire';
 import { fixtureCodesOf } from './engine/grid/gameInputs';
 import {
   type BoardEnv, type BoardNews, type BoardRec, type CmBoardState, type CmDate, type LeagueInfo, type MatchIn, type Person, type StatsEntry,
@@ -1065,6 +1066,25 @@ export function cmBoardResign(g: GameState, cid: number): void {
   recOfG(g, cid).w6 = 3500;
   if (env.canBeManaged(cid)) addVacancy(env, st, cid, h, rnd(g, dayNum(g.date), 0x6b204e, cid));
 }
+
+/** 0x7aaeb0 (PLAYER_REGEN: en ikke-spiller går på pension og forlader verden) – er han klubbens/landsholdets manager (+0xcf = personen):
+ *  remove_club_manager(klub, 3, 0, 0) 0x69b790 og, når klubben kan have en manager (0x544820), add_job_vacancy(klub, personen) 0x69ba50 –
+ *  for klubben (+0x39) og landsholdet (+0x24) */
+export function cmBoardStaffRetired(g: GameState, staffId: number): void {
+  if (!cmBoardOn(g)) return;
+  const st = stateOf(g), env = boardEnv(g);
+  const p = env.person(staffId);
+  if (!p) return;
+  for (const c of [p.club, p.nat]) {
+    if (!c) continue;
+    const m = env.manager(c);
+    if (!m || m.id !== staffId) continue;
+    removeClubManager(env, st, c, 3, 0, false);
+    if (env.canBeManaged(c)) addVacancy(env, st, c, m, rnd(g, dayNum(g.date), 0x7aaeb0, c));
+  }
+}
+
+setBoardRetired(cmBoardStaffRetired);
 
 /** sæsonskiftets flytning til/fra en inaktiv division (cmNonLeague.ts): op (League 0x6830b0, 3. argument 1) – klubben uden manager
  *  (+0xcf = 0) får en ledig stilling (0x69ba50(klub, 0)); ned i en division uden kørende liga (0x6831a0) – et menneske i klubben (0x600a50)
