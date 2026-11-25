@@ -99,9 +99,9 @@ export function englandLoanRefused(p: Player, buyer: Club): boolean {
  *  (før afviste loanBlocked/needsWorkPermit alle ikke-EU-lejer til britiske klubber – originalen lejede fx 6 australiere og 6 andre ikke-EU-spillere
  *  til England i 2001/02). England 0x579d60: samme division som kontraktklubben (+0x57), og den er Premier Division (0x9cf5bc) → nej (0x1d); ≥ 5
  *  lejer i sæsonen (+0x91c) → nej (0x1e); > 1 lejet ind i truppen (+0xd7, 0x4cf6d0, kontraktklub ≠ køberen) → nej (0x26); i dag i intet vindue
- *  (0x8e8e50) → nej (9). Skotland 0x7f6650: kun samme division, når den er Premier Division (0x9cf5dc). Australien, Frankrig, Rusland 0x412dd0 og
- *  Tyrkiet, USA 0x902240: kun vinduet. Grundreglen 0x40a600, Kroatien/Grækenland/Polen 0x5ed060, Danmark/Nordirland/Wales/Sydkorea 0x793900: må.
- *  Ikke porteret (*estimeret*: må): Holland/Norge 0x794760, Irland 0x63c3d0, Italien 0x661770, Spanien 0x859630, Finland 0x5a9af0 – og sælgerlandets
+ *  (0x8e8e50) → nej (9). Skotland 0x7f6650: kun samme division, når den er Premier Division (0x9cf5dc). Australien, Frankrig, Rusland 0x412dd0,
+ *  Tyrkiet, USA 0x902240 og Holland/Norge 0x794760: kun vinduet. Finland 0x5a9af0: vinduet, og en computerklub kun dag 90–300. Grundreglen 0x40a600, Kroatien/Grækenland/Polen 0x5ed060, Danmark/Nordirland/Wales/Sydkorea 0x793900: må.
+ *  Ikke porteret (*estimeret*: må): Irland 0x63c3d0, Italien 0x661770, Spanien 0x859630 – og sælgerlandets
  *  +0x24 pr. lejemåned (Finland 0x5a9ba0, Frankrig 0x5c1ed0, Tyskland 0x5e0210, Irland 0x63c530, Italien 0x6618f0; de øvrige 0x40a610 = må). */
 export function cmLoanRulesOk(buyer: Club, home: Club | undefined): boolean {
   const g = gs();
@@ -115,7 +115,14 @@ export function cmLoanRulesOk(buyer: Club, home: Club | undefined): boolean {
       return cmWindowOpen(g, buyer, g.date);
     }
     case 'Scotland': return !sameTop();
-    case 'Australia': case 'France': case 'Russia': case 'Turkey': case 'United States': return cmWindowOpen(g, buyer, g.date);
+    case 'Australia': case 'France': case 'Russia': case 'Turkey': case 'United States': case 'Holland': case 'Norway': return cmWindowOpen(g, buyer, g.date);
+    case 'Finland': {
+      // 0x5a9af0: vinduet; en computerklub (0x600a50(klub, 1, 1) = 0) kun på dag 90–300 i året (0xae2c90, 0 = 1/1) – uden grund
+      if (!cmWindowOpen(g, buyer, g.date)) return false;
+      if (isHumanClub(buyer.id)) return true;
+      const d = Math.round((Date.parse(g.date.slice(0, 10) + 'T00:00:00Z') - Date.UTC(Number(g.date.slice(0, 4)), 0, 1)) / 86400000);
+      return d >= 90 && d <= 300;
+    }
     default: return true;
   }
 }

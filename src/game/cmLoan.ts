@@ -9,8 +9,9 @@
 // Landenes regler (+0x28): TRANSFER_RULES 0x8e8bd0 (grundreglen, også FINLAND 0x5a9a80): start = næste måned, slut = sæsonslutmåneden
 // 0x4d45f0 (måneden for nationens sæsonslut + 10 dage) i startens år, hvis start < slut, ellers næste år. ENGLAND 0x579c70: efter 19/6
 // (dag-i-året > 19/6-1998's) og alder (+0x18) < 24 → grundreglen, ellers start + 3 måneder. SCOTLAND 0x7f6530: alder < 22 → grundreglen,
-// ellers start + 3 måneder. RUSSIA 0x7ec8e0: start om 3 måneder, ellers som grundreglen. NORTHERN IRELAND 0x793870: som Rusland, og
-// starten højst slutningen. WALES 0x90f1a0: som grundreglen, og starten = slutningen.
+// ellers start + 3 måneder. 0x7ec8e0 (Brasilien, Polen, Rusland): start om 3 måneder, ellers som grundreglen. NORTHERN IRELAND 0x793870: som
+// 0x7ec8e0, og starten højst slutningen. 0x90f1a0 (Australien, Belgien, Frankrig, Grækenland, Holland, Irland, Kroatien, Sydkorea, Tyrkiet,
+// Tyskland, Wales): som grundreglen, og starten = slutningen.
 // Lejebudskærmen 0x8f9690/0x8f9a20/0x8fac30: udløbsdatoen er (min(dagen i dag, 28), måned, år); standard = starten, − (1) går en måned
 // tilbage (grå, når året er startåret og måneden ≤ startmåneden), + (2) en måned frem (grå, når året er slutåret og måneden ≥ slutmåneden).
 // Wage Contribution (+0xb): 0 %, − (3) −10 (grå ved 0), + (4) +10 (grå ved 100); beløbet = løn · procent / 100 (rødt over bestyrelsens
@@ -51,6 +52,11 @@ export function loanDate(today: string, m: number, y: number): string {
 /** 0x4d45f0: måneden (0..11) for nationens sæsonslut + 10 dage (*estimeret* juni for nationer uden post – cmContractEnd.ts) */
 const seasonEndMonth = (nation: string) => (NATION_MONTH[nation] ?? 6) - 1;
 
+/** TRANSFER_RULES +0x28 pr. nation (vtabellerne i TM +0x8ac, læst i oraklets hukommelse): 0x90f1a0 (start = slut) og 0x7ec8e0 (start om 3 måneder)
+ *  deles af flere lande (foldede ens funktioner) – før havde kun Wales og Rusland dem. Grundreglen 0x8e8bd0: Argentina, Danmark, Italien, Japan,
+ *  Norge, Portugal, Spanien, Sverige, USA (Finland 0x5a9a80 er den samme). */
+const P_90F1A0 = new Set(['Australia', 'Belgium', 'Croatia', 'France', 'Germany', 'Greece', 'Holland', 'Republic of Ireland', 'Turkey', 'Wales', 'South Korea']);
+const P_7EC8E0 = new Set(['Brazil', 'Poland', 'Russia']);
 /** landets get_loan_period (TRANSFER_RULES +0x28) */
 function rulesPeriod(g: GameState, buyer: number, p: Player): LoanPeriod {
   const today = g.date, ty = Number(today.slice(0, 4)), tm = Number(today.slice(5, 7)) - 1;
@@ -62,10 +68,11 @@ function rulesPeriod(g: GameState, buyer: number, p: Player): LoanPeriod {
   switch (nation) {
     case 'England': return doy(today) > doy('1998-06-19') && age < 24 ? base(1) : plus3();
     case 'Scotland': return age < 22 ? base(1) : plus3();
-    case 'Russia': return base(3);
     case 'Northern Ireland': { const r = base(3); if (r.sy > r.ey || (r.sy === r.ey && r.sm > r.em)) { r.sm = r.em; r.sy = r.ey; } return r; }
-    case 'Wales': { const r = base(1); r.sm = r.em; r.sy = r.ey; return r; }
-    default: return base(1);
+    default:
+      if (P_7EC8E0.has(nation)) return base(3);
+      if (P_90F1A0.has(nation)) { const r = base(1); r.sm = r.em; r.sy = r.ey; return r; }
+      return base(1);
   }
 }
 
