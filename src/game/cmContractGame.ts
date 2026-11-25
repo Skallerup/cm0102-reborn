@@ -23,7 +23,7 @@
 //   [0xa83608] = 10 (største antal år). Transferlisterne i TRANSFER_MANAGER, forhandlingslisterne og skadeposten [0xb63d28] er tomme (0).
 // rand: 0x85fc50 trækker rand(0x1c) (dagen i udløbsmåneden) – af spillets frø, personen og datoen (cmRand – rører ikke spillets rng).
 import type { Club, Contract, ContractClauses, GameState, Player } from './types';
-import { type CmCtx, G, writeMonthTables } from './cmMem';
+import { type CmCtx, G, type SparseMem, writeMonthTables } from './cmMem';
 import { buildWageMem, cmMemCall, memScope, nationsByName, type WageMem } from './cmWageGame';
 import { writeEuroMem } from './cmEuroMem';
 import { setToDesiredContract_85fc50, constructContract_85e410, calcContractValue_866830, contractForClub_4cf5f0, contractSatisfaction_866620 } from './cmContractWant';
@@ -707,6 +707,11 @@ export function cmStaffWill(g: GameState, s: import('./types').Staff, clubId: nu
   const row = g.cmPlan?.[clubId]?.s.find((r) => r[0] === job);
   const X = staffMem(g, s, clubId, job, row ? (row[2] >> 1) & 0xf : 5);
   if (!X) return S;
+  // (hastighed, 25/11) hukommelsens sider tilbage til puljen bagefter (cmMem.ts release – en ny side nulstilles altid): før blev en hukommelse pr.
+  // kandidat smidt ud til affaldsopsamlingen (ønskelisternes stabsmål, cmStaffMove.ts findStaffTarget)
+  try { return staffWill(g, s, clubId, job, S, X); } finally { (X.M.c.m as SparseMem).release(); }
+}
+function staffWill(g: GameState, s: import('./types').Staff, clubId: number, job: number, S: number, X: NonNullable<ReturnType<typeof staffMem>>): number {
   const { M, st, club, k } = X, m = M.c.m;
   const fin = M.W.finOf(clubId);
   if (!fin) return 0;
