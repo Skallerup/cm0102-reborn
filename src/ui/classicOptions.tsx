@@ -120,7 +120,7 @@ export function GameOptionsMenu({ onSave, onQuit, online, allowed }: { onSave: (
   const canInst = installPossible();
   items.push({ key: 'sepR', sep: true });
   items.push({ key: 'support', label: <>♥ {t('sb.menu')}</>, onClick: () => setShow('support') });
-  if (canInst) items.push({ key: 'install', label: <>{t('cl.go.install')}<small className="cx-install-why">{t('cl.go.installWhy')}</small></>, onClick: runInstall });
+  if (canInst) items.push({ key: 'install', label: <span title={t('cl.go.installWhy')}>{t('cl.go.install')}</span>, onClick: runInstall });
   if (!online) items.push({ key: 'cloud', label: t('cl.go.cloud'), onClick: () => { if (getAccount()) void cloudSave(); else setLogin(true); } });
   items.push({ key: 'sep', sep: true }, { key: 'restart', label: t('cl.go.restart'), onClick: onQuit }, { key: 'quit', label: t('cl.go.exit'), onClick: onQuit });
   return (
