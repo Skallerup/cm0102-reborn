@@ -65,6 +65,8 @@ export function writeHumanMgr(m: CmMem, mg: number, club: number, nat: number, n
   m.w8(mg + 0x59, h?.cmB59 ?? 0x14);
   const rep = h?.cmRep;
   if (rep) { m.w16(np + 8, rep[0]); m.w16(np + 0xa, rep[1]); m.w16(np + 0xc, rep[2]); }
+  // ankomstdatoen +0x3e/+0x40 (oraklet 20/7-01: Arsenals menneske 14/7-2001 = spilstarten; 0x846920 @0x8474a2 for hans egne spillere)
+  if (h?.cmJoined) { const [d, y] = isoDay(h.cmJoined); m.w16(mg + 0x3e, d); m.w16(mg + 0x40, y); }
 }
 
 /** menneskets ManagerProfile for en menneskeklub (null = ingen) */
@@ -366,6 +368,8 @@ export function buildWageMem(g: GameState, clubs: Iterable<number>, unset: Set<n
       // alderen +0x18 og landet +0x1a (0x862720/0x864550 og udlændingeloftet 0x83a2d0 læser dem)
       m.w8(st + 0x18, s.dob ? ageOn(s.dob, g.date) : 45); m.w32(st + 0x1a, natAdr(s.nation));
       m.w8(st + 0x57, s.cmHid?.[1] ?? 10);
+      // ankomstdatoen +0x3e/+0x40 (0x846920 @0x8474a2: spillerklubbens managers ankomst mod i dag − 150 dage)
+      if (s.cmJoined) { const [d, y] = isoDay(s.cmJoined); m.w16(st + 0x3e, d); m.w16(st + 0x40, y); }
       m.w8(st + 0x3d, s.role === 'manager' ? 5 : s.role === 'assistant' ? 6 : s.role === 'coach' ? 8 : s.role === 'scout' ? 9 : 10);
       m.w32(st + 0x69, npRec(id, (np) => { m.w16(np + 0xa, s.cmRep?.[1] ?? (s.rep ?? 0) * 2); if (full) { m.w16(np + 4, s.ca ?? (s.rep ?? 0) * 2); m.w16(np + 6, s.cmPa ?? s.ca ?? 0); s.cmNp?.slice(0, 21).forEach((v, k) => m.w8(np + 0x0e + k, v)); } }));
       // lønnen −1 (spilstarten, cmStaffWagePrepare): 0x85e960's start har trupstatus 2 i den høje nibble af +0x4f (initContractBytes)
@@ -429,6 +433,7 @@ export function buildWageMem(g: GameState, clubs: Iterable<number>, unset: Set<n
         m.w32(st, id); noContract(id);
         m.w8(st + 0x18, s.dob ? ageOn(s.dob, g.date) : 45); m.w32(st + 0x1a, natAdr(s.nation));
         m.w8(st + 0x57, s.cmHid?.[1] ?? 10);
+        if (s.cmJoined) { const [d, y] = isoDay(s.cmJoined); m.w16(st + 0x3e, d); m.w16(st + 0x40, y); }
         m.w8(st + 0x3d, s.club ? (s.role === 'manager' ? 5 : s.role === 'assistant' ? 6 : s.role === 'coach' ? 8 : s.role === 'scout' ? 9 : 10) : 0);
         m.w32(st + 0x69, npRec(id, (np) => { m.w16(np + 0xa, s.cmRep?.[1] ?? (s.rep ?? 0) * 2); }));
         npStaff.set(s.id, st);

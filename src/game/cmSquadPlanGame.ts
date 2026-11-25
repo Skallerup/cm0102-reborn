@@ -134,7 +134,10 @@ export function cmSquadPlanClub(g: GameState, cid: number, daily: boolean, first
   const { T, R } = clubStrength({ rep, minAtt, status, leagueRep, leagueActive: !!lg && !lg.hidden && !!g.comps[club.league], euroRep, squadCount: count,
     finance: financeStatus(Math.round(club.balance * cmGbp(g, cid)), rep) });
   const st = g.staff[club.manager ?? -1];
-  const mj = st?.career?.[st.career.length - 1]?.from ? dayOf(st.career[st.career.length - 1].from) : { day: 0, year: 1900 };
+  // managerens staff +0x3e (0x6e2f20/0x6e6340 med arg6 = klub +0xcf: snittet ×(1,375 − 0,001·dage) for spillere, der kom efter ham og inden for et
+  // år). Før karrierens seneste 'from' – databasens managere har ingen, så alle nyankomne fik tillægget (Inter 14/7-01: Ventola foran Vieri)
+  const mjIso = st?.cmJoined || st?.career?.[st.career.length - 1]?.from;
+  const mj = mjIso ? dayOf(mjIso) : { day: 0, year: 1900 };
   const today = dayOf(g.date);
   const ind: PlanInput = {
     clubId: cid, daily, first, rep, status, national: false, hasNation: true, activeLeague: !!lg && !lg.hidden && !!g.comps[club.league],

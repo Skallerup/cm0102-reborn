@@ -381,7 +381,7 @@ export function aiPickCtx(clubId: number, aiControlled = false): AiPickCtx | nul
   const tac = gridTacOf(st);
   return {
     date: g.date, gameSeed: g.seed, clubId, ...(natOfClub(clubId) !== null ? { national: true } : {}), manager: st && tac ? { id: st.id, ca: st.ca ?? st.rep * 2, tac } : null,   // ikke-spillerpostens +4 (CA) – 0x6ddab0's 0x544410/0x543f30
-    judge: st ? { id: st.id, ja: shownOf(st.attrs.judgingAbility, 0x17), jp: shownOf(st.attrs.judgingPotential, 0x18), joined: st.career?.[st.career.length - 1]?.from } : null,
+    judge: st ? { id: st.id, ja: shownOf(st.attrs.judgingAbility, 0x17), jp: shownOf(st.attrs.judgingPotential, 0x18), joined: st.cmJoined || st.career?.[st.career.length - 1]?.from } : null,   // dommerens staff +0x3e (0x6e2f20: arg6/klub +0xcf)
     // turneringens navngivne udskiftere (fixture +0x4d & 0xf, 0x5bb100/0x48f2fa – rules.ts benchSize: 5 i 2001, 9 på 2026/27)
     benchSize: benchSize(),
     // taktiklistens statistik 0x896290 (ren kampmotor – også 2026/27 i ægte tilstand, cmLogic); PlayerStats/karaktersnittet kun 2001-verdenen

@@ -132,4 +132,17 @@ describe('K8: kontrakter, økonomi og kondition ved spilstart', () => {
     const s = Object.values(g.staff).find((x) => x.first === 'Dean' && x.last === 'Wilkins');
     if (s) expect(Math.round(s.wage * GBP)).toBe(500);
   });
+
+  it('ikke-spillernes ankomstdato (staff +0x3e) som oraklets: højst 9/6-2001 (Cúper databasens 1/7, Zaccheroni 28/9), klubløse 1/1', () => {
+    const mgr = (club: string) => Object.values(g.staff).find((s) => s.role === 'manager' && g.clubs[s.club]?.name === club)!;
+    expect(mgr('Manchester United').cmJoined).toBe('1986-10-15');   // oraklet dag 287/1986
+    expect(mgr('Liverpool').cmJoined).toBe('1998-08-03');           // 214/1998
+    expect(mgr('Internazionale').cmJoined).toBe('2001-06-09');      // 159/2001
+    expect(mgr('Lazio').cmJoined).toBe('2001-06-09');
+    const free = Object.values(g.staff).filter((s) => !s.club && s.cmJoined !== undefined);
+    expect(free.length).toBeGreaterThan(0);
+    // (klubløse efter forkørslen – fyret/fratrådt i spillet – har dagens dato; oraklet 14/7-01: alle 184 1/1)
+    expect(free.filter((s) => s.cmJoined === '2001-01-01').length / free.length).toBeGreaterThan(0.8);
+    if (process.env.SHOW) console.log(free.filter((s) => s.cmJoined !== '2001-01-01').map((s) => `${s.last} ${s.cmJoined}`).slice(0, 10));
+  });
 });

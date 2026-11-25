@@ -1099,6 +1099,11 @@ function addDbStaff(row: NonNullable<CMWorld['staff']>[number], club: number, ro
       if (inf) inf.coach = `${s.first} ${s.last}`.trim();
     }
   }
+  // staff +0x3e for ikke-spillerne som for spillerne (oraklet 14/7-01, pre-194: alle 184 klubløse ikke-spillere 1/1-2001, med klub højst 9/6-2001 =
+  // spilstarten − 5 uger – Cúper/Inter databasens 1/7 → 9/6, Zaccheroni/Lazio 28/9 → 9/6; uændret fra indlæsningen pre-0). Før stod databasens dato,
+  // så 0x846920 (0x847487: managerens ankomst +0x3e mindre end 150 dage siden → kontraktens status +0x4f, ellers den fortjente 0x4ca470) regnede
+  // den nye manager som gammel
+  if (s.cmJoined !== undefined) s.cmJoined = !club ? `${date.slice(0, 4)}-01-01` : s.cmJoined && s.cmJoined > addDays(date, -35) ? addDays(date, -35) : s.cmJoined;
   if (memSel && memFlag(row) !== undefined) s.cmMem = memOf(row);
   g.staff[s.id] = s;
   return s;
