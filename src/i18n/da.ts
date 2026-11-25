@@ -3123,5 +3123,5 @@ export const da: Record<string, string> = {
   'ui.outOfMemory': "Din enhed har for lidt hukommelse til at oprette spillet. Luk andre faner og programmer, vælg færre ligaer og databasen Minimum (Preferences), eller brug en 64-bit browser. Den mindste database vælges automatisk, når du prøver igen.",
   "cl.run.day": "Dag {d} af {n}", "cl.run.ph.daily": "Daglige opdateringer", "cl.run.ph.transfers": "Transfers og ønskelister …", "cl.run.ph.contracts": "Kontrakter …", "cl.run.ph.finance": "Økonomi …", "cl.run.ph.market": "Transfermarkedet …", "cl.run.ph.news": "Nyheder og spejdere …", "cl.run.ph.matches": "Spiller kampe",
   "cl.neg.cancelBid": "Annuller transferbud på {player} ?",
+  "cl.ps.conceded": "Indkasserede", "cl.ps.pens": "Straffespark", "cl.ps.teamGoals": "Holdets mål", "cl.ps.teamConceded": "Holdets indkasserede", "cl.ps.won": "Vundne kampe", "cl.ps.lost": "Tabte kampe", "cl.ps.yellow": "Gule kort", "cl.ps.red": "Røde kort", "cl.ps.mom": "Kampens spiller", "cl.ps.pass": "Afleveringsprocent", "cl.ps.tackles": "Tacklinger / kamp", "cl.ps.dribbles": "Driblinger / kamp", "cl.ps.sot": "Skud på mål", "cl.ps.avg": "Gennemsnitskarakter",
 };
-

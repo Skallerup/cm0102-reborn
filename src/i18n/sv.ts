@@ -8440,4 +8440,5 @@ Object.assign(sv, {
   'ui.outOfMemory': "Den här enheten har för lite minne för att skapa spelet. Stäng andra flikar och program, välj färre ligor och databasen Minimum (Preferences), eller använd en 64-bitarswebbläsare. Den minsta databasen väljs automatiskt när du försöker igen.",
   "cl.run.day": "Dag {d} av {n}", "cl.run.ph.daily": "Dagliga uppdateringar", "cl.run.ph.transfers": "Transfers och önskelistor …", "cl.run.ph.contracts": "Kontrakt …", "cl.run.ph.finance": "Ekonomi …", "cl.run.ph.market": "Transfermarknaden …", "cl.run.ph.news": "Nyheter och scouter …", "cl.run.ph.matches": "Spelar matcher",
   "cl.neg.cancelBid": "Avbryt övergångsbudet på {player} ?",
+  "cl.ps.conceded": "Insläppta", "cl.ps.pens": "Straffar", "cl.ps.teamGoals": "Lagets mål", "cl.ps.teamConceded": "Lagets insläppta", "cl.ps.won": "Vunna matcher", "cl.ps.lost": "Förlorade matcher", "cl.ps.yellow": "Gula kort", "cl.ps.red": "Röda kort", "cl.ps.mom": "Matchens spelare", "cl.ps.pass": "Passningsprocent", "cl.ps.tackles": "Tacklingar / match", "cl.ps.dribbles": "Dribblingar / match", "cl.ps.sot": "Skott på mål", "cl.ps.avg": "Snittbetyg",
 });

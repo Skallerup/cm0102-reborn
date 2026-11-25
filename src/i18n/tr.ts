@@ -5012,4 +5012,5 @@ Object.assign(tr, {
   'ui.outOfMemory': "Bu cihazın oyunu oluşturmak için yeterli belleği yok. Diğer sekmeleri ve programları kapat, daha az lig ve «Minimum» veritabanını (Preferences) seç ya da 64 bit bir tarayıcı kullan. Yeniden denediğinde en küçük veritabanı otomatik seçilir.",
   "cl.run.day": "Gün {d} / {n}", "cl.run.ph.daily": "Günlük güncellemeler", "cl.run.ph.transfers": "Transferler ve istek listeleri …", "cl.run.ph.contracts": "Sözleşmeler …", "cl.run.ph.finance": "Finans …", "cl.run.ph.market": "Transfer piyasası …", "cl.run.ph.news": "Haberler ve gözlemciler …", "cl.run.ph.matches": "Maçlar oynanıyor",
   "cl.neg.cancelBid": "{player} için transfer teklifi iptal edilsin mi ?",
+  "cl.ps.conceded": "Yenen Goller", "cl.ps.pens": "Penaltılar", "cl.ps.teamGoals": "Takım Golleri", "cl.ps.teamConceded": "Takımın Yediği Goller", "cl.ps.won": "Kazanılan Maçlar", "cl.ps.lost": "Kaybedilen Maçlar", "cl.ps.yellow": "Sarı Kartlar", "cl.ps.red": "Kırmızı Kartlar", "cl.ps.mom": "Maçın Adamı", "cl.ps.pass": "Pas İsabeti", "cl.ps.tackles": "Top Kapma / Maç", "cl.ps.dribbles": "Çalım / Maç", "cl.ps.sot": "İsabetli Şutlar", "cl.ps.avg": "Ortalama Puan",
 });

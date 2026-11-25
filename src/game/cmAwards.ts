@@ -58,6 +58,8 @@ const lc = (s: string) => s.toLowerCase();
 const BY_NAME = new Map<string, number>();
 for (const a of AWARDS) if (!BY_NAME.has(lc(a[1]))) BY_NAME.set(lc(a[1]), a[0]);
 export const cmAwardName = (id: number) => AWARDS[id]?.[1] ?? '';
+/** prisens korte navn (View-menuens tekst: "Team of the Week", "Players Team of the Year") */
+export const cmAwardShort = (id: number) => AWARDS[id]?.[2] || AWARDS[id]?.[1] || '';
 /** databasens tidligere vindere (staff_comp_history.dat): [år, [1., 2., 3.]] */
 export const cmAwardHistory = (id: number, g?: GameState) => (g?.cmAwHist ? g.cmAwHist[id] : HISTORY[String(id)]) ?? [];
 

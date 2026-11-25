@@ -3092,5 +3092,5 @@ export const en: Record<string, string> = {
   'ui.outOfMemory': "This device has too little memory to create the game. Close other tabs and programs, choose fewer leagues and the Minimum database (Preferences), or use a 64-bit browser. The smallest database is chosen automatically when you try again.",
   "cl.run.day": "Day {d} of {n}", "cl.run.ph.daily": "Daily updates", "cl.run.ph.transfers": "Transfers and shortlists …", "cl.run.ph.contracts": "Contracts …", "cl.run.ph.finance": "Finances …", "cl.run.ph.market": "Transfer market …", "cl.run.ph.news": "News and scouting …", "cl.run.ph.matches": "Playing matches",
   "cl.neg.cancelBid": "Cancel transfer bid for {player} ?",
+  "cl.ps.conceded": "Conceded", "cl.ps.pens": "Penalties", "cl.ps.teamGoals": "Team Goals", "cl.ps.teamConceded": "Team Conceded", "cl.ps.won": "Games Won", "cl.ps.lost": "Games Lost", "cl.ps.yellow": "Yellow Cards", "cl.ps.red": "Red Cards", "cl.ps.mom": "Man of Match", "cl.ps.pass": "Pass Completion", "cl.ps.tackles": "Tackles / Game", "cl.ps.dribbles": "Dribbles / Game", "cl.ps.sot": "Shots On Target", "cl.ps.avg": "Average Rating",
 };
-

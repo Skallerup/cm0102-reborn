@@ -18,8 +18,9 @@ import { authentic, origLogic } from '../../game/rules';
 import { OrigStages } from './OrigStages';
 import { resultStr, stageLabel } from './Fixtures';
 import { ClassicCup } from './CupClassic';
+import { ClassicPlayerStats } from './PlayerStatsClassic';
 import { ClassicCompHistory } from './CompHistoryClassic';
-import { ClassicSub, CxDrop, cxShortDate } from '../classic';
+import { ClassicSub, CxDrop, PrintMenu, cxShortDate } from '../classic';
 import { rebornOn } from '../reborn';
 
 export function Competitions({ id }: { id?: string }) {
@@ -43,7 +44,7 @@ export function Competitions({ id }: { id?: string }) {
   const ordered = comps.slice().sort((a, b) => order(a) - order(b) || a.name.localeCompare(b.name));
   return (
     <div>
-      <Head title={compName(comp?.name) ?? t('nav.competitions')}>
+      <Head title={compName(comp?.name) ?? t('nav.competitions')} action={comp && isRetro() && comp.type === 'league' && tab === 'scorers' ? <PrintMenu /> : undefined}>
         {/* CM 01/02 har ingen turneringsliste her (turneringerne vælges i sidebjælkens Competitions-menu) */}
         {!isRetro() && <Select value={comp?.id ?? ''} onChange={(v) => { setCid(v); setTab('table'); }} width={260}
           options={ordered.map((c) => ({ value: c.id, label: compName(c.name), group: g.draft ? t('dr.title') : c.nation >= 0 ? natName(g.nations[c.nation]?.name) : t('comp.europe') }))} />}
@@ -62,7 +63,7 @@ export function Competitions({ id }: { id?: string }) {
           {tab === 'fixtures' && <CompFixtures comp={comp} mode="fixtures" />}
           {tab === 'schedule' && <CompSchedule comp={comp} onPick={() => setTab('fixtures')} />}
           {tab === 'stats' && <LeagueStats comp={comp} />}
-          {tab === 'scorers' && <Scorers comp={comp} />}
+          {tab === 'scorers' && <ClassicPlayerStats comp={comp} />}
           {tab === 'history' && <CompHistory comp={comp} />}
           {tab === 'refs' && <RefereeStats comp={comp} />}
           <ClassicSub items={[

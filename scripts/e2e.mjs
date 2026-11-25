@@ -2111,6 +2111,46 @@ async function run(look) {
     await gs(() => { const g = window.__cm.gs(); g.cmAw.won = g.cmAw.won.filter((w) => !(w.a === 11 && w.d === '2001-08-31' && w.w[0]?.club === g.userClub)); return 0; });
     await checkScreen('awards');
   });
+  // CM 01/02: Awards → Team of the Week – View med turneringens seks priser (korte navne), gul titel, liste med nummer/klub og den grønne bane
+  // med de elleve som cirkler i klubfarver (efternavn under), reserverne nedtonede
+  if (look === 'klassisk' && ENGINE_GRID) await step('Awards: Team of the Week (liste + bane)', async () => {
+    await gs(() => {
+      const g = window.__cm.gs();
+      const ps = Object.values(g.players).filter((x) => x.club === g.userClub).slice(0, 14);
+      const masks = [1, 0x804, 0x84, 0x204, 0x204, 0x210, 0x810, 0x210, 0x240, 0x240, 0x90, 1, 0x40, 4];
+      const aw = (g.cmAw ??= { mr: { y: 2001, m: 8, r: {} }, cs: {}, mg: {}, mgM: '2001-08', won: [] });
+      aw.won.push({ a: 19, y: 2001, d: '2002-05-12', w: [], team: ps.map((p, i) => [p.id, p.club, masks[i]]) });
+      return 0;
+    });
+    await go({ name: 'awards', state: { awId: 19 } });
+    await page.waitForSelector('.cx-aw-pitch', { timeout: 5000 }).catch(async (e) => { console.log('DEBUG', (await page.locator('body').innerText()).slice(0, 600)); throw e; });
+    if (!/English Premier Division Team of the Week/.test(await page.locator('.cx-aw-band').innerText())) throw new Error('den gule titel er ikke prisens fulde navn');
+    if ((await page.locator('.cx-aw-pitch .cx-aw-dot').count()) !== 11) throw new Error('banen skal have 11 spillere');
+    if ((await page.locator('.cx-aw-row').count()) !== 14 || (await page.locator('.cx-aw-row.sub').count()) !== 3) throw new Error('listen skal have 11 + 3 reserver');
+    if (!(await page.locator('.cx-aw-pitch .cx-aw-pn').first().innerText()).trim()) throw new Error('efternavnet under cirklen mangler');
+    await page.locator('.cx-awards .cx-drop-btn', { hasText: 'View' }).first().click();
+    const views = (await page.locator('.cx-drop-pop [role=menuitemcheckbox]').allTextContents()).map((x) => x.replace('✓', '').trim());
+    if (views.join('|') !== 'Team of the Week|Manager of the Month|Player of the Month|Young Player of the Month|Manager of the Year|Players Team of the Year') throw new Error(`View-menuen: ${views.join('|')}`);
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-awards-team-of-the-week.png` });
+    await page.keyboard.press('Escape');
+    await gs(() => { const g = window.__cm.gs(); g.cmAw.won = g.cmAw.won.filter((w) => !(w.a === 19 && w.d === '2002-05-12')); return 0; });
+  });
+  // CM 01/02: liga → Player Stats – View med de 17 arter (Average Rating valgt), Filter, Print, liste med lilla værdikasser
+  if (look === 'klassisk') await step('Liga: Player Stats (View/Filter/Print)', async () => {
+    const lg = await gs(() => { const g = window.__cm.gs(); return g.clubs[g.userClub].league; });
+    await go({ name: 'competitions', id: lg, tab: 'scorers', state: { tab: 'scorers' } });
+    await page.waitForSelector('.cx-ps', { timeout: 5000 }).catch(async (e) => { console.log('DEBUG', (await page.locator('body').innerText()).slice(0, 600)); throw e; });
+    if (!(await page.locator('.cx-print').count())) throw new Error('Print mangler på Player Stats');
+    if (!(await page.locator('.cx-ps-filter').count())) throw new Error('Filter mangler på Player Stats');
+    await page.locator('.cx-tools .cx-drop-btn', { hasText: 'View' }).first().click();
+    const views = (await page.locator('.cx-drop-pop [role=menuitemcheckbox]').allTextContents()).map((x) => x.replace('✓', '').trim());
+    const want = 'Appearances|Goals|Conceded|Penalties|Assists|Team Goals|Team Conceded|Games Won|Games Lost|Yellow Cards|Red Cards|Man of Match|Pass Completion|Tackles / Game|Dribbles / Game|Shots On Target|Average Rating';
+    if (views.join('|') !== want) throw new Error(`View-menuen: ${views.join('|')}`);
+    await page.locator('.cx-drop-pop [role=menuitemcheckbox]', { hasText: 'Goals' }).first().click();
+    if (!/^Goals$/.test((await page.locator('.cx-ps-head').innerText()).trim())) throw new Error('overskriften følger ikke View-valget');
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-liga-player-stats.png` });
+    await checkScreen('competitions');
+  });
   // CM 01/02: også computerklubbernes kampe kan ses som kampskærmen efter slutfløjt (kompakt rapport, g.miniReports)
   if (look === 'klassisk') await step('computerkamp som kampskærm (Player Ratings)', async () => {
     const id = await gs(() => { const g = window.__cm.gs(); return Object.keys(g.miniReports ?? {}).map(Number).find((i) => g.fixtures[i]?.result && g.fixtures[i].comp !== 'FRIENDLY'); });

@@ -8440,4 +8440,5 @@ Object.assign(nb, {
   'ui.outOfMemory': "Denne enheten har for lite minne til å opprette spillet. Lukk andre faner og programmer, velg færre ligaer og databasen Minimum (Preferences), eller bruk en 64-biters nettleser. Den minste databasen velges automatisk når du prøver igjen.",
   "cl.run.day": "Dag {d} av {n}", "cl.run.ph.daily": "Daglige oppdateringer", "cl.run.ph.transfers": "Transfers og ønskelister …", "cl.run.ph.contracts": "Kontrakter …", "cl.run.ph.finance": "Økonomi …", "cl.run.ph.market": "Overgangsmarkedet …", "cl.run.ph.news": "Nyheter og speidere …", "cl.run.ph.matches": "Spiller kamper",
   "cl.neg.cancelBid": "Avbryt overgangsbudet på {player} ?",
+  "cl.ps.conceded": "Innsluppet", "cl.ps.pens": "Straffer", "cl.ps.teamGoals": "Lagets mål", "cl.ps.teamConceded": "Lagets innsluppne", "cl.ps.won": "Vunne kamper", "cl.ps.lost": "Tapte kamper", "cl.ps.yellow": "Gule kort", "cl.ps.red": "Røde kort", "cl.ps.mom": "Kampens spiller", "cl.ps.pass": "Pasningsprosent", "cl.ps.tackles": "Taklinger / kamp", "cl.ps.dribbles": "Driblinger / kamp", "cl.ps.sot": "Skudd på mål", "cl.ps.avg": "Snittkarakter",
 });
