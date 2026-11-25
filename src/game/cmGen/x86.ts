@@ -46,7 +46,13 @@ export const SHARED = { on: false };
 /** den registrerede funktion på adressen eller undefined */
 export function implGet(adr: number): Impl | undefined { return IMPL.get(adr); }
 export function implOf(adr: number): Impl { const f = IMPL.get(adr); if (!f) throw new Error(`implOf: 0x${adr.toString(16)}`); return f; }
-export function registerImpl(adr: number, f: Impl, gen = false): void { IMPL.set(adr, f); if (gen) { GENSET.add(adr); GENF.set(adr, f); } else { GENSET.delete(adr); GENF.delete(adr); } }
+export function registerImpl(adr: number, f: Impl, gen = false): void { IMPL.set(adr, f); FAST2.delete(adr); if (gen) { GENSET.add(adr); GENF.set(adr, f); } else { GENSET.delete(adr); GENF.delete(adr); } }
+/** (hastighed, 25/11) en porteret funktion med højst to argumenter, der læses som `a[i] >>> 0` (et manglende argument = 0, som undefined >>> 0):
+ *  X86.call kalder den med argumenterne som tal i stedet for en ny argumentliste pr. kald (de hyppigste – 0x4cf5f0, 0x547810, 0x53b900 … – kaldes
+ *  millioner af gange ved spilstarten). Samme svar; registerImpl på adressen fjerner genvejen igen */
+export type Impl2 = (c: CmCtx, ecx: number, a0: number, a1: number) => number;
+const FAST2 = new Map<number, Impl2>();
+export function registerImpl2(adr: number, f: Impl2): void { registerImpl(adr, (c, e, a) => f(c, e, a[0] | 0, a[1] | 0)); FAST2.set(adr, f); }
 /** (hastighed, runde 12) værtsfunktioner for kald, hvis svar ejeren af hukommelsen `m` giver uden for de oversatte funktioner (adapterne) –
  *  springer kaldkæden (argumentlister, genCtx → c.call → adapterens switch) over. Funktionen læser argumenterne af stakken (R.esp = første
  *  argument, R.ecx = this) og giver svaret; den må ikke kalde oversatte funktioner. Kun når R.m === m (sættes og nulstilles af ejeren). */
@@ -242,6 +248,18 @@ export class X86 {
       }
     }
     if (SHARED.on) { const f = GENF.get(adr); if (f !== undefined && !(this.c.useLog && this.c.useLog(adr))) { this.shared(f); if (this.c.probe) this.c.probe(adr, cv.float ? this.st[0] : this.eax); return; } }
+    const f2 = FAST2.get(adr);
+    if (f2 !== undefined && !(this.c.useLog && this.c.useLog(adr))) {
+      const m = this.m, n = cv.n, sp = this.esp;
+      const a0 = n > 0 ? m.s32(sp >>> 0) : 0, a1 = n > 1 ? m.s32((sp + 4) >>> 0) : 0;
+      const saved = top;
+      top = (this.esp - 4) | 0;
+      let r: number;
+      try { r = f2(this.c, this.ecx, a0, a1); this.c.probe?.(adr, r); } finally { top = saved; }
+      if (cv.float) this.fpush(r); else this.eax = r | 0;
+      if (cv.calleeClean) this.esp = (this.esp + 4 * cv.n) | 0;
+      return;
+    }
     const args: number[] = [];
     for (let i = 0; i < cv.n; i++) args.push(this.m.s32((this.esp + 4 * i) >>> 0));
     const saved = top;

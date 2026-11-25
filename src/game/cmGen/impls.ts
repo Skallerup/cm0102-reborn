@@ -1,6 +1,6 @@
 // De porterede funktioner, som de mekanisk oversatte (f_*.ts) kalder direkte – med originalens kaldkonvention: (ecx, stakkens argumenter).
 // Ikke-porterede funktioner går til c.call (sporet i kontrollen, spillets adapter i spillet).
-import { registerImpl, setCrt } from './x86';
+import { registerImpl, registerImpl2, setCrt } from './x86';
 import { msvcQsort } from '../engine/grid/subs';
 import { crtPow } from '../engine/crtMath';
 import { getContract, G } from '../cmMem';
@@ -19,8 +19,8 @@ export function ensureImpls(): void {
   done = true;
   setCrt(msvcQsort, crtPow);
   const wrDt = (m: import('../cmMem').CmMem, a: number, t: { d: number; y: number; x: number }) => { m.w16(a, t.d); m.w16(a + 2, t.y); m.w32(a + 4, t.x); };
-  registerImpl(0x4cf5a0, (c, _e, a) => getContract(c.m, a[0] >>> 0));
-  registerImpl(0x4cf5f0, (c, _e, a) => contractForClub_4cf5f0(c, a[0] >>> 0, a[1] >>> 0));
+  registerImpl2(0x4cf5a0, (c, _e, a0) => getContract(c.m, a0 >>> 0));
+  registerImpl2(0x4cf5f0, (c, _e, a0, a1) => contractForClub_4cf5f0(c, a0 >>> 0, a1 >>> 0));
   registerImpl(0x4ca470, (c, _e, a) => deservedStatus_4ca470(c.m, a[0] >>> 0, a[1]));
   registerImpl(0x85e410, (c, e) => { constructContract_85e410(c.m, e >>> 0); return e; });
   registerImpl(0x54a110, (c, e) => { dateInit_54a110(c.m, e >>> 0); return e; });
@@ -33,12 +33,12 @@ export function ensureImpls(): void {
   registerImpl(0x5a0590, (c, _e, a) => getClubFinance_5a0590(c, a[0] >>> 0));
   registerImpl(0x669bd0, (c, _e, a) => clubInSeason_669bd0(c, a[0] >>> 0, a[1] >>> 0, a[2] >>> 0));
   registerImpl(0x540a50, (c, _e, a) => linkedClub_540a50(c.m, a[0] >>> 0, a[1] >>> 0, a[2]));
-  registerImpl(0x53d7f0, (c, _e, a) => bigClub_53d7f0(c.m, a[0] >>> 0));
-  registerImpl(0x547810, (c, _e, a) => (staffFavourite_547810(c.m, a[0] >>> 0, a[1] >>> 0) ? 1 : 0));
-  registerImpl(0x547790, (c, _e, a) => (clubFavourite_547790(c.m, a[0] >>> 0, a[1] >>> 0) ? 1 : 0));
-  registerImpl(0x4d0c20, (c, _e, a) => wageOf_4d0c20(c.m, a[0] >>> 0));
+  registerImpl2(0x53d7f0, (c, _e, a0) => bigClub_53d7f0(c.m, a0 >>> 0));
+  registerImpl2(0x547810, (c, _e, a0, a1) => (staffFavourite_547810(c.m, a0 >>> 0, a1 >>> 0) ? 1 : 0));
+  registerImpl2(0x547790, (c, _e, a0, a1) => (clubFavourite_547790(c.m, a0 >>> 0, a1 >>> 0) ? 1 : 0));
+  registerImpl2(0x4d0c20, (c, _e, a0) => wageOf_4d0c20(c.m, a0 >>> 0));
   registerImpl(0x864550, (c, _e, a) => defaultStaffContract_864550(c, a[0] >>> 0, a[1] >>> 0, a[2], a[3], a[4], a[5]));
-  registerImpl(0x53b900, (c, _e, a) => { const m = c.m, club = a[0] >>> 0; return club !== 0 && m.s32(club) >= m.s32(0xae235c) - 2 * m.s32(0xae2350) ? 1 : 0; });
+  registerImpl2(0x53b900, (c, _e, a0) => { const m = c.m, club = a0 >>> 0; return club !== 0 && m.s32(club) >= m.s32(0xae235c) - 2 * m.s32(0xae2350) ? 1 : 0; });
   // operator delete 0x944c94: hukommelsen frigives ikke (SparseMem) – intet at gøre
   registerImpl(0x944c94, () => 0);
   for (const [a, f] of Object.entries(GEN)) registerImpl(+a, f);
