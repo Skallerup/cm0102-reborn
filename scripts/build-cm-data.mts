@@ -345,6 +345,12 @@ if (!ORIGINAL && files['nation.dat']) {
     // byernes navne (city.dat +4) for de tilkomne klubbers stadioner
     const cn = wa.cmRaw.cityNames as Record<number, string> | undefined;
     if (cn) { const dn = ((w.cmRaw as { cityNames?: Record<number, string> }).cityNames ??= {}); for (const id of euroKeep) { const ci = wa.cmRaw.crowd?.[id]?.[4]; if (ci !== undefined && cn[ci]) dn[ci] = cn[ci]; } }
+    // (24/11) stadion.dat-posterne pr. stadion (crowd[3]): siddepladserne/udvidelsen +64/+68 (0x599e00 – Conference-oprykkerens stadionkrav) og
+    // nabostadionet +72 – før kun for world.json's klubbers stadioner, så de skjulte klubber fik sæder = kapaciteten
+    for (const k of ['seats', 'stadNear'] as const) {
+      const src = wa.cmRaw[k] as Record<number, unknown> | undefined, dst = (w.cmRaw[k] ??= {} as never) as Record<number, unknown>;
+      if (src) for (const id of euroKeep) { const st = wa.cmRaw.crowd?.[id]?.[3]; if (st !== undefined && st >= 0 && src[st] !== undefined) dst[st] = src[st]; }
+    }
   }
   for (const id of euroKeep) if (wa.clubFinance?.[id]) (w.clubFinance ??= {})[id] = wa.clubFinance[id];
   euroClubs = out;

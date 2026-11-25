@@ -235,6 +235,8 @@ export function createGameBase(world: WorldData, o: NewGameOptions): NewGameCtx 
     if (raw.compRep) g.cmCompRep = { ...raw.compRep };
     if (raw.crowd) g.cmCrowd = Object.fromEntries(Object.entries(raw.crowd).map(([k, v]) => [k, v.slice()])) as GameState['cmCrowd'];
     if (raw.stadNear) g.cmStadNear = { ...raw.stadNear };
+    // (24/11) stadium.dat +64/+68 siddepladserne og udvidelsen (0x599e00 Conference-oprykkerens stadionkrav, 0x59ed70 tribunelukningen) – som 2001
+    if (raw.seats) g.cmStadium = Object.fromEntries(Object.entries(raw.seats).map(([k, v]) => [k, v.slice()])) as GameState['cmStadium'];
     if (raw.cities) g.cmCities = raw.cities.slice();
     if (raw.cityNames) g.cmCityNames = { ...raw.cityNames };
     if (raw.nation7e) g.cmNation7e = raw.nation7e.slice();
