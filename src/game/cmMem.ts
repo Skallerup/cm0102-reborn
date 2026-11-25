@@ -69,8 +69,19 @@ export class SparseMem implements CmMem {
     if (t === NOPAGES) { t = TPOOL.pop() ?? new Array(1024).fill(null); this.dir[p >>> 10] = t; }
     t[p & 1023] = nb;
     this.pages.set(p, nb);
-    this.miss?.(p, this);
+    if (this.miss) { this.miss(p, this); return t[p & 1023]!; }      // (miss kan have lagt en anden side ind – adoptPage)
     return nb;
+  }
+  /** (hukommelse, 25/11) kun fra `miss` for siden p, der netop er lavet her: `src`'s side p flyttes hertil i stedet for at blive kopieret (den nye,
+   *  tomme side går tilbage til puljen). `src` mister siden – kun når den ikke bruges til siden igen (ønskelisternes portioner, cmSlMem.ts). */
+  adoptPage(p: number, src: SparseMem): boolean {
+    const st = src.dir[p >>> 10], b = st[p & 1023];
+    if (b === null) return false;
+    st[p & 1023] = null; src.pages.delete(p);
+    const t = this.dir[p >>> 10], nb = t[p & 1023];
+    t[p & 1023] = b; this.pages.set(p, b);
+    if (nb && nb !== b && POOL.length < POOL_MAX && !VIEWS.has(nb)) POOL.push(nb);
+    return true;
   }
   /** (hastighed) siden med adressen til læsning – samme som u8/u32 læser (egen, den underliggende eller en ny via `miss`) */
   readPage(a: number): Uint8Array { return this.rp((a >>> 0) >>> PAGE); }

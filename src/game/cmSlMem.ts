@@ -341,7 +341,10 @@ function zeroId(m: SparseMem, id: number): void {
 export function buildSlWantMem(g: GameState, clubs: Iterable<number>, opts: { call?: (adr: number, a: number[]) => number | undefined; useLog?: (adr: number) => boolean;
   /** (hastighed) spillere, hvis poster ingen læser, før deres klubs trupplan eller bud kører (cmShortlistGame.ts staleOk): beholder gårsdagens
    *  poster (når id, klub og kontrakt er de samme), indtil `refreshClub(klub)` skriver dem (WantMem.refreshClub) */
-  stale?: (p: Player, cid: number) => boolean }): WantMem & { refreshClub?: (cid: number, pids?: Set<number>) => number[]; deferredPids?: { has(pid: number): boolean }; pidStaff?: (pid: number) => number | undefined; staffMemId?: (sid: number) => number | undefined; slState?: () => SlWantState; slRestore?: (s: SlWantState) => void } {
+  stale?: (p: Player, cid: number) => boolean;
+  /** (hukommelse, 25/11 – ønskelisternes portioner ved spilstarten) dagens hukommelse overtager den varige hukommelses side ved første skrivning i
+   *  stedet for at kopiere den: den varige læses kun for de sider, dagens ikke har, og bruges ikke igen (kalderen nulstiller den – resetSlBase) */
+  moveBase?: boolean }): WantMem & { refreshClub?: (cid: number, pids?: Set<number>) => number[]; deferredPids?: { has(pid: number): boolean }; pidStaff?: (pid: number) => number | undefined; staffMemId?: (sid: number) => number | undefined; slState?: () => SlWantState; slRestore?: (s: SlWantState) => void } {
   let tq = tnow();
   gbpOf = (cid) => cmGbp(g, cid);
   const incr = ENV.CM_SL_INCR !== '0';
@@ -471,7 +474,8 @@ export function buildSlWantMem(g: GameState, clubs: Iterable<number>, opts: { ca
 
   SLMEM_T.p += tnow() - tq; tq = tnow();
   // ---------------------------------------------------------------- dagens hukommelse: kopi af den varige ved første brug + resten
-  const m = new SparseMem((pg, mem) => { const src = P.page(pg, false); if (src) { mem.page(pg, false)!.set(src); SLMEM_STATS.copied++; } }, ENV.CM_SL_READTHRU === '0' ? undefined : P);
+  const m = new SparseMem(opts.moveBase ? (pg, mem) => { if (mem.adoptPage(pg, P)) SLMEM_STATS.copied++; }
+    : (pg, mem) => { const src = P.page(pg, false); if (src) { mem.page(pg, false)!.set(src); SLMEM_STATS.copied++; } }, ENV.CM_SL_READTHRU === '0' ? undefined : P);
   UNDER.set(m, P);
   const wc: CmCtx = { m, rand: () => { throw new Error('cmWageGame: rand'); }, call: (adr, ...a) => cmMemCall(wc, adr, ...a) };
   let maxClub = 0;

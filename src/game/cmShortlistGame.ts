@@ -1632,7 +1632,7 @@ function smallWantMem(g: GameState, clubs: number[], hold: { S?: SlMem }): WantM
 }
 
 /** Bygger dagens hukommelse (alle klubber, de klubløse, pladserne, parrene, buddene, positionslisterne) */
-export function buildSlMem(g: GameState, opts: { noStale?: boolean; resume?: SlResume } = {}): SlMem {
+export function buildSlMem(g: GameState, opts: { noStale?: boolean; resume?: SlResume; moveBase?: boolean } = {}): SlMem {
   ensureCmp();
   // (portionerne) som en ny arbejder: ingen varig hukommelse fra forrige portion (ellers udskydes spillerne – cmSlMem.ts stale)
   if (opts.resume) resetSlBase(g);
@@ -1764,7 +1764,7 @@ export function buildSlMem(g: GameState, opts: { noStale?: boolean; resume?: SlR
   let t = now();
   const all = Object.keys(g.clubs).map(Number), useLog = (adr: number) => ADAPTED.has(adr);
   // cmSlMem.ts: samme hukommelse som buildWantMem(…, { full: true }), hurtigere (CM_SL_OLDMEM=1: den oprindelige; CM_SL_MEMCHECK=1: begge, sammenlignet)
-  const M = ENV.CM_SL_OLDMEM === '1' ? buildWantMem(g, all, { full: true, call, useLog }) : buildSlWantMem(g, all, { call, useLog, stale: opts.noStale || ENV.CM_SL_MEMCHECK === '1' || ENV.CM_SL_STALE === '0' ? undefined : staleOk(g) });
+  const M = ENV.CM_SL_OLDMEM === '1' ? buildWantMem(g, all, { full: true, call, useLog }) : buildSlWantMem(g, all, { call, useLog, stale: opts.noStale || ENV.CM_SL_MEMCHECK === '1' || ENV.CM_SL_STALE === '0' ? undefined : staleOk(g), moveBase: opts.moveBase });
   if (STALECHECK.on) staleCheck(g, M, call, useLog);
   if (ENV.CM_SL_MEMCHECK === '1') {
     const O = buildWantMem(g, all, { full: true, call, useLog });
@@ -2448,7 +2448,11 @@ export function cmShortlistStartPart(g: GameState, part: number, parts: number, 
   if (!cmShortlistOn(g) || !g.cmPlan || ENV.CM_SL_START === '0') return { resume: null, events: [] };
   if (part > 0 && !resume) throw new Error('cmShortlistStartPart: ingen tilstand fra forrige portion');
   const t0 = typeof performance !== 'undefined' ? performance.now() : 0;
-  const S = buildSlMem(g, resume ? { resume } : {});
+  // (hukommelse, 25/11) i portioner (hver i sin arbejder): dagens hukommelse overtager den varige hukommelses sider i stedet for at kopiere dem
+  // (cmSlMem.ts moveBase – før lå de sider, løkken skrev i, to gange i hukommelsen: Minimum ~3.200 sider/13 MB, Maximum ~6.300/26 MB pr. portion);
+  // den varige nulstilles bagefter (resetSlBase), så en senere hukommelse i samme arbejder bygges forfra
+  const move = parts > 1 && ENV.CM_SL_MOVEBASE !== '0';
+  const S = buildSlMem(g, { ...(resume ? { resume } : {}), moveBase: move });
   // stabens mål (cmStaffMove.ts afterBudget → staffSearch) deler personlisten for hele løkken (cmBoardGame.ts withSharedPersons)
   const clubs = Object.values(g.clubs), prog = SL_START_PROGRESS.cb;
   let progT = 0;
@@ -2476,11 +2480,13 @@ export function cmShortlistStartPart(g: GameState, part: number, parts: number, 
       values: { date: e.date, v, skipped: Int32Array.from(e.skipped), lazy } };
     (S.m as SparseMem).release();
     VALUES.delete(g);
+    if (move) resetSlBase(g);
     if (t0) SL_STATS.startMs += performance.now() - t0;
     return { resume: out };
   }
   const ev = finishSl(S);
   (S.m as SparseMem).release();
+  if (move) resetSlBase(g);
   if (t0) SL_STATS.startMs += performance.now() - t0;
   return { resume: null, events: ev };
 }
