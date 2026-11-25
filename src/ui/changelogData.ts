@@ -9,6 +9,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.38.0',
+    date: '2026-11-26',
+    title: { da: 'Mere af det originale CM 01/02', en: 'More of the original CM 01/02' },
+    items: [
+      { da: "Computerens jobkandidater vurderes som i originalen: formandens forenelighed med kandidaten tæller med, og i nye spil får stab uden fødselsdato originalens alder (født 1940–65).", en: "Computer job candidates are rated as in the original: the chairman's compatibility with the candidate now counts, and in new games staff without a date of birth get the original's age (born 1940–65)." },
+    ],
+  },
+  {
     version: '0.37.0',
     date: '2026-11-25',
     title: { da: 'Mere af det originale CM 01/02', en: 'More of the original CM 01/02' },
