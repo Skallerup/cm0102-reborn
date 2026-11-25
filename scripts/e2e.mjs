@@ -103,7 +103,10 @@ async function run(look) {
     const before = errors.length;
     const t0 = Date.now();
     try {
-      await fn();
+      // (25/11) et trin, der hænger (fx page.evaluate uden tidsgrænse), må ikke låse hele udgivelsen: STEP_TIMEOUT_MS (standard 15 min) pr. trin
+      let timer;
+      const limit = Number(process.env.STEP_TIMEOUT_MS ?? 900000);
+      await Promise.race([fn(), new Promise((_, rej) => { timer = setTimeout(() => rej(new Error(`trinnet hang i over ${Math.round(limit / 1000)} s`)), limit); })]).finally(() => clearTimeout(timer));
       if (errors.length > before) throw new Error(`sidefejl: ${errors.slice(before).join(' | ')}`);
       console.log(`  ✓ ${look}: ${name} (${Date.now() - t0} ms)`);
     } catch (e) {
