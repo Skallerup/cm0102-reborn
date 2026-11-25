@@ -32,7 +32,7 @@ import { answerBet, proposeBet, sendJab } from './rivalry';
 import { isHumanClub, removeHuman } from './humans';
 import { addNews, gs, notify, pickNumber, squad } from './state';
 import {
-  acceptCounter, bidNow, completeTransfer, enquire, loanOut, makeBid, rebid, negotiate, raiseBid, releasePlayer, renewContract, offerRenewalLater, respondToOffer, setListPrice, startPreContract, toggleListed, recallLoan } from './transfers';
+  acceptCounter, bidNow, cmCompleteAgreed, enquire, loanOut, makeBid, rebid, negotiate, raiseBid, releasePlayer, renewContract, offerRenewalLater, respondToOffer, setListPrice, startPreContract, toggleListed, recallLoan } from './transfers';
 import { addBot } from './bots';
 import { markChatRead, sendChat } from './chat';
 import type { RejectReason } from './will';
@@ -292,7 +292,7 @@ export function applyAction(a: Action): unknown {
     }
     case 'cmOfferRole': { const o = myOffer(a.pid); if (o) { o.cmRole = a.role; return 'ok'; } const so = mySwapTalk(a.pid); return so && cmSwapRole(so, a.pid, a.role) ? 'ok' : 'error'; }
     case 'negotiate': { const o = myOffer(a.pid); if (o) return negotiate(o.id, a.wage, a.years, a.clauses); const so = mySwapTalk(a.pid); return so ? cmSwapOffer(so, a.pid, a.wage, a.years, a.clauses) : 'refused'; }
-    case 'cmConfirm': { const o = gs().offers.find((x) => x.id === a.offer); return o ? cmConfirmAnswer(o, a.answer, completeTransfer) : 'refused'; }
+    case 'cmConfirm': { const o = gs().offers.find((x) => x.id === a.offer); return o ? cmConfirmAnswer(o, a.answer, cmCompleteAgreed) : 'refused'; }
     case 'renew': return renewContract(a.pid, a.wage, a.years, a.clauses);
     case 'nickname': return setNickname(a.pid, a.nick);
     case 'reserves': {

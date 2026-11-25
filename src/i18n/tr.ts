@@ -4592,7 +4592,7 @@ Object.assign(tr, {
   "transfer.cm7.b.plain": "{club}, {from} kulübünden {player} oyuncusuna sözleşme teklif etti.",
   "transfer.cm7.comp": "\n\nAnlaşma gerçekleşirse {from} {fee} tazminat alacak",
   "transfer.cmAgreed": "{to}, {player} oyuncusunu alıyor",
-  "transfer.cmAgreed.body": "{player} oyuncusunun {from} kulübünden {to} kulübüne transferinde anlaşma sağlandı.\n\nTransfer {date} tarihinde gerçekleşecek.",
+  "transfer.cmAgreed.body": "{player} oyuncusunun {from} kulübünden {to} kulübüne transferinde anlaşma sağlandı.\n\nTransfer {date} tarihinde gerçekleşecek.", "cm.confirm.noClub": "{player} transfer edilsin mi?", "transfer.cmAgreed.bodyFree": "{player} oyuncusunun {to} kulübüne transferinde anlaşma sağlandı.\n\nTransfer {date} tarihinde gerçekleşecek.", "transfer.preContract.body": "{player}, sözleşmesi sona erdiğinde Bosman kuralı uyarınca {from} kulübünden ayrılıp bedelsiz olarak {club} kulübüne katılmaya karar verdi.",
   "transfer.cmAgreed.bodyFee": "{player} oyuncusunun {from} kulübünden {to} kulübüne {fee} karşılığında transferinde anlaşma sağlandı.\n\nTransfer {date} tarihinde gerçekleşecek.",
   "cl.pl.workPermit": "Çalışma izni",
   "cl.pl.permit11": "1 maç oynadı, 1 maç kaçırdı (%50)",

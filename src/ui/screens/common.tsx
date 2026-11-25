@@ -253,7 +253,11 @@ function bodyKey(n: NewsItem): string {
   if (n.key === 'transfer.cm7') return `transfer.cm7.b.${String(n.params?.body ?? 'plain')}`;
   // 0x8e2570: lejen annulleret – brødteksten pr. grund (med "{klub}'s" når modtageren ikke styrer spillerens klub)
   if (n.key === 'transfer.cmLoanCancelled') return `transfer.cmLoanCancelled.b.${String(n.params?.body ?? 'deadline')}`;
-  if (n.key === 'transfer.cmAgreed') return n.params?.fee ? 'transfer.cmAgreed.bodyFee' : 'transfer.cmAgreed.body';
+  // 0xfb3 (0x8e08e0): uden kontraktklub (den klubløse) 0xa9be10 "The transfer of X to Y has been agreed."
+  if (n.key === 'transfer.cmAgreed') return n.params?.fee ? 'transfer.cmAgreed.bodyFee' : n.params?.free ? 'transfer.cmAgreed.bodyFree' : 'transfer.cmAgreed.body';
+  // "<Player> to join {Club}" (0xbbe, 0x4d6ee0): 0x9ab2ec "… has decided to leave {A} and join {B} … when his contract has expired." (ældre
+  // nyheder uden den nuværende klub har ingen)
+  if (n.key === 'transfer.preContract' && !n.params?.from) return '';
   // 0xfaf (0x8d8af0): "The transfer fee will be adjusted to …" kun, når beløbet steg
   if (n.key === 'transfer.cmSwapOut') return n.params?.adj ? 'transfer.cmSwapOut.bodyFee' : 'transfer.cmSwapOut.body';
   return `${n.key}.body`;

@@ -203,10 +203,10 @@ export function cmAgreed(o: TransferOffer, p: Player, terms: { wage: number; yea
   const g = gs();
   const params = { player: pname(p), last: p.last || pname(p), seller: short(g, o.seller), buyer: short(g, o.buyer) };
   const human = isHumanClub(o.buyer);
-  const direct = !human || o.preContract || !o.seller;
-  asOwner(o.buyer, () => addNews({ cat: 'transfer', key: 'transfer.cmAgrees', params, link: !direct ? { kind: 'offer', id: o.id } : { kind: 'player', id: p.id } }));
-  // forkontrakt (Bosman) og klubløs: aftalen indgås straks – der er intet bud at bekræfte (0x4ce4e0: tilbud uden transfer, +0x59 = −1 → 0x8c38b0)
-  if (direct) { complete(o, terms.wage, terms.years, terms.clauses); return; }
+  asOwner(o.buyer, () => addNews({ cat: 'transfer', key: 'transfer.cmAgrees', params, link: human ? { kind: 'offer', id: o.id } : { kind: 'player', id: p.id } }));
+  // også forkontrakten (Bosman) og den klubløse: Offer Contract-skærmen laver et transferbud (0x4e50ef → add_transfer_offer 0x8be300, beløb 0)
+  // før kontrakttilbuddet, så 0x4ce4e0 går gennem 0x8c2180 → 0x8c2f50, og menneskets køber skal bekræfte (0x8f2ec0: "Sign X from Y?" / "Sign X?")
+  if (!human) { complete(o, terms.wage, terms.years, terms.clauses); return; }
   o.cmTalks = { ...(o.cmTalks ?? { rounds: 0 }), state: 5, agreed: terms };
 }
 
@@ -227,7 +227,8 @@ export function cmConfirmScreen(g: GameState, o: TransferOffer): { code: 0 | 1 |
   const swap = (o.swap ?? []).map((id) => g.players[id]).filter(Boolean).map(pname);
   const list = swap.length < 2 ? swap.join('') : `${swap.slice(0, -1).join(', ')} and ${swap[swap.length - 1]}`;
   const params = { player: pname(p), club: short(g, o.seller), buyer: short(g, o.buyer), fee: o.fee, list };
-  const key = code === 0 ? (swap.length ? (o.fee > 0 ? 'cm.confirm.plus' : 'cm.confirm.swap') : o.fee > 0 ? 'cm.confirm.fee' : 'cm.confirm.free')
+  // uden kontraktklub (den klubløse, 0x8f365f): 0xaa0390 "Sign X?"
+  const key = code === 0 ? (swap.length ? (o.fee > 0 ? 'cm.confirm.plus' : 'cm.confirm.swap') : o.fee > 0 ? 'cm.confirm.fee' : o.seller ? 'cm.confirm.free' : 'cm.confirm.noClub')
     : reason === 3 ? 'cm.confirm.funds' : reason === 4 ? 'cm.confirm.squad' : reason === 0x14 ? 'cm.confirm.foreign' : '';
   return { code, reason, params, key };
 }

@@ -8020,7 +8020,7 @@ Object.assign(nb, {
   "transfer.cm7.b.plain": "{club} har tilbudt {player} fra {from} en kontrakt.",
   "transfer.cm7.comp": "\n\n{from} får {fee} i kompensasjon hvis avtalen blir noe av",
   "transfer.cmAgreed": "{to} henter {player}",
-  "transfer.cmAgreed.body": "Overgangen av {player} fra {from} til {to} er avtalt.\n\nOvergangen skjer {date}.",
+  "transfer.cmAgreed.body": "Overgangen av {player} fra {from} til {to} er avtalt.\n\nOvergangen skjer {date}.", "cm.confirm.noClub": "Signere {player}?", "transfer.cmAgreed.bodyFree": "Overgangen av {player} til {to} er avtalt.\n\nOvergangen skjer {date}.", "transfer.preContract.body": "{player} har bestemt seg for å forlate {from} og gå til {club} på fri overgang etter Bosman-regelen når kontrakten hans har gått ut.",
   "transfer.cmAgreed.bodyFee": "Overgangen av {player} fra {from} til {to} for {fee} er avtalt.\n\nOvergangen skjer {date}.",
   "cl.pl.workPermit": "Arbeidstillatelse",
   "cl.pl.permit11": "1 kamp spilt, 1 kamp gått glipp av (50%)",

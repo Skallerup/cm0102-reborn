@@ -4592,7 +4592,7 @@ Object.assign(fr, {
   "transfer.cm7.b.plain": "{club} ont proposé un contrat à {player} ({from}).",
   "transfer.cm7.comp": "\n\n{from} recevra {fee} d'indemnité si le transfert se fait",
   "transfer.cmAgreed": "{to} recrutent {player}",
-  "transfer.cmAgreed.body": "Le transfert de {player} de {from} vers {to} a été conclu.\n\nLe transfert sera effectif le {date}.",
+  "transfer.cmAgreed.body": "Le transfert de {player} de {from} vers {to} a été conclu.\n\nLe transfert sera effectif le {date}.", "cm.confirm.noClub": "Engager {player} ?", "transfer.cmAgreed.bodyFree": "Le transfert de {player} vers {to} a été conclu.\n\nLe transfert sera effectif le {date}.", "transfer.preContract.body": "{player} a décidé de quitter {from} et de rejoindre {club} libre de tout contrat en vertu de l'arrêt Bosman à l'expiration de son contrat.",
   "transfer.cmAgreed.bodyFee": "Le transfert de {player} de {from} vers {to} pour {fee} a été conclu.\n\nLe transfert sera effectif le {date}.",
   "cl.pl.workPermit": "Permis de travail",
   "cl.pl.permit11": "1 match joué, 1 match manqué (50%)",

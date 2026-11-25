@@ -2281,7 +2281,7 @@ export const da: Record<string, string> = {
   "transfer.cm7.b.plain": "{club} har tilbudt {player} fra {from} en kontrakt.",
   "transfer.cm7.comp": "\n\n{from} vil få {fee} i kompensation, hvis handlen bliver til noget",
   "transfer.cmAgreed": "{to} henter {player}",
-  "transfer.cmAgreed.body": "Skiftet af {player} fra {from} til {to} er aftalt.\n\nSkiftet sker {date}.",
+  "transfer.cmAgreed.body": "Skiftet af {player} fra {from} til {to} er aftalt.\n\nSkiftet sker {date}.", "cm.confirm.noClub": "Køb {player}?", "transfer.cmAgreed.bodyFree": "Skiftet af {player} til {to} er aftalt.\n\nSkiftet sker {date}.", "transfer.preContract.body": "{player} har besluttet at forlade {from} og skifte gratis til {club} efter Bosman-reglen, når hans kontrakt er udløbet.",
   "transfer.cmAgreed.bodyFee": "Skiftet af {player} fra {from} til {to} for {fee} er aftalt.\n\nSkiftet sker {date}.",
   "cm.staffAccepts": "{last} kommer til {club}",
   "cm.staffAccepts.body": "{name} har takket ja til kontrakttilbuddet fra {club}.",

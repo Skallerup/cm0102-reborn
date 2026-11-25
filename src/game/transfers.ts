@@ -720,6 +720,12 @@ export function negotiate(offerId: number, wage: number, years: number, clauses?
     // Offer Contract-skærmens Offer for en klubløs (0x4e51d9–0x4e526b): kan køberen ikke skrive under med ham i dag (0x8ced40 → can_sign_player
     // 0x8e8560 – fx det lukkede vindue, grund 9), får buddet tidsnibble 1: aftalen gennemføres på første dag i købers vindue (0x8cee70)
     if (!o.seller && !o.loan && cmMarketOn(g)) o.cmTime = cmCanSign(g, club, p, g.date.slice(0, 10)) ? 1 : 0;
+    // forkontrakt (spilleren har kontrakt hos en anden klub, 0x4e5192–0x4e51d0): tidsnibble 3 med kontraktens udløb (+0x2d) som dato – skiftet
+    // sker dagen efter udløbet (0x8cee70); kan køberen ikke skrive under med ham på den dato (0x8ced40), nibble 4: første dag i købers vindue
+    if (o.preContract && !o.loan && cmMarketOn(g) && p.contract) {
+      o.cmUntil = p.contract.expires.slice(0, 10);
+      o.cmTime = cmCanSign(g, club, p, o.cmUntil) ? 4 : 3;
+    }
     return cmOfferContract(o, wage, years, clauses);
   }
   // CM 01/02 (original database, ægte tilstand – her klubløse og forkontrakter uden cmTalks): spillerens vilje 0x846920 som 0x8c0080 (under
@@ -784,7 +790,24 @@ function completePreContract(o: TransferOffer, wage: number, years: number, cl: 
   p.contract = { ...(p.contract ?? { wage, expires: g.date }), futureClub: club.id, futureWage: wage, futureExpires: `${year(g.date) + years + (month(g.date) >= 7 ? 1 : 0)}-06-30` };
   p.futureClauses = Object.keys(cl).length ? cl : undefined;
   o.status = 'completed';
-  asOwner(club.id, () => addNews({ cat: 'transfer', key: 'transfer.preContract', params: { player: pname(p), club: club.name }, link: { kind: 'player', id: p.id } }));
+  // CM 01/02 (menneskets køber har bekræftet – Confirm Transfer Offer 0x8f2ec0 → confirm_offer_by_club 0x8c3310): handlens dato ligger efter i
+  // dag → 0x8e05d0, nyheden 0xfb3 "{Club} to sign <Player>" med datoen, og add_future_transfer 0x8cb9a0
+  if (o.cmTime && cmMarketOn(g)) { cmAgreedNews(o, p, club, cmCompletionDate(g, o)); return; }
+  const from = o.seller ? g.clubs[o.seller]?.name : undefined;
+  asOwner(club.id, () => addNews({ cat: 'transfer', key: 'transfer.preContract', params: { player: pname(p), club: club.name, ...(from ? { from } : {}) }, link: { kind: 'player', id: p.id } }));
+}
+
+/** confirm_offer_by_club 0x8c3310 → 0x8e05d0: nyheden 0xfb3 (tekst 0x8e08e0) til de involverede menneskeklubber (0x8d1130 flag 0xf: køber og
+ *  sælger) – "{Club} to sign <Player>" (0xa9bb9c, klubbens korte navn +0x38) og "The transfer of <Player> to {Club} [from {Club}] [for …] has
+ *  been agreed." (0xa9be10 uden sælger, 0xa9be7c, 0xa9bd20 …) + "The transfer will go through on {date}." (0xa9bbec) */
+function cmAgreedNews(o: TransferOffer, p: Player, buyer: Club, date: string): void {
+  const g = gs();
+  const sh = (c: Club | undefined) => c?.short || c?.name || '';
+  const seller = o.seller ? g.clubs[o.seller] : undefined;
+  const params = { to: sh(buyer), player: pname(p), date, ...(seller ? { from: sh(seller) } : { free: 1 }), ...(o.fee > 0 ? { fee: o.fee } : {}) };
+  const news = () => addNews({ cat: 'transfer', key: 'transfer.cmAgreed', params, link: { kind: 'player', id: p.id } });
+  if (isHumanClub(buyer.id)) asOwner(buyer.id, news);
+  if (seller && isHumanClub(seller.id)) asOwner(seller.id, news);
 }
 
 /**
@@ -1119,6 +1142,13 @@ export function preContractBlock(p: Player): 'ok' | 'notExpiring' | 'fromJanuary
   return 'fromJanuary';
 }
 
+/** CM 01/02: handlen, når spilleren har sagt ja (computerens køber) eller mennesket har bekræftet (Confirm Transfer Offer → 0x8c3310): forkontrakten
+ *  (et fremtidigt skifte), den klubløse med en dato efter i dag (add_future_transfer) eller handlen nu */
+export function cmCompleteAgreed(o: TransferOffer, wage: number, years: number, clauses?: ContractClauses): void {
+  if (o.preContract) completePreContract(o, wage, years, clauses ?? {});
+  else if (!cmHumanFreeFuture(o, wage, years, clauses)) completeTransfer(o, wage, years, clauses);
+}
+
 export function startPreContract(pid: number): TransferOffer | string {
   const g = gs();
   const p = g.players[pid];
@@ -1136,7 +1166,7 @@ export function processOffers() {
   const g = gs();
   const skip = (o: TransferOffer) => !!o.signing || !!o.cmTalks || !!o.cmAi || !!o.cmSwapTalks || !!o.cmLoanH;
   // CM 01/02: forhandlingerne efter et accepteret bud (svarene, fristerne)
-  for (const o of g.offers.slice()) if (o.cmTalks) cmTalksDaily(o, (x, w, y, c) => (x.preContract ? completePreContract(x, w, y, c ?? {}) : cmHumanFreeFuture(x, w, y, c) || completeTransfer(x, w, y, c)));
+  for (const o of g.offers.slice()) if (o.cmTalks) cmTalksDaily(o, cmCompleteAgreed);
   cmHumanFreeDue();
   // CM 01/02: menneskets forhandlinger med bytte-spillerne i et accepteret computerbud (0x8c63a0 tilstand 8)
   for (const o of g.offers.slice()) if (o.cmSwapTalks) cmSwapDaily(o, (x) => { const p = g.players[x.player], b = g.clubs[x.buyer]; if (p && b) completeTransfer(x, wageDemand(p, b), preferredYears(p)); }, cmReviewKeep, (x) => x.value);
@@ -2263,7 +2293,7 @@ function cmAiAiDue(cx: SlDueCtx) {
       if (date > g.date) {
         CM_AIAI.preFut++;
         // 0x8c3493 → 0x8e05d0: nyheden 0xfb3 til de involverede (modtagerflag 0x1e – sælgeren er med): "{Club} to sign {Name}" (0xa9bb9c)
-        if (o.cm7) asOwner(o.seller, () => addNews({ cat: 'transfer', key: 'transfer.cmAgreed', params: { to: buyer.name, from: g.clubs[o.seller]?.name ?? '', player: pname(p), date, ...(o.fee > 0 ? { fee: o.fee } : {}) }, link: { kind: 'player', id: p.id } }));
+        if (o.cm7) cmAgreedNews(o, p, buyer, date);
         cmTmCollapseOthers(o);
         o.status = 'accepted';
         o.cmFut = date;
@@ -2317,6 +2347,8 @@ function cmHumanFreeFuture(o: TransferOffer, wage: number, years: number, clause
   o.status = 'accepted';
   o.cmFut = date;
   o.cmTalks = { ...(o.cmTalks ?? { rounds: 0 }), state: 5, agreed: { wage, years, clauses } };
+  const p = g.players[o.player], buyer = g.clubs[o.buyer];
+  if (p && buyer) cmAgreedNews(o, p, buyer, date);   // 0x8c3493 → 0x8e05d0
   return true;
 }
 /** process_due_future_transfers 0x8cbbe0 for menneskets aftalte klubløse: på datoen kontrollen 0x8cfc90 (grund 9 tæller ikke) og handlen 0x8c38b0 */

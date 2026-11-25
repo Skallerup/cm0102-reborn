@@ -1,12 +1,19 @@
 // CM 01/02: Approach To Buy/Loan og Offer Contract i det lukkede vindue (ejerens fund 25/11: grå 1.6.02). Action-menuen (0x872794/0x87282a) og
-// Offer (0x8ef9f0 → add_transfer_offer 0x8be300) ser ikke på vinduet; en klubløs med tidsnibble 1 (0x4e526b) skriver under på vinduets første dag.
+// Offer (0x8ef9f0 → add_transfer_offer 0x8be300) ser ikke på vinduet; en klubløs med tidsnibble 1 (0x4e526b) skriver under på vinduets første dag
+// (efter menneskets Confirm Transfer Offer).
 import { readFileSync } from 'node:fs';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+// common.tsx trækker analytics.ts med (window ved indlæsning) – i Node en tom stand-in
+vi.hoisted(() => { (globalThis as { window?: unknown }).window ??= { addEventListener() {}, removeEventListener() {}, location: { search: '', hostname: 'localhost', href: '' }, matchMedia: () => ({ matches: false, addEventListener() {} }) }; });
+
 import { createGame, type WorldData } from '../src/game/newgame';
 import { gs, squad, setClub } from '../src/game/state';
 import { act } from '../src/game/actions';
 import { approachOpen, makeBid, negotiate, processOffers, windowOpen } from '../src/game/transfers';
 import type { Player, TransferOffer } from '../src/game/types';
+import { cmConfirmOpen, cmConfirmScreen } from '../src/game/cmTransferTalks';
+import { newsBody } from '../src/ui/screens/common';
 
 describe('lukket vindue 1.6.02 (2001, ægte tilstand)', { timeout: 600_000 }, () => {
   const world = JSON.parse(readFileSync('public/data/world-original.json', 'utf8')) as WorldData;
@@ -44,7 +51,22 @@ describe('lukket vindue 1.6.02 (2001, ægte tilstand)', { timeout: 600_000 }, ()
       o.cmTalks!.due = g.date;
       processOffers();
       expect(free.club).toBe(0);   // aldrig en underskrift i det lukkede vindue
-      if (o.status === 'accepted') { done = { o, free }; break; }
+      if (o.cmTalks?.state !== 5) continue;
+      // han har sagt ja: Confirm Transfer Offer (0x8f2ec0) "Sign X?" – handlens dato ligger efter i dag, så 0x8cfc90 giver 0 (Yes)
+      expect(cmConfirmOpen(g, o)).toBe(true);
+      const sc = cmConfirmScreen(g, o);
+      expect(sc.code).toBe(0);
+      expect(sc.key).toBe('cm.confirm.noClub');
+      const from = g.nextId.news;
+      expect(act({ t: 'cmConfirm', offer: o.id, answer: 'yes' })).toBe('completed');
+      expect(o.status).toBe('accepted');
+      // 0x8c3310 → 0x8e05d0: "{Club} to sign X" – "The transfer of X to {Club} has been agreed. … on 4th June 2002."
+      const n = g.news.find((x) => x.id >= from && x.key === 'transfer.cmAgreed')!;
+      expect(newsBody(n)).toContain('has been agreed.');
+      expect(newsBody(n)).not.toContain(' from ');
+      expect(newsBody(n)).toContain('4th June 2002');
+      done = { o, free };
+      break;
     }
     expect(done).not.toBeNull();
     const { o, free } = done!;

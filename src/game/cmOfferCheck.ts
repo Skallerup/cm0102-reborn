@@ -115,6 +115,10 @@ export function cmCheckOffer(g: GameState, o: TransferOffer): OfferCheck {
   if (!buyer || !p) return { code: 0, reason: 0 };
   const swap = (o.swap ?? []).map((id) => g.players[id]).filter(Boolean);
 
+  // 1. tidsnibblen ≠ 0 (0x8cfd31, ikke tilstand 0x13): ligger handlens dato (0x8cee70) efter i dag, er alt i orden – forkontrakten og den
+  //    klubløse i det lukkede vindue
+  if ((o.cmTime ?? 0) !== 0 && cmCompletionDate(g, o) > g.date.slice(0, 10)) return { code: 0, reason: 0 };
+
   // 2. penge (get_total_value uden byttespillere; budget × 1,1)
   const value = o.fee + (o.lgFee ?? 0) + (o.intFee ?? 0);
   if (value > Math.max(0, buyer.transferBudget) * 1.1) return { code: 1, reason: 3 };
@@ -129,7 +133,8 @@ export function cmCheckOffer(g: GameState, o: TransferOffer): OfferCheck {
     const foreign = squad(o.buyer).filter((x) => cmForeignPlayer(g, x, buyer.nation)).length;
     if (foreign + 1 > limit) return { code: 2, reason: 0x14 };
   }
-  if (!cmWindowOpen(g, buyer, g.date)) return { code: 2, reason: 9 };
+  // grund 9 er i orden for nibble 5 (0x8d001e)
+  if (!cmWindowOpen(g, buyer, g.date) && o.cmTime !== 5) return { code: 2, reason: 9 };
   return { code: 0, reason: 0 };
 }
 

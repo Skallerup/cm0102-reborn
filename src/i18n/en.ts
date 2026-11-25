@@ -2250,7 +2250,7 @@ export const en: Record<string, string> = {
   "transfer.cm7.b.plain": "{club} have offered a contract to {from}'s {player}.",
   "transfer.cm7.comp": "\n\n{from} will be due {fee} in compensation if the deal goes ahead",
   "transfer.cmAgreed": "{to} to sign {player}",
-  "transfer.cmAgreed.body": "The transfer of {player} to {to} from {from} has been agreed.\n\nThe transfer will go through on {date}.",
+  "transfer.cmAgreed.body": "The transfer of {player} to {to} from {from} has been agreed.\n\nThe transfer will go through on {date}.", "cm.confirm.noClub": "Sign {player}?", "transfer.cmAgreed.bodyFree": "The transfer of {player} to {to} has been agreed.\n\nThe transfer will go through on {date}.", "transfer.preContract.body": "{player} has decided to leave {from} and join {club} on a free transfer under the Bosman ruling when his contract has expired.",
   "transfer.cmAgreed.bodyFee": "The transfer of {player} to {to} from {from} for {fee} has been agreed.\n\nThe transfer will go through on {date}.",
   "cm.staffAccepts": "{last} joins {club}",
   "cm.staffAccepts.body": "{name} has accepted the contract offer from {club}.",
