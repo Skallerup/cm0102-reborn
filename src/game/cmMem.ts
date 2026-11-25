@@ -32,11 +32,14 @@ const NOPAGES: (Uint8Array | null)[] = new Array(1024).fill(null);
 /** genbrugte sider (SparseMem.release) – nulstilles, før de bruges igen */
 const POOL: Uint8Array[] = [];
 const POOL_MAX = 24000;
+/** genbrugte andet niveau-tabeller i SparseMem's sidetabel (SparseMem.release) – kun null, før de bruges igen */
+const TPOOL: (Uint8Array | null)[][] = [];
+const TPOOL_MAX = 2048;
 /** sider, der er udsnit af en importeret tabel (SparseMem.importPages): tabellen og sidens plads i den */
 const VIEWS = new WeakMap<Uint8Array, { seg: Uint8Array; i: number }>();
 /** (hukommelse, 22/11) puljens sider slippes – nyt spils arbejder før den sidste kopi til hovedtråden (op til ~100 MB). Puljen er kun genbrug: en ny side
  *  nulstilles altid (page), så indholdet er det samme med og uden puljen. */
-export function releasePagePool(): void { POOL.length = 0; }
+export function releasePagePool(): void { POOL.length = 0; TPOOL.length = 0; }
 
 /** Spredt hukommelse i sider à 4 KB; ulæste bytes er 0. `miss` kan fylde en side første gang, den læses (spillets dovne poster). */
 export class SparseMem implements CmMem {
@@ -63,7 +66,7 @@ export class SparseMem implements CmMem {
     let nb: Uint8Array;
     if (r) { r.fill(0); nb = r; } else nb = new Uint8Array(1 << PAGE);
     let t = this.dir[p >>> 10];
-    if (t === NOPAGES) { t = new Array(1024).fill(null); this.dir[p >>> 10] = t; }
+    if (t === NOPAGES) { t = TPOOL.pop() ?? new Array(1024).fill(null); this.dir[p >>> 10] = t; }
     t[p & 1023] = nb;
     this.pages.set(p, nb);
     this.miss?.(p, this);
@@ -156,6 +159,8 @@ export class SparseMem implements CmMem {
   release(): void {
     // udsnit af en importeret tabel genbruges ikke: tabellen gives videre (exportPages) og må ikke nulstilles som en ny side
     for (const b of this.pages.values()) if (POOL.length < POOL_MAX && !VIEWS.has(b)) POOL.push(b);
+    // (hastighed, 25/11) sidetabellens andet niveau (1024 pladser à 8 bytes pr. 4 MB-område – en hukommelse rører ~30 områder) genbruges også
+    for (let i = 0; i < 1024; i++) { const t = this.dir[i]; if (t !== NOPAGES && TPOOL.length < TPOOL_MAX) { t.fill(null); TPOOL.push(t); } }
     this.pages.clear(); this.dir.fill(NOPAGES);
   }
   /** skriv en række bytes (sporets hex-dump) */
