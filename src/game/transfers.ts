@@ -29,7 +29,7 @@ import { cmLoanRefuses } from './cmLoan';
 import { cmBuildBid } from './cmAiBid';
 import { cmAiRulesBlock, cmAiRulesReason, cmCompletionDate, cmWindowOpen } from './cmOfferCheck';
 import { cmRumourAdd } from './cmRumours';
-import { cmAskingPrice, cmExchangeCheck, cmInterestedClubs, cmLoanAnswerNow, cmLoanDelayNow, cmMovedToClub, cmShortlistOn, cmSlMoved, setSlApply, setSlDue, type SlBid, type SlDueCtx, type SlEvent } from './cmShortlistGame';
+import { cmAskingPrice, cmExchangeCheck, cmInterestedClubs, cmLoanAnswerNow, cmLoanDelayNow, cmMovedToClub, cmSlPlayerGone, cmShortlistOn, cmSlMoved, setSlApply, setSlDue, type SlBid, type SlDueCtx, type SlEvent } from './cmShortlistGame';
 import { ADDON_APPS, bidClauseWorth, cleanClauses, clauseWorth, defaultRelease, settleSellOn } from './clauses';
 import { asOwner, forEachHuman, isHumanClub, isMultiplayer } from './humans';
 import { AGENT_RULES, agentOf } from './agents';
@@ -885,6 +885,7 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
   cmSlMoved(g, p, buyer.id, buyer.id, !o.loan && seller ? o.swap : undefined);
   setClub(p, buyer.id);
   cmMovedToClub(g, p);
+  cmSlPlayerGone(g, p, !o.loan);   // 0x8ca7a0 (køb: +0x52 ved den nye klub) / 0x8c2872 (leje) – 0x842b00(staff, 1): klubberne med ham på ønskelisten planlægger igen
   if (!o.loan) merchStarSigning(buyer.id, p.rep);
   fansOnSigning(p, buyer, o.loan);
   // byttehandel: køberens spillere skifter den anden vej
@@ -906,6 +907,7 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
       cmSlMoved(g, x, seller.id, 0);   // (0x8c9579: kun 0x8c9720 – halens 0x84aeb0 for byttespillerne står i hovedspillerens kald)
       setClub(x, seller.id);
       cmMovedToClub(g, x);
+      cmSlPlayerGone(g, x);
       x.joined = g.date;
       asOwner(buyer.id, () => {
         if (g.tactic) g.tactic = { ...g.tactic, lineup: g.tactic.lineup.map((pid2) => (pid2 === x.id ? 0 : pid2)), bench: g.tactic.bench.filter((pid2) => pid2 !== x.id) };
@@ -2264,6 +2266,7 @@ function cmSignFree(o: TransferOffer, p: Player, buyer: Club): void {
   cmSlMoved(g, p, buyer.id, buyer.id);   // 0x8c9720/0x8c9390: ønskelisterne (før skiftet)
   setClub(p, buyer.id);
   cmMovedToClub(g, p);
+  cmSlPlayerGone(g, p);
   p.joined = g.date;
   o.status = 'completed';
   cmTmClose(o, 0x14, 10);

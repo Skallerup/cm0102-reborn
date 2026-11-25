@@ -2226,6 +2226,49 @@ export function cmMovedToClub(g: GameState, p: Player): void {
   st.c = 100;
 }
 
+/** TRANSFER_MANAGER::move_player_to_club 0x8c9720, 0x8ca75d–0x8ca7a0 (efter skiftet: staff +0x39 = den nye klub, den nye kontrakt): har han en
+ *  spillerpost (+0x61), sættes værdien +0x52 = 0x4d0c60(staff, ny klub, 0, −1, 0x600a50(ny klub, 0, 1, 0, 0) ≠ 0), og 0x842b00(staff, 1):
+ *  Shortlist_Manager 0x842180(staff, liste, 1, 3, 0) – computerparrene (staff, klub) på ønskelisten (bsearch 0x946464 med 0x757ea0), hvor
+ *  klubbens første af de 40 pladser med ham som mål (+0xf; ellers plads 0 – sic, 0x8422bf) har +7 > hans +0x52, og klubben ikke er hans
+ *  (+0x39); arg3 = 1: også klubber med +8 ≥ 100 – og for hver: trupplanens tæller +8 = 100 (0x842b94; 0x5cccd0's port åbner, så klubben
+ *  planlægger igen inden for få dage) og (flag 1) budmærket +0x17 > −1 på pladserne med ham som mål → −1 (0x842ba1–0x842bbc).
+ *  Før: kun køberen fik +8 = 100 (0x8ca0ce); klubberne, der havde ham på listen, beholdt målet til næste planlægning (+8 > rand(70) + 30). */
+export function cmSlPlayerGone(g: GameState, p: Player, moved = true): void {
+  if (!cmShortlistOn(g) || !g.cmPlan || !p.club || ENV.CM_SL_GONE === '0') return;
+  const pairs = (g.cmSlPairs ?? []).filter(([pid]) => pid === p.id);
+  const to = p.club;
+  // (lejen går uden om 0x8c9720 – handle_player_accepted_terms 0x8c2180 kalder 0x842b00(staff, 1) ved 0x8c2872 uden at regne +0x52 om)
+  if (!moved) { gone842b00(g, p, pairs, memValue(g, p)); return; }
+  // +0x52 = 0x4d0c60(staff, ny klub, 0, −1, menneske) – på en lille hukommelse af den nye klub (staff +0x39 og kontrakten efter skiftet)
+  const hold: { S?: SlMem } = {};
+  const M = smallWantMem(g, [to], hold);
+  const st = M.W.staffOf(p), club = M.W.clubOf(to);
+  let v = 0;
+  if (st && club) {
+    M.setRand(cmRand(g.seed ?? 0, p.id, dayNum(g.date), 0x8ca78b));
+    v = playerValue_4d0c60(M.c, st, club, 0, -1, humanClub_600a50(M.c, club) ? 1 : 0) | 0;
+  }
+  (M.c.m as SparseMem).release();
+  if (!st || !club) return;
+  // (dagens +0x52 – memValue/refreshClub – og dagens hukommelse, når buddene afgøres i den: originalen har den nye værdi resten af dagen)
+  const e = VALUES.get(g);
+  if (e && e.date === g.date) { e.v.set(p.id, v); e.lazy.delete(p.id); }
+  if (DUE_S) { const id = DUE_S.memOf.get(p.id); if (id !== undefined) DUE_S.m.w32((DUE_S.m.u32(G.STAFF) + 0x6e * id + 0x52) >>> 0, v); }
+  gone842b00(g, p, pairs, v);
+}
+/** 0x842b00(staff, 1) på spillets pladser (se cmSlPlayerGone) */
+function gone842b00(g: GameState, p: Player, pairs: [number, number][], v: number): void {
+  const to = p.club;
+  for (const [, cid] of pairs) {
+    const plan = g.cmPlan?.[cid];
+    if (!plan || !plan.s.length || cid === to) continue;
+    const row = plan.s.slice(0, 40).find((r) => r[3] === p.id) ?? plan.s[0];
+    if ((fromRow(row).b7 ?? 0) <= v) continue;
+    plan.c = 100;
+    for (const r of plan.s.slice(0, 40)) if (r[3] === p.id && r[5] > -1) r[5] = -1;
+  }
+}
+
 /** 0x84a020 make_club_bids for klubben, når 0x5cccd0's betingelse er opfyldt (omdømme > 6250 hver dag, ellers (dag + klub) % 7 = 0) */
 export function makeBids(S: SlMem, cid: number, day: number): void {
   const { m, g } = S;
