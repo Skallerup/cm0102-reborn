@@ -34,7 +34,7 @@ import { contractDailyUpdate_4c7ac0, daysSince_54cdb0, fixedDates_4c7ac0, offerC
 import { humanClub_600a50 } from './cmWageGame';
 import { slCall } from './cmShortlist';
 import { cmSlOffer842c00 } from './cmShortlistGame';
-import { cmActive, cmFlagClear, cmFlagSet, cmHid, cmInDeal, cmLogic, cmRand, contractExtHook, curRep, newCmContract, statusCode, withFlagCtx, type CmContract } from './cmPlayerData';
+import { cmActive, cmContractOf, cmFlagClear, cmFlagSet, cmHid, cmInDeal, cmLogic, cmRand, contractExtHook, curRep, newCmContract, statusCode, withFlagCtx, type CmContract } from './cmPlayerData';
 import { contractSatisfaction_866620, deservedStatus_4ca470 } from './cmContractWant';
 import type { CmCtx } from './cmMem';
 import { isHumanClub } from './humans';
@@ -501,7 +501,14 @@ function applySigned(g: GameState, p: Player, m: CmMem, k: number): void {
   c.cmStart = g.date;
   p.contract = c;
   const status = (m.u8(k + 0x4f) >> 4) & 0xf;
-  p.cmContract = { ...newCmContract(status || statusCode(p)), b4e: m.u8(k + 0x4e), b4f: m.u8(k + 0x4f) };
+  // sign_contract 0x4cf720: tilbud fra kontraktens egen klub (0x4cf98d: +4 ens – forlængelsen) → 0x4cf996–0x4cf9f3 kopierer den gamle kontrakts
+  // +0x3a/+0x3d/+0x3e/+0x3f/+0x44/+0x45/+0x4e og +0x4f's lave nibble ind i tilbuddet; kun trupstatussen (høj nibble) er tilbuddets. Før blev
+  // tilfredsheden +0x44 og klagerne +0x45 nulstillet ved hver forlængelse.
+  const old = cmContractOf(p);
+  if (m.s32(k + 4) === (p.loan?.from ?? p.club)) {
+    p.cmContract = { ...old, b4f: (status << 4) | ((old.b4f ?? m.u8(k + 0x4f)) & 0xf) };
+    if (old.b4e === undefined) p.cmContract.b4e = m.u8(k + 0x4e);
+  } else p.cmContract = { ...newCmContract(status || statusCode(p)), b4e: m.u8(k + 0x4e), b4f: m.u8(k + 0x4f) };
   // TRANSFER_MANAGER 0x8c38b0 (0x8c39b2–0x8c39c4): efter sign_contract 0x4cf720 Finance::add_signing_on 0x5998e0 med kontraktens +8 –
   // blok +0x9c/+0x13c og saldoen. Før blev saldoen trukket, men blokken (View Finances: Signing On Fees) stod på 0 for forlængelser og frie spillere.
   const son = m.s32(k + 8);

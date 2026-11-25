@@ -1778,7 +1778,7 @@ Object.assign(tr, {
   "cl.ts.s.backup": "Bu oyuncu ilk takımın yedeği",
   "cl.ts.s.prospect": "Bu oyuncu gelecek için parlak bir umut",
   "cl.ts.s.young": "Bu oyuncu yeterli bir genç oyuncu",
-  "cl.ts.s.surplus": "Bu oyuncuya kulüpte ihtiyaç yok",
+  "cl.ts.s.surplus": "Bu oyuncuya kulüpte ihtiyaç yok", "cl.ts.s.uncertain": "Belirsiz", "cl.ts.s.trial": "Bu oyuncu deneme sürecinde",
   "cl.ts.listed": "Bu oyuncu transfer listesinde",
   "cl.ts.loan": "Bu oyuncu kiralık verilebilir",
   "cl.ts.request": "Bu oyuncu kendi isteğiyle transfer listesinde",

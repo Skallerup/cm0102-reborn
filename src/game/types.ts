@@ -21,6 +21,8 @@ export interface Contract {
   futureClub?: number;
   futureWage?: number;
   futureExpires?: string;
+  /** trupstatus fra kontrakttilbuddet (Set Role At Club) – den nye kontrakts +0x4f ved skiftet (sign_contract 0x4cf720) */
+  futureRole?: import('./squadStatus').SquadStatus;
   /** Klausuler: frikøbsklausul (€), årlig lønstigning (%), bonus pr. kamp og pr. mål (€), lønnedgang ved nedrykning (%) */
   release?: number;
   wageRise?: number;

@@ -82,12 +82,24 @@ describe('forkontrakt som originalen (3.9.60, ægte tilstand)', { timeout: 600_0
     const o = mk(q);
     const from = g.nextId.news;
     expect(act({ t: 'cmConfirm', offer: o.id, answer: 'yes' })).toBe('completed');
-    expect(o.status).toBe('completed');
+    // add_future_transfer 0x8cb9a0: buddet venter til datoen (0x8cbbe0)
+    expect(o.status).toBe('accepted');
+    expect(o.cmFut! > g.date).toBe(true);
     expect(q.contract!.futureClub).toBe(vejle);
     const n = g.news.find((x) => x.id >= from && x.key === 'transfer.cmAgreed')!;
     expect(n.params.to).toBe(g.clubs[vejle].short || g.clubs[vejle].name);
     expect(newsBody(n)).toMatch(/^The transfer of .+ to .+ from .+ has been agreed\.\n\nThe transfer will go through on \d+(st|nd|rd|th) \w+ 2002\.$/);
     expect(g.news.some((x) => x.id >= from && x.key === 'transfer.preContract')).toBe(false);
+
+    // på datoen: 0x8cbbe0 → 0x8dbef0 (nyheden) og 0x8c9390 – sign_contract 0x4cf720 med tilbuddets +0x4f (Set Role At Club: rotation)
+    const date0 = g.date;
+    g.date = o.cmFut!;
+    processOffers();
+    expect(o.status).toBe('completed');
+    expect(q.club).toBe(vejle);
+    expect(q.squadStatus).toBe('rotation');
+    expect((q.cmContract?.b4f ?? 0x30) >> 4).toBe(3);
+    g.date = date0;
 
     const o2 = mk(r);
     expect(act({ t: 'cmConfirm', offer: o2.id, answer: 'no' })).toBe('withdrawn');

@@ -2226,7 +2226,7 @@ export const nb: Record<string, string> = {
   "cl.ts.s.backup": "Spilleren er reserve for førstelaget",
   "cl.ts.s.prospect": "Spilleren er et stort talent for fremtiden",
   "cl.ts.s.young": "Spilleren er en lovende ung spiller",
-  "cl.ts.s.surplus": "Klubben har ikke bruk for spilleren",
+  "cl.ts.s.surplus": "Klubben har ikke bruk for spilleren", "cl.ts.s.uncertain": "Uavklart", "cl.ts.s.trial": "Spilleren er på prøvespill",
   "cl.ts.listed": "Spilleren er overgangslistet",
   "cl.ts.loan": "Spilleren kan lånes ut",
   "cl.ts.request": "Spilleren er overgangslistet etter eget ønske",

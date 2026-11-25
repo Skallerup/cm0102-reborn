@@ -219,16 +219,21 @@ function contractsAndLoans() {
     // den originale database i ægte tilstand: computerklubbernes udløb styres af CONTRACT_MANAGER 0x4c7ac0 (cmContractManager.ts – spilleren bliver
     // med den udløbne kontrakt, til han vil væk eller er sat fri)
     if (p.contract && p.contract.expires < today && !(cmOn && cmCmScope(g, p))) {
+      // menneskets forkontrakt i originalens marked er et fremtidigt skifte (add_future_transfer 0x8cb9a0 – transfers.ts cmHumanFreeDue)
+      if (p.contract.futureClub && g.offers.some((o) => o.player === p.id && o.preContract && o.status === 'accepted' && !!o.cmFut)) continue;
       if (p.contract.futureClub && g.clubs[p.contract.futureClub]) {
         const to = p.contract.futureClub;
         const fromName = g.clubs[p.club]?.name ?? '-';
         const fromClub = p.club;
+        // sign_contract 0x4cf720: den nye kontrakts trupstatus +0x4f er kontrakttilbuddets (menneskets Set Role At Club)
+        const role = p.contract.futureRole;
         p.contract = { wage: p.contract.futureWage ?? p.contract.wage, expires: p.contract.futureExpires ?? `${g.season + 3}-06-30`, ...(p.futureClauses ?? {}) };
         p.futureClauses = undefined;
         p.sellOn = undefined;
         p.addOn = undefined;
         recordMove(p, to, 0, false, false, true);
         setClub(p, to);
+        p.squadStatus = role;
         p.joined = today;
         const msg = { cat: 'transfer' as const, key: 'transfer.bosmanDone', params: { player: pname(p), from: fromName, to: g.clubs[to].name } };
         asOwner(to, () => { knowFull(p.id); addNews(msg); });

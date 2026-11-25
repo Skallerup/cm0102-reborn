@@ -1,6 +1,6 @@
 // Kontraktklagerne +0x45 og tilfredsheden +0x44 uge for uge – oraklet (dagsbillederne) mod vores spil (frø 1, Arsenal, world med CM_DBSIZE=2).
 // Pr. dato for de engelske klubbers spillere med kontrakt (ikke lejet): +0x44-snit, andelen med klager, nøglespillerne (trupstatus 1–3) med
-// klager og pr. bit, og klubtabellen [0xae2d14]+6·klub+5 (klubber med utilfredse nøglespillere – blokerer 0x5cf8c8's +5).
+// klager og pr. bit (ST=1: trupstatusfordelingen st:antal/+0x44-snit), og klubtabellen [0xae2d14]+6·klub+5 (klubber med utilfredse nøglespillere – blokerer 0x5cf8c8's +5).
 //   npx tsx scripts/k7-grievances.ts o                       (oraklet, DIR=<daysnap> – standard s1-3.9.60-e1)
 //   WORLD=<world-dbs2.json> node scripts/measure.mjs -- npx tsx scripts/k7-grievances.ts u [slutdato=2002-06-30]
 import { readFileSync } from 'node:fs';
@@ -24,7 +24,7 @@ function report(s: Sample) {
   const kc = key.filter((r) => r.b45).length;
   const bits = BITS.map((b) => [b, key.filter((r) => (r.b45 & b) >>> 0).length] as const).filter(([, n]) => n).map(([b, n]) => `${b.toString(16)}:${n}`).join(' ');
   const other = key.filter((r) => BITS.reduce((x, b) => (x & ~b) >>> 0, r.b45 >>> 0)).length;
-  console.log(`${s.iso} | spillere ${all.length} +0x44 ${m44.toFixed(1)} klageandel ${share.toFixed(3)} | nøgle ${key.length} med klager ${kc} [${bits}${other ? ` øvrige:${other}` : ''}] | klubber ${s.clubs} blokeret ${s.blocked}`);
+  console.log(`${s.iso} | spillere ${all.length} +0x44 ${m44.toFixed(1)} klageandel ${share.toFixed(3)} | nøgle ${key.length} med klager ${kc} [${bits}${other ? ` øvrige:${other}` : ''}] | klubber ${s.clubs} blokeret ${s.blocked}${process.env.ST ? ` | trupstatus ${[0, 1, 2, 3, 4, 5, 6, 7].map((t) => { const x = all.filter((r) => r.st === t); return `${t}:${x.length}/${(x.reduce((a, r) => a + r.b44, 0) / Math.max(1, x.length)).toFixed(0)}`; }).join(' ')}` : ''}`);
 }
 
 if (side === 'o') {

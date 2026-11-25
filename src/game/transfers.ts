@@ -1,6 +1,7 @@
 // Transfers, kontrakter og AI-transfermarked (forbedring #7: behovsstyrede AI-klubber).
 import { holidayOpt, humanClub0, onHoliday } from './cmHoliday';
 import { cmLogic, cmMarketOn, cmMediaOn, cmRand, setRequestHooks, setStatusCode } from './cmPlayerData';
+import { SQUAD_STATUSES } from './squadStatus';
 import { cmBidChance, cmInterested, cmRequestNews } from './cmTransferList';
 import { transferNewsToMe } from './cmNewsScope';
 import { cmSignContractMorale } from './cmMedia';
@@ -790,12 +791,23 @@ function completePreContract(o: TransferOffer, wage: number, years: number, cl: 
   const g = gs();
   const p = g.players[o.player];
   const club = g.clubs[o.buyer];
-  p.contract = { ...(p.contract ?? { wage, expires: g.date }), futureClub: club.id, futureWage: wage, futureExpires: `${year(g.date) + years + (month(g.date) >= 7 ? 1 : 0)}-06-30` };
+  // CM 01/02 (menneskets køber har bekræftet – Confirm Transfer Offer 0x8f2ec0 → confirm_offer_by_club 0x8c3310): handlens dato ligger efter i
+  // dag → 0x8e05d0, nyheden 0xfb3 "{Club} to sign <Player>" med datoen, og add_future_transfer 0x8cb9a0: buddet (med kontrakttilbuddet og dets
+  // +0x4f – Set Role At Club) venter til datoen, hvor process_due_future_transfers 0x8cbbe0 sender 0x8dbef0's nyhed og gennemfører handlen
+  // 0x8c9390 (sign_contract 0x4cf720 med tilbuddets trupstatus) – cmHumanFreeDue. Før blev aftalen en forhåndsaftale på kontrakten, og skiftet
+  // ved udløbet (season.ts) gav trupstatus 0 og Bosman-teksten i stedet for originalens nyhed (ejerens fund 25/11: Rodrigo)
+  if (o.cmTime && cmMarketOn(g)) {
+    const date = cmCompletionDate(g, o);
+    cmAgreedNews(o, p, club, date);
+    o.status = 'accepted';
+    o.cmFut = date;
+    o.cmTalks = { ...(o.cmTalks ?? { rounds: 0 }), state: 5, agreed: { wage, years, clauses: Object.keys(cl).length ? cl : undefined } };
+    if (p.contract) p.contract.futureClub = club.id;
+    return;
+  }
+  p.contract = { ...(p.contract ?? { wage, expires: g.date }), futureClub: club.id, futureWage: wage, futureExpires: `${year(g.date) + years + (month(g.date) >= 7 ? 1 : 0)}-06-30`, ...(o.cmRole ? { futureRole: o.cmRole } : {}) };
   p.futureClauses = Object.keys(cl).length ? cl : undefined;
   o.status = 'completed';
-  // CM 01/02 (menneskets køber har bekræftet – Confirm Transfer Offer 0x8f2ec0 → confirm_offer_by_club 0x8c3310): handlens dato ligger efter i
-  // dag → 0x8e05d0, nyheden 0xfb3 "{Club} to sign <Player>" med datoen, og add_future_transfer 0x8cb9a0
-  if (o.cmTime && cmMarketOn(g)) { cmAgreedNews(o, p, club, cmCompletionDate(g, o)); return; }
   const from = o.seller ? g.clubs[o.seller]?.name : undefined;
   asOwner(club.id, () => addNews({ cat: 'transfer', key: 'transfer.preContract', params: { player: pname(p), club: club.name, ...(from ? { from } : {}) }, link: { kind: 'player', id: p.id } }));
 }
@@ -964,7 +976,9 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
   // Set Role At Club: han får den valgte status. En leje med originalens marked rører ikke hovedkontraktens trupstatus +0x4f (sign_loan_contract
   // 0x4d01e0 – state.ts setClub beholder Player.cmContract)
   if (!o.loan || !cmMarketOn(g)) {
-    p.squadStatus = !o.loan ? o.cmRole : undefined;
+    // sign_contract 0x4cf720 (ny klub, 0x4cfac9/0x4cfc7a): kontraktens +0x4f er tilbuddets – computerens tilbud (0x4cda70 → 0x85fc50: status fra
+    // 0x849f00) står i o.cmK; menneskets i o.cmRole (Set Role At Club). Før fik computerens køb trupstatus 0 (oraklet 31/12-01: 5 engelske, vi ~200)
+    p.squadStatus = !o.loan ? o.cmRole ?? offerStatus(o) : undefined;
     if (p.squadStatus) setStatusCode(p);
   }
   p.wantsAway = false;
@@ -2081,6 +2095,11 @@ export function cmShortlistApply(events: SlEvent[]) {
 }
 /** lejekontraktens tilbud (0x85e590: +0x35 = (… & 0xc6) | 6) – 0x4ce4e0 læser kun typen (6 → 0x846920) */
 const LOAN_K: number[] = Array.from({ length: 0x50 }, (_, i) => (i === 0x35 ? 6 : 0));
+/** kontrakttilbuddets trupstatus (+0x4f høj nibble – 0x85fc50) som Player.squadStatus; sign_contract 0x4cf720 giver den nye kontrakt den */
+function offerStatus(o: TransferOffer): Player['squadStatus'] {
+  const st = o.cmK && o.cmK !== LOAN_K ? (o.cmK[0x4f] >> 4) & 0xf : 0;
+  return st >= 1 && st <= 7 ? SQUAD_STATUSES[st - 1] : undefined;
+}
 /** 0x8be8f5 → 0x8d3090 (nyheden type 0x3e til sælgeren, flag 2) med teksten 0x8d3520 for et kontrakttilbud (+0x2f ≠ 0) til en spiller med klub:
  *  overskriften "{Club} transfer bid for {Name}" (0xa8f578); brødteksten efter kontrakttypen (plads 0xf: 1/3 → "made an approach … on a free
  *  transfer" 0xa91668), ellers efter plads 0x12 og datoen (0xc/0xd): tidsnibble 5 → 0x8d0bb0's dato (i dag → plads 0x12 = 0: "current
@@ -2344,6 +2363,7 @@ function cmSignFree(o: TransferOffer, p: Player, buyer: Club): void {
   recordMove(p, buyer.id, 0);
   cmSlMoved(g, p, buyer.id, buyer.id);   // 0x8c9720/0x8c9390: ønskelisterne (før skiftet)
   setClub(p, buyer.id);
+  p.squadStatus = offerStatus(o);   // sign_contract 0x4cf720: tilbuddets +0x4f
   cmMovedToClub(g, p);
   cmSlPlayerGone(g, p);
   p.joined = g.date;
@@ -2365,13 +2385,15 @@ function cmHumanFreeFuture(o: TransferOffer, wage: number, years: number, clause
   if (p && buyer) cmAgreedNews(o, p, buyer, date);   // 0x8c3493 → 0x8e05d0
   return true;
 }
-/** process_due_future_transfers 0x8cbbe0 for menneskets aftalte klubløse: på datoen kontrollen 0x8cfc90 (grund 9 tæller ikke) og handlen 0x8c38b0 */
+/** process_due_future_transfers 0x8cbbe0 for menneskets aftalte klubløse og forkontrakter: på datoen kontrollen 0x8cfc90 (grund 9 tæller ikke) og handlen 0x8c38b0 */
 function cmHumanFreeDue(): void {
   const g = gs();
   for (const o of g.offers.slice()) {
-    if (o.cmAi || o.seller || o.status !== 'accepted' || !o.cmFut || o.cmFut > g.date || !o.cmTalks?.agreed) continue;
+    if (o.cmAi || (o.seller && !o.preContract) || o.status !== 'accepted' || !o.cmFut || o.cmFut > g.date || !o.cmTalks?.agreed) continue;
     const p = g.players[o.player];
-    if (!p || p.club || !g.clubs[o.buyer] || cmAiRulesReason(g, o, true)) { o.status = 'collapsed'; continue; }
+    // forkontrakten (0x8cbcce/0x8cbdc8): han skal stadig være i sælgerens klub (ellers 0x8c44e0)
+    if (p?.contract?.futureClub === o.buyer) p.contract.futureClub = undefined;
+    if (!p || (o.preContract ? p.club !== o.seller || !!p.loan : !!p.club) || !g.clubs[o.buyer] || cmAiRulesReason(g, o, true)) { o.status = 'collapsed'; continue; }
     o.status = 'negotiating';
     const a = o.cmTalks.agreed;
     if (!completeTransfer(o, a.wage, a.years, a.clauses) && o.status === 'negotiating') o.status = 'collapsed';

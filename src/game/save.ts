@@ -18,7 +18,9 @@ import { legacyExtendedFromText, saveKindFromText, saveKindOf, type SaveKind } f
 import type { GameState, Player } from './types';
 import { cmSlRepairHung } from './cmShortlistGame';
 import { cmRsvNewGame } from './cmReserveMatches';
-import { cmMarketOn, cmRand } from './cmPlayerData';
+import { cmMarketOn, cmRand, setStatusCode } from './cmPlayerData';
+import { cmRoleExpected } from './cmTransferTalks';
+import { isHumanClub } from './humans';
 import { repairPositions } from './playerInit';
 
 export interface SaveMeta {
@@ -322,6 +324,24 @@ export function repairPositionsOnce(g: GameState = gs()) {
   (g.fixes ??= []).push('posRepair');
 }
 
+/** (25/11) Menneskets nye spillere fik trupstatus 0 i kontrakten (+0x4f): forkontrakten gemte ikke Set Role At Club-valget, og den nye
+ *  kontrakt ved skiftet var uden status ("Fut", "Uncertain"). Originalen skriver altid tilbuddets status (sign_contract 0x4cf720) – her det
+ *  valgte (buddets cmRole, hvis det findes endnu) eller Set Role At Club's forvalg (cmRoleExpected – det, skærmen foreslog). Også ventende forkontrakter. */
+export function repairHumanStatus0(g: GameState = gs()): void {
+  if (!cmMarketOn(g) || g.fixes?.includes('humanStatus0')) return;
+  const role = (p: Player, club: number) => g.offers.slice().reverse().find((o) => o.player === p.id && o.buyer === club && !o.loan && o.cmRole)?.cmRole ?? cmRoleExpected(g, p, club);
+  for (const p of Object.values(g.players)) {
+    if (p.virtual) continue;
+    const f = p.contract?.futureClub;
+    if (f && isHumanClub(f) && !p.contract!.futureRole && !g.offers.some((o) => o.player === p.id && o.preContract && o.status === 'accepted' && o.cmFut)) p.contract!.futureRole = role(p, f);
+    if (!p.club || p.loan || !isHumanClub(p.club) || p.squadStatus || !p.cmContract || p.cmContract.b4f === undefined || (p.cmContract.b4f >> 4) & 0xf) continue;
+    if ((p.contract?.cmType ?? 2) !== 2 || !p.moves?.some((mv) => mv.to === p.club && !mv.loan)) continue;
+    p.squadStatus = role(p, p.club);
+    setStatusCode(p);
+  }
+  (g.fixes ??= []).push('humanStatus0');
+}
+
 export function upgradeLoaded() {
   repairCupNames();
   const g = gs();
@@ -334,6 +354,7 @@ export function upgradeLoaded() {
   // gamle gemte spil i udvidet tilstand åbnes, som de blev gemt (moderne udseende + udvidet) – tilstanden ændres ikke (setGame → setSavedModern)
   // fællesspil er altid det originale (classic + ægte tilstand) – alle klienter stiller samme spil om ens
   forceMultiplayerAuthentic(g);
+  repairHumanStatus0(g);
   // ferien kører kun, mens Shell's ferieløkke kører (manager.holiday sættes ved start og ryddes bagefter). Et spil gemt midt i ferien (fx før en
   // fejl i ferieløkken 20/11) havde ferien hængende: assistenten svarede på bud resten af spillet, uden at man var på ferie
   if (!g.humans?.length && g.manager?.holiday) g.manager.holiday = undefined;

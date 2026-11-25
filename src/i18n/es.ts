@@ -1778,7 +1778,7 @@ Object.assign(es, {
   "cl.ts.s.backup": "Este jugador es suplente del primer equipo",
   "cl.ts.s.prospect": "Este jugador es una gran promesa de futuro",
   "cl.ts.s.young": "Este jugador es un joven con buenas cualidades",
-  "cl.ts.s.surplus": "El club no necesita a este jugador",
+  "cl.ts.s.surplus": "El club no necesita a este jugador", "cl.ts.s.uncertain": "Incierto", "cl.ts.s.trial": "Este jugador está a prueba",
   "cl.ts.listed": "Este jugador está en la lista de transferibles",
   "cl.ts.loan": "Este jugador está disponible para cesión",
   "cl.ts.request": "Este jugador está en la lista de transferibles por petición propia",
