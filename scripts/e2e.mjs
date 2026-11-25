@@ -709,6 +709,32 @@ async function run(look) {
       await page.waitForTimeout(150);
     }
   });
+  // 25/11: sidebjælkens rullemenuer skal ligge OVER en fuldskærmsbesked (ellers ses kun en tynd kant) og kunne klikkes
+  if (look === 'klassisk') await step('sidebjælkens menuer over en beskedskærm', async () => {
+    await go({ name: 'inbox' });
+    await page.waitForTimeout(300);
+    await page.evaluate(() => { window.__cmNotice('Ronny Johnsen og Nicky Butt er skadede og kan ikke spille i denne kamp.', { head: 'Team Selection' }); });
+    await page.waitForSelector('.cx-confirm', { timeout: 3000 });
+    const n = await page.locator('.cx-side .cx-drop-btn').count();
+    if (n < 3) throw new Error(`sidebjælken har kun ${n} menuer`);
+    for (let i = 0; i < n; i++) {
+      const btn = page.locator('.cx-side .cx-drop-btn').nth(i);
+      const label = (await btn.innerText()).trim();
+      await btn.click();
+      await page.waitForSelector('.cx-side .cx-drop-pop', { timeout: 3000 });
+      if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-menu-over-besked-${i}.png` });
+      const item = page.locator('.cx-side .cx-drop-pop button').first();
+      const box = await item.boundingBox();
+      const top = await page.evaluate(({ x, y }) => { const el = document.elementFromPoint(x, y); return !!el?.closest('.cx-side .cx-drop-pop'); }, { x: box.x + box.width / 2, y: box.y + box.height / 2 });
+      if (!top) throw new Error(`menuen "${label}" ligger bag beskedskærmen`);
+      await page.keyboard.press('Escape'); // Escape lukker først menuen (kapløb med beskedens Esc: genåbn beskeden bagefter om nødvendigt)
+      await page.waitForTimeout(100);
+      if (!(await page.locator('.cx-confirm').count())) await page.evaluate(() => { window.__cmNotice('Ronny Johnsen og Nicky Butt er skadede og kan ikke spille i denne kamp.', { head: 'Team Selection' }); });
+      await page.waitForSelector('.cx-confirm', { timeout: 3000 });
+    }
+    // en menupost kan klikkes (Game Options → første punkt åbner noget uden at beskeden skjuler det)
+    await page.locator('.cx-confirm button.primary').click();
+  });
   // Game Options → Game Settings → CM Reborn: sektionen findes, valgene er fra i et nyt klassisk spil, og Awards/Help er væk fra Game Options
   if (look === 'klassisk') await step('Game Settings: CM Reborn-sektion', async () => {
     await go({ name: 'inbox' });

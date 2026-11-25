@@ -35,6 +35,7 @@ export function ConfirmHost() {
   const [val, setVal] = useState('');
   useEffect(() => { if (req?.input !== undefined) setVal(req.input); }, [req]);
   useEffect(() => { push = setReq; return () => { push = null; }; }, []);
+  useEffect(() => { if (import.meta.env.DEV) (window as unknown as { __cmNotice?: unknown }).__cmNotice = askNotice; }, []);
   useClassicDialog(!!req);
   useEffect(() => {
     if (!req) return;

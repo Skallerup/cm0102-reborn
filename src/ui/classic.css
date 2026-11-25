@@ -2129,3 +2129,8 @@ button.cx-bid-swap.removing { cursor: pointer; color: #fff21f; }
 .cx-tn .cx-tn-up { color: #3fb23f; }
 .cx-tn .cx-tn-eq { color: #fff21f; font-weight: 800; }
 .cx-tn .cx-tn-dn { color: #ff3b30; font-weight: 800; }
+
+/* sidebjælkens rullemenuer ligger over ALLE indholdsskærme og beskeder (.cx-dlg 70, .cx-confirm/.cxs-pop/.cx-winbox-bg 90, .cx-ctx 94-95) –
+   ellers tegnes de bag en fuldskærmsbesked, og kun en tynd kant ved sidebjælken ses (ejeren 25/11) */
+.cx-side .cx-drop-pop { z-index: 100; }
+.cx-side .cx-drop-pop .cx-drop-sub, .cx-side .cx-drop-pop.cx-drop-sub { z-index: 101; }
