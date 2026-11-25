@@ -25,7 +25,7 @@ export function playerLanguages(g: GameState, p: Player): string[] {
   add(nationLanguage(g, p.nation));
   const seasons = new Map<string, number>();
   const count = (club: number, n = 1) => { const l = nationLanguage(g, g.clubs[club]?.nation ?? -1); if (l) seasons.set(l, (seasons.get(l) ?? 0) + n); };
-  for (const h of p.history ?? []) count(h.club);
+  for (const h of p.history ?? []) if (h.apps > 0) count(h.club);
   if (p.club && p.joined) count(p.club, Math.max(0, (Date.parse(g.date) - Date.parse(p.joined)) / (365 * 864e5)));
   for (const [l, n] of seasons) if (n >= 2) add(l);
   return out;

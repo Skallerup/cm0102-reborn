@@ -114,6 +114,10 @@ export interface CareerLine {
   mom?: number;
   /** På leje i klubben */
   loan?: boolean;
+  /** hvordan han forlod klubben (originalens arkivpost 0x7c5fe0): beløbet (arg2; mangler = −1) og arten (+0x2a & 7: 1 lejens start/fri
+   *  transfer, 2 bytte, 3 Bosman). Playing Career (0x7c3e40) viser mærket på rækken over – klubben, han kom til */
+  fee?: number;
+  kind?: 1 | 2 | 3;
 }
 
 export interface Injury {

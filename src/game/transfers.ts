@@ -910,7 +910,10 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
     if (seller && keyPlayerRank(p) <= 3) asOwner(seller.id, () => addNews({ cat: 'board', key: 'board.surprisedDeparture', params: { player: pname(p), club: buyer.name, fee: o.fee }, link: { kind: 'player', id: p.id } }));
   }
   // skifte midt i sæsonen: bogfør tallene hos den gamle klub
-  if (p.club && p.stats.apps + p.stats.subs > 0) pushCareerLine(p, p.club, !!p.loan);
+  // Playing Career (0x7c5fe0): lejen 0x4d01e0 (staff, −1, 0, 1, …) – art 1; handlen 0x8c9720 @0x8c9fd1 (staff, beløb, bytte, 0, køberen,
+  // Bosman = forkontrakten 0x8c9996) – med beløbet bogføres linjen også uden kampe
+  if (p.club) pushCareerLine(p, p.club, !!p.loan && p.loan.from !== p.club, o.loan ? { kind: 1 }
+    : { fee: o.fee, kind: seller && o.swap?.length ? 2 : !o.fee && (o.cmTime === 3 || o.cmTime === 4) ? 3 : undefined });
   // en udlejet, der sælges (computerens ønskelister – cmShortlistApply): lejekontrakten ophører med handlen
   if (!o.loan && p.loan) { noteLoanEnd(p.club); p.loan = null; }
   // 0x8c9720 @0x8c9984: kontrakttilbud med sum 0 og tidsnibble 3/4 (forkontrakten – add_future_transfer 0x8cb9a0) → historikkens art 4

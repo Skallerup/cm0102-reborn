@@ -411,6 +411,52 @@ function TransferTab({ p, mine }: { p: Player; mine: boolean }) {
   );
 }
 
+/** mærket i Playing Career: beløbet (mangler = −1) og arten (CareerLine.fee/kind) */
+type Lab = { fee?: number; kind?: number };
+type CareerRow = { season: number; club: number; apps: number; goals: number; assists?: number; mom?: number; avr?: number; loan?: boolean; fee?: number; kind?: number };
+
+/** Rækkerne som originalens karriereliste 0x7c3e40 (nyeste først): (1) 0x7c4467 – mærket rykkes én række op, så rækken viser, hvordan han kom
+ *  til klubben (= hvordan han forlod klubben i rækken under; den sidste får intet); rækker uden mærke under (databasens karriere, gemte spil fra
+ *  før 25/11) bruger rækkens egen lejemarkering. (2) 0x7c44ad – en række lægges sammen med en senere række med samme sæson og klub, når hverken
+ *  den eller den senere har et beløb, og den senere ikke er "Loan" (mærket følger med, hvis det har et beløb eller er "Loan"). (3) 0x7c4624 – en
+ *  række uden kampe og uden mærke fjernes, når en anden række har samme sæson og rækken under er samme klub. (Kategorierne 1–6 er her én række:
+ *  kampene er klubkampene.) */
+export function careerRows<R extends CareerRow>(raw: R[]): (R & { lab: Lab })[] {
+  const out = raw.map((r, i) => {
+    const n = raw[i + 1];
+    const lab: Lab = n && (n.fee !== undefined || n.kind) ? { ...(n.fee !== undefined ? { fee: n.fee } : {}), ...(n.kind ? { kind: n.kind } : {}) } : r.loan ? { kind: 1 } : {};
+    return { ...r, lab };
+  });
+  const gone = new Set<number>();
+  for (let i = 0; i < out.length; i++) {
+    const a = out[i];
+    // (databasens karriere har ingen karakter – som rækkens +0x14 = −1 i 0x7c44fd: lægges ikke sammen)
+    if (a.lab.fee !== undefined || a.avr === undefined) continue;
+    for (let j = i + 1; j < out.length; j++) {
+      const b = out[j];
+      if (gone.has(j) || b.season !== a.season || b.club !== a.club || b.lab.kind === 1 || b.lab.fee !== undefined || b.avr === undefined) continue;
+      const n = a.apps + b.apps, ra = a.avr ? a.apps : 0, rb = b.avr ? b.apps : 0;
+      out[j] = { ...b, apps: n, goals: a.goals + b.goals, assists: a.assists === undefined && b.assists === undefined ? undefined : (a.assists ?? 0) + (b.assists ?? 0),
+        mom: a.mom === undefined && b.mom === undefined ? undefined : (a.mom ?? 0) + (b.mom ?? 0), avr: ra + rb ? ((a.avr ?? 0) * ra + (b.avr ?? 0) * rb) / (ra + rb) : 0,
+        lab: a.lab.kind === 1 ? a.lab : b.lab };
+      gone.add(i);
+      break;
+    }
+  }
+  for (let i = 0; i < out.length; i++) {
+    const a = out[i];
+    if (gone.has(i) || a.apps > 0 || a.lab.fee !== undefined || a.lab.kind) continue;
+    if (out[i + 1]?.club === a.club && out.some((o, j) => j !== i && !gone.has(j) && o.season === a.season)) gone.add(i);
+  }
+  return out.filter((_, i) => !gone.has(i));
+}
+
+/** gemte spil fra før 25/11 (linjen uden beløb/art): skiftet fra klubben i sæsonen i Player.moves (det seneste) – leje art 1, ellers beløbet */
+function moveLeft(p: Player, season: number, club: number): Lab {
+  const m = [...(p.moves ?? [])].reverse().find((x) => x.season === season && x.from === club);
+  return !m ? {} : m.loan ? { kind: 1 } : { fee: m.fee, ...(m.swap ? { kind: 2 } : m.bosman ? { kind: 3 } : {}) };
+}
+
 /** "Playing Career" som i CM 01/02: én linje pr. sæson og klub – nyeste først, den igangværende sæson øverst */
 export function ClassicCareer({ p }: { p: Player }) {
   const g = useGame()!;
@@ -421,34 +467,44 @@ export function ClassicCareer({ p }: { p: Player }) {
     if (!g.draft) realCareer(p.id).then((r) => { if (alive) setReal(r); });
     return () => { alive = false; };
   }, [p.id, g.draft]);
-  type Row = { season: number; club: number; name?: string; apps: number; goals: number; assists?: number; mom?: number; avr?: number; loan?: boolean; now?: boolean };
+  // fee/kind: hvordan han forlod klubben (CareerLine – originalens arkivpost 0x7c5fe0)
+  type Row = { season: number; club: number; name?: string; apps: number; goals: number; assists?: number; mom?: number; avr?: number; loan?: boolean; now?: boolean; fee?: number; kind?: number };
   const s = p.stats;
   // den igangværende klub: kun tallene siden skiftet (det før står på den gamle klubs linje – p.split, season.ts pushCareerLine)
   const b = g.draft ? undefined : p.split;
   const nowRc = s.ratingCount - (b?.ratingCount ?? 0);
-  const rows: Row[] = [
+  const raw: Row[] = [
     ...(p.club ? [{ season: g.season, club: p.club, apps: s.apps + s.subs - (b?.apps ?? 0), goals: s.goals - (b?.goals ?? 0), assists: s.assists - (b?.assists ?? 0),
       mom: b && b.mom === undefined ? undefined : s.mom - (b?.mom ?? 0), avr: nowRc > 0 ? (s.ratingSum - (b?.ratingSum ?? 0)) / nowRc : 0, loan: !!p.loan, now: true }] : []),
     // klubberne, han har forladt i denne sæson (CM 01/02 viser en linje pr. klub – Barcelona → Roma → Sunderland samme sommer)
     ...(g.draft ? [] : (p.moves ?? []).filter((m) => m.season === g.season && m.from > 0 && m.from !== p.club).reverse()
       .filter((m, i, a) => a.findIndex((x) => x.from === m.from) === i && !(p.history ?? []).some((h) => h.season === g.season && h.club === m.from))
-      .map((m) => ({ season: g.season, club: m.from, apps: 0, goals: 0, loan: !!m.loan }))),
-    ...(g.draft ? [] : (p.history ?? []).slice().reverse().map((h) => ({ season: h.season, club: h.club, apps: h.apps, goals: h.goals, assists: h.assists, mom: h.mom ?? 0, avr: h.avg, loan: h.loan }))),
+      .map((m) => ({ season: g.season, club: m.from, apps: 0, goals: 0, ...(m.loan ? { kind: 1 } : { fee: m.fee, ...(m.swap ? { kind: 2 } : m.bosman ? { kind: 3 } : {}) }) }))),
+    ...(g.draft ? [] : (p.history ?? []).slice().reverse().map((h) => ({ season: h.season, club: h.club, apps: h.apps, goals: h.goals, assists: h.assists, mom: h.mom ?? 0, avr: h.avg, loan: h.loan,
+      ...(h.fee !== undefined || h.kind ? { fee: h.fee, kind: h.kind } : moveLeft(p, h.season, h.club)) }))),
     ...(real ?? []).slice().reverse().map((r) => ({ season: r.season, club: r.club, name: r.clubName, apps: r.apps, goals: r.goals, loan: r.loan })),
   ];
   const season = (y: number) => `${y}/${String((y + 1) % 100).padStart(2, '0')}`;
   const dash = (v: number | undefined) => (v === undefined ? '' : v ? v : '-');
+  const rows = careerRows(raw);
+  // kolonnen efter klubben (0x885820 → 0x886c4e–0x886d3f): beløb (bytte: "<beløb> p/x"), 0 → "Exch"/"Bos"/"Free", uden beløb art 1 → "Loan"
+  const how = (l: Lab): string => {
+    if (l.fee !== undefined && l.fee > 0) return l.kind === 2 ? t('cl.pl.car.px', { fee: money(l.fee) }) : money(l.fee);
+    if (l.fee === 0) return t(l.kind === 2 ? 'cl.pl.car.exch' : l.kind === 3 ? 'cl.pl.car.bos' : 'cl.pl.car.free');
+    return l.kind === 1 ? t('cl.pl.car.loan') : '';
+  };
   return (
     <div className="cx-pl">
-      {real === null && rows.length <= 1 ? <div className="cx-empty">{t('common.loading')}</div> : (
+      {real === null && raw.length <= 1 ? <div className="cx-empty">{t('common.loading')}</div> : (
         <div className="cx-tbl-wrap"><table className="cx-tbl cx-career">
-          <thead><tr><th /><th /><th className="c-num">{t('col.apps')}</th><th className="c-num">{t('col.goals')}</th><th className="c-num">{t('cl.pl.asts')}</th><th className="c-num" title={t('cl.pl.mom')}>{t('cl.tn.mom')}</th><th className="c-num">{t('col.avr')}</th></tr></thead>
+          <thead><tr><th /><th /><th /><th className="c-num">{t('col.apps')}</th><th className="c-num">{t('col.goals')}</th><th className="c-num">{t('cl.pl.asts')}</th><th className="c-num" title={t('cl.pl.mom')}>{t('cl.tn.mom')}</th><th className="c-num">{t('col.avr')}</th></tr></thead>
           <tbody>{rows.map((r, i) => {
             const known = !!g.clubs[r.club];
             return (
               <tr key={i}>
                 <td className="btn-col"><span className={`cx-lg-pos ${r.now ? 'now' : ''}`}>{season(r.season)}</span></td>
-                <td className="cx-career-club">{known ? <span className="link" onClick={() => nav({ name: 'club', id: r.club })}>{g.clubs[r.club].short}</span> : r.name ?? '?'}{r.loan && <span className="cx-career-loan"> ({t('career.loan')})</span>}</td>
+                <td className="cx-career-club">{known ? <span className="link" onClick={() => nav({ name: 'club', id: r.club })}>{g.clubs[r.club].short}</span> : r.name ?? '?'}</td>
+                <td className="c-yel cx-career-how">{how(r.lab)}</td>
                 <td className="c-num c-yel">{r.apps}</td><td className="c-num c-yel">{r.goals}</td>
                 <td className="c-num c-yel">{dash(r.assists)}</td><td className="c-num c-yel">{dash(r.mom)}</td>
                 <td className="c-val">{r.avr ? <Rating r={r.avr} digits={2} /> : '----'}</td>
@@ -458,7 +514,7 @@ export function ClassicCareer({ p }: { p: Player }) {
           {(() => {
             // Total (CM 01/02): alle sæsoner lagt sammen
             const tot = rows.reduce((x, r) => ({ apps: x.apps + r.apps, goals: x.goals + r.goals, assists: x.assists + (r.assists ?? 0), mom: x.mom + (r.mom ?? 0), rs: x.rs + (r.avr ?? 0) * r.apps, rn: x.rn + (r.avr ? r.apps : 0) }), { apps: 0, goals: 0, assists: 0, mom: 0, rs: 0, rn: 0 });
-            return <tr className="cx-career-total"><td /><td className="c-cyan">{t('cl.pl.total')}</td><td className="c-num c-cyan">{tot.apps}</td><td className="c-num c-cyan">{tot.goals}</td><td className="c-num c-cyan">{tot.assists || '-'}</td><td className="c-num c-cyan">{tot.mom || '-'}</td><td className="c-val">{tot.rn ? <Rating r={tot.rs / tot.rn} digits={2} /> : '----'}</td></tr>;
+            return <tr className="cx-career-total"><td /><td className="c-cyan">{t('cl.pl.total')}</td><td /><td className="c-num c-cyan">{tot.apps}</td><td className="c-num c-cyan">{tot.goals}</td><td className="c-num c-cyan">{tot.assists || '-'}</td><td className="c-num c-cyan">{tot.mom || '-'}</td><td className="c-val">{tot.rn ? <Rating r={tot.rs / tot.rn} digits={2} /> : '----'}</td></tr>;
           })()}
           </tbody>
         </table></div>

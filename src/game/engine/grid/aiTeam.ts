@@ -210,7 +210,7 @@ function judgeFor(p: Player, ctx: AiPickCtx, age: number) {
 }
 /** RoleData af vores spiller (se filhovedet for de *estimerede* dele) */
 export function roleDataOf(p: Player, ctx: AiPickCtx, age: number): RoleData {
-  const st = p.stats, last = p.history?.[p.history.length - 1];
+  const st = p.stats, last = p.history?.findLast((h) => h.apps > 0);   // (nul-linjerne i Playing Career – state.ts pushCareerLine – tæller ikke)
   const c = ctx.cm && p.contract ? cmContractOf(p) : null;
   // konditionsmodulet (cmFitness.ts): 0x62c590 (konditionen efter dagens opdatering 0x62c680), 0x62c3d0 (trætheden), 0x62ed70 (skaden)
   const fit = (ctx.cm || ctx.fit) && hasGame() ? cmFitRead(gs()) : null;

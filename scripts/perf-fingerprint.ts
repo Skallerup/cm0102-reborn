@@ -37,7 +37,9 @@ const sortKeys = (v: unknown): unknown => {
 const NONEWS = process.env.NONEWS === '1';
 // OMIT=a,b: GameState's felter a og b udelades (fx OMIT=cmPlayoff,customRules – et nyt modul, der kun tilføjer tilstand)
 const OMIT = new Set((process.env.OMIT ?? '').split(',').filter(Boolean));
-const rep = function (this: unknown, k: string, v: unknown) { if (NONEWS && k === 'news') return undefined; if (this === gs() && OMIT.has(k)) return undefined; return this === gs() && k === 'id' ? 0 : v instanceof Map ? { __map: [...v] } : v instanceof Set ? { __set: [...v] } : sortKeys(v); };
+// NOHIST=1: spillernes karrierelinjer (Player.history) udelades – en ændring af Playing Career alene skal give samme hashes
+const NOHIST = process.env.NOHIST === '1';
+const rep = function (this: unknown, k: string, v: unknown) { if (NONEWS && k === 'news') return undefined; if (NOHIST && k === 'history' && this && typeof this === 'object' && 'stats' in this) return undefined; if (this === gs() && OMIT.has(k)) return undefined; return this === gs() && k === 'id' ? 0 : v instanceof Map ? { __map: [...v] } : v instanceof Set ? { __set: [...v] } : sortKeys(v); };
 const hash = () => createHash('sha256').update(`${rng.state}\n`).update(JSON.stringify(gs(), rep)).digest('hex').slice(0, 16);
 const doHash = process.env.HASH !== '0';
 const all = createHash('sha256');

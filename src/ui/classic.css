@@ -540,7 +540,7 @@
 .cx-career .cx-career-club { width: 40%; color: #fff; font-size: 17px; font-weight: 800; text-shadow: 2px 2px 0 #000; }
 .cx-career .cx-career-club .link { color: #fff; cursor: pointer; }
 
-.cx-career-loan { color: #6cc4ff; font-size: 13px; }
+.cx-career .cx-career-how { white-space: nowrap; }
 .cx-career .cx-lg-pos.now { background: linear-gradient(180deg, #f4f6fb, #c9cdd8); color: #0b1a5c; }
 @media (max-width: 760px) { .cx-career .cx-career-club { font-size: 14px; } }
 

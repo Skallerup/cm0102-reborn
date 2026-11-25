@@ -23,6 +23,8 @@ import { cmActive, cmMarketOn, cmMediaOn, cmStaffStateMove } from './cmPlayerDat
 import { offInOriginal } from './newsFilter';
 import { legacyExtended } from './rules';
 import { captureCarry, registerCarry, restoreCarry } from './carry';
+import { daysBetween } from './dates';
+import { clubSeason, dayNum, hasSeasonRow } from './cmFitness';
 
 /**
  * Admin-preview: en spillers gemte spil åbnet til fejlsøgning (Admin → Saves / New careers). Intet gemmes, og intet
@@ -187,8 +189,29 @@ export function recordFreeTransfer(g: GameState, p: Player) {
   if (p.moves.length > 20) p.moves.shift();
 }
 
-/** Flyt spiller mellem klubber og hold indekset opdateret */
-export function setClub(p: Player, club: number) {
+/** Hvordan spilleren forlod klubben – argumenterne til originalens arkivering 0x7c5fe0(staff, fee, bytte, art 1, klub, Bosman) ved skiftet */
+export interface CareerLeft {
+  /** arg2: beløbet (undefined = −1: intet beløb – leje, sæsonslut, kontraktudløb) */
+  fee?: number;
+  /** postens art (+0x2a & 7): 1 = arg4 (lejens start sign_loan 0x4d01e0, den fri transfer 0x8c1af0), 2 = bytte (arg3), 3 = Bosman (arg6) */
+  kind?: 1 | 2 | 3;
+  /** arg5 > −1 (en klub efter skiftet): lejens slut end_loan 0x4d07e0 (moderklubbens id) */
+  toClub?: boolean;
+}
+
+/** 0x7c6487–0x7c64f2: klubbens land har en række i sæsontabellen 0xb63d60 (0x669340 < 0x23), og i dag ligger efter starten (+0x2a) og før
+ *  slutningen (+0x39) – som cmFitnessGame.ts inSeason (tabellens år følger clubSeason). Uden klub/land/række: sand (0x7c648c/0x7c6493/0x7c64a0) */
+function careerInWindow(g: GameState, club: number): boolean {
+  const n = g.clubs[club]?.nation;
+  if (n === undefined || !hasSeasonRow(n)) return true;
+  const today = dayNum(g.date);
+  const [inS, start, end] = clubSeason(n, today);
+  return inS && today > start && today < end;
+}
+
+/** Flyt spiller mellem klubber og hold indekset opdateret. `left`: hvordan han forlader den gamle klub (Playing Career – CareerLeft); uden
+ *  udledes lejens start/slut af p.loan */
+export function setClub(p: Player, club: number, left?: CareerLeft) {
   if (movedIds.length < 100000) movedIds.push(p.id); else moveGen++;
   if (p.club) {
     const arr = squadIndex.get(p.club);
@@ -201,7 +224,12 @@ export function setClub(p: Player, club: number) {
   // originalen: statistikken arkiveres (0x7c5fe0) og en ny kontrakt starter (0x4cf720) – cmPlayerData.ts
   // Playing Career (0x7c5fe0): sæsonens tal for den gamle klub bogføres på dens egen linje ved ethvert skifte (salg, leje ud/hjem,
   // fri transfer, frigivelse) – den nye klub starter fra 0 (før fik den nye klubs linje hele sæsonens tal, ejerens fejl 19/11)
-  if (moved && p.club && hasGame() && p.stats && p.stats.apps + p.stats.subs > 0) pushCareerLine(p, p.club, !!p.loan);
+  // Lejens start (sign_loan 0x4d01e0: 0x7c5fe0(staff, −1, 0, 1, lejeklubben, 0) ved moderklubben) giver altid en post (art 1), lejens slut
+  // (end_loan 0x4d07e0: 0x7c5fe0(staff, −1, 0, 0, moderklubben, 0) ved lejeklubben) en uden mærke – også uden kampe, når betingelsen holder
+  if (moved && p.club && hasGame() && p.stats) {
+    const start = !!p.loan && p.loan.from === p.club, end = !!p.loan && p.loan.from === club;
+    pushCareerLine(p, p.club, !!p.loan && !start, left ?? (start ? { kind: 1 } : end ? { toClub: true } : undefined));
+  }
   // en klubløs spiller har ingen kontrakt og dermed ingen trupstatus (kontrakten +0x4f slettes sammen med posten) – før hang "squad rotation" ved efter fri transfer/frigivelse (ejerens fund 21/11)
   if (moved && !club) p.squadStatus = undefined;
   // CM 01/02: en leje (sign_loan_contract 0x4d01e0) og dens slut (end_loan 0x4d07e0) laver/sletter kun lejekontrakten (række +4) – hovedkontrakten
@@ -228,18 +256,32 @@ export function setClub(p: Player, club: number) {
   if (moved) p.number = club ? pickNumber(p, club, p.number) : undefined;
 }
 
-/** Bogfør sæsonens tal siden sidste skifte (p.split) på en klub i karrieren; idempotent (intet nyt siden skiftet = ingen linje) */
-export function pushCareerLine(p: Player, club: number, loan: boolean) {
+/** Bogfør sæsonens tal siden sidste skifte (p.split) på en klub i karrieren (0x7c5fe0); idempotent (intet nyt siden skiftet = ingen linje).
+ *  Uden kampe (ingen post i kategori 6) skriver originalen alligevel en nul-post (0x7c64f7–0x7c65ab), når skiftet har et beløb (fee > −1), er
+ *  art 1 (arg4: lejens start, den fri transfer), eller har en klub efter skiftet (arg5 > −1: lejens slut) og enten ikke ligger i landets sæson
+ *  eller han har været under 365 dage i klubben (staff +0x3e, 0x54cdb0) – ellers ingen linje. `left` = CareerLeft (mærket i Playing Career) */
+export function pushCareerLine(p: Player, club: number, loan: boolean, left?: CareerLeft) {
   const g = gs();
   const b = p.split ?? { apps: 0, goals: 0, assists: 0, minutes: 0, ratingSum: 0, ratingCount: 0 };
   const apps = p.stats.apps + p.stats.subs - b.apps;
-  if (apps <= 0) return;
+  const how = { ...(left?.fee !== undefined && left.fee >= 0 ? { fee: left.fee } : {}), ...(left?.kind ? { kind: left.kind } : {}) };
+  if (apps <= 0) {
+    const force = !!left && ((left.fee ?? -1) > -1 || left.kind === 1
+      || (!!left.toClub && (!careerInWindow(g, club) || (!!p.joined && daysBetween(p.joined, g.date) < 365))));
+    // (samme skifte bogføres kun én gang – completeTransfer bogfører før setClub; en ny post med samme år, klub og art lægges i 0x7c3e40
+    // alligevel sammen med den forrige række)
+    const last = p.history[p.history.length - 1];
+    if (!force || (last && last.season === g.season && last.club === club)) return;
+    p.history.push({ season: g.season, club, apps: 0, goals: 0, assists: 0, minutes: 0, avg: 0, ...(loan ? { loan: true } : {}), ...how });
+    if (p.history.length > 30) p.history.shift();
+    return;
+  }
   const rc = p.stats.ratingCount - b.ratingCount;
   // (gemte spil fra før 19/11: skiftet uden MoM i p.split – den bogførte del kendes ikke, så linjen får ingen MoM)
   const mom = p.split && p.split.mom === undefined ? 0 : p.stats.mom - (b.mom ?? 0);
   p.history.push({
     season: g.season, club, apps, goals: p.stats.goals - b.goals, assists: p.stats.assists - b.assists, minutes: p.stats.minutes - b.minutes,
-    avg: rc > 0 ? Math.round(((p.stats.ratingSum - b.ratingSum) / rc) * 100) / 100 : 0, ...(mom > 0 ? { mom } : {}), ...(loan ? { loan: true } : {}),
+    avg: rc > 0 ? Math.round(((p.stats.ratingSum - b.ratingSum) / rc) * 100) / 100 : 0, ...(mom > 0 ? { mom } : {}), ...(loan ? { loan: true } : {}), ...how,
   });
   if (p.history.length > 30) p.history.shift();
   p.split = { apps: p.stats.apps + p.stats.subs, goals: p.stats.goals, assists: p.stats.assists, minutes: p.stats.minutes, ratingSum: p.stats.ratingSum, ratingCount: p.stats.ratingCount, mom: p.stats.mom };

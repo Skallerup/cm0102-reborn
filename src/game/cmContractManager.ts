@@ -470,7 +470,7 @@ function cmContractManagerRun(g: GameState, renew?: Player[], ext?: Player[]): v
   for (const p of released) {
     if (!p.club) continue;
     recordFreeTransfer(g, p);
-    setClub(p, 0);
+    setClub(p, 0, { fee: 0, kind: 1 });   // 0x8c1ca5: 0x7c5fe0(staff, 0, 0, −1, …) – "Free" i Playing Career
     p.contract = null;
     CMD_STATS.released++;
   }

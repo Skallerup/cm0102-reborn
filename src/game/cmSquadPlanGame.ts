@@ -226,7 +226,7 @@ export function cmSquadPlanClub(g: GameState, cid: number, daily: boolean, first
     if (!p || p.club !== cid || p.loan || p.contract?.futureClub) continue;
     // 0x8c16b0 → køen +0x92c → 0x8c18c0 → 0x8c1af0: historikposten art 3 (fri transfer)
     recordFreeTransfer(g, p);
-    setClub(p, 0);
+    setClub(p, 0, { fee: 0, kind: 1 });   // 0x8c1ca5: 0x7c5fe0(staff, 0, 0, −1, …) – "Free" i Playing Career
     p.contract = null;
   }
   storeEntry(g, cid, e);
