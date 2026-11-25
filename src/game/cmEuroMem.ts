@@ -7,7 +7,14 @@
 import type { Competition, GameState } from './types';
 import type { CmMem } from './cmMem';
 import { cmClubEuroComp } from './cmFitnessGame';
-import { cmEuroPlayed } from './cmEurope';
+
+/** Comp_Stats +4 (kampe) for klubben i en europæisk turnering: de spillede kampe (dobbeltkampene og gruppespillene) */
+function cmEuroPlayed(g: GameState, c: Competition, club: number): number {
+  let n = 0;
+  for (const t of c.ties) if (t.a === club || t.b === club) for (const id of t.fx) if (g.fixtures[id]?.result) n++;
+  if (c.groups) for (const k in c.groups) for (const r of c.groups[k]) if (r.club === club) n += r.p;
+  return n;
+}
 
 const EUROREC = 0x3dc00000, EUROOBJ = 0x3dd00000, EUROSTATS = 0x3dd80000;
 /** Champions League, UEFA Cup, Intertoto (comp.dat-id'erne – også 2026/27's world-cm.json) og omdømmet +0x69 i 3.9.60's comp.dat */

@@ -12,7 +12,7 @@ import { cashRound, cashStepEur, cashUnits, moneyCm, moneyFull, moneyWage, t } f
 import { SQUAD_STATUSES, statusAllowed, type SquadStatus } from '../../game/squadStatus';
 import { ageOn, year } from '../../game/dates';
 import { authentic } from '../../game/rules';
-import { cmNoInterest, cmOfferScreen, cmRoleExpected, cmTalksDemand } from '../../game/cmTransferTalks';
+import { cmNoInterest, cmOfferScreen, cmRoleDefault, cmRoleExpected, cmTalksDemand } from '../../game/cmTransferTalks';
 import { cmWhyText } from './common';
 import { Modal } from '../components';
 
@@ -126,7 +126,7 @@ export function OrigNegotiation({ offer, renewPid, onClose }: { offer?: Transfer
   if (roleStep) {
     const own = !offer;
     const exp = cmRoleExpected(g, p, own ? p.club : offer!.buyer);
-    return <RoleStep pid={pid} own={own} expected={exp} status0={own ? p.squadStatus : offer!.cmRole ?? exp} job0={p.jobRole ?? 'player'} onClose={onClose}
+    return <RoleStep pid={pid} own={own} expected={exp} status0={own ? p.squadStatus : offer!.cmRole ?? exp ?? cmRoleDefault(g, p, offer!.buyer)} job0={p.jobRole ?? 'player'} onClose={onClose}
       onSet={(status, job) => {
         if (offer) { const r = status ?? exp; if (r) act({ t: 'cmOfferRole', pid, role: r }); }
         else {

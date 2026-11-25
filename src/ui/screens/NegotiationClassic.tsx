@@ -22,7 +22,7 @@ import { SQUAD_STATUSES, statusAllowed, type SquadStatus } from '../../game/squa
 import { addDays, ageOn, year } from '../../game/dates';
 import { expDown, expDownOff, expIso, expUp, expUpOff, ymOf, type YM } from '../../game/cmContractScreen';
 import { authentic } from '../../game/rules';
-import { cmNoInterest, cmOfferScreen, cmRoleExpected, cmTalksDemand } from '../../game/cmTransferTalks';
+import { cmNoInterest, cmOfferScreen, cmRoleDefault, cmRoleExpected, cmTalksDemand } from '../../game/cmTransferTalks';
 import { cmWhyText } from './common';
 
 type Tab = 'basic' | 'bonuses' | 'clauses';
@@ -170,7 +170,7 @@ function OfferRoleStep({ offer, onClose, onSet }: { offer: TransferOffer; onClos
   const g = gs();
   const p = g.players[offer.player];
   const exp = cmRoleExpected(g, p, offer.buyer);
-  const [status, setStatus] = useState<SquadStatus | undefined>(offer.cmRole ?? exp);
+  const [status, setStatus] = useState<SquadStatus>(() => offer.cmRole ?? exp ?? cmRoleDefault(g, p, offer.buyer));
   const col = titleColors(p.club || undefined);
   const name = `${p.first} ${p.last}`.trim();
   return (
@@ -186,7 +186,7 @@ function OfferRoleStep({ offer, onClose, onSet }: { offer: TransferOffer; onClos
         <p className="cx-ts-intro">* {t('cl.role.expected')}</p>
       </div>
       <div className="cx-ts-buttons cx-dlg-foot"><button onClick={onClose}>{t('common.back')}</button>
-        <button className="primary" disabled={!status} onClick={() => { if (status) { act({ t: 'cmOfferRole', pid: p.id, role: status }); onSet(); } }}>{t('cl.ts.set')}</button></div>
+        <button className="primary" onClick={() => { act({ t: 'cmOfferRole', pid: p.id, role: status }); onSet(); }}>{t('cl.ts.set')}</button></div>
     </div>
   );
 }

@@ -479,14 +479,6 @@ export function cmEuroPredict(g: GameState, c: Competition): void {
   }
 }
 
-/** Comp_Stats +4 (kampe) for klubben i en europæisk turnering: de spillede kampe (dobbeltkampene og gruppespillene) */
-export function cmEuroPlayed(g: GameState, c: Competition, club: number): number {
-  let n = 0;
-  for (const t of c.ties) if (t.a === club || t.b === club) for (const id of t.fx) if (g.fixtures[id]?.result) n++;
-  if (c.groups) for (const k in c.groups) for (const r of c.groups[k]) if (r.club === club) n += r.p;
-  return n;
-}
-
 /** UEFA Cup'ens nye hold fra andre turneringer (0x585920, 0x586286, 0x633d40): club +0x1db = UEFA Cup'en (meta.cmAdd – cmClubEuroComp) og
  *  forudsigelsen igen */
 function uefaAdd(g: GameState, clubs: number[]): void {

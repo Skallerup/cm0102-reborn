@@ -36,6 +36,11 @@ import { expectedStatus, type SquadStatus } from './squadStatus';
 const STATUS_OF: SquadStatus[] = ['key', 'first', 'rotation', 'backup', 'prospect', 'young'];
 /** Set Role At Club: "* Expected by the player" hos klubben `buyer` (også menneskets egen ved forlængelsen) – originalens 0x4dd0f0
  *  (cmContractGame.ts cmExpectedStatus; undefined = ingen stjerne); uden for cmLogic pladsen i klubbens trup */
+/** Set Role At Club's forvalg: den forventede (cmRoleExpected), ellers pladsen i klubbens trup (*estimeret* – originalens 0x4dd6c0 får
+ *  forvalget 0 uden et åbent tilbud; her vælges altid en rolle, så dialogen ikke kan stå uden valg) */
+export function cmRoleDefault(g: GameState, p: Player, buyer: number): SquadStatus {
+  return cmRoleExpected(g, p, buyer) ?? expectedStatus(p, Object.values(g.players).filter((y) => y.club === buyer && !y.loan), g.date);
+}
 export function cmRoleExpected(g: GameState, p: Player, buyer: number): SquadStatus | undefined {
   const x = cmExpectedStatus(g, p, buyer);
   if (x !== null) return x >= 1 && x <= 6 ? STATUS_OF[x - 1] : undefined;
