@@ -22,10 +22,12 @@ while (g.date < UNTIL && guard++ < 40000) {
   const r = continueGame(); if (r?.match) quickPlayUserMatch();
   g = gs();
   for (const o of g.offers) {
-    if (!o.cmAi || !o.cmK || o.loan) continue;
+    if (!o.cmAi || o.loan) continue;
     const p = g.players[o.player];
     const key = `${o.buyer}/${o.player}`;
     if (seen.has(key) || skip.has(key)) continue;
+    // (kun build_bid's kontrakttilbud: cmK sat fra første dag – et almindeligt bud får først kontrakten, når sælgeren har sagt ja)
+    if (!o.cmK) { skip.add(key); continue; }
     // (kun spillere med kontrakt, da buddet blev set første gang – en klubløs, der siden skriver under, tæller ikke)
     if (!p || !p.club || !p.contract) { skip.add(key); continue; }
     const exp = p.contract.expires.slice(0, 10);
