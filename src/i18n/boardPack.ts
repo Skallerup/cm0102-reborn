@@ -29,6 +29,14 @@ export interface BoardPack {
   /** bestyrelsens kampreaktion (0x138c): afsenderen (0x6a69c0's start), overskrifterne 0x6a6310, stimens sætninger og de 80 skabeloner
    *  ({b} afsender, {sc} resultat, {opp} modstander, {comp} turnering) – mangler den i et sprog, bruges engelsk */
   match?: MatchPack;
+  /** presse/tilhængere: 0x6a1190 (0x1777 "manager under pressure"), 0x6a5e30 (0x1782 supporterprotesten), 0x6ac880 (0x178d ultimatummet);
+   *  safe.<grund> = [formanden, forbundet, bestyrelsen] ({ch} formandens navn) */
+  press: PressPack;
+}
+export interface PressPack {
+  tConsider: string; tConsiderFa: string; tVote: string; tVoteFa: string; listFa: string; list: string; expects: string; meeting: string; warned: string;
+  safe: Record<'plain' | 'motiv' | 'staff' | 'senior' | 'unrest', string[]>;
+  protestT: string; protest: string; ultT: string; ult: string;
 }
 export interface MatchPack {
   b: Record<'club' | 'fa', string>;

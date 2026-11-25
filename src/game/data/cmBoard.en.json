@@ -368,5 +368,47 @@
    "{b} are satisfied by the team's effort during the {sc} draw with {opp} in the {comp}.",
    "{b} are satisfied by the team's effort despite our {sc} defeat against {opp} in the {comp}."
   ]
+ },
+ "press": {
+  "tConsider": "{club} board consider {m's} position",
+  "tConsiderFa": "{national} FA consider {m's} position",
+  "tVote": "{club} board give {m} vote of confidence",
+  "tVoteFa": "{national} FA give {m} vote of confidence",
+  "listFa": "It is rumoured that the {national} FA are shortlisting managers for replacing {m}.",
+  "list": "It is rumoured that {club} are shortlisting managers as possible replacements for {m}.",
+  "expects": "The {club} board have made it clear that it expects boss {m} to start producing some positive results shortly.",
+  "meeting": "The {club} board have held a meeting with {m} during which the club's aspirations and ambitions were discussed.\n\nMedia commentators have interpreted this as an ultimatum to {m} to start performing or get out.",
+  "warned": "{m} has been publicly warned by {club} chairman {ch} that he expects results to improve dramatically within the next few weeks, otherwise he may need to find a more inspirational manager.",
+  "safe": {
+   "plain": [
+    "{club} chairman {ch} has announced that {m's} job as manager is safe.",
+    "The {national} Football Association have announced that {m's} job as manager is safe.",
+    "The {club} Board have announced that {m's} job as manager is safe."
+   ],
+   "motiv": [
+    "{club} chairman {ch} has announced that despite increasing problems with player motivation, {m's} job as manager is safe.",
+    "The {national} Football Association have announced that despite increasing problems with player motivation, {m's} job as manager is safe.",
+    "The {club} Board have announced that despite increasing problems with player motivation, {m's} job as manager is safe."
+   ],
+   "staff": [
+    "{club} chairman {ch} has announced that despite rumours of disharmony among the backroom staff, {m's} job as manager is safe.",
+    "The {national} Football Association have announced that despite rumours of disharmony among the backroom staff, {m's} job as manager is safe.",
+    "The {club} Board have announced that despite rumours of disharmony among the backroom staff, {m's} job as manager is safe."
+   ],
+   "senior": [
+    "{club} chairman {ch} has announced that despite rumours of a senior player's dissatisfaction with the team's progress, {m's} job as manager is safe.",
+    "The {national} Football Association have announced that despite rumours of a senior player's dissatisfaction with the team's progress, {m's} job as manager is safe.",
+    "The {club} Board have announced that despite rumours of a senior player's dissatisfaction with the team's progress, {m's} job as manager is safe."
+   ],
+   "unrest": [
+    "{club} chairman {ch} has announced that despite increasing supporter unrest, {m's} job as manager is safe.",
+    "The {national} Football Association have announced that despite increasing supporter unrest, {m's} job as manager is safe.",
+    "The {club} Board have announced that despite increasing supporter unrest, {m's} job as manager is safe."
+   ]
+  },
+  "protestT": "Supporter Protest",
+  "protest": "{club} supporters gathered outside the training ground today to protest against {m's} poor handling of club affairs.",
+  "ultT": "{club} manager given ultimatum by board",
+  "ult": "The {club} board appear to finally be losing patience with manager {m}.\n\nIt is rumoured in the press that a bad result against {opp} in the forthcoming {comp} match would seal his fate."
  }
 }

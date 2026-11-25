@@ -200,7 +200,13 @@ export type BoardCmDesc =
   | { k: 'd'; type: number; reason: number; m: string; nation: string; nat: string }
   /** bestyrelsens kampreaktion (0x138c): de ændrede flag, skabelonen og stimens sætning (cmBoard.ts MATCH_TEXT/matchRunSentence), lange og
    *  korte navne, resultatet (største tal først) og turneringens korte navn; `nat` = nationaliteten, når det er et landshold */
-  | { k: 'm'; f: number; tpl: number; run: string; club: string; nat: string; opp: string; cs: string; os: string; sc: string; comp: string };
+  | { k: 'm'; f: number; tpl: number; run: string; club: string; nat: string; opp: string; cs: string; os: string; sc: string; comp: string }
+  /** 0x6a1190 (0x1777): kind (slot 9), v (slot 8), t (slot 11), korte/lange navn, manageren, formanden ('' = ingen) og nationaliteten ('' = klub) */
+  | { k: 'pp'; kind: number; v: number; t: number; cs: string; club: string; m: string; ch: string; nat: string }
+  /** 0x6a5e30 (0x1782) supporterprotesten */
+  | { k: 'sp'; club: string; m: string }
+  /** 0x6ac880 (0x178d) ultimatummet: korte/lange navn, manageren, modstanderen og turneringens korte navn */
+  | { k: 'ul'; cs: string; club: string; m: string; opp: string; comp: string };
 
 export function boardCmText(d: BoardCmDesc): { title: string; body: string } {
   switch (d.k) {
@@ -213,7 +219,37 @@ export function boardCmText(d: BoardCmDesc): { title: string; body: string } {
     case 'r': return { title: requestTitle(d.req), body: requestReply(d.club, d.req, d.code) };
     case 'u': return { title: ultimatumTitle(d.type, d.req, d.res, d.short), body: ultimatumBody(d.type, d.req, d.sub, d.club, d.m, d.st, d.small, d.poor) };
     case 'm': return matchReactionText(d);
+    case 'pp': return pressureText(d);
+    case 'sp': { const R = P().press; return { title: R.protestT, body: pressFill(R.protest, d.club, d.m) }; }
+    case 'ul': { const R = P().press; return { title: pressFill(R.ultT, d.cs, d.m), body: pressFill(R.ult, d.club, d.m).replace(/\{opp\}/g, d.opp).replace(/\{comp\}/g, d.comp) }; }
   }
+}
+
+// ---------------------------------------------------------------- presse og tilhængere (0x6a1190 / 0x6a5e30 / 0x6ac880)
+
+const pressFill = (s: string, club: string, m: string, ch = '', nat = '') =>
+  s.replace(/\{club\}/g, club).replace(/\{national\}/g, nat).replace(/\{ch\}/g, ch)
+    .replace(/\{m's\}/g, possessive(boardPack(getLang()) ? getLang() : 'en', m)).replace(/\{m\}/g, m);
+
+/** 0x6a1190 news_manager_under_pressure_text. Overskriften: kind 1 → "{kort navn} board consider X's position" (landshold: "{nat} FA …");
+ *  ellers "… give X vote of confidence" – originalen skriver "told to stop the rot" (0xa06f98, v = 0, formand, t = 0) og derefter ALTID
+ *  "vote of confidence" oven i samme buffer (manglende else ved 0x6a13a0), så den ses aldrig.
+ *  Brødteksten: kind 1 → landshold "FA are shortlisting" (0xa06e50); ellers t 0 mødet/ultimatummet (0xa06bec), 1 "expects … positive results"
+ *  (0xa06d18), ellers "shortlisting" (0xa06dc0). Kind 2: v 1 en erfaren spiller (0xa0669c…), 2 tilhængerne (0xa06444…), 3 staben (0xa068f0…),
+ *  4 motivationen (0xa06b28…), ellers formanden: t 0 "publicly warned" (0xa061f0), ellers "job is safe" (0xa06160); uden formand forbundet
+ *  (landshold) eller bestyrelsen "job is safe". */
+export function pressureText(d: Extract<BoardCmDesc, { k: 'pp' }>): { title: string; body: string } {
+  const R = P().press, fa = !!d.nat;
+  const f = (s: string, club: string) => pressFill(s, club, d.m, d.ch, d.nat);
+  const title = d.kind === 1 ? f(fa ? R.tConsiderFa : R.tConsider, d.cs) : f(fa ? R.tVoteFa : R.tVote, d.cs);
+  let body: string;
+  if (d.kind === 1) body = fa ? R.listFa : d.t === 0 ? R.meeting : d.t === 1 ? R.expects : R.list;
+  else {
+    const why = d.v === 1 ? 'senior' : d.v === 2 ? 'unrest' : d.v === 3 ? 'staff' : d.v === 4 ? 'motiv' : 'plain';
+    if (d.ch) body = why === 'plain' && d.t === 0 ? R.warned : R.safe[why][0];
+    else body = R.safe[why][fa ? 1 : 2];
+  }
+  return { title, body: f(body, d.club) };
 }
 
 // ---------------------------------------------------------------- bestyrelsens kampreaktion (0x6a6310 / 0x6a69c0)

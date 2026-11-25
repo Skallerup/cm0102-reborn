@@ -660,5 +660,47 @@
    "{b} ist zufrieden mit dem Einsatz der Mannschaft beim {sc}-Remis gegen {opp} in {comp}.",
    "{b} ist zufrieden mit dem Einsatz der Mannschaft trotz unserer {sc}-Niederlage gegen {opp} in {comp}."
   ]
+ },
+ "press": {
+  "tConsider": "Vorstand von {club} stellt {m} infrage",
+  "tConsiderFa": "Der {national} Fußballverband stellt {m} infrage",
+  "tVote": "Vorstand von {club} spricht {m} das Vertrauen aus",
+  "tVoteFa": "Der {national} Fußballverband spricht {m} das Vertrauen aus",
+  "listFa": "Gerüchten zufolge sucht der {national} Fußballverband bereits nach Nachfolgern für {m}.",
+  "list": "Gerüchten zufolge sucht {club} bereits nach möglichen Nachfolgern für {m}.",
+  "expects": "Der Vorstand von {club} hat klargestellt, dass er von Trainer {m} in Kürze positive Ergebnisse erwartet.",
+  "meeting": "Der Vorstand von {club} hat sich mit {m} getroffen, um über die Ziele und Ambitionen des Vereins zu sprechen.\n\nDie Medien werten dies als Ultimatum an {m}: Leistung bringen oder gehen.",
+  "warned": "{m} wurde vom Vorsitzenden von {club}, {ch}, öffentlich gewarnt: Er erwarte in den nächsten Wochen eine deutliche Steigerung der Ergebnisse, sonst müsse er sich nach einem inspirierenderen Trainer umsehen.",
+  "protestT": "Fanprotest",
+  "protest": "Fans von {club} versammelten sich heute vor dem Trainingsgelände, um gegen die schlechte Vereinsführung von {m} zu protestieren.",
+  "ultT": "Ultimatum für den Trainer von {club}",
+  "ult": "Der Vorstand von {club} scheint endgültig die Geduld mit Trainer {m} zu verlieren.\n\nIn der Presse heißt es, ein schlechtes Ergebnis gegen {opp} im kommenden Spiel ({comp}) würde sein Schicksal besiegeln.",
+  "safe": {
+   "plain": [
+    "Der Vorsitzende von {club}, {ch}, hat erklärt, dass der Job von {m} als Trainer sicher ist.",
+    "Der {national} Fußballverband hat erklärt, dass der Job von {m} als Trainer sicher ist.",
+    "Der Vorstand von {club} hat erklärt, dass der Job von {m} als Trainer sicher ist."
+   ],
+   "motiv": [
+    "Der Vorsitzende von {club}, {ch}, hat erklärt, dass der Job von {m} als Trainer sicher ist – trotz zunehmender Probleme mit der Motivation der Spieler.",
+    "Der {national} Fußballverband hat erklärt, dass der Job von {m} als Trainer sicher ist – trotz zunehmender Probleme mit der Motivation der Spieler.",
+    "Der Vorstand von {club} hat erklärt, dass der Job von {m} als Trainer sicher ist – trotz zunehmender Probleme mit der Motivation der Spieler."
+   ],
+   "staff": [
+    "Der Vorsitzende von {club}, {ch}, hat erklärt, dass der Job von {m} als Trainer sicher ist – trotz Gerüchten über Unstimmigkeiten im Trainerstab.",
+    "Der {national} Fußballverband hat erklärt, dass der Job von {m} als Trainer sicher ist – trotz Gerüchten über Unstimmigkeiten im Trainerstab.",
+    "Der Vorstand von {club} hat erklärt, dass der Job von {m} als Trainer sicher ist – trotz Gerüchten über Unstimmigkeiten im Trainerstab."
+   ],
+   "senior": [
+    "Der Vorsitzende von {club}, {ch}, hat erklärt, dass der Job von {m} als Trainer sicher ist – trotz Gerüchten über die Unzufriedenheit eines erfahrenen Spielers mit der Entwicklung der Mannschaft.",
+    "Der {national} Fußballverband hat erklärt, dass der Job von {m} als Trainer sicher ist – trotz Gerüchten über die Unzufriedenheit eines erfahrenen Spielers mit der Entwicklung der Mannschaft.",
+    "Der Vorstand von {club} hat erklärt, dass der Job von {m} als Trainer sicher ist – trotz Gerüchten über die Unzufriedenheit eines erfahrenen Spielers mit der Entwicklung der Mannschaft."
+   ],
+   "unrest": [
+    "Der Vorsitzende von {club}, {ch}, hat erklärt, dass der Job von {m} als Trainer sicher ist – trotz wachsender Unruhe unter den Fans.",
+    "Der {national} Fußballverband hat erklärt, dass der Job von {m} als Trainer sicher ist – trotz wachsender Unruhe unter den Fans.",
+    "Der Vorstand von {club} hat erklärt, dass der Job von {m} als Trainer sicher ist – trotz wachsender Unruhe unter den Fans."
+   ]
+  }
  }
 }

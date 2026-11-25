@@ -660,5 +660,47 @@
    "{b} er tilfreds med lagets innsats i den uavgjorte kampen ({sc}) mot {opp} i {comp}.",
    "{b} er tilfreds med lagets innsats til tross for vårt tap ({sc}) mot {opp} i {comp}."
   ]
+ },
+ "press": {
+  "tConsider": "Styret i {club} vurderer {m's} framtid",
+  "tConsiderFa": "{national} fotballforbund vurderer {m's} framtid",
+  "tVote": "Styret i {club} gir {m} tillit",
+  "tVoteFa": "{national} fotballforbund gir {m} tillit",
+  "listFa": "Det ryktes at {national} fotballforbund allerede leter etter erstattere for {m}.",
+  "list": "Det ryktes at {club} allerede leter etter mulige erstattere for {m}.",
+  "expects": "Styret i {club} har gjort det klart at det forventer at manager {m} snart begynner å levere positive resultater.",
+  "meeting": "Styret i {club} har hatt et møte med {m} der klubbens mål og ambisjoner ble diskutert.\n\nMediene tolker det som et ultimatum til {m}: lever eller forsvinn.",
+  "warned": "{m} har fått en offentlig advarsel av styrelederen i {club}, {ch}, som forventer at resultatene bedres kraftig i løpet av de neste ukene – ellers kan han måtte finne en mer inspirerende manager.",
+  "protestT": "Supporterprotest",
+  "protest": "Supportere av {club} samlet seg i dag utenfor treningsanlegget for å protestere mot {m's} dårlige håndtering av klubbens saker.",
+  "ultT": "Styret i {club} gir manageren et ultimatum",
+  "ult": "Styret i {club} ser endelig ut til å miste tålmodigheten med manager {m}.\n\nDet ryktes i pressen at et dårlig resultat mot {opp} i den kommende kampen i {comp} vil avgjøre skjebnen hans.",
+  "safe": {
+   "plain": [
+    "Styrelederen i {club}, {ch}, har kunngjort at {m's} jobb som manager er trygg.",
+    "{national} fotballforbund har kunngjort at {m's} jobb som manager er trygg.",
+    "Styret i {club} har kunngjort at {m's} jobb som manager er trygg."
+   ],
+   "motiv": [
+    "Styrelederen i {club}, {ch}, har kunngjort at {m's} jobb som manager er trygg, til tross for økende problemer med spillernes motivasjon.",
+    "{national} fotballforbund har kunngjort at {m's} jobb som manager er trygg, til tross for økende problemer med spillernes motivasjon.",
+    "Styret i {club} har kunngjort at {m's} jobb som manager er trygg, til tross for økende problemer med spillernes motivasjon."
+   ],
+   "staff": [
+    "Styrelederen i {club}, {ch}, har kunngjort at {m's} jobb som manager er trygg, til tross for rykter om splid i trenerteamet.",
+    "{national} fotballforbund har kunngjort at {m's} jobb som manager er trygg, til tross for rykter om splid i trenerteamet.",
+    "Styret i {club} har kunngjort at {m's} jobb som manager er trygg, til tross for rykter om splid i trenerteamet."
+   ],
+   "senior": [
+    "Styrelederen i {club}, {ch}, har kunngjort at {m's} jobb som manager er trygg, til tross for rykter om at en rutinert spiller er misfornøyd med lagets utvikling.",
+    "{national} fotballforbund har kunngjort at {m's} jobb som manager er trygg, til tross for rykter om at en rutinert spiller er misfornøyd med lagets utvikling.",
+    "Styret i {club} har kunngjort at {m's} jobb som manager er trygg, til tross for rykter om at en rutinert spiller er misfornøyd med lagets utvikling."
+   ],
+   "unrest": [
+    "Styrelederen i {club}, {ch}, har kunngjort at {m's} jobb som manager er trygg, til tross for økende uro blant supporterne.",
+    "{national} fotballforbund har kunngjort at {m's} jobb som manager er trygg, til tross for økende uro blant supporterne.",
+    "Styret i {club} har kunngjort at {m's} jobb som manager er trygg, til tross for økende uro blant supporterne."
+   ]
+  }
  }
 }

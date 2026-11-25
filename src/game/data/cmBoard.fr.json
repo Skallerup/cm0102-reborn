@@ -660,5 +660,47 @@
    "{b} est satisfaite de l'effort de l'équipe lors du match nul ({sc}) contre {opp} en {comp}.",
    "{b} est satisfaite de l'effort de l'équipe malgré notre défaite ({sc}) contre {opp} en {comp}."
   ]
+ },
+ "press": {
+  "tConsider": "La direction de {club} s'interroge sur l'avenir de {m}",
+  "tConsiderFa": "La fédération de football ({national}) s'interroge sur l'avenir de {m}",
+  "tVote": "La direction de {club} renouvelle sa confiance à {m}",
+  "tVoteFa": "La fédération de football ({national}) renouvelle sa confiance à {m}",
+  "listFa": "La rumeur dit que la fédération de football ({national}) cherche déjà des remplaçants pour {m}.",
+  "list": "La rumeur dit que {club} dresse une liste de remplaçants possibles pour {m}.",
+  "expects": "La direction de {club} a fait savoir qu'elle attend de l'entraîneur {m} qu'il obtienne rapidement des résultats positifs.",
+  "meeting": "La direction de {club} a rencontré {m} pour discuter des aspirations et des ambitions du club.\n\nLes commentateurs y voient un ultimatum adressé à {m} : des résultats ou la porte.",
+  "warned": "{m} a été publiquement averti par le président de {club}, {ch}, qu'il attend une nette amélioration des résultats dans les prochaines semaines, faute de quoi il devra peut-être trouver un entraîneur plus inspirant.",
+  "protestT": "Manifestation des supporters",
+  "protest": "Des supporters de {club} se sont rassemblés aujourd'hui devant le centre d'entraînement pour protester contre la mauvaise gestion du club par {m}.",
+  "ultT": "Ultimatum de la direction pour l'entraîneur de {club}",
+  "ult": "La direction de {club} semble enfin perdre patience avec l'entraîneur {m}.\n\nSelon la presse, un mauvais résultat contre {opp} lors du prochain match de {comp} scellerait son sort.",
+  "safe": {
+   "plain": [
+    "Le président de {club}, {ch}, a annoncé que le poste d'entraîneur de {m} n'est pas menacé.",
+    "La fédération de football ({national}) a annoncé que le poste d'entraîneur de {m} n'est pas menacé.",
+    "La direction de {club} a annoncé que le poste d'entraîneur de {m} n'est pas menacé."
+   ],
+   "motiv": [
+    "Le président de {club}, {ch}, a annoncé que le poste d'entraîneur de {m} n'est pas menacé, malgré des problèmes croissants de motivation chez les joueurs.",
+    "La fédération de football ({national}) a annoncé que le poste d'entraîneur de {m} n'est pas menacé, malgré des problèmes croissants de motivation chez les joueurs.",
+    "La direction de {club} a annoncé que le poste d'entraîneur de {m} n'est pas menacé, malgré des problèmes croissants de motivation chez les joueurs."
+   ],
+   "staff": [
+    "Le président de {club}, {ch}, a annoncé que le poste d'entraîneur de {m} n'est pas menacé, malgré les rumeurs de désaccords au sein du staff technique.",
+    "La fédération de football ({national}) a annoncé que le poste d'entraîneur de {m} n'est pas menacé, malgré les rumeurs de désaccords au sein du staff technique.",
+    "La direction de {club} a annoncé que le poste d'entraîneur de {m} n'est pas menacé, malgré les rumeurs de désaccords au sein du staff technique."
+   ],
+   "senior": [
+    "Le président de {club}, {ch}, a annoncé que le poste d'entraîneur de {m} n'est pas menacé, malgré les rumeurs sur le mécontentement d'un joueur cadre quant aux progrès de l'équipe.",
+    "La fédération de football ({national}) a annoncé que le poste d'entraîneur de {m} n'est pas menacé, malgré les rumeurs sur le mécontentement d'un joueur cadre quant aux progrès de l'équipe.",
+    "La direction de {club} a annoncé que le poste d'entraîneur de {m} n'est pas menacé, malgré les rumeurs sur le mécontentement d'un joueur cadre quant aux progrès de l'équipe."
+   ],
+   "unrest": [
+    "Le président de {club}, {ch}, a annoncé que le poste d'entraîneur de {m} n'est pas menacé, malgré la grogne croissante des supporters.",
+    "La fédération de football ({national}) a annoncé que le poste d'entraîneur de {m} n'est pas menacé, malgré la grogne croissante des supporters.",
+    "La direction de {club} a annoncé que le poste d'entraîneur de {m} n'est pas menacé, malgré la grogne croissante des supporters."
+   ]
+  }
  }
 }

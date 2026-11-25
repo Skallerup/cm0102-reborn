@@ -660,5 +660,47 @@
    "{b} è soddisfatta dell'impegno della squadra nel pareggio ({sc}) con {opp} in {comp}.",
    "{b} è soddisfatta dell'impegno della squadra nonostante la nostra sconfitta ({sc}) contro {opp} in {comp}."
   ]
+ },
+ "press": {
+  "tConsider": "La dirigenza del {club} valuta la posizione di {m}",
+  "tConsiderFa": "La {national} Football Association valuta la posizione di {m}",
+  "tVote": "La dirigenza del {club} conferma la fiducia a {m}",
+  "tVoteFa": "La {national} Football Association conferma la fiducia a {m}",
+  "listFa": "Si vocifera che la {national} Football Association stia già cercando sostituti per {m}.",
+  "list": "Si vocifera che il {club} stia già stilando una lista di possibili sostituti di {m}.",
+  "expects": "La dirigenza del {club} ha chiarito di aspettarsi che l'allenatore {m} cominci presto a ottenere risultati positivi.",
+  "meeting": "La dirigenza del {club} ha incontrato {m} per discutere delle aspirazioni e delle ambizioni del club.\n\nI commentatori lo interpretano come un ultimatum a {m}: o arrivano i risultati o se ne va.",
+  "warned": "{m} è stato avvertito pubblicamente dal presidente del {club}, {ch}, che si aspetta un netto miglioramento dei risultati nelle prossime settimane, altrimenti potrebbe dover cercare un allenatore più stimolante.",
+  "protestT": "Protesta dei tifosi",
+  "protest": "I tifosi del {club} si sono radunati oggi davanti al centro sportivo per protestare contro la cattiva gestione del club da parte di {m}.",
+  "ultT": "Ultimatum della dirigenza all'allenatore del {club}",
+  "ult": "La dirigenza del {club} sembra aver finalmente perso la pazienza con l'allenatore {m}.\n\nSecondo la stampa, un brutto risultato contro il {opp} nella prossima partita di {comp} segnerebbe il suo destino.",
+  "safe": {
+   "plain": [
+    "Il presidente del {club}, {ch}, ha annunciato che il posto di allenatore di {m} non è in discussione.",
+    "La {national} Football Association ha annunciato che il posto di allenatore di {m} non è in discussione.",
+    "La dirigenza del {club} ha annunciato che il posto di allenatore di {m} non è in discussione."
+   ],
+   "motiv": [
+    "Il presidente del {club}, {ch}, ha annunciato che il posto di allenatore di {m} non è in discussione, nonostante i crescenti problemi di motivazione dei giocatori.",
+    "La {national} Football Association ha annunciato che il posto di allenatore di {m} non è in discussione, nonostante i crescenti problemi di motivazione dei giocatori.",
+    "La dirigenza del {club} ha annunciato che il posto di allenatore di {m} non è in discussione, nonostante i crescenti problemi di motivazione dei giocatori."
+   ],
+   "staff": [
+    "Il presidente del {club}, {ch}, ha annunciato che il posto di allenatore di {m} non è in discussione, nonostante le voci di dissapori nello staff tecnico.",
+    "La {national} Football Association ha annunciato che il posto di allenatore di {m} non è in discussione, nonostante le voci di dissapori nello staff tecnico.",
+    "La dirigenza del {club} ha annunciato che il posto di allenatore di {m} non è in discussione, nonostante le voci di dissapori nello staff tecnico."
+   ],
+   "senior": [
+    "Il presidente del {club}, {ch}, ha annunciato che il posto di allenatore di {m} non è in discussione, nonostante le voci sul malcontento di un giocatore esperto per i progressi della squadra.",
+    "La {national} Football Association ha annunciato che il posto di allenatore di {m} non è in discussione, nonostante le voci sul malcontento di un giocatore esperto per i progressi della squadra.",
+    "La dirigenza del {club} ha annunciato che il posto di allenatore di {m} non è in discussione, nonostante le voci sul malcontento di un giocatore esperto per i progressi della squadra."
+   ],
+   "unrest": [
+    "Il presidente del {club}, {ch}, ha annunciato che il posto di allenatore di {m} non è in discussione, nonostante il crescente malcontento dei tifosi.",
+    "La {national} Football Association ha annunciato che il posto di allenatore di {m} non è in discussione, nonostante il crescente malcontento dei tifosi.",
+    "La dirigenza del {club} ha annunciato che il posto di allenatore di {m} non è in discussione, nonostante il crescente malcontento dei tifosi."
+   ]
+  }
  }
 }

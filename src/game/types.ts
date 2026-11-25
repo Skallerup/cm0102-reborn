@@ -1262,6 +1262,8 @@ export interface GameState {
   cmAwHist?: Record<number, [number, (string | null)[]][]>;
   /** formændene (world.cmRaw.chair: [np +0x16, np +0x1d Patience, staff +0x57 Ambition, nation]) og nationernes +0x75/+0x85/+0x88 */
   cmChair?: Record<number, [number, number, number, number]>;
+  /** formændenes navne pr. klub (club.dat +0xbf → staff.dat; world cmRaw.chairName) – "{club} chairman X …" (0x6a1190) */
+  cmChairName?: Record<number, string>;
   cmNationBoard?: [number, number, number][];
   /** Staff Search: world-filen havde originalens hukommelse (Staff.cmMem) – og navnene på klubber uden for spillet [kort navn, nation] */
   cmStaffMem?: boolean;

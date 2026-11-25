@@ -660,5 +660,47 @@
    "{b} är tillfreds med lagets ansträngning i den oavgjorda matchen ({sc}) mot {opp} i {comp}.",
    "{b} är tillfreds med lagets ansträngning trots vår förlust ({sc}) mot {opp} i {comp}."
   ]
+ },
+ "press": {
+  "tConsider": "Styrelsen i {club} funderar över {m's} framtid",
+  "tConsiderFa": "Det {national} fotbollsförbundet funderar över {m's} framtid",
+  "tVote": "Styrelsen i {club} ger {m} förtroende",
+  "tVoteFa": "Det {national} fotbollsförbundet ger {m} förtroende",
+  "listFa": "Det ryktas att det {national} fotbollsförbundet redan letar efter ersättare till {m}.",
+  "list": "Det ryktas att {club} redan letar efter tänkbara ersättare till {m}.",
+  "expects": "Styrelsen i {club} har gjort klart att den förväntar sig att tränaren {m} snart börjar leverera positiva resultat.",
+  "meeting": "Styrelsen i {club} har haft ett möte med {m} där klubbens mål och ambitioner diskuterades.\n\nMedierna tolkar det som ett ultimatum till {m}: leverera eller försvinn.",
+  "warned": "{m} har fått en offentlig varning av ordföranden i {club}, {ch}, som förväntar sig att resultaten förbättras kraftigt inom de närmaste veckorna – annars kan han behöva hitta en mer inspirerande tränare.",
+  "protestT": "Supporterprotest",
+  "protest": "Supportrar till {club} samlades i dag utanför träningsanläggningen för att protestera mot {m's} dåliga skötsel av klubbens angelägenheter.",
+  "ultT": "Styrelsen i {club} ger tränaren ett ultimatum",
+  "ult": "Styrelsen i {club} verkar äntligen tappa tålamodet med tränaren {m}.\n\nDet ryktas i pressen att ett dåligt resultat mot {opp} i den kommande matchen i {comp} skulle avgöra hans öde.",
+  "safe": {
+   "plain": [
+    "Ordföranden i {club}, {ch}, har meddelat att {m's} jobb som tränare är säkert.",
+    "Det {national} fotbollsförbundet har meddelat att {m's} jobb som tränare är säkert.",
+    "Styrelsen i {club} har meddelat att {m's} jobb som tränare är säkert."
+   ],
+   "motiv": [
+    "Ordföranden i {club}, {ch}, har meddelat att {m's} jobb som tränare är säkert, trots växande problem med spelarnas motivation.",
+    "Det {national} fotbollsförbundet har meddelat att {m's} jobb som tränare är säkert, trots växande problem med spelarnas motivation.",
+    "Styrelsen i {club} har meddelat att {m's} jobb som tränare är säkert, trots växande problem med spelarnas motivation."
+   ],
+   "staff": [
+    "Ordföranden i {club}, {ch}, har meddelat att {m's} jobb som tränare är säkert, trots rykten om splittring i tränarstaben.",
+    "Det {national} fotbollsförbundet har meddelat att {m's} jobb som tränare är säkert, trots rykten om splittring i tränarstaben.",
+    "Styrelsen i {club} har meddelat att {m's} jobb som tränare är säkert, trots rykten om splittring i tränarstaben."
+   ],
+   "senior": [
+    "Ordföranden i {club}, {ch}, har meddelat att {m's} jobb som tränare är säkert, trots rykten om att en rutinerad spelare är missnöjd med lagets utveckling.",
+    "Det {national} fotbollsförbundet har meddelat att {m's} jobb som tränare är säkert, trots rykten om att en rutinerad spelare är missnöjd med lagets utveckling.",
+    "Styrelsen i {club} har meddelat att {m's} jobb som tränare är säkert, trots rykten om att en rutinerad spelare är missnöjd med lagets utveckling."
+   ],
+   "unrest": [
+    "Ordföranden i {club}, {ch}, har meddelat att {m's} jobb som tränare är säkert, trots växande oro bland supportrarna.",
+    "Det {national} fotbollsförbundet har meddelat att {m's} jobb som tränare är säkert, trots växande oro bland supportrarna.",
+    "Styrelsen i {club} har meddelat att {m's} jobb som tränare är säkert, trots växande oro bland supportrarna."
+   ]
+  }
  }
 }

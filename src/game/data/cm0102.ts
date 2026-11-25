@@ -142,7 +142,9 @@ export interface CMWorld extends WorldData {
     nationBoard?: [number, number, number][];
     /** bestyrelse/managerjob: formanden (club.dat +0xbf → staff.dat): [ikke-spillerpost +0x16, +0x1d (Patience), personpost +0x57 (Ambition),
      *  nationsindeks (−1)] pr. klub – kun formænd med ikke-spillerpost */
-    chairBoard?: Record<number, [number, number, number, number]> };
+    chairBoard?: Record<number, [number, number, number, number]>;
+    /** formandens navn (common name, ellers for- og efternavn) pr. klub – alle formænd (club.dat +0xbf) */
+    chairName?: Record<number, string> };
   clubColors: Record<number, [string, string]>;
   /** originalens økonomi ved start (£): saldo (club.dat 101), gns. tilskuere (115), træningsanlæg 0-20 (127) */
   clubFinance?: Record<number, [number, number, number]>;
@@ -554,13 +556,18 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
   }
   // formændene (club.dat +0xbf): bestyrelsens Patience m.m. (cmBoard.ts)
   const chairBoard: Record<number, [number, number, number, number]> = {};
+  const chairName: Record<number, string> = {};
   if (NON_REF >= 0) {
     const want = new Map(rawClubs.filter((c) => inGame.has(c.id) && c.chairman > 0).map((c) => [c.chairman, c.id]));
-    for (let i = 0; i < tStaff.count && Object.keys(chairBoard).length < want.size; i++) {
+    for (let i = 0; i < tStaff.count && Object.keys(chairName).length < want.size; i++) {
       const o = tStaff.offset + i * staffSize;
       if (o + staffSize > files['staff.dat'].byteLength) break;
       const club = want.get(S.i32(o));
       if (club === undefined) continue;
+      // formandens navn (0x6a1190's brødtekster: "{club} chairman X has announced …") – alle formænd, også uden ikke-spillerpost
+      const ccn = S.i32(o + 12) >= 0 ? common[S.i32(o + 12)] ?? '' : '';
+      const cnm = (ccn || `${first[S.i32(o + 4)] ?? ''} ${second[S.i32(o + 8)] ?? ''}`).trim();
+      if (cnm) chairName[club] = cnm;
       const np = nonAt.get(S.i32(o + NON_REF));
       if (np === undefined) continue;
       chairBoard[club] = [(S.u8(np + 0x16) << 24) >> 24, (S.u8(np + 0x1d) << 24) >> 24, (S.u8(o + 0x57) << 24) >> 24, nationIdx.get(S.i32(o + 26)) ?? -1];
@@ -1121,7 +1128,7 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
       nation7e: [...nationIdx.keys()].map((id) => nationVal.get(id)![0]),
       nation85: [...nationIdx.keys()].map((id) => nationVal.get(id)![2]),
       nation76, nation7f,
-      fin, chair, chairBoard, nationBoard, lowerDiv, ...(confDiv >= 0 ? { confDiv } : {}), nationCont, europe, ...(clubMem ? { clubMem } : {}), ...(city33.length ? { city33 } : {}), ...(Object.keys(prefs).length ? { prefs, clubPrefs } : {}) }, ...(officials.length ? { officials } : {}), ...(cmTrim ? { cmTrim } : {}), ...(Object.keys(compHist).length ? { compHist } : {}), ...(staff.length ? { staff } : {}), ...(staffX.length ? { staffX, clubNames: Object.fromEntries(rawClubs.filter((c) => nationIdx.has(c.nation)).map((c) => [c.id, [c.short || c.name, nationIdx.get(c.nation)!]])) } : {}), rules,
+      fin, chair, chairBoard, ...(Object.keys(chairName).length ? { chairName } : {}), nationBoard, lowerDiv, ...(confDiv >= 0 ? { confDiv } : {}), nationCont, europe, ...(clubMem ? { clubMem } : {}), ...(city33.length ? { city33 } : {}), ...(Object.keys(prefs).length ? { prefs, clubPrefs } : {}) }, ...(officials.length ? { officials } : {}), ...(cmTrim ? { cmTrim } : {}), ...(Object.keys(compHist).length ? { compHist } : {}), ...(staff.length ? { staff } : {}), ...(staffX.length ? { staffX, clubNames: Object.fromEntries(rawClubs.filter((c) => nationIdx.has(c.nation)).map((c) => [c.id, [c.short || c.name, nationIdx.get(c.nation)!]])) } : {}), rules,
   };
 }
 

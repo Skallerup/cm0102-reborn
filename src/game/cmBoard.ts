@@ -37,6 +37,12 @@ import { cmRand } from './cmPlayerData';
 export const s16 = (v: number) => (v << 16) >> 16;
 export const s8 = (v: number) => (v << 24) >> 24;
 export const ftol = (x: number) => (Number.isFinite(x) ? Math.trunc(x) : 0) | 0;
+/** 0x544410 non_player_attribute_rating(np, a): den viste egenskab af CA (np +4) og den interne værdi */
+export function npShown(ca: number, a: number): number {
+  const x = (s16(ca) + 2 * s8(a)) * 0.05 + 10.0;
+  const y = (x + 0.1 * x * x) * (1 / 3) + 0.5;
+  return ftol(y <= 1.0 ? 1.0 : y < 20.0 ? y : 20.0);
+}
 export const f32 = Math.fround;
 const tdiv = (a: number, b: number) => Math.trunc(a / b);
 export type Rand = (n: number) => number;
@@ -214,7 +220,7 @@ export interface BoardEnv {
   /** 0x547770 klubbens land er i sæson */
   inSeason(c: number): boolean;
   /** 0x5acbe0: næste uspillede kamp inden for n dage (ikke i dag) */
-  nextFixture(c: number, days: number): { opp: number; hasComp: boolean } | null;
+  nextFixture(c: number, days: number): { opp: number; hasComp: boolean; comp: string } | null;
   /** club +0x1db ≠ −1 og ikke Intertoto (europæisk turnering i sæsonen); inEuropeAny: +0x1db ≠ −1 */
   inEurope(c: number): boolean; inEuropeAny(c: number): boolean;
   /** club +0x64 == 1 (professionel; 0x697c40 ganger negative ændringer med 0,75, når +0x64 ≠ 1) */
@@ -245,10 +251,13 @@ export type BoardNews =
   | { t: 'departed'; club: number; manager: Person; type: number; reason: number }
   | { t: 'rumour'; club: number; staff: Person; variant: number }
   | { t: 'protest'; club: number }
-  | { t: 'pressure'; club: number; kind: number }
+  /** 0x6a0e70 (0x1777, tekst 0x6a1190): kind 1 = bestyrelsen beholder manageren (tillid ·0,9), 2 = ingen vurdering; v = komponenten, der halter
+   *  (2 w8 tilhængerne, 1 wA spillerne, 3/4 wC stab/motivation, 0 ingen); tt = slot 11 (rand(10), 1 ved Motivating > 10) */
+  | { t: 'pressure'; club: number; kind: number; v: number; tt: number }
   /** 0x6a5fa0 (0x138c): bestyrelsens reaktion på kampen – `tpl` = skabelonen i 0x6a69c0 (MATCH_TEXT), `run` = stimens sætning (MATCH_RUN, '' = ingen) */
   | { t: 'match'; club: number; opp: number; flags: number; gf: number; ga: number; tpl: number; run: string; comp: string }
-  | { t: 'ultimatum'; club: number; opp: number }
+  /** 0x6ac700 (0x178d, tekst 0x6ac880): modstanderen og turneringens korte navn (club_comp +0x38) */
+  | { t: 'ultimatum'; club: number; opp: number; comp: string }
   /** 0x6a44a0 (0x177e): forbundets forventninger – kode (vtable +0x70) og turneringen (−1 = ingen) */
   | { t: 'faExpect'; club: number; code: number; comp: number }
   /** 0x6a5a60 (0x1781): forbundets vurdering efter turneringen (−3..3) */
@@ -1392,7 +1401,7 @@ function issueUltimatum(env: BoardEnv, st: CmBoardState, c: number, rand: Rand):
   if (!nx.hasComp) return false;
   rand(5);                                                             // nyhedens tekstvariant (slot 7)
   if (s16(env.clubRep(c)) >= 5750) rand(3);
-  env.news({ t: 'ultimatum', club: c, opp: nx.opp });
+  env.news({ t: 'ultimatum', club: c, opp: nx.opp, comp: nx.comp });
   st.ult.push(c);
   return true;
 }
@@ -1404,11 +1413,14 @@ function pressureNews(env: BoardEnv, st: CmBoardState, c: number, kind: number, 
   if (after(env.gameStart, env.today)) return;
   const R = recOf(st, c);
   const w6 = s16(R.w6);
-  if (s16(R.w8) < w6 - 500 && rand(3) === 0) { /* variant 2 */ }
-  else if (s16(R.wa) < w6 - 500 && rand(3) === 0) { /* 1 */ }
-  else if (s16(R.wc) < w6 - 500 && rand(3) === 0) rand(5);
-  rand(10);
-  env.news({ t: 'pressure', club: c, kind });
+  let v = 0;
+  if (s16(R.w8) < w6 - 500 && rand(3) === 0) v = 2;
+  else if (s16(R.wa) < w6 - 500 && rand(3) === 0) v = 1;
+  else if (s16(R.wc) < w6 - 500 && rand(3) === 0) v = (rand(5) !== 0 ? 1 : 0) + 3;
+  let tt = rand(10);
+  // 0x544410(np, np +0x1b Motivating) > 10 → 1 (menneskets post: CA 0 og 0 → 7, så aldrig)
+  if (m.np && npShown(m.ca, m.at(0x1b)) > 10) tt = 1;
+  env.news({ t: 'pressure', club: c, kind, v, tt });
   R.d18 = { ...env.today };
 }
 

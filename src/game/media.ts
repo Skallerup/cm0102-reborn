@@ -57,6 +57,9 @@ export function weeklyRumours() {
 
 /** Den 1. i måneden: klumme om brugerens liga */
 export function monthlyColumn() {
+  // CM Reborns egne månedsklummer ("X imponerer i Y", "climbing to safety" …) findes ikke i originalen på den 1.: "impressing at" findes slet
+  // ikke i exe'en, og pressens historier (0x643cf0 m.fl.) har egne udløsere, der ikke er porteret (ejerens test 25/11: Ronaldinho hver måned)
+  if (cmMediaOn(gs())) return;
   forEachHuman(() => {
     const g = gs();
     const me = g.clubs[g.userClub];
@@ -66,7 +69,6 @@ export function monthlyColumn() {
     if ((rows[0]?.p ?? 0) < 4) return;
     const leader = rows[0], second = rows[1];
     const myPos = rows.findIndex((r) => r.club === me!.id) + 1;
-    // "Column: X lead the …" findes ikke i CM 01/02 (originalens klummer om holdet og spillerne nedenfor gør)
     if (!cmMediaOn(g)) addNews({ cat: 'general', key: 'column.month', params: { comp: comp.name, leader: g.clubs[leader.club]?.name ?? '', gap: leader.pts - (second?.pts ?? 0), pos: myPos, club: me!.name } });
     // CM 01/02's klummer om holdet: "climbing to safety", "slip nearer relegation", "title credentials"
     const drop = rows.length - (LEAGUE_RULES[comp.id]?.relegated ?? 0);

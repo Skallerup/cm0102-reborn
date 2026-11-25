@@ -660,5 +660,47 @@
    "{b} está contente com o esforço da equipa no empate ({sc}) com {opp} em {comp}.",
    "{b} está contente com o esforço da equipa, apesar da nossa derrota ({sc}) contra {opp} em {comp}."
   ]
+ },
+ "press": {
+  "tConsider": "Diretoria do {club} avalia a situação de {m}",
+  "tConsiderFa": "Federação de Futebol {national} avalia a situação de {m}",
+  "tVote": "Diretoria do {club} dá voto de confiança a {m}",
+  "tVoteFa": "Federação de Futebol {national} dá voto de confiança a {m}",
+  "listFa": "Há rumores de que a Federação de Futebol {national} já procura substitutos para {m}.",
+  "list": "Há rumores de que o {club} já procura possíveis substitutos para {m}.",
+  "expects": "A diretoria do {club} deixou claro que espera que o técnico {m} comece em breve a obter resultados positivos.",
+  "meeting": "A diretoria do {club} reuniu-se com {m} para discutir as aspirações e ambições do clube.\n\nOs comentaristas interpretaram isso como um ultimato a {m}: render ou sair.",
+  "warned": "{m} foi advertido publicamente pelo presidente do {club}, {ch}, que espera uma melhora significativa dos resultados nas próximas semanas; caso contrário, talvez precise encontrar um técnico mais inspirador.",
+  "protestT": "Protesto da torcida",
+  "protest": "Torcedores do {club} reuniram-se hoje em frente ao centro de treinamento para protestar contra a má gestão do clube por parte de {m}.",
+  "ultT": "Diretoria dá ultimato ao técnico do {club}",
+  "ult": "A diretoria do {club} parece finalmente estar perdendo a paciência com o técnico {m}.\n\nA imprensa especula que um mau resultado contra o {opp} na próxima partida pelo {comp} selaria o seu destino.",
+  "safe": {
+   "plain": [
+    "O presidente do {club}, {ch}, anunciou que o cargo de técnico de {m} está garantido.",
+    "A Federação de Futebol {national} anunciou que o cargo de técnico de {m} está garantido.",
+    "A diretoria do {club} anunciou que o cargo de técnico de {m} está garantido."
+   ],
+   "motiv": [
+    "O presidente do {club}, {ch}, anunciou que o cargo de técnico de {m} está garantido, apesar dos crescentes problemas de motivação dos jogadores.",
+    "A Federação de Futebol {national} anunciou que o cargo de técnico de {m} está garantido, apesar dos crescentes problemas de motivação dos jogadores.",
+    "A diretoria do {club} anunciou que o cargo de técnico de {m} está garantido, apesar dos crescentes problemas de motivação dos jogadores."
+   ],
+   "staff": [
+    "O presidente do {club}, {ch}, anunciou que o cargo de técnico de {m} está garantido, apesar dos rumores de desentendimentos na comissão técnica.",
+    "A Federação de Futebol {national} anunciou que o cargo de técnico de {m} está garantido, apesar dos rumores de desentendimentos na comissão técnica.",
+    "A diretoria do {club} anunciou que o cargo de técnico de {m} está garantido, apesar dos rumores de desentendimentos na comissão técnica."
+   ],
+   "senior": [
+    "O presidente do {club}, {ch}, anunciou que o cargo de técnico de {m} está garantido, apesar dos rumores sobre a insatisfação de um jogador experiente com a evolução da equipe.",
+    "A Federação de Futebol {national} anunciou que o cargo de técnico de {m} está garantido, apesar dos rumores sobre a insatisfação de um jogador experiente com a evolução da equipe.",
+    "A diretoria do {club} anunciou que o cargo de técnico de {m} está garantido, apesar dos rumores sobre a insatisfação de um jogador experiente com a evolução da equipe."
+   ],
+   "unrest": [
+    "O presidente do {club}, {ch}, anunciou que o cargo de técnico de {m} está garantido, apesar da crescente insatisfação da torcida.",
+    "A Federação de Futebol {national} anunciou que o cargo de técnico de {m} está garantido, apesar da crescente insatisfação da torcida.",
+    "A diretoria do {club} anunciou que o cargo de técnico de {m} está garantido, apesar da crescente insatisfação da torcida."
+   ]
+  }
  }
 }

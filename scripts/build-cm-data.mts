@@ -338,7 +338,7 @@ if (!ORIGINAL && files['nation.dat']) {
   }
   // klubbernes rå poster (omdømme, tilskuere, økonomi, formand …) fra samme indlæsning – kun til world-cm.json (cmRaw)
   if (w.cmRaw && wa.cmRaw) {
-    for (const k of ['clubRep', 'clubStat', 'crowd', 'fin', 'chair', 'chairBoard'] as const) {
+    for (const k of ['clubRep', 'clubStat', 'crowd', 'fin', 'chair', 'chairBoard', 'chairName'] as const) {
       const src = wa.cmRaw[k] as Record<number, unknown> | undefined, dst = (w.cmRaw[k] ??= {} as never) as Record<number, unknown>;
       if (src) for (const id of euroKeep) if (src[id] !== undefined) dst[id] = src[id];
     }
@@ -512,7 +512,7 @@ for (const p of w.players) {
 }
 for (const k of Object.keys(w.clubRep)) if (!keptClubs.has(Number(k))) delete w.clubRep[Number(k)];
 for (const k of Object.keys(w.clubColors)) if (!keptClubs.has(Number(k))) delete w.clubColors[Number(k)];
-if (w.cmRaw) { for (const t of [w.cmRaw.clubRep, w.cmRaw.clubStat ?? {}, w.cmRaw.crowd ?? {}, w.cmRaw.fin ?? {}, w.cmRaw.chair ?? {}, w.cmRaw.chairBoard ?? {}] as Record<number, unknown>[]) for (const k of Object.keys(t)) if (!keptClubs.has(Number(k)) && !euroKeep.has(Number(k))) delete t[Number(k)]; }
+if (w.cmRaw) { for (const t of [w.cmRaw.clubRep, w.cmRaw.clubStat ?? {}, w.cmRaw.crowd ?? {}, w.cmRaw.fin ?? {}, w.cmRaw.chair ?? {}, w.cmRaw.chairBoard ?? {}, w.cmRaw.chairName ?? {}] as Record<number, unknown>[]) for (const k of Object.keys(t)) if (!keptClubs.has(Number(k)) && !euroKeep.has(Number(k))) delete t[Number(k)]; }
 /** 2026/27: stabens ikke-spillerpost pr. person-id → world-cm.json (cmRaw.staffNp) */
 const staffNp2026 = new Map<number, number[]>();
 /** (MODERN_PARITY 7) 2026/27: bestyrelse/managerjob – staff[12] (omdømmerne og de skjulte egenskaber), [13] (ankomstdatoen) og [14] (landsholdet

@@ -660,5 +660,47 @@
    "{b}, {comp} maçında {opp} ile {sc} berabere biten maçta takımın gösterdiği çabadan tatmin oldu.",
    "{b}, {comp} maçında {opp} karşısındaki {sc}'lik yenilgimize rağmen takımın gösterdiği çabadan tatmin oldu."
   ]
+ },
+ "press": {
+  "tConsider": "{club} yönetimi {m} hakkındaki kararını düşünüyor",
+  "tConsiderFa": "{national} Futbol Federasyonu {m} hakkındaki kararını düşünüyor",
+  "tVote": "{club} yönetimi {m} için güven tazeledi",
+  "tVoteFa": "{national} Futbol Federasyonu {m} için güven tazeledi",
+  "listFa": "{national} Futbol Federasyonu'nun {m} için yerine geçebilecek isimleri listelediği konuşuluyor.",
+  "list": "{club} kulübünün {m} için yerine geçebilecek isimleri listelediği konuşuluyor.",
+  "expects": "{club} yönetimi, teknik direktör {m} ile ilgili beklentisini açıkça ortaya koydu: kısa sürede olumlu sonuçlar.",
+  "meeting": "{club} yönetimi, {m} ile kulübün hedeflerinin ve beklentilerinin konuşulduğu bir toplantı yaptı.\n\nYorumcular bunu {m} için bir ültimatom olarak yorumladı: ya performans ya ayrılık.",
+  "warned": "{club} başkanı {ch}, {m} hakkında kamuoyu önünde uyarıda bulundu: önümüzdeki birkaç hafta içinde sonuçların ciddi şekilde düzelmesini bekliyor, aksi halde daha ilham verici bir teknik direktör bulması gerekebilir.",
+  "protestT": "Taraftar protestosu",
+  "protest": "{club} taraftarları, teknik direktör {m} için kulübün kötü yönetildiğini protesto etmek amacıyla bugün antrenman tesisinin önünde toplandı.",
+  "ultT": "{club} yönetiminden teknik direktöre ültimatom",
+  "ult": "{club} yönetiminin teknik direktör {m} karşısında sabrı nihayet tükeniyor gibi görünüyor.\n\nBasında, yaklaşan {comp} maçında {opp} karşısında alınacak kötü bir sonucun onun sonunu getireceği konuşuluyor.",
+  "safe": {
+   "plain": [
+    "{club} başkanı {ch}, teknik direktör {m} için görevinin güvende olduğunu açıkladı.",
+    "{national} Futbol Federasyonu, teknik direktör {m} için görevinin güvende olduğunu açıkladı.",
+    "{club} yönetimi, teknik direktör {m} için görevinin güvende olduğunu açıkladı."
+   ],
+   "motiv": [
+    "{club} başkanı {ch}, teknik direktör {m} için görevinin güvende olduğunu açıkladı (oyuncuların motivasyonundaki artan sorunlara rağmen).",
+    "{national} Futbol Federasyonu, teknik direktör {m} için görevinin güvende olduğunu açıkladı (oyuncuların motivasyonundaki artan sorunlara rağmen).",
+    "{club} yönetimi, teknik direktör {m} için görevinin güvende olduğunu açıkladı (oyuncuların motivasyonundaki artan sorunlara rağmen)."
+   ],
+   "staff": [
+    "{club} başkanı {ch}, teknik direktör {m} için görevinin güvende olduğunu açıkladı (teknik ekipte anlaşmazlık olduğu yönündeki söylentilere rağmen).",
+    "{national} Futbol Federasyonu, teknik direktör {m} için görevinin güvende olduğunu açıkladı (teknik ekipte anlaşmazlık olduğu yönündeki söylentilere rağmen).",
+    "{club} yönetimi, teknik direktör {m} için görevinin güvende olduğunu açıkladı (teknik ekipte anlaşmazlık olduğu yönündeki söylentilere rağmen)."
+   ],
+   "senior": [
+    "{club} başkanı {ch}, teknik direktör {m} için görevinin güvende olduğunu açıkladı (deneyimli bir oyuncunun takımın gidişatından memnun olmadığı yönündeki söylentilere rağmen).",
+    "{national} Futbol Federasyonu, teknik direktör {m} için görevinin güvende olduğunu açıkladı (deneyimli bir oyuncunun takımın gidişatından memnun olmadığı yönündeki söylentilere rağmen).",
+    "{club} yönetimi, teknik direktör {m} için görevinin güvende olduğunu açıkladı (deneyimli bir oyuncunun takımın gidişatından memnun olmadığı yönündeki söylentilere rağmen)."
+   ],
+   "unrest": [
+    "{club} başkanı {ch}, teknik direktör {m} için görevinin güvende olduğunu açıkladı (taraftarlar arasında artan huzursuzluğa rağmen).",
+    "{national} Futbol Federasyonu, teknik direktör {m} için görevinin güvende olduğunu açıkladı (taraftarlar arasında artan huzursuzluğa rağmen).",
+    "{club} yönetimi, teknik direktör {m} için görevinin güvende olduğunu açıkladı (taraftarlar arasında artan huzursuzluğa rağmen)."
+   ]
+  }
  }
 }

@@ -464,7 +464,7 @@ export function boardEnv(g: GameState, todayIso = g.date, startIso?: string, laz
       const from = dayNum(todayIso), to = from + days;
       const f = Object.values(g.fixtures).filter((x) => (x.home === c || x.away === c) && !x.result && dayNum(x.date) > from && dayNum(x.date) <= to)
         .sort((a, b) => a.date.localeCompare(b.date))[0];
-      return f ? { opp: f.home === c ? f.away : f.home, hasComp: !!g.comps[f.comp] } : null;
+      return f ? { opp: f.home === c ? f.away : f.home, hasComp: !!g.comps[f.comp], comp: g.comps[f.comp] ? compShort(g.comps[f.comp].name) : '' } : null;
     },
     underOffer: () => false,
     inEurope: (c) => c > 0 && Object.values(g.comps).some((x) => x.type === 'continental' && x.clubs.includes(c) && !/intertoto/i.test(x.name)),
@@ -743,9 +743,31 @@ function boardNews(g: GameState, _env: BoardEnv, n: BoardNews): void {
         opp: clubName(n.opp), cs: short(n.club), os: short(n.opp), sc, comp: n.comp }), ...(nn === null ? { link: { kind: 'club' as const, id: n.club } } : {}) });
       return;
     }
-    case 'pressure': case 'ultimatum': case 'protest':
-      if (mine(n.club)) addNews({ cat: 'board', key: 'board.warning', params: { club: clubName(n.club) } });
+    // 0x6a0e70 (0x1777, tekst 0x6a1190), 0x6a5d10 (0x1782, 0x6a5e30) og 0x6ac700 (0x178d, 0x6ac880) – før stod CM Reborns egen "The board are
+    // unhappy with results … you will be sacked" (board.warning) for alle tre, som ikke findes i originalen (ejerens test 25/11: modsagde
+    // den månedlige tillidsopdatering). Modtagerne: menneskets egen klub/landshold (andre klubbers nyheder til nation/division er ikke porteret).
+    case 'pressure': {
+      const nn = myNat(n.club);
+      if (!mine(n.club) && nn === null) return;
+      const m = _env.manager(n.club);
+      const short = nn !== null ? clubName(n.club) : g.clubs[n.club]?.short || clubName(n.club);
+      addNews({ cat: 'board', key: 'board.cm', params: boardParams({ k: 'pp', kind: n.kind, v: n.v, t: n.tt, cs: short, club: clubName(n.club), m: m ? mname(m) : g.manager.name,
+        ch: nn !== null ? '' : g.cmChairName?.[n.club] ?? '', nat: nn !== null ? natAdj(g, nn) : '' }), ...(nn === null ? { link: { kind: 'club' as const, id: n.club } } : {}) });
       return;
+    }
+    case 'protest': {
+      if (!mine(n.club) && myNat(n.club) === null) return;
+      const m = _env.manager(n.club);
+      addNews({ cat: 'board', key: 'board.cm', params: boardParams({ k: 'sp', club: clubName(n.club), m: m ? mname(m) : g.manager.name }) });
+      return;
+    }
+    case 'ultimatum': {
+      if (!mine(n.club)) return;
+      const m = _env.manager(n.club);
+      addNews({ cat: 'board', key: 'board.cm', params: boardParams({ k: 'ul', cs: g.clubs[n.club]?.short || clubName(n.club), club: clubName(n.club), m: m ? mname(m) : g.manager.name,
+        opp: clubName(n.opp), comp: n.comp }), link: { kind: 'club', id: n.club } });
+      return;
+    }
     default: return;
   }
 }

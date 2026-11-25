@@ -660,5 +660,47 @@
    "{b} está satisfecha con el esfuerzo del equipo en el empate ({sc}) contra {opp} en {comp}.",
    "{b} está satisfecha con el esfuerzo del equipo pese a nuestra derrota ({sc}) contra {opp} en {comp}."
   ]
+ },
+ "press": {
+  "tConsider": "La directiva del {club} se plantea el futuro de {m}",
+  "tConsiderFa": "La Federación de Fútbol {national} se plantea el futuro de {m}",
+  "tVote": "La directiva del {club} da un voto de confianza a {m}",
+  "tVoteFa": "La Federación de Fútbol {national} da un voto de confianza a {m}",
+  "listFa": "Se rumorea que la Federación de Fútbol {national} ya busca sustitutos para {m}.",
+  "list": "Se rumorea que el {club} ya busca posibles sustitutos para {m}.",
+  "expects": "La directiva del {club} ha dejado claro que espera que el entrenador {m} empiece pronto a conseguir resultados positivos.",
+  "meeting": "La directiva del {club} se ha reunido con {m} para hablar de las aspiraciones y ambiciones del club.\n\nLos medios lo interpretan como un ultimátum a {m}: o rinde o se va.",
+  "warned": "{m} ha sido advertido públicamente por el presidente del {club}, {ch}, que espera una mejora espectacular de los resultados en las próximas semanas; de lo contrario, quizá tenga que buscar un entrenador más inspirador.",
+  "protestT": "Protesta de la afición",
+  "protest": "Aficionados del {club} se concentraron hoy frente a la ciudad deportiva para protestar contra la mala gestión del club por parte de {m}.",
+  "ultT": "Ultimátum de la directiva al entrenador del {club}",
+  "ult": "La directiva del {club} parece estar perdiendo por fin la paciencia con el entrenador {m}.\n\nLa prensa rumorea que un mal resultado ante el {opp} en el próximo partido de {comp} sellaría su destino.",
+  "safe": {
+   "plain": [
+    "El presidente del {club}, {ch}, ha anunciado que el puesto de {m} como entrenador está asegurado.",
+    "La Federación de Fútbol {national} ha anunciado que el puesto de {m} como entrenador está asegurado.",
+    "La directiva del {club} ha anunciado que el puesto de {m} como entrenador está asegurado."
+   ],
+   "motiv": [
+    "El presidente del {club}, {ch}, ha anunciado que el puesto de {m} como entrenador está asegurado, pese a los crecientes problemas de motivación de los jugadores.",
+    "La Federación de Fútbol {national} ha anunciado que el puesto de {m} como entrenador está asegurado, pese a los crecientes problemas de motivación de los jugadores.",
+    "La directiva del {club} ha anunciado que el puesto de {m} como entrenador está asegurado, pese a los crecientes problemas de motivación de los jugadores."
+   ],
+   "staff": [
+    "El presidente del {club}, {ch}, ha anunciado que el puesto de {m} como entrenador está asegurado, pese a los rumores de desavenencias en el cuerpo técnico.",
+    "La Federación de Fútbol {national} ha anunciado que el puesto de {m} como entrenador está asegurado, pese a los rumores de desavenencias en el cuerpo técnico.",
+    "La directiva del {club} ha anunciado que el puesto de {m} como entrenador está asegurado, pese a los rumores de desavenencias en el cuerpo técnico."
+   ],
+   "senior": [
+    "El presidente del {club}, {ch}, ha anunciado que el puesto de {m} como entrenador está asegurado, pese a los rumores sobre el descontento de un jugador veterano con la evolución del equipo.",
+    "La Federación de Fútbol {national} ha anunciado que el puesto de {m} como entrenador está asegurado, pese a los rumores sobre el descontento de un jugador veterano con la evolución del equipo.",
+    "La directiva del {club} ha anunciado que el puesto de {m} como entrenador está asegurado, pese a los rumores sobre el descontento de un jugador veterano con la evolución del equipo."
+   ],
+   "unrest": [
+    "El presidente del {club}, {ch}, ha anunciado que el puesto de {m} como entrenador está asegurado, pese al creciente malestar de la afición.",
+    "La Federación de Fútbol {national} ha anunciado que el puesto de {m} como entrenador está asegurado, pese al creciente malestar de la afición.",
+    "La directiva del {club} ha anunciado que el puesto de {m} como entrenador está asegurado, pese al creciente malestar de la afición."
+   ]
+  }
  }
 }

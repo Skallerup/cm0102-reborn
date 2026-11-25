@@ -758,6 +758,8 @@ export function createGameBase(world: WorldData, o: NewGameOptions): NewGameCtx 
   if (cm) cmClubDataFill_829960(g, cm, seed);
   // originalens bestyrelse: init_club_board_records 0x68f130 på databasens dato (cmBoardGame.ts – kun den originale database i ægte tilstand)
   cmBoardInit(g, cm?.cmRaw?.chairBoard, cm?.cmRaw?.nationBoard, natDbGame ?? undefined, cm ? (c) => cmStartBalanceGbp(g, cm, seed, c) : undefined);
+  // formændenes navne (0x6a1190's brødtekster) – kun med bestyrelsens poster
+  if (g.cmBoard && cm?.cmRaw?.chairName) g.cmChairName = { ...cm.cmRaw.chairName };
 
   progress('board', 0.17);
   // Brugerens klub
