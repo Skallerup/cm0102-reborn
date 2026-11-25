@@ -70,7 +70,7 @@ async function run(look) {
     }
     // European Squad (31/8): Respond → Auto → Submit
     if (await gs(() => { const g = window.__cm.gs(); return g.clubs[g.userClub]?.euroDue === g.season; })) {
-      if (await page.locator('.cx-eur').isVisible().catch(() => false)) { await page.locator('.cx-eur .cx-sqn-bar .cx-grey').first().click(); await page.locator('.cx-foot-btns button.primary').click(); }
+      if (await page.locator('.cx-eur').isVisible().catch(() => false)) { await page.locator('.cx-eur .cx-sqn-bar .cx-grey').first().click(); if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-european-squad.png` }); if (!(await page.locator('.cx-eur .cx-sqn-box', { hasText: /^\d+$/ }).count())) throw new Error('European Squad: valgte felter skal vise trøjenummer'); await page.locator('.cx-foot-btns button.primary').click(); }
       else if (await page.locator('.cx-respond').isVisible().catch(() => false)) await page.locator('.cx-respond').first().click();
       else return false;
       await page.waitForTimeout(300);

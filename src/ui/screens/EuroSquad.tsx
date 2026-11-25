@@ -1,5 +1,5 @@
 // Klassisk: originalens "<klub> European Squad" (målt 9/11-2026). Spillerne i to kolonner; klik det blå felt for at tilmelde ("In")
-// eller fjerne en spiller, højst 25. Nederst "25 Players Selected". Auto = de 25 bedste (3 målmænd + 22), Clear, Back, Submit.
+// eller fjerne en spiller, højst 25 (som Squad Numbers: det valgte felt viser spillerens trøjenummer). Nederst "25 Players Selected". Auto = de 25 bedste (3 målmænd + 22), Clear, Back, Submit.
 import { ClassicFoot } from '../classic';
 import { useState } from 'react';
 import { act } from '../../game/actions';
@@ -45,7 +45,7 @@ export function ClassicEuroSquad({ onClose }: { onClose: () => void }) {
       <div className="cx-sqn-list">
         {players.map((p) => (
           <div key={p.id} className="cx-sqn-row">
-            <span className="cx-sqn-box" data-pid={p.id} role="button" tabIndex={0} onClick={() => toggle(p.id)}>{sel.has(p.id) ? t('eur.in') : ''}</span>
+            <span className="cx-sqn-box" data-pid={p.id} role="button" tabIndex={0} onClick={() => toggle(p.id)}>{sel.has(p.id) ? (p.number ?? t('eur.in')) : ''}</span>
             <span className="cx-sqn-tag">{p.injury ? <i className="inj">{t('cl.tag.Inj')}</i> : null}</span>
             <PlayerLink p={p} />
             <span className="cx-sqn-pos">{posStr(p)}</span>
