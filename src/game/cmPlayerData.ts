@@ -1001,12 +1001,71 @@ function contractLengthDay(g: GameState, p: Player, c: CmContract, rand: (n: num
       && !k.futureClub && !cmInDeal(g, p)) { contractExtHook.queue?.(g, p); return; }
   }
   // E
-  if ((k.cmType ?? 2) !== 1 || p.loan || cmInDeal(g, p)) return;
+  if ((k.cmType ?? 2) !== 1 || p.loan || cmInDeal(g, p)) { abroadOrRelations_5d1fd4(g, p, c, rand, age); return; }
   const [ed, ey] = doyOf(k.expires), [td, ty] = doyOf(g.date);
   const n = (ty - ey) * 365 - ed + td;
   if (n <= rand(100)) return;
   if (!(c.b45 & 2)) cmFlagSet(c, 2);
   c.b44 = clamp100(s8(-n) + s8(c.b44));
+}
+
+/** staff +0x65's tre pladser fra `at` (cmRelations.ts – ingen import: cmRelations importerer denne fil) */
+const rel3 = (p: Player, at: number) => (p.cmRel ? p.cmRel.slice(at, at + 3) : [0, 0, 0]);
+/** personen bag en forholdsnøgle (cmRelations.personKey): spiller-id eller stabens databasens id (ellers 1e9 + id) */
+function relPerson(g: GameState, key: number): { club: number; main: number; b4e: number } | null {
+  if (!key) return null;
+  const pl = g.players[key];
+  if (pl && key < 1_000_000_000) return { club: pl.club, main: pl.loan?.from ?? pl.club, b4e: pl.cmContract?.b4e ?? 0 };
+  const s = Object.values(g.staff).find((x) => (x.cmId ?? 1_000_000_000 + x.id) === key);
+  return s ? { club: s.club, main: s.club, b4e: 0 } : null;
+}
+
+/** 0x5ce2d0 0x5d1fd4–0x5d28f3 (kontrakten er ikke udløbet, en leje eller en handel – E's andre gren):
+ *  0x5d1fd4 (vil til udlandet, flag 0x100): uden 0x100, Loyalty < 17, over 25 år (32+: ikke i sit eget land), ingen handel (0x8c1870), verdens-
+ *  omdømme > 4250, rand(2000) + klubbens omdømme · 0,5 < nuværende omdømme, rand(1000) + klubbens · 0,25 < verdens og rand(50) = 0 → 0x5d20d5's
+ *  beregning (dage i klubben/kontrakten, 0x53d980, 0x547d60, klubtabellens +4, klub +0x1db) og ved et ja +0x44 −20 og flag 0x100 – IKKE porteret
+ *  (klub +0x1db og 0xdd7120 kendes ikke); grenen ender i 0x5d2392 uden forholdsblokken.
+ *  Ellers 0x5d24e7 (forholdene): rand(50) = 0 og rand(Professionalism²) = 0 → klubben er yndlingsklub (0x547d60) +rand(100), uvenklub (0x547d30)
+ *  +rand(−100) og flag 0x40 under −50; han kan lide manageren (0x547810) +rand(75), ikke (0x547840) +rand(−75) og flag 8 under −50; n uvenner i
+ *  klubben (0x547c90) +rand(−25n), og for hver uven med kontrakt i klubben (0x4cf5a0), der er listet (0x544520: +0x4e & 9), +rand(Loyalty + 10)
+ *  (over 50: ikke længere utilfreds), derefter flag 0x40 under −50; m venner i klubben (0x547ce0) +rand(25m). Intet af det utilfredse → flag 0x40
+ *  og 8 ryddes (0x8674e0). */
+function abroadOrRelations_5d1fd4(g: GameState, p: Player, c: CmContract, rand: (n: number) => number, age: number): void {
+  const club = p.club;
+  const cl = g.clubs[club];
+  const loy = s8(sh(p, 'loyalty'));
+  const rep = p.cmRepMem ?? p.cmRep;
+  const curR = rep ? Math.round(rep[1] * 50) : curRep(p), worldR = rep ? Math.round(rep[2] * 50) : curRep(p);
+  const gates = !(c.b45 & 0x100) && loy < 17 && age > 25 && !(age >= 32 && cl?.nation === p.nation) && !cmInDeal(g, p) && s16(worldR) > 0x109a
+    && rand(2000) + s16(clubRepMem(g, club)) * 0.5 < s16(curR)
+    && rand(1000) + s16(clubRepMem(g, club)) * 0.25 < s16(worldR)
+    && rand(50) === 0;
+  if (gates) return;   // 0x5d20d5 (flag 0x100) – ikke porteret, se ovenfor
+  // 0x5d24e7
+  if (!cl) return;
+  if (rand(50) !== 0) return;
+  const prof = s8(sh(p, 'professionalism'));
+  if (rand(prof * prof) !== 0) return;
+  const add = (n: number) => { c.b44 = clamp100(s8(c.b44) + s8(rand(n))); };
+  let bad = false;
+  const has = (at: number, x: number) => !!x && rel3(p, at).includes(x);
+  if (has(0, club)) add(100);
+  else if (has(3, club)) { add(-100); if (s8(c.b44) < -50) cmFlagSet(c, 0x40); bad = true; }
+  const mg = cl.manager !== undefined && cl.manager >= 0 ? g.staff[cl.manager] : undefined;
+  const mk = mg ? mg.cmId ?? 1_000_000_000 + mg.id : 0;
+  if (has(6, mk)) add(75);
+  else if (has(9, mk)) { add(-75); if (s8(c.b44) < -50) cmFlagSet(c, 8); bad = true; }
+  const dis = rel3(p, 9).map((k) => relPerson(g, k));
+  const n = dis.filter((x) => x && x.club === club).length;
+  if (n) {
+    add(-25 * n);
+    bad = true;
+    for (const x of dis) if (x && x.main === club && x.b4e & 9) { add(loy + 10); if (s8(c.b44) > 50) bad = false; }
+    if (s8(c.b44) < -50) cmFlagSet(c, 0x40);
+  }
+  const fav = rel3(p, 6).map((k) => relPerson(g, k)).filter((x) => x && x.club === club).length;
+  if (fav) add(25 * fav);
+  if (!bad) { cmFlagClear(c, 0x40); cmFlagClear(c, 8); }
 }
 
 /** 0x5cccd0's klubtabel (ugentlig) og 0x5ce2d0 for alle spillere med kontrakt – hver dag (sim.ts newDay). Spillere i en klub i en aktiv liga
