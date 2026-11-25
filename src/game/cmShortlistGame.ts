@@ -42,7 +42,7 @@ import { msvcQsort, naturalPositions, type PositionRecord } from './engine/grid/
 import { getClubFinance_5a0590 } from './cmWage';
 import { leagueClash } from './cmBoardInterest';
 import { GEN } from './cmGen/index';
-import { humanClub_600a50 } from './cmWageGame';
+import { humanClub_600a50, withMemScope } from './cmWageGame';
 import { contractFlag_5445x0, value_840d80_impl, value_840d80_any, PV_DIRECT } from './cmSlEval';
 import { registerAskingPrice, askingForget } from './cmAskingPrice';
 import { registerPlayerWill } from './cmPlayerWill';
@@ -2446,12 +2446,13 @@ export function cmShortlistStartPart(g: GameState, part: number, parts: number, 
   // stabens mål (cmStaffMove.ts afterBudget → staffSearch) deler personlisten for hele løkken (cmBoardGame.ts withSharedPersons)
   const clubs = Object.values(g.clubs), prog = SL_START_PROGRESS.cb;
   const from = resume ? resume.next : 0, to = part >= parts - 1 ? clubs.length : Math.trunc((clubs.length * (part + 1)) / parts);
-  withSharedPersons(g, () => {
+  // (hastighed, 25/11) hukommelsernes faste opslag (klubbernes højeste id/antal, landene) delt af løkkens hukommelser (cmWageGame.ts withMemScope)
+  withMemScope(g, () => withSharedPersons(g, () => {
     for (let i = from; i < to; i++) {
       if (prog && (i & 63) === 0) prog(i / clubs.length);                          // fremdriftsbjælken ved nyt spil (rører intet i spillet)
       if (g.cmPlan![clubs[i].id]) afterPlan(S, clubs[i].id, []);
     }
-  });
+  }));
   if (to < clubs.length) {
     const st = (S.M as { slState?: () => SlWantState }).slState;
     if (!st || !S.rnd) throw new Error('cmShortlistStartPart: tilstanden kan ikke gives videre');
@@ -2516,7 +2517,7 @@ export function cmShortlistDaily(g: GameState, planClub: (cid: number) => { drop
   // (hastighed, 25/11) trupplanens stabshale og stabens mål (cmStaffMove.ts staffTail/staffSearch) deler personlisten, kandidaterne og spejderne for
   // hele klubløkken (cmBoardGame.ts withSharedPersons) – før byggede hver klub sit eget boardEnv med alle personer (sorteret stab) og sine egne
   // kandidater (~12 % af dagen); en fyring i halen (cmStaffMove.ts fireStaff) kasserer kandidaterne og spejderne
-  withSharedPersons(g, () => { for (let ci = 0; ci < clubs.length; ci++) {
+  withMemScope(g, () => withSharedPersons(g, () => { for (let ci = 0; ci < clubs.length; ci++) {
     const c = clubs[ci];
     // fremdriftsbjælken (dagens Web Worker – ui/dayWorker.ts): dagens brøkdel, klubløkken er det meste af dagen
     if (prog && (ci & 15) === 0) prog(0.1 + 0.8 * (ci / clubs.length));
@@ -2532,7 +2533,7 @@ export function cmShortlistDaily(g: GameState, planClub: (cid: number) => { drop
     // any players", ferievalg 4 = 1 – 0x84a0e2, i den oversatte funktion)
     if (!humanClub0(g, c.id)) makeBids(S, c.id, off);
     tt = tick('d.bids', tt);
-  } });
+  } }));
   SL_DIAG.end?.(S);
   const ev = finishSl(S);
   SL_STATS.days++; SL_STATS.bids += ev.filter((x) => x.kind === 'bid').length;

@@ -98,6 +98,25 @@ export const NAT7F = new Map(NATION_7F);
  *  Beckham). Klubberne efter navnet (−1 = ikke i spillet); B-hold-parrene og Spaniens 23 klubber er en del af tabellen. [0xad9c6c]'s
  *  personflag (+0xc, 0x418f60) = ingen. */
 const KEY_CLUBS = new WeakMap<GameState, { n: number; ref: GameState['clubs']; v: number[] }>();
+/** (hastighed, 25/11) inden for én klubløkke (withMemScope – ønskelisternes start og dag): klubbernes højeste id og antal, landenes navne → indeks og
+ *  klubbernes første vc[1] pr. land (cmContractGame.ts buildWantMem) regnes én gang for alle løkkens hukommelser – klubberne og landene ændres ikke i
+ *  løkken (før gennemløb af alle klubber i hver buildWageMem/buildWantMem – stabens vilje bygger en hukommelse pr. kandidat). Samme værdier. */
+interface MemScope { g: GameState; maxClub?: number; nClubs?: number; byName?: Map<string, number>; nat8e?: Map<number, number> }
+let MEM_SCOPE: MemScope | null = null;
+export function withMemScope<T>(g: GameState, fn: () => T): T {
+  const prev = MEM_SCOPE;
+  MEM_SCOPE = { g };
+  try { return fn(); } finally { MEM_SCOPE = prev; }
+}
+export function memScope(g: GameState): MemScope | null { return MEM_SCOPE && MEM_SCOPE.g === g ? MEM_SCOPE : null; }
+/** landenes navn → indeks (det første ved dubletter, som new Map(...) – den sidste vinder; samme som før) */
+export function nationsByName(g: GameState): Map<string, number> {
+  const sc = memScope(g);
+  if (sc?.byName) return sc.byName;
+  const m = new Map(g.nations.map((n, i) => [n.name, i]));
+  if (sc) sc.byName = m;
+  return m;
+}
 export function writeKeyIds(m: SparseMem, g: GameState, byName: Map<string, number>): void {
   for (const [a, nm] of KEY_NATION_GLOBALS) m.w32(a, byName.get(nm) ?? -1);
   for (const [a, v] of KEY_COMP_GLOBALS) m.w32(a, v);
@@ -105,8 +124,9 @@ export function writeKeyIds(m: SparseMem, g: GameState, byName: Map<string, numb
   // (hastighed, runde 14) klubbernes id-globaler gemt pr. spil, så længe klubberne er de samme (antal og navne – nøglen er deres id/navn-række)
   let K = KEY_CLUBS.get(g);
   const clubs = g.clubs;
-  let n = 0;
-  for (const _ in clubs) n++;
+  const sc = memScope(g);
+  let n = sc?.nClubs ?? -1;
+  if (n < 0) { n = 0; for (const _ in clubs) n++; if (sc) sc.nClubs = n; }
   if (!K || K.n !== n || K.ref !== clubs) {
     const clubByName = new Map<string, number>();
     for (const c of Object.values(clubs)) if (!clubByName.has(c.name)) clubByName.set(c.name, c.id);
@@ -234,8 +254,9 @@ export function buildWageMem(g: GameState, clubs: Iterable<number>, unset: Set<n
   const pid = (p: Player) => { let v = memId.get(p); if (v === undefined) { v = !p.regen && p.id < 1_000_000 ? p.id : next++; memId.set(p, v); } return v; };
   // skrives først, når alle id'er er kendt – antallet sættes til sidst (så ingen database-person er ≥ [0xae2364])
   const nNat = g.nations.length;
-  let maxClub = 0;
-  for (const id of Object.keys(g.clubs)) if (+id > maxClub) maxClub = +id;
+  const msc = memScope(g);
+  let maxClub = msc?.maxClub ?? -1;
+  if (maxClub < 0) { maxClub = 0; for (const id of Object.keys(g.clubs)) if (+id > maxClub) maxClub = +id; if (msc) msc.maxClub = maxClub; }
   m.w32(G.CLUBS, CLUB0); m.w32(G.STAFF, STAFF0); m.w32(0xae235c, maxClub + 1 + 2 * nNat); m.w32(0xae2350, nNat);
   m.w32(0xae2a38, PTRS); m.w32(PTRS, FIN0);
   m.w32(G.CM, PTRS + 8); m.w32(PTRS + 8, K0); m.w32(G.ROWS, ROWS0);
@@ -248,7 +269,7 @@ export function buildWageMem(g: GameState, clubs: Iterable<number>, unset: Set<n
   // B-hold-parrene (0x540a50) og Spaniens 23 klubber (0x53d7f0): ingen (−1)
   for (let a = 0x9d0120; a <= 0x9d0524; a += 4) m.w32(a, -1);
   for (let a = 0xb63c9c; a <= 0xb63d00; a += 4) m.w32(a, -1);
-  const byName = new Map(g.nations.map((n, i) => [n.name, i]));
+  const byName = nationsByName(g);
   for (const [a, nm] of KEY_NATIONS) m.w32(a, byName.get(nm) ?? -1);
   writeKeyIds(m, g, byName);
   const natAdr = (n: number | undefined) => {

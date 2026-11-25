@@ -24,7 +24,7 @@
 // rand: 0x85fc50 trækker rand(0x1c) (dagen i udløbsmåneden) – af spillets frø, personen og datoen (cmRand – rører ikke spillets rng).
 import type { Club, Contract, ContractClauses, GameState, Player } from './types';
 import { type CmCtx, G, writeMonthTables } from './cmMem';
-import { buildWageMem, cmMemCall, type WageMem } from './cmWageGame';
+import { buildWageMem, cmMemCall, memScope, nationsByName, type WageMem } from './cmWageGame';
 import { writeEuroMem } from './cmEuroMem';
 import { setToDesiredContract_85fc50, constructContract_85e410, calcContractValue_866830, contractForClub_4cf5f0, contractSatisfaction_866620 } from './cmContractWant';
 import { offerContract_4cda70 } from './cmContract';
@@ -96,6 +96,8 @@ const SEASON_ROWS: [string, string][] = [
   ['United States', '000000000000000000000000000000000000005100d20700000000000000000000000500d2070000000000000000000000'],
   ['Wales', '0100000000000046785c720000000000000000e500d10700000000000000000000007d00d1070000000000000000000000'],
 ];
+/** SEASON_ROWS' bytes (hex læst én gang) */
+const SEASON_BYTES: Uint8Array[] = SEASON_ROWS.map(([, hex]) => { const b = new Uint8Array(hex.length >> 1); for (let i = 0; i + 1 < hex.length; i += 2) b[i / 2] = parseInt(hex.slice(i, i + 2), 16); return b; });
 /** verdensdelenes rækker 3–7: Europa, Nordamerika, Sydamerika, Asien, Oceanien (rækkerne 0–2 har ingen verdensdel) */
 const OCEANIA = new Set(['Australia', 'New Zealand', 'Fiji', 'Papua New Guinea', 'Samoa', 'American Samoa', 'Tonga', 'Vanuatu', 'Tahiti', 'Solomon Islands', 'New Caledonia', 'Cook Islands']);
 
@@ -161,11 +163,11 @@ export function buildWantMem(g: GameState, clubs: Iterable<number>, opts: { full
   [2, 3, 5, 1, 4, 0].forEach((id, k) => m.w32(CONT0 + 0x100 * k, id));
   const [tday, tyear] = isoDay(g.date);
   const seasonYear = tday >= 181 ? tyear : tyear - 1;
-  const byName = new Map(g.nations.map((n, i) => [n.name, i]));
+  const byName = nationsByName(g);
   const dy = seasonYear - 2001;
-  SEASON_ROWS.forEach(([nm, hex], r) => {
-    const a = 0xb63d60 + 0x48 * r;
-    for (let i = 0; i + 1 < hex.length; i += 2) m.w8(a + 0x17 + i / 2, parseInt(hex.slice(i, i + 2), 16));
+  SEASON_ROWS.forEach(([nm], r) => {
+    const a = 0xb63d60 + 0x48 * r, bytes = SEASON_BYTES[r];
+    for (let i = 0; i < bytes.length; i++) m.w8(a + 0x17 + i, bytes[i]);
     for (let o = 0x1e; o < 0x2a; o++) m.w8(a + o, 0);
     for (const o of [0x1b, 0x2c, 0x35, 0x3b, 0x44]) { const y = m.u16(a + o); if (y) m.w16(a + o, y + dy); }
     const n = nm ? byName.get(nm) : undefined;
@@ -175,8 +177,13 @@ export function buildWantMem(g: GameState, clubs: Iterable<number>, opts: { full
   // nation +0x11c: kun de indlæste lande (2; oraklet: England 2, de andre nøglelande 0) – 0x669360 giver de andre verdensdelens række (cmSlMem.ts)
   for (let n = 0; n < g.nations.length; n++) if (cmNationLoaded(g, n)) m.w8(W.natOf(n) + 0x11c, 2);
   // landenes felter (ud over buildWageMem: +0x71 verdensdelen, +0x77 sproget, +0x8e – nation.dat (GameState.cmNationRep), ellers klubbernes vc[1])
-  const nat8e = new Map<number, number>();
-  for (const cl of Object.values(g.clubs)) if (cl.vc && !nat8e.has(cl.nation)) nat8e.set(cl.nation, cl.vc[1]);
+  const msc = memScope(g);
+  let nat8e = msc?.nat8e;
+  if (!nat8e) {
+    nat8e = new Map<number, number>();
+    for (const cl of Object.values(g.clubs)) if (cl.vc && !nat8e.has(cl.nation)) nat8e.set(cl.nation, cl.vc[1]);
+    if (msc) msc.nat8e = nat8e;
+  }
   const natDone = new Set<number>();
   const nat = (n: number | undefined) => {
     const a = W.natOf(n);
