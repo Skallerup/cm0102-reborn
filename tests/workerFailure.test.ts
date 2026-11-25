@@ -7,11 +7,18 @@ describe('workerFailure', () => {
 
   it('arbejderens fil findes ikke længere → stale', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ status: 404 })));
-    const r = await workerFailure({ type: 'error' } as Event, '2/3 [fitness] after 6 s, step fitness 17%');
+    const r = await workerFailure({ type: 'error', filename: 'https://x/assets/newGameWorker-old.js' } as unknown as Event, '2/3 [fitness] after 6 s, step fitness 17%');
     expect(r.stale).toBe(true);
     expect(r.text).toContain('worker: 2/3 [fitness] after 6 s, step fitness 17%');
     expect(r.text).toContain('no message');
     expect(r.text).toContain('script 404 (stale build)');
+  });
+
+  it('uden fil: udgivelsen ukendt (intet document i node) – ingen stale', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ text: async () => '' })));
+    const r = await workerFailure({ type: 'error' } as Event, '1/3 [base] after 0 s, step none 0%');
+    expect(r.stale).toBe(false);
+    expect(r.text).toContain('build ?');
   });
 
   it('fejl med besked og fil', async () => {

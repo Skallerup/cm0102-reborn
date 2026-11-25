@@ -129,8 +129,18 @@ const phaseGap = () => { try { const v = localStorage.getItem('cm0102.ngGap'); c
 /** pause (ms) mellem den sidste arbejders lukning og udpakningen i hovedtråden – localStorage['cm0102.ngUnpackGap'] overstyrer (til målinger) */
 const UNPACK_GAP_MS = 1000;
 const unpackGap = () => { try { const v = localStorage.getItem('cm0102.ngUnpackGap'); const n = Number(v); return v !== null && v !== '' && n >= 0 && n <= 10000 ? n : UNPACK_GAP_MS; } catch { return UNPACK_GAP_MS; } };
-const WORKER_URL = new URL('./newGameWorker.ts', import.meta.url);
-const newWorker = () => new Worker(WORKER_URL, { type: 'module' });
+// (25/11) new URL(..) SKAL stå bogstaveligt i new Worker – ellers bundler Vite ikke arbejderen, men kopierer den rå .ts-fil til assets/, og alle
+// trinenes arbejdere fejlede før første besked (v0.37.0: "NewGameInterrupted … step none", spillet bygget i hovedtråden). Vagt: tests/workerUrls.test.ts
+const newWorker = () => new Worker(new URL('./newGameWorker.ts', import.meta.url), { type: 'module' });
+/** (25/11) er siden fra en ældre udgivelse? Den udgivne forside peger på et andet hovedscript end siden her (som dayRunner.ts) – null = ukendt */
+async function staleBuild(): Promise<boolean | null> {
+  try {
+    const html = await (await fetch('/', { cache: 'no-store' })).text();
+    const mine = [...document.querySelectorAll<HTMLScriptElement>('script[type=module][src]')].map((x) => new URL(x.src).pathname);
+    const live = [...html.matchAll(/<script[^>]+type="module"[^>]+src="([^"]+)"/g)].map((m) => m[1]);
+    return mine.length && live.length ? !live.some((u) => mine.includes(u)) : null;
+  } catch { return null; }
+}
 /** (24/11, "NewGameWorkerFailed: worker") arbejderen fejlede uden besked (onerror uden message – typisk et script, der ikke kunne hentes):
  *  fejlteksten får arbejderens nummer og trin, fejlens fil/linje, arbejderscriptets HTTP-status (404 = siden er fra en ældre udgivelse – de gamle
  *  filer findes ikke længere), hovedtrådens heap og enhedens hukommelse. `stale` = scriptet findes ikke længere (siden skal genindlæses). */
@@ -140,11 +150,17 @@ export async function workerFailure(e: Event | null, where: string): Promise<{ t
   if (ev?.message) parts.push(`"${String(ev.message).slice(0, 160)}"`); else parts.push('no message');
   if (ev?.filename) parts.push(`at ${String(ev.filename).replace(/^.*\/assets\//, '')}:${ev.lineno ?? 0}:${ev.colno ?? 0}`);
   let stale = false;
-  try {
-    const r = await fetch(WORKER_URL, { method: 'HEAD', cache: 'no-store' });
-    stale = r.status === 404;
-    parts.push(`script ${r.status}${stale ? ' (stale build)' : ''}`);
-  } catch (x) { parts.push(`script fetch failed (${(x as Error).message?.slice(0, 60) ?? '?'})`); }
+  if (ev?.filename) {
+    try {
+      const r = await fetch(String(ev.filename), { method: 'HEAD', cache: 'no-store' });
+      stale = r.status === 404;
+      parts.push(`script ${r.status}${stale ? ' (stale build)' : ''}`);
+    } catch (x) { parts.push(`script fetch failed (${(x as Error).message?.slice(0, 60) ?? '?'})`); }
+  } else {
+    const st = await staleBuild();
+    if (st) stale = true;
+    parts.push(st === null ? 'build ?' : st ? 'stale build' : 'build current');
+  }
   try {
     const m = (performance as unknown as { memory?: { usedJSHeapSize: number; jsHeapSizeLimit: number } }).memory;
     if (m) parts.push(`heap ${Math.round(m.usedJSHeapSize / 1048576)}/${Math.round(m.jsHeapSizeLimit / 1048576)} MB`);
@@ -254,6 +270,9 @@ export async function createGameAsync(world: WorldData | StartWorld, opts: NewGa
       throw e;
     }
     console.warn('Nyt spil i en Worker fejlede – opretter i hovedtråden', e);
+    // (25/11) en arbejder, der fejler før første besked (v0.37.0: arbejderens script var den rå .ts-fil), meldes – før byggede hovedtråden spillet
+    // i stilhed, og på telefonerne endte det som "NewGameInterrupted … step none"
+    try { const { reportError } = await import('../online/errors'); reportError(new Error(`NewGameWorkerFailed: before first message, building in main thread – ${(e as Error).message.slice(0, 380)}`)); } catch { /* ignorér */ }
     createGame(await full(), opts);
     if (opts.preview) setSetupGame(gs()); else releaseWorldCaches();
   }
