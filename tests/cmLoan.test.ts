@@ -28,6 +28,12 @@ describe('lejeperioden 0x8d0590', () => {
     expect(cmLoanPeriod(mini('2002-06-20', 'England'), 1, pl('1982-05-20', '2002-12-01'))).toEqual({ sm: 6, sy: 2002, em: 10, ey: 2002 });
     expect(cmLoanPeriod(mini('2001-09-10', 'Wales'), 1, pl('1982-05-20'))).toEqual({ sm: 4, sy: 2002, em: 4, ey: 2002 });
   });
+  it('TRANSFER_RULES +0x28 pr. land: 0x90f1a0 (Frankrig, Belgien …) start = slut, 0x7ec8e0 (Brasilien, Polen) start om 3 måneder, Sverige grundreglen', () => {
+    for (const n of ['France', 'Belgium', 'Holland', 'Germany']) { const r = cmLoanPeriod(mini('2001-09-10', n), 1, pl('1982-05-20')); expect([r.sm, r.sy]).toEqual([r.em, r.ey]); }
+    expect(cmLoanPeriod(mini('2001-09-10', 'Brazil'), 1, pl('1982-05-20'))).toMatchObject({ sm: 11, sy: 2001 });
+    expect(cmLoanPeriod(mini('2001-09-10', 'Poland'), 1, pl('1982-05-20'))).toMatchObject({ sm: 11, sy: 2001 });
+    expect(cmLoanPeriod(mini('2001-09-10', 'Sweden'), 1, pl('1982-05-20'))).toMatchObject({ sm: 9, sy: 2001 });
+  });
   it('dagen er højst den 28.', () => { expect(loanDate('2002-01-31', 1, 2002)).toBe('2002-02-28'); });
 });
 
