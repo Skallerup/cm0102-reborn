@@ -1470,6 +1470,8 @@ function fastReject1m(R: X86, f: FrCtx, S: SlMem, m: CmMem, c: CmCtx, entry: num
   const r = c.rand(2000) + (youth ? 0xabe : 0xcb2);
   return v >= r ? evalGo(R, m, st, esp, entry, k34, k) : rj(98);
 }
+/** staffSlot's vurdering (0x8400da / 0x840112 med ebx = klubben) – (hastighed, 25/11) en funktion i stedet for en lukning pr. kandidat */
+function staffEval(R: X86, club: number, pc: number): number { FR_STATS[201] = (FR_STATS[201] ?? 0) + 1; R.ebx = club | 0; return pc; }
 /** flag 0 (stabens pladser, [esp+0x14] = 0) 0x83fa7c–0x840058: uden ikke-spillerpost afvist (0x83fbdf); 0x69fc60; kontraktens løn (+0x35 & 0x3f
  *  = 2: 0x85fa00 · ugeløn / 7) mod pladsens +7 og klubbens omdømme; 0x83fc56–0x83fcb5; 0x83fd57–0x83fec2 (leje og 0x8cca10: de oversatte fra
  *  0x83fcbb med registrene sat); 0x83fed8–0x840058 → afvis, 0x8400da eller 0x840112. Kontrol: cm-sl-bench.ts (150 dage ens) */
@@ -1500,12 +1502,11 @@ function staffSlot(R: X86, S: SlMem, st: number, entry: number, slot: number, cl
   if (cn0 && m.u8(cn0 + 0x76) === 0xe && !eu53d740(c, st, 0)) { const gr = b24 & 0x1e; if (gr !== 2 && gr !== 4 && gr !== 6) return rj(17); }
   if (b24 & 1 || m.u8((m.u32(m.u32(0xde1f54) + 0x86e) + 8 * id) >>> 0) & 0x10) return rz(103);   // leje / 0x8cca10 – oversat fra 0x83fcbb
   // 0x83fed8: vurdér (0x8400da; flag 0 → 0x84010f 0x69d1b0) eller afvis
-  const EVAL = (pc: number) => { FR_STATS[201] = (FR_STATS[201] ?? 0) + 1; R.ebx = club | 0; return pc; };
-  if (m.u32(esp + 0x84)) return EVAL(0x8400da);
+  if (m.u32(esp + 0x84)) return staffEval(R, club, 0x8400da);
   const idsum = (id + m.s32(club)) | 0, kk = s16(m.u16(esp + 0x28));
-  if (kk !== 0 && idsum % kk === 0) return EVAL(0x8400da);
+  if (kk !== 0 && idsum % kk === 0) return staffEval(R, club, 0x8400da);
   const cn = m.u32(club + 0x53), pn = m.u32(st + 0x1a), sc = m.u32(st + 0x39), rec = m.u32(st + 0x61);
-  if (cn === pn || m.u8(st + 0x22) || (sc && m.u32(sc + 0x53) === cn)) return EVAL(0x840112);   // 0x840060 med flag 0 → 0x840112 (ebx = klubben)
+  if (cn === pn || m.u8(st + 0x22) || (sc && m.u32(sc + 0x53) === cn)) return staffEval(R, club, 0x840112);   // 0x840060 med flag 0 → 0x840112 (ebx = klubben)
   if (s8(m.u8(st + 0x18)) < 0x17 && (FRPORT ? knowsNation_53d980(c, st, cn, 1) : slCall(c, 0x53d980, 0, st, cn, 1)) && rec && m.s16(rec + 0xd) < 0xcb2) return rj(18);
   if (cn && pn && m.u8(cn + 0x75) !== m.u8(pn + 0x75)) {
     const cr = m.s16(club + 0x80);
@@ -1517,7 +1518,7 @@ function staffSlot(R: X86, S: SlMem, st: number, entry: number, slot: number, cl
   const g2 = b24 & 0x1e, youth = g2 === 0xa || g2 === 0xc;
   const v = s16(FRPORT ? seenRep_5407e0(c, st, m.u32(club + 0xcf), 1) : slCall(c, 0x5407e0, 0, st, m.u32(club + 0xcf), 1));
   const r = c.rand(2000) + (youth ? 0xabe : 0xcb2);
-  return v >= r ? EVAL(0x8400da) : rj(97);
+  return v >= r ? staffEval(R, club, 0x8400da) : rj(97);
 }
 let cmpDone = false;
 function ensureCmp(): void {
