@@ -6,8 +6,10 @@ import { createGame, type WorldData } from '../src/game/newgame';
 import { gs } from '../src/game/state';
 import { ntEnd, ntGrade, ntOut, ntStart, ntStatus } from '../src/game/cmNatTeams';
 import { reviewNational, newRec, type BoardEnv, type CmBoardState, type Person } from '../src/game/cmBoard';
-import { boardEnv, cmBoardDaily } from '../src/game/cmBoardGame';
-import { natClub } from '../src/game/cmVirtual';
+import { boardEnv, cmBoardDaily, cmBoardNationalAnswer } from '../src/game/cmBoardGame';
+import { HUMAN0 } from '../src/game/cmBoard';
+import { applyForJob } from '../src/game/board';
+import { natClub, nationalCoachName } from '../src/game/cmVirtual';
 import { faDepText, faExpectText, faPerfText } from '../src/game/cmBoardText';
 
 describe('vtable +0x70/+0x74 (VM 0x92fae0/0x92fb40, EM 0x57cd30/0x57cd80, EM-kval. 0x580b50/0x580b80)', () => {
@@ -92,5 +94,49 @@ describe('landsholdene i spillet (3.9.60, ægte tilstand)', () => {
     ntStart(g, 'euroq', 2004, [fra]);
     ntOut(g, 'euroq', 2004, [fra]);
     expect(g.intl!.ntc!.cur[fra]).toBeUndefined();
+  }, 600000);
+});
+
+// Ejerens fund 25/11: landstrænerjobbet – ansøgningen (0x69ca00: svar 0x1773 samme dag, kandidat hvis scoren > postens +0x12), tilbuddet ved
+// date1 (0x68f9c0 → 0x6a4f80, 0x1774) eller en anden udnævnt; den fyrede (postens prev) genansættes ikke, og skærmen viser bestyrelsens træner.
+describe('landstrænerjobbet efter en fyring (2001, ægte tilstand)', () => {
+  const world = JSON.parse(readFileSync('public/data/world-original.json', 'utf8')) as WorldData;
+  const idx = (nm: string) => world.nations.findIndex((n) => n.name === nm);
+  const eng = idx('England'), fra = idx('France');
+  const mu = world.clubs.find((c) => c[2] === 'Man Utd')![0];
+  it('svaret samme dag, tilbuddet ved date1 – eller en anden end den fyrede ansat', () => {
+    createGame(world, { managerName: 'T Human', managerNation: eng, clubId: mu, activeNations: [eng], lang: 'en', masking: true, seed: 1, mode: 'authentic' });
+    const g = gs();
+    const st = g.cmBoard!, nm = st.nm!;
+    const day = () => { cmBoardDaily(g); g.date = new Date(Date.parse(g.date + 'T00:00:00Z') + 86400000).toISOString().slice(0, 10); };
+    g.date = '2001-10-20';                                               // > 90 dage i klubjobbet (ellers ingen 0x6a4f80 – ny søgning)
+    expect(nationalCoachName(g, eng)).toBe('Sven-Göran Eriksson');
+    const sven = nm[eng], fraOld = nm[fra];
+    st.dep.push({ type: 1, reason: 0, club: natClub(eng) }, { type: 1, reason: 0, club: natClub(fra) });
+    day(); day();
+    expect(nm[eng]).toBeUndefined();
+    expect(nationalCoachName(g, eng)).toBeNull();                       // før: databasens "Sven-Göran Eriksson"
+    // ansøgningen: svaret samme dag; med en lav +0x12 bliver mennesket kandidat (postens datoer bevares)
+    const e = st.vac.find((v) => v.club === natClub(eng))!;
+    expect(e.prev).toBe(sven);
+    e.score = -1000000;
+    expect(applyForJob(natClub(eng))).toBe('sent');
+    expect(g.news[0].key).toBe('job.cmAck');
+    expect(g.news[0].params.club).toBe('England');
+    expect(st.vac.find((v) => v.club === natClub(eng))!.cand).toBe(HUMAN0);
+    for (let i = 0; i < 20 && g.manager.nationalOffer === undefined; i++) day();
+    expect(g.manager.nationalOffer).toBe(eng);
+    const offer = g.news.find((n) => n.key === 'board.cm' && String(n.params.bd).includes('"k":"o"'))!;
+    expect(String(offer.params.body)).toMatch(/^The English Football Association offer you the position of manager\./);
+    // ny søgning uden ham (prev = mennesket) – svaret: Accept = 0x69ebc0
+    expect(st.vac.find((v) => v.club === natClub(eng))?.prev).toBe(HUMAN0);
+    expect(cmBoardNationalAnswer(g, true)).toBe('ok');
+    expect(g.manager.national?.nation).toBe(eng);
+    expect(nationalCoachName(g, eng)).toBe('T Human');
+    // Frankrig: computerens kandidat udnævnes ved date1 – ikke den fyrede
+    for (let i = 0; i < 20 && nm[fra] === undefined; i++) day();
+    expect(nm[fra]).toBeDefined();
+    expect(nm[fra]).not.toBe(fraOld);
+    expect(nationalCoachName(g, fra)).toBe(`${g.staff[nm[fra]].first} ${g.staff[nm[fra]].last}`.trim());
   }, 600000);
 });

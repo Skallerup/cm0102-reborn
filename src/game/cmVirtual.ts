@@ -328,6 +328,18 @@ export function nationalManager(g: GameState, n: number): Staff | undefined {
   return m.get(natClubId(g, n, false));
 }
 
+/** Landstrænerens navn til skærmene: et menneske (ManagerProfile.national), ellers bestyrelsens A-holds-manager (club +0xcf, cmBoard.nm) –
+ *  null = ingen manager (fyret 0x69b790, jobbet ledigt til 0x68f9c0 udnævner). Uden bestyrelsessystemet undefined (databasens navn gælder).
+ *  Før viste landsholdsskærmen altid databasens træner, så en fyret landstræner så ud til at være ansat igen (ejerens fund 25/11). */
+export function nationalCoachName(g: GameState, n: number): string | null | undefined {
+  if (g.manager?.national?.nation === n) return g.manager.name;
+  const h = g.humans?.find((x) => x.pid !== g.active && x.manager?.national?.nation === n);
+  if (h?.manager) return h.manager.name;
+  if (!g.cmBoard?.nm) return undefined;
+  const s = nationalManager(g, n);
+  return s ? `${s.first} ${s.last}`.trim() : null;
+}
+
 export function natClubId(g: GameState, n: number, u21: boolean): number {
   return natOffset(g) + n + (u21 ? g.nations.length : 0);
 }

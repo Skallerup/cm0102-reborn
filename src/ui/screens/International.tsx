@@ -23,7 +23,13 @@ import { IntlKoScore, IntlScore } from './IntlScore';
 import { ClassicTournament, TOUR_KEYS, type TourKey } from './IntlTourClassic';
 import { rebornOn } from '../reborn';
 import { applyJobAsk, canApplyForJob } from './applyJob';
-import { natClub } from '../../game/cmVirtual';
+import { natClub, nationalCoachName } from '../../game/cmVirtual';
+
+/** landstræneren: mennesket, bestyrelsens manager (ingen = "No Manager") eller – uden bestyrelsessystemet – databasens træner */
+function coachName(g: Parameters<typeof nationalCoachName>[0], n: number, db?: string): string {
+  const c = nationalCoachName(g, n);
+  return c === null ? t('cl.na.noManager') : c ?? db ?? t('intl.unknownCoach');
+}
 
 export function International({ nation }: { nation?: number }) {
   const g = useGame()!;
@@ -136,7 +142,7 @@ function NationTeam({ n }: { n: number }) {
         {coach && <span className="tag">{t('intl.yourTeam')}</span>}
       </div>
       <div className="muted" style={{ marginBottom: 8 }}>
-        {t('intl.coach')}: <b>{coach || info?.coach || t('intl.unknownCoach')}</b>
+        {t('intl.coach')}: <b>{coachName(g, n, info?.coach)}</b>
         {info?.stadium ? ` · ${t('intl.stadium')}: ${info.stadium}${info.cap ? ` (${info.cap.toLocaleString()})` : ''}` : ''}
         {` · FIFA #${rank}`}
         {titles ? ` · ${titles}` : ''}
@@ -235,7 +241,7 @@ function ClassicNationTeam({ n }: { n: number }) {
         <>
           <div className="cx-subtitle">{t('cl.nt.info')}</div>
           <table className="grid"><tbody>
-            <tr><td>{t('intl.coach')}</td><td><b>{coach || info?.coach || t('intl.unknownCoach')}</b></td></tr>
+            <tr><td>{t('intl.coach')}</td><td><b>{coachName(g, n, info?.coach)}</b></td></tr>
             {info?.stadium ? <tr><td>{t('intl.stadium')}</td><td>{info.stadium}{info.cap ? ` (${info.cap.toLocaleString()})` : ''}</td></tr> : null}
             <tr><td>{t('intl.tab.fifa')}</td><td>{rank ? `#${rank} (${ranking[rank - 1].pts})` : '–'}</td></tr>
             {Object.entries(info?.titles ?? {}).map(([k, v]) => <tr key={k}><td>{k}</td><td>{v}</td></tr>)}
