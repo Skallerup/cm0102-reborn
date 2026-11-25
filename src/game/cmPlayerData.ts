@@ -567,6 +567,15 @@ export function cmUnhappy(g: GameState, p: Player, club: number): void {
   unhappyStep(g, p, c, club, clubRepMem(g, club), ageOn(p.dob, g.date), g.date, nationRepMem(g, p.nation), cmRand(g.seed ?? 0, p.id, dayNum(g.date), 0x83cb40, 0x4cb250));
 }
 
+/** 0x4caf00–0x4caf71: hvem i truppen 0x4cae7d's løkke (kampe uden spilletid) tæller med – ikke udelukket (0x55d270, ikke for fixture −2), ikke
+ *  0x62c400 ≠ 0 (`test al, al; jne` 0x4caf19: skadet 2 OG genoptræner 1), ikke på landsholdet (0x7757d0 – ikke porteret: vi har ingen
+ *  landsholdsophold på klubbernes kampdage) og ikke udlejet (0xae2d0c-postens +4). Før talte kun Player.injury (konditionsmodulets 2), så en
+ *  spiller under genoptræningen (op til 60 dage efter en lang skade, 0x62d758) fik +0x3e + 1 og 0x4cb250 for hver kamp og klagede (0x10/4 →
+ *  transferønsket 0x4d8610) i den første kamp uden ham efter comebacket – brugerens fund 25/11 (v0.37.0). */
+export function notPlayedCounts(p: Player): boolean {
+  return !(p.banned > 0) && (pctx.injury?.(p) ?? (p.injury ? 2 : 0)) === 0 && !p.loan;   // originalens rækkefølge (0x62c400 opdaterer posten)
+}
+
 /** 0x4cae7d: truppens spillere, der ikke spillede (ikke skadede, udelukkede eller udlejede): +0x3f = 0, +0x3e += 1, 0x4cafe0's degradering,
  *  +0x3d −= 8, 0x4cb250. */
 export function contractNotPlayed(g: GameState, p: Player, clubRep: number, nationRep: number, club = p.club, seed = 0): void {
@@ -697,7 +706,7 @@ export function cmAfterMatch(g: GameState, f: Fixture, rep: MatchReport, squadOf
   for (const [side, club] of [[0, f.home], [1, f.away]] as const) {
     if (off[side]) continue;
     for (const p of squadOf(club)) {
-      if (played.has(p.id) || cmGenerated(g, p) || (inMemory && !inMemory(p)) || p.injury || p.banned > 0 || p.loan) continue;   // 0x4caea6: id < [0xae2364]
+      if (played.has(p.id) || cmGenerated(g, p) || (inMemory && !inMemory(p)) || !notPlayedCounts(p)) continue;   // 0x4caea6: id < [0xae2364]
       // 0x4cafc8: 0x6d26b0 uden MATCH_PLAYER – omdømmet i spillerposten og 0x544710(staff, md, 1) (postMatchGame.ts notPlayedReport)
       const rand = cmRand(g.seed ?? 0, p.id, dayNum(g.date), f.id, 0x4cafc8);
       const r = postHooks.notPlayed?.(f, side, p, [goals[0], goals[1]], rand);

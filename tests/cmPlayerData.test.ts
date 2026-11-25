@@ -1,7 +1,7 @@
 // Originalens spillerdata til computerens holdudtagelse (game/cmPlayerData.ts): PlayerStats 0x7c0d70/0x7c2150, kontraktens tællere 0x4ca6d0,
 // spilstartens omdømme (sub_535a80). Kontrolleret mod den instrumenterede original med scripts/pd-trace-check.ts.
 import { describe, expect, it } from 'vitest';
-import { ST, cmActive, cmFormRatings, contractAfterMatch, contractNotPlayed, fillReputation, newCmContract, ratingByte, recordPlayerMatch, statCell, statColumns, statValue } from '../src/game/cmPlayerData';
+import { ST, cmActive, cmFormRatings, contractAfterMatch, contractNotPlayed, fillReputation, newCmContract, notPlayedCounts, ratingByte, recordPlayerMatch, setCmPlayerCtx, statCell, statColumns, statValue } from '../src/game/cmPlayerData';
 import { ATTRS } from '../src/game/attributes';
 import type { GameState, Player } from '../src/game/types';
 
@@ -105,5 +105,36 @@ describe('kun den originale database i ægte tilstand', () => {
     expect(cmActive({ dbKind: 'cm0102', dbYear: 2001, season: 2001, options: { mode: 'authentic' } } as unknown as GameState)).toBe(true);
     expect(cmActive({ dbKind: 'cm0102', dbYear: 2026, season: 2026, options: { mode: 'authentic' } } as unknown as GameState)).toBe(false);
     expect(cmActive({ dbKind: 'cm0102', dbYear: 2001, season: 2001, options: { mode: 'extended' } } as unknown as GameState)).toBe(false);
+  });
+});
+
+describe('skadede og genoptrænende i 0x4cae7d (brugerens fund 25/11)', () => {
+  // 0x4caf14: 0x62c400 ≠ 0 (2 skadet, 1 genoptræner) springer spilleren over – ingen +0x3e, ingen 0x4cb250 – før talte genoptræningen med
+  it('en skadet og en genoptrænende spiller tæller ikke som "ikke spillet"; en rask, udelukket eller udlejet som originalen', () => {
+    let st = 2;
+    setCmPlayerCtx({ injury: () => st });
+    try {
+      const p = pl();
+      expect(notPlayedCounts(p)).toBe(false);
+      st = 1; expect(notPlayedCounts(p)).toBe(false);
+      st = 0; expect(notPlayedCounts(p)).toBe(true);
+      expect(notPlayedCounts(pl({ banned: 1 }))).toBe(false);
+      expect(notPlayedCounts(pl({ loan: { from: 1 } as Player['loan'] }))).toBe(false);
+    } finally { setCmPlayerCtx({}); }
+  });
+  it('3 måneders skade + genoptræning: +0x3e/+0x44 står stille, ingen klage; efter comebacket tæller han igen fra tallet før skaden', () => {
+    let st = 0;
+    setCmPlayerCtx({ injury: () => st });
+    try {
+      const p = pl({ dob: '1975-01-01', rep: 150, contract: {} as Player['contract'] });
+      p.cmContract = { b3d: 40, b3e: 2, b3f: 0, b44: 0, b45: 0 };
+      const week = (status: number) => { st = status; if (notPlayedCounts(p)) contractNotPlayed(g(), p, 500, 0); };
+      for (let i = 0; i < 5; i++) week(2);         // skadet
+      for (let i = 0; i < 8; i++) week(1);         // genoptræning (op til 60 dage, 0x62d758)
+      expect(p.cmContract).toMatchObject({ b3d: 40, b3e: 2, b44: 0, b45: 0 });
+      week(0);                                     // rask og ikke udtaget: originalens forløb fortsætter
+      expect(p.cmContract.b3e).toBe(3);
+      expect(p.cmContract.b3d).toBe(32);
+    } finally { setCmPlayerCtx({}); }
   });
 });
