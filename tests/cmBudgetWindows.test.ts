@@ -60,11 +60,13 @@ describe('ægte tilstand: England 2001/02 (3.9.60)', { timeout: 600_000 }, () =>
     expect(last >= '2002-03-26' && last <= '2002-03-31').toBe(true);
     expect(windowOpen(addDays(last, 1), mu)).toBe(false);
   });
-  it('et bud uden for vinduet afvises', () => {
+  it('et bud uden for vinduet afgives (0x8ef9f0 → 0x8be300 ser ikke på vinduet); Confirm Transfer Offer venter på vinduet (0x8cfc90 grund 9)', () => {
     const save = g.date;
     g.date = '2002-05-01';
     const other = Object.values(g.players).find((p) => p.club && p.club !== mu && !p.loan)!;
-    expect(makeBid(other.id, 1)).toBe('transfer.windowClosed');
+    const o = makeBid(other.id, 1);
+    expect(typeof o).toBe('object');
+    g.offers = g.offers.filter((x) => x !== o);
     g.date = save;
   });
   it('arbejdstilladelse: kun spillere uden for EU/Schweiz/de britiske øer skal have en (0x8c7560)', () => {

@@ -15,7 +15,7 @@ import { cmKnowOn } from '../../game/cmKnow';
 import { authentic, extended } from '../../game/rules';
 import { avgRating } from '../../game/season';
 import { SCHEDULES } from '../../game/training';
-import { askingPrice, canPreContract, interestedClubs, myPendingBid, nextWindow, releaseCost, windowOpen } from '../../game/transfers';
+import { askingPrice, canPreContract, interestedClubs, approachOpen, myPendingBid, nextWindow, releaseCost } from '../../game/transfers';
 import { cmActive, cmLogic, cmMarketOn, cmMediaOn, statCell, statColumns } from '../../game/cmPlayerData';
 import { squadMoveOption } from '../../game/cmBTeam';
 import { cmTalksOpen } from '../../game/cmTransferTalks';
@@ -545,7 +545,7 @@ export function ClassicPlayer({ id }: { id: number }) {
   const k = knowledgeOf(p);
   const shortlisted = g.shortlist.includes(p.id);
   const scouts = Object.values(g.staff).filter((s) => s.club === g.userClub && s.role === 'scout');
-  const open = windowOpen();
+  const open = approachOpen();
   const closedTip = open ? undefined : t('transfer.windowOpens', { date: dateFmt(nextWindow()) });
 
   const act = (r: TransferOffer | string) => {

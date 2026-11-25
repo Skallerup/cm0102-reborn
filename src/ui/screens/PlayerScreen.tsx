@@ -37,7 +37,7 @@ import { OrigTransferStatus } from './OrigStatus';
 import { cmLogic, cmMarketOn } from '../../game/cmPlayerData';
 import { cmScoutOn } from '../../game/cmScout';
 import { cmTalksOpen } from '../../game/cmTransferTalks';
-import { myPendingBid } from '../../game/transfers';
+import { approachOpen, myPendingBid } from '../../game/transfers';
 import { loanBlocked } from '../../game/rules2001';
 import { askNotice } from '../confirm';
 import { agentOf } from '../../game/agents';
@@ -154,7 +154,7 @@ function ModernPlayer({ id }: { id: number }) {
               const agreed = cmLogic(g) && p.club > 0 && !pending ? g.offers.find((o) => o.player === p.id && cmTalksOpen(g, o)) : undefined;
               const me = g.clubs[g.userClub];
               const nm = `${p.first} ${p.last}`.trim();
-              const open = windowOpen();
+              const open = approachOpen();
               const tip = open ? undefined : t('transfer.windowOpens', { date: dateFmt(nextWindow()) });
               const withdraw = async () => { if (await askConfirm(t('cl.pl.withdrawBody', { player: nm }), { head: t('cl.pl.withdrawQ', { player: nm }) })) dispatch({ t: 'withdraw', pid: p.id }); };
               return (

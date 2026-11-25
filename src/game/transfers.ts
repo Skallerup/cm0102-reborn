@@ -27,7 +27,7 @@ import { cmCmOn, cmCmScope } from './cmContractManager';
 import { cmAcceptBid, cmOfferContract, cmSwapAccept, cmSwapDaily, cmSwapOn, cmTalksDaily, cmTalksOn, cmTalksOpen, offerTerms } from './cmTransferTalks';
 import { cmLoanRefuses } from './cmLoan';
 import { cmBuildBid } from './cmAiBid';
-import { cmAiRulesBlock, cmAiRulesReason, cmCompletionDate, cmWindowOpen } from './cmOfferCheck';
+import { cmAiRulesBlock, cmAiRulesReason, cmCanSign, cmCompletionDate, cmWindowOpen } from './cmOfferCheck';
 import { cmRumourAdd } from './cmRumours';
 import { cmAskingPrice, cmExchangeCheck, cmInterestedClubs, cmLoanAnswerNow, cmLoanDelayNow, cmMovedToClub, cmSlPlayerGone, cmShortlistOn, cmSlMoved, setSlApply, setSlDue, type SlBid, type SlDueCtx, type SlEvent } from './cmShortlistGame';
 import { ADDON_APPS, bidClauseWorth, cleanClauses, clauseWorth, defaultRelease, settleSellOn } from './clauses';
@@ -61,6 +61,12 @@ export function windowOpen(date = gs().date, club?: number): boolean {
   if (gs().options?.transferWindows === 'classic') return !(m === 4 || m === 5);
   // rigtige vinduer: sommer (15. juni – 31. august) og januar
   return m === 7 || m === 8 || m === 1 || (m === 6 && Number(date.slice(8, 10)) >= 15);
+}
+
+/** Kan mennesket byde/leje/tilbyde en kontrakt nu (Action-menuens Approach To Buy/Loan, Offer Contract)? CM 01/02: menuen (0x872794/0x87282a)
+ *  og buddet (0x8ef9f0 → 0x8be300) ser ikke på vinduet – med originalens marked altid; ellers spillets egne vinduer */
+export function approachOpen(): boolean {
+  return cmMarketOn(gs()) || windowOpen();
 }
 
 /** Hvornår åbner transfervinduet næste gang? */
@@ -429,7 +435,9 @@ export function makeBid(pid: number, fee: number, loan = false, extra?: { sellOn
   const p = g.players[pid];
   const buyer = g.clubs[g.userClub];
   if (!p || !buyer) return 'error';
-  if (!windowOpen(gs().date, buyer.id)) return 'transfer.windowClosed';
+  // CM 01/02: hverken Action-menuen (0x872794/0x87282a) eller Offer (0x8ef9f0 → add_transfer_offer 0x8be300) ser på vinduet – et bud i det
+  // lukkede vindue kan afgives; Confirm Transfer Offer (0x8cfc90, grund 9) venter på vinduet, og en klubløs får tidsnibble 1 (negotiate)
+  if (!cmMarketOn(g) && !windowOpen(gs().date, buyer.id)) return 'transfer.windowClosed';
   if (p.club === buyer.id) return 'error';
   // CM 01/02: budskærmen (0x8ec420 Offer → 0x8ef9f0 → add_transfer_offer 0x8be300) har intet loft – beløbet står blot i rødt over bestyrelsens
   // grænse; pengene kontrolleres først ved Confirm Transfer Offer (0x8cfc90: budget × 1,1 → Delay Transfer Offer)
@@ -442,7 +450,7 @@ export function makeBid(pid: number, fee: number, loan = false, extra?: { sellOn
   // klubløs (CM 01/02): det åbne kontrakttilbud (intet svar ventende) åbnes igen med Offer Contract
   const again = !p.club && cmLogic(g) ? g.offers.find((o) => o.player === pid && o.buyer === buyer.id && !o.loan && o.cmTalks?.state !== 1 && cmTalksOpen(g, o)) : undefined;
   if (again) return again;
-  if (g.offers.some((o) => o.player === pid && o.buyer === buyer.id && ['pending', 'negotiating', 'countered'].includes(o.status))) return 'transfer.alreadyBidding';
+  if (g.offers.some((o) => o.player === pid && o.buyer === buyer.id && (['pending', 'negotiating', 'countered'].includes(o.status) || (o.status === 'accepted' && !!o.cmFut)))) return 'transfer.alreadyBidding';
   // add_transfer_offer 0x8be300 (0x8be979–0x8be9ad): menneskets køber får spilleren på sin shortliste (SCOUT_MANAGER::add_to_shortlist 0x7f75f0)
   if (cmMarketOn(g) && p.club && !g.shortlist.includes(pid)) g.shortlist.push(pid);
   const humanSeller = isHumanClub(p.club);
@@ -709,6 +717,9 @@ export function negotiate(offerId: number, wage: number, years: number, clauses?
   // CM 01/02: Offer Contract efter et accepteret bud – svaret kommer som nyhed om 1–5 dage (cmTransferTalks.ts)
   if (o.cmTalks && cmLogic(g)) {
     if (club.id === g.userClub && overBoardWage(p, club.id, wage, currentBill(club.id) + wage > club.wageBudget, o.cmRole)) return 'budget';
+    // Offer Contract-skærmens Offer for en klubløs (0x4e51d9–0x4e526b): kan køberen ikke skrive under med ham i dag (0x8ced40 → can_sign_player
+    // 0x8e8560 – fx det lukkede vindue, grund 9), får buddet tidsnibble 1: aftalen gennemføres på første dag i købers vindue (0x8cee70)
+    if (!o.seller && !o.loan && cmMarketOn(g)) o.cmTime = cmCanSign(g, club, p, g.date.slice(0, 10)) ? 1 : 0;
     return cmOfferContract(o, wage, years, clauses);
   }
   // CM 01/02 (original database, ægte tilstand – her klubløse og forkontrakter uden cmTalks): spillerens vilje 0x846920 som 0x8c0080 (under
@@ -1125,7 +1136,8 @@ export function processOffers() {
   const g = gs();
   const skip = (o: TransferOffer) => !!o.signing || !!o.cmTalks || !!o.cmAi || !!o.cmSwapTalks || !!o.cmLoanH;
   // CM 01/02: forhandlingerne efter et accepteret bud (svarene, fristerne)
-  for (const o of g.offers.slice()) if (o.cmTalks) cmTalksDaily(o, (x, w, y, c) => (x.preContract ? completePreContract(x, w, y, c ?? {}) : completeTransfer(x, w, y, c)));
+  for (const o of g.offers.slice()) if (o.cmTalks) cmTalksDaily(o, (x, w, y, c) => (x.preContract ? completePreContract(x, w, y, c ?? {}) : cmHumanFreeFuture(x, w, y, c) || completeTransfer(x, w, y, c)));
+  cmHumanFreeDue();
   // CM 01/02: menneskets forhandlinger med bytte-spillerne i et accepteret computerbud (0x8c63a0 tilstand 8)
   for (const o of g.offers.slice()) if (o.cmSwapTalks) cmSwapDaily(o, (x) => { const p = g.players[x.player], b = g.clubs[x.buyer]; if (p && b) completeTransfer(x, wageDemand(p, b), preferredYears(p)); }, cmReviewKeep, (x) => x.value);
   // ældre saves: flere åbne bud fra samme AI-klub på samme spiller → behold kun det højeste
@@ -2294,6 +2306,30 @@ function cmSignFree(o: TransferOffer, p: Player, buyer: Club): void {
   o.status = 'completed';
   cmTmClose(o, 0x14, 10);
   forEachHuman(() => { originalTransferNews(p, buyer, undefined, 0, false); });
+}
+/** Menneskets aftale med en klubløs med tidsnibble ≠ 0 (negotiate: 0x4e526b): 0x8c3310 → get_offer_completion_date 0x8cee70 senere end i dag →
+ *  add_future_transfer 0x8cb9a0 (tilstand 0x13) – han skriver under på datoen (0x8cbbe0, cmHumanFreeDue). true = udskudt. */
+function cmHumanFreeFuture(o: TransferOffer, wage: number, years: number, clauses?: ContractClauses): boolean {
+  const g = gs();
+  if (o.seller || o.loan || !o.cmTime || !cmMarketOn(g) || !isHumanClub(o.buyer)) return false;
+  const date = cmCompletionDate(g, o);
+  if (date <= g.date.slice(0, 10)) return false;
+  o.status = 'accepted';
+  o.cmFut = date;
+  o.cmTalks = { ...(o.cmTalks ?? { rounds: 0 }), state: 5, agreed: { wage, years, clauses } };
+  return true;
+}
+/** process_due_future_transfers 0x8cbbe0 for menneskets aftalte klubløse: på datoen kontrollen 0x8cfc90 (grund 9 tæller ikke) og handlen 0x8c38b0 */
+function cmHumanFreeDue(): void {
+  const g = gs();
+  for (const o of g.offers.slice()) {
+    if (o.cmAi || o.seller || o.status !== 'accepted' || !o.cmFut || o.cmFut > g.date || !o.cmTalks?.agreed) continue;
+    const p = g.players[o.player];
+    if (!p || p.club || !g.clubs[o.buyer] || cmAiRulesReason(g, o, true)) { o.status = 'collapsed'; continue; }
+    o.status = 'negotiating';
+    const a = o.cmTalks.agreed;
+    if (!completeTransfer(o, a.wage, a.years, a.clauses) && o.status === 'negotiating') o.status = 'collapsed';
+  }
 }
 /** TRANSFER_MANAGER::process_due_future_transfers 0x8cbbe0 (fra daily_update 0x8c5880 efter buddene): de aftalte skifter, hvis dato er kommet –
  *  arbejdstilladelsen (0x8c7690 – completeTransfer) og handlen 0x8c9390 (beløb 0, art 4 – 0x8c9996); buddet får tilstand 0x14 (10 dage).
