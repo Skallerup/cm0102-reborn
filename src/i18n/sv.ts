@@ -8439,4 +8439,5 @@ Object.assign(sv, {
   'ui.staleBuild': "En ny version av CM Reborn släpptes medan sidan var öppen, så spelet kunde inte skapas. Ladda om sidan och starta spelet igen.",
   'ui.outOfMemory': "Den här enheten har för lite minne för att skapa spelet. Stäng andra flikar och program, välj färre ligor och databasen Minimum (Preferences), eller använd en 64-bitarswebbläsare. Den minsta databasen väljs automatiskt när du försöker igen.",
   "cl.run.day": "Dag {d} av {n}", "cl.run.ph.daily": "Dagliga uppdateringar", "cl.run.ph.transfers": "Transfers och önskelistor …", "cl.run.ph.contracts": "Kontrakt …", "cl.run.ph.finance": "Ekonomi …", "cl.run.ph.market": "Transfermarknaden …", "cl.run.ph.news": "Nyheter och scouter …", "cl.run.ph.matches": "Spelar matcher",
+  "cl.neg.cancelBid": "Avbryt övergångsbudet på {player} ?",
 });

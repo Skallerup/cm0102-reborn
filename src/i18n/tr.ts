@@ -5011,4 +5011,5 @@ Object.assign(tr, {
   'ui.staleBuild': "Bu sayfa açıkken CM Reborn'un yeni bir sürümü yayımlandı, bu yüzden oyun oluşturulamadı. Sayfayı yenile ve oyunu yeniden başlat.",
   'ui.outOfMemory': "Bu cihazın oyunu oluşturmak için yeterli belleği yok. Diğer sekmeleri ve programları kapat, daha az lig ve «Minimum» veritabanını (Preferences) seç ya da 64 bit bir tarayıcı kullan. Yeniden denediğinde en küçük veritabanı otomatik seçilir.",
   "cl.run.day": "Gün {d} / {n}", "cl.run.ph.daily": "Günlük güncellemeler", "cl.run.ph.transfers": "Transferler ve istek listeleri …", "cl.run.ph.contracts": "Sözleşmeler …", "cl.run.ph.finance": "Finans …", "cl.run.ph.market": "Transfer piyasası …", "cl.run.ph.news": "Haberler ve gözlemciler …", "cl.run.ph.matches": "Maçlar oynanıyor",
+  "cl.neg.cancelBid": "{player} için transfer teklifi iptal edilsin mi ?",
 });

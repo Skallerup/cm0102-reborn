@@ -3122,5 +3122,6 @@ export const da: Record<string, string> = {
   'ui.staleBuild': "En ny version af CM Reborn er udkommet, mens siden var åben, så spillet kunne ikke oprettes. Genindlæs siden, og start spillet igen.",
   'ui.outOfMemory': "Din enhed har for lidt hukommelse til at oprette spillet. Luk andre faner og programmer, vælg færre ligaer og databasen Minimum (Preferences), eller brug en 64-bit browser. Den mindste database vælges automatisk, når du prøver igen.",
   "cl.run.day": "Dag {d} af {n}", "cl.run.ph.daily": "Daglige opdateringer", "cl.run.ph.transfers": "Transfers og ønskelister …", "cl.run.ph.contracts": "Kontrakter …", "cl.run.ph.finance": "Økonomi …", "cl.run.ph.market": "Transfermarkedet …", "cl.run.ph.news": "Nyheder og spejdere …", "cl.run.ph.matches": "Spiller kampe",
+  "cl.neg.cancelBid": "Annuller transferbud på {player} ?",
 };
 

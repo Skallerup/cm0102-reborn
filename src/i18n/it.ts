@@ -5011,4 +5011,5 @@ Object.assign(it, {
   'ui.staleBuild': "È uscita una nuova versione di CM Reborn mentre questa pagina era aperta, quindi non è stato possibile creare la partita. Ricarica la pagina e avvia di nuovo la partita.",
   'ui.outOfMemory': "Questo dispositivo ha poca memoria per creare la partita. Chiudi le altre schede e programmi, scegli meno campionati e il database «Minimum» (Preferences), oppure usa un browser a 64 bit. Al nuovo tentativo verrà scelto automaticamente il database più piccolo.",
   "cl.run.day": "Giorno {d} di {n}", "cl.run.ph.daily": "Aggiornamenti giornalieri", "cl.run.ph.transfers": "Trasferimenti e liste dei desideri …", "cl.run.ph.contracts": "Contratti …", "cl.run.ph.finance": "Finanze …", "cl.run.ph.market": "Mercato dei trasferimenti …", "cl.run.ph.news": "Notizie e osservatori …", "cl.run.ph.matches": "Partite in corso",
+  "cl.neg.cancelBid": "Annullare l'offerta di trasferimento per {player} ?",
 });

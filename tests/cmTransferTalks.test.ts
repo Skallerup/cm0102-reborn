@@ -39,6 +39,19 @@ describe('accepteret bud → Offer Contract (3.9.60, ægte tilstand)', { timeout
     throw new Error('ingen spiller ville tale med Man Utd');
   }
 
+  it('Offer Contract: Cancel (0x4e039a → 0x8ef1e0 "Cancel transfer bid" → 0x8bfcb0) trækker buddet tilbage; Back lukker kun', () => {
+    createGame(world, { managerName: 'M S', managerNation: eng, clubId: mu, activeNations: [eng], lang: 'en', masking: true, seed: 3, mode: 'authentic' });
+    const g = gs();
+    const { o, p } = accepted();
+    expect(cmTalksOpen(g, o)).toBe(true);
+    // Back (esc 0x1b) ændrer intet – skærmen lukkes af UI'et uden handling
+    expect(o.status).toBe('negotiating');
+    expect(act<string>({ t: 'withdraw', pid: p.id })).toBe('ok');
+    expect(o.status).toBe('withdrawn');
+    expect(cmTalksOpen(g, o)).toBe(false);
+    expect(p.club).not.toBe(mu);
+  });
+
   it('to nyheder samme dag, knappen åbner kun et åbent tilbud, ingen frist', () => {
     createGame(world, { managerName: 'M S', managerNation: eng, clubId: mu, activeNations: [eng], lang: 'en', masking: true, seed: 3, mode: 'authentic' });
     const g = gs();

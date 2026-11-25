@@ -1534,6 +1534,13 @@ async function run(look) {
     if (await page.locator('.cx-dlg-body button', { hasText: /Yearly Wage Rise|Wage Drop After|Wage Rise After/ }).count()) throw new Error('Offer Contract har klausuler uden modstykke i CM 01/02');
     await page.locator('.cx-neg-tabs button', { hasText: 'Basic' }).click();
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-offer-contract.png` });
+    // 0x4deac0: Back | Cancel | Offer; Cancel → "Cancel transfer bid for X ?" (0x8ef1e0) – No går tilbage til skærmen (Yes trækker buddet tilbage, vitest)
+    const obtn = (await page.locator('.cx-dlg-foot button').allInnerTexts()).map((x) => x.trim());
+    if (obtn.join(',') !== 'Back,Cancel,Offer') throw new Error(`Offer Contract-knapperne er ${obtn.join(',')}`);
+    await page.locator('.cx-dlg-foot button', { hasText: 'Cancel' }).click();
+    if (!(await page.locator('.cx-dlg-body').innerText()).includes('Cancel transfer bid for')) throw new Error('Cancel viser ikke "Cancel transfer bid for … ?"');
+    await page.locator('.cx-dlg-foot button', { hasText: 'No' }).click();
+    await page.waitForSelector('.cx-neg-tabs', { timeout: 5000 });
     await page.locator('.cx-dlg-foot button.primary', { hasText: 'Offer' }).click();
     await page.locator('.cx-dlg-foot button.primary', { hasText: 'Yes' }).click();
     await page.waitForSelector('.cx-neg-tabs', { state: 'detached', timeout: 5000 });

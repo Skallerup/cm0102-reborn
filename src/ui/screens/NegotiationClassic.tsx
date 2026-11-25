@@ -247,6 +247,9 @@ function NegotiationBody({ offer, renewPid, onClose }: { offer?: TransferOffer; 
   const bonusOpts = (base: number) => [...new Set([0.25, 0.5, 1, 1.5, 2, 3].map((f) => Math.max(10, Math.round(base * f / 10) * 10)))];
   const relBase = Math.max(100_000, p.value);
   const relOpts = [...new Set([0.5, 1, 1.5, 2, 2.5, 3, 4, 5, 7.5, 10].map((f) => Math.round(relBase * f / 100_000) * 100_000))];
+  // 0x4deac0: med et åbent transferbud står Back | Cancel | Offer (Back = esc 0x1b lukker kun); Cancel (id 2, 0x4e039a) → 0x8ef1e0 "Cancel transfer bid for X ?" → Yes: 0x8bfcb0 trækker buddet tilbage
+  const [cancelAsk, setCancelAsk] = useState(false);
+  const canCancelBid = !!offer?.cmTalks && offer.status === 'negotiating' && g.offers.some((o) => o.id === offer.id);
   const submit = () => {
     setAsk(false);
     // egen spiller (CM 01/02): tilbuddet sendes, man er straks tilbage på profilen, og svaret kommer som nyhed i morgen
@@ -299,6 +302,8 @@ function NegotiationBody({ offer, renewPid, onClose }: { offer?: TransferOffer; 
       <div className="cx-subtitle">{t('cl.neg.title')}</div>
       {ask ? (
         <div className="cx-dlg-body center"><p className="cx-ts-intro">{t('cl.neg.confirm', { player: name })}</p></div>
+      ) : cancelAsk ? (
+        <div className="cx-dlg-body center"><p className="cx-ts-intro">{t('cl.neg.cancelBid', { player: name })}</p></div>
       ) : (
         <>
           <div className="cx-tabrow cx-neg-tabs">
@@ -348,9 +353,10 @@ function NegotiationBody({ offer, renewPid, onClose }: { offer?: TransferOffer; 
           </div>
         </>
       )}
-      <div className="cx-ts-buttons cx-dlg-foot">
-        {ask ? <><button onClick={() => setAsk(false)}>{t('common.no')}</button><button className="primary" onClick={submit}>{t('common.yes')}</button></>
-          : <><button onClick={onClose}>{t('common.cancel')}</button><button className="primary" disabled={noInt?.key === 'cm.neg.noRenewNow'} onClick={() => setAsk(true)}>{t('cl.neg.offer')}</button></>}
+      <div className={`cx-ts-buttons cx-dlg-foot${canCancelBid && !ask && !cancelAsk ? ' cx-three' : ''}`}>
+        {cancelAsk ? <><button onClick={() => setCancelAsk(false)}>{t('common.no')}</button><button className="primary" onClick={() => { act({ t: 'withdraw', pid }); onClose(); }}>{t('common.yes')}</button></>
+          : ask ? <><button onClick={() => setAsk(false)}>{t('common.no')}</button><button className="primary" onClick={submit}>{t('common.yes')}</button></>
+          : <><button onClick={onClose}>{canCancelBid ? t('common.back') : t('common.cancel')}</button>{canCancelBid && <button onClick={() => setCancelAsk(true)}>{t('common.cancel')}</button>}<button className="primary" disabled={noInt?.key === 'cm.neg.noRenewNow'} onClick={() => setAsk(true)}>{t('cl.neg.offer')}</button></>}
       </div>
     </div>
   );

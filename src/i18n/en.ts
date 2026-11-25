@@ -3091,5 +3091,6 @@ export const en: Record<string, string> = {
   'ui.staleBuild': "A new version of CM Reborn has been released while this page was open, so the game could not be created. Reload the page and start the game again.",
   'ui.outOfMemory': "This device has too little memory to create the game. Close other tabs and programs, choose fewer leagues and the Minimum database (Preferences), or use a 64-bit browser. The smallest database is chosen automatically when you try again.",
   "cl.run.day": "Day {d} of {n}", "cl.run.ph.daily": "Daily updates", "cl.run.ph.transfers": "Transfers and shortlists …", "cl.run.ph.contracts": "Contracts …", "cl.run.ph.finance": "Finances …", "cl.run.ph.market": "Transfer market …", "cl.run.ph.news": "News and scouting …", "cl.run.ph.matches": "Playing matches",
+  "cl.neg.cancelBid": "Cancel transfer bid for {player} ?",
 };
 
