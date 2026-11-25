@@ -549,6 +549,10 @@ export function buildSlWantMem(g: GameState, clubs: Iterable<number>, opts: { ca
     for (const [s, id] of staffIds.get(cid)!) {
       const st = staffAdr(id);
       m.w32(st, id); noContract(id); m.w32(st + 0x39, a);
+      // alderen +0x18 og landet +0x1a (som cmWageGame.ts' stab): managerens kendskab 0x5408c0 (samme nation → 2) styrer 0x840d80's maske – uden
+      // landet var alle klubløse "ukendte" (4: verdensomdømmet, 0x6e6340 → −10000 for regens med verdensomdømme 1), så næsten ingen klub satte
+      // dem som mål (spilstarten: klubløse 25+ mål 3 mod oraklets 36)
+      m.w8(st + 0x18, s.dob ? ageOn(s.dob, g.date) : 45); m.w32(st + 0x1a, natAdr(s.nation));
       m.w8(st + 0x57, s.cmHid?.[1] ?? 10);
       m.w8(st + 0x3d, s.role === 'manager' ? 5 : s.role === 'assistant' ? 6 : s.role === 'coach' ? 8 : s.role === 'scout' ? 9 : 10);
       m.w32(st + 0x69, npRec(id, (np) => { m.w16(np + 0xa, s.cmRep?.[1] ?? (s.rep ?? 0) * 2); m.w16(np + 4, s.ca ?? (s.rep ?? 0) * 2); m.w16(np + 6, s.cmPa ?? s.ca ?? 0); s.cmNp?.slice(0, 21).forEach((v, k) => m.w8(np + 0x0e + k, v)); }));
