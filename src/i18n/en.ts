@@ -3086,4 +3086,6 @@ export const en: Record<string, string> = {
   "gs.h.helpTexts": "Hints and explanations on empty screens.",
   "gs.h.seed": "The number the game world was created from. Share it to start the same world.",
   'ui.staleBuild': "A new version of CM Reborn has been released while this page was open, so the game could not be created. Reload the page and start the game again.",
+  "cl.run.day": "Day {d} of {n}", "cl.run.ph.daily": "Daily updates", "cl.run.ph.transfers": "Transfers and shortlists …", "cl.run.ph.contracts": "Contracts …", "cl.run.ph.finance": "Finances …", "cl.run.ph.market": "Transfer market …", "cl.run.ph.news": "News and scouting …", "cl.run.ph.matches": "Playing matches",
 };
+

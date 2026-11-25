@@ -8429,4 +8429,5 @@ Object.assign(sv, {
   'sb.btn': "Stöd på Ko-fi",
   'cl.cup.stages': "Faser", 'cl.cup.stage': "Fas", 'cl.cup.q': "Q", 'cl.stg.G': "Fas 1 gruppspel", 'cl.stg.G2': "Fas 2 gruppspel", 'cl.stg.QF': "Kvartsfinal", 'cl.stg.SF': "Semifinal", 'cl.stg.F': "Final", 'cl.stg.g1h': "Fas 1 Grupp {g}", 'cl.stg.g2h': "Fas 2 Grupp {g}",
   'ui.staleBuild': "En ny version av CM Reborn släpptes medan sidan var öppen, så spelet kunde inte skapas. Ladda om sidan och starta spelet igen.",
+  "cl.run.day": "Dag {d} av {n}", "cl.run.ph.daily": "Dagliga uppdateringar", "cl.run.ph.transfers": "Transfers och önskelistor …", "cl.run.ph.contracts": "Kontrakt …", "cl.run.ph.finance": "Ekonomi …", "cl.run.ph.market": "Transfermarknaden …", "cl.run.ph.news": "Nyheter och scouter …", "cl.run.ph.matches": "Spelar matcher",
 });

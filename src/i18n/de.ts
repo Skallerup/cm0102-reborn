@@ -5001,4 +5001,5 @@ Object.assign(de, {
   'sb.btn': "Auf Ko-fi unterstützen",
   'cl.cup.stages': "Phasen", 'cl.cup.stage': "Phase", 'cl.cup.q': "Q", 'cl.stg.G': "Phase 1 Gruppenphase", 'cl.stg.G2': "Phase 2 Gruppenphase", 'cl.stg.QF': "Viertelfinale", 'cl.stg.SF': "Halbfinale", 'cl.stg.F': "Finale", 'cl.stg.g1h': "Phase 1 Gruppe {g}", 'cl.stg.g2h': "Phase 2 Gruppe {g}",
   'ui.staleBuild': "Während diese Seite geöffnet war, ist eine neue Version von CM Reborn erschienen, daher konnte das Spiel nicht erstellt werden. Lade die Seite neu und starte das Spiel erneut.",
+  "cl.run.day": "Tag {d} von {n}", "cl.run.ph.daily": "Tägliche Aktualisierungen", "cl.run.ph.transfers": "Transfers und Wunschlisten …", "cl.run.ph.contracts": "Verträge …", "cl.run.ph.finance": "Finanzen …", "cl.run.ph.market": "Transfermarkt …", "cl.run.ph.news": "Nachrichten und Scouting …", "cl.run.ph.matches": "Spiele werden gespielt",
 });

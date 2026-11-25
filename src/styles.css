@@ -397,6 +397,7 @@ table.grid td.center, table.grid th.center { text-align: center; }
 .grid-choices { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
 .footer-note { color: var(--faint); font-size: 11.5px; text-align: center; margin-top: 18px; }
 .progress { position: fixed; inset: 0; background: rgba(3, 6, 14, 0.75); backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; z-index: 60; flex-direction: column; gap: 14px; font-size: 16px; font-weight: 600; }
+.progress .run-step { font-size: 13px; font-weight: 400; opacity: 0.8; }
 .progress::before { content: ''; width: 34px; height: 34px; border-radius: 50%; border: 3px solid rgba(255, 255, 255, 0.15); border-top-color: var(--accent); animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--surface3); border: 1px solid var(--line2); padding: 10px 18px; border-radius: 999px; z-index: 70; box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.7); font-weight: 600; }

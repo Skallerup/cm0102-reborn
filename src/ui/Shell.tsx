@@ -177,6 +177,8 @@ export function Shell() {
   const [running, setRunning] = useState<string | null>(null);
   // brøkdelen af den dag, der regnes (dagens Web Worker – ui/dayRunner.ts): bjælken bevæger sig også inden for en lang dag
   const [runFrac, setRunFrac] = useState(0);
+  // hvad dagen laver lige nu (fase + kampe i/n) – vises i bjælken, så den aldrig ser frosset ud
+  const [runPhase, setRunPhase] = useState<{ phase: string; i?: number; n?: number } | null>(null);
   // sæsonskiftet (1/7) er én tung dag uden delfremdrift: bjælken fortæller, hvad der sker, mens den kører
   const [runNote, setRunNote] = useState<string | null>(null);
   const spanRef = useRef({ start: '', end: '' });
@@ -434,6 +436,13 @@ export function Shell() {
     });
   };
 
+  /** "Day 3 of 12 · Playing matches 12/46" (dagtælleren kun ved flere dage; fasen kun fra arbejderen) */
+  const runStepText = (ph: { phase: string; i?: number; n?: number } | null, day: number, tot: number) => {
+    const parts: string[] = [];
+    if (tot > 1 && day > 0) parts.push(t('cl.run.day', { d: Math.min(day, tot), n: tot }));
+    if (ph) parts.push(ph.n ? `${t(`cl.run.ph.${ph.phase}`)} ${ph.i}/${ph.n}` : t(`cl.run.ph.${ph.phase}`));
+    return parts.join(' · ');
+  };
   const run = async (opts: Parameters<typeof runUntil>[0]) => {
     stopRef.current = false;
     // fremdriften vises først, hvis kørslen tager mere end et øjeblik (ingen blink ved 1-2 dage)
@@ -451,19 +460,19 @@ export function Shell() {
     let r: Awaited<ReturnType<typeof runDays>>;
     try {
       r = await runDays({ ...opts, shouldStop: () => stopRef.current,
-        onProgress: (d) => { if (cmNav || Date.now() - t0 > 60) { setRunning(d); setRunFrac(0); } setRunNote(d.slice(5, 10) === '06-30' && !authentic() ? t('cl.run.season') : null); },
+        onProgress: (d) => { if (cmNav || Date.now() - t0 > 60) { setRunning(d); setRunFrac(0); setRunPhase(null); } setRunNote(d.slice(5, 10) === '06-30' && !authentic() ? t('cl.run.season') : null); },
         // (arbejderen) dagen d regnes: datoen før og brøkdelen
-        onFrac: (d, f) => { if (cmNav || Date.now() - t0 > 60) { setRunning(addDays(d, -1)); setRunFrac(f); } } });
+        onFrac: (d, f, phase, i, n) => { if (cmNav || Date.now() - t0 > 60) { setRunning(addDays(d, -1)); setRunFrac(f); setRunPhase(phase ? { phase, i, n } : null); } } });
     } catch (e) {
       // (20/11) en fejl i kørslen: før blev fremdriftsbjælken stående (siden låst), og spilleren genindlæste til sidste gem uden at vide hvorfor –
       // og fejlen fra arbejderen nåede aldrig fejlloggen. Nu: rapportér den, slip bjælken og sig det
-      setRunning(null); setRunNote(null); setRunFrac(0);
+      setRunning(null); setRunNote(null); setRunFrac(0); setRunPhase(null);
       reportError(e, `\n--- Continue Game (${g0.date}${e instanceof GameRunError ? ` → ${e.date}, Worker` : ''}) ---`);
       notify();
       await askNotice(e instanceof GameRunError ? t('crash.run', { date: dateFmt(e.date) }) : t('crash.text'), { head: t('crash.title') });
       return {};
     }
-    setRunning(null); setRunNote(null); setRunFrac(0);
+    setRunning(null); setRunNote(null); setRunFrac(0); setRunPhase(null);
     if (r.stop === 'news') { notify(); return r; }
     handle(r);
     return r;
@@ -659,7 +668,8 @@ export function Shell() {
                 const tot = Math.max(1, daysBetween(sp.start, sp.end));
                 const pct = Math.max(2, Math.min(100, Math.round(((daysBetween(sp.start, running) + runFrac) / tot) * 100)));
                 if (runNote) return <><span className="cx-run-l">{cxLongDate(running)}</span><span className="cx-run-bar busy" role="progressbar" data-testid="run-note"><i style={{ width: '100%' }}><b>{runNote}</b></i></span></>;
-                return <><span className="cx-run-l">{cxLongDate(running)}</span><span className="cx-run-bar" role="progressbar" aria-valuenow={pct}><i style={{ width: `${pct}%` }} /><b className="cx-run-pct">{pct}%</b></span></>;
+                const step = runStepText(runPhase, daysBetween(sp.start, running) + 1, tot);
+                return <><span className="cx-run-l">{cxLongDate(running)}{step && <span className="cx-run-step" data-testid="run-step">{step}</span>}</span><span className="cx-run-bar live" role="progressbar" aria-valuenow={pct} data-testid="run-bar"><i style={{ width: `${pct}%` }} /><b className="cx-run-pct">{pct}%</b></span></>;
               })()}{onHolidayRef.current && <small className="cx-running-hint">{t('cl.hol.bar')}</small>}
             </button>
           ) : cmNav && online && (online.status === 'loading' || (online.status === 'processing' && (online.room?.players.length ?? 1) <= 1)) ? (
@@ -703,6 +713,7 @@ export function Shell() {
       {running && !cmNav && (
         <div className="progress">
           <div>{t('top.running')} {dateFmt(running)}</div>
+          {runPhase && <small className="run-step">{runStepText(runPhase, 0, 0)}</small>}
           <button onClick={() => { stopRef.current = true; }}>{t('common.stop')}</button>
         </div>
       )}

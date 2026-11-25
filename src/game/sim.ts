@@ -55,6 +55,7 @@ import { counterPlan, type CounterPlan } from './aitactics';
 import { autoSelect, available, lineupComplete, newTactic, slotValue, validateTactic } from './tactics';
 import type { Fixture, GameState, MatchReport, MatchResultShort, NewsItem, Player, PlayerMatchLine, Tactic } from './types';
 import { monthlyDevelopment, monthlyTrainingReport, monthlyValues, weeklyDevelopment } from './training';
+import { dayProg } from './dayProgress';
 import { aiLoanOptions, aiPursuits, aiBidsForListed, aiBosman, aiFillSquads, aiReleaseClauses, aiRenewals, aiTransferTick, answerPendingRenewals, contractReminders, processOffers, refreshShortlists, resolveAuctions, resolveSignings, weeklyTransferDigest, windowNews, respondToOffer, askingPrice, cmMonthlyInstalments, cmAppsAfterMatch, holidaySignings, cmHolidayAnswerBids } from './transfers';
 import { afterAppearance } from './clauses';
 import { cmBonusPaid } from './cmContractInit';
@@ -709,6 +710,7 @@ function newDay() {
   cmDiscDaily(g);
   g.dayDone = false;
   const d = g.date;
+  dayProg(0.02, 'daily');
   // draft-liga: kun kondition, moral og skader – ingen økonomi, transfers, bestyrelse eller ny sæson
   if (g.draft) { draftDay(); return; }
   // (16/11) den originale database i ægte tilstand: sæsonskiftet pr. land på nøglelandstabellens dag (cmSeason.ts – Europa 20/6, Norge 27/11 …),
@@ -727,7 +729,9 @@ function newDay() {
   // originalens daglige moral (cmPlayerData.ts moraleDay): 2001-verdenen og nye 2026/27-spil i ægte tilstand (cmMediaOn) – ældre 2026/27-spil glider som før
   const cmMorale = cmFit && cmMediaOn(g) && !MORALE_OFF;
   // 0x5cccd0's planlægger (efter datoskiftet, før dagens konditionsmodul): computerens trupplan 0x83cb40 (cmSquadPlanGame.ts)
+  dayProg(0.04, 'transfers');
   cmSquadPlanDaily(g);
+  dayProg(0.5, 'daily');
   // League::update_for_date 0x6847c0: tv-flytningerne 4 uger frem (cmCalendar.ts – originalens skema for de engelske ligaer)
   cmCalendarDay(g);
   // (runde 10C) Europas lodtrækninger på deres dato (Cup::update_for_date 0x51f890 – cmEurope.ts); næste sæsons turneringer fra den første
@@ -743,6 +747,7 @@ function newDay() {
   // 0x5cccd0 om tirsdagen: klubbernes omdømme efter ligaplaceringen (cmClubRepWeek.ts – lige før klubtabellen 0x5cd776)
   cmClubRepWeekly(g);
   // 0x5ce2d0's kontraktdel (+0x44/+0x45) og klubtabellen [0xae2d14] (cmPlayerData.ts)
+  dayProg(0.52, 'contracts');
   cmContractDaily(g, squad);
   // 0x5ce2d0's gren for ikke-spillerne: stabens omdømme og CA (cmStaffMove.ts)
   cmStaffNpDaily(g);
@@ -765,6 +770,7 @@ function newDay() {
   // game_update_squad_relationships 0x5d6d10 (0x5cdb0a, efter 0x5ce2d0/0x5ce0b0): forholdene i trupperne (cmRelations.ts)
   cmRelDaily(g, squad, (p, flag) => { const c = p.cmContract; if (c) withFlagCtx(g, p, cmRand(g.seed ?? 0, p.id, Math.round(Date.parse(g.date + 'T00:00:00Z') / 86400000), 0x867700), () => cmFlagSet(c, flag)); });
   // FinanceTable::daily_update 0x59b9c0 (cmFinance.ts): søndagens løn/merchandise/sæsonkort, månedens poster, sæsonopdateringen
+  dayProg(0.6, 'finance');
   cmFinanceDay(g);
   // Funds = Finance::get_transfer_budget 0x598800 (cmBudget.ts – originalen gemmer intet budget): menneskets klub(ber) hver dag, alle den 1.
   if (cmFinOn(g)) cmRefreshTransferBudgets(g, day(d) === 1 ? undefined : cmHumanClubIds(g));
@@ -811,6 +817,7 @@ function newDay() {
   completeProjects();
   // udvidet spil: træningslejre og prøvespillere (ikke i CM 01/02)
   if (legacyExtended()) { campDaily(); trialsDaily(); }
+  dayProg(0.7, 'market');
   friendliesDaily();
   // originalens venskabskampe for computerens klubber (Friendly::update 0x5c2460 – cmFriendly.ts; kun den originale database i ægte tilstand)
   cmFriendlyDay(g);
@@ -819,6 +826,7 @@ function newDay() {
   if (weekday(d) === 4 && legacyExtended()) forEachHuman(aiLoanOptions);
   aiTransferTick();
   // mediets daglige rygter 0x754a30 (0x5cdd8f): dagens nye bud → køen, rygterne og computerens svar (cmRumours.ts)
+  dayProg(0.8, 'news');
   cmRumoursDaily(g);
   forEachHuman(scoutDaily);
   // SCOUT_MANAGER::daily_update 0x7f8750: spejderanmodningerne (Scout Player) – originalens rapporter 0x138e (cmScout.ts)
@@ -883,7 +891,10 @@ function playDay(): DayResult {
   let userMatch: number | undefined;
   // AI-managere (botter) træffer dagens beslutninger, inden der spilles
   if (g.humans) botsDaily();
-  for (const id of fixturesOn(g.date)) {
+  const todays = fixturesOn(g.date);
+  let fi = 0;
+  for (const id of todays) {
+    dayProg(0.85 + 0.15 * (fi++ / todays.length), 'matches', fi, todays.length);
     const f = g.fixtures[id];
     if (!f || f.result) continue;
     if ((!isMultiplayer(g) || g.localMp) && g.userClub && (f.home === g.userClub || f.away === g.userClub)) {

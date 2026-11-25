@@ -5001,4 +5001,5 @@ Object.assign(tr, {
   'sb.btn': "Ko-fi'de destekle",
   'cl.cup.stages': "Aşamalar", 'cl.cup.stage': "Aşama", 'cl.cup.q': "Q", 'cl.stg.G': "1. Aşama Grup Etabı", 'cl.stg.G2': "2. Aşama Grup Etabı", 'cl.stg.QF': "Çeyrek Final", 'cl.stg.SF': "Yarı Final", 'cl.stg.F': "Final", 'cl.stg.g1h': "1. Aşama Grup {g}", 'cl.stg.g2h': "2. Aşama Grup {g}",
   'ui.staleBuild': "Bu sayfa açıkken CM Reborn'un yeni bir sürümü yayımlandı, bu yüzden oyun oluşturulamadı. Sayfayı yenile ve oyunu yeniden başlat.",
+  "cl.run.day": "Gün {d} / {n}", "cl.run.ph.daily": "Günlük güncellemeler", "cl.run.ph.transfers": "Transferler ve istek listeleri …", "cl.run.ph.contracts": "Sözleşmeler …", "cl.run.ph.finance": "Finans …", "cl.run.ph.market": "Transfer piyasası …", "cl.run.ph.news": "Haberler ve gözlemciler …", "cl.run.ph.matches": "Maçlar oynanıyor",
 });

@@ -5001,4 +5001,5 @@ Object.assign(pt, {
   'sb.btn': "Apoie no Ko-fi",
   'cl.cup.stages': "Fases", 'cl.cup.stage': "Fase", 'cl.cup.q': "Q", 'cl.stg.G': "Fase 1 de grupos", 'cl.stg.G2': "Fase 2 de grupos", 'cl.stg.QF': "Quartas de final", 'cl.stg.SF': "Meia-final", 'cl.stg.F': "Final", 'cl.stg.g1h': "Fase 1 Grupo {g}", 'cl.stg.g2h': "Fase 2 Grupo {g}",
   'ui.staleBuild': "Foi lançada uma nova versão do CM Reborn enquanto esta página estava aberta, por isso não foi possível criar o jogo. Recarregue a página e comece o jogo novamente.",
+  "cl.run.day": "Dia {d} de {n}", "cl.run.ph.daily": "Atualizações diárias", "cl.run.ph.transfers": "Transferências e listas de desejos …", "cl.run.ph.contracts": "Contratos …", "cl.run.ph.finance": "Finanças …", "cl.run.ph.market": "Mercado de transferências …", "cl.run.ph.news": "Notícias e olheiros …", "cl.run.ph.matches": "A jogar partidas",
 });

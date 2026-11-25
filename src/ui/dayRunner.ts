@@ -9,6 +9,7 @@ import { cmShortlistOn } from '../game/cmShortlistGame';
 import { getLang } from '../i18n';
 import { rng } from '../game/rng';
 import type { DayIn, DayOut, RunOpts } from './dayWorker';
+import type { DayPhase } from '../game/dayProgress';
 import { reportError } from '../online/errors';
 
 /** Spillets egen kode fejlede i arbejderen (ikke arbejderen selv): hovedtrådens spil er urørt – det samme spil ville fejle på samme måde i
@@ -42,7 +43,7 @@ async function classifyWorkerError(e: ErrorEvent): Promise<Error> {
 
 type Opts = Parameters<typeof runUntil>[0] & {
   /** brøkdelen af dagen undervejs (0..1) – kun fra arbejderen */
-  onFrac?: (date: string, frac: number) => void;
+  onFrac?: (date: string, frac: number, phase?: DayPhase, i?: number, n?: number) => void;
 };
 
 let worker: Worker | null = null;
@@ -97,7 +98,7 @@ function inWorker(opts: Opts): Promise<DayResult> {
       const m = e.data;
       if (m.type === 'progress') {
         if (m.frac >= 1) onProgress?.(m.date);
-        else onFrac?.(m.date, m.frac);
+        else onFrac?.(m.date, m.frac, m.phase, m.i, m.n);
         return;
       }
       done();

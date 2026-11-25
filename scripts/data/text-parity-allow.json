@@ -2,6 +2,14 @@
   "minLetters": 2,
   "prefixes": [
     {
+      "prefix": "cl.run.ph.",
+      "reason": "Continue Game: fremdriftsbjælkens fase (kampe, transfers …) – CM Reborn-forbedring af indlæsningsbjælken (ejeren 25/11), originalen har kun datoen"
+    },
+    {
+      "prefix": "cl.run.day",
+      "reason": "Continue Game: dagtæller i fremdriftsbjælken (ejeren 25/11) – ikke i originalen"
+    },
+    {
       "prefix": "tip.install.",
       "reason": "Forslag om at installere som app efter første gem – CM Reborn-område (diskret besked), ikke en original skærm"
     },

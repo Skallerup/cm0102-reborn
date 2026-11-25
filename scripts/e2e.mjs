@@ -2104,6 +2104,29 @@ async function run(look) {
     await gs((d) => { const c = window.__cm.gs().clubs[window.__cm.gs().userClub]; c.sqnDue = d[0] ?? undefined; c.euroDue = d[1] ?? undefined; }, due);
   });
 
+  // (25/11) Continue Game: fremdriftsbjælken bevæger sig undervejs (ikke fast på 2 %) og fortæller, hvad der sker (fase, dag X af Y)
+  if (look === 'klassisk') await step('Continue Game viser fremdrift > 2 % og hvad der sker', async () => {
+    await gs(() => { const g = window.__cm.gs(); for (const n of g.news) n.read = true; for (const o of g.offers) if (o.status === 'pending' && o.seller === g.userClub) o.status = 'rejected'; g.jobOffers.length = 0; const c = g.clubs[g.userClub]; c.sqnDue = undefined; c.euroDue = undefined; window.__cm.notify(); });
+    await go({ name: 'competitions' });
+    await page.waitForSelector('.cx-running', { state: 'detached', timeout: 300000 }).catch(() => {});
+    await page.locator('.cx-side .cx-continue').first().click({ timeout: 10000 });
+    let maxPct = 0, seen = 0;
+    const steps = new Set();
+    const t1 = Date.now();
+    while (Date.now() - t1 < 300000) {
+      const r = await page.evaluate(() => {
+        const b = document.querySelector('.cx-running [data-testid="run-bar"]');
+        return b ? { pct: Number(b.getAttribute('aria-valuenow')), step: document.querySelector('.cx-running [data-testid="run-step"]')?.textContent ?? '' } : null;
+      });
+      if (!r) { if (seen) break; await page.waitForTimeout(20); continue; }
+      seen++; maxPct = Math.max(maxPct, r.pct); if (r.step) steps.add(r.step);
+      if (seen === 6 && process.env.SHOTS) await page.screenshot({ path: `${OUT}/${look}-continue-fremdrift.png` });
+      await page.waitForTimeout(40);
+    }
+    console.log(`    Continue: ${seen} målinger, højeste ${maxPct} %, trin: ${[...steps].slice(0, 6).join(' | ')}`);
+    if (seen > 3 && maxPct <= 2) throw new Error(`fremdriftsbjælken blev stående på ${maxPct} % (${seen} målinger)`);
+  });
+
   // CM 01/02 (0x782b70 = 2, ejerens billede 19/11 "Valencia transfer bid for Scholes"): et bud på egen spiller skal besvares – Continue Game
   // åbner buddet, er grå på nyheden, og Respond åbner svaret; først når buddet er besvaret, kan spillet gå videre
   if (look === 'klassisk') await step('Continue Game er grå, til et bud er besvaret', async () => {

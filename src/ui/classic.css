@@ -1896,6 +1896,9 @@ button.cx-bid-swap.removing { cursor: pointer; color: #fff21f; }
 .cx-run-bar.busy i { justify-content: center; background: repeating-linear-gradient(45deg, #000a8c 0 14px, #1a22b8 14px 28px); background-size: 40px 40px; animation: cx-run-stripes 0.9s linear infinite; }
 .cx-run-bar.busy b { padding: 0 8px; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 @keyframes cx-run-stripes { to { background-position: 40px 0; } }
+/* Continue Game: den udfyldte del glider med skråstreger, så bjælken aldrig ser frosset ud – også når en enkelt fase tager lang tid */
+.cx-run-bar.live i { background: repeating-linear-gradient(45deg, #000a8c 0 14px, #1a22b8 14px 28px); background-size: 40px 40px; animation: cx-run-stripes 0.9s linear infinite; }
+
 
 /* Fællesspil i sidebjælken: Invitér/Fortsæt som originalens blå knapper (.cx-sbtn), kort statuslinje under dem */
 .cx-online { display: contents; }
