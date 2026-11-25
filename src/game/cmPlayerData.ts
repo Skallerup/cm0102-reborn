@@ -19,6 +19,8 @@ import { gs, hasGame } from './state';
 import { origLogic } from './rules';
 import { contractLanguageNibble, languageDay, languageFluency } from './cmLanguage';
 import { x72 } from './engine/grid/gameTable';
+import { humanClub0 } from './cmHoliday';
+import { linkedClub } from './cmBTeam';
 
 /** "2001-verdenen": kun den originale database i ægte tilstand (som cmDatabase i newgame.ts – ikke importeret: cirkulær import) */
 export function cmActive(g: GameState): boolean {
@@ -546,6 +548,9 @@ export function contractAfterMatch(g: GameState, p: Player, o: { starter: boolea
   }
   if (content) {
     c.b3e = 0; if (c.b3f !== 100) c.b3f = u8(c.b3f + 1);
+    // 0x4caba5–0x4cabc7: +0x3f ≥ 5 og ikke menneskets klub (0x600a50(klub, 0, 1, 0, 0)) → 0x540980(staff, 1): staff +0x5e's to lave bit = 1,
+    // førsteholdet (placering 2 – som trupplanens 0x4cc0b0, men uden 0x4cbb60's kontrol)
+    if (s8(c.b3f) >= 5 && !humanClub0(g, o.club ?? p.club)) p.cmPlace = 2;
     happyStep(p, c, o.clubRep, age);
   } else {
     c.b3f = 0; if (c.b3e !== 100) c.b3e = u8(c.b3e + 1);
@@ -562,11 +567,20 @@ export function cmUnhappy(g: GameState, p: Player, club: number): void {
   unhappyStep(g, p, c, club, clubRepMem(g, club), ageOn(p.dob, g.date), g.date, nationRepMem(g, p.nation), cmRand(g.seed ?? 0, p.id, dayNum(g.date), 0x83cb40, 0x4cb250));
 }
 
-/** 0x4cae7d: truppens spillere, der ikke spillede (ikke skadede, udelukkede eller udlejede): +0x3f = 0, +0x3e += 1, +0x3d −= 8, 0x4cb250.
- *  (0x4cbd20 – transferlisten efter 8/14 kampe uden spilletid – er ikke porteret.) */
+/** 0x4cae7d: truppens spillere, der ikke spillede (ikke skadede, udelukkede eller udlejede): +0x3f = 0, +0x3e += 1, 0x4cafe0's degradering,
+ *  +0x3d −= 8, 0x4cb250. */
 export function contractNotPlayed(g: GameState, p: Player, clubRep: number, nationRep: number, club = p.club, seed = 0): void {
   const c = cmContractOf(p);
   c.b3f = 0; if (c.b3e !== 100) c.b3e = u8(c.b3e + 1);
+  // 0x4cafe0–0x4cb02b: +0x3e ≥ [esp+0xf] (0x4cadaf: 0x540a50(klub, 0, 1) ≠ 0 → 14, ellers 8), ikke menneskets klub (0x600a50(klub, 0, 1, 0, 0)),
+  // intet B-hold (0x540a50 ≠ 0 springer over – derfor gælder kun 8) og placeringen 0x4cbb60 = 2 eller 4 → 0x4cbd20(staff, klub, 0): for 2 (de
+  // udlejede er sorteret fra i 0x4caf3f) 0x540980(staff, 2) – staff +0x5e's to lave bit = 2, dvs. reserverne (placering 1, som trupplanens 0x4cc0f0).
+  // Først derefter 0x4cb250, som læser placeringen (0x10-grenene kræver 1). Før blev en førsteholdsspiller uden kampe aldrig sat på reserveholdet:
+  // oraklet 12/11-01 har 223 engelske trupstatus 2-spillere og 401 med status 4 på reserverne (+0x44 −68/−32, nøglespillernes 0x10 19–24), vi 1/0.
+  if (s8(c.b3e) >= 8 && !humanClub0(g, club) && !linkedClub(g, club)) {
+    // (4 – B-holdets moderklub – kan ikke forekomme her: klubber med B-hold er sorteret fra)
+    if (squadPlacement(g, p, club) === 2) p.cmPlace = 1;
+  }
   c.b3d = clamp100(s8(c.b3d) - 8);
   unhappyStep(g, p, c, club, clubRep, ageOn(p.dob, g.date), g.date, nationRep, cmRand(g.seed ?? 0, p.id, dayNum(g.date), seed, 0x4cb250));
 }
