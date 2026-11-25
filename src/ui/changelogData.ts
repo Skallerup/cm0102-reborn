@@ -13,6 +13,8 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '2026-11-25',
     title: { da: 'Mere af det originale CM 01/02', en: 'More of the original CM 01/02' },
     items: [
+      { da: "Lejer flytter ikke længere klubbernes omdømme frem og tilbage (som i originalen: kun køb og frie transfers gør).", en: "Loans no longer shift club reputation back and forth (as in the original, only transfers and free signings do)." },
+      { da: "Nyt spil: forhåndsvisningen til Select Team hænger ikke længere ved \"Player Initialisation\", hvis browseren ikke kan overdrage spillet mellem trinene, og trinet er hurtigere med mange ligaer. Er siden fra en ældre version, beder spillet dig genindlæse.", en: "New game: the Select Team preview no longer hangs at \"Player Initialisation\" if the browser can't hand the game between steps, and the step is faster with many leagues. If the page is from an older version, the game asks you to reload." },
       { da: "Taktikskærmen går ikke længere ned, når spillerne sorteres efter rolle (fx efter en computerholdudtagelse med en ukendt plads).", en: "The tactics screen no longer crashes when players are sorted by role (e.g. after a computer team selection with an unknown slot)." },
     ],
   },
