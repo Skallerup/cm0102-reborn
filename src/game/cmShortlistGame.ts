@@ -930,6 +930,10 @@ function fastRejectLoop(R: X86): number {
 /** CM_SL_INLOOP=0: vurderingen i de oversatte instruktioner (0x8400da) */
 const SB = { esp: 0 };
 const INLOOP = ENV.CM_SL_INLOOP !== '0';
+/** (hastighed, 25/11) evalInLoop's kald af 0x840d80 uden en lukning pr. kandidat: argumenterne i et genbrugt objekt */
+const EV = { c: null as CmCtx | null, self: 0, club: 0, st: 0, slot: 0, out: 0, thr: 0 };
+const evRun = (): number => value_840d80_any(EV.c!, EV.self, EV.club, EV.st, EV.slot, EV.out, EV.thr, 1);
+onGameSwitch(() => { EV.c = null; });
 /** 0x8400e2–0x840153 (flag ≠ 0): 0x840d80(klub, staff = esi, plads, &[esp+0x2c], [esp+0x58], 1) med this = [esp+0x10]; [esp+0x18/0x1c] = svaret
  *  (cdq); [esp+0x2c] < [esp+0x68] eller < [esp+0x58] − 10000 → 0x840a81, ellers 0x840159 (ecx = [esp+0x2c], eax = [esp+0x58] − 10000) */
 function evalInLoop(R: X86, f: FrCtx): number {
@@ -939,7 +943,8 @@ function evalInLoop(R: X86, f: FrCtx): number {
   // som X86.shared) – de oversatte, 0x840d80 kalder, kan læse ikke-initialiserede lokale variabler
   m.w32(esp - 4, 1); m.w32(esp - 8, thr >>> 0); m.w32(esp - 12, esp + 0x2c); m.w32(esp - 16, f.slot); m.w32(esp - 20, st); m.w32(esp - 24, f.club); m.w32(esp - 28, FAKE_RET);
   SB.esp = esp + 0x20;
-  const r = stackBelow(SB as X86, () => value_840d80_any(c, self, f.club, st, f.slot, esp + 0x2c, thr, 1));
+  EV.c = c; EV.self = self; EV.club = f.club; EV.st = st; EV.slot = f.slot; EV.out = esp + 0x2c; EV.thr = thr;
+  const r = stackBelow(SB as X86, evRun);
   const o = m.s32(esp + 0x2c), hi = r < 0 ? -1 : 0;
   m.w32(esp + 0x18, r >>> 0); m.w32(esp + 0x1c, hi >>> 0);
   if (FR_DIAG.ev) FR_DIAG.ev(st, o, m.s32(esp + 0x68), (thr - 10000) | 0);

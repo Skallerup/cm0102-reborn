@@ -306,9 +306,21 @@ export function value_840d80(c: CmCtx, self: number, club: number, st: number, s
   // 0x841404
   const grp = (m.u8(slot + 0x24) >>> 1) & 0xf;
   e = m.u8(st + 0x18);
-  const ageBlock = () => {
+  // (hastighed, 25/11) aldersblokken som blok i stedet for en lukning pr. kald (lukningen og dens kontekst blev allokeret ~2,7 mio. gange ved spilstarten)
+  let age = false;
+  switch (grp - 1) {
+    case 0: case 1: age = true; break;
+    case 2:
+      ebxV = ftolE((ebxV >>> 0) * (m.s16(slot + 1) < 0x80 ? 0.6666666666666666 : 0.9090909090909091));
+      age = true;
+      break;
+    case 3: ebxV = ftolE((ebxV >>> 0) * 0.5); break;
+    case 4: ebxV = ftolE((ebxV >>> 0) * 0.3333333333333333); f2 = (f2 + 0xf7) & 0xff; break;
+    case 5: ebxV = ftolE((ebxV >>> 0) * 0.2); break;
+  }
+  if (age) ageBlk: {
     // 0x84148d / 0x84166f
-    if (s8(e) >= 0x1b || esi <= 0x4e20) return;
+    if (s8(e) >= 0x1b || esi <= 0x4e20) break ageBlk;
     const j = s16(judge_6e86d0(c, m.u32(club + 0xcf), st, club, 1, tdiv(esi, 4)));
     const D18 = m.s32(out);
     let q = (j * 220.0) / D18;
@@ -317,28 +329,18 @@ export function value_840d80(c: CmCtx, self: number, club: number, st: number, s
     const a = s8(e) - 0x18;
     if (a === 0) q = q * 0.7 + 0.3; else if (a === 1) q = (q + 1.0) * 0.5; else if (a === 2) q = q * 0.3 + 0.7;
     if (thr * 1.05 < D18 || v20) {
-      if (q <= 1.0 || Number.isNaN(q)) return;
+      if (q <= 1.0 || Number.isNaN(q)) break ageBlk;
       const ax = m.s16(club + 0x80);
       const den = ax < 0x3e8 ? 0x3e8 : ax;
       let r = m.s16((9 * m.s32(club) + m.u32(self + 0xdc) + 5) >>> 0) / den;
       if (!(1.0 > r)) { if (1.2 < r) r = 1.2; } else r = 1.0;
       q = q * r;
     }
-    if (q <= 1.0 || Number.isNaN(q)) return;
+    if (q <= 1.0 || Number.isNaN(q)) break ageBlk;
     D10 = q * D10;
     const h = (q + 1.0) * 0.5;
     ebxV = ftolE((ebxV >>> 0) * h);
     m.w32(out, ftolE(D18 * h));
-  };
-  switch (grp - 1) {
-    case 0: case 1: ageBlock(); break;
-    case 2:
-      ebxV = ftolE((ebxV >>> 0) * (m.s16(slot + 1) < 0x80 ? 0.6666666666666666 : 0.9090909090909091));
-      ageBlock();
-      break;
-    case 3: ebxV = ftolE((ebxV >>> 0) * 0.5); break;
-    case 4: ebxV = ftolE((ebxV >>> 0) * 0.3333333333333333); f2 = (f2 + 0xf7) & 0xff; break;
-    case 5: ebxV = ftolE((ebxV >>> 0) * 0.2); break;
   }
   // 0x84181e: alder over pladsens grænse
   const rec = m.u32(st + 0x61);
