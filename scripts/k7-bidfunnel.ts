@@ -37,6 +37,9 @@ function oracle(): Out {
       const o = m.u32(offers + 4 * i); if (!o) continue;
       const buyer = m.s32(o + 8), pl = m.s32(o + 0xc), iso = dayIso(m.s16(o + 0x12), m.s16(o + 0x14));
       if (!iso || iso < FROM) continue;
+      // +0x11 = 0xb: et bud på en spiller; ellers en stabsansættelse (0x84a020 → 0x84b6f0, kompensation 0x8d0780) – spillets egne stabsskifter
+      // (cmStaffMove.ts) går ikke gennem buddene, så de tælles kun med STAFFBIDS=1
+      if (m.u8(o + 0x11) !== 0xb && !process.env.STAFFBIDS) continue;
       // (+0x12 er buddets forfaldsdato – 0x8c63a0 – ikke oprettelsen; nøglen er køber/spiller, et nyt bud efter et hul på > 1 billede)
       const k0 = `${buyer}/${pl}`;
       let b = bids.get(k0);

@@ -42,7 +42,9 @@ for (let id = 0; id < om.s32(G.STAFF_COUNT); id++) {
   const k = `${str(om, om.u32(st + 0x39) + 4)}|${om.s16(st + 0x10)}|${om.u16(st + 0x12)}`;
   okey.set(k, okey.has(k) ? null : st);
 }
-const clubs = Object.values(g.clubs).filter((c) => c.nation === eng && !g.leagues[c.league]?.hidden).map((c) => c.id);
+// NATION=<land>: sælgerklubberne i et andet land (fx Scotland) – ellers de engelske ligaklubber
+const nat0 = process.env.NATION ? w.nations.findIndex((n) => n.name === process.env.NATION) : eng;
+const clubs = Object.values(g.clubs).filter((c) => c.nation === nat0 && (process.env.NATION || !g.leagues[c.league]?.hidden)).map((c) => c.id);
 const S = process.env.WANT ? null : buildSlMem(g);
 const M = S ? S.M : buildWantMem(g, clubs);
 const gm = M.W.c.m;
@@ -78,7 +80,8 @@ for (let i = 0; i < ps.length; i += WHO ? 1 : step) {
   const gst = M.W.staffOf(p);
   if (!gst) continue;
   if (!S) gm.w32(gst + 0x52, Math.round(p.value * 0.86));
-  const run = (c: CmCtx, m: CmMem, st: number, club: number) => slCall(c, 0x4d1600, m.u32(G.CM), club, 0, st, 0, 1, 1) | 0;
+  // FN=4d0c60: spillerens værdi 0x4d0c60(staff, klub, 0, −1, 0) (staff +0x52) i stedet for udbudsprisen
+  const run = (c: CmCtx, m: CmMem, st: number, club: number) => (process.env.FN === '4d0c60' ? slCall(c, 0x4d0c60, 0, st, club, 0, -1, 0) : slCall(c, 0x4d1600, m.u32(G.CM), club, 0, st, 0, 1, 1)) | 0;
   const lg: Rd[][] = [[], []];
   if (WHO) { TRACE.on = true; TRACE.f = (pc) => { pcNow = pc; }; log = lg[0]; }
   const gv = run(M.c, gm, gst, M.W.clubOf(home));

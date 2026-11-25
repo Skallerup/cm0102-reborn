@@ -191,7 +191,12 @@ export function scanOf(g: GameState) {
     if (!p.regen && !p.virtual && p.id < 1_000_000 && p.id > maxId) maxId = p.id;
     if (p.loan?.from !== undefined) { const l = loanedOut.get(p.loan.from) ?? []; l.push(p); loanedOut.set(p.loan.from, l); }
   }
-  for (const s of ss) if (s.club) { const l = staffOf.get(s.club) ?? []; l.push(s); staffOf.set(s.club, l); }
+  // klubbernes stab i originalens hukommelse (0x524d70/0x527240 – Staff.cmMem, når spilstarten byggede stabens hukommelse): de øvrige findes ikke i
+  // originalen, så klubbens manager +0xcf og stabspladserne er tomme (oraklet 14/7-01: Skotland 2 af 38 klubber med manager, Spanien 5/110). Med
+  // en manager gav 0x5408c0 de udenlandske klubbers spillere klubbens eget omdømme (+0xb) i stedet for verdensomdømmet (+0xd) → 0x4d0c60's værdi
+  // +0x52 og udbudsprisen 5–20 × originalens (Peter Weatherston, Queen of the South: 36.965 mod 4.733), så de engelske klubber næsten ingen
+  // englændere i Wales/Skotland/Irland købte (cmValueGame.ts nulstillede +0xcf, men kun i værdihukommelsen)
+  for (const s of ss) if (s.club && (!g.cmStaffMem || s.cmMem)) { const l = staffOf.get(s.club) ?? []; l.push(s); staffOf.set(s.club, l); }
   const r = { key, maxId, loanedOut, staffOf };
   SCAN.set(g, r);
   return r;
