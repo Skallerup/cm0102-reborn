@@ -876,9 +876,9 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
   const buyer = g.clubs[o.buyer];
   const seller = o.seller ? g.clubs[o.seller] : undefined;
   if (!p || !buyer) return false;
-  // CM 01/02 0x8c7690 (handlen) / 0x8c38b0 (den klubløse): 0x8c7560(spiller, køber, 0) og 0x8c7950 med det aftalte kontrakttilbud (klub, løn,
+  // CM 01/02 0x8c7690 (handlen: 0x8c7560(spiller, køber, 0) 0x8c7704) / 0x8c38b0 (den klubløse: flag 1 0x8c38d5) og 0x8c7950 med det aftalte kontrakttilbud (klub, løn,
   // udløb) – afslag: nyheden 0x13 ("Work permit refused"), tilbuddet +0x2c = 0x10 (spil startet med porten – cmPermit.ts)
-  if (!o.loan && cmPermitOn(g) && cmNeedsPermit(g, p, buyer.id, false)
+  if (!o.loan && cmPermitOn(g) && cmNeedsPermit(g, p, buyer.id, !seller)
     && !cmWorkPermit(g, p, { club: buyer.id, wageGbp: Math.round(wage * cmGbp(g, buyer.id)), expires: `${year(g.date) + Math.max(1, years)}-06-30` }, null)) {
     o.status = 'collapsed';
     asOwner(buyer.id, () => addNews({ cat: 'transfer', key: 'transfer.permitRefused', params: { player: pname(p), club: buyer.name }, link: { kind: 'player', id: p.id } }));

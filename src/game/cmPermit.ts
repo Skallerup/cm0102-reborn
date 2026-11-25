@@ -4,7 +4,7 @@
 //
 //   0x8c7560(staff, klub, flag)  "skal have tilladelse": klubbens land har region +0x76 = 0xe (De Britiske Øer) og spilleren er ikke EU-borger
 //                                (0x53d740(staff, 0): ingen af hans to nationer har +0x7f = 2, og hans nation er ikke [0x9cf4ac]); flag 0 →
-//                                en spiller med lejekontrakt (+0x35 & 0x3f = 2), der allerede har en post, tæller ikke.
+//                                en spiller med almindelig hovedkontrakt (0x4cf5a0, +0x35 & 0x3f = 2), der allerede har en post, tæller ikke.
 //   0x8c6e60 (spilstarten)       hver spiller i en klub (job 0xb), der skal have tilladelse: året = det år, han kom til klubben (staff +0x40),
 //                                eller ældre sæsoner i samme land i historikken (hver 6. post, sic); fem år eller mere → hans anden nationalitet
 //                                (+0x1e) bliver klubbens land; ellers en post {id, +4 = 0, +6 = 0, +8 = året, +0xa = landet}.
@@ -71,8 +71,11 @@ export function cmNeedsPermit(g: GameState, p: Player, club: number, flag: boole
   if (!c || !cmBritish(g, c.nation)) return false;
   if (cmEuCitizen(g, p)) return false;
   if (flag) return true;
-  // 0x8c761d: en spiller med lejekontrakt (+0x35 & 0x3f = 2), der allerede har en post, tæller ikke
-  return !(p.loan && g.cmPermit?.[p.id]);
+  // 0x8c761d–0x8c767e: flag 0 – hovedkontrakten (get_contract 0x4cf5a0, dyn+0 – også under en leje; lejekontrakten er 0x4cf6d0) med type
+  // +0x35 & 0x3f = 2 (almindelig), en person (id < [0xae2364] – ikke kampens fyldspillere) og en post i historikken (+0x86e bit 0x20 + bsearch
+  // i +0x93a) → tæller ikke; ingen kontrakt eller en anden type → skal have tilladelse
+  const ct = p.contract;
+  return !(ct && (ct.cmType ?? 2) === 2 && !p.virtual && g.cmPermit?.[p.id]);
 }
 
 const yearOf = (iso: string) => +iso.slice(0, 4);

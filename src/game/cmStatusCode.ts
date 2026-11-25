@@ -39,7 +39,7 @@ import { interestedClubs } from './transfers';
 import { hasScoutRequest } from './cmScout';
 import { underOffer } from './cmRetire';
 import { cmLoanBar } from './cmLoan';
-import { cmBritish, cmEuCitizen, cmPermitOn } from './cmPermit';
+import { cmNeedsPermit, cmPermitOn } from './cmPermit';
 import { ageOn } from './dates';
 
 export type StatusTag = 'Abs' | 'Wpm' | 'Cup' | 'Ine' | 'Int' | 'Sus' | 'Inj' | 'Tir' | 'Sct' | 'Yel' | 'Trn' | 'Bid' | 'Wnt' | 'Req' | 'Lst' | 'Lon'
@@ -58,8 +58,7 @@ const b4e = (p: Player) => p.cmContract?.b4e ?? ((p.listed ? 1 : 0) | (p.loanLis
 
 /** 0x8c7560(spiller, klub, 0) */
 function needsPermit(g: GameState, p: Player, club: number): boolean {
-  if (!cmPermitOn(g) || !cmBritish(g, g.clubs[club]?.nation) || cmEuCitizen(g, p)) return false;
-  return !((p.contract?.cmType ?? 2) === 2 && !p.virtual && g.cmPermit?.[p.id]);
+  return cmPermitOn(g) && cmNeedsPermit(g, p, club, false);
 }
 
 /** klubbens næste kamp (0x456900's kampargument) – én søgning pr. dag og klub */
