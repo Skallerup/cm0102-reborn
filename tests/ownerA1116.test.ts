@@ -52,9 +52,9 @@ describe('ejerens fund 16/11 – afsnit A (3.9.60, ægte tilstand, Vejle)', { ti
     const p = byLast('Tsigalko');
     const o: TransferOffer = { id: g.nextId.offer++, player: p.id, buyer: vejle, seller: p.club, fee: 0, loan: false, status: 'negotiating', created: g.date, respondBy: g.date, cmTalks: { rounds: 0, state: 0 } };
     g.offers.push(o);
-    // forvalget er hans plads i KØBERENS trup
+    // forvalget er originalens 0x4dd0f0 hos KØBEREN: statussen med højest vilje over 3,15 – ingen (undefined), når ingen status når over
     const exp = cmRoleExpected(g, p, vejle);
-    expect(['key', 'first', 'rotation', 'backup', 'prospect', 'young']).toContain(exp);
+    expect([undefined, 'key', 'first', 'rotation', 'backup', 'prospect', 'young']).toContain(exp);
     // rollen ændrer kravet (0x85fc50 med trupstatus) og "no interest"-teksten
     const wages = (['key', 'backup', 'prospect'] as const).map((r) => cmTalksDemand(o, r)!.wage);
     expect(new Set(wages).size).toBeGreaterThan(1);

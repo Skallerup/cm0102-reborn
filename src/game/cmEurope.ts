@@ -547,8 +547,9 @@ function teamsFor(g: GameState, c: Competition, step: number): number[] | null {
 /** sim.ts newDay: lodtrækningerne på deres dato (eller dagen efter, at holdene kendes) */
 export function cmEuroDay(g: GameState): void {
   if (!cmEuroOn(g)) return;
-  // set_predicted_positions ved opsætningen (første dag med turneringerne – også gamle spil uden meta.cmPP)
-  for (const id of ['CL', 'UEFA', 'UIC']) { const c = g.comps[id]; if (c?.meta?.cmEuro && !c.finished && !c.meta.cmPP) cmEuroPredict(g, c); }
+  // set_predicted_positions ved opsætningen: første dag med turneringerne efter forkørslen/indhentningen før spilstarten (0x4c0720 læser
+  // konditionen 0x62c400, der opdaterer posterne – i forkørslen ville det flytte dens kampdage, oraklet 2001: Intertoto 1/8); også gamle spil
+  if (!g.cmEuroCatchUp) for (const id of ['CL', 'UEFA', 'UIC']) { const c = g.comps[id]; if (c?.meta?.cmEuro && !c.finished && !c.meta.cmPP) cmEuroPredict(g, c); }
   // IntertotoCup 0x633d40: finalens vindere til UEFA Cup'en
   const uic = g.comps.UIC, uefa = g.comps.UEFA;
   if (uic?.meta?.cmEuro && uefa?.meta?.cmEuro && !uefa.meta.cmUic && decided(uic, 'F')) { uefa.meta.cmUic = 1; uefaAdd(g, stageTies(uic, 'F').map((t) => t.winner!)); }
