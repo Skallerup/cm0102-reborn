@@ -103,27 +103,34 @@ export function englandLoanRefused(p: Player, buyer: Club): boolean {
  *  Tyrkiet, USA 0x902240 og Holland/Norge 0x794760: kun vinduet. Finland 0x5a9af0: vinduet, og en computerklub kun dag 90–300. Grundreglen 0x40a600, Kroatien/Grækenland/Polen 0x5ed060, Danmark/Nordirland/Wales/Sydkorea 0x793900: må.
  *  Ikke porteret (*estimeret*: må): Irland 0x63c3d0, Italien 0x661770, Spanien 0x859630 – og sælgerlandets
  *  +0x24 pr. lejemåned (Finland 0x5a9ba0, Frankrig 0x5c1ed0, Tyskland 0x5e0210, Irland 0x63c530, Italien 0x6618f0; de øvrige 0x40a610 = må). */
-export function cmLoanRulesOk(buyer: Club, home: Club | undefined): boolean {
+export function cmLoanRulesOk(buyer: Club, home: Club | undefined): boolean { return cmLoanRules(buyer, home).ok; }
+
+/** TRANSFER_RULES +0x20 med grunden (&grund): 0x1d samme Premier Division, 0x1e fem i sæsonen, 0x26 to lejede ind, 9 uden for vinduet; 0 = ingen
+ *  grund (også Finlands nej uden for dag 90–300 – handle_player_accepted_terms 0x8c2493 ser kun på grunden, can_loan_player 0x8d0040 på svaret) */
+export function cmLoanRules(buyer: Club, home: Club | undefined): { ok: boolean; why: number } {
   const g = gs();
   const nat = g.nations[buyer.nation]?.name ?? '';
   const sameTop = () => !!home && home.league === buyer.league && g.leagues[buyer.league]?.tier === 1;
+  const no = (why: number) => ({ ok: false, why }), yes = { ok: true, why: 0 };
+  const win = () => (cmWindowOpen(g, buyer, g.date) ? yes : no(9));
   switch (nat) {
     case 'England': {
-      if (sameTop()) return false;
+      if (sameTop()) return no(0x1d);
       const L = loanCounts(g);
-      if ((L.season.get(buyer.id) ?? 0) >= 5 || (L.now.get(buyer.id) ?? 0) > 1) return false;
-      return cmWindowOpen(g, buyer, g.date);
+      if ((L.season.get(buyer.id) ?? 0) >= 5) return no(0x1e);
+      if ((L.now.get(buyer.id) ?? 0) > 1) return no(0x26);
+      return win();
     }
-    case 'Scotland': return !sameTop();
-    case 'Australia': case 'France': case 'Russia': case 'Turkey': case 'United States': case 'Holland': case 'Norway': return cmWindowOpen(g, buyer, g.date);
+    case 'Scotland': return sameTop() ? no(0x1d) : yes;
+    case 'Australia': case 'France': case 'Russia': case 'Turkey': case 'United States': case 'Holland': case 'Norway': return win();
     case 'Finland': {
       // 0x5a9af0: vinduet; en computerklub (0x600a50(klub, 1, 1) = 0) kun på dag 90–300 i året (0xae2c90, 0 = 1/1) – uden grund
-      if (!cmWindowOpen(g, buyer, g.date)) return false;
-      if (isHumanClub(buyer.id)) return true;
+      if (!cmWindowOpen(g, buyer, g.date)) return no(9);
+      if (isHumanClub(buyer.id)) return yes;
       const d = Math.round((Date.parse(g.date.slice(0, 10) + 'T00:00:00Z') - Date.UTC(Number(g.date.slice(0, 4)), 0, 1)) / 86400000);
-      return d >= 90 && d <= 300;
+      return d >= 90 && d <= 300 ? yes : no(0);
     }
-    default: return true;
+    default: return yes;
   }
 }
 

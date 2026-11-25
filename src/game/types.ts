@@ -840,6 +840,9 @@ export interface TransferOffer {
   /** CM 01/02: menneskets lejebud til en computerklub – 1 = svartiden (0x8be300 → 0x8cc5b0) er ikke regnet endnu, 2 = venter på svaret
    *  (process_due_offer 0x8c63a0 → 0x84af00) */
   cmLoan?: 1 | 2;
+  /** CM 01/02: menneskets lejebud, sælgeren har sagt ja – tilstand 8: lejekontrakten venter på spillerens beslutning (0x4cd230/0x4ce4e0) og
+   *  lejegrenen i 0x8c2180 (cmAiAiDue) */
+  cmLoanH?: true;
   /** computer → computer: køberens kontrakttilbud (0x8c1e40 → 0x4cda70, kontraktens 0x50 bytes), når sælgeren har accepteret – spilleren
    *  afgør det på respondBy (0x4ce4e0); TRANSFER_MANAGER-tilstand 7 */
   cmK?: number[];
