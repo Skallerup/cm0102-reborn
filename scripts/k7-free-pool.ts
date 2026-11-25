@@ -8,6 +8,7 @@ import { getContract, type SparseMem } from '../src/game/cmMem';
 import { createGame, type WorldData } from '../src/game/newgame';
 import { continueGame, quickPlayUserMatch } from '../src/game/sim';
 import { gs } from '../src/game/state';
+import { GBP } from '../src/game/cmContractInit';
 import { cmInMemory } from '../src/game/cmRetire';
 import type { GameState } from '../src/game/types';
 
@@ -16,7 +17,7 @@ const FROM = process.env.FROM ?? '2001-07-14', UNTIL = process.env.UNTIL ?? '200
 const str = (m: SparseMem, a: number, n = 54) => { let s = ''; if (!a) return s; for (let i = 0; i < n; i++) { const c = m.u8(a + i); if (!c) break; s += String.fromCharCode(c); } return s.trim(); };
 const dayIso = (d: number, y: number) => (y > 1850 && y < 2100 ? new Date(Date.UTC(y, 0, 1 + d)).toISOString().slice(0, 10) : '');
 const yrs = (date: string, dob: string) => (Date.parse(date) - Date.parse(dob)) / (365.25 * 86400000);
-interface P { key: string; club: string; age: number; ca: number; exp: string }
+interface P { key: string; club: string; age: number; ca: number; exp: string; v?: number; rep?: number }
 type Day = { iso: string; ps: Map<string, P> };
 function oracle(m: SparseMem, iso: string): Day {
   const S = m.u32(0xae23bc), n = m.s32(0xae2364);
@@ -28,7 +29,7 @@ function oracle(m: SparseMem, iso: string): Day {
     const dob = dayIso(m.s16(st + 0x10), m.u16(st + 0x12)) || `${m.s16(st + 0x18)}-07-01`;
     const key = `${common || f + ' ' + l}|${dob}`;
     const cadr = m.u32(st + 0x39), k = getContract(m, st);
-    ps.set(key, { key, club: cadr ? str(m, cadr + 4) : '', age: yrs(iso, dob), ca: m.s16(pr + 5), exp: k ? dayIso(m.s16(k + 0x2d), m.u16(k + 0x2f)) : '' });
+    ps.set(key, { key, club: cadr ? str(m, cadr + 4) : '', age: yrs(iso, dob), ca: m.s16(pr + 5), exp: k ? dayIso(m.s16(k + 0x2d), m.u16(k + 0x2f)) : '', v: m.s32(st + 0x52), rep: m.s16(pr + 0xb) });
   }
   return { iso, ps };
 }
@@ -38,7 +39,7 @@ function ours(): Day {
   for (const p of Object.values(g.players)) {
     if (p.virtual || !cmInMemory(g, p)) continue;
     const key = `${p.first} ${p.last}|${p.dob}`;
-    ps.set(key, { key, club: p.club ? g.clubs[p.club]?.name ?? '' : '', age: yrs(g.date, p.dob), ca: p.ca, exp: p.contract?.expires.slice(0, 10) ?? '' });
+    ps.set(key, { key, club: p.club ? g.clubs[p.club]?.name ?? '' : '', age: yrs(g.date, p.dob), ca: p.ca, exp: p.contract?.expires.slice(0, 10) ?? '', v: Math.round((p.value ?? 0) * GBP), rep: Math.round(((p.cmRepMem ?? p.cmRep)?.[1] ?? p.rep * 2) * 50) });
   }
   return { iso: g.date.slice(0, 10), ps };
 }
@@ -77,5 +78,13 @@ function report(name: string, D: Day[]) {
   let became = 0, signed = 0;
   for (let i = 1; i < D.length; i++) for (const [k, x] of D[i].ps) { const y = D[i - 1].ps.get(k); if (!y) continue; if (y.club && !x.club) became++; if (!y.club && x.club) signed++; }
   console.log(`i alt: blev klubløse ${became}, skrev under ${signed}`);
+  // (VALUE=1) de unge klubløse (< 21): værdien +0x52 og omdømmet (post +0xb) pr. billede – fordeling
+  if (process.env.VALUE) for (const d of D) {
+    const fr = [...d.ps.values()].filter((x) => !x.club && x.age < 21);
+    const vb = (v: number) => (v <= 0 ? '0' : v < 1000 ? '<1k' : v < 5000 ? '1-5k' : v < 20000 ? '5-20k' : v < 100000 ? '20-100k' : '100k+');
+    const h = new Map<string, number>(); for (const x of fr) h.set(vb(x.v ?? 0), (h.get(vb(x.v ?? 0)) ?? 0) + 1);
+    const med = (a: number[]) => { const b = a.slice().sort((x, y) => x - y); return b.length ? b[b.length >> 1] : 0; };
+    console.log(`  ${d.iso} u21 klubløse ${fr.length}: værdi ${['0', '<1k', '1-5k', '5-20k', '20-100k', '100k+'].map((k) => `${k}=${h.get(k) ?? 0}`).join(' ')} median ${med(fr.map((x) => x.v ?? 0))} | omd. median ${med(fr.map((x) => x.rep ?? 0))} | CA median ${med(fr.map((x) => x.ca))}`);
+  }
 }
 if (ONLY_ORACLE) report('oraklet', O); else report('vores', U);

@@ -102,7 +102,7 @@ for (const s of snaps) {
   if (!ONLY_ORACLE) {
     const prev = new Date(Date.parse(s.iso) - 86400000).toISOString().slice(0, 10);
     let guard = 0;
-    if (s.iso !== FROM) while ((g.date < prev || !g.dayDone || g.pendingFixture) && guard++ < 5000) { const r = continueGame(); if (r?.match) quickPlayUserMatch(); }
+    if (s.iso !== '2001-07-14') while ((g.date < prev || !g.dayDone || g.pendingFixture) && guard++ < 5000) { const r = continueGame(); if (r?.match) quickPlayUserMatch(); }
     U.push(ours());
   }
   process.stderr.write(`${s.iso} `);
@@ -152,6 +152,19 @@ function report(name: string, D: Day[]) {
   L.push(`  underskrifter pr. klub: ${top(signClub)}`);
   L.push(`  mål pr. klub: ${top(tgtClub)}`);
   L.push(...examples);
+  // (FATE=En) parrenes skæbne for klassen: dage på listen, budmærke, og hvordan parret sluttede (skrev under her / andetsteds / stadig klubløs)
+  if (process.env.FATE) {
+    const cls = process.env.FATE, life = new Map<string, { days: number; bid: boolean; first: string; last: number; age: number }>();
+    D.forEach((d, i) => { for (const t of d.tg) { if (t.cls !== cls) continue; const k = `${t.club}|${t.p}`; const r = life.get(k) ?? { days: 0, bid: false, first: d.iso, last: i, age: d.free.get(t.p)?.age ?? 0 }; r.days++; r.last = i; if (t.bid) r.bid = true; life.set(k, r); } });
+    const fate = new Map<string, number>();
+    for (const [k, r] of life) {
+      const [club, p] = [k.slice(0, k.indexOf('|')), k.slice(k.indexOf('|') + 1)];
+      const nx = D[r.last + 1], end = !nx ? 'slut' : nx.clubOf.get(p) === club ? 'her' : nx.clubOf.get(p) ? 'andetsteds' : nx.free.has(p) ? 'klubløs' : 'væk';
+      const dd = r.days === 1 ? '1d' : r.days <= 6 ? '2-6d' : r.days <= 20 ? '7-20d' : '21d+';
+      inc(fate, `${r.age < 21 ? 'u21' : '21+'} ${r.bid ? 'bud' : 'intet'} ${dd} → ${end}`);
+    }
+    L.push(`  skæbne (${cls}, ${life.size} par): ` + [...fate].sort().map(([k, v]) => `\n     ${k}: ${v}`).join(''));
+  }
   console.log(L.join('\n'));
   out[name] = { targets: [...seen].map(([k, v]) => `${v} ${k}`) };
 }
