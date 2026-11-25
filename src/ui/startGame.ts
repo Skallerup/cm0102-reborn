@@ -272,7 +272,11 @@ export async function createGameAsync(world: WorldData | StartWorld, opts: NewGa
     console.warn('Nyt spil i en Worker fejlede – opretter i hovedtråden', e);
     // (25/11) en arbejder, der fejler før første besked (v0.37.0: arbejderens script var den rå .ts-fil), meldes – før byggede hovedtråden spillet
     // i stilhed, og på telefonerne endte det som "NewGameInterrupted … step none"
-    try { const { reportError } = await import('../online/errors'); reportError(new Error(`NewGameWorkerFailed: before first message, building in main thread – ${(e as Error).message.slice(0, 380)}`)); } catch { /* ignorér */ }
+    // (25/11) en side fra en ældre udgivelse (arbejderens fil findes ikke længere – `stale`) er forventet lige efter en udgivelse: hovedtråden
+    // bygger spillet, og det meldes ikke som fejl
+    if (!(e as StaleBuildError).stale) {
+      try { const { reportError } = await import('../online/errors'); reportError(new Error(`NewGameWorkerFailed: before first message, building in main thread – ${(e as Error).message.slice(0, 380)}`)); } catch { /* ignorér */ }
+    }
     createGame(await full(), opts);
     if (opts.preview) setSetupGame(gs()); else releaseWorldCaches();
   }
