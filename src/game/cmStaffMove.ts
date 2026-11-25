@@ -246,7 +246,7 @@ function fireStaff(g: GameState, s: Staff, cid: number, job: number): void {
   if (cur && !cur.to && cur.club === cid) careerEnd(s, 'sacked');
   else (s.career ??= []).push({ club: cid, from: s.cmJoined || g.date, to: g.date, why: 'sacked' });
   if (s.cmNp && !s.cmExtra) s.cmDbJob = job;
-  recordStaffMove(s, 0);
+  // ingen historikpost: 0x690890 kalder ikke add_past_transfer 0x8cb810 (dens eneste kaldere er 0x68f9c0, 0x8c2180 og 0x8c9720)
   s.club = 0;
   s.assignment = null;
   s.coachAreas = undefined;

@@ -111,7 +111,7 @@ export function fireStaff(id: number): number {
   const pay = s.wage * 12;
   club.balance -= pay;
   club.finance.other += pay;
-  recordStaffMove(s, 0);
+  // ingen historikpost (Staff Out): originalens fyring skriver ingen – add_past_transfer 0x8cb810 kaldes kun ved ansættelser
   s.club = 0;
   s.assignment = null;
   return pay;

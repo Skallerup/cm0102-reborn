@@ -28,6 +28,7 @@ import { leagueRows, nationRanking } from './competitions';
 import { ageOn, daysBetween } from './dates';
 import { careerEnd, careerStart } from './careers';
 import { recordStaffMove } from './staffMoves';
+import { npStaffOf } from './cmRetire';
 import { fixtureCodesOf } from './engine/grid/gameInputs';
 import {
   type BoardEnv, type BoardNews, type BoardRec, type CmBoardState, type CmDate, type LeagueInfo, type MatchIn, type Person, type StatsEntry,
@@ -535,6 +536,12 @@ function interestEnv(g: GameState, b: BoardEnv): InterestEnv {
 
 // ---------------------------------------------------------------- skrivere
 
+/** staff +0x61 (spillerposten) ≠ 0: databasens spiller med ikke-spillerpost, der stadig spiller (becomeStaff i cmRetire.ts nulstiller den) */
+function hasPlayerRec(g: GameState, s: Staff): boolean {
+  const p = s.cmId !== undefined && !s.exPlayer ? g.players[s.cmId] : undefined;
+  return !!p && npStaffOf(g, p) === s;
+}
+
 function setManagerGame(g: GameState, _env: BoardEnv, c: number, p: Person | null, old: number): void {
   if (old === -2) { if (p) tempManager.set(c, p); else tempManager.delete(c); return; }
   const nn = natOfClub(c);
@@ -557,8 +564,9 @@ function setManagerGame(g: GameState, _env: BoardEnv, c: number, p: Person | nul
   const from = g.clubs[s.club];
   if (from && from.manager === s.id) { from.manager = 0; from.tactic = null; }
   if (s.club && s.club !== c) careerEnd(s, 'poached');
-  // 0x690368–0x69043f: historikposten art 5 (0x8cb810 – Staff In/Out) for et skifte fra en klub til en anden (ingen af dem landshold, +0x18 = 0)
-  if (old > 0 && old === s.club && natOfClub(old) === null && g.clubs[old]) recordStaffMove(s, c, 0, g);
+  // 0x690368–0x69043f: historikposten art 5 (0x8cb810 – Staff In/Out) kun for en person med spillerpost (staff +0x61 ≠ 0 @0x690368 – spillende
+  // manager) fra en klub til en anden (ingen af dem landshold, +0x18 = 0); andre managerskifter skriver ingen historikpost
+  if (old > 0 && old === s.club && natOfClub(old) === null && g.clubs[old] && hasPlayerRec(g, s)) recordStaffMove(s, c, 0, g);
   s.club = c; s.role = 'manager';
   club.manager = s.id; club.tactic = null;
   careerStart(s, c);
