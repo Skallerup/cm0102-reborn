@@ -256,6 +256,16 @@ export function cmRandomDob(yob: number, rand: (n: number) => number): string {
  *  er bytes (år & 0xff, med fortegn): dag i året efter i dag → år − år − 1, ellers år − år; under 14 eller over 50 (også datoer med år
  *  1900 = ingen dato) → ny dato (cmRandomDob) i året +0x18, når det er > 1900, ellers 1967 (0x7af) med en ikke-spillerpost (+0x69) og 1980
  *  (0x7bc) uden. Giver året for den nye dato, eller undefined når datoen beholdes. */
+/** sub_535a80 0x537c47–0x537d51 (ikke-spillere uden spillerpost): alderen = bytes som 0x536804 mod databasens 1/1-2001; under 29 eller over 75
+ *  (også datoer med år 1900 = ingen dato: 101) → ny dato: året +0x18, når det er 1901..1966, ellers 1940 + rand(26); så måned rand(11) og dag
+ *  rand(27) + 1 (0x54a130). Giver den nye dato, eller undefined når datoen beholdes. `rand` = spillets tal (rækkefølgen: år, måned, dag). */
+export function cmStaffDob(day: number, year: number, yob18: number, rand: (n: number) => number, curDay = 0, curYear = 2001): string | undefined {
+  const b = (x: number) => (x << 24) >> 24;
+  const age = day - curDay > 0 ? b(curYear - year - 1) : b(curYear - year);
+  if (age >= 29 && age <= 75) return undefined;
+  const y = yob18 > 1900 && yob18 < 1967 ? yob18 : rand(26) + 1940;
+  return cmRandomDob(y, rand);
+}
 export function cmDobRedateYear(day: number, year: number, yob18: number, nonPlayer: boolean, curDay = 0, curYear = 2001): number | undefined {
   const b = (x: number) => (x << 24) >> 24;
   const age = day - curDay > 0 ? b(curYear - year - 1) : b(curYear - year);
@@ -675,6 +685,9 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
       bx.push(S.i32(o + 78));
       // [12][12..13] = kontraktens udløb (personpost +0x46: dag, år) – stabens startkontrakt 0x85e960 (0x85ec81/0x85ed8f: +0x2d ← +0x46)
       bx.push(S.i16(o + 70), S.i16(o + 72));
+      // [12][14..17] (kun den originale database) = fødselsdatoen som i staff.dat (+0x10 dag, +0x12 år), fødselsåret +0x18 og spillerposten (+0x61
+      // findes: 1) – sub_535a80's kontrol 0x537c47 for ikke-spillere (newgame.ts cmStaffDob): alder uden for 29..75 → ny dato
+      if (opts.cmMem) { const pr = S.i32(o + PLAYER_REF); bx.push(S.i16(o + 16), S.i16(o + 18), S.i16(o + 24), pr >= 0 && playerAt.has(pr) ? 1 : 0); }
       const row: NonNullable<CMWorld['staff']>[number] = [core && here ? club : 0, fn, ln, nation, dob, core ? (here ? job : 0) : job, att, ca, S.i16(np + 10), S.i32(o), tac, raw, bx, S.date(o + 62) ?? '', [S.i32(o + 0x24), S.u8(o + 0x28)]];
       // [15] = hukommelsen (0x524d70), [16] = [klubben +0x39 (databasens id, −1 = ingen), jobbet +0x3d] – kun til Staff Search
       if (sMem) { const m = sMem(o); if (m === 0 && !core) continue; row.push(m === 0 ? [] : m, [club, job]); }

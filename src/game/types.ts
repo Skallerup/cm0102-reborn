@@ -1260,8 +1260,9 @@ export interface GameState {
   cmAw?: import('./cmAwards').CmAwState;
   /** (MODERN_PARITY 12) 2026/27: databasens tidligere vindere for prisskærmen (staff_comp_history.dat i world-cm.json) – ellers cmAwards.json */
   cmAwHist?: Record<number, [number, (string | null)[]][]>;
-  /** formændene (world.cmRaw.chair: [np +0x16, np +0x1d Patience, staff +0x57 Ambition, nation]) og nationernes +0x75/+0x85/+0x88 */
-  cmChair?: Record<number, [number, number, number, number]>;
+  /** formændene (world.cmRaw.chair: [np +0x16, np +0x1d Patience, staff +0x57 Ambition, nation, (np +0x0e..+0x22 efter spilstarten sub_535a80 –
+   *  0x69d1b0's forenelighed; mangler i ældre spil)]) og nationernes +0x75/+0x85/+0x88 */
+  cmChair?: Record<number, [number, number, number, number, number[]?]>;
   /** formændenes navne pr. klub (club.dat +0xbf → staff.dat; world cmRaw.chairName) – "{club} chairman X …" (0x6a1190) */
   cmChairName?: Record<number, string>;
   cmNationBoard?: [number, number, number][];

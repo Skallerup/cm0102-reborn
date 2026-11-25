@@ -439,7 +439,7 @@ export function boardEnv(g: GameState, todayIso = g.date, startIso?: string, laz
     wealthBand: (c) => natOfClub(c) !== null ? 0 : financeStatus(Math.round((g.clubs[c]?.balance ?? 0) * gbpOf(g, c)), clubRepMem(g, c)),
     transferBudget: (c) => Math.round((g.clubs[c]?.transferBudget ?? 0) * gbpOf(g, c)),
     balance: (c) => Math.round((g.clubs[c]?.balance ?? 0) * gbpOf(g, c)),
-    chair: (c) => { const x = g.cmChair?.[c]; return x ? { b16: x[0], b1d: x[1], amb: x[2], nation: x[3] } : null; },
+    chair: (c) => { const x = g.cmChair?.[c]; return x ? { b16: x[0], b1d: x[1], amb: x[2], nation: x[3], np: x[4] } : null; },
     manager: (c) => {
       if (tempManager.has(c)) return tempManager.get(c)!;
       const nn = natOfClub(c);

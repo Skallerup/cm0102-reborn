@@ -32,7 +32,7 @@ import { addDays } from './dates';
 import { addNews, gs, squad } from './state';
 import { asOwner, isHumanClub } from './humans';
 import { compHooks } from './hooks';
-import { npFromWorld, npTemplate, personalFill_535a80, staffInitRecord, type NpTemplate } from './cmStaffInit';
+import { npFromWorld, npTemplate, personalFill_535a80, staffConvert, staffInitRecord, type NpTemplate } from './cmStaffInit';
 import type { CMWorld } from './data/cm0102';
 import { cmFinEvents } from './cmFinEvents';
 import { linkedClub } from './cmBTeam';
@@ -278,14 +278,16 @@ export function cmFinanceNewGame(g: GameState, world: CMWorld, seed: number): vo
     const ch = raw.chair?.[c.id];
     if (ch) {
       const np = npFromWorld(ch[0], [ch[1], ...ch.slice(2, 23), ch[23]], ch[24]);
-      if (pool.length) staffInitRecord({ np, job: ch[23], nation: g.nations[ch[25]]?.name ?? null, clubRep: repOf(g, c), name: '', hasPlayer: false }, pool, cmRand(seed, c.id, 0x537d59));
+      // slutløkken 0x538a70 (de 8 interne + 0x539490) som for al stab – rører ikke de rå bytes nedenfor (+0x0f/+0x16/+0x1d/+0x20)
+      if (pool.length) staffConvert(np, staffInitRecord({ np, job: ch[23], nation: g.nations[ch[25]]?.name ?? null, clubRep: repOf(g, c), name: '', hasPlayer: false }, pool, cmRand(seed, c.id, 0x537d59)));
       // Ambition +0x57 og Loyalty +0x59 som sub_535a80 udfylder dem, når databasen har 0 (samme talrække som cmBoardGame.ts' formand)
       chair = [np.a[0x0f - 0x0e], np.a[0x20 - 0x0e], personalFill_535a80(ch[26], cmRand(seed, c.id, 0x535f04), 'avg'), personalFill_535a80(ch[27], cmRand(seed, c.id, 0x535f8f), 'min')];
       // (24/11) Interference +0x16 og Patience +0x1d fra den SAMME udfyldte post (cmBoardInit satte databasens rå værdier – 0 hos ~3/4 af
       // formændene; oraklet 14/7-01 har dem alle i 1..20). rand(0) = 0 gjorde overtagelsens port 0x59ea41 rand(np+0x16) ≠ 0 → afvis virkningsløs.
       // cmBoardInit (før os i createGame) bruger dem ikke ved spilstarten (initRecords 0x68f130).
       const cc = g.cmChair?.[c.id];
-      if (cc && pool.length) { cc[0] = np.a[0x16 - 0x0e]; cc[1] = np.a[0x1d - 0x0e]; }
+      // hele den udfyldte post (+0x0e..+0x22) til 0x69d1b0's forenelighed med formanden (ev = club +0xbf med np)
+      if (cc && pool.length) { cc[0] = np.a[0x16 - 0x0e]; cc[1] = np.a[0x1d - 0x0e]; cc[4] = np.a.slice(0, 21); }
     }
     // 0x5965a2: +0x166 efter velstanden (ejer stadion: 5 rig / 15 gæld, ellers 10)
     const band = wealthBand(bal, repOf(g, c));

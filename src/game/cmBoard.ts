@@ -29,6 +29,7 @@
 // (0x540a50), spillende managere (staff +0x61), staffs præferencelister (+0x65), klubbens yndlings-/uønskede personer (+0x9b..+0xaf), lån af
 // stab, dyn+0xb & 0x30, Media::post_team_media_story 0x74b060 (dens tilfældige tal trækkes ikke), nyhederne til andre end mennesket.
 
+import { crtPow } from './engine/crtMath';
 import type { Club, GameState, Staff } from './types';
 import { cmRand } from './cmPlayerData';
 
@@ -149,7 +150,8 @@ export interface Person {
 }
 export const HUMAN0 = 1_000_000_000;
 
-export interface Chair { b16: number; b1d: number; amb: number; nation: number }
+/** `np` = formandens ikke-spillerpost +0x0e..+0x22 (21 signerede bytes, indeks = offset − 0x0e) efter spilstarten – 0x69d1b0's forenelighed */
+export interface Chair { b16: number; b1d: number; amb: number; nation: number; np?: readonly number[] }
 
 /** turneringstabellens post (Comp_Stats +0x72..+0x75 og stimerne) */
 /** pos = +0x72 (sidste sæsons slutplacering), p73 = nuværende placering, p74/p75 = bedste/dårligste i sæsonen, played = +4, stimerne +0x19/+0x2d/
@@ -320,6 +322,9 @@ export function scoreStaffForJob(env: BoardEnv, s: Person, c: number, job: numbe
   const viewer: Viewer = { club: ch ? (ch.nation === -1 ? 0 : c) : c, nation: ch ? ch.nation : env.clubNation(c) };
   // evaluatoren ev (seeren eller formanden) – NULL uden nogen af dem (landsholdene: ingen formand)
   const evView: Viewer | null = sp ? { club: sp.club, nation: sp.nation } : ch ? { club: c, nation: ch.nation } : null;
+  // evaluatorens ikke-spillerpost (ev->np: seeren, ellers formandens udfyldte post – g.cmChair[4]; ældre spil uden posten: ingen forenelighed)
+  const chNp = !sp && ch?.np ? ch.np : null;
+  const evAt: ((o: number) => number) | null = sp ? (o) => sp.at(o) : chNp ? (o) => chNp[o - 0x0e] ?? 0 : null;
   let sc = s16(repFor(env, s, evView ?? viewer));
   if ((cur === 12 || cur === 5) && crep > 4250) {
     sc += 25 * s16(s.ca);
@@ -329,13 +334,12 @@ export function scoreStaffForJob(env: BoardEnv, s: Person, c: number, job: numbe
   // klubbens og formandens likes/dislikes: listerne findes ikke i spillet (0)
   const blk = STAFF_BLOCK[BLOCK_OF[job] ?? -1];
   if (blk) {
-    // stabens jobblok (0x69db39/0x69deb6/0x69e22d/0x69e4e7). Formanden som seer har ingen taktiske bytes i spillet (kun +0x16/+0x1d) –
-    // foreneligheden regnes kun med en person som seer (managerens ikke-spillerpost)
-    if (blk.compat && sp) {
+    // stabens jobblok (0x69db39/0x69deb6/0x69e22d/0x69e4e7): foreneligheden med evaluatoren ev (seeren eller formanden med ikke-spillerpost)
+    if (blk.compat && evAt) {
       // (hukommelse, 22/11) indeksløkker uden destrukturering/midlertidige arrays – samme rækkefølge og værdier
       const c0 = blk.compat[0], o0 = c0[0], k0 = c0[1];
-      sc = ftol((1.0 - Math.abs(s8(sp.at(o0)) - s8(s.at(o0))) * k0) * ftol(sc * 1.5));
-      for (let i = 1; i < blk.compat.length; i++) { const ci = blk.compat[i], o = ci[0], k = ci[1]; sc = ftol((1.0 - Math.abs(s8(sp.at(o)) - s8(s.at(o))) * k) * sc); }
+      sc = ftol((1.0 - Math.abs(s8(evAt(o0)) - s8(s.at(o0))) * k0) * ftol(sc * 1.5));
+      for (let i = 1; i < blk.compat.length; i++) { const ci = blk.compat[i], o = ci[0], k = ci[1]; sc = ftol((1.0 - Math.abs(s8(evAt(o)) - s8(s.at(o))) * k) * sc); }
     }
     for (let i = 0; i < blk.attr.length; i++) { const ai = blk.attr[i], o = ai[0], k = ai[1]; sc = ftol((s8(s.at(o)) * k + 1.0) * sc); }
     const b59 = s.b59, det = s.det, pres = s.pres, prof = s.prof;
@@ -363,11 +367,25 @@ export function scoreStaffForJob(env: BoardEnv, s: Person, c: number, job: numbe
     else if (age < 38 && s16(s.rep[2]) < 4250) sc = ftol((age * 0.05 - 0.95) * sc);
     if (age < 45 && crep < 7000) {
       let pot = s16(s.pa) - s16(s.ca); if (pot > 50) pot = 50;
-      const pat = ch ? s8(ch.b1d) : 10;
-      sc += ftol(Math.pow(pot, 2.0) * pat * 0.1);
+      const pat = sp ? s8(sp.at(0x1d)) : ch ? s8(ch.b1d) : 10;                 // ev->np +0x1d (0x69d70d)
+      sc += ftol(crtPow(pot, 2.0) * pat * 0.1);                                // 0x945ff0 (fyl2x: 50² = 2499,9999999999986)
     }
-    // forenelighed med formanden (hans ni egenskaber): formandens taktiske egenskaber findes ikke i world-filen – grenen kræver ev->np's
-    // +0x0e..+0x22; vi har kun +0x16/+0x1d, så sammenligningen springes over (som uden formand)
+    // 0x69d751–0x69d950: foreneligheden med evaluatoren ev (seeren eller formanden): k = 1,25 − ev+0x16·0,025, nævnerne k·100/k·250/k·200
+    // (i registret) og k·150/k·300 (gemt som double); sc = ftol(sc·1,5), så ftol((1 − |ev − s|/nævner)·sc) for de ni rå bytes
+    if (evAt) {
+      const k = 1.25 - s8(evAt(0x16)) * 0.025;
+      const A = k * 100, B = k * 150, C = k * 300, D = k * 200, E = k * 250;
+      const d = (o: number) => Math.abs(s8(evAt(o)) - s8(s.at(o)));
+      sc = ftol((1.0 - d(0x0e) / A) * ftol(sc * 1.5));
+      sc = ftol((1.0 - d(0x12) / E) * sc);
+      sc = ftol((1.0 - d(0x13) / A) * sc);
+      sc = ftol((1.0 - d(0x14) / B) * sc);
+      sc = ftol((1.0 - d(0x15) / B) * sc);
+      sc = ftol((1.0 - d(0x1a) / C) * sc);
+      sc = ftol((1.0 - d(0x1c) / C) * sc);
+      sc = ftol((1.0 - d(0x1f) / D) * sc);
+      sc = ftol((1.0 - d(0x22) / B) * sc);
+    }
     sc = ftol(sc * (1 + s8(s.at(0x11)) * (1 / 1200.0)));
     sc = ftol(sc * (1 + s8(s.at(0x10)) * (1 / 1200.0)));
     sc = ftol(sc * (1 + s8(s.at(0x17)) * 0.002));

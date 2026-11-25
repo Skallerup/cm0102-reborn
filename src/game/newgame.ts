@@ -26,7 +26,7 @@ import { refreshShortlists, windowLastDay, windowOpen } from './transfers';
 import { autoSelect, neutralPlayerInstructions, newTactic, FORMATIONS } from './tactics';
 import { cmLoadPreset } from './engine/grid/tacticTable';
 import type { Club, GameState, Lang, Player, Role, Staff, StaffRole } from './types';
-import { cmRandomDob, subPos, type CMWorld } from './data/cm0102';
+import { cmRandomDob, cmStaffDob, subPos, type CMWorld } from './data/cm0102';
 import { setBoardExpectation } from './board';
 import { appointBody, cmBoardHumanAppoint, cmBoardInit, cmBoardOn, cmInitStaffRep } from './cmBoardGame';
 import { fairTicketPrice, transferBudgetFor } from './finance';
@@ -1042,6 +1042,10 @@ function addDbStaff(row: NonNullable<CMWorld['staff']>[number], club: number, ro
   // 1 står ofte for "ikke sat" (2026/27-opdateringen: Arteta Coaching 1) – så bruges den genererede værdi (*estimeret*)
   keys.forEach((k, i) => { if (a[i] > 1) s.attrs[k] = a[i]; });
   if (dob) s.dob = dob;
+  // (den originale database) sub_535a80 0x537c47: en ikke-spiller med alder uden for 29..75 (også uden dato) får en ny fødselsdato – før gav
+  // makeStaff dem 38..64 år (oraklet 14/7-01: 609 af 610 uden dato født 1940–65; fødselsår 1967+ kun med året → 1940–65)
+  const fx = row[12];
+  if (fx && fx.length >= 18 && !fx[17]) { const nd = cmStaffDob(fx[14], fx[15], fx[16], cmRand(seed, row[9], 0x537c47)); if (nd) s.dob = nd; }
   if (rep > 0) s.rep = Math.max(1, Math.min(100, Math.round(rep / 2)));
   if (tac?.some((v) => v > 0)) s.tac = tac.slice();
   if (ca > 0) s.ca = ca;
