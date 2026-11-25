@@ -351,6 +351,11 @@ const NPK = new WeakMap<GameState, { n: number; m: Map<number, Staff> }>();
 /** spillerens ikke-spillerpost staff +0x69: personens Staff med samme person-id (databasens spillere med en ikke-spillerpost står i staffX/staff –
  *  newgame.ts addDbStaff, Staff.cmId = staff.dat +0 = spillerens id) */
 export function npStaffOf(g: GameState, p: Player): Staff | undefined {
+  const s = npStaffMap(g).get(p.id);
+  return s && !s.exPlayer && s.last === p.last ? s : undefined;
+}
+/** npStaffOf's opslag (person-id → Staff) – til løkker over mange personer (én optælling af staben pr. kald i stedet for pr. person) */
+export function npStaffMap(g: GameState): Map<number, Staff> {
   const n = Object.keys(g.staff).length;
   let c = NPK.get(g);
   if (!c || c.n !== n) {
@@ -359,8 +364,7 @@ export function npStaffOf(g: GameState, p: Player): Staff | undefined {
     c = { n, m };
     NPK.set(g, c);
   }
-  const s = c.m.get(p.id);
-  return s && !s.exPlayer && s.last === p.last ? s : undefined;
+  return c.m;
 }
 /** personens job +0x3d som spiller: 11 spiller, 12 spillende manager, 13 spiller/assistent, 15 spiller/træner (Set Role At Club: Player.jobRole;
  *  ellers databasens job, så længe han er i databasens klub); stab med spillerpost: deres ikke-spillerjob */

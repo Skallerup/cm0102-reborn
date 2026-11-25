@@ -30,7 +30,7 @@ import { JOB_CODE } from './cmStaff';
 import { rebalanceStaffNp } from './cmStaffInit';
 import { randomName } from './data/generate';
 import { Rng, hash } from './rng';
-import { cmInMemory, dates, divisionActive, npStaffOf, pairOf, prOf, type CmRetEntry } from './cmRetire';
+import { cmInMemory, dates, divisionActive, npStaffMap, pairOf, prOf, type CmRetEntry } from './cmRetire';
 
 type Rand = (n: number) => number;
 const ftol = Math.trunc;
@@ -71,11 +71,11 @@ function nation8e(g: GameState, n: number): number {
   return 0;
 }
 /** ikke-spilleren i originalens hukommelse med ikke-spillerpost og uden spillerpost (cmExtra = databasens spillere/formænd uden for stabens poster) */
-export function staffInScope(g: GameState, s: Staff): boolean {
+export function staffInScope(g: GameState, s: Staff, M = npStaffMap(g)): boolean {
   if (!s.cmNp || s.cmExtra || s.cmMem === false) return false;
-  // en spiller med ikke-spillerpost, der stadig spiller (+0x61 ≠ 0), hører til spillernes gren
+  // en spiller med ikke-spillerpost, der stadig spiller (+0x61 ≠ 0), hører til spillernes gren (npStaffOf(g, p) === s)
   const p = s.cmId !== undefined && !s.exPlayer ? g.players[s.cmId] : undefined;
-  return !(p && npStaffOf(g, p) === s);
+  return !(p && p.last === s.last && M.get(p.id) === s);
 }
 /** personens job +0x3d (uden klub: databasens/den beholdte jobkode – 0 → landsholdsjobbet +0x28) */
 function jobOf(g: GameState, s: Staff): number {
@@ -108,8 +108,9 @@ export function checkStaffRetirement(g: GameState, s: Staff, todayIso: string, r
 /** find_new_retirements 0x7a5790 / spilstarten 0x7a58f0: ikke-spillerne (efter spillerne) – have = personer, der allerede står på listen */
 export function findStaffRetirements(g: GameState, todayIso: string, rand: Rand, initial: boolean, have: Set<number>, add: (e: CmRetEntry) => void): void {
   if (!cmNpResOn(g)) return;
+  const M = npStaffMap(g);
   for (const s of Object.values(g.staff)) {
-    if (!staffInScope(g, s) || have.has(s.id)) continue;
+    if (!staffInScope(g, s, M) || have.has(s.id)) continue;
     const club = s.club ? g.clubs[s.club] : undefined;
     if (!initial && club && s.dob && ageOn(s.dob, todayIso) < 30 && divisionActive(g, club)) continue;   // 0x7a5806
     const e = checkStaffRetirement(g, s, todayIso, rand, initial);
@@ -145,7 +146,7 @@ export function settleStaff(g: GameState, e: CmRetEntry, rand: Rand): void {
     if (go && (rand(4) !== 0 || (job >= 1 && job <= 4) || job === 10 || job === 9)) { rebornAsNonPlayer(g, s, job, rand); return; }
   }
   // 0x7aaeb0: væk fra klubben og landsholdet
-  boardRetired(g, s.id);
+  if ((s.club && s.role === 'manager') || natTeam(g, s)) boardRetired(g, s.id);   // (kun en manager kan stå på +0xcf)
   if (s.club && s.role === 'scout') s.assignment = null;
   s.club = 0;
   // 0x7a87d0: posten i reservepuljen, personen i køen (en ung regen af spillerpuljens første post – cmRegen.ts)
@@ -241,7 +242,7 @@ export function npOnRetire(g: GameState, p: Player, rand: Rand): Staff | null {
 
 /** 0x7a7150: scoren for at få en ikke-spillerpost (−10000: har post, meldt/pensioneret eller under 31 år) */
 function npScore(g: GameState, p: Player, rand: Rand): number {
-  if (npStaffOf(g, p) || p.cmRetire) return -10000;
+  if (p.cmRetire) return -10000;                                                     // (posten: pickForNp har sorteret dem fra)
   const age = ageOn(p.dob, g.date);
   if (age < 31) return -10000;
   const pr = prOf(p);
@@ -265,7 +266,9 @@ function npScore(g: GameState, p: Player, rand: Rand): number {
 /** 0x7a6e60: postens nation først (bedste > 0 over −1000), ellers alle (over −15000) */
 function pickForNp(g: GameState, nation: number, rand: Rand): Player | null {
   // (de, 0x7a7150 giver −10000 uden tilfældige tal – har post, meldt/pensioneret eller under 31 år – kan aldrig vælges og sorteres fra først)
-  const people = Object.values(g.players).filter((p) => !p.virtual && !p.cmRetire && ageOn(p.dob, g.date) >= 31 && cmInMemory(g, p) && !npStaffOf(g, p));
+  const M = npStaffMap(g);
+  const hasNp = (p: Player) => { const s = M.get(p.id); return !!s && !s.exPlayer && s.last === p.last; };
+  const people = Object.values(g.players).filter((p) => !p.virtual && !p.cmRetire && ageOn(p.dob, g.date) >= 31 && cmInMemory(g, p) && !hasNp(p));
   let best: Player | null = null, bv = -1000;
   for (const p of people) {
     if (p.nation !== nation) continue;
