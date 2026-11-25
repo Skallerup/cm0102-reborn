@@ -11,7 +11,8 @@ export const unhappyMult = (p: Player) => (p.squadStatus ? UNHAPPY[p.squadStatus
 
 /** "Hot prospect" og "decent young player" giver kun mening for unge spillere */
 export function statusAllowed(p: Player, s: SquadStatus, date: string): boolean {
-  if (s === 'prospect' || s === 'young') return ageOn(p.dob, date) <= 21;
+  // Shortlist_Manager 0x84b4d0: Hot Prospect/Decent Young Player (5/6) kun under 24 år (staff +0x18 < 0x18)
+  if (s === 'prospect' || s === 'young') return ageOn(p.dob, date) < 24;
   return true;
 }
 

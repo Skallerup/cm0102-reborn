@@ -14,7 +14,7 @@
 //     ellers en adresse uden post), spillerposten +0x16..+0x45 (aiTeam.ts playerRecord: egenskaberne, interne værdier, fødder, moral).
 //   kontrakten: +0x10/+0x14/+0x18 bonusserne (cmBonusGbp), +0x1c..+0x21 klausulerne, +0x25 start (ankomsten), +0x2d udløbet, +0x35 type 2
 //     (almindelig) + deltid, +0x3d/+0x3e/+0x3f/+0x44/+0x4e (Player.cmContract).
-//   klub: +0x73 tilskuertallet og +0xb3/+0xb7/+0xbb rivalerne (GameState.cmCrowd), +0x1db europæisk turnering −1.
+//   klub: +0x73 tilskuertallet og +0xb3/+0xb7/+0xbb rivalerne (GameState.cmCrowd), +0x1db den europæiske turnering (cmEuroMem.ts).
 //   land: +0x71 verdensdelen, +0x77 sproget (grid/nationLanguage.ts), +0x8e (WorldData.valueClub [1]).
 //   turneringsobjekterne [0xadadfc][division]: +0x43 = 2 (liga), vtabellens +0x98/+0x9c (0x684790/0x6847b0: +0xbe/+0xd9 op-, +0xc1 nedrykning
 //     efter spillets regler som cmContractInit.ts leagueOf), +8 tabellen (0x4a4850).
@@ -25,7 +25,8 @@
 import type { Club, Contract, ContractClauses, GameState, Player } from './types';
 import { type CmCtx, G, writeMonthTables } from './cmMem';
 import { buildWageMem, cmMemCall, type WageMem } from './cmWageGame';
-import { setToDesiredContract_85fc50, constructContract_85e410, calcContractValue_866830 } from './cmContractWant';
+import { writeEuroMem } from './cmEuroMem';
+import { setToDesiredContract_85fc50, constructContract_85e410, calcContractValue_866830, contractForClub_4cf5f0, contractSatisfaction_866620 } from './cmContractWant';
 import { offerContract_4cda70 } from './cmContract';
 import { getClubFinance_5a0590, defaultStaffContract_864550 } from './cmWage';
 import { maxStaffWage_597db0 } from './cmMaxWage';
@@ -187,6 +188,8 @@ export function buildWantMem(g: GameState, clubs: Iterable<number>, opts: { full
   };
   // klubberne: tilskuertal, rivaler, europæisk turnering
   const clubIds = [...new Set(clubs)].filter((id) => g.clubs[id]);
+  // de europæiske turneringer (club +0x1db, [0xae23d0], [0xadadfc][id] – cmEuroMem.ts)
+  const E = writeEuroMem(m, g, COMP0);
   for (const cid of clubIds) {
     const a = W.clubOf(cid);
     if (!a) continue;
@@ -194,7 +197,7 @@ export function buildWantMem(g: GameState, clubs: Iterable<number>, opts: { full
     const cr = g.cmCrowd?.[cid];
     m.w32(a + 0x73, cr?.[0] ?? 0);
     (cr?.slice(6, 9) ?? []).forEach((r, k) => m.w32(a + 0xb3 + 4 * k, r >= 0 ? (m.u32(G.CLUBS) + 0x245 * r) >>> 0 : 0));
-    m.w32(a + 0x1db, -1);
+    m.w32(a + 0x1db, E.id(cid));
     // MANAGER_MANAGER [0xb67a44] → klubbernes bestyrelsesposter (73 bytes, cmBoard.ts BoardRec): +6/+8/+0xa vurderingerne
     const br = g.cmBoard?.rec[cid];
     if (br) { const ra = MMREC + 73 * cid; m.w16(ra + 6, br.w6); m.w16(ra + 8, br.w8); m.w16(ra + 0xa, br.wa); m.w16(ra + 0xc, br.wc); }
@@ -302,6 +305,8 @@ export function buildWantMem(g: GameState, clubs: Iterable<number>, opts: { full
         case 0x4b02e0: return leagueClash(envOf(), m.s32(a[0]), m.s32(a[1]));
         case 0x4a4850: {
           // tabelrækken for klubben (sidste argument) i ligaen: +4 kampe, +0x72 placeringen, +0x73/+0x74/+0x75 fremskrivningerne
+          const er = E.row(m, a, ROW4A);
+          if (er !== undefined) return er;
           const e = envOf().entry(m.s32(a[a.length - 1]));   // (thiscall fra 0x846920: [this, klub])
           if (!e) return 0;
           const r = ROW4A;
@@ -450,9 +455,75 @@ function talkMem(g: GameState, p: Player, clubId: number, site: number, role?: S
   const club = M.W.clubOf(clubId);
   if (!st || !club) return null;
   const [d] = isoDay(g.date);
-  M.setRand(cmRand(g.seed ?? 0, p.id, clubId, d, site));
   M.byStaff.set(st, p);
-  return { M, st, club, status: role ? roleCode(role) : newClubStatus(g, p, clubId) };
+  M.setRand(cmRand(g.seed ?? 0, p.id, clubId, d, site));
+  // uden valgt rolle: den forventede (0x4dd0f0 – med sin egen talrække, før kaldets første træk), ellers newClubStatus (*estimeret*)
+  let status = role ? roleCode(role) : 0;
+  return {
+    M, st, club,
+    get status() {
+      if (!status) {
+        M.setRand(cmRand(g.seed ?? 0, p.id, clubId, d, 0x4dd0f0));
+        status = expectedStatus_4dd0f0(M.c, st, club) || newClubStatus(g, p, clubId);
+        M.setRand(cmRand(g.seed ?? 0, p.id, clubId, d, site));
+      }
+      return status;
+    },
+  };
+}
+
+/** Set Role At Club's "* Expected by the player" – 0x4dd0f0 (skærmparameter 6 til 0x4dd6c0, 0x4dd3ff–0x4dd636; uden et åbent tilbud
+ *  0x4ca2a0): kontrakten med klubben 0x4cf5f0 og er han ikke tilfreds med den (0x866620 ≠ 1), hans nuværende status (+0x4f >> 4, ikke 7/8,
+ *  0x84b4d0); ellers den status 1..6, hvor viljen 0x846920(staff, klub, 1, 0, status, &grunde) er højest – over 3,15, højst 3,5 + 0,1 ·
+ *  (+0x59 + +0x57 + +0x5b + 42) (0x4dd111–0x4dd137) og uden grunden 0x8000 – med kontrakt kun en bedre status end den nuværende, og for
+ *  under 24-årige (+0x18) kun 1–3 med nok omdømme (spillerposten +0xb, +0x57 og +0x5b mod klubbens +0x80); 1 kræver også +0xb ≥ 3250 og
+ *  +0xb + 25·(+0x5b + 70) + 10·(+0x57) ≥ klubbens. 0 = ingen. */
+function expectedStatus_4dd0f0(c: CmCtx, st: number, club: number): number {
+  const m = c.m;
+  const s8 = (v: number) => (v << 24) >> 24;
+  const p57 = s8(m.u8(st + 0x57)), p59 = s8(m.u8(st + 0x59)), p5b = s8(m.u8(st + 0x5b)), age = s8(m.u8(st + 0x18));
+  const upper = (p59 + p57 + p5b + 0x2a) * 0.1 + 3.5;
+  // 0x84b4d0 Shortlist_Manager: status 5/6 kun under 24 år (uden spillerpost 0)
+  const allowed = (s: number) => (!m.u32(st + 0x61) ? false : s === 5 || s === 6 ? age < 0x18 : true);
+  const k = contractForClub_4cf5f0(c, st, club);
+  const happy = k ? contractSatisfaction_866620(c, k, st) === 1 : false;
+  if (k && !happy) { const s = m.u8(k + 0x4f) >> 4; return s !== 7 && s !== 8 && m.u32(st + 0x61) && allowed(s) ? s : 0; }
+  const cur = k ? m.u8(k + 0x4f) >> 4 : 0;
+  const cr = m.s16(club + 0x80);
+  const MASK = OUT + 0x70;
+  m.w32(MASK, 0);
+  let best = 3.15, exp = 0;
+  for (let s = 1; s < 8; s++) {
+    const rec = m.u32(st + 0x61);
+    if (!rec) break;
+    if (s === 7) continue;
+    if (s !== 1 && k && cur <= s) continue;
+    const rb = m.s16(rec + 0xb);
+    if (s === 1) {
+      if (age < 0x18 && (rb < 0xcb2 || rb + 10 * (p57 + 2 * p5b) < cr)) continue;
+      if (rb + 25 * (p5b + 0x46) + 10 * p57 < cr) continue;
+    } else if (s === 2) { if (age < 0x18 && rb + 10 * (p57 + 2 * p5b + 0x4b) < cr) continue; }
+    else if (s === 3) { if (age < 0x18 && rb + 10 * (p57 + 2 * p5b + 0x7d) < cr) continue; }
+    if (!allowed(s)) continue;
+    const w = slCall(c, 0x846920, slmOf(m), st, club, 1, 0, s, MASK);
+    if (w > upper || !(w > best) || (m.u32(MASK) & 0x8000)) continue;
+    best = w; exp = s;
+  }
+  return exp;
+}
+
+/** "* Expected by the player" (0x4dd0f0) for spilleren hos klubben `clubId` – 1..6, 0 = ingen; null uden for cmLogic */
+export function cmExpectedStatus(g: GameState, p: Player, clubId: number): number | null {
+  if (!cmLogic(g) || g.draft || !g.clubs[clubId]) return null;
+  const home = p.loan?.from ?? p.club;
+  const M = buildWantMem(g, home ? [home, clubId] : [clubId]);
+  let st = M.W.staffOf(p);
+  if (!st) st = M.W.addGenerated(p, 0);
+  const club = M.W.clubOf(clubId);
+  if (!st || !club) return null;
+  M.byStaff.set(st, p);
+  M.setRand(cmRand(g.seed ?? 0, p.id, clubId, isoDay(g.date)[0], 0x4dd0f0));
+  return expectedStatus_4dd0f0(M.c, st, club);
 }
 
 /** 0x8c0080 (timing 0xb): vil spilleren overhovedet tale med køberen? Shortlist_Manager 0x846920(staff, klub, 0, 0, status, &ud) med status 1,
@@ -471,8 +542,8 @@ export function cmMoveCheck(g: GameState, p: Player, clubId: number): { x: numbe
   return { x, mask: c.m.u32(OUT) >>> 0 };
 }
 
-/** trupstatussen, køberen tilbyder (newClubStatus – samme som kravet 0x85fc50 bruger) */
-export function cmTalkStatus(g: GameState, p: Player, clubId: number, role?: SquadStatus): number { return role ? roleCode(role) : newClubStatus(g, p, clubId); }
+/** trupstatussen, køberen tilbyder: den valgte, ellers den forventede (0x4dd0f0 – samme som kravet 0x85fc50 bruger; uden en: newClubStatus) */
+export function cmTalkStatus(g: GameState, p: Player, clubId: number, role?: SquadStatus): number { return role ? roleCode(role) : cmExpectedStatus(g, p, clubId) || newClubStatus(g, p, clubId); }
 
 /** Set Role At Club → trupstatuskoden 1–6 (Key, First Team, Rotation, Backup, Hot Prospect, Decent Young Player; surplus = 4) */
 export function roleCode(r: SquadStatus): number { return r === 'key' ? 1 : r === 'first' ? 2 : r === 'rotation' ? 3 : r === 'prospect' ? 5 : r === 'young' ? 6 : 4; }

@@ -8,6 +8,8 @@ export const compHooks: {
   leagueDone?: (comp: Competition, order: number[]) => void;
   /** (kalenderen, cmEurope.ts) Europas kampe før spilstarten spilles ved nyt spil */
   euroCatchUp?: (g: GameState) => void;
+  /** (bestyrelsen, cmBoardGame.ts cmEuroPredictKeys) 0x4c08f0's rækkefølge: klubberne sorteret efter 0x4c0720 (cmClubPredictValue), faldende */
+  euroPredictOrder?: (g: GameState, clubs: number[]) => number[];
   /** (forkørslen, cmPrerunMatches.ts) dagens europæiske kampe (Intertoto, CL-kvalifikationen) i forkørslen 0x5cc850 */
   euroPrerunDay?: (g: GameState, iso: string) => void;
   /** (forkørslen, cmFriendly.ts) dagens venskabskampe med tidspunktet `slot` i forkørslen 0x5cc850 (MATCH_DAY 0x6b3c10) */

@@ -7,6 +7,7 @@
 import type { GameState, Player, Staff } from './types';
 import { type CmCtx, G, SparseMem, writeMonthTables, cmAfter2330, writeDate2330 } from './cmMem';
 import { writeHolidayMem } from './cmHoliday';
+import { writeEuroMem } from './cmEuroMem';
 import { cmMemCall, writeHumanMgr, scanOf, writeKeyIds, writeLoanContract, LOAN_IX, KEY_NATIONS, OTHER_GLOBALS, NAT7F, STAFF0, PREC0, CLUB0, NAT0, DIV0, FIN0, K0, ROWS0, TM0, PTRS, type WageMem } from './cmWageGame';
 import type { WantMem } from './cmContractGame';
 import { getMaxWage_5968d0, recalcWages_598370 } from './cmMaxWage';
@@ -626,13 +627,15 @@ export function buildSlWantMem(g: GameState, clubs: Iterable<number>, opts: { ca
     }
     return a;
   };
+  // de europæiske turneringer (club +0x1db, [0xae23d0], [0xadadfc][id] – cmEuroMem.ts)
+  const E = writeEuroMem(m, g, COMP0);
   for (const cid of clubIds) {
     const a = clubAdr(cid);
     nat(g.clubs[cid].nation);
     const cr = g.cmCrowd?.[cid];
     m.w32(a + 0x73, cr?.[0] ?? 0);
     if (cr) for (let k = 0; k < 3 && 6 + k < cr.length; k++) { const r = cr[6 + k]; m.w32(a + 0xb3 + 4 * k, r >= 0 ? (CLUB0 + 0x245 * r) >>> 0 : 0); }
-    m.w32(a + 0x1db, -1);
+    m.w32(a + 0x1db, E.id(cid));
     const br = g.cmBoard?.rec[cid];
     if (br) { const ra = MMREC + 73 * cid; m.w16(ra + 6, br.w6); m.w16(ra + 8, br.w8); m.w16(ra + 0xa, br.wa); m.w16(ra + 0xc, br.wc); }
     m.w32(EURO0 + 6 * cid, -1);
@@ -689,6 +692,8 @@ export function buildSlWantMem(g: GameState, clubs: Iterable<number>, opts: { ca
       case 0x4d0c60: return valueOf(g, byStaffOf().get(a[0] >>> 0), m.s32(a[1]));
       case 0x4b02e0: return leagueClash(envOf(), m.s32(a[0]), m.s32(a[1]));
       case 0x4a4850: {
+        const er = E.row(m, a, ROW4A);
+        if (er !== undefined) return er;
         const e = envOf().entry(m.s32(a[a.length - 1]));
         if (!e) return 0;
         const r = ROW4A;

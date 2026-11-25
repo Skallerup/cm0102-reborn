@@ -2,7 +2,7 @@
 // Kun den originale database i ægte tilstand (cmActive); ellers gør intet her noget, og spillets egen model (sim.ts) gælder.
 
 import { registerCarry } from './carry';
-import type { Fixture, GameState, MatchReport, Player } from './types';
+import type { Competition, Fixture, GameState, MatchReport, Player } from './types';
 import { cmActive, cmBodyOn, cmGenerated, cmLogic, cmStaffStateInit, setCmPlayerCtx } from './cmPlayerData';
 import {
   applyMatchEffects, clearKnocks, clubSeason, condition, currentInjury, dayNum, fatigue, fitIso, fitRand, hasSeasonRow, initRecords, initSquadFitness, injuryDaily, injuryStatus,
@@ -66,25 +66,46 @@ export const intlOnDuty = (p: Player): boolean => intlDuty?.(p) ?? false;
  *  Hos os: en ufærdig kontinental turnering, klubben er med i og ikke slået ud af (seneste dobbeltkamp ikke tabt; i ligafasen alle;
  *  efter ligafasen uden dobbeltkamp: de 8 bedste i tabellen) → CL 326, UEFA 328, andre 330. Læses af 0x62ce30 og 0x83cb40. */
 export function cmClubEuro(g: GameState, club: number): number {
+  const c = cmClubEuroComp(g, club);
+  return !c ? -1 : c.id === 'CL' ? 326 : c.id === 'UEFA' ? 328 : 330;
+}
+
+const inGroups = (c: Competition, keys: string[], club: number) => keys.some((k) => c.groups?.[k]?.some((r) => r.club === club));
+const CL_G1 = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'], CL_G2 = ['A2', 'B2', 'C2', 'D2'];
+const KO = new Set(['QF', 'SF', 'F']);
+
+/** turneringen bag club +0x1db (cmClubEuro) – null = −1. (25/11) Som originalen også efter kvalifikationen: draw_phase1_groups 0x585290
+ *  (0x585920–0x585a6a) sætter CL's Q3-tabere til UEFA Cup'en ([0x9cf6f0]), draw_phase2_groups 0x585ab0 (0x586282–0x586301) 1. gruppespils
+ *  treere til UEFA Cup'en og firere til −1, draw_quarter_finals 0x586330 (0x586605/0x586625) 2. gruppespils treere og firere til −1 og
+ *  IntertotoCup 0x633d40 (0x633e20–0x633e56) finalens vindere til UEFA Cup'en – de tilføjede står i UEFA Cup'ens meta.cmAdd (cmEurope.ts). */
+export function cmClubEuroComp(g: GameState, club: number): Competition | null {
   // (hastighed 24/11) for…in i stedet for Object.values: samme rækkefølge, men intet nyt array pr. kald – kaldes for hver spiller hver dag i
   // forkørslen (closeSeason); med Maximum og alle ligaer var det forhåndsvisningens tungeste del af fitness-trinnet
   for (const k in g.comps) {
     const c = g.comps[k];
-    if (c.type !== 'continental' || c.finished || !c.clubs.includes(club)) continue;
+    if (c.type !== 'continental' || c.finished) continue;
+    const add = (c.meta as { cmAdd?: number[] } | undefined)?.cmAdd;
+    if (!c.clubs.includes(club) && !add?.includes(club)) continue;
     const mine = c.ties.filter((t) => t.a === club || t.b === club);
+    const last = mine.length ? mine[mine.length - 1] : undefined;
     let alive: boolean;
-    if (!c.ties.length) alive = true;
-    else if (mine.length) { const last = mine[mine.length - 1]; alive = last.winner === undefined || last.winner === club; }
+    if (c.id === 'CL' && c.meta?.cmEuro && c.groups && inGroups(c, CL_G1, club)) {
+      // gruppespillene: efter kvartfinalernes lodtrækning kun knockout-holdene, efter 2. gruppespils lodtrækning dets hold, ellers 1. gruppespils
+      if (c.ties.some((t) => KO.has(t.stage))) alive = !!last && KO.has(last.stage) && (last.winner === undefined || last.winner === club);
+      else if (CL_G2.some((k) => c.groups![k])) alive = inGroups(c, CL_G2, club);
+      else alive = true;
+    } else if (!c.ties.length) alive = true;
+    else if (last) alive = last.winner === undefined || last.winner === club;
     // uden egne dobbeltkampe og før tabellen findes: klubben går først ind i en senere runde (Man Utd i CL's gruppespil – oraklets spilstart:
     // +0x1db = 326 allerede 14/7, så 0x598800 giver transferbudgettets europæiske tillæg)
     else {
       const entry = (c.meta as { entry?: Record<string, number[]> } | undefined)?.entry;
-      const later = !!entry && !c.table.length && Object.values(entry).some((ids) => ids.includes(club));
+      const later = !c.table.length && (!!add?.includes(club) || (!!entry && Object.values(entry).some((ids) => ids.includes(club))));
       alive = later || c.table.slice(0, 8).some((r) => r.club === club);
     }
-    if (alive) return c.id === 'CL' ? 326 : c.id === 'UEFA' ? 328 : 330;
+    if (alive) return c;
   }
-  return -1;
+  return null;
 }
 
 /** periodens ord (originalen: "a few days", "about a week", "about a month", "about a year" …) */

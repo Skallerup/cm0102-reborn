@@ -9,7 +9,7 @@ import { cmLogic } from '../../game/cmPlayerData';
 import { cmBoardWageAllow } from '../../game/cmBudget';
 import { cmGbp } from '../../game/cmMoney';
 import { cashRound, cashStepEur, cashUnits, moneyCm, moneyFull, moneyWage, t } from '../../i18n';
-import { SQUAD_STATUSES, expectedStatus, statusAllowed, type SquadStatus } from '../../game/squadStatus';
+import { SQUAD_STATUSES, statusAllowed, type SquadStatus } from '../../game/squadStatus';
 import { ageOn, year } from '../../game/dates';
 import { authentic } from '../../game/rules';
 import { cmNoInterest, cmOfferScreen, cmRoleExpected, cmTalksDemand } from '../../game/cmTransferTalks';
@@ -125,10 +125,10 @@ export function OrigNegotiation({ offer, renewPid, onClose }: { offer?: Transfer
 
   if (roleStep) {
     const own = !offer;
-    const exp = own ? expectedStatus(p, Object.values(g.players).filter((x) => x.club === p.club), g.date) : cmRoleExpected(g, p, offer!.buyer);
+    const exp = cmRoleExpected(g, p, own ? p.club : offer!.buyer);
     return <RoleStep pid={pid} own={own} expected={exp} status0={own ? p.squadStatus : offer!.cmRole ?? exp} job0={p.jobRole ?? 'player'} onClose={onClose}
       onSet={(status, job) => {
-        if (offer) act({ t: 'cmOfferRole', pid, role: status ?? exp });
+        if (offer) { const r = status ?? exp; if (r) act({ t: 'cmOfferRole', pid, role: r }); }
         else {
           act({ t: 'squadStatus', pid, status: status ?? null, loanListed: !!p.loanListed }); p.jobRole = job;
           if (renewCm) { const d = humanRenewDemand(p, club), so = Math.round(d.signOn / 500) * 500; setRw(d); setWage(r50(d.wage)); setYears(d.years); setCl(so ? { signOn: so } : {}); }

@@ -442,6 +442,63 @@ export function cmEuroRestoreNext(g: GameState, season: number): boolean {
   return true;
 }
 
+// ---------------------------------------------------------------- set_predicted_positions (Comp_Stats +0x72)
+
+/** vt+0x5c set_predicted_positions → Comp_Stats +0x72 (0x4a2540) for turneringens klubber, sorteret med 0x4c08f0 (nøglen 0x4c0720, faldende).
+ *  Champions League EuropeanCup 0x586900: knockout-rundetabellen (vt+0x3c stage 0xc: kvartfinale, semifinale, finale) bagfra – den sidste rundes
+ *  kampe (+0x1a) to gange (først med pladsen 1, så med tælleren), de andre én gang – så 2 × 4 og 2 × 8 (gruppespillene), så kvalifikations-
+ *  runderne (+0xa3/+0x3c) bagfra: 1, 2, 3, 3, 5×4, 9×4, 13×4, 17×8, 25×8, 33×16 … UEFA Cup og Intertoto Cup::0x5223a0: rundetabellen
+ *  (+0xa3/+0x3c) fra næstsidste runde bagfra, den første to gange (UEFA Cup: 1, 1, 3, 3, 5×4, 9×8, 17×16 …), indtil klubberne slipper op.
+ *  Kaldes ved turneringens opsætning (EuropeanCup 0x584f87, UefaCup::build_entrants 0x9030a0, IntertotoCup 0x6336c0) og for UEFA Cup'en igen,
+ *  når den får nye hold (0x585a86 CL's Q3-tabere, 0x586311 1. gruppespils treere, 0x633e63/0x633e7c Intertoto-vinderne). meta.cmPP: klub → plads. */
+export function cmEuroPredict(g: GameState, c: Competition): void {
+  const m = metaOf(c);
+  const order = compHooks.euroPredictOrder?.(g, [...c.clubs, ...((m.cmAdd as number[] | undefined) ?? [])]);
+  if (!order) return;
+  const pp = ((m.cmPP as Record<number, number> | undefined) ??= {});
+  m.cmPP = pp;
+  let k = 0, P = 1;
+  const put = (pos: number) => { if (k < order.length) pp[order[k]] = pos & 0xff; k++; };
+  if (m.cmEuro === 'CL') {
+    const ko = CM_EURO_ROUNDS.CLKO, q = CM_EURO_ROUNDS.CLQ;
+    for (let i = ko.length - 1; i >= 0; i--) {
+      if (i === ko.length - 1) for (let j = 0; j < ko[i][10]; j++) { put(1); P++; }
+      const A = P;
+      for (let j = 0; j < ko[i][10]; j++) { put(A); P++; }
+    }
+    for (const n of [4, 4, 8, 8]) { const A = P; P += n; for (let j = 0; j < n; j++) put(A); }
+    for (let i = q.length - 1; i >= 0; i--) { const A = P; for (let j = 0; j < q[i][10]; j++) { put(A); P++; } }
+    return;
+  }
+  const R = CM_EURO_ROUNDS[m.cmEuro];
+  if (!R) return;
+  for (let i = R.length - 2; i >= 0 && k < order.length; i--) {
+    if (i === R.length - 2) for (let j = 0; j < R[i][10]; j++) { put(1); P++; }
+    const A = P;
+    for (let j = 0; j < R[i][10]; j++) { put(A); P++; }
+  }
+}
+
+/** Comp_Stats +4 (kampe) for klubben i en europæisk turnering: de spillede kampe (dobbeltkampene og gruppespillene) */
+export function cmEuroPlayed(g: GameState, c: Competition, club: number): number {
+  let n = 0;
+  for (const t of c.ties) if (t.a === club || t.b === club) for (const id of t.fx) if (g.fixtures[id]?.result) n++;
+  if (c.groups) for (const k in c.groups) for (const r of c.groups[k]) if (r.club === club) n += r.p;
+  return n;
+}
+
+/** UEFA Cup'ens nye hold fra andre turneringer (0x585920, 0x586286, 0x633d40): club +0x1db = UEFA Cup'en (meta.cmAdd – cmClubEuroComp) og
+ *  forudsigelsen igen */
+function uefaAdd(g: GameState, clubs: number[]): void {
+  const u = g.comps.UEFA;
+  if (!u?.meta?.cmEuro || u.finished || !clubs.length) return;
+  const m = metaOf(u);
+  const add = ((m.cmAdd as number[] | undefined) ?? []).slice();
+  for (const x of clubs) if (x !== undefined && !add.includes(x) && !u.clubs.includes(x)) add.push(x);
+  m.cmAdd = add;
+  cmEuroPredict(g, u);
+}
+
 // ---------------------------------------------------------------- dagen (Cup::update_for_date 0x51f890)
 
 const drawDate = (m: EuroMeta, idx: number, table: string) => (table === 'CLG1' || table === 'CLG2' ? null : iso(m.year, dates(m.year, table)[idx][0]));
@@ -490,6 +547,11 @@ function teamsFor(g: GameState, c: Competition, step: number): number[] | null {
 /** sim.ts newDay: lodtrækningerne på deres dato (eller dagen efter, at holdene kendes) */
 export function cmEuroDay(g: GameState): void {
   if (!cmEuroOn(g)) return;
+  // set_predicted_positions ved opsætningen (første dag med turneringerne – også gamle spil uden meta.cmPP)
+  for (const id of ['CL', 'UEFA', 'UIC']) { const c = g.comps[id]; if (c?.meta?.cmEuro && !c.finished && !c.meta.cmPP) cmEuroPredict(g, c); }
+  // IntertotoCup 0x633d40: finalens vindere til UEFA Cup'en
+  const uic = g.comps.UIC, uefa = g.comps.UEFA;
+  if (uic?.meta?.cmEuro && uefa?.meta?.cmEuro && !uefa.meta.cmUic && decided(uic, 'F')) { uefa.meta.cmUic = 1; uefaAdd(g, stageTies(uic, 'F').map((t) => t.winner!)); }
   for (const id of ['UIC', 'CL', 'UEFA', 'ESC']) {
     const c = g.comps[id];
     if (!c?.meta?.cmEuro || c.finished) continue;
@@ -620,6 +682,8 @@ function drawStep(g: GameState, c: Competition, key: string, table: string, idx:
     // 0x585290 (0x5857f8–0x585810): hvert hold i 1. gruppespil får 1.800.000 (Prize) og et koefficientpoint
     groups.forEach((grp, gi) => { createGroup(g, c, G1[gi], gi, grp, days[gi], 1085); for (const x of grp) { cmEuroAddPoints(g, x, 1); compHooks.prize?.(x, 1_800_000); } });
     c.stage = 'G';
+    // 0x585920–0x585a86: Q3-taberne til UEFA Cup'en (+0x1db = [0x9cf6f0]) og UEFA Cup'ens set_predicted_positions
+    uefaAdd(g, stageTies(c, 'Q3').map(loserOf));
     return;
   }
   if (table === 'CLG2') {
@@ -641,6 +705,8 @@ function drawStep(g: GameState, c: Competition, key: string, table: string, idx:
     // 0x585ab0 (0x58605a–0x586072): 2. gruppespil 1.200.000 pr. hold
     groups.forEach((grp, gi) => { createGroup(g, c, G2[gi], gi, grp, days[gi], 1093); for (const x of grp) { cmEuroAddPoints(g, x, 1); compHooks.prize?.(x, 1_200_000); } });
     c.stage = 'G2';
+    // 0x586282–0x586311: 1. gruppespils treere til UEFA Cup'en (firerne −1 – cmClubEuroComp) og UEFA Cup'ens set_predicted_positions
+    uefaAdd(g, G1.map((k) => groupOrder(c, k)[2]).filter((x) => x !== undefined));
     return;
   }
   const r = rnd(table, idx);

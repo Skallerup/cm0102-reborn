@@ -18,7 +18,7 @@ import { cashRound, cashStepEur, cashUnits, moneyCm, moneyFull, moneyWage, t } f
 const fee8 = (v: number) => moneyCm(v, 6, 8);
 const bonus8 = (v: number) => moneyCm(v, 0xa, 8);
 import { CxDrop, CxPm, titleColors, useClassicDialog } from '../classic';
-import { SQUAD_STATUSES, expectedStatus, statusAllowed, type SquadStatus } from '../../game/squadStatus';
+import { SQUAD_STATUSES, statusAllowed, type SquadStatus } from '../../game/squadStatus';
 import { addDays, ageOn, year } from '../../game/dates';
 import { expDown, expDownOff, expIso, expUp, expUpOff, ymOf, type YM } from '../../game/cmContractScreen';
 import { authentic } from '../../game/rules';
@@ -170,7 +170,7 @@ function OfferRoleStep({ offer, onClose, onSet }: { offer: TransferOffer; onClos
   const g = gs();
   const p = g.players[offer.player];
   const exp = cmRoleExpected(g, p, offer.buyer);
-  const [status, setStatus] = useState<SquadStatus>(offer.cmRole ?? exp);
+  const [status, setStatus] = useState<SquadStatus | undefined>(offer.cmRole ?? exp);
   const col = titleColors(p.club || undefined);
   const name = `${p.first} ${p.last}`.trim();
   return (
@@ -186,7 +186,7 @@ function OfferRoleStep({ offer, onClose, onSet }: { offer: TransferOffer; onClos
         <p className="cx-ts-intro">* {t('cl.role.expected')}</p>
       </div>
       <div className="cx-ts-buttons cx-dlg-foot"><button onClick={onClose}>{t('common.back')}</button>
-        <button className="primary" onClick={() => { act({ t: 'cmOfferRole', pid: p.id, role: status }); onSet(); }}>{t('cl.ts.set')}</button></div>
+        <button className="primary" disabled={!status} onClick={() => { if (status) { act({ t: 'cmOfferRole', pid: p.id, role: status }); onSet(); } }}>{t('cl.ts.set')}</button></div>
     </div>
   );
 }
@@ -271,7 +271,7 @@ function NegotiationBody({ offer, renewPid, onClose }: { offer?: TransferOffer; 
       on={!!cl[k]} onToggle={() => toggle(k, Math.max(10, Math.round(base / 10) * 10))} onSet={(v) => set(k, v)} reset={Math.max(10, Math.round(base / 10) * 10)} />
   );
   if (roleStep) {
-    const exp = expectedStatus(p, Object.values(g.players).filter((x) => x.club === p.club), g.date);
+    const exp = cmRoleExpected(g, p, club.id);
     const age = ageOn(p.dob, g.date);
     const careerOk = age >= 33; // *estimeret*: yngre spillere vil ikke stoppe karrieren
     return (

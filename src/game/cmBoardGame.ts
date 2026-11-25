@@ -48,7 +48,7 @@ import { cmFineReset, cmFineSeasonHalve } from './cmFine';
 import { clubNewsToMe, cmForeign } from './cmNewsScope';
 import { natClub, natClubId, natOfClub, resetNationalManagers } from './cmVirtual';
 import { DEMONYM } from '../ui/demonyms';
-import { natCompHook } from './hooks';
+import { compHooks, natCompHook } from './hooks';
 import { holidayHooks, holidayOpt } from './cmHoliday';
 import { NO_CARRY, registerCarry } from './carry';
 import { natPlayers } from './cmN88';
@@ -320,6 +320,14 @@ function predictLeagues(g: GameState, st: CmBoardState, money?: (c: Club) => num
     a.forEach((x, i) => { pp[x.c] = i + 1; });
   }
 }
+
+/** 0x4c08f0 for de europæiske turneringers set_predicted_positions (EuropeanCup 0x586900, Cup 0x5223a0 – cmEurope.ts cmEuroPredict): nøglen
+ *  0x4c0720 som predictLeagues, byttesortering faldende */
+compHooks.euroPredictOrder = (g, clubs) => {
+  const a = clubs.filter((c) => g.clubs[c]).map((c) => ({ c, v: cmClubPredictValue(g, c, Math.round(g.clubs[c].balance * cmGbp(g, c)), 0) }));
+  for (let i = 0; i < a.length - 1; i++) for (let k = i + 1; k < a.length; k++) if (a[i].v < a[k].v) { const t = a[i]; a[i] = a[k]; a[k] = t; }
+  return a.map((x) => x.c);
+};
 
 /** 0x48f150 Comp::is_club_still_in_contention for ligaen (stats-rækken: +0x74 = +0x75 ≠ 0 → nej; tabelrækken: status 0xfe/7/6/5 → nej, ellers
  *  +0x39 ≠ +0x3a); venskabskampe (0x5c6710) og B-/reserveturneringer (0x7e6f20) → nej; andre turneringer → ja (klubben findes i en runde) */

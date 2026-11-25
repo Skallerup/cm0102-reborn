@@ -26,16 +26,20 @@ import { asOwner } from './humans';
 import { addDays, year } from './dates';
 import { cmLogic, cmRand } from './cmPlayerData';
 import { cmGbp } from './cmMoney';
-import { cmContractAnswer, cmMoveCheck, cmOfferScreenData, cmTalkDemand, cmTalkStatus, type CmOfferTerms, type CmTerms } from './cmContractGame';
+import { cmContractAnswer, cmExpectedStatus, cmMoveCheck, cmOfferScreenData, cmTalkDemand, cmTalkStatus, type CmOfferTerms, type CmTerms } from './cmContractGame';
 import { cmBoardWageAllowGbp } from './cmBudget';
 import { isHumanClub } from './humans';
 import { regionOf } from './leagues';
 import { cmCheckOffer } from './cmOfferCheck';
 import { expectedStatus, type SquadStatus } from './squadStatus';
 
-/** Set Role At Club: forvalget ("* expected by the player") efter hans plads i KØBERENS trup */
-export function cmRoleExpected(g: GameState, p: Player, buyer: number): SquadStatus {
-  return expectedStatus(p, Object.values(g.players).filter((x) => x.club === buyer && !x.loan), g.date);
+const STATUS_OF: SquadStatus[] = ['key', 'first', 'rotation', 'backup', 'prospect', 'young'];
+/** Set Role At Club: "* Expected by the player" hos klubben `buyer` (også menneskets egen ved forlængelsen) – originalens 0x4dd0f0
+ *  (cmContractGame.ts cmExpectedStatus; undefined = ingen stjerne); uden for cmLogic pladsen i klubbens trup */
+export function cmRoleExpected(g: GameState, p: Player, buyer: number): SquadStatus | undefined {
+  const x = cmExpectedStatus(g, p, buyer);
+  if (x !== null) return x >= 1 && x <= 6 ? STATUS_OF[x - 1] : undefined;
+  return expectedStatus(p, Object.values(g.players).filter((y) => y.club === buyer && !y.loan), g.date);
 }
 
 /** Forhandlingen på et accepteret bud (TransferOffer.cmTalks) */
