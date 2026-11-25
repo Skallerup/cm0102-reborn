@@ -451,6 +451,14 @@ export function enter(c: CmCtx, ecx: number, args: number[]): X86 {
   R.ecx = ecx | 0;
   return R;
 }
+/** (hastighed, 25/11) de skrivninger, enter gør for et kald med ét argument uden delt tilstand (argumentet og den falske returadresse under `top`) –
+ *  til kaldere, der kender svaret på forhånd (en ren funktion, cmSlEval.ts 0x83bd00), så stakkens bytes er de samme som efter kaldet */
+export function enterWrites1(c: CmCtx, a0: number): void {
+  if (PENDING) throw new Error('enterWrites1: delt kald i gang');
+  const esp = (top - 8) | 0;
+  c.m.w32((esp + 4) >>> 0, a0);
+  c.m.w32(esp >>> 0, 0xdeadbeef);
+}
 /** ST(0) som returværdi (double), sat i en float-funktion */
 export const fret = (R: X86) => R.st[0];
 export { s8, s16, dv };

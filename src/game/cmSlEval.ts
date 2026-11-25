@@ -4,7 +4,7 @@
 // (0x600a50) og managerens manglende ikke-spillerpost (rand ved 0x840dd2) kører de oversatte instruktioner. Kontrol: scripts/cm-sl-bench.ts
 // (sha1 hver dag) og CM_SL_840CHECK=1 (hvert kald også oversat og sammenlignet). CM_SL_840TS=0 slår porten fra.
 import { type CmCtx, type CmMem, G, getContract } from './cmMem';
-import { implGet, crtPow } from './cmGen/x86';
+import { implGet, crtPow, enterWrites1 } from './cmGen/x86';
 import { GEN } from './cmGen/index';
 import { knowledge_5408c0, judge_6e86d0, shownAttr_544410, knowsNation_53d980 } from './cmValue';
 import { contractForClub_4cf5f0 } from './cmContractWant';
@@ -28,6 +28,20 @@ const tdiv = (v: number, d: number) => Math.trunc(v / d) | 0;
 export function gcall(c: CmCtx, adr: number, ecx: number, ...args: number[]): number {
   const f = implGet(adr);
   return (f ? f(c, ecx, args) : c.call(adr, ...args)) | 0;
+}
+
+/** (hastighed, 25/11) s8(0x83bd00(arg)): pladsens positionsflag (word [esp+4]) → gruppen. 0x83bd00 er en ren funktion af argumentets lave 16 bit
+ *  (kun movsx/cmp/jump-tabeller i .rdata og `mov al, n; ret 4` – ingen skrivninger, ingen kald), så svaret gemmes pr. værdi; ved et kendt svar
+ *  gøres kun enter's skrivninger på stakken (argumentet og returadressen – enterWrites1), så hukommelsen er den samme som efter kaldet. Før en ny
+ *  processortilstand og argumentliste pr. vurdering (~2,7 mio. ved spilstarten på Maximum) */
+const SEL83 = new Int16Array(65536).fill(-32768);
+function sel83bd00(c: CmCtx, self: number, arg: number): number {
+  const k = arg & 0xffff;
+  const v = SEL83[k];
+  if (v !== -32768 && implGet(0x83bd00) === GEN[0x83bd00]) { enterWrites1(c, arg); return v; }
+  const r = s8(gcall(c, 0x83bd00, self, arg));
+  if (implGet(0x83bd00) === GEN[0x83bd00]) SEL83[k] = r;
+  return r;
 }
 
 /** 0x544520 / 0x544590 (staff, klub): kontrakten med klubben (uden klub: hans egen kontrakts klub – [0xae1080] = kontrakten; klubben regnes
@@ -289,7 +303,7 @@ export function value_840d80(c: CmCtx, self: number, club: number, st: number, s
     m.w32(out, o);
   }
   // 0x841265
-  const k83 = s8(gcall(c, 0x83bd00, self, ((ecxHi & 0xffff0000) | m.u16(slot + 1)) | 0));
+  const k83 = sel83bd00(c, self, ((ecxHi & 0xffff0000) | m.u16(slot + 1)) | 0);
   const idx = k83 - 1;
   const sw = D_SW[idx >>> 0 <= 0x14 ? T842000[idx] : 5];
   let D40 = sw[0], D10 = sw[1], f2 = sw[2];
