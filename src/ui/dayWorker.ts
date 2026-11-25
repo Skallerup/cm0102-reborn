@@ -43,12 +43,12 @@ self.onmessage = async (e: MessageEvent<DayIn>) => {
       last = now; lastPhase = phase;
       post({ type: 'progress', date: gs().date, frac, phase, i, n });
     };
-    // ønskelisternes klubløkke (0,1–0,9 af dens del af dagen: 0,04–0,5)
+    // ønskelisternes klubløkke (0,1–0,9 af dens del af dagen: 0,02–0,15)
     SL_PROGRESS.cb = (frac) => {
       const now = performance.now();
       if (now - last < 80) return;
       last = now; lastPhase = 'transfers';
-      post({ type: 'progress', date: gs().date, frac: 0.04 + 0.46 * frac, phase: 'transfers' });
+      post({ type: 'progress', date: gs().date, frac: 0.02 + 0.13 * frac, phase: 'transfers' });
     };
     const result = await runUntil({ ...m.opts, shouldStop: () => stop, onProgress: (date) => post({ type: 'progress', date, frac: 1 }) });
     SL_PROGRESS.cb = undefined; DAY_PROGRESS.cb = undefined;

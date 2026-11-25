@@ -460,7 +460,7 @@ export function Shell() {
     let r: Awaited<ReturnType<typeof runDays>>;
     try {
       r = await runDays({ ...opts, shouldStop: () => stopRef.current,
-        onProgress: (d) => { if (cmNav || Date.now() - t0 > 60) { setRunning(d); setRunFrac(0); setRunPhase(null); } setRunNote(d.slice(5, 10) === '06-30' && !authentic() ? t('cl.run.season') : null); },
+        onProgress: (d) => { if (cmNav || Date.now() - t0 > 60) { setRunning(d); setRunFrac(0); } setRunNote(d.slice(5, 10) === '06-30' && !authentic() ? t('cl.run.season') : null); },
         // (arbejderen) dagen d regnes: datoen før og brøkdelen
         onFrac: (d, f, phase, i, n) => { if (cmNav || Date.now() - t0 > 60) { setRunning(addDays(d, -1)); setRunFrac(f); setRunPhase(phase ? { phase, i, n } : null); } } });
     } catch (e) {
@@ -666,7 +666,7 @@ export function Shell() {
               {(() => {
                 const sp = spanRef.current;
                 const tot = Math.max(1, daysBetween(sp.start, sp.end));
-                const pct = Math.max(2, Math.min(100, Math.round(((daysBetween(sp.start, running) + runFrac) / tot) * 100)));
+                const pct = runPhase ? Math.max(0, Math.min(100, Math.round(runFrac * 100))) : Math.max(0, Math.min(100, Math.round(((daysBetween(sp.start, running) + runFrac) / tot) * 100)));
                 if (runNote) return <><span className="cx-run-l">{cxLongDate(running)}</span><span className="cx-run-bar busy" role="progressbar" data-testid="run-note"><i style={{ width: '100%' }}><b>{runNote}</b></i></span></>;
                 const step = runStepText(runPhase, daysBetween(sp.start, running) + 1, tot);
                 return <><span className="cx-run-l">{cxLongDate(running)}{step && <span className="cx-run-step" data-testid="run-step">{step}</span>}</span><span className="cx-run-bar live" role="progressbar" aria-valuenow={pct} data-testid="run-bar"><i style={{ width: `${pct}%` }} /><b className="cx-run-pct">{pct}%</b></span></>;

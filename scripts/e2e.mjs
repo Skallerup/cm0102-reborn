@@ -2110,7 +2110,7 @@ async function run(look) {
     await go({ name: 'competitions' });
     await page.waitForSelector('.cx-running', { state: 'detached', timeout: 300000 }).catch(() => {});
     await page.locator('.cx-side .cx-continue').first().click({ timeout: 10000 });
-    let maxPct = 0, seen = 0;
+    let maxPct = 0, seen = 0, shot = false;
     const steps = new Set();
     const t1 = Date.now();
     while (Date.now() - t1 < 300000) {
@@ -2120,11 +2120,11 @@ async function run(look) {
       });
       if (!r) { if (seen) break; await page.waitForTimeout(20); continue; }
       seen++; maxPct = Math.max(maxPct, r.pct); if (r.step) steps.add(r.step);
-      if (seen === 6 && process.env.SHOTS) await page.screenshot({ path: `${OUT}/${look}-continue-fremdrift.png` });
+      if (process.env.SHOTS && !shot && (r.pct >= 8 && r.pct < 100)) { shot = true; await page.screenshot({ path: `${OUT}/${look}-continue-fremdrift.png` }); }
       await page.waitForTimeout(40);
     }
     console.log(`    Continue: ${seen} målinger, højeste ${maxPct} %, trin: ${[...steps].slice(0, 6).join(' | ')}`);
-    if (seen > 3 && maxPct <= 2) throw new Error(`fremdriftsbjælken blev stående på ${maxPct} % (${seen} målinger)`);
+    if (seen > 3 && maxPct <= 10) throw new Error(`fremdriftsbjælken blev stående på ${maxPct} % (${seen} målinger)`);
   });
 
   // CM 01/02 (0x782b70 = 2, ejerens billede 19/11 "Valencia transfer bid for Scholes"): et bud på egen spiller skal besvares – Continue Game
