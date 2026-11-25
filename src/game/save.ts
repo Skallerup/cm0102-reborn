@@ -213,7 +213,20 @@ export const AUTOSAVE_FULL_PAUSE_MS = 3 * 60_000;
 export function scheduleAutosave(delay = 2500) {
   dirty = true;
   if (timer) clearTimeout(timer);
-  timer = setTimeout(() => { void flushAutosave(); }, delay);
+  firstWait = firstWait || Date.now();
+  timer = setTimeout(autosaveWhenQuiet, delay);
+}
+
+/** (26/11) selve gemmet (JSON-teksten ~250 ms i et sent spil) låser siden et øjeblik – vent, til spilleren har holdt en pause med musen/tasterne
+ *  (1,2 s), så et klik på en menu ikke havner midt i det; højst 20 s, så et gem aldrig udebliver */
+let lastInput = 0;
+let firstWait = 0;
+if (typeof window !== 'undefined') for (const ev of ['pointerdown', 'pointermove', 'keydown', 'wheel', 'touchstart']) window.addEventListener(ev, () => { lastInput = Date.now(); }, { capture: true, passive: true });
+function autosaveWhenQuiet() {
+  const now = Date.now();
+  if (now - lastInput < 1200 && now - firstWait < 20_000) { timer = setTimeout(autosaveWhenQuiet, 600); return; }
+  firstWait = 0;
+  void flushAutosave();
 }
 
 export async function flushAutosave() {

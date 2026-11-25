@@ -29,14 +29,25 @@ async function readAll(r: ReadableStream<Uint8Array<ArrayBuffer>>): Promise<GzBy
 export async function gzipText(text: string): Promise<Blob> {
   return new Blob(await gzipTextBytes(text));
 }
+/** (26/11) giv siden luft mellem bidderne: Chromium komprimerer (CompressionStream) i hovedtråden, så ét gem af et sent spil (~80 MB JSON) stod
+ *  som ét ~700 ms langt stop (menuerne reagerede først bagefter) – nu ~8 ms ad gangen med tid til klik og tegning imellem (kun i en side) */
+const yieldUi = (): Promise<void> => (typeof window === 'undefined' ? Promise.resolve() : new Promise<void>((r) => { setTimeout(r, 0); }));
 export async function gzipTextBytes(text: string): Promise<GzBytes> {
-  const raw = new TextEncoder().encode(text);
-  if (typeof CompressionStream === 'undefined') return [raw];
+  const enc = new TextEncoder();
+  // 1 M tegn ad gangen (ikke midt i et surrogatpar) – samme bytes som hele teksten kodet på én gang
+  const STEP = 1 << 20;
+  const end = (o: number) => { let e = Math.min(text.length, o + STEP); if (e < text.length) { const c = text.charCodeAt(e - 1); if (c >= 0xd800 && c <= 0xdbff) e++; } return e; };
+  if (typeof CompressionStream === 'undefined') return [enc.encode(text)];
   const cs = new CompressionStream('gzip');
   const out = readAll(cs.readable);
   const w = cs.writable.getWriter();
   try {
-    for (let o = 0; o < raw.byteLength; o += 1 << 20) await w.write(raw.subarray(o, o + (1 << 20)));
+    for (let o = 0; o < text.length;) {
+      const e = end(o);
+      await w.write(enc.encode(text.slice(o, e)));
+      o = e;
+      if (o < text.length) await yieldUi();
+    }
     await w.close();
   } catch (e) { void w.abort(e).catch(() => {}); void out.catch(() => {}); throw e; }
   return out;
