@@ -364,6 +364,8 @@ export interface PersonsScope { g: GameState; day: number; year: number; persons
   /** andre modulers mellemregninger for samme løkke (fx cmStaffMove.ts' kandidater og spejdere) */
   memo: Record<string, unknown> }
 let personsScope: PersonsScope | null = null;
+/** personlistens mennesker (boardEnv's humanOfClub/humanOfNat) – listen ændres ikke, efter den er bygget */
+const HUMANS_OF = new WeakMap<Person[], Person[]>();
 /** den åbne løkkes fælles mellemlager for spillet (null uden for withSharedPersons) */
 export const sharedScope = (g: GameState): PersonsScope | null => (personsScope && personsScope.g === g && ((d) => d.day === personsScope!.day && d.year === personsScope!.year)(isoToCm(g.date)) ? personsScope : null);
 export function withSharedPersons<T>(g: GameState, fn: () => T): T {
@@ -391,8 +393,10 @@ export function boardEnv(g: GameState, todayIso = g.date, startIso?: string, laz
     return persons;
   };
   const personOfStaff = (id: number) => { allPersons(); return byId.get(id) ?? null; };
-  const humanOfClub = (c: number) => allPersons().find((p) => p.human && p.club === c) ?? null;
-  const humanOfNat = (n: number) => allPersons().find((p) => p.human && p.nat === natClub(n)) ?? null;
+  // (hastighed, 25/11) menneskene i personlistens rækkefølge (de står til sidst) – før en søgning gennem hele staben pr. opslag
+  const humans = () => { const ps = allPersons(); let h = HUMANS_OF.get(ps); if (!h) { h = ps.filter((p) => p.human); HUMANS_OF.set(ps, h); } return h; };
+  const humanOfClub = (c: number) => humans().find((p) => p.club === c) ?? null;
+  const humanOfNat = (n: number) => humans().find((p) => p.nat === natClub(n)) ?? null;
   const natRep = (n: number) => g.intl?.info?.[n]?.rep ?? g.cmNationRep?.[n] ?? 0;
   const nationName = (n: number) => g.nations[n]?.name ?? '';
   // (hastighed, runde 14) med `lazy` rangeringen og klublisten først, når de bruges (ønskelisterne bygger et miljø pr. udbudspris)
@@ -1368,10 +1372,15 @@ postHooks.managerRep = (g, club, v) => {
   const today = isoToCm(g.date), touched = { done: false, all };
   const m = managerPerson(g, club, today, touched);
   if (!m || !m.np) return;
-  const mine = all.filter((s) => s.club === club && s.cmNp);
   // club +0xd3 (assistenten) og +0x19f (de fem trænerpladser): env.person(id) = den byggede person (cmNp, ikke cmExtra), ellers noNp
-  const staff = [...mine.filter((s) => s.role === 'assistant').slice(0, 1), ...mine.filter((s) => s.role === 'coach').slice(0, 5)]
-    .map((s) => (s.cmExtra ? noNp(s) : staffPerson(g, s, today))).filter(Boolean);
+  // (hastighed, 25/11) ét gennemløb i stabens rækkefølge – før tre filtre og to kopier pr. kamp
+  let asst: Staff | null = null;
+  const coaches: Staff[] = [];
+  for (const s of all) {
+    if (s.club !== club || !s.cmNp) continue;
+    if (s.role === 'assistant') { if (!asst) asst = s; } else if (s.role === 'coach' && coaches.length < 5) coaches.push(s);
+  }
+  const staff = (asst ? [asst, ...coaches] : coaches).map((s) => (s.cmExtra ? noNp(s) : staffPerson(g, s, today))).filter(Boolean);
   managerRepAfterMatch(m, staff, v[0], v[1], v[2]);
 };
 
