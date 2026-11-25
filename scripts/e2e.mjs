@@ -1631,6 +1631,24 @@ async function run(look) {
     if (!(req & 8)) throw new Error('spilleren er ikke listet efter eget ønske');
     await gs((ids) => { const g = window.__cm.gs(); for (const id of ids) { const p = g.players[id]; p.listed = false; p.wantsAway = undefined; p.squadStatus = undefined; p.cmAsk = undefined; if (p.cmContract) { p.cmContract.b4e = 0; p.cmContract.b45 = 0; } } g.options.mode = window.__e2eMode ?? g.options.mode; window.__cm.notify(); }, [pid, p2]);
   });
+  // nyhedstekster: spillere, klubber og managere i brødteksten er links (rygtenyhed, "Gary Breen rumours") – et klik åbner spillerskærmen
+  if (look === 'klassisk') await step('nyhedslinks i brødteksten', async () => {
+    const r = await gs(() => {
+      const g = window.__cm.gs();
+      const p = Object.values(g.players).filter((x) => x.club && x.club !== g.userClub && !x.loan).sort((a, b) => b.ca - a.ca)[3];
+      const cl = Object.values(g.clubs).filter((c) => c.id !== p.club && c.id !== g.userClub).slice(0, 2).map((c) => c.id);
+      g.news.unshift({ id: g.nextId.news++, date: g.date, cat: 'transfer', key: 'cm.rum', read: false, link: { kind: 'player', id: p.id },
+        params: { player: `${p.first} ${p.last}`.trim(), pid: p.id, cur: p.club, clubs: [cl[0], ...cl.slice(1), p.club].join('|'), n: 3, v: 0, amt: 2100000, ai: 0, listed: 0, mn: -1, h: 'rumour', ptype: 'CM', own: 0, local: 1 } });
+      window.__cm.notify(); return { id: p.id, name: `${p.first} ${p.last}`.trim() };
+    });
+    await go({ name: 'inbox' });
+    await page.locator('.cx-nrow', { hasText: r.name }).first().click();
+    const links = await page.locator('.cx-nbody a.link').allTextContents();
+    if (!links.includes(r.name)) throw new Error(`spillerens navn er ikke et link i brødteksten (${links.join(' | ')})`);
+    if (links.length < 3) throw new Error(`for få links i rygtenyhedens brødtekst (${links.join(' | ')})`);
+    await page.locator('.cx-nbody a.link', { hasText: r.name }).first().click();
+    await page.waitForFunction(() => !document.querySelector('.cx-inbox'), null, { timeout: 5000 });
+  });
   // CM 01/02's rygte om egen spiller (cmRumours.ts, nyheden 0xfbc – ejerens billeder 138–139): Respond → Select Media Response → Deny rumour → Ok,
   // svaret står under nyheden; og kampprogrammets brødtekst (0x77bc80 type 0xd, billede 137)
   if (look === 'klassisk' && ENGINE_GRID) await step('rygte: Select Media Response (original)', async () => {

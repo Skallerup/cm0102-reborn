@@ -1,6 +1,6 @@
 import { Fragment, type ReactNode } from 'react';
 import { compName, dateFmt, getLang, has, money, moneyCm, moneyWage, natName, t } from '../../i18n';
-import { useNav } from '../core';
+import { useNav, type Route } from '../core';
 import { ClubLink, PlayerLink } from '../components';
 import type { NewsItem } from '../../game/types';
 import { offerAnswerFee } from '../../game/offerFee';
@@ -13,7 +13,7 @@ import { boardCmText } from '../../game/cmBoardText';
 import { appointBody } from '../../game/cmBoardGame';
 import type { GameState } from '../../game/types';
 import { isRetro } from '../theme';
-import { ClassicHead, cxLongDate } from '../classic';
+import { ClassicHead, clubRoute, cxLongDate, nationRoute } from '../classic';
 import { cmRumBody, cmRumTitle } from '../cmRumText';
 import { cmCompShort, cmFixtureName, cmFixtureNameInText } from '../../game/cmRoundName';
 
@@ -345,7 +345,7 @@ const CLUB_PARAMS = new Set(['club', 'from', 'to', 'opp', 'leader', 'buyer', 'se
 const PERSON_PARAMS = new Set(['manager', 'coach', 'scout', 'staff', 'name', 'runner', 'winner', 'who', 'person', 'applicant', 'candidate', 'sacked', 'successor', 'old', 'new', 'captain', 'physio', 'assistant']);
 const MONEY_PARAMS = new Set(['fee', 'fee2', 'wage', 'balance', 'budget', 'bill', 'missing', 'amount', 'bid2', 'wage2']);
 
-let nameIndex: { g: GameState; date: string; players: Map<string, number[]>; clubs: Map<string, number>; staff: Map<string, number[]> } | null = null;
+let nameIndex: { g: GameState; date: string; players: Map<string, number[]>; clubs: Map<string, number>; staff: Map<string, number[]>; nations: Map<string, number>; comps: Map<string, string> } | null = null;
 onGameSwitch(() => { nameIndex = null; });
 
 /** Opslag fra navn til id (nyhederne gemmer navne) – bygges én gang pr. spildag */
@@ -362,7 +362,11 @@ function names() {
   for (const c of Object.values(g.clubs)) { clubs.set(c.name, c.id); if (!clubs.has(c.short)) clubs.set(c.short, c.id); }
   const staff = new Map<string, number[]>();
   for (const x of Object.values(g.staff)) { const k = `${x.first} ${x.last}`.trim(); const arr = staff.get(k); if (arr) arr.push(x.id); else staff.set(k, [x.id]); }
-  nameIndex = { g, date: g.date, players, clubs, staff };
+  const nations = new Map<string, number>();
+  g.nations.forEach((nt, i) => { if (nt?.name) { nations.set(nt.name, i); const l = natName(nt.name); if (!nations.has(l)) nations.set(l, i); } });
+  const comps = new Map<string, string>();
+  for (const c of Object.values(g.comps)) { if (c.name) { comps.set(c.name, c.id); const l = compName(c.name); if (!comps.has(l)) comps.set(l, c.id); } }
+  nameIndex = { g, date: g.date, players, clubs, staff, nations, comps };
   return nameIndex;
 }
 
@@ -380,9 +384,62 @@ function playerFor(n: NewsItem, name: string): number | undefined {
   return ids.find((id) => g.players[id]?.club === g.userClub);
 }
 
-function NewsLink({ kind, id, text }: { kind: 'player' | 'club' | 'staff'; id: number; text: string }) {
+function NewsLink({ kind, id, text }: { kind: 'player' | 'club' | 'staff' | 'nation' | 'comp'; id: number | string; text: string }) {
   const { nav } = useNav();
-  return <a className="link" onClick={(e) => { e.stopPropagation(); nav({ name: kind, id }); }}>{text}</a>;
+  const to: Route = kind === 'club' ? clubRoute(Number(id)) : kind === 'nation' ? nationRoute(Number(id)) : kind === 'comp' ? { name: 'competitions', id } as Route : { name: kind, id } as Route;
+  return <a className="link" onClick={(e) => { e.stopPropagation(); nav(to); }}>{text}</a>;
+}
+
+/** Slå en tekstbid op som spiller / stabsperson / klub / nation / turnering (nyhedens eget link og entydige navne først) */
+function entityFor(n: NewsItem, label: string): { kind: 'player' | 'club' | 'staff' | 'nation' | 'comp'; id: number | string } | undefined {
+  const x = names();
+  const pid = playerFor(n, label);
+  if (pid) return { kind: 'player', id: pid };
+  const sid = x.staff.get(label);
+  if (sid?.length === 1) return { kind: 'staff', id: sid[0] };
+  const cid = x.clubs.get(label);
+  if (cid !== undefined) return { kind: 'club', id: cid };
+  const nid = x.nations.get(label);
+  if (nid !== undefined) return { kind: 'nation', id: nid };
+  const comp = x.comps.get(label);
+  if (comp !== undefined) return { kind: 'comp', id: comp };
+  return undefined;
+}
+
+/**
+ * Gør kendte navne i en færdig tekst (overskrift/brødtekst) til links: spillere og stab (fulde navne), klubber (navn/kortnavn),
+ * nationer og turneringer – længste match først (op til fem ord), også med genitiv ("Coventry City's"). Teksten ændres ikke.
+ */
+export function autoLink(text: string, n: NewsItem, keyBase: string | number = 'a'): ReactNode {
+  if (!text || !/\p{Lu}/u.test(text)) return text;
+  const tokens = text.split(/( +|\n+)/); // ord og skilletegn skiftevis
+  const out: ReactNode[] = [];
+  let buf = '';
+  const flush = () => { if (buf) { out.push(buf); buf = ''; } };
+  for (let i = 0; i < tokens.length; ) {
+    let hit: { kind: 'player' | 'club' | 'staff' | 'nation' | 'comp'; id: number | string; span: number; label: string; rest: string } | null = null;
+    if (i % 2 === 0 && /^[\p{Lu}\p{N}]/u.test(tokens[i])) {
+      for (let k = 5; k >= 1 && !hit; k--) {
+        const sl = tokens.slice(i, i + k * 2 - 1);
+        if (sl.length < k * 2 - 1 || sl.some((x, j) => j % 2 === 1 && x !== ' ')) continue;
+        const raw = sl.join('');
+        const m = /^(.*?)((?:'s|’s|'|’)?[.,!?:;"”)]*)$/su.exec(raw);
+        const label = m ? m[1] : raw;
+        if (label.length < 4 && k === 1) continue;
+        if (!label) continue;
+        const e = entityFor(n, label);
+        if (e) hit = { ...e, span: k * 2 - 1, label, rest: raw.slice(label.length) };
+      }
+    }
+    if (hit) {
+      flush();
+      out.push(<NewsLink key={`${keyBase}${i}`} kind={hit.kind} id={hit.id} text={hit.label} />);
+      buf = hit.rest;
+      i += hit.span;
+    } else { buf += tokens[i]; i++; }
+  }
+  flush();
+  return <Fragment key={keyBase}>{out.map((o, j) => (typeof o === 'string' ? <Fragment key={j}>{o}</Fragment> : o))}</Fragment>;
 }
 
 /** Oversæt en nyhedsskabelon, hvor spiller- og klubnavne bliver til links */
@@ -391,7 +448,7 @@ function linked(n: NewsItem, key: string): ReactNode {
   const params = newsParams(n);
   const parts = tpl.split(/\{(\w+)\}/);
   return parts.map((part, i) => {
-    if (i % 2 === 0) return <Fragment key={i}>{part}</Fragment>;
+    if (i % 2 === 0) return <Fragment key={i}>{autoLink(part, n, `t${i}`)}</Fragment>;
     const v = params[part];
     if (v === undefined) return <Fragment key={i}></Fragment>;
     // klassisk: originalens nyheder (transfers 0x8d3520…0x8e51d0, kontrakter 0x4d4fb0, bøder 0x758fe0) viser beløbet fuldt + rundet (flag 6),
@@ -415,7 +472,7 @@ function linked(n: NewsItem, key: string): ReactNode {
       const sid = names().staff.get(text);
       if (sid?.length === 1) return <NewsLink key={i} kind="staff" id={sid[0]} text={text} />;
     }
-    return <Fragment key={i}>{text}</Fragment>;
+    return <Fragment key={i}>{typeof v === 'number' ? text : autoLink(text, n, `v${i}`)}</Fragment>;
   });
 }
 
@@ -459,13 +516,13 @@ export function NewsTitle({ n }: { n: NewsItem }) {
 }
 
 export function NewsBody({ n }: { n: NewsItem }) {
-  if (n.key === 'board.update' && n.params?.lvl) return <>{boardUpdate(n)}</>;
-  if (n.key.startsWith('cmban.h')) return <>{cmBanBody(n)}</>;
-  if (n.key.startsWith('cmban.fa.')) return <>{cmBanAnswerBody(n)}</>;
-  if (n.key === 'cm.req') return <>{cmRequestBody(n)}</>;
-  if (n.key === 'cm.rum') return <>{cmRumBody(n)}</>;
+  if (n.key === 'board.update' && n.params?.lvl) return <>{autoLink(boardUpdate(n), n)}</>;
+  if (n.key.startsWith('cmban.h')) return <>{autoLink(cmBanBody(n), n)}</>;
+  if (n.key.startsWith('cmban.fa.')) return <>{autoLink(cmBanAnswerBody(n), n)}</>;
+  if (n.key === 'cm.req') return <>{autoLink(cmRequestBody(n), n)}</>;
+  if (n.key === 'cm.rum') return <>{autoLink(cmRumBody(n), n)}</>;
   const k = bodyKey(n);
-  return has(k) ? <>{linked(n, k)}{offerAnswer(n)}</> : null;
+  return has(k) ? <>{linked(n, k)}{autoLink(offerAnswer(n), n, 'oa')}</> : null;
 }
 
 /** Ugens transferoverblik: alle handlerne i en lille tabel (vises under brødteksten) */
