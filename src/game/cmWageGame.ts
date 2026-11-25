@@ -54,9 +54,23 @@ export const HUMAN_NP = [183, 8, 0, 0, 3, 0, 151, 0, 58, 17, 162, 20, 230, 17, 1
 /** Menneskets managerpost mg (en af de 16 sidste personer): klub +0x39, nation +0x1a, job +0x3d = 5 og ikke-spillerposten +0x69 (HUMAN_NP ved
  *  `np`) som i originalen. Managerens bedømmelse 0x6e86d0 (via 0x4d0c60/0x4d1600) af menneskets spillere læser posten – uden den vurderes de
  *  unge spillere til en brøkdel af værdien (Pennant £188K mod £2,36M). */
-export function writeHumanMgr(m: CmMem, mg: number, club: number, nat: number, np: number): void {
+export function writeHumanMgr(m: CmMem, mg: number, club: number, nat: number, np: number, g?: GameState, cid?: number): void {
   HUMAN_NP.forEach((v, k) => m.w8(np + k, v));
   m.w32(mg + 0x39, club); m.w32(mg + 0x1a, nat); m.w8(mg + 0x3d, 5); m.w32(mg + 0x69, np);
+  // 0x826f20 (menneskets manager tager jobbet, 0x82704b): +0x59 = 20, og omdømmet +8/+0xa/+0xc, som 0x6d3610 siden flytter efter hver kamp
+  // (ManagerProfile.cmRep/cmB59 – cmBoardGame.ts). 0x846920 læser begge for køberen: 0x847542 ganger viljen med +0x59 · 0,025 + 0,5 (grunden
+  // 0x20000000 under 0,675), og 0x847bb3/0x848c22 vejer managerens omdømme og kendskab ind – med HUMAN_NP's faste omdømme (oraklets nye
+  // manager 14/7-2001) og +0x59 = 0 fik alle spillere en brøkdel af viljen, også efter en CL-sejr (ejerens fund 25/11: Trezeguet).
+  const h = g && cid !== undefined ? humanMgrProfile(g, cid) : null;
+  m.w8(mg + 0x59, h?.cmB59 ?? 0x14);
+  const rep = h?.cmRep;
+  if (rep) { m.w16(np + 8, rep[0]); m.w16(np + 0xa, rep[1]); m.w16(np + 0xc, rep[2]); }
+}
+
+/** menneskets ManagerProfile for en menneskeklub (null = ingen) */
+function humanMgrProfile(g: GameState, cid: number): GameState['manager'] | null {
+  if (cid === g.userClub) return g.manager;
+  return g.humans?.find((h) => h.userClub === cid)?.manager ?? null;
 }
 
 /** c.call for lønportene */
@@ -375,7 +389,8 @@ export function buildWageMem(g: GameState, clubs: Iterable<number>, unset: Set<n
   // menneskets manager (de 16 sidste id'er) og antallet [0xae2364]
   const count = next + 16;
   m.w32(G.STAFF_COUNT, count);
-  for (const cid of humanMgr) { const st = staffAdr(count - 1); m.w32(st, count - 1); noContract(count - 1); m.w32(clubAdr(cid) + 0xcf, st); }
+  // (som cmSlMem.ts: klub, nation, job 5, ikke-spillerposten HUMAN_NP og +0x59 = 20 – 0x846920 læser [klub +0xcf] +0x69 og +0x59 for køberen)
+  for (const cid of humanMgr) { const st = staffAdr(count - 1); m.w32(st, count - 1); noContract(count - 1); m.w32(clubAdr(cid) + 0xcf, st); writeHumanMgr(m, st, clubAdr(cid), natAdr(humanMgrProfile(g, cid)?.nation ?? g.manager.nation), npRec(count - 1, () => {}), g, cid); }
   writeHolidayMem(m, g);
   // klubbens yndlingspersoner +0x9b/+0x9f/+0xa3 (spillere i de byggede klubber)
   const byPid = new Map(players.map(([p, st]) => [p.id, st]));

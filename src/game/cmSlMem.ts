@@ -570,7 +570,7 @@ export function buildSlWantMem(g: GameState, clubs: Iterable<number>, opts: { ca
   m.w32(G.STAFF_COUNT, count);
   // menneskets manager (en af de 16 sidste personer, 0x600a50) med klub, nation, job og ikke-spillerpost som originalen (writeHumanMgr) – hans
   // bedømmelse 0x6e86d0 giver værdien +0x52 og udbudsprisen 0x4d1600 for hans spillere, som computerens bud 0x8e5d60 bygger på
-  for (const cid of humanMgr) { const st = staffAdr(count - 1); m.w32(st, count - 1); noContract(count - 1); m.w32(clubAdr(cid) + 0xcf, st); writeHumanMgr(m, st, clubAdr(cid), natAdr(g.manager.nation), npRec(count - 1, () => {})); }
+  for (const cid of humanMgr) { const st = staffAdr(count - 1); m.w32(st, count - 1); noContract(count - 1); m.w32(clubAdr(cid) + 0xcf, st); writeHumanMgr(m, st, clubAdr(cid), natAdr(g.manager.nation), npRec(count - 1, () => {}), g, cid); }
   writeHolidayMem(m, g);
   for (const cid of clubIds) { const pr = g.clubs[cid].cmPrefs; if (pr) for (let k = 0; k < 3; k++) m.w32(clubAdr(cid) + 0x9b + 4 * k, byPid.get(pr[k]) ?? 0); }
   // (2026/27 uden originalens økonomi – g.cmFin) lønsummen +0xc/+0x10 af kontrakterne som buildWageMem: 0x598370 to gange (den første med +0x14 = 0)

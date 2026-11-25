@@ -50,7 +50,7 @@ export function cmValueMem(g: GameState, clubs: Iterable<number>): WantMem {
     const mg = m.u32(a + 0xcf);
     if (!mg) continue;
     if (isHumanClub(+cid)) {
-      writeHumanMgr(m, mg, a, M.W.natOf(g.manager.nation), HUMAN_NP_ADR + 0x40 * hn++);
+      writeHumanMgr(m, mg, a, M.W.natOf(g.manager.nation), HUMAN_NP_ADR + 0x40 * hn++, g, +cid);
       ids.set(mg, 499_999);
     } else if (g.cmStaffMem && (!g.staff[g.clubs[+cid].manager ?? -1]?.cmMem || (MGR_SEL && !g.activeNations?.includes(g.clubs[+cid].nation)))) m.w32(a + 0xcf, 0);
     else ids.set(mg, 500_000 + (g.clubs[+cid].manager ?? 0));

@@ -22,14 +22,28 @@ describe('Offer Contract 0x4e06e0 (3.9.60, ægte tilstand, Man Utd)', { timeout:
   const find = (first: string, last: string, club: string): Player =>
     Object.values(g.players).find((p) => p.first === first && p.last === last && g.clubs[p.club]?.name.includes(club))!;
 
-  it('under 1,5 × loftet, vilje ≤ 2,75 og alder ≥ 24: no interest (Ballack som Key Player) – ellers kravet', () => {
+  it('under 1,5 × loftet og vilje > 2,75: kravet (Ballack som Key Player – oraklet 20/7-01 med Man Utd: vilje 35,5, krav £40.932)', () => {
     const p = find('Michael', 'Ballack', 'Leverkusen');
     const d = cmOfferScreenData(g, p, mu, 'key')!;
     const allow = cmBoardWageAllowGbp(g, p, mu, 'key')!;
     expect(d.wageGbp).toBeLessThan(1.5 * allow);
-    expect(d.will).toBeLessThanOrEqual(2.75);
-    expect(d.age).toBeGreaterThanOrEqual(24);
-    expect(cmOfferScreen(g, p, mu, 'key')?.key).toMatch(/^cm\.neg\.noIntTerms/);
+    expect(d.will).toBeGreaterThan(2.75);
+    expect(cmOfferScreen(g, p, mu, 'key')).toBeNull();
+  });
+
+  it('menneskets manager som originalen (0x826f20): +0x59 = 20 og omdømmet fra ManagerProfile.cmRep (Trezeguet, ejerens fund 25/11)', () => {
+    const p = find('David', 'Trezeguet', 'Juventus');
+    const rep0 = g.manager.cmRep;
+    try {
+      const lo = cmOfferScreenData(g, p, mu, 'key')!;
+      // 0x847542: +0x59 · 0,025 + 0,5 = 1,0 → ingen grund 0x20000000 (før: +0x59 = 0 → viljen halveret og grunden sat)
+      expect(lo.mask & 0x20000000).toBe(0);
+      g.manager.cmRep = [9500, 9500, 9500];
+      const hi = cmOfferScreenData(g, p, mu, 'key')!;
+      // managerens omdømme (0x847bb3) løfter viljen – og kravet falder fra 0x85fc50's spærre (£250.000) til et rigtigt krav
+      expect(hi.will).toBeGreaterThan(lo.will * 1.5);
+      expect(hi.wageGbp).toBeLessThan(250000);
+    } finally { g.manager.cmRep = rep0; }
   });
 
   it('kravet ved den spærrede løn (250.000) og p16 over 1,5 × loftet: viljen under 3,15 → grundene eller "no interest" (Lúcio)', () => {
@@ -46,7 +60,7 @@ describe('Offer Contract 0x4e06e0 (3.9.60, ægte tilstand, Man Utd)', { timeout:
     const a = cmOfferScreenData(g, p, mu, 'key')!, b = cmOfferScreenData(g, p, mu, 'rotation')!;
     expect(a.status).toBe(1);
     expect(b.status).toBe(3);
-    expect(Math.round(a.will * 1000)).toBeCloseTo(a.will * 1000, 3);
+    expect(Math.fround(Math.round(a.will * 1000) * Math.fround(0.001))).toBe(a.will);
     expect(a.will).toBeGreaterThan(b.will);
   });
 
