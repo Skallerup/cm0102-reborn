@@ -8,7 +8,7 @@ import { gs, squad } from '../src/game/state';
 import { act } from '../src/game/actions';
 import { humanRenewDemand, processOffers, renewContract } from '../src/game/transfers';
 import { cmContractAnswer, cmTalkDemand } from '../src/game/cmContractGame';
-import { cmTalksDemand, offerTerms } from '../src/game/cmTransferTalks';
+import { cmConfirmScreen, cmTalksDemand, offerTerms } from '../src/game/cmTransferTalks';
 import type { Player, TransferOffer } from '../src/game/types';
 
 describe('kontrakttilbud til egen spiller og klubløse (3.9.60, ægte tilstand)', { timeout: 600_000 }, () => {
@@ -79,6 +79,12 @@ describe('kontrakttilbud til egen spiller og klubløse (3.9.60, ægte tilstand)'
     expect(act({ t: 'negotiate', pid: p!.id, wage: r50(want.wage), years, clauses: { signOn: want.signOn } })).toBe('cmSent');
     g.date = o.cmTalks!.due!;
     processOffers();
+    // ja: også i det åbne vindue skal menneskets køber bekræfte (0x8c2f50 springer køberen over, 0x8c3310(bud, 0) bekræfter kun for
+    // "sælgeren" → tilstand 0xc) – Confirm Transfer Offer "Sign X?" (0xaa0390); Yes → underskriften
+    expect(p!.club).toBe(0);
+    expect(o.cmTalks!.state).toBe(5);
+    expect(cmConfirmScreen(g, o)).toMatchObject({ code: 0, key: 'cm.confirm.noClub' });
+    expect(act({ t: 'cmConfirm', offer: o.id, answer: 'yes' })).toBe('completed');
     expect(p!.club).toBe(ipswich);
     expect(o.status).toBe('completed');
     g.date = d0;
