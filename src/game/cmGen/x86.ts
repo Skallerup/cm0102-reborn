@@ -317,10 +317,49 @@ function qsort8(m: CmMem, base: number, n: number, vc: (typeof QSORT_CMP8)[numbe
     }
   }
   QSORT_STATS.slow++;
-  const ix: number[] = [];
-  for (let i = 0; i < n; i++) ix.push(i);
-  msvcSort(ix, (x, y) => vc.cmp(A0[x], A1[x], A0[y], A1[y]));
-  for (let i = 0; i < n; i++) { m.w32(base + 8 * i, A0[ix[i]]); m.w32(base + 8 * i + 4, A1[ix[i]]); }
+  qsortPairs(A0, A1, n, vc.cmp);
+  for (let i = 0; i < n; i++) { m.w32(base + 8 * i, A0[i]); m.w32(base + 8 * i + 4, A1[i]); }
+}
+/** (hastighed, 25/11) MSVC-qsort'en (subs.ts msvcQsort – samme skridt og sammenligninger) direkte på parrene (A0[i], A1[i]): før en indeksliste,
+ *  lukninger og et opslag pr. sammenligning. Samme sammenligninger på de samme værdier i samme rækkefølge → samme rækkefølge */
+const QLO: number[] = [], QHI: number[] = [];
+function qsortPairs(A0: Int32Array, A1: Int32Array, n: number, cmp: (a0: number, a1: number, b0: number, b1: number) => number): void {
+  let t = 0;
+  let lo = 0, hi = n - 1;
+  QLO.length = 0; QHI.length = 0;
+  for (;;) {
+    const size = hi - lo + 1;
+    if (size <= 8) {
+      // shortsort: største bagerst, cmp(p, max) > 0
+      let h = hi;
+      while (h > lo) {
+        let max = lo;
+        for (let p = lo + 1; p <= h; p++) if (cmp(A0[p], A1[p], A0[max], A1[max]) > 0) max = p;
+        if (max !== h) { t = A0[max]; A0[max] = A0[h]; A0[h] = t; t = A1[max]; A1[max] = A1[h]; A1[h] = t; }
+        h--;
+      }
+    } else {
+      const mid = lo + (size >> 1);
+      if (mid !== lo) { t = A0[mid]; A0[mid] = A0[lo]; A0[lo] = t; t = A1[mid]; A1[mid] = A1[lo]; A1[lo] = t; }
+      let loguy = lo, higuy = hi + 1;
+      for (;;) {
+        do loguy++; while (loguy <= hi && cmp(A0[loguy], A1[loguy], A0[lo], A1[lo]) <= 0);
+        do higuy--; while (higuy > lo && cmp(A0[higuy], A1[higuy], A0[lo], A1[lo]) >= 0);
+        if (higuy < loguy) break;
+        if (loguy !== higuy) { t = A0[loguy]; A0[loguy] = A0[higuy]; A0[higuy] = t; t = A1[loguy]; A1[loguy] = A1[higuy]; A1[higuy] = t; }
+      }
+      if (lo !== higuy) { t = A0[lo]; A0[lo] = A0[higuy]; A0[higuy] = t; t = A1[lo]; A1[lo] = A1[higuy]; A1[higuy] = t; }
+      if (higuy - 1 - lo >= hi - loguy) {
+        if (lo + 1 < higuy) { QLO.push(lo); QHI.push(higuy - 1); }
+        if (loguy < hi) { lo = loguy; continue; }
+      } else {
+        if (loguy < hi) { QLO.push(loguy); QHI.push(hi); }
+        if (lo + 1 < higuy) { hi = higuy - 1; continue; }
+      }
+    }
+    if (!QLO.length) return;
+    lo = QLO.pop()!; hi = QHI.pop()!;
+  }
 }
 const arg = (R: X86, i: number) => R.m.u32((R.esp + 4 * i) >>> 0);
 const CRT: Record<number, (R: X86) => void> = {
