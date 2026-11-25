@@ -54,13 +54,22 @@ export function onInstallChange(f: () => void): () => void {
   return () => { listeners.delete(f); };
 }
 
+let installing = false;
 export async function installApp(): Promise<boolean> {
-  if (!installEvent) return false;
-  await installEvent.prompt();
-  const r = await installEvent.userChoice;
-  installEvent = null;
-  listeners.forEach((f) => f());
-  return r.outcome === 'accepted';
+  const ev = installEvent;
+  if (!ev || installing) return false; // intet prompt, eller et er allerede åbent (dobbeltklik)
+  installing = true;
+  try {
+    await ev.prompt();
+    const r = await ev.userChoice;
+    return r.outcome === 'accepted';
+  } catch {
+    return false;
+  } finally {
+    installing = false;
+    if (installEvent === ev) installEvent = null; // en nyere hændelse (eller appinstalled) røres ikke
+    listeners.forEach((f) => f());
+  }
 }
 
 /** Kan man bede om lov til notifikationer (understøttet og ikke allerede afvist)? */
