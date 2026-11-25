@@ -38,7 +38,7 @@ import { addDays_54c5b0, subDays_54c8e0, listRemove_68d1f0, offerContract_4cda70
 import { entryOf, storeEntry, fromRow, staffTailed, afterBudgetHooks, clubDivRep } from './cmSquadPlanGame';
 import { newPlanEntry, type PlanEntry } from './cmSquadPlan';
 import { registerImpl, enter, QSORT_CMP, QSORT_CMP8, SHARED, PC_HOOK, FASTHOST, stackBelow, FAKE_RET, HEAP0, HEAP_PTR, type X86 } from './cmGen/x86';
-import { msvcQsort } from './engine/grid/subs';
+import { msvcQsort, naturalPositions, type PositionRecord } from './engine/grid/subs';
 import { getClubFinance_5a0590 } from './cmWage';
 import { leagueClash } from './cmBoardInterest';
 import { GEN } from './cmGen/index';
@@ -58,7 +58,7 @@ import { cmFitRead } from './cmFitnessGame';
 import { clubInSeason_669bd0 } from './cmClubLinks';
 import { aiPickCtx, roleDataOf, playerRecord } from './engine/grid/aiTeam';
 import { planScore, type ManagerBlockIn } from './engine/grid/planScore';
-import { judgeAbility, type Day } from './engine/grid/roleScore';
+import { judgeAbility, recPositions, type Day } from './engine/grid/roleScore';
 import { nationLanguage, playerLanguages } from './languages';
 import { dislikesClub, dislikesPerson, favoursClub, favoursPerson, managerStaff, relHas, DIS_CLUB, FAV_CLUB } from './cmRelations';
 import { withSharedPersons } from './cmBoardGame';
@@ -656,6 +656,7 @@ function planValue(S: SlMem, st: number, mask: number, flags: number, clubAdr: n
     d.contract = c;
   } else d.contract = null;
   i.data = d;
+  i.posRec = B.posRec; i.nat = B.nat;
   const v = planScore(i);
   if (PVCHECK) {
     const w = planValue0(S, st, mask, flags, clubAdr, thr, p, cid, g.clubs[cid], p.loan ? p.loan.from : p.club);
@@ -675,6 +676,8 @@ interface PlBase {
   real: boolean; age: number; joined: Day; rec: number[]; today: Day; yearAgo: Day; nationRep: number; british: boolean; caps: number; b56: number;
   pClub: number; pClubNation: number; stClubRep: number; daysNoClub: number; pLang: ReturnType<typeof nationLanguage>; langs: ReturnType<typeof playerLanguages>;
   cc: boolean;
+  /** recPositions(rec) og naturalPositions (planScore regner dem ellers hvert kald) */
+  posRec: PositionRecord; nat: number;
   /** 0x62ed70 (skaden) – regnes først, når planScore spørger (undefined = ikke regnet) */
   injV: { w28: number; w2c: number } | null | undefined;
   /** RoleData pr. kontekstvariant (cm sand/falsk; leagueAvg i posten) med de dovne dele gemt */
@@ -689,7 +692,7 @@ const D0: Day = { day: 0, year: 0 };
 /** den genbrugte PlanInput – alle felter fra start (fast form) */
 const PI: PlanIn = { id: 0, real: false, age: 0, joined: D0, rec: [], pos: 0, flags: 0, thr: -1, hasClub: false, atClub: false, stHasClub: false, sameNationClub: false,
   mgrJoined: null, today: D0, yearAgo: D0, nationRep: 0, british: false, caps: 0, b56: 0, langDiff: false, lang: 0, nationOfClub: false, clubRep: 0, stClubRep: 0,
-  listed: false, daysNoClub: 0, league69: null, mgr: MG_NONE, data: null as unknown as PlanD };
+  listed: false, daysNoClub: 0, league69: null, mgr: MG_NONE, data: null as unknown as PlanD, posRec: undefined, nat: undefined };
 /** den aktuelle vurderings dommer (0x6e86d0 – som aiTeam.ts' judgeFor) */
 const JUDGE = { p: null as Player | null, ctx: {} as PickCtx, age: 0 };
 /** (runde 14) judgeAbility er en ren funktion – inddata i genbrugte objekter (ingen allokering pr. vurdering) */
@@ -717,6 +720,7 @@ function playerBase(S: SlMem, p: Player, mid: number): PlBase {
   let rec = C.rec.get(p.id);
   if (!rec) { rec = playerRecord(p); C.rec.set(p.id, rec); }
   const pClub = p.loan ? p.loan.from : p.club;
+  const posRec = recPositions(rec);
   // 0x6e85c5 "ægte" = staff-id < [0xae2364]: 0x7abac0's regens har den pensioneredes post og er ægte (cmGenerated) – før 23/11 !p.regen, så
   // klubløse regens fik −30 og ingen form-/karakterblokke, og næsten ingen klub skrev under med dem (K7c: 1/17/12 mod oraklets 8/84/50)
   B = {
@@ -724,7 +728,7 @@ function playerBase(S: SlMem, p: Player, mid: number): PlBase {
     real: !cmGenerated(g, p), age: PL.age, joined: PL.joined, rec, today: D.today, yearAgo: D.yearAgo,
     nationRep: nationRepMem(g, p.nation), british: BRITISH.has(g.nations[p.nation]?.code ?? ''), caps: p.caps, b56: sh(p, 'adaptability'),
     pClub, pClubNation: g.clubs[pClub]?.nation ?? -1, stClubRep: clubRepMem(g, pClub), daysNoClub: pClub ? 0 : Math.max(0, dayNum(g.date) - dayNum(staffJoined(p) ?? g.date)),
-    pLang: PL.pLang, langs: PL.langs, cc: !!p.cmContract, injV: undefined, rdC: null, rdN: null,
+    pLang: PL.pLang, langs: PL.langs, cc: !!p.cmContract, injV: undefined, rdC: null, rdN: null, posRec, nat: naturalPositions(posRec),
   };
   bases[mid] = B;
   return B;

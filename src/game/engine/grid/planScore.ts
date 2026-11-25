@@ -10,7 +10,7 @@
 // accelerationsstraf, karakterleddet har ingen 33-årsgrænse, moralen er 1,5·moral − 15, konditionen falder under 5000 (ikke 5750/3500),
 // og der er egne blokke for alder/sprog (0x4000), landsholdet (0x2000000), kontrakt 2 (0x20000) og 0x100000.
 
-import { naturalPositions, POS_TABLE } from './subs';
+import { naturalPositions, POS_TABLE, type PositionRecord } from './subs';
 import { recPositions, type Day, type Rec, type RoleData } from './roleScore';
 
 const ftol = (x: number) => Math.trunc(x);                         // 0x945640
@@ -73,6 +73,8 @@ export interface PlanInput {
   league69: number | null;
   mgr: ManagerBlockIn;
   data: PlanData;
+  /** (hastighed) recPositions(rec) og naturalPositions af den – kalderen kan give dem regnet én gang pr. spiller (samme værdier) */
+  posRec?: PositionRecord; nat?: number;
 }
 
 // (hastighed) hjælperne som modulfunktioner – ikke lukninger pr. kald (0x6e6340 kaldes ~280.000 gange pr. dag af ønskelisterne)
@@ -99,8 +101,8 @@ export function planScore(i: PlanInput): number {
   const condBlk = !(flags & 0x800) || !!(flags & 0x210000);
   const cond0 = condBlk ? s16(d.condition) : 10000, cond100 = condBlk ? tdiv(s16(d.condition), 100) : 100;
   const C = d.contract;
-  const r = recPositions(rec);
-  const nat = naturalPositions(r);                                      // 0x5b7d20
+  const r = i.posRec ?? recPositions(rec);
+  const nat = i.nat ?? naturalPositions(r);                             // 0x5b7d20
   // ---------------------------------------------------------------- P (0x6e6456–0x6e674f)
   let P = nat === 0 ? -100 : 0;
   if (flags & 0x400) P += 100;
