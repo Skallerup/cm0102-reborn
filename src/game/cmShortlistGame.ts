@@ -2476,12 +2476,15 @@ export function cmShortlistDaily(g: GameState, planClub: (cid: number) => { drop
   let tt = now();
   const off = bidDay(g);
   const clubs = Object.values(g.clubs), prog = SL_PROGRESS.cb;
-  for (let ci = 0; ci < clubs.length; ci++) {
+  // (hastighed, 25/11) trupplanens stabshale og stabens mål (cmStaffMove.ts staffTail/staffSearch) deler personlisten, kandidaterne og spejderne for
+  // hele klubløkken (cmBoardGame.ts withSharedPersons) – før byggede hver klub sit eget boardEnv med alle personer (sorteret stab) og sine egne
+  // kandidater (~12 % af dagen); en fyring i halen (cmStaffMove.ts fireStaff) kasserer kandidaterne og spejderne
+  withSharedPersons(g, () => { for (let ci = 0; ci < clubs.length; ci++) {
     const c = clubs[ci];
     // fremdriftsbjælken (dagens Web Worker – ui/dayWorker.ts): dagens brøkdel, klubløkken er det meste af dagen
     if (prog && (ci & 15) === 0) prog(0.1 + 0.8 * (ci / clubs.length));
     // (0x5cdcb4: alle klubber med land +0x53 – også de inaktive divisioner, fx Englands non-league, og de skjulte ligaer)
-    if (!g.cmPlan[c.id]) continue;
+    if (!g.cmPlan![c.id]) continue;
     const bids = slotsWithBids(S, c.id);
     readSlots(S, c.id);
     const e = entryOf(g, c.id);
@@ -2492,7 +2495,7 @@ export function cmShortlistDaily(g: GameState, planClub: (cid: number) => { drop
     // any players", ferievalg 4 = 1 – 0x84a0e2, i den oversatte funktion)
     if (!humanClub0(g, c.id)) makeBids(S, c.id, off);
     tt = tick('d.bids', tt);
-  }
+  } });
   SL_DIAG.end?.(S);
   const ev = finishSl(S);
   SL_STATS.days++; SL_STATS.bids += ev.filter((x) => x.kind === 'bid').length;

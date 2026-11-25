@@ -250,6 +250,9 @@ function fireStaff(g: GameState, s: Staff, cid: number, job: number): void {
   s.club = 0;
   s.assignment = null;
   s.coachAreas = undefined;
+  // (fælles løkke) restkontrakten og klubbens spejdere er ændret – kandidaterne og spejderne regnes forfra (personerne er levende)
+  const sc = sharedScope(g);
+  if (sc) { delete sc.memo.staffCands; delete sc.memo.scouts; }
   g.cmStaffMoves = (g.cmStaffMoves ?? []).filter((m) => m.c !== cid || m.s !== s.id);
 }
 
