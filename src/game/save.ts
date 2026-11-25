@@ -328,7 +328,7 @@ export function repairPositionsOnce(g: GameState = gs()) {
  *  kontrakt ved skiftet var uden status ("Fut", "Uncertain"). Originalen skriver altid tilbuddets status (sign_contract 0x4cf720) – her det
  *  valgte (buddets cmRole, hvis det findes endnu) eller Set Role At Club's forvalg (cmRoleExpected – det, skærmen foreslog). Også ventende forkontrakter. */
 export function repairHumanStatus0(g: GameState = gs()): void {
-  if (!cmMarketOn(g) || g.fixes?.includes('humanStatus0')) return;
+  if (!cmMarketOn(g)) return;   // idempotent (ingen markør: et uafbrudt spil skal forblive bit for bit ens – snapCarry)
   const role = (p: Player, club: number) => g.offers.slice().reverse().find((o) => o.player === p.id && o.buyer === club && !o.loan && o.cmRole)?.cmRole ?? cmRoleExpected(g, p, club);
   for (const p of Object.values(g.players)) {
     if (p.virtual) continue;
@@ -339,7 +339,6 @@ export function repairHumanStatus0(g: GameState = gs()): void {
     p.squadStatus = role(p, p.club);
     setStatusCode(p);
   }
-  (g.fixes ??= []).push('humanStatus0');
 }
 
 export function upgradeLoaded() {
