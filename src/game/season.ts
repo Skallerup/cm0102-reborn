@@ -6,7 +6,10 @@ import { initContractBytes } from './cmContractInit';
 import { cmVirtualOn } from './cmVirtual';
 import { cmShortlistOn } from './cmShortlistGame';
 import { cmRetireOn } from './cmRetire';
-import { cmRegenDue, cmRegenPlan, repMem as cmRegenRepMem } from './cmRegen';
+import { cmRegenDue, cmRegenPlan, repMem as cmRegenRepMem, STAFF_ATTRS } from './cmRegen';
+import { ATTRS } from './attributes';
+import { CM_INT_OFFSETS } from './playerInit';
+import { REC_KEYS, cmIntSync } from './cmTraining';
 import { cmCmOn, cmCmScope } from './cmContractManager';
 import { cmRegenWage } from './cmWageGame';
 import { cmGbp } from './cmMoney';
@@ -42,7 +45,7 @@ import { monthlyAwards, seasonGala, surpriseOfSeason, teamOfYear } from './award
 import { cmAwardsRollover, cmAwOn } from './cmAwards';
 import { initKnowledge, knowFull } from './scouting';
 import { cmKnowOn } from './cmKnow';
-import type { Club, Competition, Player, RegenSeed, SeasonFinance, SeasonSummary } from './types';
+import type { Club, Competition, GameState, Player, RegenSeed, SeasonFinance, SeasonSummary } from './types';
 import { subPos } from './data/cm0102';
 import { asOwner, forEachHuman, isHumanClub } from './humans';
 import { econ } from './econ';
@@ -330,13 +333,14 @@ export function spawnDueRegens() {
   const g = gs();
   if (originalRegens() && g.regenQueue?.some((s) => !s.due || s.due <= g.date)) spawnRegenQueue();
   // (cmRegen.ts) køens forfaldne poster med puljens første spillerpost (0x7a65d0 → 0x7abac0)
-  if (originalRegens() && g.cmRegenQ?.length) for (const { q, rec } of cmRegenDue(g)) spawnCmRegen(rec, q.id);
+  if (originalRegens() && g.cmRegenQ?.length) for (const { q, rec } of cmRegenDue(g)) spawnCmRegen(rec, q.id, q.s);
   // (cmStaffRetire.ts) 0x7a66bd: reservepuljens poster ud over 2 til aktive spillere på 31+
   if (originalRegens() && g.cmNpRes) cmNpAssign(g);
 }
 
-/** 0x7abac0: en regen af puljens spillerpost rec på den pensioneredes plads (cmRegen.ts cmRegenPlan) – egenskaberne efter forbilledet som spawnRegen */
-function spawnCmRegen(rec: RegenSeed, slot: number) {
+/** 0x7abac0: en regen af puljens spillerpost rec på den pensioneredes plads (cmRegen.ts cmRegenPlan): spillerpostens bytes arves (de 13 af
+ *  0x7ac76e–0x7ace62 nye), staffpostens egenskaber er køpersonens (s). Puljeposter uden de interne (gemte spil fra før 25/11): spillets profil */
+function spawnCmRegen(rec: RegenSeed, slot: number, s?: number[]) {
   const g = gs();
   const plan = cmRegenPlan(g, rec, slot);
   const r = new Rng(hash(g.seed, slot, dayNo(g.date), rec.pa, 0x7abac0));
@@ -348,7 +352,7 @@ function spawnCmRegen(rec: RegenSeed, slot: number) {
     id: g.nextId.player++, first, last, dob: plan.dob, nation: plan.nation, club: club?.id ?? 0, sub,
     foot: rec.foot === 'L' ? 'L' : 'R', height: 0, ca: Math.max(1, Math.min(plan.ca, pa)), pa, date: g.date, seed: g.seed, regen: true, contractEnd: plan.contractEnd,
   });
-  regenProfile(p, rec, r);
+  if (rec.cmInt) regenInherit(g, p, rec, s, plan.rb); else regenProfile(p, rec, r);
   p.cmMem = 1;                                                     // posten er i originalens hukommelse
   p.cmRepMem = cmRegenRepMem(plan.rep);
   if (plan.n2 >= 0) p.cmNation2 = plan.n2;
@@ -366,6 +370,25 @@ function spawnCmRegen(rec: RegenSeed, slot: number) {
   if (p.club && isHumanClub(p.club)) asOwner(p.club, () => knowFull(p.id));
 }
 const dayNo = (iso: string) => Math.round(Date.parse(iso + 'T00:00:00Z') / 86400000);
+
+/** 0x7abac0: regen'en på puljens spillerpost – alle postens bytes (egenskaber, interne, positioner, sider, fødder, Free Role) uændret, de 13 bytes
+ *  fra 0x7ac76e–0x7ace62 (rb) skrevet; staffpostens egenskaber (STAFF_ATTRS) er køpersonens. De viste af de interne efter den nye CA (cmIntSync). */
+function regenInherit(g: GameState, p: Player, rec: RegenSeed, s: number[] | undefined, rb: Record<number, number>) {
+  p.attrs = rec.attrs.slice();
+  if (s) STAFF_ATTRS.forEach((k, i) => { p.attrs[ATTRS.indexOf(k)] = s[i]; });
+  p.cmInt = rec.cmInt!.slice();
+  p.pos = rec.pos.slice(); p.side = rec.side.slice();
+  if (rec.feet) p.feet = [rec.feet[0], rec.feet[1]];
+  if (rec.cmFree !== undefined) p.cmFree = rec.cmFree;
+  for (const [o, v] of Object.entries(rb)) {
+    const j = (CM_INT_OFFSETS as readonly number[]).indexOf(+o);
+    if (j >= 0) p.cmInt[j] = v;
+    else { const k = REC_KEYS.find((x) => x[0] === +o)![1]; p.attrs[ATTRS.indexOf(k as never)] = v; }
+  }
+  cmIntSync(g, p);
+  if (rec.fromId !== undefined) p.regenOf = rec.fromId;
+  p.value = Math.max(10_000, p.value);
+}
 
 /** samme profil som forbilledet (spillets egen – 0x7abac0's egenskaber 0x7ac7c5–0x7ace62 er ikke porteret): hans relative styrker og svagheder
  *  går igen på regen'ens eget niveau, positionerne er de samme, og personligheden ligner hans med lidt støj */

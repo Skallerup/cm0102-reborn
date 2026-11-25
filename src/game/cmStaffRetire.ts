@@ -151,6 +151,7 @@ export function settleStaff(g: GameState, e: CmRetEntry, rand: Rand): void {
   s.club = 0;
   // 0x7a87d0: posten i reservepuljen, personen i køen (en ung regen af spillerpuljens første post – cmRegen.ts)
   (g.cmNpRes ??= []).push({ np: npOf(s), nation: s.nation >= 0 ? s.nation : rand(g.nations.length), person: s.id });
+  // (ikke porteret: personens egne egenskaber i staffposten +0x57.. til regen'en – CmRegenQ.s; uden dem beholder han puljepostens)
   (g.cmRegenQ ??= []).push({ due, id: s.id });
   delete g.staff[s.id];
   const log = (g.cmRetLog ??= []);

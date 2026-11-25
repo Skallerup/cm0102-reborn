@@ -1634,7 +1634,9 @@ export interface RegenSeed { from: string; nation: number; pos: number[]; side: 
   /** (cmRetire.ts) den pensionerede spillers id – regen'en får hans spillerpost (0x7abac0: staff +0x61 = posten fra køens indgang) */
   fromId?: number;
   /** (cmRegen.ts) puljepostens anden nation (+8, staff +0x1e) */
-  n2?: number }
+  n2?: number;
+  /** (cmRegen.ts) puljepostens øvrige bytes, som regen'en arver (0x7abac0): de interne (Player.cmInt), fødderne +0x30/+0x3b, Free Role */
+  cmInt?: number[]; feet?: [number, number]; cmFree?: number }
 
 /** Den moderne økonomis kalibrering (econ26.ts) */
 export interface Modern26 { kw: Record<string, number> }

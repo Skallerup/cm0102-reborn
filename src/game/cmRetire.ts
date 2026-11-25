@@ -22,7 +22,7 @@
 // oraklet: 8 spillere på dag 1 og 14 mere i sæson 1, som stabens pensioneringer frigiver); forsikringsnyheden 0x58a980; staffState +0xb's lave bits (0); personerne uden for originalens hukommelse (0x524d70) får
 // samme regler på en egen liste (st.ext), så de ikke blokerer originalens kø; for world-filer uden hukommelsesoplysningen = de ikke indlæste lande.
 import type { Club, GameState, Player, RegenSeed, Staff, StaffRole } from './types';
-import { cmRegenListsInit, cmRegenRetired, cmRegenSortQueue } from './cmRegen';
+import { cmRegenListsInit, cmRegenRetired, cmRegenSortQueue, STAFF_ATTRS } from './cmRegen';
 import { cmActive, cmLogic, cmRand, newCmContract, statusCode, type CmContract } from './cmPlayerData';
 import { nationLoaded } from './cmFinance';
 import { seasonRow } from './cmFitness';
@@ -33,7 +33,7 @@ import { asOwner, forEachHuman, isHumanClub } from './humans';
 import { JOB_CODE } from './cmStaff';
 import { ATTRS } from './attributes';
 import { playerRecordInto } from './engine/grid/aiTeam';
-import { cmHasCaPost } from './cmDevelop';
+import { cmHasCaPost, ensureCmInt } from './cmDevelop';
 import { cmNpResInit, cmNpResOn, findStaffRetirements, npOnRetire, settleStaff } from './cmStaffRetire';
 
 export interface CmRetEntry {
@@ -463,7 +463,14 @@ function retire(g: GameState, p: Player, e: CmRetEntry, today: string, rand: Ran
   const seed: RegenSeed = { from: pname(p), nation: p.nation, pos: p.pos.slice(), side: p.side.slice(), foot: p.foot === 'L' ? 'L' : p.foot === 'B' ? 'B' : 'R', pa: p.pa, attrs: p.attrs.map((a) => Math.round(a)), fromId: p.id };
   // (cmRegen.ts) i originalens hukommelse: posten i puljen (0x7a6335 – også når han bliver stab) og uden ikke-spillerpost en kø-post (0x7a64e2);
   // de øvrige (uden for hukommelsen – findes ikke i originalen): som før – regen'en af hans egen post på datoen
-  if (mem) cmRegenRetired(g, { ...seed, ...(p.cmNation2 !== undefined && p.cmNation2 >= 0 ? { n2: p.cmNation2 } : {}) }, !np, due, p.id);
+  // (0x7abac0) regen'en arver puljepostens bytes uændret – også de interne (cmInt; spillere uden: skønnet som ensureCmInt) og fødderne – og
+  // køpersonens egne egenskaber i staffposten (STAFF_ATTRS)
+  if (mem) {
+    if (!p.cmInt && p.pa > 0) ensureCmInt(p);
+    const full: RegenSeed = { ...seed, attrs: p.attrs.map((a) => Math.round(a)), ...(p.cmNation2 !== undefined && p.cmNation2 >= 0 ? { n2: p.cmNation2 } : {}),
+      ...(p.cmInt ? { cmInt: p.cmInt.slice() } : {}), ...(p.feet ? { feet: [p.feet[0], p.feet[1]] as [number, number] } : {}), ...(p.cmFree !== undefined ? { cmFree: p.cmFree } : {}) };
+    cmRegenRetired(g, full, !np, due, p.id, STAFF_ATTRS.map((k) => Math.round(p.attrs[ATTRS.indexOf(k)] ?? 10)));
+  }
   else if (!np && p.pa > 0) (g.regenQueue ??= []).push({ ...seed, due });
   removePlayer(p);
   const st = stateOf(g);

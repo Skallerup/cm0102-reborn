@@ -10,7 +10,8 @@
 //     de store landes verdensomdømme (0x549ea0, 0x7ac6f6), fødselsdatoen (0x7ac73b), klubben (0x7ace65–0x7acf61): pick_best_club_for_player
 //     0x7ad0e0 (score 0x7ad220) eller pick_club_from_nation_list 0x7ad590 (listerne 0x7acfc0 fra indlæsningen) → player_regen_sign_for_club
 //     0x7a6f10; uden klub og under 20: omdømmet ≤ 1250, verdensomdømme 1 (0x7acf61).
-// *Ikke porteret*: de personlige/mentale egenskaber 0x7ac7c5–0x7ace62 (spillets profil efter forbilledet, season.ts), nyheden 0xbce til menneskets
+//   • egenskaberne (25/11): puljepostens bytes arves, 13 slås om (0x7ac76e–0x7ace62, regenRecBytes); staffpostens er køpersonens (CmRegenQ.s).
+// *Ikke porteret*: nyheden 0xbce til menneskets
 // klub (0x7a8ba0), formandens yndling (0x547a10, 0x7acedb) og 0x547d90 i 0x7a6f10, værdien 0x4d0c60 ved underskriften (værdierne regnes dagligt),
 // stabens pensioner (køens poster uden spillerpost); en spansk anden nation med rand(100) = 0 beholder pladsens gamle (her: ingen).
 import type { Club, GameState, RegenSeed } from './types';
@@ -24,6 +25,9 @@ import { KEY_CLUB_GLOBALS } from './cmKeyIds';
 import { squad } from './state';
 // nation +0x88 (0x524d70): én optælling pr. spil, fælles med bestyrelsen (cmBoardGame.ts natPlayers – følger med gem via carry.ts)
 import { natPlayers } from './cmN88';
+import { CM_INT_OFFSETS } from './playerInit';
+import { REC_KEYS } from './cmTraining';
+import { ATTRS } from './attributes';
 
 type Rand = (n: number) => number;
 const ftol = Math.trunc;
@@ -31,12 +35,17 @@ const s16 = (v: number) => ((v & 0xffff) << 16) >> 16;
 const dayNo = (iso: string) => Math.round(Date.parse(iso + 'T00:00:00Z') / 86400000);
 
 /** køens post: forfaldsdagen og personen (den pensioneredes id) */
-export interface CmRegenQ { due: string; id: number }
+export interface CmRegenQ { due: string; id: number;
+  /** personens egne egenskaber i staffposten (+0x57.. – adaptability, ambition, determination, loyalty, pressure, professionalism, sportsmanship,
+   *  temperament: STAFF_ATTRS), som regen'en på hans post beholder (0x7abac0 skriver dem ikke) */
+  s?: number[] }
+/** de personlige egenskaber, der står i staffposten (data/cm0102.ts' 'S') – resten står i spillerposten (puljens) */
+export const STAFF_ATTRS = ['adaptability', 'ambition', 'determination', 'loyalty', 'pressure', 'professionalism', 'sportsmanship', 'temperament'] as const;
 
 /** 0x7a8350 / 0x7a87d0 (+0x3c): spillerposten i puljen; 0x7a87d0 (+0x10): kø-posten (kun uden ikke-spillerpost) */
-export function cmRegenRetired(g: GameState, seed: RegenSeed, toQueue: boolean, due: string, id: number): void {
+export function cmRegenRetired(g: GameState, seed: RegenSeed, toQueue: boolean, due: string, id: number, s?: number[]): void {
   if (seed.pa > 0) (g.cmRegenPool ??= []).push(seed);
-  if (toQueue) (g.cmRegenQ ??= []).push({ due, id });
+  if (toQueue) (g.cmRegenQ ??= []).push(s ? { due, id, s } : { due, id });
 }
 /** 0x7a65a2: qsort 0x7ae240 – datoen, så personen */
 export function cmRegenSortQueue(g: GameState): void {
@@ -220,7 +229,9 @@ function pickFromList(g: GameState, r: RegenView, rand: Rand): Club | undefined 
 }
 
 // ------------------------------------------------------------------------------------------------ 0x7abac0
-export interface CmRegenPlan { nation: number; n2: number; age: number; dob: string; ca: number; rep: [number, number, number]; club?: Club; contractEnd?: string }
+export interface CmRegenPlan { nation: number; n2: number; age: number; dob: string; ca: number; rep: [number, number, number]; club?: Club; contractEnd?: string;
+  /** 0x7ac76e–0x7ace62: spillerpostens nye bytes (offset → s8) – regenRecBytes */
+  rb: Record<number, number> }
 
 /** 0x7abac0 for spillerposten rec på personen id: alt undtagen egenskaberne og selve personen (season.ts) */
 export function cmRegenPlan(g: GameState, rec: RegenSeed, id: number): CmRegenPlan {
@@ -289,6 +300,8 @@ export function cmRegenPlan(g: GameState, rec: RegenSeed, id: number): CmRegenPl
   }
   // 0x7ac73b: fødselsåret = i år − alder, dagen rand(365)
   const dob = new Date(Date.UTC(year - age, 0, 1 + rand(365))).toISOString().slice(0, 10);
+  // 0x7ac76e–0x7ace62: puljepostens egenskaber – 13 bytes slås om (efter fødselsdatoen, før klubben)
+  const rb = regenRecBytes(rec, age, rand, (o) => seedRecByte(rec, o));
   const view: RegenView = { nation, n2, pa, ca, rep: [home, s16(cur), world] };
   // 0x7ace65: klubben
   let club: Club | undefined;
@@ -307,7 +320,120 @@ export function cmRegenPlan(g: GameState, rec: RegenSeed, id: number): CmRegenPl
     if (home > 1250) home = 1250;
     world = 1;
   }
-  return { nation, n2, age, dob, ca, rep: [home, cur, world], club, contractEnd };
+  return { nation, n2, age, dob, ca, rep: [home, cur, world], club, contractEnd, rb };
+}
+
+/** puljepostens egenskabsbyte (s8): de interne fra cmInt, ellers den viste */
+function seedRecByte(rec: RegenSeed, o: number): number {
+  const j = (CM_INT_OFFSETS as readonly number[]).indexOf(o);
+  const k = REC_KEYS.find((x) => x[0] === o)?.[1];
+  const v = j >= 0 && rec.cmInt ? rec.cmInt[j] : k ? rec.attrs[ATTRS.indexOf(k as never)] ?? 0 : 0;
+  return ((Math.round(v) & 0xff) << 24) >> 24;
+}
+/** spillerpostens byte (s8) for puljens post: positionerne +0xf..+0x16, siderne +0x17/+0x18/+0x19 (som playerRecordInto) */
+function seedPosByte(rec: RegenSeed, o: number): number {
+  const v = o <= 0x16 ? rec.pos[o - 0xf] : o === 0x17 ? rec.side[2] : o === 0x18 ? rec.side[0] : rec.side[1];
+  return ((Math.round(v ?? 0) & 0xff) << 24) >> 24;
+}
+
+/** regenerate_as_youth_player 0x7abac0, 0x7ac76e–0x7ace62: de 13 bytes i puljens spillerpost, regen'en får nye – de øvrige (også de interne og
+ *  personens egne +0x57..) beholdes. `cur(o)` = postens nuværende byte (s8). Bytes: 0x1b acceleration, 0x1d agility, 0x1e anticipation (intern),
+ *  0x21 consistency, 0x24 decisions (intern), 0x2c important matches, 0x2e jumping, 0x2f influence, 0x34 natural fitness, 0x36 pace,
+ *  0x3c stamina, 0x3d strength, 0x44 work rate. Byte-aritmetik som originalen (8 bit med fortegn). */
+export function regenRecBytes(rec: RegenSeed, age: number, rand: Rand, cur?: (o: number) => number): Record<number, number> {
+  const B: Record<number, number> = {};
+  const P = (o: number) => seedPosByte(rec, o);
+  const get = (o: number) => (o in B ? B[o] : cur ? cur(o) : 0);
+  const set = (o: number, v: number) => { B[o] = ((v & 0xff) << 24) >> 24; };
+  const add = (o: number, v: number) => set(o, get(o) + v);
+  const pa = s16(rec.pa);
+  // 0x7ac774: acceleration – PA > 100 og angriber/offensiv midtbane (≥ 15)
+  if (pa > 100 && (P(0x15) >= 15 || P(0x14) >= 15)) {
+    if (rand(3) !== 0) set(0x1b, rand(0xb) + 10);
+    else if (rand(3) !== 0) set(0x1b, rand(0x10) + 5);
+    else set(0x1b, rand(7) + 0xe);
+  } else if (rand(4) !== 0) set(0x1b, rand(0xa) + 8);
+  else set(0x1b, rand(0x10) + 5);
+  { const a = get(0x1b); if (a > 15) add(0x1b, -rand(5)); else if (a < 5) add(0x1b, rand(0xa)); else if (a < 10) add(0x1b, rand(8)); }
+  // 0x7ac83a: pace efter accelerationen
+  { const a = get(0x1b);
+    if (a > 15) set(0x36, rand(0xb) + 10);
+    else if (a > 10) set(0x36, rand(0xa) + 8);
+    else if (a < 5) set(0x36, rand(0xa) + 1);
+    else if (rand(4) !== 0) set(0x36, rand(0x10) + 5);
+    else set(0x36, rand(0xa) + 5); }
+  // 0x7ac8b0: agility – målmand (+0xf = 20) med rand(5) ≠ 0 efter PA, ellers rand(20) + 1 rettet mod midten
+  if (P(0xf) === 20 && rand(5) !== 0) {
+    if (pa > rand(0x14) + 100) set(0x1d, rand(0xb) + 10); else set(0x1d, rand(0x10) + 5);
+  } else {
+    set(0x1d, rand(0x14) + 1);
+    const a = get(0x1d);
+    if (a > 15) add(0x1d, -rand(6)); else if (a < 5) add(0x1d, rand(6));
+  }
+  // 0x7ac94f: jumping – forsvarere (+0x11) og (+0x12/+0x13 med +0x19) 0, med side +0x19 5; målmand/angriber 0; ellers −5
+  { let c = -5;
+    if (P(0x11) >= 15) c = P(0x19) >= 15 ? 5 : 0;
+    else if ((P(0x13) >= 15 || P(0x12) >= 15) && P(0x19) >= 15) c = 0;
+    else if (P(0xf) >= 15 || P(0x15) >= 15) c = 0;
+    const x = rand(c * 3);
+    set(0x2e, x + rand(0x14));
+    const a = get(0x2e);
+    set(0x2e, a < 1 ? 1 : a > 0x14 ? 0x14 : a); }
+  // 0x7ac9c7: natural fitness
+  set(0x34, rand(0x14) + 1);
+  { const a = get(0x34); if (a > 15) add(0x34, -rand(6)); else if (a < 8) add(0x34, rand(0xa)); }
+  // 0x7aca13: work rate
+  set(0x44, rand(0x14) + 1);
+  { const a = get(0x44);
+    if (a > 15 && rand(3) !== 0) add(0x44, -rand(5));
+    else if (a < 5) add(0x44, rand(0xa));
+    else if (a < 10) add(0x44, rand(5)); }
+  // 0x7aca82: stamina efter alderen
+  if (age < 18) {
+    set(0x3c, rand(0x14) + 1);
+    const a = get(0x3c); if (a > 15) add(0x3c, -rand(8)); else if (a < 5) add(0x3c, rand(8)); else if (a < 10) add(0x3c, rand(6));
+  } else if (age < 24) {
+    set(0x3c, rand(0x12) + 3);
+    const a = get(0x3c); if (a > 15) add(0x3c, -rand(5)); else if (a < 5) add(0x3c, rand(0xa)); else if (a < 10) add(0x3c, rand(5));
+  } else {
+    set(0x3c, rand(0xf) + 6);
+    const a = get(0x3c); if (a > 15) add(0x3c, -rand(3)); else if (a < 10) add(0x3c, rand(8));
+  }
+  if (get(0x3c) < 10 && get(0x44) > 15) add(0x3c, rand(5));
+  // 0x7acb84: strength efter alderen
+  if (age < 18) {
+    set(0x3d, rand(0x14) + 1);
+    const a = get(0x3d); if (a > 15) add(0x3d, -rand(0xa)); else if (a < 5) add(0x3d, rand(6));
+  } else if (age < 24) {
+    set(0x3d, rand(0x14) + 1);
+    const a = get(0x3d); if (a > 15) add(0x3d, -rand(8)); else if (a < 5) add(0x3d, rand(8));
+  } else {
+    set(0x3d, rand(0x14) + 1);
+    const a = get(0x3d); if (a > 15) add(0x3d, -rand(5)); else if (a < 5) add(0x3d, rand(0xa));
+  }
+  if ((P(0x11) === 20 || P(0x12) === 20) && get(0x3d) < 10) add(0x3d, rand(5));
+  if (get(0x2e) > 15 && get(0x3d) < 10) add(0x3d, rand(5));
+  // 0x7acc9b: de mentale efter alderen
+  if (age < 24) {
+    if (age < 18) {
+      add(0x1e, -rand(0x28)); add(0x24, -rand(0x28));
+      { const a = get(0x2c); if (a > 15) add(0x2c, -rand(8)); else if (a > 10) add(0x2c, -rand(5)); }
+      { const a = get(0x2f); if (a > 15) add(0x2f, -rand(0xa)); else if (a > 10) add(0x2f, -rand(8)); }
+    } else {
+      add(0x1e, -rand(0x14)); add(0x24, -rand(0x14));
+      if (get(0x2c) > 15) add(0x2c, -rand(5));
+      { const a = get(0x2f); if (a > 15) add(0x2f, -rand(8)); else if (a > 10) add(0x2f, -rand(5)); }
+    }
+    if (get(0x2f) > 15) add(0x2f, -rand(8));
+  } else if (age > 0x19 && age < 0x1d) {
+    if (get(0x3d) < 5) add(0x3d, rand(8));
+    if (get(0x21) < 5) add(0x21, rand(8));
+    if (get(0x3c) < 5) add(0x3c, rand(8));
+    add(0x1e, -rand(0xa)); add(0x24, -rand(0xa));
+    if (get(0x2c) < 5) add(0x2c, rand(8));
+    { const a = get(0x2f); if (a > 15) add(0x2f, -rand(5)); else if (a > 10) add(0x2f, -rand(3)); }
+  }
+  return B;
 }
 
 /** omdømmet i hukommelsen (+9/+0xb/+0xd) → Player.cmRepMem (÷50) */
