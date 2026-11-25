@@ -55,6 +55,7 @@ import { natPlayers } from './cmN88';
 export { natPlayers };
 import { FRIENDLY_COMP } from './cmFriendlyOffers';
 import COMP_SHORT from './data/cmCompShort.json';
+import { HUMAN_NP_CA, HUMAN_NP_PA, humanNpByte } from './cmHumanNp';
 
 /** turneringens korte navn (club_comp.dat +0x38; scripts/build-cm-comp-short.py) – ellers det lange */
 const compShort = (n: string) => (COMP_SHORT as Record<string, string>)[n] ?? n;
@@ -160,7 +161,9 @@ function humanPerson(g: GameState, h: HumanRef): Person {
     get joined() { return isoToCm(m().cmJoined || g.date); }, set joined(d: CmDate) { m().cmJoined = cmToIso(d); },
     age: 40,
     get b59() { return m().cmB59 ?? 20; }, set b59(v: number) { m().cmB59 = v; },
-    det: 10, pres: 10, prof: 10, temper: 10, amb: 10, b22: 0, ca: 0, pa: 0, at: () => 0, rep,
+    // ikke-spillerpostens CA +4 / PA +6 (oraklet: 3/151 – cmHumanNp.ts): 0x69d1b0 lægger 25·CA + 5·PA (verdensomdømme > 3250) til menneskets
+    // ansøgning ved en klub med omdømme > 4250 (oraklet 25/11: Arsenal-mennesket 5401 → Burnley 6231; før 0/0 → 5401)
+    det: 10, pres: 10, prof: 10, temper: 10, amb: 10, b22: 0, ca: HUMAN_NP_CA, pa: HUMAN_NP_PA, at: humanNpByte, rep,
   };
 }
 function humanRefs(g: GameState): HumanRef[] {

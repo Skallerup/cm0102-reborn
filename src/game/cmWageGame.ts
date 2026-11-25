@@ -29,6 +29,7 @@ import { fillUnsetWage_83a1b0 } from './cmWageFill';
 import { cmLogic, cmStaffOn, clubRepMem, staffJoined } from './cmPlayerData';
 import { ageOn } from './dates';
 import { ATTRS } from './attributes';
+import { HUMAN_NP } from './cmHumanNp';
 import { gs, hasGame, squad } from './state';
 import { contractLanguageNibble } from './cmLanguage';
 import { isHumanClub } from './humans';
@@ -49,8 +50,7 @@ export function humanClub_600a50(c: CmCtx, club: number, ignoreHoliday = 1): boo
   return !(ignoreHoliday === 0 && onHoliday_5fd210(m, mg, m.s32(G.STAFF_COUNT)));
 }
 
-/** menneskets managers ikke-spillerpost +0x00..+0x22 i oraklet (14/7-2001: CA 3, PA 151, omdømmet 4410/5282/4582, de 21 egenskaber fra +0x0e) */
-export const HUMAN_NP = [183, 8, 0, 0, 3, 0, 151, 0, 58, 17, 162, 20, 230, 17, 1, 8, 246, 241, 4, 10, 9, 9, 2, 241, 10, 10, 11, 251, 3, 3, 246, 10, 3, 246, 4];
+export { HUMAN_NP } from './cmHumanNp';
 /** Menneskets managerpost mg (en af de 16 sidste personer): klub +0x39, nation +0x1a, job +0x3d = 5 og ikke-spillerposten +0x69 (HUMAN_NP ved
  *  `np`) som i originalen. Managerens bedømmelse 0x6e86d0 (via 0x4d0c60/0x4d1600) af menneskets spillere læser posten – uden den vurderes de
  *  unge spillere til en brøkdel af værdien (Pennant £188K mod £2,36M). */
