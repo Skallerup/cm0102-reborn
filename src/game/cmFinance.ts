@@ -267,6 +267,9 @@ export function cmFinanceNewGame(g: GameState, world: CMWorld, seed: number): vo
   g.cmFin = {};
   // formændene: den manglende del af ikke-spillerposten som originalens spilstart (sub_535a80 – cmStaffInit.ts), puljen = world-filens stab
   const pool: NpTemplate[] = (world.staff ?? []).filter((r) => r[11]).map((r) => npTemplate(npFromWorld(r[7], r[11]!, r[10]?.[7] ?? 0)));
+  // (hastighed, 25/11) klubbernes første manager i stabens rækkefølge én gang (supporterInit søgte i hele staben pr. klub; staben ændres ikke i løkken)
+  const mgrs = new Map<number, Staff>();
+  for (const s of Object.values(g.staff)) if (s.role === 'manager' && !mgrs.has(s.club)) mgrs.set(s.club, s);
   for (const c of Object.values(g.clubs)) {
     const fin = cf[c.id];
     const rand = cmRand(seed, c.id, 0x5961d0);
@@ -290,7 +293,7 @@ export function cmFinanceNewGame(g: GameState, world: CMWorld, seed: number): vo
     g.cmFin[c.id] = { wb: 0, top: 0, st: 0, share: f32(0.1), wk: 3, s165: 0, s166, status, chair, tm: blank(), lm: blank(), ty: blank(), ly: blank() };
     if (!fin) continue;
     if (world.clubBalance?.[c.id] === undefined) c.balance = bal / gbp(g, c);
-    supporterInit(g, c, cmRand(seed, c.id, 0x68f130));
+    supporterInit(g, c, cmRand(seed, c.id, 0x68f130), mgrs);
   }
 }
 /** ugens lønsum ved start: create_game's refresh_all_wage_bills 0x59cf50 (0x829852 – efter kontrakterne 0x4c7560, før forkørslen; newgame.ts)
@@ -312,9 +315,9 @@ export function wageIdx(g: GameState): WageIdx {
 
 /** init_club_board_records 0x68f130 (0x68f2a1–0x68f63e): tilhængernes tillid ved start (0..10000). Managerens omdømme = ikke-spillerposten
  *  +0xa (spillets Staff.rep · 2); menneskets klub: 4500 (0x68f3da – spillets menneske har ingen post, *afvigelse*) */
-export function supporterInit(g: GameState, c: Club, rand: (n: number) => number): void {
+export function supporterInit(g: GameState, c: Club, rand: (n: number) => number, mgrs?: Map<number, Staff>): void {
   const rep = repOf(g, c);
-  const mgr = Object.values(g.staff).find((s) => s.club === c.id && s.role === 'manager');
+  const mgr = mgrs ? mgrs.get(c.id) : Object.values(g.staff).find((s) => s.club === c.id && s.role === 'manager');
   let X: number;
   if (!mgr && c.manager !== -1) { (g.cmSup ??= {})[c.id] = 5000; return; }   // 0x68f81b: ingen manager → 5000
   if (c.manager === -1) X = 4500;
