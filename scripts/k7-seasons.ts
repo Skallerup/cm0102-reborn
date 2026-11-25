@@ -32,7 +32,9 @@ const Y23 = process.env.Y23 ?? `${E}/oracle/daysnap/s1-3.9.60-y23-e14`;
 const ONLY_ORACLE = !!process.env.ONLY_ORACLE;
 const LOANS = process.env.LOANS;
 const BUYS = process.env.BUYS;
-const STAFF = process.env.STAFF;   // fil: stabsskifterne (art 5 / Staff.moves, begge sider) med divisionerne – opdeling efter måned/type
+const STAFF = process.env.STAFF;
+const GONE = process.env.GONE;   // fil: personerne væk fra hukommelsen pr. sæson (begge sider, startens række) + vores cmRetLog (årsagen)
+const goneDump: { si: number; side: 'o' | 'u'; rows: PRow[] }[] = [];   // fil: stabsskifterne (art 5 / Staff.moves, begge sider) med divisionerne – opdeling efter måned/type
    // fil: alle handler (begge sider) med alder/CA/land/division – k7-købsanalyse   // fil: lejeaftalerne (begge sider) + lejelisten pr. billede (engelske klubber) – k7-loans-analyse
 const llSeries: { o: { iso: string; keys: string[] }[]; u: { iso: string; keys: string[] }[] } = { o: [], u: [] };
 const CLUB = 'Arsenal';
@@ -288,6 +290,7 @@ function seasonMetrics(si: number, A: World, B: World, divW: [World | undefined,
   // --- pensioner / regens (personer i hukommelsen ved start, der er væk ved slut; nye nøgler ved slut)
   const aKeys = new Set(A.players.map((p) => p.key));
   const gone = memA.filter((p) => !bKey.has(p.key));
+  if (GONE) goneDump.push({ si, side, rows: gone });
   set('pensioner', 'væk fra hukommelsen (pensioneret el. ude af hukommelsen) – alle', gone.length);
   set('pensioner', 'væk – 30 år eller ældre (≈ pensioneret)', gone.filter((p) => p.age >= 30).length);
   set('pensioner', 'væk – 30+ i engelsk klub eller klubløs ved start', gone.filter((p) => p.age >= 30 && (p.eng || !p.club)).length);
@@ -424,6 +427,7 @@ out(`\n${((Date.now() - t0) / 1000).toFixed(0)} s`);
 if (process.env.REPORT) writeFileSync(process.env.REPORT, lines.join('\n') + '\n');
 if (process.env.JSON) writeFileSync(process.env.JSON, JSON.stringify({ keyDates: Object.fromEntries(keyDates), metrics, names }, null, 1));
 if (!existsSync(Y23)) process.exitCode = 0;
+if (GONE) writeFileSync(GONE, JSON.stringify({ keyDates: Object.fromEntries(keyDates), gone: goneDump, log: ONLY_ORACLE ? [] : g.cmRetLog ?? [] }));
 if (STAFF) writeFileSync(STAFF, JSON.stringify({ o: [...oTransfers.values()].filter((t) => t.staff && t.eng), u: [...uTransfers.values()].filter((t) => t.staff && t.eng) }));
 if (BUYS) writeFileSync(BUYS, JSON.stringify({ keyDates: Object.fromEntries(keyDates), o: [...oTransfers.values()].filter((t) => !t.staff), u: [...uTransfers.values()].filter((t) => !t.staff) }));
 if (LOANS) writeFileSync(LOANS, JSON.stringify({ keyDates: Object.fromEntries(keyDates), o: { loans: [...oTransfers.values()].filter((t) => t.loan), ll: llSeries.o }, u: { loans: [...uTransfers.values()].filter((t) => t.loan), ll: llSeries.u } }));
