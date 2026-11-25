@@ -219,8 +219,10 @@ function contractsAndLoans() {
     // den originale database i ægte tilstand: computerklubbernes udløb styres af CONTRACT_MANAGER 0x4c7ac0 (cmContractManager.ts – spilleren bliver
     // med den udløbne kontrakt, til han vil væk eller er sat fri)
     if (p.contract && p.contract.expires < today && !(cmOn && cmCmScope(g, p))) {
-      // menneskets forkontrakt i originalens marked er et fremtidigt skifte (add_future_transfer 0x8cb9a0 – transfers.ts cmHumanFreeDue)
-      if (p.contract.futureClub && g.offers.some((o) => o.player === p.id && o.preContract && o.status === 'accepted' && !!o.cmFut)) continue;
+      // originalens marked: et aftalt fremtidigt skifte (add_future_transfer 0x8cb9a0 – computerens og menneskets forkontrakt) gennemføres af
+      // process_due_future_transfers 0x8cbbe0 på datoen (transfers.ts cmFutureDue/cmHumanFreeDue – sign_contract 0x4cf720 med tilbuddets
+      // trupstatus +0x4f), ikke her. Før kom Bosman-grenen ofte først (dagen efter udløbet) og gav den nye kontrakt trupstatus 0
+      if (p.contract.futureClub && g.offers.some((o) => o.player === p.id && o.status === 'accepted' && !!o.cmFut)) continue;
       if (p.contract.futureClub && g.clubs[p.contract.futureClub]) {
         const to = p.contract.futureClub;
         const fromName = g.clubs[p.club]?.name ?? '-';
