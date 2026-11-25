@@ -253,11 +253,11 @@ export type BoardNews =
   | { t: 'protest'; club: number }
   /** 0x6a0e70 (0x1777, tekst 0x6a1190): kind 1 = bestyrelsen beholder manageren (tillid ·0,9), 2 = ingen vurdering; v = komponenten, der halter
    *  (2 w8 tilhængerne, 1 wA spillerne, 3/4 wC stab/motivation, 0 ingen); tt = slot 11 (rand(10), 1 ved Motivating > 10) */
-  | { t: 'pressure'; club: number; kind: number; v: number; tt: number }
+  | { t: 'pressure'; club: number; kind: number; v: number; tt: number; sc: NewsScope }
   /** 0x6a5fa0 (0x138c): bestyrelsens reaktion på kampen – `tpl` = skabelonen i 0x6a69c0 (MATCH_TEXT), `run` = stimens sætning (MATCH_RUN, '' = ingen) */
   | { t: 'match'; club: number; opp: number; flags: number; gf: number; ga: number; tpl: number; run: string; comp: string }
   /** 0x6ac700 (0x178d, tekst 0x6ac880): modstanderen og turneringens korte navn (club_comp +0x38) */
-  | { t: 'ultimatum'; club: number; opp: number; comp: string }
+  | { t: 'ultimatum'; club: number; opp: number; comp: string; sc: NewsScope }
   /** 0x6a44a0 (0x177e): forbundets forventninger – kode (vtable +0x70) og turneringen (−1 = ingen) */
   | { t: 'faExpect'; club: number; code: number; comp: number }
   /** 0x6a5a60 (0x1781): forbundets vurdering efter turneringen (−3..3) */
@@ -1400,11 +1400,16 @@ function issueUltimatum(env: BoardEnv, st: CmBoardState, c: number, rand: Rand):
   if (!nx) return false;
   if (!nx.hasComp) return false;
   rand(5);                                                             // nyhedens tekstvariant (slot 7)
-  if (s16(env.clubRep(c)) >= 5750) rand(3);
-  env.news({ t: 'ultimatum', club: c, opp: nx.opp, comp: nx.comp });
+  // 0x6ac700: omdømme < 5750 → klubbens manager (0x7861e0); ellers rand(3) ≠ 0 → divisionen (0x7862d0), ellers landet (0x7863f0)
+  const sc: NewsScope = s16(env.clubRep(c)) < 5750 ? 'club' : rand(3) !== 0 ? 'div' : 'nation';
+  env.news({ t: 'ultimatum', club: c, opp: nx.opp, comp: nx.comp, sc });
   st.ult.push(c);
   return true;
 }
+
+/** udsendelsen (NewsItem +0xde): 'club' 0x7861e0 klubbens manager (kun et menneske), 'div' 0x7862d0 menneskene, hvis klub (+0x39) har
+ *  divisionen (+0x57), 'nation' 0x7863f0 menneskene, hvis klub ELLER landshold hører til landet, 'all' 0x786780, 'none' ingen */
+export type NewsScope = 'club' | 'div' | 'nation' | 'all' | 'none';
 
 /** 0x6a0e70 post_manager_under_pressure_news */
 function pressureNews(env: BoardEnv, st: CmBoardState, c: number, kind: number, rand: Rand): void {
@@ -1420,7 +1425,10 @@ function pressureNews(env: BoardEnv, st: CmBoardState, c: number, kind: number, 
   let tt = rand(10);
   // 0x544410(np, np +0x1b Motivating) > 10 → 1 (menneskets post: CA 0 og 0 → 7, så aldrig)
   if (m.np && npShown(m.ca, m.at(0x1b)) > 10) tt = 1;
-  env.news({ t: 'pressure', club: c, kind, v, tt });
+  // 0x6a10e0: menneskemanager (id ≥ staffCount − 16) → alle (0x786780); (s16) omdømme +0x80 > 5000 → landet +0x53 (0x7863f0); division +0x57
+  // findes → divisionen (0x7862d0) – undtagen "A Lower Division" [0x9cf764], som modtageren afgør (cmBoardGame.ts); ellers ingen
+  const sc: NewsScope = m.human ? 'all' : s16(env.clubRep(c)) > 5000 ? 'nation' : env.division(c) ? 'div' : 'none';
+  env.news({ t: 'pressure', club: c, kind, v, tt, sc });
   R.d18 = { ...env.today };
 }
 

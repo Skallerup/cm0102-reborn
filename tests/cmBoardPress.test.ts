@@ -8,19 +8,21 @@ import { readFileSync } from 'node:fs';
 import { confidenceBand, considerDeparture, isoToCm, newRec, npShown, type BoardEnv, type BoardNews, type CmBoardState } from '../src/game/cmBoard';
 import { boardCmText, confidenceText, pressureText } from '../src/game/cmBoardText';
 import { createGame, type WorldData } from '../src/game/newgame';
+import { boardEnv, _test as boardTest } from '../src/game/cmBoardGame';
 import { gs } from '../src/game/state';
 import { monthlyColumn } from '../src/game/media';
 
 const MU = 1;
 const seq = (...xs: number[]) => { let i = 0; return (n: number) => { const v = xs[i++] ?? 0; return n > 0 ? v % n : 0; }; };
 /** 0x69aba0 for Man Utd uden division (ingen ligasituation), menneskemanager ansat for 400 dage siden, formand med Patience 10 */
-function sack(w6: number, rands: number[], o: { w8?: number; chair?: boolean } = {}): { news: BoardNews[]; st: CmBoardState } {
+function sack(w6: number, rands: number[], o: { w8?: number; chair?: boolean; human?: boolean; rep?: number; div?: string } = {}): { news: BoardNews[]; st: CmBoardState } {
   const news: BoardNews[] = [];
   const env = {
     today: isoToCm('2002-11-30'), gameStart: isoToCm('2001-07-14'),
-    manager: () => ({ id: 9, np: true, human: true, rep: [3000, 3000, 3000], joined: isoToCm('2001-07-14'), ca: 0, at: () => 0, pres: 10 }),
-    clubRep: () => 9000, isNat: () => false, chair: () => (o.chair === false ? null : { b16: 10, b1d: 10, amb: 15, nation: 0 }),
-    division: () => null, league: () => null, entry: () => null, retiring: () => false, news: (n: BoardNews) => news.push(n),
+    manager: () => ({ id: 9, np: true, human: o.human ?? true, rep: [3000, 3000, 3000], joined: isoToCm('2001-07-14'), ca: 0, at: () => 0, pres: 10 }),
+    clubRep: () => o.rep ?? 9000, isNat: () => false, chair: () => (o.chair === false ? null : { b16: 10, b1d: 10, amb: 15, nation: 0 }),
+    division: () => o.div ?? null, league: () => null, entry: () => null, retiring: () => false, news: (n: BoardNews) => news.push(n),
+    nextFixture: () => ({ opp: 2, hasComp: true, comp: 'Premier Division' }),
   } as unknown as BoardEnv;
   const st: CmBoardState = { rec: { [MU]: { ...newRec(), w6, w8: o.w8 ?? 7000, wa: 7000, wc: 7000 } }, dep: [], vac: [], ult: [], month: 0 };
   considerDeparture(env, st, MU, false, seq(...rands));
@@ -81,6 +83,23 @@ describe('A: 0x6a0e70 "manager under pressure" i stedet for den opfundne advarse
   });
 });
 
+describe('C: udsendelsen – nyhederne om andre klubbers managere', () => {
+  it('0x6a0e70: menneske → alle (0x786780), omdømme > 5000 → landet (0x7863f0), ellers divisionen (0x7862d0), uden division ingen', () => {
+    expect(sack(4275, [0, 1, 3])).toMatchObject({ news: [{ t: 'pressure', sc: 'all' }] });
+    // computermanager: (g) rand(pres 10) = 1 → ingen egen afgang
+    expect(sack(4275, [0, 1, 1, 3], { human: false, rep: 5001 }).news[0]).toMatchObject({ sc: 'nation' });
+    expect(sack(4275, [0, 1, 1, 3], { human: false, rep: 5000 }).news[0]).toMatchObject({ sc: 'none' });
+    // med division: (h) rand(b1d 10) = 7 ≥ 5 → 0x6a0e70(c, 2)
+    expect(sack(4275, [0, 1, 1, 7, 3], { human: false, rep: 5000, div: 'CM1' }).news[0]).toMatchObject({ t: 'pressure', kind: 2, sc: 'div' });
+  });
+  it('0x6ac700: omdømme < 5750 → klubbens manager; ellers rand(3) ≠ 0 → divisionen, 0 → landet (rand(5) før)', () => {
+    // (e) rand(500) = 0, (f) rand(11) = 0 → ultimatum: rand(5), [rand(3)]
+    expect(sack(4275, [0, 0, 2], { rep: 5749, div: 'CM1' }).news[0]).toMatchObject({ t: 'ultimatum', sc: 'club' });
+    expect(sack(4275, [0, 0, 2, 1], { rep: 5750, div: 'CM1' }).news[0]).toMatchObject({ t: 'ultimatum', sc: 'div' });
+    expect(sack(4275, [0, 0, 2, 0], { rep: 5750, div: 'CM1' }).news[0]).toMatchObject({ t: 'ultimatum', sc: 'nation' });
+  });
+});
+
 describe('B og i spillet (3.9.60, ægte tilstand)', () => {
   const world = JSON.parse(readFileSync('public/data/world-original.json', 'utf8')) as WorldData;
   const eng = world.nations.findIndex((n) => n.name === 'England');
@@ -97,5 +116,29 @@ describe('B og i spillet (3.9.60, ægte tilstand)', () => {
     const before = g.news.length;
     monthlyColumn();
     expect(g.news.slice(0, Math.max(0, g.news.length - before)).filter((n) => n.key.startsWith('column.'))).toEqual([]);
+  }, 600000);
+  it('C: modtagerne set fra Man Utd-manageren (0x7861e0/0x7862d0/0x7863f0/0x786780) og nyheden om en anden klubs manager', () => {
+    const g = gs();
+    const env = boardEnv(g);
+    const by = (name: string) => Object.values(g.clubs).find((c) => c.name === name)!.id;
+    const ars = by('Arsenal'), wolves = by('Wolverhampton Wanderers'), juve = by('Juventus');
+    const S = boardTest.scopeToMe;
+    expect([S(g, env, 'all', juve), S(g, env, 'none', ars), S(g, env, 'club', ars), S(g, env, 'club', mu)]).toEqual([true, false, false, true]);
+    expect([S(g, env, 'div', ars), S(g, env, 'div', wolves), S(g, env, 'nation', wolves), S(g, env, 'nation', juve)]).toEqual([true, false, true, false]);
+    // 0x6a0e70 sender ikke til "A Lower Division" [0x9cf764] (notLower), 0x6ac700 gør
+    const low = g.cmLowerDiv;
+    g.cmLowerDiv = +g.clubs[mu].league.slice(2);
+    expect([S(g, env, 'div', ars, true), S(g, env, 'div', ars)]).toEqual([false, true]);
+    g.cmLowerDiv = low;
+    // i spillet: Arsenals pres (omdømme > 5000 → landet) med Arsenals formand og manager
+    const before = g.news.length;
+    env.news({ t: 'pressure', club: ars, kind: 2, v: 0, tt: 5, sc: 'nation' });
+    env.news({ t: 'ultimatum', club: juve, opp: ars, comp: 'Serie A', sc: 'div' });
+    const fresh = g.news.slice(0, g.news.length - before);
+    expect(fresh).toHaveLength(1);
+    const mgr = env.manager(ars)!;
+    const s = g.staff[mgr.id];
+    expect(fresh[0].params?.title).toBe(`${g.clubs[ars].short} board give ${s.first} ${s.last} vote of confidence`.replace(/  +/g, ' '));
+    if (g.cmChairName?.[ars]) expect(String(fresh[0].params?.body)).toContain(`chairman ${g.cmChairName[ars]}`);
   }, 600000);
 });

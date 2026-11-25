@@ -32,7 +32,7 @@ import { npStaffOf } from './cmRetire';
 import { setBoardRetired } from './cmStaffRetire';
 import { fixtureCodesOf } from './engine/grid/gameInputs';
 import {
-  type BoardEnv, type BoardNews, type BoardRec, type CmBoardState, type CmDate, type LeagueInfo, type MatchIn, type Person, type StatsEntry,
+  type BoardEnv, type BoardNews, type BoardRec, type CmBoardState, type CmDate, type LeagueInfo, type MatchIn, type NewsScope, type Person, type StatsEntry,
   HUMAN0, addVacancy, after, afterMatch, currentRun, daysSince, leagueBand, s8, applyForJob, boardDaily, cmToIso, confidenceBand, initRecords, initStaffRep, humanAppointRep, isoToCm, resetForNewManager,
   setSeasonExpectations, s16, weeklyUpdate, managerRepAfterMatch, newRec, reviewNational, removeClubManager,
 } from './cmBoard';
@@ -756,10 +756,10 @@ function boardNews(g: GameState, _env: BoardEnv, n: BoardNews): void {
     }
     // 0x6a0e70 (0x1777, tekst 0x6a1190), 0x6a5d10 (0x1782, 0x6a5e30) og 0x6ac700 (0x178d, 0x6ac880) – før stod CM Reborns egen "The board are
     // unhappy with results … you will be sacked" (board.warning) for alle tre, som ikke findes i originalen (ejerens test 25/11: modsagde
-    // den månedlige tillidsopdatering). Modtagerne: menneskets egen klub/landshold (andre klubbers nyheder til nation/division er ikke porteret).
+    // den månedlige tillidsopdatering). Modtagerne efter udsendelsen (cmBoard.ts NewsScope, scopeToMe): også om andre klubbers managere.
     case 'pressure': {
-      const nn = myNat(n.club);
-      if (!mine(n.club) && nn === null) return;
+      if (!scopeToMe(g, _env, n.sc, n.club, true)) return;
+      const nn = natOfClub(n.club);
       const m = _env.manager(n.club);
       const short = nn !== null ? clubName(n.club) : g.clubs[n.club]?.short || clubName(n.club);
       addNews({ cat: 'board', key: 'board.cm', params: boardParams({ k: 'pp', kind: n.kind, v: n.v, t: n.tt, cs: short, club: clubName(n.club), m: m ? mname(m) : g.manager.name,
@@ -767,19 +767,39 @@ function boardNews(g: GameState, _env: BoardEnv, n: BoardNews): void {
       return;
     }
     case 'protest': {
+      // 0x6a5d10: send_by_scope(c, …, 0) → 0x7861e0 kun klubbens (menneskelige) manager
       if (!mine(n.club) && myNat(n.club) === null) return;
       const m = _env.manager(n.club);
       addNews({ cat: 'board', key: 'board.cm', params: boardParams({ k: 'sp', club: clubName(n.club), m: m ? mname(m) : g.manager.name }) });
       return;
     }
     case 'ultimatum': {
-      if (!mine(n.club)) return;
+      if (!scopeToMe(g, _env, n.sc, n.club)) return;
       const m = _env.manager(n.club);
       addNews({ cat: 'board', key: 'board.cm', params: boardParams({ k: 'ul', cs: g.clubs[n.club]?.short || clubName(n.club), club: clubName(n.club), m: m ? mname(m) : g.manager.name,
         opp: clubName(n.opp), comp: n.comp }), link: { kind: 'club', id: n.club } });
       return;
     }
     default: return;
+  }
+}
+/** NewsItem +0xde-udsendelsen (cmBoard.ts NewsScope) set fra den aktive manager: 0x7861e0 klubbens manager er mennesket (klub eller
+ *  landshold), 0x7862d0 menneskets klub (+0x39) i klubbens division (+0x57; 0x6a0e70 – notLower – sender ikke til [0x9cf764] "A Lower Division", 0x6ac700 gør),
+ *  0x7863f0 menneskets klub eller landshold i klubbens land (+0x53), 0x786780 alle */
+function scopeToMe(g: GameState, env: BoardEnv, sc: NewsScope, c: number, notLower = false): boolean {
+  switch (sc) {
+    case 'all': return true;
+    case 'none': return false;
+    case 'club': { const nn = natOfClub(c); return nn !== null ? g.manager.national?.nation === nn : c === g.userClub; }
+    case 'div': {
+      const d = env.division(c);
+      if (!d || (notLower && d === `CM${g.cmLowerDiv ?? -1}`)) return false;
+      return !!g.userClub && g.clubs[g.userClub]?.league === d;
+    }
+    case 'nation': {
+      const n = env.clubNation(c);
+      return n >= 0 && ((!!g.userClub && g.clubs[g.userClub]?.nation === n) || g.manager.national?.nation === n);
+    }
   }
 }
 /** 0x6a2e00/0x6a1b00 (cmNewsScope.ts clubNewsToMe): kørende liga i et valgt land; omdømme > 7250 til alle, ellers landets managere */
@@ -1417,7 +1437,7 @@ postHooks.managerRep = (g, club, v) => {
   managerRepAfterMatch(m, staff, v[0], v[1], v[2]);
 };
 
-export const _test = { entryOf, leagueInfo };
+export const _test = { entryOf, leagueInfo, scopeToMe };
 export { squad };
 
 /** 0x844780 staff_interest_in_job_at_club(s, c, 0, job, NULL) for et andet job end manager (stabens skifter, cmStaffMove.ts) */
