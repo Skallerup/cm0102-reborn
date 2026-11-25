@@ -187,6 +187,13 @@ export const G = {
 /** [0xae2330]: en fast dato i exe-filen – den statiske initialisering 0x524cd0 (push 0x7d1/7/0x1f → Date 0x549f70) = 31/8-2001; intet skriver
  *  den igen (målt i oraklet: 31/8-2001 fra 14/7-2001 til 27/6-2004). Samme dato på alle databaser (exe-konstanten). */
 export const DATE_2330 = '2001-08-31';
+/** [0xae2330]/[0xae2332] (dag i året, år) og [0xae2334] (skudår) = DATE_2330 – den statiske dato, som 0x868210 (kontraktens start +0x25 før den →
+ *  1: Bosman-vejen i 0x84b6f0) og CONTRACT_MANAGER 0x4c7ac0 læser. Alle de lånte hukommelser skal have den (før stod den kun i
+ *  CONTRACT_MANAGER's – ønskelisternes havde 0 = 1/1-1900, så 0x868210 kun svarede 1 inden for FIFA-perioden og forkontrakterne udeblev). */
+export function writeDate2330(m: { w16(a: number, v: number): void; w32(a: number, v: number): void }): void {
+  const y = +DATE_2330.slice(0, 4), d = Math.round((Date.parse(DATE_2330) - Date.parse(`${y}-01-01`)) / 864e5);
+  m.w16(0xae2330, d); m.w16(0xae2332, y); m.w32(0xae2334, y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0) ? 1 : 0);
+}
 /** [0xae233c]: 0x5cccd0 (0x5cdb2c–0x5cdb64) sætter den til 1 – og aldrig tilbage – i den første tidsskive, hvor i dag > [0xae2330], EFTER
  *  dagens 0x4c7ac0-kald (oraklet: 0 på billedet 1/9-2001, 1 fra 2/9). `slice0` = 0x4c7ac0's tidsskive 0 på dagen (den ser endnu 0). */
 export function cmAfter2330(iso: string, slice0 = false): number {
