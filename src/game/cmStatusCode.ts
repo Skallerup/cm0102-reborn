@@ -41,6 +41,7 @@ import { underOffer } from './cmRetire';
 import { cmLoanBar } from './cmLoan';
 import { cmNeedsPermit, cmPermitOn } from './cmPermit';
 import { ageOn } from './dates';
+import { onGameSwitch } from './state';
 
 export type StatusTag = 'Abs' | 'Wpm' | 'Cup' | 'Ine' | 'Int' | 'Sus' | 'Inj' | 'Tir' | 'Sct' | 'Yel' | 'Trn' | 'Bid' | 'Wnt' | 'Req' | 'Lst' | 'Lon'
   | 'Ctr' | 'Ret' | 'Bos' | 'Unh' | 'Fut';
@@ -63,6 +64,9 @@ function needsPermit(g: GameState, p: Player, club: number): boolean {
 
 /** klubbens næste kamp (0x456900's kampargument) – én søgning pr. dag og klub */
 let fxG: GameState | null = null, fxKey = '', fxMemo: Fixture | undefined;
+// (hukommelse 26/11) holdt nyt-spil-forløbets midlertidige verden (Select Team) i live under hele Take Control – heap-snapshot: det eneste spil
+// i hovedtråden dér hang i fxG. Tømmes ved et skifte (nøglen er spilobjektet, så intet resultat ændres).
+onGameSwitch(() => { fxG = null; fxKey = ''; fxMemo = undefined; });
 function nextFixture(g: GameState, club: number): Fixture | undefined {
   const key = `${g.date}|${club}`;
   if (g === fxG && key === fxKey) return fxMemo;
