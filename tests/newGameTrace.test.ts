@@ -15,7 +15,13 @@ const h = vi.hoisted(() => {
 import { allowSelfReload, creatingNewGame, markNewGame, noteNewGameStep, readInterrupted } from '../src/online/newGameTrace';
 
 describe('newGameTrace', () => {
-  beforeEach(() => { markNewGame(false); h.ls.clear(); (globalThis as any).document.visibilityState = 'visible'; });
+  beforeEach(() => { for (let i = 0; i < 4; i++) markNewGame(false); h.ls.clear(); (globalThis as any).document.visibilityState = 'visible'; });
+  it('en afbrudt forhåndsvisnings slut efter den nyes start sletter ikke markøren (26/11)', () => {
+    markNewGame(true, '', 'preview'); markNewGame(true, '', 'preview'); markNewGame(false);
+    expect(creatingNewGame()).toBe(true);
+    markNewGame(false);
+    expect(creatingNewGame()).toBe(false);
+  });
   it('cm-creating meldes ved start og slut (opdaterings-toasten skjules under oprettelsen)', () => {
     const seen: boolean[] = [];
     const f = () => seen.push(creatingNewGame());

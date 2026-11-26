@@ -33,6 +33,7 @@ let cur: NewGameTrace | null = null;
 let lastWrite = 0;
 let hiddenAt = 0;
 let off: (() => void) | null = null;
+let depth = 0; // (26/11) en afbrudt forhåndsvisnings finally kom efter den nyes start og slettede markøren midt i oprettelsen
 
 const save = () => { if (cur) { lastWrite = Date.now(); set(TRACE, JSON.stringify(cur)); } };
 
@@ -45,6 +46,8 @@ function env(): Pick<NewGameTrace, 'mem' | 'cores' | 'standalone' | 'iab'> {
 
 /** et nyt spil begynder (on) eller er færdigt/fejlet (off) */
 export function markNewGame(on: boolean, size = '', kind?: 'preview' | 'game'): void {
+  if (!on) { depth = Math.max(0, depth - 1); if (depth > 0) return; }
+  else depth++;
   off?.(); off = null;
   if (!on) { cur = null; set(CREATING, null); set(TRACE, null); creatingChanged(); return; }
   const now = Date.now();
