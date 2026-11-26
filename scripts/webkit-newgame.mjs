@@ -22,7 +22,8 @@ const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, .
 const page = await ctx.newPage();
 await page.route(/\/api\//, (r) => r.fulfill({ json: { ok: true, mail: true } }));
 const errs = [];
-page.on('console', (m) => { const t = m.text(); if (t.startsWith('ngtrace ')) { console.log(`  t ${T()} ${t} fp ${rssNow().toFixed(0)} MB`); return; } if (/memory|fejlede|error|RangeError/i.test(t)) { console.log('  console: ' + t.slice(0, 400)); errs.push(t); } });
+// ALLCON=1: alle konsolbeskeder
+page.on('console', (m) => { const t = m.text(); if (process.env.ALLCON && !t.startsWith('ngtrace ')) console.log(`  t ${T()} console.${m.type()}: ${t.slice(0, 600)}`); if (t.startsWith('ngtrace ')) { console.log(`  t ${T()} ${t} fp ${rssNow().toFixed(0)} MB`); return; } if (/memory|fejlede|error|RangeError/i.test(t)) { console.log('  console: ' + t.slice(0, 400)); errs.push(t); } });
 page.on('pageerror', (e) => { console.log('PAGEERROR ' + e.message + '\n' + (e.stack ?? '').slice(0, 1200)); errs.push(e.message); });
 // TIMELINE: arbejdernes start/slut (hvilket trin toppen ligger i, også når der ikke vises en fremdriftsbjælke)
 let nW = 0;
@@ -149,7 +150,7 @@ try {
     await cdp.send('HeapProfiler.takeHeapSnapshot', { reportProgress: false });
     fs.closeSync(fd);
   }
-} catch (e) { res = 'afbrudt: ' + e.message.split('\n')[0]; }
+} catch (e) { res = 'afbrudt: ' + e.message.split('\n')[0]; console.log('  side: ' + (await page.evaluate(() => document.body.innerText.slice(0, 600)).catch(() => '?')).replace(/\s+/g, ' ')); }
 clearInterval(rssT); if (stepT) clearInterval(stepT);
 console.log(`phys_footprint_peak (fanens proces): ${foot('phys_footprint_peak').toFixed(0)} MB`);
 console.log(`${kind}: fp-top ${peakRss.toFixed(0)} MB (${peakAt}) – ${errs.length ? 'FEJL ' + errs.length : res} (${T()})`);
