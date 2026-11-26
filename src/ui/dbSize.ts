@@ -19,6 +19,14 @@ export function smallDevice(): boolean {
   return dm !== undefined && dm <= 4;
 }
 
+/** (hukommelse, iPhone 26/11) Safari på iPhone/iPad – eller en telefon/tablet, der ikke oplyser sin hukommelse (navigator.deviceMemory findes ikke) */
+export function iosOrUnknownMobile(): boolean {
+  if (/iPhone|iPad|iPod/i.test(UA)) return true;
+  if (typeof navigator !== 'undefined' && /Macintosh/.test(UA) && (navigator.maxTouchPoints ?? 0) > 1) return true;
+  const dm = typeof navigator !== 'undefined' ? (navigator as { deviceMemory?: number }).deviceMemory : undefined;
+  return dm === undefined && /Android|Mobile/i.test(UA);
+}
+
 const get = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
 const set = (k: string, v: string | null) => { try { if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch { /* ingen lagring */ } };
 

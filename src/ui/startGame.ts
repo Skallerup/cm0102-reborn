@@ -11,7 +11,7 @@ import type { NewGameProgress } from './NewGameLoader';
 import { listDbs, loadCustomWorld } from './customDb';
 import { communityEdits, loadOriginalWorld, loadWorld, ORIGINAL_VERSIONS, releaseWorldCaches, withCommunityEdits, type OriginalVersion } from './world';
 import { applyCommunityEdits } from './worldFetch';
-import type { DbSize } from './dbSize';
+import { iosOrUnknownMobile, type DbSize } from './dbSize';
 import { noteNewGameStep } from '../online/newGameTrace';
 import { deserializeState } from '../game/snapshot';
 import type { SaveMeta } from '../game/save';
@@ -108,7 +108,7 @@ export async function openStartWorld(db: Db, ver: OriginalVersion, size: DbSize 
  *  ønskelisterne – levende ~0,3–0,65 GB, kapaciteten op til 2,4 GB), og en afsluttet arbejders heap frigives helt. Spillet går fra arbejder til
  *  arbejder uden om hovedtråden (MessageChannel). `localStorage['cm0102.ngSplit'] = '0'`: alt i én arbejder som før (til målinger). */
 export function newGameStages(opts: Pick<NewGameOptions, 'preview'>): NewGameJob['phases'][] {
-  let split = true, parts = SL_PARTS;
+  let split = true, parts = iosOrUnknownMobile() ? SL_PARTS_MOBILE : SL_PARTS;
   try {
     split = localStorage.getItem('cm0102.ngSplit') !== '0';
     const n = Number(localStorage.getItem('cm0102.ngSlParts'));
@@ -125,6 +125,11 @@ export function newGameStages(opts: Pick<NewGameOptions, 'preview'>): NewGameJob
 const NG_TRACE = (() => { try { return typeof localStorage !== 'undefined' && localStorage.getItem('cm0102.ngTrace') === '1'; } catch { return false; } })();
 /** ønskelisternes portioner ved nyt spil (localStorage['cm0102.ngSlParts'] overstyrer – til målinger) */
 const SL_PARTS = 12;
+/** (hukommelse, iPhone 26/11 – NewGameInterrupted midt i ønskelisterne) iPhone/iPad og mobiler uden navigator.deviceMemory: 4 større portioner.
+ *  Hvert arbejderskifte (ny arbejder, newgame-chunken tolket igen, spillet kopieret over) kostede ~5 s på telefonen (78 s for 12 portioner af
+ *  ~0,2 s beregning) og en ny heap; WebKit, SLOW=5, produktion: 12 → 4 portioner = Take Control 58,7 → 43,6 s, ønskelisternes top 310 → 335 MB,
+ *  fanens footprint × tid −22 %. Bit for bit samme spil (cmShortlistStartPart; scripts/newgame-phases-check.ts … 4: ENS). */
+const SL_PARTS_MOBILE = 4;
 /** pause mellem to trins arbejdere (ms) – localStorage['cm0102.ngGap'] overstyrer (til målinger) */
 const PHASE_GAP_MS = 400;
 const phaseGap = () => { try { const v = localStorage.getItem('cm0102.ngGap'); const n = Number(v); return v !== null && v !== '' && n >= 0 && n <= 5000 ? n : PHASE_GAP_MS; } catch { return PHASE_GAP_MS; } };
