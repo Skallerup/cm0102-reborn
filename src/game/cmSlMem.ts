@@ -5,7 +5,7 @@
 // sammenligner alle sider med de to oprindelige byggere (og cmShortlistGame.ts gør det selv med CM_SL_MEMCHECK=1). Ændres buildWageMem/
 // buildWantMem, skal denne følge med (kontrollen fanger det).
 import type { GameState, Player, Staff } from './types';
-import { type CmCtx, G, SparseMem, writeMonthTables, cmAfter2330, writeDate2330 } from './cmMem';
+import { type CmCtx, type CmMem, G, SparseMem, writeMonthTables, cmAfter2330, writeDate2330 } from './cmMem';
 import { writeHolidayMem } from './cmHoliday';
 import { writeEuroMem } from './cmEuroMem';
 import { cmMemCall, writeHumanMgr, scanOf, writeKeyIds, writeLoanContract, LOAN_IX, KEY_NATIONS, OTHER_GLOBALS, NAT7F, STAFF0, PREC0, CLUB0, NAT0, DIV0, FIN0, K0, ROWS0, TM0, PTRS, type WageMem } from './cmWageGame';
@@ -28,6 +28,7 @@ import { boardEnv } from './cmBoardGame';
 import { leagueClash } from './cmBoardInterest';
 import type { BoardEnv } from './cmBoard';
 import { cmGbp, GBP_2001 } from './cmMoney';
+import { K } from './cmFinance';
 
 /** € → £ (cmMoney.ts: 0,86 for den originale database, 2026/27's faktor pr. liga) – sat af buildSlWantMem for spillet */
 let gbpOf: (cid: number | undefined) => number = () => GBP_2001;
@@ -647,6 +648,7 @@ export function buildSlWantMem(g: GameState, clubs: Iterable<number>, opts: { ca
       m.w32(a + 0x69, sa);
       if (cr[4] >= 0) { const ca = CITY0 + 0x40 * (cid % 0x8000); m.w32(sa + 0x38, ca); m.w8(ca + 0x33, g.cmCity33?.[cr[4]] ?? 0); }
     }
+    writeBudgetInputs(m, g, cid, a, finAdr(cid), MMREC);
     const mg: Staff | undefined = g.staff[g.clubs[cid].manager ?? -1], ms = m.u32(a + 0xcf);
     if (mg && ms && m.u32(ms + 0x69)) {
       const np = m.u32(ms + 0x69);
@@ -755,6 +757,27 @@ export function buildSlWantMem(g: GameState, clubs: Iterable<number>, opts: { ca
 }
 /** buildSlWantMem's tilstand mellem to portioner af spilstartens klubløkke (typede tabeller – Transferable) */
 export interface SlWantState { divs: [number, number][]; natInit: Uint8Array; gen: number; genPid: [number, number][]; P: { nums: Int32Array; data: Uint8Array[] }; m: { nums: Int32Array; data: Uint8Array[] } }
+
+/** Finance::get_transfer_budget 0x598800's inddata ud over lønportenes (som cmBudget.ts prepClub): klubbens træningsanlæg +0x7f, +0x6d (0 for
+ *  "Bright…"/"Wimble…"), stadionets kapacitet +0x3c (cmCrowd [5]), sæsonblokkens Bought +0x110 / Sold +0x118 (i64, nettokøb over £8M trækkes fra)
+ *  og MANAGER_MANAGER-postens +0x28 (bestyrelsens ekstra transferpenge, 0x599239). build_bid 0x8e5d60 (@0x8e6330/0x8e74a2) og 0x83b6e0 kalder
+ *  0x598800 på ønskelisternes hukommelse – uden felterne fik fx Brighton £210k og Carlisle £32k (oraklet og Funds: 0) og bød £5–80k, som
+ *  handlen siden ikke havde råd til (tilstand 0x10). */
+export function writeBudgetInputs(m: CmMem, g: GameState, cid: number, club: number, fin: number, mmRec: number): void {
+  const cl = g.clubs[cid], cr = g.cmCrowd?.[cid];
+  if (!cl || !club) return;
+  m.w8(club + 0x7f, cl.facilities);
+  m.w8(club + 0x6d, /^(Bright|Wimble)/.test(cl.name) ? 0 : 1);
+  const sa = m.u32(club + 0x69);
+  if (sa && cr && cr[3] >= 0) m.w32(sa + 0x3c, cr[5]);
+  if (fin) {
+    const ty = g.cmFin?.[cid]?.ty;
+    const w64 = (a: number, v: number) => { const x = Math.round(v); m.w32(a, x >>> 0); m.w32(a + 4, Math.floor(x / 4294967296)); };
+    w64(fin + 0x110, ty?.[K.bought] ?? 0);
+    w64(fin + 0x118, ty?.[K.sold] ?? 0);
+  }
+  if (g.cmBoard) m.w32(mmRec + 73 * cid + 0x28, (g.cmBoard.rec[cid] as { d28?: number } | undefined)?.d28 ?? 0);
+}
 
 /** nation +0x11c (2 = indlæst, 0x544820 tester bit 2): landet er indlæst – Select League(s) = g.activeNations; ældre spil uden den: landet har en
  *  spilbar liga (som cmFinance.ts' nationLoaded) */

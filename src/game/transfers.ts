@@ -21,9 +21,9 @@ import { SHIFT_WEEKS } from './board';
 import { fansOnDeparture, fansOnRenewal, fansOnSigning } from './fans';
 import { pushCareerLine, recordMove } from './season';
 import { blockedMoveReaction, playerPraises, targetReaction, type RejectReason } from './will';
-import type { Club, Contract, ContractClauses, Player, Role, TransferOffer } from './types';
+import type { Club, Contract, ContractClauses, GameState, Player, Role, TransferOffer } from './types';
 import { aiContract, cmAiTerms, cmContractAnswer, cmMoveInterest, cmTalkDemand } from './cmContractGame';
-import { cmBoardWageAllow } from './cmBudget';
+import { cmBoardWageAllow, cmTransferBudget } from './cmBudget';
 import { cmCmOn, cmCmScope } from './cmContractManager';
 import { cmAcceptBid, cmOfferContract, cmSwapAccept, cmSwapDaily, cmSwapOn, cmTalksDaily, cmTalksOn, cmTalksOpen, offerTerms } from './cmTransferTalks';
 import { cmLoanRefuses } from './cmLoan';
@@ -36,7 +36,7 @@ import { asOwner, forEachHuman, isHumanClub, isMultiplayer } from './humans';
 import { AGENT_RULES, agentOf } from './agents';
 import { econ } from './econ';
 import { origLogic, legacyExtended } from './rules';
-import { aiRespond, aiReview, applyRejectReason, clauseOptIn, newTerms, putTerms, termsOf, totalValue, valueCtx, GBP, MAX_SWAP, type BidTerms, type RejectKey } from './cmTransferBid';
+import { aiRespond, aiReview, applyRejectReason, clauseOptIn, newTerms, putTerms, stepUp, termsOf, totalValue, valueCtx, weightedValue, GBP, MAX_SWAP, type BidTerms, type RejectKey } from './cmTransferBid';
 import { bookBlockEur, K as CMK } from './cmFinance';
 import { cmGbp } from './cmMoney';
 import { cashRound, cashUnits } from '../i18n';
@@ -2117,7 +2117,7 @@ function cm7News(o: TransferOffer, p: Player, buyer: Club, e: SlBid): void {
     link: { kind: 'player', id: p.id } }));
 }
 /** målinger (fejlsøgning): computer → computer-svarene på ønskelisternes bud */
-export const CM_AIAI = { declined: 0, noContract: 0, free: 0, freeRefused: 0, freeDone: 0, pre: 0, preFut: 0, preDone: 0, loan: 0, loanOk: 0, bid: 0, accept: 0, counter: 0, counterOk: 0, reject: 0, refused: 0, withdrawn: 0, review: 0, rebid: 0, rules: 0, done: 0, open: 0, openDays: 0 };
+export const CM_AIAI = { delayed: 0, money: 0, declined: 0, noContract: 0, free: 0, freeRefused: 0, freeDone: 0, pre: 0, preFut: 0, preDone: 0, loan: 0, loanOk: 0, bid: 0, accept: 0, counter: 0, counterOk: 0, reject: 0, refused: 0, withdrawn: 0, review: 0, rebid: 0, rules: 0, done: 0, open: 0, openDays: 0 };
 const cmOpen = (o: TransferOffer) => o.status === 'pending' || o.status === 'countered' || o.status === 'negotiating';
 /** CM 01/02: menneskets lejebud til en computerklub. add_transfer_offer 0x8be300 giver svartiden 0x8cc5b0 (+ 0x8c6220, regnet første gang
  *  dagens behandling ser buddet, fra buddets dag); på svardagen process_due_offer 0x8c63a0 (tilstand 0, +0x1f = 1) →
@@ -2206,6 +2206,40 @@ function cmAiOfferContract(o: TransferOffer, p: Player, cx: SlDueCtx): boolean {
   o.cmK = k;
   return true;
 }
+/** check_offer_restrictions 0x8cfc90's pengegren (@0x8cfe16–0x8cff65, fjerde argument 0) for computerens køber af buddet: transferbudgettet
+ *  på dagen 0x5a0590 → 0x598800(staff, 0, 0, 0, 0) (negativt → 0; computerklubben: samme som Funds), Cash::step_up 0x43f4e0(4) X – og buddets
+ *  get_total_value 0x8e7a70(0, 1, 1, 0) (beløb + klausuler, ikke byttespillere). Højst 1,1 · X ([0x9689c0]) → 0 (trupplads og regler følger).
+ *  Ellers (grund 3): X + beløbet +0x1b af køberens åbne bud (0x8cdd80(staff, køber, 0) – 0x8c5cf0's åbne) på spillerne i hans ønskelistepar
+ *  (0x8420e0: Shortlist_Manager +4/+0x14, efter klub) større end værdien → 1 (vent), ellers 2. Uden originalens økonomi: det gemte budget. */
+function cmAiMoney(g: GameState, o: TransferOffer, buyer: Club): 0 | 1 | 2 {
+  if (o.loan) return 0;
+  const live = cmTransferBudget(g, buyer.id);
+  const X = stepUp(Math.max(0, live ?? toK(buyer.transferBudget, buyer.id)), 1);
+  const value = toK(o.fee, buyer.id) + toK(o.lgFee ?? 0, buyer.id) + toK(o.intFee ?? 0, buyer.id);
+  if (value <= X * 1.1) return 0;
+  let sum = X;
+  const mine = new Set((g.cmSlPairs ?? []).filter(([, c]) => c === buyer.id).map(([pid]) => pid));
+  for (const pid of mine) {
+    let first: TransferOffer | undefined;
+    for (const x of g.offers) if (x.player === pid && x.buyer === buyer.id && (cmOpen(x) || cmFutOpen(x)) && (!first || x.id < first.id)) first = x;
+    if (first) sum += toK(first.fee, buyer.id);
+  }
+  return sum > value ? 1 : 2;
+}
+/** TRANSFER_MANAGER 0x8c36b0(bud, køber, 0) – try_complete_offer's svar 1 for computerens køber: +0x2e + 1, tilstand 0x12; ligger
+ *  spillerens kontrakt hos et menneske, eller er +0x2e ≤ 1, kommer buddet igen om en uge (schedule_offer 0x8c6220(bud, 7, 0)); ellers
+ *  rand(2·+0x2e) ≠ 0 → 0x8bf680 (afvist: 2, 25 dage) og 0 → en uge mere. true = buddet er lukket. */
+function cmAiDelay(o: TransferOffer, p: Player, buyer: Club, cx: SlDueCtx): boolean {
+  const g = gs();
+  const r = (o.cmR = (o.cmR ?? 0) + 1);
+  const human = !!o.seller && isHumanClub(o.seller);
+  if (!human && r > 1 && cmRand(g.seed ?? 0, p.id, buyer.id, daysBetween('2000-01-01', g.date), 0x8c3803)(2 * r) !== 0) { cmTmClose(o, 2, 25, 'rejected'); return true; }
+  o.cmDelay = true;
+  o.status = 'pending';
+  o.cmK = undefined;
+  o.respondBy = addDays(g.date, cx.sched(7, 0));
+  return false;
+}
 function cmAiAiDue(cx: SlDueCtx) {
   const g = gs();
   let closed = false;
@@ -2223,6 +2257,21 @@ function cmAiAiDue(cx: SlDueCtx) {
       CM_AIAI.withdrawn++; closed = true; continue;
     }
     if (o.status === 'pending') {
+      if (o.cmDelay) {
+        // process_due_offer 0x8c63a0, tilstand 0x12 (@0x8c697a): tilstand 0, sælgerens svar 0x84af00 med buddets værdi 0x8e7b50(0,0,0,0,1) –
+        // 0 → accept_transfer_bid 0x8c0080 (spillerens vilje og et nyt kontrakttilbud), 1–2 → 0x8bf680 (2, 25 dage), ellers står buddet i
+        // tilstand 0 (0x8c8090 næste gang)
+        o.cmDelay = undefined;
+        const ans = cx.buyAnswer(p.id, buyer.id, o.seller, weightedValue(termsOf(o), valueCtx(g, p, buyer.id), false, false, false, true));
+        if (ans === 1 || ans === 2) { cmTmClose(o, 2, 25, 'rejected'); closed = true; continue; }
+        if (ans === 0) {
+          if (cx.interest(p.id, buyer.id) < 0.75) { CM_AIAI.refused++; cmTmClose(o, 0xf, 10, 'collapsed'); closed = true; continue; }
+          if (!cmAiOfferContract(o, p, cx)) { closed = true; continue; }
+          o.status = 'negotiating';
+          o.respondBy = addDays(g.date, Math.min(cx.rand(p.id, buyer.id)(5) + 1, Math.max(1, cx.delay(p.id, buyer.id, 0x4cd230))));
+        }
+        continue;
+      }
       if (!o.seller) {
         // 0x8c63a0: tilstand 0 uden sælgerens kontrakt (klubløs) → 0x8c6a42 accept_transfer_bid 0x8c0080 direkte (ingen sælger svarer):
         // 0x8c01b8 job 0xb → viljen 0x846920 med køberens trupstatus 0x849f00 under 0,75 → nej (0x8d8310, tilstand 0xf); ellers tilstand 5 og
@@ -2313,8 +2362,6 @@ function cmAiAiDue(cx: SlDueCtx) {
       closed = true;
       continue;
     }
-    // accepteret, og spilleren har besluttet sig: handlen (køberen skal stadig have råd – rater: kun første rate)
-    if (!o.loan && !(o.months && o.months > 0) && buyer.transferBudget < o.fee) { cmTmClose(o, 0x10, 20, 'collapsed'); closed = true; continue; }
     // (K7c #3) med sælger (køb og forkontrakt): handle_player_accepted_terms 0x8c2180 → advance_offer_to_club_approval 0x8c2f50 →
     // confirm_offer_by_club 0x8c3310: tidsnibblen ≠ 0 → get_offer_completion_date 0x8cee70 (cmOfferCheck.ts cmCompletionDate – 1/4: første dag
     // i købers vindue fra i dag/kontraktens udløb, 0x8cf0e0; 3: dagen efter udløbet; 5: 0x8d0bb0). Senere end i dag → de andre bud falder
@@ -2336,7 +2383,13 @@ function cmAiAiDue(cx: SlDueCtx) {
         continue;
       }
     }
-    // try_complete_offer 0x8c34e0: check_offer_restrictions 0x8cfc90 for køberen og sælgeren – uden for vinduet (grund 9) falder handlen (0x8c44e0)
+    // try_complete_offer 0x8c34e0: check_offer_restrictions 0x8cfc90 for køberen – først pengene (@0x8cfe16, cmAiMoney): svar 1 → 0x8c36b0
+    // (udsæt), 2 → collapse_offer 0x8c44e0 (0x10, 20 dage). Før: køberens gemte transferbudget (−beløbet ved hvert køb) mod beløbet – ikke
+    // 0x598800 på dagen, ikke 1,1 · step_up og ingen udsættelse (82 køb jul–dec faldt i 0x10 mod oraklets 2)
+    const money = cmAiMoney(g, o, buyer);
+    if (money === 1) { CM_AIAI.delayed++; if (cmAiDelay(o, p, buyer, cx)) closed = true; continue; }
+    if (money === 2) { CM_AIAI.money++; cmTmClose(o, 0x10, 20, 'collapsed'); closed = true; continue; }
+    // så reglerne for køberen og sælgeren – uden for vinduet (grund 9) falder handlen (0x8c44e0)
     if (cmAiRulesBlock(g, o)) { CM_AIAI.rules++; cmTmClose(o, 0x10, 20, 'collapsed'); closed = true; continue; }
     CM_AIAI.done++;
     cmTmCollapseOthers(o);
@@ -2413,7 +2466,8 @@ function cmFutureDue(): boolean {
     if (p?.contract?.futureClub === o.buyer) p.contract.futureClub = undefined;
     if (!p || !buyer || p.club !== o.seller || p.loan || humanClub0(g, o.buyer)) { o.status = 'collapsed'; cmTmClose(o, 0x10, 20); continue; }
     // 0x8cbcce/0x8cbdc8: check_offer_restrictions 0x8cfc90 for køberen og kontraktens klub – svar ≠ 0 med en anden grund end 9 → 0x8c44e0
-    if (cmAiRulesReason(g, o, true)) { CM_AIAI.rules++; o.status = 'collapsed'; cmTmClose(o, 0x10, 20); continue; }
+    // (pengene som i try_complete, cmAiMoney – 0x8cbbe0 lader både svar 1 og 2 vælte handlen)
+    if (cmAiMoney(g, o, buyer) || cmAiRulesReason(g, o, true, false)) { CM_AIAI.rules++; o.status = 'collapsed'; cmTmClose(o, 0x10, 20); continue; }
     o.status = 'negotiating';
     CM_AIAI.preDone++;
     if (!o.seller) { cmSignFree(o, p, buyer); continue; }

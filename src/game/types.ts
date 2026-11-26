@@ -858,6 +858,10 @@ export interface TransferOffer {
   cmUntil?: string;
   /** add_future_transfer 0x8cb9a0: aftalt skifte på datoen (tilstand 0x13, status 'accepted'); process_due_future_transfers 0x8cbbe0 */
   cmFut?: string;
+  /** try_complete_offer 0x8c34e0 → 0x8c36b0 (pengene i 0x8cfc90 svarede 1): tilstand 0x12 – på dagen (0x8c63a0) sælgerens svar 0x84af00 igen;
+   *  `cmR` = +0x2e (antallet af udsættelser) */
+  cmDelay?: true;
+  cmR?: number;
   /** build_bid's kontrakttilbud (+0x2f ≠ 0, tilstand 7 – 0x8be81e) til en spiller hos MENNESKETS klub: ingen Respond (sælgeren spørges aldrig),
    *  kun nyheden 0x8d3090; spilleren beslutter selv (0x4ce4e0) som hos computerens klubber */
   cm7?: boolean;

@@ -227,15 +227,15 @@ export function cmCompletionDate(g: GameState, o: TransferOffer): string {
  *  falder (0x8c44e0: tilstand 0x10, 20 dage); svar 1 → en uge mere (0x8c36b0). Tidsnibblen ≠ 0 (0x8cfd31): ligger handlens dato (0x8cee70 –
  *  cmCompletionDate) efter i dag, er alt i orden (svar 0). Ellers nationens regelsæt (TRANSFER_RULES +0xc, 0x8e8800 – cmRulesReason) på dagen:
  *  grund 9 er i orden for nibble 5 (0x8d001e). Bestyrelsens veto (0x8cdb80), pengene og truppladsen (0x8cd450) er ikke porteret her (pengene:
- *  transfers.ts' budgetprøve). `ignore9`: process_due_future_transfers 0x8cbbe0 lader grund 9 passere. Returnerer grunden ≠ 0, når handlen falder. */
-export function cmAiRulesReason(g: GameState, o: TransferOffer, ignore9 = false): number {
+ *  transfers.ts cmAiMoney for computerens køber). `money` = false: pengene er prøvet (cmAiMoney). `ignore9`: process_due_future_transfers 0x8cbbe0 lader grund 9 passere. Returnerer grunden ≠ 0, når handlen falder. */
+export function cmAiRulesReason(g: GameState, o: TransferOffer, ignore9 = false, money = true): number {
   const buyer = g.clubs[o.buyer], p = g.players[o.player];
   if (!buyer || !p || !cmMarketOn(g)) return 0;
   if ((o.cmTime ?? 0) !== 0 && cmCompletionDate(g, o) > g.date.slice(0, 10)) return 0;
   const ok9 = ignore9 || o.cmTime === 5;
   // 0x8cbbe0 (ignore9): kontrollen køres fuldt på dagen – også pengene (0x8cfe16: budgettet, ikke under 0, × 1,1 mod beløb + klausuler; for
-  // lidt → svar 1 eller 2, og 0x8cbbe0 lader begge vælte handlen). I try_complete-vejen står transfers.ts' egen budgetprøve.
-  if (ignore9 && !o.loan && o.fee + (o.lgFee ?? 0) + (o.intFee ?? 0) > Math.max(0, buyer.transferBudget) * 1.1) return 3;
+  // lidt → svar 1 eller 2, og 0x8cbbe0 lader begge vælte handlen). Computerens køber: transfers.ts cmAiMoney (money = false).
+  if (money && ignore9 && !o.loan && o.fee + (o.lgFee ?? 0) + (o.intFee ?? 0) > Math.max(0, buyer.transferBudget) * 1.1) return 3;
   for (const c of [buyer, o.seller ? g.clubs[o.seller] : undefined]) {
     if (!c) continue;
     const r = cmRulesReason(g, o, c, g.date.slice(0, 10));

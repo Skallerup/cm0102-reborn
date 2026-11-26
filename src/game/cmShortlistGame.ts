@@ -573,8 +573,8 @@ function writeOffers(S: SlMem): void {
     const fut = o.status === 'accepted' && !!o.cmFut;   // add_future_transfer 0x8cb9a0: tilstand 0x13 (19), til skiftet 0x8cbbe0
     if (!fut && !['pending', 'negotiating', 'countered'].includes(o.status) || isHumanClub(o.buyer) && isHumanClub(o.seller)) continue;
     const GBP = cmGbp(g, o.buyer);   // buddets beløb: køberens penge (cmMoney.ts)
-    const st = fut ? 0x13 : o.status === 'pending' ? 0 : o.status === 'countered' ? (o.cmAi ? 1 : 2) : o.cmK ? (o.loan ? 8 : 7) : 5;   // lejen: 8 (0x8c6581) til spillerens beslutning
-    const a = rec(o.id, o.buyer, o.player, o.created, o.fee, o.loan, st, 0, o.pub);
+    const st = fut ? 0x13 : o.cmDelay ? 0x12 : o.status === 'pending' ? 0 : o.status === 'countered' ? (o.cmAi ? 1 : 2) : o.cmK ? (o.loan ? 8 : 7) : 5;   // lejen: 8 (0x8c6581) til spillerens beslutning
+    const a = rec(o.id, o.buyer, o.player, o.created, o.fee, o.loan, st, o.cmR ?? 0, o.pub);
     if (!a) continue;
     m.w32(a + 0x35, Math.round((o.lgFee ?? 0) * GBP)); m.w8(a + 0x39, o.lgApps ?? 10);
     m.w32(a + 0x3a, Math.round((o.intFee ?? 0) * GBP)); m.w8(a + 0x3e, o.intApps ?? 10); m.w8(a + 0x3f, o.sellOn ?? 0); m.w8(a + 0x40, o.months ?? 0);
@@ -2541,6 +2541,8 @@ export function cmShortlistDaily(g: GameState, planClub: (cid: number) => { drop
     offerContract: (pid, buyer, offerId) => offerContract_8c1e40(S, pid, buyer, offerId),
     decide: (pid, buyer, k) => decide_4ce4e0(S, pid, buyer, k),
     asking: (pid, buyer) => askingPrice_8c8291(S, pid, buyer),
+    buyAnswer: (pid, buyer, seller, value) => buyAnswer_84af00(S, pid, buyer, seller, value),
+    sched: (days, slices) => days + (S.m.u8(G.SLICE) + slices > 2 ? 1 : 0),
   }); } finally { DUE_S = null; }
   (S.m as SparseMem).release();
   tick('d.apply', tt);
@@ -2565,6 +2567,11 @@ export interface SlDueCtx {
   /** ai_respond_to_bid 0x8c8291: CONTRACT_MANAGER::calc_asking_price 0x4d1600(sælger, køber, staff, &grund, 1, 1) i dagens hukommelse (£) –
    *  samme hukommelse, som køberens build_bid 0x8e6533 regnede sin pris i */
   asking(pid: number, buyer: number): number | null;
+  /** process_due_offer 0x8c63a0, tilstand 0x11/0x12 (et udsat køb): shortlist_manager_predict_selling_club_response 0x84af00(sælger, staff,
+   *  værdi 0x8e7b50(0,0,0,0,1) i £, køber, −1, −1, 0) – 0 = ja (0x8c0080), 1–2 = nej (0x8bf680) */
+  buyAnswer(pid: number, buyer: number, seller: number, value: number): number;
+  /** schedule_offer 0x8c6220(bud, dage, tidspunkter)'s dagsdel: dage + 1, når [0xae2c88] + tidspunkterne > 2 */
+  sched(days: number, slices: number): number;
 }
 export function setSlDue(f: (cx: SlDueCtx) => void): void { (globalThis as { __cmSlDue?: (cx: SlDueCtx) => void }).__cmSlDue = f; }
 const dueHook = (cx: SlDueCtx) => (globalThis as { __cmSlDue?: (cx: SlDueCtx) => void }).__cmSlDue?.(cx);
@@ -2586,6 +2593,14 @@ function loanAnswer_84af00(S: SlMem, pid: number, buyer: number, seller: number)
   const st = (S.m.u32(G.STAFF) + 0x6e * id) >>> 0;
   S.M.setRand(cmRand(S.g.seed ?? 0, pid, buyer, dayNum(S.g.date), 0x84af00));
   return shared(() => slCall(S.c, 0x84af00, S.slm, sc, st, 0, 0, bc, -1, -1, 1), S) & 0xff;
+}
+function buyAnswer_84af00(S: SlMem, pid: number, buyer: number, seller: number, value: number): number {
+  const id = S.memOf.get(pid), sc = S.clubAdr(seller), bc = S.clubAdr(buyer);
+  if (id === undefined || !sc || !bc) return 2;
+  refreshClub(S, seller);
+  const st = (S.m.u32(G.STAFF) + 0x6e * id) >>> 0, v = Math.round(value);
+  S.M.setRand(cmRand(S.g.seed ?? 0, pid, buyer, dayNum(S.g.date), 0x8c6a1b));
+  return s8(shared(() => slCall(S.c, 0x84af00, S.slm, sc, st, v >>> 0, Math.floor(v / 4294967296), bc, -1, -1, 0), S) & 0xff);
 }
 function moveInterest(S: SlMem, pid: number, buyer: number): number {
   const id = S.memOf.get(pid), bc = S.clubAdr(buyer);

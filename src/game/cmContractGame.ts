@@ -50,7 +50,7 @@ import { registerStaffContractAnswer, registerStaffOfferCheck } from './cmStaff'
 
 /** € → £: 0,86 for den originale database, 2026/27's faktor pr. liga (cmMoney.ts) – beløbene tilhører den købende/tilbydende klub */
 import { cmGbp } from './cmMoney';
-import { cmNationLoaded } from './cmSlMem';
+import { cmNationLoaded, writeBudgetInputs } from './cmSlMem';
 const VALUE_FORMULA = typeof process !== 'undefined' && process.env?.CM_VALUE === 'formula';
 const MMOBJ = 0x2bff0000, MMREC = 0x2b000000, EURO0 = 0x2c000000, STAD0 = 0x2d000000, CITY0 = 0x2c800000, COMP0 = 0x3e000000, VT = 0x3dff0000, CONT0 = 0x3dfe0000, PREF0 = 0x2f000000, STATS0 = 0x3e800000, ROW4A = 0x3dfd0000, NOBODY = 0x2e000000;
 /** de skrabeområder, kontrakterne skrives i (under cmContractWant.ts' SCR 0x300000 og cmContract.ts' stak 0x2ff000) */
@@ -210,6 +210,8 @@ export function buildWantMem(g: GameState, clubs: Iterable<number>, opts: { full
       m.w32(a + 0x69, sa);
       if (cr[4] >= 0) { const ca = CITY0 + 0x40 * (cid % 0x8000); m.w32(sa + 0x38, ca); m.w8(ca + 0x33, g.cmCity33?.[cr[4]] ?? 0); }
     }
+    // 0x598800's øvrige inddata (træningsanlæg, kapacitet, sæsonblokken, +0x28 – cmSlMem.ts writeBudgetInputs)
+    writeBudgetInputs(m, g, cid, a, W.finOf(cid), MMREC);
     // manageren: ikke-spillerposten +4 CA og +0x0e..+0x22 (Staff.cmNp – originalens spilstart, cmStaffInit.ts) – 0x4d0c60's bedømmelse 0x6e86d0
     const mg = g.staff[g.clubs[cid].manager ?? -1], ms = m.u32(a + 0xcf);
     if (mg && ms && m.u32(ms + 0x69)) {
