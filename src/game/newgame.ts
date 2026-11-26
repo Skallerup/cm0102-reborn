@@ -797,7 +797,9 @@ export function createGamePhase(phase: NewGamePhase, ctx: NewGameCtx): void {
   const g = gs(), o = ctx.o, season = ctx.season, cmRawLogic = ctx.cmRawLogic;
   if (phase === 'fitness') {
   PRERUN_PROGRESS.cb = (f) => progress('fitness', 0.17 + 0.19 * f);
-  try { cmFitNewGame(g); } finally { PRERUN_PROGRESS.cb = undefined; }
+  // (26/11, 2 GB-telefoner) den midlertidige verden til Select Team: posterne på databasens dato uden forkørslen 0x5cc850 – den viser databasens
+  // klubber før create_game (forkørslen, trupplanen og ønskelisterne kører først i det rigtige spil efter klubvalget)
+  try { cmFitNewGame(g, !!o.preview); } finally { PRERUN_PROGRESS.cb = undefined; }
   // originalens arbejdstilladelses-historik (0x8c6e60 – cmPermit.ts)
   cmPermitNewGame(g);
   return;
@@ -806,7 +808,8 @@ export function createGamePhase(phase: NewGamePhase, ctx: NewGameCtx): void {
   // computerens trupplan 0x83a1b0 → 0x83cb40 for alle klubber: trupstatus, lejeliste, +0x3d/+0x3e/+0x3f (cmSquadPlanGame.ts)
   progress('plan', 0.38);
   SQUADPLAN_PROGRESS.cb = (f) => progress('plan', 0.38 + 0.2 * f);
-  try { cmSquadPlanStart(g); } finally { SQUADPLAN_PROGRESS.cb = undefined; }
+  // (26/11) ikke i den midlertidige verden til Select Team (se 'fitness')
+  if (!o.preview) try { cmSquadPlanStart(g); } finally { SQUADPLAN_PROGRESS.cb = undefined; }
   // 0x83a1b0 efter trupplanen: lønnen for kontrakterne uden løn (0x862720 – cmWageGame.ts)
   cmWageFillNewGame(g, new Set(ctx.unsetWages));
   // staben: 0x83a1b0's udfyldning af lønnen −1 med 0x862720 (cmWageGame.ts)
@@ -881,6 +884,8 @@ export function createGamePhase(phase: NewGamePhase, ctx: NewGameCtx): void {
   // runde 8: originalens kampmotor (gittermotoren) som standard i ægte tilstand med en CM-database (cmLogic – 2026/27 fra 17/11) – én konstant (liveSim.ts)
   if (GRID_ENGINE_DEFAULT && cmLogic(g)) g.options.engine = 'original';
   // (runde 10C) forkørslen: de europæiske kampe før startdatoen (sim.ts registrerer krogen)
+  // (26/11) den midlertidige verden til Select Team: ingen kampe før start (forkørslen kører kun i det rigtige spil – se 'fitness')
+  if (o.preview) return;
   compHooks.euroCatchUp?.(g);
   // (16/11) forkørslen 0x5cc850 spiller alle turneringers kampe fra databasens dato til starten – ligaer og pokaler, der begyndte før startdatoen
   // (Norge/Sverige/Japan/USA/Rusland fra marts–april, Brasiliens pokal): deres kampe spilles her på én gang (sim.ts playOverdue – se cmSeason.ts)

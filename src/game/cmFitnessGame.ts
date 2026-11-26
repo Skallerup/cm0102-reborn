@@ -169,7 +169,8 @@ function realPlayers(g: GameState): Player[] {
  *  kampe og uden 0x5ce2d0). Efter løkken (0x5ccc91–0x5cccaa) kommer trupplanen 0x83a1b0 (newgame.ts cmSquadPlanStart … cmShortlistStart – den
  *  læser konditionen og bringer posterne op til startdagen 0x62c680, så skader, der er helet, slutter), player_setup.cfg 0x7a30c0 (cmSetupLoans
  *  og skaderne) og 0x62a920 – de to sidste i cmFitSetupDay. */
-export function cmFitNewGame(g: GameState): void {
+/** `noPrerun` (newgame.ts – nyt-spil-forløbets midlertidige verden til Select Team): kun posterne på databasens dato, uden forkørslen */
+export function cmFitNewGame(g: GameState, noPrerun = false): void {
   // (MODERN_PARITY 6) en CM-database i ægte tilstand – 2026/27 med: g.cmFitStart nedenfor slår modulet til (cmBodyOn)
   if (!cmLogic(g) || g.draft) return;
   linkPlayerCtx(g);
@@ -180,6 +181,7 @@ export function cmFitNewGame(g: GameState): void {
   setKnockHook(true);
   initRecords(fitCtx(g, SALT.init, db), ps);
   cmStaffStateInit(g, `${g.date.slice(0, 4)}-01-01`);                                 // 0x828110: staffpostens +0xa (indkøringsbyten) på databasens dato
+  if (noPrerun) return;
   // forkørslen 0x5cc850 (cmPrerun.ts): trinet Injury 0x62b7b0 hver dag fra dagen efter databasens dato til dagen før start
   const staff = Object.keys(g.staff).length;
   prerunInjury = { ps, staff };
