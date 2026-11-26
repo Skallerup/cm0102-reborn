@@ -137,7 +137,8 @@ function PreMatch({ id, onPlay, onQuick }: { id: number; onPlay: () => void; onQ
   const g = useGame()!;
   const { nav } = useNav();
   const f = g.fixtures[id];
-  const [rep] = useState(() => opponentReport(f));
+  // modstanderanalysen (CM Reborns egen, kun uden originalens logik) simulerer kampe – går det galt, vises den ikke i stedet for at skærmen går ned
+  const [rep] = useState(() => { if (origLogic()) return null; try { return opponentReport(f); } catch (e) { console.error(e); return null; } });
   const tac = userTactic(false);
   const xi = tac.lineup.map((pid) => g.players[pid]).filter(Boolean);
   const isToday = g.pendingFixture === id;
@@ -163,19 +164,19 @@ function PreMatch({ id, onPlay, onQuick }: { id: number; onPlay: () => void; onQ
             <span className="muted">{tac.formation} · {t(`ment.${tac.team.mentality}`)}</span>
           </div>
         </Panel>
-        {!origLogic() && <Panel title={t('an.opponent', { club: rep.opp.short })}>
+        {rep && <Panel title={t('an.opponent', { club: rep.opp.short })}>
           <div className="kv">
             <span>{t('an.formation')}</span><span>{rep.oppTactic.formation} ({t(`ment.${rep.oppTactic.team.mentality}`)})</span>
             <span>{t('col.form')}</span><span>{rep.form || '-'}</span>
             <span>{t('an.keyPlayers')}</span><span>{rep.keyPlayers.map((pid) => <span key={pid}><PlayerLink p={g.players[pid]} short /> </span>)}</span>
-            <span>{t('an.odds')}</span><span><b className="good"><Pct v={rep.probs[0]} /></b> / <Pct v={rep.probs[1]} /> / <b className="bad"><Pct v={rep.probs[2]} /></b></span>
+            {rep.probs && <><span>{t('an.odds')}</span><span><b className="good"><Pct v={rep.probs[0]} /></b> / <Pct v={rep.probs[1]} /> / <b className="bad"><Pct v={rep.probs[2]} /></b></span></>}
           </div>
           <div className="gap" />
           {rep.insights.map((i, k) => <div key={k} className={`insight ${i.tone}`}>{t(i.key, { ...i.params, lane: i.params?.lane ? t(`lane.${i.params.lane}`) : undefined })}</div>)}
         </Panel>}
       </div>
       {/* analyse, odds og modstanderinstruktioner findes ikke i originalen (kun udvidede gamle spil) */}
-      {isToday && !awayVsHuman && !origLogic() && <OppInstructionsPanel fixture={id} rep={rep} />}
+      {isToday && !awayVsHuman && rep && <OppInstructionsPanel fixture={id} rep={rep} />}
       {isToday && !gs().draft && <TeamTalk fixture={id} stage="pre" pids={[...tac.lineup, ...tac.bench].filter(Boolean)} diff={0} ratings={{}} />}
       {isToday && awayVsHuman ? (
         <div className="insight">{t('mp.h2hAway', { name: humanManager(f.home)?.name ?? '' })}</div>

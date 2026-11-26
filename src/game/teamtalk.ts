@@ -44,7 +44,7 @@ export function matchExpectation(fixtureId: number): { e: number; big: boolean }
   const rep = opponentReport(f);
   const comp = g.comps[f.comp];
   const big = f.stage === 'F' || comp?.type === 'continental' || comp?.type === 'playoff' || Math.abs(g.clubs[f.home].rep - g.clubs[f.away].rep) <= 4 && rep.opp.rep >= 70;
-  return { e: rep.probs[0] - rep.probs[2], big };
+  return { e: rep.probs ? rep.probs[0] - rep.probs[2] : 0, big };
 }
 
 /** Hvor godt passer tonen til situationen (for holdet som helhed) */

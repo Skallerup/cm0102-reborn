@@ -1,6 +1,7 @@
 // Assistent-analyse (forbedring #4) og den gennemsigtige motor (forbedring #3).
 import { A, roleScore, slotRole } from './attributes';
 import { quickMatch, zoneProfile, type EngineTeam } from './engine/match';
+import { cmVirtualView } from './cmVirtual';
 import { Rng } from './rng';
 import { attrRange, knowledgeOf } from './scouting';
 import { gs, squad } from './state';
@@ -42,6 +43,9 @@ export function opponentReport(f: Fixture) {
   const userHome = f.home === g.userClub;
   const oppId = userHome ? f.away : f.home;
   const opp = g.clubs[oppId];
+  // klubber med for få spillere har kun originalens fyldspillere (0x90dae0), når truppen vises (0x90d4f0) eller kampen spilles (0x90d2f0) –
+  // analysen ser modstanderens trup, så de laves her som ved truppens visning (ellers simuleres mod et hold uden spillere: 'eff'-nedbrud)
+  cmVirtualView(g, oppId);
   const oppTactic = aiTactic(oppId, g.userClub, !userHome);
   const myTactic = userTactic(false);
   const mine = engineTeam(g.userClub, myTactic);
@@ -81,10 +85,12 @@ export function opponentReport(f: Fixture) {
   const slowDef = theirXI.filter((p, i) => ['CB', 'FB'].includes(slotRole(oppTactic.slots[i])) && p.attrs[A.pace] < 11).length;
   if (slowDef >= 2) insights.push({ key: 'an.slowDefence', tone: 'good' });
   // Sandsynligheder via Monte Carlo
-  const probs = winProbability(userHome ? mine : theirs, userHome ? theirs : mine, f.stage === 'F', 150);
-  const [w, d, l] = userHome ? probs : [probs[2], probs[1], probs[0]];
+  // et hold uden spillere på banen kan ikke simuleres (zonemotoren kræver mindst én mand) – så ingen sandsynligheder
+  const fieldable = (t: EngineTeam) => t.tactic.lineup.some((id) => id && t.players.has(id));
+  const probs = fieldable(mine) && fieldable(theirs) ? winProbability(userHome ? mine : theirs, userHome ? theirs : mine, f.stage === 'F', 150) : null;
+  const wdl = probs && (userHome ? probs : [probs[2], probs[1], probs[0]]);
   const form = g.comps[f.comp]?.table.find((r) => r.club === oppId)?.form ?? '';
-  return { opp, oppTactic, keyPlayers, insights, probs: [w, d, l] as [number, number, number], form, zones: { mine: mz, theirs: tz }, attackLane: clear ? 2 - weakest : undefined };
+  return { opp, oppTactic, keyPlayers, insights, probs: wdl as [number, number, number] | null, form, zones: { mine: mz, theirs: tz }, attackLane: clear ? 2 - weakest : undefined };
 }
 
 export function winProbability(home: EngineTeam, away: EngineTeam, neutral: boolean, n = 150): [number, number, number] {

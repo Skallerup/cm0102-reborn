@@ -25,7 +25,8 @@ export function TeamTalk({ fixture, stage, pids, diff, ratings, onGiven }: {
   const [ind, setInd] = useState<Record<number, TalkTone>>({});
   const [results, setResults] = useState<TalkResult[] | null>(null);
   const [showInd, setShowInd] = useState(false);
-  const ex = useMemo(() => matchExpectation(fixture), [fixture]);
+  // analysen simulerer kampe: kan den ikke det, taler holdet uden forventning i stedet for at skærmen går ned
+  const ex = useMemo(() => { try { return matchExpectation(fixture); } catch (e) { console.error(e); return { e: 0, big: false }; } }, [fixture]);
   const advice = useMemo(() => assistantTone({ stage, fixture, e: ex.e, big: ex.big, diff, ratings }, pids), [stage, fixture, ex, diff, ratings, pids]);
   const done = talkDone(fixture, stage);
   const situation = stage === 'pre'

@@ -9,6 +9,7 @@ import { gs, setClub, squad } from '../src/game/state';
 import { newFixture } from '../src/game/competitions';
 import { FRIENDLY_COMP } from '../src/game/cmFriendly';
 import { simulateFixture } from '../src/game/sim';
+import { opponentReport } from '../src/game/analysis';
 import { Crt, GROUP_TARGET, cmVirtualClear, cmVirtualMatch, cmVirtualSync, cmVirtualView, virtualGroup, virtualPlan } from '../src/game/cmVirtual';
 
 describe('CRT-rand og grupperne', () => {
@@ -110,6 +111,20 @@ describe('fyldspillerne i spillet (original DB, ægte tilstand)', () => {
     const home = rep.players.filter((l) => l.team === 0);
     expect(home.filter((l) => !l.sub).length).toBe(11);
     expect(home.filter((l) => g.players[l.id]?.virtual).length).toBeGreaterThanOrEqual(9);
+    cmVirtualClear(g);
+  });
+
+  it("assistentens modstanderanalyse mod en klub uden egne spillere: fyldspillerne laves som ved truppens visning (nedbrud 'eff' 26/11)", () => {
+    cmVirtualClear(g);
+    const empty = Object.values(g.clubs).find((c) => c.id !== bab.id && c.nation === germany && g.leagues[c.league]?.hidden && squad(c.id).length > 0)!;
+    for (const p of squad(empty.id)) setClub(p, 0);
+    expect(squad(empty.id).length).toBe(0);
+    const f = newFixture(FRIENDLY_COMP, g.date, g.userClub, empty.id, 1, { slot: 1 });
+    const rep = opponentReport(f);                                        // før: MatchSim.cross → gk(O) undefined → 'eff'
+    expect(squad(empty.id).filter((p) => p.virtual).length).toBeGreaterThanOrEqual(11);
+    expect(rep.probs).not.toBeNull();
+    expect(rep.probs!.reduce((a, b) => a + b, 0)).toBeCloseTo(1);
+    delete g.fixtures[f.id];
     cmVirtualClear(g);
   });
 });

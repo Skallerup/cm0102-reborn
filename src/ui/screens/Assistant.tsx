@@ -39,7 +39,8 @@ export function Assistant({ tab: initial }: { tab?: string }) {
 function Opponent() {
   const g = useGame()!;
   const next = Object.values(g.fixtures).filter((f) => !f.result && (f.home === g.userClub || f.away === g.userClub)).sort((a, b) => a.date.localeCompare(b.date))[0];
-  const rep = useMemo(() => (next ? opponentReport(next) : null), [next?.id]);
+  // analysen simulerer kampe: går det galt, vises "ingen kamp" i stedet for at skærmen går ned
+  const rep = useMemo(() => { try { return next ? opponentReport(next) : null; } catch (e) { console.error(e); return null; } }, [next?.id]);
   if (!next || !rep) return <div className="empty">{t('as.noMatch')}</div>;
   const zoneCell = (v: number, max: number) => `rgba(255, 212, 71, ${Math.min(0.85, v / max)})`;
   const maxAtt = Math.max(...rep.zones.theirs.att, 1);
@@ -50,7 +51,7 @@ function Opponent() {
           <span>{t('an.formation')}</span><span>{rep.oppTactic.formation} ({t(`ment.${rep.oppTactic.team.mentality}`)})</span>
           <span>{t('col.form')}</span><span>{rep.form || '-'}</span>
           <span>{t('an.keyPlayers')}</span><span>{rep.keyPlayers.map((pid) => <div key={pid}><PlayerLink p={g.players[pid]} /></div>)}</span>
-          <span>{t('an.odds')}</span><span><b className="good">{t('an.win')} <Pct v={rep.probs[0]} /></b> · {t('an.draw')} <Pct v={rep.probs[1]} /> · <b className="bad">{t('an.loss')} <Pct v={rep.probs[2]} /></b></span>
+          {rep.probs && <><span>{t('an.odds')}</span><span><b className="good">{t('an.win')} <Pct v={rep.probs[0]} /></b> · {t('an.draw')} <Pct v={rep.probs[1]} /> · <b className="bad">{t('an.loss')} <Pct v={rep.probs[2]} /></b></span></>}
         </div>
         <div className="muted" style={{ marginTop: 6 }}>{t('an.oddsHint')}</div>
       </Panel>
