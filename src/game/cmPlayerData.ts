@@ -1180,9 +1180,16 @@ function moraleDay(g: GameState, p: Player, rand: (n: number) => number): void {
  *  ny klub, klubbens sprog +0x77))) som byte, højst 100, lagt til byten (u8). */
 export function cmStaffStateMove(g: GameState, p: Player, from: number, to: number): void {
   if (!cmBodyOn(g) || g.cmFitStart === undefined || !to) return;
-  // 0x8ca0a4–0x8ca0ce: den nye klubs trupplan-tæller +8 = 100 (Shortlist_Manager [+0xdc] + 9·klub), medmindre 0x5444a0 (kontrakten +0x4e & 1 –
-  // en ny kontrakt er ikke transferlistet) – så åbner 0x5cccd0's port (rand(70) + 30 < +8) og klubben planlægger igen inden for få dage
-  cmPlanKick(g, to);
+  // 0x8ca0a4–0x8ca106 er skiftets "forlad den gamle klub": staff +0x39 er her stadig den GAMLE klub (i den almindelige vej skriver 0x8c9720 ikke
+  // +0x39 – kun lejevejene 0x8c9e55/0x8c9ecc/0x8c9f28; 0x53c190(+0x39, staff, 0, 1, 0) @0x8ca106 fjerner ham fra den, før 0x53bd10(ny klub, …)
+  // @0x8ca12f lægger ham i den nye): har han en klub, sættes DENS trupplan-tæller +8 = 100 (Shortlist_Manager [+0xdc] + 9·klub @0x8ca0ce),
+  // medmindre 0x5444a0 (kontrakten +0x4e & 1 – den nye kontrakt er ikke transferlistet). Køberens tæller sættes af 0x843e10 mode 2 @0x84418d
+  // (målet bliver pladsens indehaver – cmShortlistGame.ts cmSlMoved). Oraklet (aug–okt, Premier + First Division): hver afgang (50/50) og hver
+  // ankomst (116/116) giver klubben +8 = 100. Før satte vi den nye klubs tæller her (og i cmMovedToClub) og aldrig sælgerens – sælgerne planlagde
+  // derfor for sjældent igen (0x83a730 → 0x83b6e0/0x83f3a0: færre nye mål og købsbud aug–okt). En udlejet, der sælges: moderklubben (cmLeaveFrom).
+  const old = LEAVE_FROM.get(p) ?? from;
+  LEAVE_FROM.delete(p);
+  if (old) cmPlanKick(g, old);
   // 0x8ca23e: kun spillerposten (+0x61) – en regen med PLAYER_REGEN har puljens post (0x7abac0; cmGenerated)
   if (cmGenerated(g, p)) return;
   const world = s16(Math.round((p.cmRepMem ?? p.cmRep ?? [p.rep * 2, p.rep * 2, p.rep * 2])[2] * 50));
@@ -1209,7 +1216,13 @@ export function cmStaffStateMove(g: GameState, p: Player, from: number, to: numb
   p.cmStaffState = u8b((p.cmStaffState ?? 0) + v) || undefined;
 }
 
-/** 0x8ca0ce / 0x84418d: trupplanens tæller +8 = 100 for klubben (efter et klubskifte 0x8c9720 og når et mål kommer til klubben 0x843e10) */
+/** en udlejet spiller, der sælges (transfers.ts completeTransfer – lejen ophører før skiftet): staff +0x39 er i 0x8c9720's lejevej moderklubben,
+ *  når 0x8ca0a4 kører (0x8c9e55: kontraktens klub efter 0x53c190 / end_loan 0x4d07e0) – det er den, cmStaffStateMove sætter +8 = 100 for */
+const LEAVE_FROM = new WeakMap<Player, number>();
+export function cmLeaveFrom(p: Player, club: number): void { LEAVE_FROM.set(p, club); }
+
+/** 0x8ca0ce / 0x84418d / 0x7a5c76: trupplanens tæller +8 = 100 for klubben (den gamle klub ved et klubskifte 0x8c9720, når et mål kommer til
+ *  klubben 0x843e10 mode 2/5, en pensionering) */
 export function cmPlanKick(g: GameState, cid: number): void {
   const st = g.cmPlan?.[cid];
   if (st) st.c = 100;

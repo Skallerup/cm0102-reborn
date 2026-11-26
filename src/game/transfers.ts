@@ -1,6 +1,6 @@
 // Transfers, kontrakter og AI-transfermarked (forbedring #7: behovsstyrede AI-klubber).
 import { holidayOpt, humanClub0, onHoliday } from './cmHoliday';
-import { cmLogic, cmMarketOn, cmMediaOn, cmRand, setRequestHooks, setStatusCode } from './cmPlayerData';
+import { cmLeaveFrom, cmLogic, cmMarketOn, cmMediaOn, cmRand, setRequestHooks, setStatusCode } from './cmPlayerData';
 import { SQUAD_STATUSES } from './squadStatus';
 import { cmBidChance, cmInterested, cmRequestNews } from './cmTransferList';
 import { transferNewsToMe } from './cmNewsScope';
@@ -30,7 +30,7 @@ import { cmLoanRefuses } from './cmLoan';
 import { cmBuildBid } from './cmAiBid';
 import { cmAiRulesBlock, cmAiRulesReason, cmCanSign, cmCompletionDate, cmWindowOpen } from './cmOfferCheck';
 import { cmRumourAdd } from './cmRumours';
-import { cmAskingPrice, cmExchangeCheck, cmInterestedClubs, cmLoanAnswerNow, cmLoanDelayNow, cmMovedToClub, cmSlPlayerGone, cmShortlistOn, cmSlMoved, cmSlLoaned, setSlApply, setSlDue, type SlBid, type SlDueCtx, type SlEvent } from './cmShortlistGame';
+import { cmAskingPrice, cmExchangeCheck, cmInterestedClubs, cmLoanAnswerNow, cmLoanDelayNow, cmSlPlayerGone, cmShortlistOn, cmSlMoved, cmSlLoaned, setSlApply, setSlDue, type SlBid, type SlDueCtx, type SlEvent } from './cmShortlistGame';
 import { ADDON_APPS, bidClauseWorth, cleanClauses, clauseWorth, defaultRelease, settleSellOn } from './clauses';
 import { asOwner, forEachHuman, isHumanClub, isMultiplayer } from './humans';
 import { AGENT_RULES, agentOf } from './agents';
@@ -927,7 +927,7 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
   if (p.club) pushCareerLine(p, p.club, !!p.loan && p.loan.from !== p.club, o.loan ? { kind: 1 }
     : { fee: o.fee, kind: seller && o.swap?.length ? 2 : !o.fee && (o.cmTime === 3 || o.cmTime === 4) ? 3 : undefined });
   // en udlejet, der sælges (computerens ønskelister – cmShortlistApply): lejekontrakten ophører med handlen
-  if (!o.loan && p.loan) { noteLoanEnd(p.club); p.loan = null; }
+  if (!o.loan && p.loan) { noteLoanEnd(p.club); cmLeaveFrom(p, p.loan.from); p.loan = null; }
   // 0x8c9720 @0x8c9984: kontrakttilbud med sum 0 og tidsnibble 3/4 (forkontrakten – add_future_transfer 0x8cb9a0) → historikkens art 4
   // historikkens art 4 (0x8c9996): kontrakttilbud uden beløb med tidsnibble 3/4 (forkontrakten) – gennemført i dag eller på den aftalte dato
   recordMove(p, buyer.id, o.fee, o.loan, false, !o.loan && !o.fee && (o.cmTime === 3 || o.cmTime === 4));
@@ -937,7 +937,7 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
   // (lejen: 0x8c2180's lejegren efter sign_loan_contract 0x4d01e0 – cmSlLoaned; den går uden om 0x8c9720)
   if (!o.loan) cmSlMoved(g, p, buyer.id, buyer.id, seller ? o.swap : undefined);
   setClub(p, buyer.id);
-  if (o.loan) cmSlLoaned(g, p, buyer.id); else cmMovedToClub(g, p);
+  if (o.loan) cmSlLoaned(g, p, buyer.id);
   cmSlPlayerGone(g, p, !o.loan);   // 0x8ca7a0 (køb: +0x52 ved den nye klub) / 0x8c2872 (leje) – 0x842b00(staff, 1): klubberne med ham på ønskelisten planlægger igen
   if (!o.loan) merchStarSigning(buyer.id, p.rep);
   fansOnSigning(p, buyer, o.loan);
@@ -959,7 +959,6 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
       if (x.squadStatus) setStatusCode(x);
       cmSlMoved(g, x, seller.id, 0);   // (0x8c9579: kun 0x8c9720 – halens 0x84aeb0 for byttespillerne står i hovedspillerens kald)
       setClub(x, seller.id);
-      cmMovedToClub(g, x);
       cmSlPlayerGone(g, x);
       x.joined = g.date;
       asOwner(buyer.id, () => {
@@ -2418,7 +2417,6 @@ function cmSignFree(o: TransferOffer, p: Player, buyer: Club): void {
   cmSlMoved(g, p, buyer.id, buyer.id);   // 0x8c9720/0x8c9390: ønskelisterne (før skiftet)
   setClub(p, buyer.id);
   p.squadStatus = offerStatus(o);   // sign_contract 0x4cf720: tilbuddets +0x4f
-  cmMovedToClub(g, p);
   cmSlPlayerGone(g, p);
   p.joined = g.date;
   o.status = 'completed';

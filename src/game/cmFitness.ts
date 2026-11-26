@@ -181,6 +181,9 @@ function fitOf(g: GameState, p: Player): CmFit {
   return (p.cmFit ??= newFit(dayNum(g.cmFitStart ?? g.date)));
 }
 
+/** ønskelisternes del af add_injury 0x62d758 – sat af cmShortlistGame.ts (undgår en cirkulær import) */
+export const FIT_HOOKS: { longInjury?: (g: GameState, p: Player, days: number) => void; targetInjured?: (g: GameState, p: Player) => void } = {};
+
 export interface FitCtx {
   g: GameState;
   today: number;
@@ -505,7 +508,13 @@ export function addInjury(c: FitCtx, t: number, backdate: boolean, p: Player, fi
     if (x >= 0x64) break;
     if (c.rand(5 * NF(p) + 0xc) === 0) p.cmStaffState = (x + 1) & 0xff;
   }
-  // 0x62d758: computerens behov ved lange skader og nyheden 0x842b00 – ikke porteret
+  // 0x62d758–0x62d7e4 (ikke tilbagedateret): har han en klub (+0x39), der ikke er menneskets (0x600a50(klub, 0, 1, 0, 0) – på ferie computerens),
+  // er skaden ≥ 100 dage og kontrakten ikke transferlistet (0x5444a0), sættes klubbens trupplan-tæller +8 = 100 (0x62d7b4 – klubben planlægger
+  // igen); så altid rand(50): dage ≥ rand(50) + 30 → 0x842b00(staff, 0) – klubberne med ham som mål planlægger igen (cmShortlistGame.ts)
+  if (!backdate) {
+    FIT_HOOKS.longInjury?.(c.g, p, days);
+    if (days >= c.rand(0x32) + 0x1e) FIT_HOOKS.targetInjured?.(c.g, p);
+  }
   let w2a = s16(ftol(T[4] * 0.01 * days));
   if (w2a + 60 < days) w2a = s16(days - 60);
   const d0 = backdate ? c.today - (c.rand(days) + 1) : c.today;                   // 0x54c8e0

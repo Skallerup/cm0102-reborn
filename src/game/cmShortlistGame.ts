@@ -27,7 +27,8 @@ import { type CmCtx, type CmMem, G, getContract, clubAt, SparseMem } from './cmM
 import { holidayOpt_5fea50, humanClub0 } from './cmHoliday';
 import { buildSlWantMem, resetSlBase, slMemPages, SLMEM_DEFER, type SlWantState } from './cmSlMem';
 import { buildWantMem, type WantMem } from './cmContractGame';
-import { cmGenerated, cmMarketOn, cmRand, clubRepMem, nationRepMem, staffJoined } from './cmPlayerData';
+import { cmGenerated, cmMarketOn, cmPlanKick, cmRand, clubRepMem, nationRepMem, staffJoined } from './cmPlayerData';
+import { FIT_HOOKS } from './cmFitness';
 import { cmGbp, payClub } from './cmMoney';
 import { slCall } from './cmShortlist';
 import { playerValue_4d0c60, knowsNation_53d980, seenRep_5407e0, knowledge_5408c0, judge_6e86d0, JUDGE_HI, euCitizen_53d740, keyMemForget } from './cmValue';
@@ -2242,18 +2243,6 @@ export function cmSlOffer842c00(g: GameState, reqs: [number, number][]): void {
   SL_OFFERED.days++; SL_OFFERED.ms += now() - t0;
 }
 
-/** TRANSFER_MANAGER::move_player_to_club 0x8c9720 (fra finalise_transfer 0x8c9390 – køb, leje, klubløse og bytte-spillere), 0x8ca0a4–0x8ca0ce:
- *  har spilleren en klub efter skiftet (+0x39) og er han ikke transferlistet der (0x5444a0: kontrakten 0x4cf5a0's +0x4e bit 1 – efter et køb den
- *  nye kontrakt, ved leje moderklubbens), sættes klubbens trupplanstæller +8 = 100: 0x84a020 byder ikke (+8 ≥ 100), før 0x5cccd0 har kørt
- *  trupplanen igen (0x83cb40 nulstiller den; porten 0x5cdcfa: +8 > rand(70) + 30, så rand(5) = 0). */
-export function cmMovedToClub(g: GameState, p: Player): void {
-  if (!cmShortlistOn(g) || !p.club) return;
-  const st = g.cmPlan?.[p.club];
-  if (!st) return;
-  if (p.loan && ((p.cmContract?.b4e ?? (p.listed ? 1 : 0)) & 1)) return;
-  st.c = 100;
-}
-
 /** TRANSFER_MANAGER::move_player_to_club 0x8c9720, 0x8ca75d–0x8ca7a0 (efter skiftet: staff +0x39 = den nye klub, den nye kontrakt): har han en
  *  spillerpost (+0x61), sættes værdien +0x52 = 0x4d0c60(staff, ny klub, 0, −1, 0x600a50(ny klub, 0, 1, 0, 0) ≠ 0), og 0x842b00(staff, 1):
  *  Shortlist_Manager 0x842180(staff, liste, 1, 3, 0) – computerparrene (staff, klub) på ønskelisten (bsearch 0x946464 med 0x757ea0), hvor
@@ -2284,8 +2273,9 @@ export function cmSlPlayerGone(g: GameState, p: Player, moved = true): void {
   if (DUE_S) { const id = DUE_S.memOf.get(p.id); if (id !== undefined) DUE_S.m.w32((DUE_S.m.u32(G.STAFF) + 0x6e * id + 0x52) >>> 0, v); }
   gone842b00(g, p, pairs, v);
 }
-/** 0x842b00(staff, 1) på spillets pladser (se cmSlPlayerGone) */
-function gone842b00(g: GameState, p: Player, pairs: [number, number][], v: number): void {
+/** 0x842b00(staff, flag) på spillets pladser (se cmSlPlayerGone): 0x842180(staff, liste, 1, 3, 0) er den samme for begge flag – flaget styrer kun
+ *  budmærkerne (0x842b98: flag 0 → ingen 0x842ba1–0x842bbc) */
+function gone842b00(g: GameState, p: Player, pairs: [number, number][], v: number, flag = true): void {
   const to = p.club;
   for (const [, cid] of pairs) {
     const plan = g.cmPlan?.[cid];
@@ -2293,9 +2283,22 @@ function gone842b00(g: GameState, p: Player, pairs: [number, number][], v: numbe
     const row = plan.s.slice(0, 40).find((r) => r[3] === p.id) ?? plan.s[0];
     if ((fromRow(row).b7 ?? 0) <= v) continue;
     plan.c = 100;
-    for (const r of plan.s.slice(0, 40)) if (r[3] === p.id && r[5] > -1) r[5] = -1;
+    if (flag) for (const r of plan.s.slice(0, 40)) if (r[3] === p.id && r[5] > -1) r[5] = -1;
   }
 }
+
+// Injury::add_injury 0x62d250 @0x62d758–0x62d7e4 (cmFitness.ts addInjury, ikke tilbagedateret): en lang skade (≥ 100 dage) hos en computerklub
+// (0x600a50(klub, 0, 1, 0, 0): menneskets klub på ferie tæller som computerens) med en ikke-transferlistet kontrakt (0x5444a0(staff, 0): +0x4e & 1)
+// sætter klubbens trupplan-tæller +8 = 100 (0x62d7b4); dage ≥ rand(50) + 30 → 0x842b00(staff, 0): klubberne med ham som mål planlægger igen
+FIT_HOOKS.longInjury = (g, p, days) => {
+  if (!cmShortlistOn(g) || !p.club || days < 100 || humanClub0(g, p.club)) return;
+  if ((p.cmContract?.b4e ?? (p.listed ? 1 : 0)) & 1) return;
+  cmPlanKick(g, p.club);
+};
+FIT_HOOKS.targetInjured = (g, p) => {
+  if (!cmShortlistOn(g) || !g.cmPlan || !p.club) return;
+  gone842b00(g, p, (g.cmSlPairs ?? []).filter(([pid]) => pid === p.id), memValue(g, p), false);
+};
 
 /** 0x84a020 make_club_bids for klubben, når 0x5cccd0's betingelse er opfyldt (omdømme > 6250 hver dag, ellers (dag + klub) % 7 = 0) */
 export function makeBids(S: SlMem, cid: number, day: number): void {

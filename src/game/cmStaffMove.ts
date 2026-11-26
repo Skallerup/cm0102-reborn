@@ -396,7 +396,8 @@ export function cmStaffMovesDaily(g: GameState): void {
     (s.career ??= []).push({ club: m.c, from: g.date });
     s.wage = terms?.wage ?? cmStaffDemand(s, role);
     recordStaffMove(s, m.c, m.fee);
-    cmPlanKick(g, m.c);                                                          // 0x8c9720 (0x8ca0ce): køberens tæller +8 = 100
+    if (s.club) cmPlanKick(g, s.club);                                           // 0x8c9720 @0x8ca0ce: den gamle klubs (+0x39) tæller +8 = 100
+    cmPlanKick(g, m.c);                                                          // køberens: 0x843e10 mode 2 @0x84418d (pladsens mål bliver indehaver)
     s.club = m.c;
     s.role = role;
     s.assignment = null;
