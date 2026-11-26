@@ -16,7 +16,25 @@ process.on('exit', stop);
 for (let i = 0; i < 60; i++) { try { if ((await fetch(URL)).ok) break; } catch { /* */ } await new Promise((r) => setTimeout(r, 500)); }
 const START_PIDS = execSync('ps -A -o pid=,command=', { encoding: 'utf8', maxBuffer: 1 << 24 }).split('\n').filter((l) => l.includes('ms-playwright')).map((l) => l.trim().split(/\s+/)[0]);
 // CH=chromium: Chromium i den nye headless-tilstand (fanernes synlighed som i en rigtig browser – BG=hidden skjuler siden; den gamle headless-shell gør ikke)
-const browser = await (kind === 'chromium' ? chromium : webkit).launch({ ...(process.env.CH ? { channel: process.env.CH } : {}), ...(process.env.HEADED ? { headless: false, args: ['--window-position=-2400,-2400'] } : {}) });
+// JSHEAP=<MB> (Chromium): V8's heapgrænse pr. isolat (--max-old-space-size) som en lille telefon
+const jsArgs = process.env.JSHEAP ? [`--js-flags=--max-old-space-size=${process.env.JSHEAP}`] : [];
+const browser = await (kind === 'chromium' ? chromium : webkit).launch({ ...(process.env.CH ? { channel: process.env.CH } : {}), args: [...jsArgs, ...(process.env.HEADED ? ['--window-position=-2400,-2400'] : [])], ...(process.env.HEADED ? { headless: false } : {}) });
+// CPU=<faktor> (Chromium): CPU-drosling (CDP Emulation.setCPUThrottlingRate) for siden OG hver Web Worker (som en langsom telefon)
+if (process.env.CPU && kind === 'chromium') {
+  const rate = Number(process.env.CPU);
+  const bs = await browser.newBrowserCDPSession();
+  let nThr = 0;
+  bs.on('Target.attachedToTarget', (e) => {
+    const { sessionId, targetInfo } = e;
+    const send = (id, method, params) => bs.send('Target.sendMessageToTarget', { sessionId, message: JSON.stringify({ id, method, params }) }).catch(() => {});
+    if (targetInfo.type === 'worker' || targetInfo.type === 'page') { void send(1, 'Emulation.setCPUThrottlingRate', { rate }); nThr++; }
+    void send(2, 'Runtime.runIfWaitingForDebugger', {});
+  });
+  bs.on('Target.receivedMessageFromTarget', (e) => { if (process.env.CPUDEBUG) console.log('  cdp ' + e.message.slice(0, 200)); });
+  bs.on('Target.targetCreated', (e) => { if (e.targetInfo.type === 'worker' || e.targetInfo.type === 'page') void bs.send('Target.attachToTarget', { targetId: e.targetInfo.targetId, flatten: false }).catch(() => {}); });
+  await bs.send('Target.setDiscoverTargets', { discover: true });
+  process.on('exit', () => console.log(`CPU-drosling ×${rate} på ${nThr} mål`));
+}
 // UA=<user agent>: fx Facebook-appens browser på iPhone (FBAN/FBIOS)
 const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, ...(process.env.UA ? { userAgent: process.env.UA } : {}) });
 const page = await ctx.newPage();
