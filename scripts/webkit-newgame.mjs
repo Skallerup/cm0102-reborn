@@ -35,6 +35,17 @@ if (process.env.CPU && kind === 'chromium') {
   await bs.send('Target.setDiscoverTargets', { discover: true });
   process.on('exit', () => console.log(`CPU-drosling ×${rate} på ${nThr} mål`));
 }
+// SLOW=<faktor>: CDP kan ikke drosle Web Workers ("only supported for pages") – fanens proces (hovedtråd + arbejdere) stoppes i stedet
+// (SIGSTOP/SIGCONT) i (1 − 1/faktor) af hver 40 ms-periode, så hele fanen kører med 1/faktor af en kerne-tid (en langsom telefon)
+let slowT = null, stopSlow = () => {};
+const startSlow = (pids) => {
+  const f = Number(process.env.SLOW); if (!(f > 1)) return;
+  const per = 40, run = per / f;
+  const sig = (s) => { for (const p of pids()) { try { process.kill(Number(p), s); } catch { /* */ } } };
+  slowT = setInterval(() => { sig('SIGCONT'); setTimeout(() => sig('SIGSTOP'), run); }, per);
+  stopSlow = () => { clearInterval(slowT); slowT = null; setTimeout(() => sig('SIGCONT'), run + 5); };
+  process.on('exit', () => { clearInterval(slowT); sig('SIGCONT'); });
+};
 // UA=<user agent>: fx Facebook-appens browser på iPhone (FBAN/FBIOS)
 const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, ...(process.env.UA ? { userAgent: process.env.UA } : {}) });
 const page = await ctx.newPage();
@@ -85,6 +96,7 @@ const T = () => `${((Date.now() - t0) / 1000).toFixed(1)} s`;
 let res = 'ok';
 try {
   await page.goto(URL);
+  if (process.env.SLOW) { let cache = tabPids(); setInterval(() => { cache = tabPids(); }, 2000).unref(); startSlow(() => cache); console.log(`SLOW ×${process.env.SLOW} på ${cache.length} fane-proces(ser)`); }
   await page.waitForSelector('.cxs [data-field=new]', { timeout: 120000 });
   await page.locator('[data-field=database]').click();
   await page.locator('[data-field="db-3.9.60"]').click();
@@ -169,7 +181,7 @@ try {
     fs.closeSync(fd);
   }
 } catch (e) { res = 'afbrudt: ' + e.message.split('\n')[0]; console.log('  side: ' + (await page.evaluate(() => document.body.innerText.slice(0, 600)).catch(() => '?')).replace(/\s+/g, ' ')); }
-clearInterval(rssT); if (stepT) clearInterval(stepT);
+clearInterval(rssT); if (stepT) clearInterval(stepT); stopSlow(); await new Promise((r) => setTimeout(r, 100));
 console.log(`phys_footprint_peak (fanens proces): ${foot('phys_footprint_peak').toFixed(0)} MB`);
 console.log(`${kind}: fp-top ${peakRss.toFixed(0)} MB (${peakAt}) – ${errs.length ? 'FEJL ' + errs.length : res} (${T()})`);
 await browser.close();
