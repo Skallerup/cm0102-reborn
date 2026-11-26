@@ -30,7 +30,7 @@ import { cmLoanRefuses } from './cmLoan';
 import { cmBuildBid } from './cmAiBid';
 import { cmAiRulesBlock, cmAiRulesReason, cmCanSign, cmCompletionDate, cmWindowOpen } from './cmOfferCheck';
 import { cmRumourAdd } from './cmRumours';
-import { cmAskingPrice, cmExchangeCheck, cmInterestedClubs, cmLoanAnswerNow, cmLoanDelayNow, cmMovedToClub, cmSlPlayerGone, cmShortlistOn, cmSlMoved, setSlApply, setSlDue, type SlBid, type SlDueCtx, type SlEvent } from './cmShortlistGame';
+import { cmAskingPrice, cmExchangeCheck, cmInterestedClubs, cmLoanAnswerNow, cmLoanDelayNow, cmMovedToClub, cmSlPlayerGone, cmShortlistOn, cmSlMoved, cmSlLoaned, setSlApply, setSlDue, type SlBid, type SlDueCtx, type SlEvent } from './cmShortlistGame';
 import { ADDON_APPS, bidClauseWorth, cleanClauses, clauseWorth, defaultRelease, settleSellOn } from './clauses';
 import { asOwner, forEachHuman, isHumanClub, isMultiplayer } from './humans';
 import { AGENT_RULES, agentOf } from './agents';
@@ -934,9 +934,10 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
   // fansene reagerer på stjernesalg og -køb
   if (!o.loan && seller) fansOnDeparture(p, seller, 'sold', o.fee);
   // 0x8c9720/0x8c9390: ønskelisternes del af skiftet (før staff +0x39 skifter) – pladsen med ham bliver hans, budmærkerne ryddes
-  cmSlMoved(g, p, buyer.id, buyer.id, !o.loan && seller ? o.swap : undefined);
+  // (lejen: 0x8c2180's lejegren efter sign_loan_contract 0x4d01e0 – cmSlLoaned; den går uden om 0x8c9720)
+  if (!o.loan) cmSlMoved(g, p, buyer.id, buyer.id, seller ? o.swap : undefined);
   setClub(p, buyer.id);
-  cmMovedToClub(g, p);
+  if (o.loan) cmSlLoaned(g, p, buyer.id); else cmMovedToClub(g, p);
   cmSlPlayerGone(g, p, !o.loan);   // 0x8ca7a0 (køb: +0x52 ved den nye klub) / 0x8c2872 (leje) – 0x842b00(staff, 1): klubberne med ham på ønskelisten planlægger igen
   if (!o.loan) merchStarSigning(buyer.id, p.rep);
   fansOnSigning(p, buyer, o.loan);

@@ -612,9 +612,12 @@ export function buildSlWantMem(g: GameState, clubs: Iterable<number>, opts: { ca
     for (const o of [0x1b, 0x2c, 0x35, 0x3b, 0x44]) { const y = m.u16(a + o); if (y) m.w16(a + o, y + dy); }
     const n = nm ? byName.get(nm) : undefined;
     m.w32(a, n === undefined ? 0 : natAdr(n));
-    if (n !== undefined) m.w8(natAdr(n) + 0x11c, 1);
     m.w32(a + 4, !nm && r >= 3 ? CONT0 + 0x100 * (r - 3) : 0);
   });
+  // nation +0x11c: kun de indlæste lande (Select League(s) = g.activeNations) – oraklet 1/4-02: England 2, de 26 andre nøglelande 0. Før fik alle
+  // nøglelandene 1, så deres klubber bød hver dag (0x5cccd0 → 0x84a020), fik lejepladser uden lodtrækning (0x83f3a0 @0x840d0e) og nøglelandets
+  // sæsonrække (0x669360) i stedet for verdensdelens – og 0x544820 (bit 2) svarede nej for de engelske klubber
+  for (let n = 0; n < g.nations.length; n++) if (cmNationLoaded(g, n)) m.w8(natAdr(n) + 0x11c, 2);
   const nat8e = new Map<number, number>();
   for (const cl of Object.values(g.clubs)) if (cl.vc && !nat8e.has(cl.nation)) nat8e.set(cl.nation, cl.vc[1]);
   const natDone = new Uint8Array(nNat);
@@ -752,3 +755,10 @@ export function buildSlWantMem(g: GameState, clubs: Iterable<number>, opts: { ca
 }
 /** buildSlWantMem's tilstand mellem to portioner af spilstartens klubløkke (typede tabeller – Transferable) */
 export interface SlWantState { divs: [number, number][]; natInit: Uint8Array; gen: number; genPid: [number, number][]; P: { nums: Int32Array; data: Uint8Array[] }; m: { nums: Int32Array; data: Uint8Array[] } }
+
+/** nation +0x11c (2 = indlæst, 0x544820 tester bit 2): landet er indlæst – Select League(s) = g.activeNations; ældre spil uden den: landet har en
+ *  spilbar liga (som cmFinance.ts' nationLoaded) */
+export function cmNationLoaded(g: GameState, n: number): boolean {
+  if (g.activeNations?.length) return g.activeNations.includes(n);
+  return Object.values(g.comps).some((x) => x.type === 'league' && g.leagues[x.id]?.nation === n && !g.leagues[x.id]?.hidden);
+}

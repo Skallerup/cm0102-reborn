@@ -50,6 +50,7 @@ import { registerStaffContractAnswer, registerStaffOfferCheck } from './cmStaff'
 
 /** € → £: 0,86 for den originale database, 2026/27's faktor pr. liga (cmMoney.ts) – beløbene tilhører den købende/tilbydende klub */
 import { cmGbp } from './cmMoney';
+import { cmNationLoaded } from './cmSlMem';
 const VALUE_FORMULA = typeof process !== 'undefined' && process.env?.CM_VALUE === 'formula';
 const MMOBJ = 0x2bff0000, MMREC = 0x2b000000, EURO0 = 0x2c000000, STAD0 = 0x2d000000, CITY0 = 0x2c800000, COMP0 = 0x3e000000, VT = 0x3dff0000, CONT0 = 0x3dfe0000, PREF0 = 0x2f000000, STATS0 = 0x3e800000, ROW4A = 0x3dfd0000, NOBODY = 0x2e000000;
 /** de skrabeområder, kontrakterne skrives i (under cmContractWant.ts' SCR 0x300000 og cmContract.ts' stak 0x2ff000) */
@@ -169,10 +170,10 @@ export function buildWantMem(g: GameState, clubs: Iterable<number>, opts: { full
     for (const o of [0x1b, 0x2c, 0x35, 0x3b, 0x44]) { const y = m.u16(a + o); if (y) m.w16(a + o, y + dy); }
     const n = nm ? byName.get(nm) : undefined;
     m.w32(a, n === undefined ? 0 : W.natOf(n));
-    // nation +0x11c ≠ 0: landet har en række i tabellen (0x669360)
-    if (n !== undefined) m.w8(W.natOf(n) + 0x11c, 1);
     m.w32(a + 4, !nm && r >= 3 ? CONT0 + 0x100 * (r - 3) : 0);
   });
+  // nation +0x11c: kun de indlæste lande (2; oraklet: England 2, de andre nøglelande 0) – 0x669360 giver de andre verdensdelens række (cmSlMem.ts)
+  for (let n = 0; n < g.nations.length; n++) if (cmNationLoaded(g, n)) m.w8(W.natOf(n) + 0x11c, 2);
   // landenes felter (ud over buildWageMem: +0x71 verdensdelen, +0x77 sproget, +0x8e – nation.dat (GameState.cmNationRep), ellers klubbernes vc[1])
   const nat8e = new Map<number, number>();
   for (const cl of Object.values(g.clubs)) if (cl.vc && !nat8e.has(cl.nation)) nat8e.set(cl.nation, cl.vc[1]);

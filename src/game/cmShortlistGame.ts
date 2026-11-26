@@ -2132,6 +2132,34 @@ export function cmSlMoved(g: GameState, p: Player, to: number, buyer: number, sw
   }
 }
 
+/** Ønskelisternes del af lejens start: handle_player_accepted_terms 0x8c2180, lejegrenen – efter sign_loan_contract 0x4d01e0 (0x8c2684; staff
+ *  +0x39 = lejeklubben, 0x53bd10 @0x53c136) står parret (staff, lejeklub) på ønskelisten (0x842080 @0x8c26ad), kaldes 0x843e10(staff, lejeklub,
+ *  5, 0) @0x8c26c2: parret ryddes af listerne, og den første spillerplads (rolle 0xb) med ham som mål får ham som indehaver (0x84412a: +0x13 =
+ *  ham, +0x17 = −1, +7 = +0xb = 0, datoen i dag + 14 – ikke + 120 som købets tilstand 2 – og klubbens trupplanstæller +8 = 100, 0x84418d).
+ *  Lejen går uden om move_player_to_club 0x8c9720: ingen indehaver-straf/0x842c00, ingen 0x843e10(…, 4, 2) for moderklubben (han står fortsat på
+ *  dens pladser), ingen 0x84aeb0 og ingen ubetinget tæller +8 = 100 (0x8ca0ce) – før kørte lejen købets del (cmSlMoved + cmMovedToClub). */
+export function cmSlLoaned(g: GameState, p: Player, to: number): void {
+  if (!cmShortlistOn(g) || !g.cmPlan?.[to] || ENV.CM_SL_MOVED === '0') return;
+  const own = !DUE_S;
+  const S = DUE_S ?? buildSlMem(g);
+  try {
+    const { m } = S;
+    const id = S.memOf.get(p.id);
+    if (id === undefined) return;
+    const st = (m.u32(G.STAFF) + 0x6e * id) >>> 0;
+    refreshClub(S, to); writeSlots(S, to, entryOf(g, to), true);
+    const toAdr = S.clubAdr(to);
+    if (!toAdr) return;
+    m.w32(st + 0x39, toAdr);
+    S.M.setRand(cmRand(g.seed ?? 0, p.id, dayNum(g.date), 0x8c2180));
+    shared(() => { if (slCall(S.c, 0x842080, S.slm, st, toAdr) & 0xff) slCall(S.c, 0x843e10, S.slm, st, toAdr, 5, 0); }, S);
+    readSlots(S, to);
+    readPairs(S);
+  } finally {
+    if (own) (S.m as SparseMem).release();
+  }
+}
+
 /** De hængende pladser i spil spillet før cmSlMoved (20/11): en computerklubs spillerplads (rolle 0xb), hvis mål (+0xf) allerede er i klubben, men
  *  ikke er blevet pladsens indehaver (+0x13) eller stadig har budmærket (+0x17). Trupplanen 0x83cb40 regner ikke målene med i truppen
  *  (0x849ce0 – 0x83d1c7) og springer pladser med budmærke over, så klubben blev ved med at købe til den samme position (ejerens Esbjerg 20/11:
