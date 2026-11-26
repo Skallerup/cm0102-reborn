@@ -8,7 +8,7 @@ import {
   applyMatchEffects, clearKnocks, clubSeason, condition, currentInjury, dayNum, fatigue, fitIso, fitRand, hasSeasonRow, initRecords, initSquadFitness, injuryDaily, injuryStatus,
   HURT, newFit, recordKnock, recoverFatigue, setKnockHook, syncPlayer, trainingLoad, updateFitness, type CmInjury, type FitCtx, type MatchEntry,
 } from './cmFitness';
-import { addNews, gs, hasGame, onGameSwitch, pickNumber, rebuildIndexes, squad } from './state';
+import { addNews, gs, hasGame, loanPlacement, onGameSwitch, pickNumber, pushCareerLine, rebuildIndexes, squad } from './state';
 import { asOwner, isHumanClub } from './humans';
 import { cmRand } from './cmPlayerData';
 import { cmTrainPlayer, humanLevels, setTrainCtx } from './cmTraining';
@@ -236,7 +236,7 @@ export function cmSetupInjuries(g: GameState, start: number): void {
  *  Lejekontrakten 0x85e590(staff, klub, slut, 0 %, 1, 1): lønnen 0 % hos lejeklubben (Player.loan.share 0), +0x25 = startdatoen, 0x4d01e0
  *  (staff +0x39 = lejeklubben); trøjenummeret 0x85a470 (her pickNumber); arbejdstilladelsen 0x8c7560 → 0x8c7070 (cmPermitMove).
  *  Ingen klubskifte-følger (0x8c9720 kaldes ikke: indkøringsbyten og klubbernes omdømme uændrede). Bagefter 0x62a920 (cmFitSetupDay) – også for
- *  de lejede (lejeklubbens sæson). Ikke porteret: 0x5563f0 (Discipline), 0x540980(staff, 1) (+0x5e), staff +0x6d 2 → 0x10. */
+ *  de lejede (lejeklubbens sæson). Ikke porteret: 0x5563f0 (Discipline), staff +0x6d 2 → 0x10. */
 export function cmSetupLoans(g: GameState): number {
   // (20/11, Bosman 0.7.2-tjeklisten punkt 3) også 2026/27 i ægte tilstand (nye spil med originalens kalender, g.cmCal): opdateringens egne LOAN-linjer
   // (scripts/build-preseason.mts – datoerne skubbet fra 2001/02-uret til spillets) under databasens år, som startskaderne
@@ -253,6 +253,10 @@ export function cmSetupLoans(g: GameState): number {
     if (p.contract.expires.slice(0, 10) < end) p.contract.expires = end;           // 0x8bf527–0x8bf560
     const from = p.club;
     p.loan = { from, until: end, share: 0 };
+    // 0x4d01e0 @0x4d02dd: 0x7c5fe0(staff, −1, 0, 1, lejeklubben, 0) ved moderklubben – Playing Career-posten (art 1, også uden kampe);
+    // 0x4d0380 (+0x35 bit 0x40) og 0x8bf5c8 0x540980(staff, 1): lejeklubbens førstehold (state.ts loanPlacement)
+    if (hasGame() && p.stats) pushCareerLine(p, from, false, { kind: 1 });
+    loanPlacement(g, p, true);
     p.club = to;
     p.number = pickNumber(p, to, p.number);
     cmPermitMove(g, p, to);

@@ -222,7 +222,8 @@ export interface Player {
   loanListed?: boolean;
   /** share = andel af lønnen lejeklubben betaler (0-1, standard 1) */
   /** noCup/noAgainst: lejekontraktens +0x1c/+0x1d = 0 ("Cannot play in cup matches" / "… against <moderklub>" – cmLoan.ts cmLoanBar) */
-  loan: { from: number; until: string; share?: number; fee?: number; option?: number; noCup?: true; noAgainst?: true } | null;
+  /** res: hovedkontraktens +0x35 bit 0x40 – han stod på moderklubbens reservehold ved lejens start (state.ts loanPlacement) */
+  loan: { from: number; until: string; share?: number; fee?: number; option?: number; noCup?: true; noAgainst?: true; res?: 1 } | null;
   stats: SeasonStats;
   history: CareerLine[];
   /** Klubskifter i spillet: hvorhen, hvornår og for hvad */

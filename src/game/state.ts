@@ -25,6 +25,7 @@ import { legacyExtended } from './rules';
 import { captureCarry, registerCarry, restoreCarry } from './carry';
 import { daysBetween } from './dates';
 import { clubSeason, dayNum, hasSeasonRow } from './cmFitness';
+import { hasReserveTeam, linkedClub } from './cmBTeam';
 
 /**
  * Admin-preview: en spillers gemte spil åbnet til fejlsøgning (Admin → Saves / New careers). Intet gemmes, og intet
@@ -209,6 +210,28 @@ function careerInWindow(g: GameState, club: number): boolean {
   return inS && today > start && today < end;
 }
 
+/** 0x540980(staff, v): +0x5e's lave bits = v (1 førsteholdet, 2 reserverne) – spillets Player.cmPlace (2/1) og Player.reserves */
+function setPlace5e(p: Player, v: 1 | 2) {
+  p.cmPlace = v === 1 ? 2 : 1;
+  p.reserves = v === 2 ? true : undefined;
+}
+
+/** Lejens staff +0x5e. Start (`start`, før skiftet – p.club er moderklubben): sign_loan 0x4d0380–0x4d03d9 gemmer i hovedkontraktens +0x35
+ *  bit 0x40 (Player.loan.res), at han stod på reserveholdet (moderklubben har reservehold 0x542740 og +0x5e & 1 = 0; uden reservehold og
+ *  med B-hold-partner 0x540a50: sat, når hans klub ikke er moderklubben – den er det altid her), og kalderne – handle_player_accepted_terms
+ *  0x8c270e og player_setup.cfg 0x8bf5c8 – sætter ham på lejeklubbens førstehold 0x540980(staff, 1). Slut (end_loan 0x4d0ad3–0x4d0b2b):
+ *  hjem på reserveholdet 0x540980(staff, 2), når moderklubben har reservehold og bitten er sat, ellers førsteholdet (1). Før beholdt de
+ *  lejede moderklubbens reservemærke, så lejeklubben aldrig udtog dem (Djordjic i AGF 0 kampe, oraklet 37) */
+export function loanPlacement(g: GameState, p: Player, start: boolean) {
+  if (!p.loan) return;
+  const parent = p.loan.from;
+  if (start) {
+    const first = (p.cmPlace ?? (p.reserves ? 1 : 2)) === 2;
+    if (hasReserveTeam(g, parent) ? !first : !!linkedClub(g, parent) && p.club !== parent) p.loan.res = 1; else delete p.loan.res;
+    setPlace5e(p, 1);
+  } else setPlace5e(p, hasReserveTeam(g, parent) && p.loan.res ? 2 : 1);
+}
+
 /** Flyt spiller mellem klubber og hold indekset opdateret. `left`: hvordan han forlader den gamle klub (Playing Career – CareerLeft); uden
  *  udledes lejens start/slut af p.loan */
 export function setClub(p: Player, club: number, left?: CareerLeft) {
@@ -240,6 +263,8 @@ export function setClub(p: Player, club: number, left?: CareerLeft) {
   // 0x4d07e0) kalder ikke klubskiftet 0x8c9720 (dets eneste kalder er 0x8c9390): klubbernes omdømme +0x80, indkøringsbyten og trupplanens
   // tæller (cmStaffStateMove) er urørte. Før gav hver leje ud −verdensomdømme/100 og retur +, så lejerne flyttede omdømmet frem og tilbage.
   const loanLeg = moved && !!p.loan && (p.loan.from === p.club || p.loan.from === club);
+  // staff +0x5e (første-/reserveholdet) ved lejens start (sign_loan 0x4d0380 + 0x540980(staff, 1) @0x8c270e) og slut (end_loan 0x4d0ad3–0x4d0b2b)
+  if (loanMove) loanPlacement(gs(), p, p.loan!.from === p.club);
   if (moved) { p.cmStats = undefined; if (!loanMove) p.cmContract = undefined; if (hasGame()) { cmPermitMove(gs(), p, club); if (!loanLeg) cmStaffStateMove(gs(), p, p.club, club); } }
   p.club = club;
   // en nyindkøbt spiller kommer på førsteholdet: reserve-mærket hører til den gamle klub (spillerrapport #25: Obi og Arthur
@@ -259,7 +284,7 @@ export function setClub(p: Player, club: number, left?: CareerLeft) {
 /** Bogfør sæsonens tal siden sidste skifte (p.split) på en klub i karrieren (0x7c5fe0); idempotent (intet nyt siden skiftet = ingen linje).
  *  Uden kampe (ingen post i kategori 6) skriver originalen alligevel en nul-post (0x7c64f7–0x7c65ab), når skiftet har et beløb (fee > −1), er
  *  art 1 (arg4: lejens start, den fri transfer), eller har en klub efter skiftet (arg5 > −1: lejens slut) og enten ikke ligger i landets sæson
- *  eller han har været under 365 dage i klubben (staff +0x3e, 0x54cdb0) – ellers ingen linje. `left` = CareerLeft (mærket i Playing Career) */
+ *  eller han har været under 365 dage i klubben (staff +0x3e = Player.joined ?? databasens cmJoined, 0x54cdb0) – ellers ingen linje. `left` = CareerLeft (mærket i Playing Career) */
 export function pushCareerLine(p: Player, club: number, loan: boolean, left?: CareerLeft) {
   const g = gs();
   const b = p.split ?? { apps: 0, goals: 0, assists: 0, minutes: 0, ratingSum: 0, ratingCount: 0 };
@@ -267,7 +292,7 @@ export function pushCareerLine(p: Player, club: number, loan: boolean, left?: Ca
   const how = { ...(left?.fee !== undefined && left.fee >= 0 ? { fee: left.fee } : {}), ...(left?.kind ? { kind: left.kind } : {}) };
   if (apps <= 0) {
     const force = !!left && ((left.fee ?? -1) > -1 || left.kind === 1
-      || (!!left.toClub && (!careerInWindow(g, club) || (!!p.joined && daysBetween(p.joined, g.date) < 365))));
+      || (!!left.toClub && (!careerInWindow(g, club) || (!!(p.joined ?? p.cmJoined) && daysBetween((p.joined ?? p.cmJoined)!, g.date) < 365))));
     // (samme skifte bogføres kun én gang – completeTransfer bogfører før setClub; en ny post med samme år, klub og art lægges i 0x7c3e40
     // alligevel sammen med den forrige række)
     const last = p.history[p.history.length - 1];
