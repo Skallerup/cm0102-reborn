@@ -2,7 +2,7 @@
 // efter disassemblyen (konstanterne 0x968f78 = 0,33, 0x9689d0 = 0,95, 0x9689d8 = 0,9).
 import { describe, expect, it } from 'vitest';
 import { cmRecordsDaily, cmSignContractMorale, recChampions, recCupFinalist, recCupThird, recCupWinners, recPromotion, recRelegation } from '../src/game/cmMedia';
-import { renewalHooks } from '../src/game/cmTableHooks';
+import { recordMgrHooks, renewalHooks } from '../src/game/cmTableHooks';
 import type { Competition, GameState, Player } from '../src/game/types';
 
 // forlængelsestilbuddene 0x4cda70 (cmContractManager.ts) fanges her: hvem rekorden sender videre
@@ -99,5 +99,38 @@ describe('Staff_Records', () => {
     h.comps.UIC = { id: 'UIC', name: 'Inter-Toto Cup', type: 'continental', finished: true, winner: 1, ties: [ties[1]], meta: { cmEuro: 'UIC' } } as unknown as Competition;
     cmRecordsDaily(h, () => []);
     expect(h.cmClubRep![1]).toBe(3000); expect(h.cmClubRep![2]).toBe(3000);
+  });
+});
+
+describe('Staff_Records: managerens omdømme (club+0xcf → +0x69 +8/+0xa/+0xc)', () => {
+  const withMgr = (rep: [number, number, number], nation: number) => {
+    const prev = recordMgrHooks.manager;
+    recordMgrHooks.manager = (_g, c) => (c === 1 ? { rep, nation } : null);
+    return () => { recordMgrHooks.manager = prev; };
+  };
+  const eng = (g: GameState) => { (g as unknown as { nations: { name: string }[] }).nations = [{ name: 'England' }, { name: 'Brazil' }]; (g.clubs[1] as unknown as { nation: number }).nation = 0; return g; };
+  it('0x868c50 (oraklet Arsenal-mennesket 4410/5282/4582, PL cr 18): += ftol(k·cr/6,1), gulv k·cr – k 400/400/200 (hjemmeland)', () => {
+    const g = eng(game()); g.cmCompRep = { 7: 18 };
+    const rep: [number, number, number] = [4410, 5282, 4582];
+    const undo = withMgr(rep, 0);
+    recChampions(g, 1, league, () => []);
+    undo();
+    expect(rep).toEqual([7200, 7200, 5172]);                         // h, a: gulvet 7200; c: 4582 + ftol(3600/6,1) = 5172
+  });
+  it('0x868c50: udlænding (0x53d980) → hjemme 200·cr; loftet 10000', () => {
+    const g = eng(game()); g.cmCompRep = { 7: 18 };
+    const rep: [number, number, number] = [3000, 9500, 9900];
+    const undo = withMgr(rep, 1);
+    recChampions(g, 1, league, () => []);
+    undo();
+    expect(rep).toEqual([3600, 10000, 10000]);
+  });
+  it('0x86a1c0: −16·cr / −16·cr (hjemmeland) / −8·cr, 1..10000', () => {
+    const g = eng(game()); g.cmCompRep = { 7: 18, 8: 12 };
+    const rep: [number, number, number] = [8380, 7976, 100];
+    const undo = withMgr(rep, 0);
+    recRelegation(g, 1, league, () => []);
+    expect(rep).toEqual([8092, 7688, 1]);
+    undo();
   });
 });

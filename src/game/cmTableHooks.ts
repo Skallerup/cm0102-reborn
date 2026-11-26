@@ -12,3 +12,7 @@ export const tableStatusHooks: {
 /** Staff_Records' forlængelsestilbud 0x4cda70 (cmMedia.ts' rekorder, cmAwards.ts' priser) → CONTRACT_MANAGER (cmContractManager.ts registrerer
  *  cmContractRenewals) */
 export const renewalHooks: { offer?: (g: GameState, ps: Player[]) => void } = {};
+
+/** Staff_Records' managerdel (0x868c50/0x869480/0x86a1c0, club+0xcf → +0x69 +8/+0xa/+0xc): klubbens manager med ikke-spillerpost – omdømmet
+ *  [hjemme, aktuel, verden] som reference og nationaliteten (cmBoardGame.ts registrerer; null = ingen manager eller ingen post) */
+export const recordMgrHooks: { manager?: (g: GameState, club: number) => { rep: [number, number, number]; nation: number } | null } = {};

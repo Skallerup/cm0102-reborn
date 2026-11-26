@@ -15,7 +15,7 @@
 import type { CmPostResult, Fixture, Player } from '../../types';
 import { gs, hasGame } from '../../state';
 import { clubRepMem, cmGeneratedNow, newCmContract, postHooks, statusCode } from '../../cmPlayerData';
-import { fixtureInfoOf, recordBytes, staffBytes } from './gameInputs';
+import { fixtureCodesOf, recordBytes, staffBytes } from './gameInputs';
 import type { GP, GridMatch, Rand } from './gridMatch';
 import { matchReport6d1cc0, playerReport6d26b0, refereeReport6d4a20, type PmManager, type PmClub, type PmEnv, type PmFixture, type PmPlayer, type PmStaff } from './postMatch';
 import { isResFixture } from '../../cmReserves';
@@ -58,15 +58,24 @@ type PostOpts = { home: number; away: number; fixtureId?: number; neutral?: bool
 function fixtureOfGame(o: PostOpts, goals: [number, number], fix?: Fixture): PmFixture {
   const g = gs();
   const f = fix ?? (o.fixtureId !== undefined ? g.fixtures[o.fixtureId] : undefined);
-  const info = o.intl ? { fx3a: o.intl.b3a, comp: o.intl.compId >= 0 ? { rep: g.cmCompRep?.[o.intl.compId] ?? 0 } : null } : fixtureInfoOf(f?.comp, o.home, f?.stage);
-  const comp = o.intl ? undefined : f ? g.comps[f.comp] : g.comps[g.clubs[o.home]?.league ?? ''];
+  // fixture +0x14 (turneringen) og +0x3a/+0x30/+0x32 som kampens egne koder (fixtureCodesOf): spillets egne turneringer har originalens
+  // club_comp-post (CM_COMP_ID – Champions League 326 omdømme 20, UEFA Cup 18, FA Cup 15, League Cup 10, Charity Shield 1; læst i oraklets
+  // øjebliksbillede 31/1-02) og Europa +0x3a = 8; venskabskampene har turneringen "Friendly" (club_comp 72, +0x3a = 1 – oraklets crowd1.txt;
+  // is_friendly_comp 0x5c6710 = special); baggrundskampen (fixture −2) ingen
+  const compId = o.intl ? undefined : f?.comp ?? g.clubs[o.home]?.league;
+  const codes = o.intl ? null : fixtureCodesOf(g, f, compId, o.home);
+  const friendly = !o.intl && !!compId && (compId === 'FRIENDLY' || compId.startsWith('FR'));
+  const info = o.intl ? { fx3a: o.intl.b3a, comp: o.intl.compId >= 0 ? { rep: g.cmCompRep?.[o.intl.compId] ?? 0 } : null }
+    : friendly ? { fx3a: codes!.b3a, comp: { rep: g.cmCompRep?.[FRIENDLY_COMP] ?? 0 } }
+    : { fx3a: codes!.b3a, comp: codes!.compId >= 0 && !isResFixture(f) ? { rep: codes!.compRep } : null };
+  const comp = o.intl ? undefined : compId ? g.comps[compId] : undefined;
   const home = clubOfGame(o.home), away = clubOfGame(o.away);
   return {
     // baggrundskampene (cmReserves.ts 0x84be20): fixture +0 = −2 (0x84c339) – 0x6d26b0's vægt 5
-    id: isResFixture(f) ? -2 : o.fixtureId ?? 0, home, away, ground: o.neutral ? 0 : home.ground, w30: o.intl?.w30 ?? 0, w32: 0, b3a: info.fx3a, b40: f?.comp === RSV_COMP ? 0 : 1,
+    id: isResFixture(f) ? -2 : o.fixtureId ?? 0, home, away, ground: o.neutral ? 0 : home.ground, w30: o.intl?.w30 ?? codes!.w30, w32: o.intl ? 0 : codes!.w32, b3a: info.fx3a, b40: f?.comp === RSV_COMP ? 0 : 1,
     // reservekampen (cmReserveMatches.ts): +0x40 = 0 → 0x6d26b0/0x6d3610/0x6d3de0 vejer med turneringens +0x69 alene (Reserve)
     // landsholdsturneringerne: +0x5d = ingen nation; 0x76d940 (de store slutrunder) = major; venskabskampe (0x5c6710) = special
-    comp: info.comp ? { rep: info.comp.rep, nation: comp && comp.nation >= 0 ? comp.nation + 1 : 0, major: !!o.intl?.major, special: !!o.intl && o.intl.b3a === 9 && o.intl.compId === FRIENDLY_COMP } : null,
+    comp: info.comp ? { rep: info.comp.rep, nation: comp && comp.nation >= 0 ? comp.nation + 1 : 0, major: !!o.intl?.major, special: friendly || (!!o.intl && o.intl.b3a === 9 && o.intl.compId === FRIENDLY_COMP) } : null,
     goals: [goals[0] & 0xff, goals[1] & 0xff],
   };
 }

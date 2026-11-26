@@ -14,7 +14,7 @@
 //   - UefaSeeding: spillets CL_SPOTS/UEFA_SPOTS efter landets rang; ingen europæisk Comp_Stats-post (bit 0x400 sættes ikke)
 //   - transferbudgettet 0x598800 = Club.transferBudget (£), formuebåndet 0x5986b0 af saldoen (£)
 //   - 0x844780 (viljen) – se interestOf
-import { tableStatusHooks } from './cmTableHooks';
+import { recordMgrHooks, tableStatusHooks } from './cmTableHooks';
 import type { Club, Fixture, GameState, MatchReport, Staff } from './types';
 import { squad, addNews } from './state';
 import { cmActive, cmBoardLogic, cmLogic, cmRand, clubRepMem, postHooks } from './cmPlayerData';
@@ -1435,6 +1435,13 @@ postHooks.managerRep = (g, club, v) => {
   }
   const staff = (asst ? [asst, ...coaches] : coaches).map((s) => (s.cmExtra ? noNp(s) : staffPerson(g, s, today))).filter(Boolean);
   managerRepAfterMatch(m, staff, v[0], v[1], v[2]);
+};
+
+/** Staff_Records (cmMedia.ts): klubbens manager (club+0xcf) med ikke-spillerpost – menneskets ManagerProfile.cmRep / Staff.cmRep */
+recordMgrHooks.manager = (g, club) => {
+  if (!cmBoardOn(g)) return null;
+  const m = managerPerson(g, club, isoToCm(g.date), { done: false });
+  return m && m.np ? { rep: m.rep, nation: m.nation } : null;
 };
 
 export const _test = { entryOf, leagueInfo, scopeToMe };

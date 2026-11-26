@@ -22,7 +22,8 @@
 //   0x86b0b0 (finalens taber, status 2)            klubomdømmet mod 500·turneringens omdømme (højst +350)
 //   0x86b710 (bronzekampens vinder, status 3)       klubomdømmet mod 500·turneringens omdømme (højst +200)
 //   forlængelsestilbuddene 0x4cda70 (1,0, art 1)    i de fire og i prisernes 0x86c8c0/0x86c390 (cmAwards.ts) → cmContractManager.ts cmContractRenewals
-// Ikke porteret (se noten): managerens/formandens historik og omdømme i de fire Staff_Records-funktioner (0x58e340, +0x69's +8/+0xa/+0xc),
+//   managerens omdømme (club+0xcf → +0x69 +8/+0xa/+0xc) i mester/oprykning/nedrykning (0x868e30–0x868f67, 0x8695bd–, 0x86a26f–0x86a34f)
+// Ikke porteret (se noten): managerens/formandens historik i de fire Staff_Records-funktioner (0x58e340),
 // stadionets +0x44 (mester), mediesystemet 0x754a30/0x72c1f0/0x744240/0x733a60/0x735870/
 // 0x741020/0x736c00/0x73e870/0x74b060, Fine::fine_player 0x5a5980, AWOL 0x4190d0/0x41a360/0x419840, skadernes nyheder 0x630ee0.
 import type { Competition as Comp, GameState, Player } from './types';
@@ -32,7 +33,8 @@ import { LEAGUE_RULES } from './leagues';
 import { cmNonLeagueRelegated } from './cmNonLeague';
 import { CM_COMP_ID } from './engine/grid/gameInputs';
 import { signHooks, squad } from './state';
-import { renewalHooks, tableStatusHooks } from './cmTableHooks';
+import { recordMgrHooks, renewalHooks, tableStatusHooks } from './cmTableHooks';
+import { cmForeign } from './cmNewsScope';
 
 const s8 = (v: number) => (v << 24) >> 24;
 const s16 = (v: number) => (v << 16) >> 16;
@@ -84,6 +86,29 @@ function crowdMax(g: GameState, c: number, add: number): void {
   if (cr[2] < 0x249f0 && cr[2] < cr[0] + 0x1f4) cr[2] = (cr[2] + add) | 0;
 }
 
+const ftol = Math.trunc;
+/** 0x868e30–0x868f67 (mester) / 0x8695bd–0x8696e3 (oprykning): managerens omdømme += ftol(k·cr·1/6,1) (32 bit), så gulvet (s16)(k·cr) (16-bit
+ *  imul), ellers højst 10000 – k = 400 (aktuel +0xa), hjemme +8: 200 for en udlænding (0x53d980(manager, klubbens land, 1)) i en national turnering
+ *  (turneringsobjektets +0x42 = 1 – alle spillets ligaer), ellers 400; verden +0xc: 200 i en national turnering. cr = turneringens +0x69. */
+function mgrRecordUp(g: GameState, club: number, cr: number): void {
+  const m = recordMgrHooks.manager?.(g, club);
+  if (!m) return;
+  const F = cmForeign(g, m.nation, g.clubs[club]?.nation ?? -1);
+  const up = (i: number, k: number) => {
+    const v = s16(m.rep[i] + ftol(k * cr * 0.16393442622950818)), fl = s16(k * cr);
+    m.rep[i] = fl > v ? fl : v > 10000 ? 10000 : v;
+  };
+  up(1, 400); up(0, F ? 200 : 400); up(2, 200);
+}
+/** 0x86a26f–0x86a34f (nedrykning): aktuel −16·cr, hjemme −8·cr (udlænding) / −16·cr, verden −8·cr (16 bit), hver 1..10000 */
+function mgrRecordDown(g: GameState, club: number, cr: number): void {
+  const m = recordMgrHooks.manager?.(g, club);
+  if (!m) return;
+  const F = cmForeign(g, m.nation, g.clubs[club]?.nation ?? -1);
+  const dn = (i: number, k: number) => { m.rep[i] = clampRep(s16(m.rep[i] + s16(cr * k))); };
+  dn(1, -16); dn(0, F ? -8 : -16); dn(2, -8);
+}
+
 /** add_league_champions_record 0x868c50(klub, liga): omdømmet (0x868cdb), maksimum +20·omdømme (0x868d42, kun med division og stadion),
  *  grænsen trunc((hold − 1)·runder·0,33) (0x868d83, tabellens +0x3e/+0x3c), truppen (0x8690f5): spillere i klubben (+0x39) med ligakampe
  *  0x7c1e30(post, 2, 1, 6,5) > grænsen → 0x544710(+20, 1) og +0x44 +100, ellers (+10, 1) og +50. */
@@ -93,6 +118,7 @@ export function recChampions(g: GameState, club: number, comp: Comp, squadOf: (c
   if (g.clubs[club]?.league) crowdMax(g, club, 20 * rep);
   const legs = g.customRules?.[comp.id]?.rounds || 2;
   const thr = Math.trunc(Math.fround((comp.table.length - 1) * legs) * 0.33);
+  mgrRecordUp(g, club, rep);
   const day = dayNum(g.date);
   const renew: Player[] = [];
   for (const p of squad50(squadOf, club)) {
@@ -114,6 +140,9 @@ export function recPromotion(g: GameState, club: number, comp: Comp, squadOf: (c
   const v = s16(clubRep(g, club) + 500);
   setClubRep(g, club, v > 10000 ? 10000 : v);
   crowdMax(g, club, 10 * rep);
+  // 0x869553: cr fra divisionen ovenover (turneringsobjektets +0x1c – oraklet: First Division → Premier Division); ingen → ligaen selv
+  const above = Object.keys(LEAGUE_RULES).find((id) => LEAGUE_RULES[id].below === comp.id && g.comps[id]);
+  mgrRecordUp(g, club, above ? compRep(g, above) : rep);
   const day = dayNum(g.date);
   const renew: Player[] = [];
   for (const p of squad50(squadOf, club)) {
@@ -128,10 +157,11 @@ export function recPromotion(g: GameState, club: number, comp: Comp, squadOf: (c
 
 /** add_relegation_record 0x86a1c0(klub, liga): −500 (mindst 750), truppen (0x86a475) 0x544710(−15, 1) og efter trupstatus (+0x4f >> 4)
  *  omdømmet +0xb/+9/+0xd ×0,9 (1–2) eller ×0,95 (3–5), ftol */
-export function recRelegation(g: GameState, club: number, _comp: Comp, squadOf: (c: number) => Player[]): void {
+export function recRelegation(g: GameState, club: number, comp: Comp, squadOf: (c: number) => Player[]): void {
   let v = s16(clubRep(g, club) - 500);
   if (v < 0x2ee) v = 0x2ee;
   setClubRep(g, club, v);
+  mgrRecordDown(g, club, compRep(g, comp.id));
   const day = dayNum(g.date);
   const renew: Player[] = [];
   for (const p of squad50(squadOf, club)) {
