@@ -230,16 +230,24 @@ export async function parseJsonBlob(blob: Blob, depth = 2): Promise<unknown> {
   const dec = new TextDecoder();
   const p = new JsonStreamParser(depth);
   const rd = stream.getReader();
-  for (;;) {
-    const { done, value } = await rd.read();
-    if (done) break;
-    const t = dec.decode(value, { stream: true });
-    if (t) p.feed(t);
-  }
+  // (26/11) aldrig vente for evigt: svarer læsningen ikke inden for READ_STALL_MS (en bid er ~64 KB), afbrydes den med en fejl
+  const read = () => new Promise<ReadableStreamReadResult<Uint8Array>>((resolve, reject) => {
+    const tm = setTimeout(() => reject(new Error(`parseJsonBlob: read stalled ${READ_STALL_MS} ms`)), READ_STALL_MS);
+    rd.read().then((r) => { clearTimeout(tm); resolve(r); }, (e) => { clearTimeout(tm); reject(e); });
+  });
+  try {
+    for (;;) {
+      const { done, value } = await read();
+      if (done) break;
+      const t = dec.decode(value, { stream: true });
+      if (t) p.feed(t);
+    }
+  } catch (e) { void rd.cancel(e).catch(() => {}); throw e; }
   const t = dec.decode();
   if (t) p.feed(t);
   return p.end();
 }
+const READ_STALL_MS = 60_000;
 
 export async function gunzipText(blob: Blob): Promise<string> {
   const head = new Uint8Array(await blob.slice(0, 2).arrayBuffer());
