@@ -264,6 +264,8 @@ function assess0(c: CmCtx, club: number, st: number, g: number, mgr: number): nu
 }
 
 /** 0x840d80 (this, klub, staff, plads, &ud, tærskel, flag) → værdien; ud = planværdien. null = kør de oversatte instruktioner */
+/** (fejlsøgning, K7) 0x84119c: 0x6e6340's argumenter og svar i vurderingen – kun læsning */
+export const EVAL_DIAG: { pv?: (st: number, a1: number, mask: number, club: number, a4: number, v18: number, o: number) => void } = {};
 export function value_840d80(c: CmCtx, self: number, club: number, st: number, slot: number, out: number, thr: number, flag: number): number | null {
   const m: CmMem = c.m;
   const mgr = m.u32(club + 0xcf);
@@ -287,6 +289,7 @@ export function value_840d80(c: CmCtx, self: number, club: number, st: number, s
   if (thr > -1) a4 = ftolE((thr * 2.5e-05 * thr) / f);
   const a1 = ((v18 & 0xffff0000) | m.u16(slot + 1)) | 0;
   let o = (PV_DIRECT.c === c ? PV_DIRECT.f!(st, a1, mask, club, a4) : c.call(0x6e6340, st, a1, mask, club | 0, a4, v18 | 0)) | 0;
+  if (EVAL_DIAG.pv) EVAL_DIAG.pv(st, a1, mask, club, a4, v18, o);
   m.w32(out, o);
   if (m.u32(st + 0x39) !== club && contractFlag_5445x0(c, st, 0, 9)) { o = ftolE(o * 1.05); m.w32(out, o); }
   // 0x8411ce

@@ -86,12 +86,20 @@ function planPlayer(g: GameState, p: Player, fit: ReturnType<typeof cmFitRead>, 
   };
 }
 
-/** managerens ikke-spillerpost (0x48 bytes) af databasens rå værdier: tac [+0xe, +0x13, +0x15, +0x1a, +0x1c, +0x1f, +0x21, +0x43] og
- *  [Coaching +0x10, JPA +0x17, JPP +0x18, Physio +0x1e, Motivating +0x1b, Discipline +0x14, Tactics +0x21]; resten 10 (*estimeret*) */
-function managerNp(g: GameState, cid: number): number[] | null {
+/** managerens ikke-spillerpost (0x48 bytes), som 0x6e6340/0x6e2f20's managerblok læser den ((arg6 eller klub+0xcf)+0x69: +0xe, +0x13, +0x14,
+ *  +0x1a, +0x1f, +0x22): med den originale database hukommelsens bytes +0x0e..+0x22 og +0x43 efter spilstarten (Staff.cmNp – som ønskelisternes
+ *  hukommelse, cmSlMem.ts). Før stod de rå databaseværdier her, og +0x22 (Working With Youngsters) var altid 10: unge kandidater fik ingen
+ *  ungdomsbonus/-straf ((+0x22 − 10)·2/3). Uden cmNp: tac [+0xe, +0x13, +0x15, +0x1a, +0x1c, +0x1f, +0x21, +0x43] og [Coaching +0x10, JPA +0x17,
+ *  JPP +0x18, Physio +0x1e, Motivating +0x1b, Discipline +0x14, Tactics +0x21]; resten 10 (*estimeret*) */
+export function managerNp(g: GameState, cid: number): number[] | null {
   const st = g.staff[g.clubs[cid]?.manager ?? -1];
   if (!st) return null;
   const np = new Array(0x48).fill(10);
+  if (st.cmNp && st.cmNp.length >= 21) {
+    for (let k = 0; k < 21; k++) np[0x0e + k] = st.cmNp[k];
+    if (st.cmNp.length > 21) np[0x43] = st.cmNp[21];
+    return np;
+  }
   const a = st.attrs as unknown as Record<string, number>;
   const put = (o: number, v: number | undefined) => { if (v !== undefined && v > 0) np[o] = v; };
   put(0x10, a.coaching); put(0x17, a.judgingAbility); put(0x18, a.judgingPotential); put(0x1e, a.physio); put(0x1b, a.motivating);
@@ -99,6 +107,12 @@ function managerNp(g: GameState, cid: number): number[] | null {
   if (st.tac) [0x0e, 0x13, 0x15, 0x1a, 0x1c, 0x1f, 0x21, 0x43].forEach((o, k) => put(o, st.tac![k]));
   return np;
 }
+/** managerblokkens personbytes (0x6e7ae7–0x6e7b13 / 0x6e547a–0x6e54a6): spillerens staff +0x59 (Loyalty) og +0x5b (Professionalism) og dommerens
+ *  (manageren) +0x59 – personpostens skjulte egenskaber (Player.attrs afrundet som hukommelsen, cmSlMem.ts attrI; Staff.cmHid[3]). Før stod alle
+ *  tre fast på 10, så de to sidste led i t (min((+0x14)(+0x5b − 10)/3, 10) + min((+0x59 − 10)·J+0x59/3, 10)) var altid 0. */
+export const mgrLoyalty = (st: { cmHid?: number[] } | null | undefined) => st?.cmHid?.[3] ?? 10;
+export const plLoyalty = (p: Player) => Math.round(p.attrs[ATTRS.indexOf('loyalty' as never)] || 10);
+export const plProf = (p: Player) => Math.round(p.attrs[ATTRS.indexOf('professionalism' as never)] || 10);
 
 // ---------------------------------------------------------------- én klub
 
@@ -149,11 +163,13 @@ export function cmSquadPlanClub(g: GameState, cid: number, daily: boolean, first
   };
   const ctxPick = aiPickCtx(cid) ?? {};
   const np = managerNp(g, cid);
-  const mgrBlock: ManagerBlockIn | undefined = np ? { np, j59: 10, b59: 10, b5b: 10, rel: { d30: false, d60: false, m840: false, m810: false } } : undefined;
   // managerblokkens forhold pr. spiller (0x6e79da/0x6e7a14: spilleren og klubben, 0x6e7a5b/0x6e7a72: manageren og spilleren – cmRelations.ts)
+  // og personbytes (spillerens +0x59/+0x5b, managerens +0x59)
   const mgrPerson = managerStaff(g, cid);
-  const mgrOf = (p: Player): ManagerBlockIn | undefined => (mgrBlock && (p.cmRel || mgrPerson?.cmRel)
-    ? { ...mgrBlock, rel: { d30: dislikesClub(p, cid), d60: favoursClub(p, cid), m840: dislikesPerson(mgrPerson, p.id), m810: favoursPerson(mgrPerson, p.id) } } : mgrBlock);
+  const j59 = mgrLoyalty(st);
+  const NOREL = { d30: false, d60: false, m840: false, m810: false };
+  const mgrOf = (p: Player): ManagerBlockIn | undefined => (!np ? undefined : { np, j59, b59: plLoyalty(p), b5b: plProf(p),
+    rel: p.cmRel || mgrPerson?.cmRel ? { d30: dislikesClub(p, cid), d60: favoursClub(p, cid), m840: dislikesPerson(mgrPerson, p.id), m810: favoursPerson(mgrPerson, p.id) } : NOREL });
   const yearAgo = dayOf(`${+g.date.slice(0, 4) - 1}${g.date.slice(4)}`);
   const clubLang = nationLanguage(g, club.nation);
   const cache = new Map<number, ReturnType<typeof roleDataOf>>();
@@ -188,7 +204,7 @@ export function cmSquadPlanClub(g: GameState, cid: number, daily: boolean, first
         rec: pp.rec!, pos: mask, att: 0, lo: 0, hi: 0, tb: 0, tf: 0, flags,
         mgrJoined: st ? mj : null, today, yearAgo, captain: false, setPiece: 0,
         data: { ...d, contract: c ? { b3e: c.b3e, b3f: c.b3f, b44: p.cmContract?.b44 ?? 0, b45: c.b45, b4f: c.b4f } : null },
-        ...(mgrBlock ? { mgrBlock: mgrOf(p), hasClub: true } : {}),
+        ...(np ? { mgrBlock: mgrOf(p), hasClub: true } : {}),
       });
     },
     judge: (pp, kind, hint) => dataOf(byId.get(pp.id)!).judge(kind, hint),

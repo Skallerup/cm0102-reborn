@@ -20,7 +20,9 @@ describe('Scout Player i en baggrundsklub (ægte tilstand, original DB)', () => 
     const step = () => { const r = continueGame(); if (r.match !== undefined) quickPlayUserMatch(); };
     while (g.date < '2001-08-20') step();
     // Frankrigs stærkeste klub uden kampe i kampprogrammet (ligaen spilles ikke – kun baggrundskampe) og dens bedste spiller
-    const busy = new Set(Object.values(g.fixtures).flatMap((f) => [f.home, f.away]));
+    // (26/11) også ingen deltager i en turnering (comp.clubs – Europa): Lyon (CL) havde ingen kampe 20/8, men gruppekampene kom senere, og
+    // spejderne så CL-kampen mod PSV og rapporterede (rigtigt, 0x7f8c00 → 0x7b5be0 mode 2) også om modstanderen Kevin Hofland
+    const busy = new Set([...Object.values(g.fixtures).flatMap((f) => [f.home, f.away]), ...Object.values(g.comps).flatMap((c) => c.clubs ?? [])]);
     const fra = Object.values(g.clubs).filter((c) => w.nations[c.nation]?.name === 'France' && !busy.has(c.id) && squad(c.id).length > 15).sort((a, b) => b.rep - a.rep)[0];
     const target = squad(fra.id).sort((a, b) => b.ca - a.ca)[0];
     expect(applyAction({ t: 'scoutStatus', pid: target.id })).toBe(0);
