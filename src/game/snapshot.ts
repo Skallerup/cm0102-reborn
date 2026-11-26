@@ -104,6 +104,143 @@ export async function gzipChunks(chunks: Iterable<string>): Promise<GzBytes> {
   return out;
 }
 
+/** (hukommelse, Android/Safari 26/11 "NewGameInterrupted … step unpack") Samme værdi som JSON.parse(tekst), men teksten fødes i bidder: beholdere
+ *  (objekter/arrays) i de øverste `depth` niveauer bygges her felt for felt, og hver værdi dybere nede (en spiller, en klub, en kamp …) tolkes for
+ *  sig med JSON.parse – hele teksten (~100 MB+ med Maximum) findes aldrig på én gang ved siden af objekterne. Felternes rækkefølge og værdierne er
+ *  præcis som JSON.parse's (tests/jsonStream.test.ts). Ugyldig JSON giver SyntaxError som JSON.parse. */
+export class JsonStreamParser {
+  // st: 0 værdi · 1 nøgle eller '}' · 2 nøgle · 3 ':' · 4 ',' eller slut · 5 værdi eller ']' · 6 færdig
+  private stack: { v: unknown[] | Record<string, unknown>; arr: boolean; key: string }[] = [];
+  private st = 0;
+  private root: unknown = undefined;
+  // optagelse af én værdi/nøgle: bidderne indtil værdien slutter (kind 1 streng, 2 beholder, 3 tal/literal)
+  private cap: string[] = [];
+  private kind = 0;
+  private isKey = false;
+  private nest = 0;
+  private inStr = false;
+  private esc = false;
+  private depth: number;
+  constructor(depth = 2) { this.depth = depth; }
+
+  private attach(x: unknown): void {
+    const f = this.stack[this.stack.length - 1];
+    if (!f) { this.root = x; this.st = 6; return; }
+    if (f.arr) (f.v as unknown[]).push(x);
+    else if (f.key === '__proto__') Object.defineProperty(f.v, f.key, { value: x, writable: true, enumerable: true, configurable: true });
+    else (f.v as Record<string, unknown>)[f.key] = x;
+    this.st = 4;
+  }
+  private done(): void {
+    const t = this.cap.length === 1 ? this.cap[0] : this.cap.join('');
+    this.cap = [];
+    const k = this.kind;
+    this.kind = 0;
+    const x = k === 3 ? (t === 'true' ? true : t === 'false' ? false : t === 'null' ? null : JSON.parse(t)) : JSON.parse(t);
+    if (this.isKey) { if (typeof x !== 'string') throw new SyntaxError('JSON: key is not a string'); this.stack[this.stack.length - 1].key = x; this.st = 3; return; }
+    this.attach(x);
+  }
+  private static STR = /["\\]/g;
+  private static NEST = /["\\{}[\]]/g;
+  private static PRIM = /[,\]}\s]/g;
+  /** fortsætter optagelsen: bidden s fra `start` (søgningen fra `i`) – returnerer positionen efter værdien eller -1 (bidden er brugt op) */
+  private capture(s: string, start: number, i: number): number {
+    if (this.esc) { this.esc = false; i++; }
+    if (this.kind === 3) {
+      const re = JsonStreamParser.PRIM; re.lastIndex = i;
+      const m = re.exec(s);
+      if (!m) { this.cap.push(start ? s.slice(start) : s); return -1; }
+      this.cap.push(s.slice(start, m.index)); this.done(); return m.index;
+    }
+    for (;;) {
+      const re = this.inStr ? JsonStreamParser.STR : JsonStreamParser.NEST;
+      re.lastIndex = i;
+      const m = re.exec(s);
+      if (!m) { this.cap.push(start ? s.slice(start) : s); return -1; }
+      const j = m.index, c = s.charCodeAt(j);
+      i = j + 1;
+      if (c === 92) { if (i >= s.length) { this.esc = true; this.cap.push(start ? s.slice(start) : s); return -1; } i++; continue; } // \
+      if (c === 34) { // "
+        this.inStr = !this.inStr;
+        if (!this.inStr && this.kind === 1) { this.cap.push(s.slice(start, i)); this.done(); return i; }
+        continue;
+      }
+      if (c === 123 || c === 91) this.nest++;
+      else if (--this.nest === 0) { this.cap.push(s.slice(start, i)); this.done(); return i; }
+    }
+  }
+  private begin(s: string, i: number, c: number, key: boolean): number {
+    this.isKey = key;
+    this.nest = 0;
+    this.cap = [];
+    if (c === 34) { this.kind = 1; this.inStr = true; return this.capture(s, i, i + 1); }
+    this.inStr = false;
+    this.kind = c === 123 || c === 91 ? 2 : 3;
+    return this.capture(s, i, i);
+  }
+  feed(s: string): void {
+    let i = 0;
+    const n = s.length;
+    if (this.kind) { i = this.capture(s, 0, 0); if (i < 0) return; }
+    while (i < n) {
+      const c = s.charCodeAt(i);
+      if (c === 32 || c === 10 || c === 13 || c === 9) { i++; continue; }
+      const st = this.st;
+      if (st === 0 || st === 5) {
+        if (st === 5 && c === 93) { this.pop(); i++; continue; }
+        if ((c === 123 || c === 91) && this.stack.length < this.depth) {
+          const v = c === 91 ? [] : {};
+          this.attach(v);
+          this.stack.push({ v, arr: c === 91, key: '' });
+          this.st = c === 91 ? 5 : 1;
+          i++; continue;
+        }
+        i = this.begin(s, i, c, false); if (i < 0) return; continue;
+      }
+      if (st === 1 || st === 2) {
+        if (st === 1 && c === 125) { this.pop(); i++; continue; }
+        if (c !== 34) throw new SyntaxError(`JSON: expected key, got '${s[i]}'`);
+        i = this.begin(s, i, c, true); if (i < 0) return; continue;
+      }
+      if (st === 3) { if (c !== 58) throw new SyntaxError(`JSON: expected ':', got '${s[i]}'`); this.st = 0; i++; continue; }
+      if (st === 4) {
+        const f = this.stack[this.stack.length - 1];
+        if (c === 44) { this.st = f.arr ? 0 : 2; i++; continue; }
+        if (c === (f.arr ? 93 : 125)) { this.pop(); i++; continue; }
+        throw new SyntaxError(`JSON: unexpected '${s[i]}'`);
+      }
+      throw new SyntaxError('JSON: unexpected data after end');
+    }
+  }
+  private pop(): void { this.stack.pop(); this.st = this.stack.length ? 4 : 6; }
+  end(): unknown {
+    if (this.kind === 3 && !this.isKey && this.stack.length === 0) this.done();
+    if (this.st !== 6 || this.kind) throw new SyntaxError('JSON: unexpected end of data');
+    return this.root;
+  }
+}
+
+/** et gemt spils bytes (gzip-JSON eller ren JSON) tolket som JSON.parse(gunzipText(blob)) – men strømmende (JsonStreamParser): kun én bid af
+ *  teksten ad gangen; gzip-bytes læses direkte fra blob'en */
+export async function parseJsonBlob(blob: Blob, depth = 2): Promise<unknown> {
+  const head = new Uint8Array(await blob.slice(0, 2).arrayBuffer());
+  const gz = head[0] === 0x1f && head[1] === 0x8b;
+  let stream = blob.stream() as ReadableStream<Uint8Array>;
+  if (gz) stream = stream.pipeThrough(new DecompressionStream('gzip') as unknown as ReadableWritablePair<Uint8Array, Uint8Array>);
+  const dec = new TextDecoder();
+  const p = new JsonStreamParser(depth);
+  const rd = stream.getReader();
+  for (;;) {
+    const { done, value } = await rd.read();
+    if (done) break;
+    const t = dec.decode(value, { stream: true });
+    if (t) p.feed(t);
+  }
+  const t = dec.decode();
+  if (t) p.feed(t);
+  return p.end();
+}
+
 export async function gunzipText(blob: Blob): Promise<string> {
   const head = new Uint8Array(await blob.slice(0, 2).arrayBuffer());
   if (head[0] !== 0x1f || head[1] !== 0x8b) return blob.text();
@@ -133,8 +270,10 @@ export async function serializeNewGame(g: GameState): Promise<GzBytes> {
   try { return await serializeBytes(g, true); } finally { rng.state = keep; }
 }
 
+/** (26/11) strømmende (parseJsonBlob): samme spil som JSON.parse(gunzipText(blob)), men hele teksten ligger aldrig i hukommelsen ved siden af
+ *  objekterne – hovedtrådens top ved udpakningen af et nyt spil (Maximum) faldt fra ~354 til ~144 MB over udgangspunktet (spillet selv ~127 MB) */
 export async function deserializeState(blob: Blob): Promise<GameState> {
-  return ensureOptions(JSON.parse(await gunzipText(blob)) as GameState);
+  return ensureOptions(await parseJsonBlob(blob) as GameState);
 }
 
 /** et øjebliksbillede/gemt spil uden `options` (beskadiget eller meget gammelt) må ikke vælte skærmene (`options.mode` på undefined): udfyld som et gammelt udvidet spil */
