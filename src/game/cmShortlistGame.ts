@@ -51,7 +51,7 @@ import { isHumanClub } from './humans';
 import { onGameSwitch } from './state';
 import { ageOn } from './dates';
 import { ATTRS } from './attributes';
-import { workPermitGranted, cmLoanRulesOk } from './rules2001';
+import { workPermitGranted, cmLoanRulesOk, cmLoanSellerOk } from './rules2001';
 import { cmCanSign } from './cmOfferCheck';
 import { cmLoanPeriod } from './cmLoan';
 import { cmFitRead } from './cmFitnessGame';
@@ -1661,7 +1661,9 @@ export function buildSlMem(g: GameState, opts: { noStale?: boolean; resume?: SlR
         if (m.u8(st + 0x3d) !== 0xb) return 0;
         const why = 0x5e7f0080; m.w16(why, 0);
         if (!slCall(S.M.c, 0x8ce990, m.u32(0xde1f54), st, cp, why, 0)) return 0;
-        return cmLoanRulesOk(cl, g.clubs[m.s32(k + 4)]) ? 1 : 0;
+        // … og sælgerlandets +0x24 for hver måned i lejeperioden 0x8d0590 (0x8d0461/0x8d04e7 – rules2001.ts cmLoanSellerOk)
+        const home = g.clubs[m.s32(k + 4)];
+        return cmLoanRulesOk(cl, home, p) && cmLoanSellerOk(cl, home, p) ? 1 : 0;
       }
       case 0x8ced40: {
         // TRANSFER_MANAGER 0x8ced40(køber, &dato, staff, kontraktklub, 1, &grund): køberlandets can_sign_player 0x8e8560 på datoen (cmOfferCheck.ts

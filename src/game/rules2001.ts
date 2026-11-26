@@ -2,11 +2,12 @@
 import { addNews, gs, onGameSwitch, squad } from './state';
 import { rng } from './rng';
 import { econ } from './econ';
-import { cmActive, cmLogic } from './cmPlayerData';
+import { cmActive, cmLogic, statAvg } from './cmPlayerData';
 import { cmNeedsPermit, cmPermitOn, cmWorkPermit, type PermitOffer } from './cmPermit';
 import { asOwner, isHumanClub } from './humans';
 import type { Club, Player } from './types';
-import { cmWindowOpen } from './cmOfferCheck';
+import { CM_WINDOWS, cmInWindow, cmWindowOpen } from './cmOfferCheck';
+import { cmLoanPeriod } from './cmLoan';
 
 /** Spilles der med den originale 2001/02-database? */
 // (samme regel som cmDatabase i newgame.ts – ikke importeret derfra, så filen ikke trækker hele newgame med og skaber
@@ -101,16 +102,31 @@ export function englandLoanRefused(p: Player, buyer: Club): boolean {
  *  lejer i sæsonen (+0x91c) → nej (0x1e); > 1 lejet ind i truppen (+0xd7, 0x4cf6d0, kontraktklub ≠ køberen) → nej (0x26); i dag i intet vindue
  *  (0x8e8e50) → nej (9). Skotland 0x7f6650: kun samme division, når den er Premier Division (0x9cf5dc). Australien, Frankrig, Rusland 0x412dd0,
  *  Tyrkiet, USA 0x902240 og Holland/Norge 0x794760: kun vinduet. Finland 0x5a9af0: vinduet, og en computerklub kun dag 90–300. Grundreglen 0x40a600, Kroatien/Grækenland/Polen 0x5ed060, Danmark/Nordirland/Wales/Sydkorea 0x793900: må.
- *  Ikke porteret (*estimeret*: må): Irland 0x63c3d0, Italien 0x661770, Spanien 0x859630 – og sælgerlandets
- *  +0x24 pr. lejemåned (Finland 0x5a9ba0, Frankrig 0x5c1ed0, Tyskland 0x5e0210, Irland 0x63c530, Italien 0x6618f0; de øvrige 0x40a610 = må). */
-export function cmLoanRulesOk(buyer: Club, home: Club | undefined): boolean { return cmLoanRules(buyer, home).ok; }
+ *  Irland 0x63c3d0: ≥ 5 lejer i sæsonen (+0x91c – talt af 0x63c4e0 for irske købere, nulstillet 20/6 af 0x57a020) → nej (0x1e); samme division
+ *  (+0x57, enhver) som kontraktklubben → nej (0x1d); intet vindue. Italien 0x661770: i dag i ingen af de to første vinduer (0x8e8c40 på +4 og
+ *  +4 + 0xc – ikke det tredje) → nej (9); køberens division er en af [0x9cf578..0x9cf588] (turneringerne 26–30: Serie C1/A, C1/B og C2) og ≥ 4
+ *  lejet ind i truppen → nej (0x25). Spanien 0x859630: vinduet (0x8e8e50) → nej (9); samme division som kontraktklubben og PlayerStats
+ *  0x7c1e30(post, 2, 1, 6,5) (ligakampe) > 5,0 → nej (0x1f).
+ *  Sælgerlandets +0x24 (cmLoanSellerOk) for Irland 0x63c530 og Italien 0x6618f0; ikke porteret (*estimeret*: må): Finland 0x5a9ba0, Frankrig
+ *  0x5c1ed0, Tyskland 0x5e0210 (de øvrige 0x40a610 = må). */
+export function cmLoanRulesOk(buyer: Club, home: Club | undefined, p?: Player): boolean { return cmLoanRules(buyer, home, p).ok; }
 
-/** TRANSFER_RULES +0x20 med grunden (&grund): 0x1d samme Premier Division, 0x1e fem i sæsonen, 0x26 to lejede ind, 9 uden for vinduet; 0 = ingen
- *  grund (også Finlands nej uden for dag 90–300 – handle_player_accepted_terms 0x8c2493 ser kun på grunden, can_loan_player 0x8d0040 på svaret) */
-export function cmLoanRules(buyer: Club, home: Club | undefined): { ok: boolean; why: number } {
+/** klubbens division +0x57: den kørende liga (CM<id>), ellers club.dat's division (cmFinRaw[0]) – som cmNonLeague.ts */
+function divOf(g: ReturnType<typeof gs>, c: Club): number {
+  const m = /^CM(\d+)$/.exec(c.league ?? '');
+  return m && !g.leagues[c.league]?.hidden ? +m[1] : g.cmFinRaw?.[c.id]?.[0] ?? -1;
+}
+/** Italiens to første vinduer (0x8e8c40 på TRANSFER_RULES +4 og +4 + 0xc) */
+const italyWin = (date: string) => CM_WINDOWS.Italy.slice(0, 2).some((w) => cmInWindow(w, date));
+
+/** TRANSFER_RULES +0x20 med grunden (&grund): 0x1d samme (Premier) Division, 0x1e fem i sæsonen, 0x26 to lejede ind, 0x25 fire lejede ind
+ *  (Italien), 0x1f over 5 ligakampe (Spanien), 9 uden for vinduet; 0 = ingen grund (også Finlands nej uden for dag 90–300 –
+ *  handle_player_accepted_terms 0x8c2493 ser kun på grunden, can_loan_player 0x8d0040 på svaret) */
+export function cmLoanRules(buyer: Club, home: Club | undefined, p?: Player): { ok: boolean; why: number } {
   const g = gs();
   const nat = g.nations[buyer.nation]?.name ?? '';
   const sameTop = () => !!home && home.league === buyer.league && g.leagues[buyer.league]?.tier === 1;
+  const sameDiv = () => !!home && divOf(g, home) === divOf(g, buyer);
   const no = (why: number) => ({ ok: false, why }), yes = { ok: true, why: 0 };
   const win = () => (cmWindowOpen(g, buyer, g.date) ? yes : no(9));
   switch (nat) {
@@ -130,7 +146,60 @@ export function cmLoanRules(buyer: Club, home: Club | undefined): { ok: boolean;
       const d = Math.round((Date.parse(g.date.slice(0, 10) + 'T00:00:00Z') - Date.UTC(Number(g.date.slice(0, 4)), 0, 1)) / 86400000);
       return d >= 90 && d <= 300 ? yes : no(0);
     }
+    case 'Republic of Ireland': {
+      // 0x63c3d0: sæsontallet (+0x91c) først, så samme division (0x4cf5a0's klub +0x57 = køberens +0x57) – intet vindue
+      if ((loanCounts(g).season.get(buyer.id) ?? 0) >= 5) return no(0x1e);
+      return sameDiv() ? no(0x1d) : yes;
+    }
+    case 'Italy': {
+      // 0x661770: de to første vinduer; i C1/C2 (+0x57 ∈ [0x9cf578..0x9cf588]) højst 3 lejede ind (0x4cf6d0, kontraktklub ≠ køberen)
+      if (!italyWin(g.date)) return no(9);
+      const d = divOf(g, buyer);
+      if (d >= 26 && d <= 30 && (loanCounts(g).now.get(buyer.id) ?? 0) >= 4) return no(0x25);
+      return yes;
+    }
+    case 'Spain': {
+      // 0x859630: vinduet; samme division og over 5 ligakampe i sæsonen (0x7c1e30(staff +0x61, 2, 1, 6,5) > [0x968990] = 5,0)
+      if (!cmWindowOpen(g, buyer, g.date)) return no(9);
+      return sameDiv() && !!p && statAvg(p, 2, 1, 6.5) > 5 ? no(0x1f) : yes;
+    }
     default: return yes;
+  }
+}
+
+/** dato (dag i måneden, måned 0..11, år) som 0x54a130 (dag-i-året = månedens start + dagen, uden at klemme – 31/2 = 3/3) */
+const dmy = (d: number, m: number, y: number) => new Date(Date.UTC(y, m, d)).toISOString().slice(0, 10);
+
+/** Sælgerlandets TRANSFER_RULES +0x24(kontraktklub, staff, 0, &dato, 1) på datoen: Irland 0x63c530 – vinduet (0x8e8e50); Italien 0x6618f0 –
+ *  juni (0x54cfb0 = 5, når femte argument ≠ 0) eller et af de to første vinduer (0x8e8c40); de øvrige (0x40a610) må. */
+function sellerRuleOk(g: ReturnType<typeof gs>, home: Club, date: string): boolean {
+  switch (g.nations[home.nation]?.name ?? '') {
+    case 'Republic of Ireland': return cmWindowOpen(g, home, date);
+    case 'Italy': return Number(date.slice(5, 7)) === 6 || italyWin(date);
+    default: return true;
+  }
+}
+
+/** TRANSFER_MANAGER::can_loan_player 0x8d0040, sælgerdelen (0x8d037f–0x8d052d, efter køberlandets +0x20): kontraktklubbens lands regelobjekt
+ *  (+0x53 = objektets +0xa) og lejeperioden 0x8d0590 (cmLoan.ts cmLoanPeriod). Start = slut (måned og år) → må. Ellers prøves datoen (dagen i
+ *  dag 0x54cf70, måned, år) for startmåneden og derefter én måned ad gangen, så længe den forrige dato ligger før slutdatoen (dagen i dag,
+ *  slutmåned, slutår): én måned, hvor +0x24 svarer ≠ 0 → må; ingen → nej ("This loan deal cannot go ahead at the current time.", 0xa8f288). */
+export function cmLoanSellerOk(buyer: Club, home: Club | undefined, p: Player): boolean {
+  const g = gs();
+  if (!home) return true;
+  const nat = g.nations[home.nation]?.name ?? '';
+  if (nat !== 'Republic of Ireland' && nat !== 'Italy') return true;          // 0x40a610 (eller intet regelobjekt): må
+  const r = cmLoanPeriod(g, buyer.id, p);
+  if (r.sm === r.em && r.sy === r.ey) return true;
+  const dom = Number(g.date.slice(8, 10));
+  const end = dmy(dom, r.em, r.ey);
+  let m = r.sm, y = r.sy, cur = dmy(dom, m, y);
+  if (sellerRuleOk(g, home, cur)) return true;
+  for (;;) {
+    if (++m > 11) { m = 0; y++; }
+    if (!(end > cur)) return false;
+    cur = dmy(dom, m, y);
+    if (sellerRuleOk(g, home, cur)) return true;
   }
 }
 

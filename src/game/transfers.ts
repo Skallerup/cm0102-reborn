@@ -2352,7 +2352,7 @@ function cmAiAiDue(cx: SlDueCtx) {
     // 0x8e23d0 og tilstand 0x10 (0x8c24ac, 20 dage). Ellers lejen (0x4d01e0) og tilstand 0x14 (0x8c27cd).
     if (o.loan) {
       const home = g.clubs[o.seller];
-      const why = squad(buyer.id).filter((x) => !x.virtual).length + loanedOut(g, buyer.id).length + 1 > 50 ? 4 : cmLoanRules(buyer, home).why;
+      const why = squad(buyer.id).filter((x) => !x.virtual).length + loanedOut(g, buyer.id).length + 1 > 50 ? 4 : cmLoanRules(buyer, home, p).why;
       if (why) { CM_AIAI.rules++; cmLoanCancelled(o, p, why); cmTmClose(o, 0x10, 20, 'collapsed'); closed = true; continue; }
       CM_AIAI.loanOk++;
       cmTmCollapseOthers(o);
