@@ -10,7 +10,7 @@
 //   spillerposten (0x46 bytes)       aiTeam.ts playerRecord (Player.cmInt, cmRepMem, positionerne, fødderne) + id på +0
 //   staffposten +0x18 alder, +0x3e/+0x40 ankomst, +0x56..+0x5d de skjulte egenskaber (Player.attrs, Player.joined ?? cmJoined)
 //   klub +0x80                        GameState.cmClubRep (databasens rå omdømme – cmPlayerData.ts clubRepMem)
-//   comp +0x69                        GameState.cmCompRep (club_comp.dat byte 105) for ligaerne "CM<id>"
+//   comp +0x69                        GameState.cmCompRep (club_comp.dat byte 105) – ligaerne "CM<id>" og spillets egne turneringer (CM_COMP_ID)
 //   kontrakten 0x4cf5f0 +0x44/+0x45   Player.cmContract (cmPlayerData.ts – tilfredshed og klageflag)
 //   0x53ce90 (sikker, 0x53ce90–0x53cedb) = (kontrakt +0x4f & 0xf) − 10 med egen klub, ellers 0 (Player.cmContract.b4f)
 //   manageren np+0xe / 0x544410(np, np+0x21)   Staff.cmNp (ikke-spillerposten efter spilstarten, cmStaffInit.ts); ældre spil: Staff.tac[0]
@@ -45,8 +45,12 @@ import type { MotivationEnv } from './gridMatch';
 import { natOfClub } from '../../cmVirtual';
 import { NO_CARRY, registerCarry } from '../../carry';
 import { RSV_CM_ID, RSV_COMP } from '../../cmReserveMatches';
+import { CM_CUP_TABLES } from '../../data/cmCupTables';
+import { nation01 } from '../../cmFitness';
 /** baggrundskampene (fixture −2, cmReserves.ts RES_COMP – ikke importeret: cmReserves trækker spillets moduler med) */
 const RES_COMP = 'RES';
+/** club_comp.dat "Friendly" (venskabskampenes turnering, fixture +0x14) */
+const FRIENDLY_CC = 72;
 const isFriendlyComp = (c: string) => c === 'FRIENDLY' || c.startsWith('FR');
 
 /** landskampens fixture-koder (international.ts intlCodes): +0x3a, +0x30, +0x3c (neutral bane) og turneringens id (−1 = ingen) */
@@ -87,25 +91,27 @@ export interface GameFixtureInfo {
   homeLeagueIsComp: boolean;
 }
 
-/** fixture-info af spillets turnering (kampens comp-id) */
-export function fixtureInfoOf(compId: string | undefined, homeClub: number, stage?: string): GameFixtureInfo {
+/** fixture-info af spillets turnering (kampens comp-id; `fixture` = kampen, når den findes – dens koder fixtureCodesOf) */
+export function fixtureInfoOf(compId: string | undefined, homeClub: number, stage?: string, fixture?: Fixture): GameFixtureInfo {
   if (!hasGame()) return { fx3a: 2, comp: null, homeLeagueIsComp: false };
   const g = gs();
   // en kamp uden fixture (laboratoriet, tests): som en ligakamp i hjemmeholdets liga (originalens kampe har altid fixture+0x14 –
   // sub_6ec010 0x6ec561 læser comp +0x69 uden nul-tjek)
-  compId ??= g.clubs[homeClub]?.league;
+  compId ??= fixture?.comp ?? g.clubs[homeClub]?.league;
   if (!compId) return { fx3a: 2, comp: { rep: 0, mls: false }, homeLeagueIsComp: false };
   // reservekampen (cmReserveMatches.ts): +0x3a = 1, turneringen Reserve (club_comp.dat 87, +0x69)
   // baggrundskampen (cmReserves.ts 0x84be20): fixture −2, +0x3a = 2, intet stadion og ingen turnering (+0x14 = NULL)
   if (compId === RES_COMP) return { fx3a: 2, comp: null, homeLeagueIsComp: false };
   if (compId === RSV_COMP) return { fx3a: 1, comp: { rep: g.cmCompRep?.[RSV_CM_ID] ?? 0, mls: false }, homeLeagueIsComp: false };
-  const c = g.comps[compId];
-  const m = /^CM(\d+)$/.exec(compId);
-  const rep = m && g.cmCompRep ? g.cmCompRep[+m[1]] : undefined;
-  const league = c?.type === 'league';
-  const fx3a = league ? 2 : stage === 'F' ? 8 : 4;
-  // comp +0x69: club_comp.dat's omdømme (cmCompRep) for databasens turneringer; spillets egne turneringer (pokaler, Europa) har ikke posten → 0
-  return { fx3a, comp: { rep: rep ?? 0, mls: false }, homeLeagueIsComp: league && g.clubs[homeClub]?.league === compId };
+  // venskabskampen: fixture +0x14 = turneringen "Friendly" (club_comp.dat 72 – Friendly +4, 0x5c6710), +0x3a = 1 (oraklets crowd1.txt:
+  // comp 72, +0x69 = 1, +0x3a = 1)
+  if (compId === 'FRIENDLY') return { fx3a: 1, comp: { rep: g.cmCompRep?.[FRIENDLY_CC] ?? 0, mls: false }, homeLeagueIsComp: false };
+  // fixture +0x3a og +0x14 → +0x69 som fixture-posten (fixtureCodesOf – oraklets crowd1.txt): liga 2; FA Cup/League Cup/Charity Shield 4, fra
+  // kvartfinalen 6 (også finalen); Champions League 8; UEFA Cup/Intertoto 7, 8 fra kvartfinalen; play-off 5. Omdømmet er turneringens
+  // club_comp.dat +0x69 – også for spillets egne turneringer (CL 20, UEFA 18, Intertoto 8, FA Cup 15, League Cup 10, Charity Shield 1)
+  const k = fixtureCodesOf(g, fixture ?? (stage ? ({ stage } as Fixture) : undefined), compId, homeClub);
+  const league = g.comps[compId]?.type === 'league';
+  return { fx3a: k.b3a, comp: { rep: k.compRep, mls: false }, homeLeagueIsComp: league && g.clubs[homeClub]?.league === compId };
 }
 
 /** holdets manager: np+0xe (Attacking, databasens værdi) og 0x544410(np, np+0x21) (den viste Tactics) */
@@ -247,7 +253,7 @@ export function gameInputsCtx(home: number, away: number, o: { compId?: string; 
   // landskampene (international.ts playNation): fixture-posten fra landskampens koder (crowd1.txt: +0x3a = 9 venskabskamp/U21, 10 turnering)
   const intl = o.intl;
   const fx: GameFixtureInfo = intl ? { fx3a: intl.b3a, comp: intl.compId >= 0 ? { rep: g?.cmCompRep?.[intl.compId] ?? 0, mls: false } : null, homeLeagueIsComp: false }
-    : fixtureInfoOf(o.compId ?? fixture?.comp, home, o.stage ?? fixture?.stage);
+    : fixtureInfoOf(o.compId ?? fixture?.comp, home, o.stage ?? fixture?.stage, fixture);
   const codes = !g ? null : intl ? { w30: intl.w30, w32: 0, b34: 0, b3a: intl.b3a, b3b: 0xff, b3c: intl.b3c, firstLeg: null, flags38: 0, compId: intl.compId, compRep: fx.comp?.rep ?? 0, table: null }
     : fixtureCodesOf(g, fixture, o.compId ?? fixture?.comp, home);
   const compId = intl ? undefined : o.compId ?? fixture?.comp ?? g?.clubs[home]?.league;
@@ -329,14 +335,37 @@ export interface GameFixtureCodes {
   /** turneringens id i originalen (comp +0) og omdømme (+0x69); tabelposten */
   compId: number; compRep: number; table: { b3c: number; b43: number; rows: boolean } | null;
 }
+/** club_comp.dat-id'et for landets pokal (CM_CUP_TABLES-nøglen) – ens i 3.9.60/3.9.65/3.9.68 og 2026/27's world-cm.json. Landets opsætning
+ *  (0x830000–0x838700) giver pokalklassens konstruktør turneringsposten [0xae23d0] + 107·[global], og globalen sætter 0x60f000–0x611800 efter
+ *  turneringens navn: ENG 0x833ae0 [0x9cf74c] "English FA Cup" → EngFaCup 0x56f040, ENG_LC [0x9cf750] "English League Cup" → 0x56c2a0,
+ *  ENG_CS [0x9cf754] "English Charity Shield" → 0x56d380, SCO [0x9cf75c] "Scottish Cup" → 0x7ed310, GER [0x9cf714] "German Cup" → 0x5d8c20,
+ *  FRA [0x9cf70c] → 0x5ba130, SPA [0x9cf740] → 0x84cf50, POR [0x9cf73c] → 0x7cd980, BEL [0x9cf700] "Belgian Cup" → 0x41d050, TUR [0x9cf8f8]
+ *  "turkish fa cup" → 0x8fc3b0, RUS [0x9cf934] → 0x7e9210, NOR [0x9cf734] → 0x78f020, SWE [0x9cf748] → 0x88cbb0, DEN [0x9cf708] "Danish Cup" →
+ *  0x5509b0, CRO [0x9cf898] → 0x517480, POL [0x9cf864] "Polish FA Cup" → 0x7c7d80, KOR [0x9cfa04] "Korean FA Cup" → 0x66a460, JAP [0x9cf660]
+ *  "Japanese Emperor's Cup" → 0x661d30, BRA [0x9cf9e8] "Brazilian Cup" → 0x427430, USA [0x9cf728] "US Open Cup" → 0x90aeb0 */
+const CUP_CC: Record<string, number> = { ENG: 351, ENG_LC: 352, ENG_CS: 353, SCO: 355, GER: 337, FRA: 335, SPA: 348, POR: 347, BEL: 332, TUR: 173,
+  RUS: 190, NOR: 345, SWE: 350, DEN: 334, CRO: 141, POL: 137, KOR: 230, JAP: 70, BRA: 68, USA: 342 };
+/** landets pokal (CUP-<nation>): tabel-nøglen efter nøglelandets id i den originale database (nation01) */
+const cupKeyOf = (nation: number): string | undefined => {
+  const n01 = nation01(nation);
+  return Object.keys(CM_CUP_TABLES).find((k) => !k.includes('_') && CM_CUP_TABLES[k].nation === n01);
+};
 export const CM_COMP_ID = (g: GameState, id: string): number => {
   const m = /^CM(\d+)$/.exec(id);
   if (m) return +m[1];
-  // spillets egne turneringer: originalens id efter navnet (Champions League 326, UEFA Cup 328, Intertoto 330, FA Cup 351, League Cup 352)
+  // spillets egne turneringer: originalens id (Champions League 326, UEFA Cup 328, Intertoto 330, European Super Cup 329 [0x9cf6f4] – oraklets
+  // crowd1.txt 24/8-01: comp 329, +0x69 = 15; landenes pokaler CUP_CC)
   const c = g.comps[id], n = (c?.name ?? id).toLowerCase();
+  if (id === 'ESC' || /^(european|uefa) super cup/.test(n)) return 329;
   if (/champions/.test(n) || id === 'CL') return 326;
   if (/uefa|europa/.test(n) || id === 'UEFA' || id === 'EL') return 328;
   if (/inter-?toto|conference/.test(n) || id === 'UECL' || id === 'UIC') return 330;
+  if (id.startsWith('LC-')) return CUP_CC.ENG_LC;
+  if (id.startsWith('CS-')) return CUP_CC.ENG_CS;
+  if (c?.type === 'cup' && id.startsWith('CUP-')) {
+    const k = (c.meta?.cmCup as string | undefined) ?? cupKeyOf(c.nation);
+    if (k && CUP_CC[k] !== undefined) return CUP_CC[k];
+  }
   if (/fa cup/.test(n)) return 351;
   if (/league cup|worthington|carling/.test(n)) return 352;
   if (/charity|community shield/.test(n)) return 353;

@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { createGame, type WorldData } from '../src/game/newgame';
 import { gs } from '../src/game/state';
 import { continueGame, quickPlayUserMatch } from '../src/game/sim';
-import { fixtureCodesOf } from '../src/game/engine/grid/gameInputs';
+import { fixtureCodesOf, fixtureInfoOf } from '../src/game/engine/grid/gameInputs';
 import { RES_SKIP } from '../src/game/cmReserves';
 import type { Fixture } from '../src/game/types';
 
@@ -86,6 +86,23 @@ describe('Europa i originalens format', () => {
     expect(lc.filter((f) => f.round === 1).every((f) => f.date === '2001-08-21')).toBe(true);
     expect(lc.find((f) => f.stage === 'F')?.date).toBe('2002-03-31');
     expect(g.comps['LC-60'].finished && g.comps['CS-60'].finished && g.comps['CUP-60'].finished).toBe(true);
+    // (26/11) kampmotorens fixture-info (fixture +0x3a og +0x14 → +0x69) for spillets egne turneringer som oraklets crowd1.txt: CL 326 (20, 8),
+    // UEFA 328 (18, 7 → 8 fra 3. runde), Intertoto 330 (8, 7), Super Cup 329 (15, 8), Charity Shield 353 (1, 6), Liga Cup 352 (10, 4 → 6 fra KF),
+    // FA Cup 351 (15, 4 → 6), venskabskampe 72 (1, 1)
+    const fi = (f: Fixture | undefined) => { const k = fixtureInfoOf(f!.comp, f!.home, f!.stage, f); return [k.comp?.rep, k.fx3a]; };
+    expect(fi(one('CL', (f) => f.stage === 'Q3'))).toEqual([20, 8]);
+    expect(fi(one('CL', (f) => f.stage === 'F'))).toEqual([20, 8]);
+    expect(fi(one('UEFA', (f) => f.stage === 'R1'))).toEqual([18, 7]);
+    expect(fi(one('UEFA', (f) => f.stage === 'R3'))).toEqual([18, 8]);
+    expect(fi(one('UIC', () => true))).toEqual([8, 7]);
+    expect(fi(esc[0])).toEqual([15, 8]);
+    expect(fi(one('CS-60', () => true))).toEqual([1, 6]);
+    expect(fi(lc.find((f) => f.round === 1))).toEqual([10, 4]);
+    expect(fi(lc.find((f) => f.stage === 'F'))).toEqual([10, 6]);
+    expect(fi(one('CUP-60', (f) => f.round === 1))).toEqual([15, 4]);
+    expect(fi(one('CUP-60', (f) => f.stage === 'F'))).toEqual([15, 6]);
+    const fr = Object.values(g.fixtures).find((f) => f.comp === 'FRIENDLY');
+    if (fr) expect(fi(fr)).toEqual([1, 1]);
     const rep = Object.values(g.fixtures).find((f) => f.comp === 'CUP-60' && (f.cm?.rep ?? 0) > 0);
     if (rep) {
       const orig = Object.values(g.fixtures).find((f) => f.tieId === rep.tieId && f.cm?.rep === 0)!;
