@@ -2465,6 +2465,7 @@ export const en: Record<string, string> = {
   "cxs.restart.pick": "{club} did not exist in 2001 – choose a club",
   "cxs.conv.running": "Converting saved game",
   "cxs.conv.cannot": "This saved game cannot be converted.",
+  "cxs.conv.timeout": "The conversion stopped responding and was cancelled. Nothing was changed – the old saved game is untouched. Try again.",
   "cxs.conv.done": "Conversion complete",
   "cxs.conv.toMenu": "Main Menu",
   "cxs.conv.play": "Continue",

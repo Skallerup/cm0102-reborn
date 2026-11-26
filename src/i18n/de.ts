@@ -4369,6 +4369,7 @@ Object.assign(de, {
   "cxs.restart.pick": "{club} gab es 2001 noch nicht – wähle einen Verein",
   "cxs.conv.running": "Spielstand wird umgewandelt",
   "cxs.conv.cannot": "Dieser Spielstand kann nicht umgewandelt werden.",
+  "cxs.conv.timeout": "Die Umwandlung reagierte nicht mehr und wurde abgebrochen. Nichts wurde geändert – der alte Spielstand ist unberührt. Versuche es erneut.",
   "cxs.conv.done": "Umwandlung abgeschlossen",
   "cxs.conv.toMenu": "Hauptmenü",
   "cxs.conv.play": "Weiter",

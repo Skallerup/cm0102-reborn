@@ -4369,6 +4369,7 @@ Object.assign(pt, {
   "cxs.restart.pick": "{club} não existia em 2001 – escolha um clube",
   "cxs.conv.running": "Convertendo o jogo salvo",
   "cxs.conv.cannot": "Este jogo salvo não pode ser convertido.",
+  "cxs.conv.timeout": "A conversão deixou de responder e foi cancelada. Nada foi alterado – o jogo salvo antigo está intacto. Tente de novo.",
   "cxs.conv.done": "Conversão concluída",
   "cxs.conv.toMenu": "Menu principal",
   "cxs.conv.play": "Continuar",

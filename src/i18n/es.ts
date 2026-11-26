@@ -4369,6 +4369,7 @@ Object.assign(es, {
   "cxs.restart.pick": "{club} no existía en 2001: elige un club",
   "cxs.conv.running": "Convirtiendo la partida guardada",
   "cxs.conv.cannot": "Esta partida guardada no se puede convertir.",
+  "cxs.conv.timeout": "La conversión dejó de responder y se canceló. No se cambió nada: la partida guardada original sigue intacta. Inténtalo de nuevo.",
   "cxs.conv.done": "Conversión completada",
   "cxs.conv.toMenu": "Menú principal",
   "cxs.conv.play": "Continuar",

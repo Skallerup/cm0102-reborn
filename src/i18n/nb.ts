@@ -7797,6 +7797,7 @@ Object.assign(nb, {
   "cxs.restart.pick": "{club} fantes ikke i 2001 – velg en klubb",
   "cxs.conv.running": "Konverterer lagret spill",
   "cxs.conv.cannot": "Dette lagrede spillet kan ikke konverteres.",
+  "cxs.conv.timeout": "Konverteringen sluttet å svare og ble avbrutt. Ingenting er endret – det gamle lagrede spillet er urørt. Prøv igjen.",
   "cxs.conv.done": "Konverteringen er ferdig",
   "cxs.conv.toMenu": "Hovedmeny",
   "cxs.conv.play": "Fortsett",

@@ -4369,6 +4369,7 @@ Object.assign(tr, {
   "cxs.restart.pick": "{club} 2001'de yoktu – bir kulüp seç",
   "cxs.conv.running": "Kayıtlı oyun dönüştürülüyor",
   "cxs.conv.cannot": "Bu kayıtlı oyun dönüştürülemez.",
+  "cxs.conv.timeout": "Dönüştürme yanıt vermeyi bıraktı ve iptal edildi. Hiçbir şey değişmedi – eski kayıtlı oyun olduğu gibi duruyor. Tekrar deneyin.",
   "cxs.conv.done": "Dönüştürme tamamlandı",
   "cxs.conv.toMenu": "Ana menü",
   "cxs.conv.play": "Devam",

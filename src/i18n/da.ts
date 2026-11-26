@@ -2496,6 +2496,7 @@ export const da: Record<string, string> = {
   "cxs.restart.pick": "{club} fandtes ikke i 2001 – vælg en klub",
   "cxs.conv.running": "Konverterer gemt spil",
   "cxs.conv.cannot": "Dette gemte spil kan ikke konverteres.",
+  "cxs.conv.timeout": "Konverteringen svarede ikke og blev afbrudt. Intet er ændret – det gamle gemte spil er urørt. Prøv igen.",
   "cxs.conv.done": "Konverteringen er færdig",
   "cxs.conv.toMenu": "Hovedmenu",
   "cxs.conv.play": "Fortsæt",

@@ -4369,6 +4369,7 @@ Object.assign(fr, {
   "cxs.restart.pick": "{club} n'existait pas en 2001 – choisissez un club",
   "cxs.conv.running": "Conversion de la sauvegarde",
   "cxs.conv.cannot": "Cette sauvegarde ne peut pas être convertie.",
+  "cxs.conv.timeout": "La conversion ne répondait plus et a été annulée. Rien n'a été modifié : l'ancienne sauvegarde est intacte. Réessayez.",
   "cxs.conv.done": "Conversion terminée",
   "cxs.conv.toMenu": "Menu principal",
   "cxs.conv.play": "Continuer",

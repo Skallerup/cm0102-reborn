@@ -4369,6 +4369,7 @@ Object.assign(it, {
   "cxs.restart.pick": "{club} non esisteva nel 2001: scegli un club",
   "cxs.conv.running": "Conversione del salvataggio",
   "cxs.conv.cannot": "Questo salvataggio non può essere convertito.",
+  "cxs.conv.timeout": "La conversione non rispondeva più ed è stata annullata. Non è cambiato nulla: il vecchio salvataggio è intatto. Riprova.",
   "cxs.conv.done": "Conversione completata",
   "cxs.conv.toMenu": "Menu principale",
   "cxs.conv.play": "Continua",

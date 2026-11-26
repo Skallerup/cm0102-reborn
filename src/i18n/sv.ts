@@ -7797,6 +7797,7 @@ Object.assign(sv, {
   "cxs.restart.pick": "{club} fanns inte 2001 – välj en klubb",
   "cxs.conv.running": "Konverterar sparat spel",
   "cxs.conv.cannot": "Det här sparade spelet kan inte konverteras.",
+  "cxs.conv.timeout": "Konverteringen slutade svara och avbröts. Inget ändrades – det gamla sparade spelet är orört. Försök igen.",
   "cxs.conv.done": "Konverteringen är klar",
   "cxs.conv.toMenu": "Huvudmeny",
   "cxs.conv.play": "Fortsätt",

@@ -336,6 +336,18 @@ export async function prepareConversion(old: GameState): Promise<ConvertPrep | n
 
 /** Konverteringen i en Web Worker (som nyt spil, med fremdriften) – uden Worker i hovedtråden. Spillet lægges ikke ind (setGame): kalderen gemmer det
  *  som en ny kopi. */
+/** arbejderen har ikke sendt en eneste besked i så lang tid (spilstarten melder fremdrift mange gange i minuttet, også under belastning) */
+export const CONVERT_SILENCE_MS = 240_000;
+/** konverteringen (eller gemmet af den) svarede ikke – ClassicStart viser cxs.conv.timeout */
+export class ConvertTimeoutError extends Error { constructor() { super('conversion timeout'); this.name = 'ConvertTimeoutError'; } }
+/** et løfte, der afvises med ConvertTimeoutError, hvis det ikke er afgjort inden `ms` (selve arbejdet afbrydes ikke, men spilleren venter ikke mere) */
+export function withConvertTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const id = setTimeout(() => reject(new ConvertTimeoutError()), ms);
+    p.then((v) => { clearTimeout(id); resolve(v); }, (e) => { clearTimeout(id); reject(e); });
+  });
+}
+
 export async function runConversion(prep: ConvertPrep, clubId: number | null, onProgress: (p: NewGameProgress) => void): Promise<{ game: GameState; report: ConvertReport }> {
   const cv = await import('../game/cmConvert');
   const picked = prep.kind === 'restart' && clubId !== null && clubId !== prep.clubId;
@@ -353,17 +365,27 @@ export async function runConversion(prep: ConvertPrep, clubId: number | null, on
   try {
     return await new Promise((resolve, reject) => {
       const w = new Worker(new URL('./newGameWorker.ts', import.meta.url), { type: 'module' });
+      // (26/11, e2e "Convert to original" hang >900 s) arbejderen kunne forsvinde uden onerror, og et svar, der ikke kunne pakkes ud i hovedtråden
+      // (messageerror – 'done' bærer hele spillet som struktureret kopi), havde ingen lytter: løftet blev aldrig afgjort. Nu: messageerror afviser,
+      // og en vagt afbryder, når arbejderen ikke har sendt noget i CONVERT_SILENCE_MS (ConvertTimeoutError → tydelig fejl til spilleren).
+      let settled = false, dog: ReturnType<typeof setTimeout>;
+      const fin = (f: () => void) => { if (settled) return; settled = true; clearTimeout(dog); w.terminate(); f(); };
+      const arm = () => { clearTimeout(dog); dog = setTimeout(() => fin(() => reject(new ConvertTimeoutError())), CONVERT_SILENCE_MS); };
+      arm();
       w.onmessage = (e: MessageEvent<import('./newGameWorker').NewGameMsg>) => {
         const m = e.data;
+        arm();
         if (m.type === 'progress') onProgress({ step: m.step, frac: m.frac });
         else if (m.type === 'trace') { if (NG_TRACE) console.log(`ngtrace convert: ${m.s}`); }
-        else if (m.type === 'done' && 'game' in m) { w.terminate(); resolve({ game: m.game as GameState, report: m.report! }); }
-        else if (m.type === 'error') { w.terminate(); reject(Object.assign(new Error(m.message), { inJob: true })); }
+        else if (m.type === 'done' && 'game' in m) fin(() => resolve({ game: m.game as GameState, report: m.report! }));
+        else if (m.type === 'error') fin(() => reject(Object.assign(new Error(m.message), { inJob: true })));
       };
-      w.onerror = (e) => { w.terminate(); reject(new Error(e.message || 'worker')); };
-      w.postMessage(job);
+      w.onerror = (e) => fin(() => reject(new Error(e.message || 'worker')));
+      w.onmessageerror = () => fin(() => reject(new Error('worker messageerror')));
+      try { w.postMessage(job); } catch (err) { fin(() => reject(err)); }
     });
   } catch (e) {
+    if (e instanceof ConvertTimeoutError) { console.error('Konverteringen svarede ikke', e); throw e; }
     // en fejl i selve konverteringen (arbejderen meldte den) vises for spilleren – den køres ikke igen i hovedtråden (det samme ville ske dér,
     // efter endnu en spilstart). Kun når arbejderen ikke kan køre (indlæsning, hukommelse), konverteres i hovedtråden.
     if ((e as { inJob?: boolean }).inJob) { console.error('Konverteringen fejlede', e); throw e; }

@@ -35,7 +35,7 @@ import { createOnlineGame } from '../online/client';
 import { markNewGame } from '../online/errors';
 import { DB_SIZES, dbSizeReason, readDbSize, writeDbSize, type DbSize } from './dbSize';
 import { useHiddenWhile } from './NewGameLoader';
-import { createGameAsync, openStartWorld, LANG_NATION, ORIG_LANG_NATION, prepareConversion, readDb, readVer, runConversion, writeDb, writeVer, type ConvertPrep, type Db, type StartWorld } from './startGame';
+import { createGameAsync, openStartWorld, LANG_NATION, ORIG_LANG_NATION, prepareConversion, readDb, readVer, runConversion, ConvertTimeoutError, withConvertTimeout, writeDb, writeVer, type ConvertPrep, type Db, type StartWorld } from './startGame';
 
 export type Step = 'menu' | 'db' | 'leagues' | 'season' | 'name' | 'deadline' | 'nation' | 'team' | 'club' | 'confirm' | 'restore' | 'delete' | 'settings' | 'opts' | 'extras' | 'account' | 'convpick' | 'convdone';
 /** Populære spillere og hvilke udgaver (3.9.60/65/68) de findes i – datafilen hentes først, når boksen åbnes */
@@ -366,7 +366,7 @@ export function ClassicStart({ onLang, onHome, onGo, onLook, online }: { onLang:
       notify();
       const lg = world.leagues.find((l) => l.id === club.league);
       notifyNewCareer({ manager: opts.managerName, club: club.short, league: lg?.name, nation: natName(world.nations[club.nation]?.name), bots: 0, db: db.startsWith('custom:') ? 'custom' : db, lang: opts.lang });
-    } catch (e) { setProg(null); setErr(String((e as Error).message ?? e)); launching.current = false; go('leagues'); if ((e as { memory?: boolean }).memory && dbSize !== 'normal') setDbSize('normal'); }
+    } catch (e) { setProg(null); setErr(e instanceof ConvertTimeoutError ? t('cxs.conv.timeout') : String((e as Error).message ?? e)); launching.current = false; go('leagues'); if ((e as { memory?: boolean }).memory && dbSize !== 'normal') setDbSize('normal'); }
   };
 
   // ---------- gemte spil ----------
@@ -429,11 +429,11 @@ export function ClassicStart({ onLang, onHome, onGo, onLook, online }: { onLang:
     setProg({ label: t('cxs.conv.running'), frac: 0.02 });
     try {
       const res = await runConversion(prep, clubId, (p) => setProg({ label: t('cxs.conv.running'), frac: p.frac, step: p.step }));
-      const id = await storeNewGame(res.game);
+      const id = await withConvertTimeout(storeNewGame(res.game), 300_000);
       setProg(null);
       setDone({ report: res.report, id });
       go('convdone');
-    } catch (e) { setProg(null); setErr(String((e as Error).message ?? e)); launching.current = false; go('leagues'); }
+    } catch (e) { setProg(null); setErr(e instanceof ConvertTimeoutError ? t('cxs.conv.timeout') : String((e as Error).message ?? e)); launching.current = false; go('leagues'); }
   };
   const convertSave = async (r: Row) => {
     setErr('');
@@ -443,8 +443,8 @@ export function ClassicStart({ onLang, onHome, onGo, onLook, online }: { onLang:
         const blob = await downloadCloudSave(r.cloud);
         await storeSave({ id: r.id, club: r.cloud.club, manager: r.cloud.manager, date: r.cloud.date, saved: r.cloud.saved }, blob);
       }
-      const old = await readSave(r.id);
-      const prep = old && (await prepareConversion(old));
+      const old = await withConvertTimeout(readSave(r.id), 300_000);
+      const prep = old && (await withConvertTimeout(prepareConversion(old), 300_000));
       setProg(null);
       if (!prep) { setErr(t('cxs.conv.cannot')); return; }
       const mid = Object.values(prep.old.fixtures).some((f) => !f.result && f.date >= prep.old.date);
@@ -455,7 +455,7 @@ export function ClassicStart({ onLang, onHome, onGo, onLook, online }: { onLang:
         : t('cxs.restart.q', { club, old: prep.oldClub });
       if (!(await askConfirm(text, { title: t(prep.kind === 'convert' ? 'cxs.conv.btn' : 'cxs.restart.btn') }))) return;
       await runConv(prep, prep.kind === 'restart' ? prep.clubId : null);
-    } catch (e) { setProg(null); setErr(String((e as Error).message ?? e)); launching.current = false; go('leagues'); }
+    } catch (e) { setProg(null); setErr(e instanceof ConvertTimeoutError ? t('cxs.conv.timeout') : String((e as Error).message ?? e)); launching.current = false; go('leagues'); }
   };
   const pickConvClub = async (id: number, name: string) => {
     if (!conv) return;
