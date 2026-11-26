@@ -9,6 +9,9 @@ import { rng } from '../../src/game/rng';
 import type { GameState } from '../../src/game/types';
 import { slResumeTransfer } from '../../src/game/cmShortlistGame';
 import { deserializeState, gzConcat, serializeNewGame } from '../../src/game/snapshot';
+import { setPagePoolMax } from '../../src/game/cmMem';
+// POOLMAX=n: sidepuljens loft (som newGameWorker.ts' poolMax på iOS)
+if (process.env.POOLMAX) setPagePoolMax(Number(process.env.POOLMAX));
 
 const wd = workerData as { kind: 'phases' | 'all' | 'continue'; phases?: ('base' | NewGamePhase)[]; file?: string; opts?: NewGameOptions; days?: number; last?: boolean; json?: boolean; canon?: boolean };
 const port = parentPort!;

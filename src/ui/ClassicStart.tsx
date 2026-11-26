@@ -12,6 +12,7 @@ import { previewClub } from '../game/newgame';
 import { deleteSave, importSave, listSaves, loadGame, readSave, storedLegacyExt, storedSaveKind, storeNewGame, storeSave, type SaveMeta } from '../game/save';
 import type { SaveKind } from '../game/saveKind';
 import { askLegacyNotice, shouldShowLegacyNotice } from './legacyNotice';
+import { newGameSafe } from './dbSize';
 import type { ConvertReport } from '../game/cmConvert';
 import { cloudSaves, deleteCloudSave, downloadCloudSave, type CloudSave } from '../online/account';
 import { notifyNewCareer } from '../online/notify';
@@ -137,7 +138,7 @@ export function Frame({ step, version, title, sub, children, onBack, onNext, bac
           <div className="cx-running" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-label={prog.label}>
             <span className="cx-run-l">{prog.label}{prog.step && <small className="cx-run-step" data-ng-step={prog.step}>{t(`ng.step.${prog.step}`)}</small>}</span>
             <span className="cx-run-bar"><i style={{ width: `${pct}%` }} /><b className="cx-run-pct">{pct}%</b></span>
-            {prog.step && <small className="cx-running-hint" {...(bg ? { 'data-ng-bg': '' } : {})}>{t(bg ? 'ng.bgHint' : 'ng.slowHint')}</small>}
+            {prog.step && <small className="cx-running-hint" {...(bg ? { 'data-ng-bg': '' } : {})}>{t(bg ? 'ng.bgHint' : newGameSafe() ? 'ng.safeHint' : 'ng.slowHint')}</small>}
           </div>
         ) : (
           <div className="cx-backnext">

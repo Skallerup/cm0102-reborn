@@ -41,6 +41,14 @@ describe('databasestørrelsen', () => {
     expect(a.readDbSize()).toBe('normal');
     expect(a.dbSizeReason()).toBe('interrupted');
   });
+  it('efter et afbrudt nyt spil: den konservative vej (newGameSafe) – også efter et eget valg af størrelse', async () => {
+    const a = await load(IPHONE);
+    expect(a.newGameSafe()).toBe(false);
+    a.dbSizeAfterInterrupt();
+    expect(a.newGameSafe()).toBe(true);
+    a.writeDbSize('maximum');
+    expect(a.newGameSafe()).toBe(true);
+  });
   it('world-filen pr. størrelse: Normal kun for 3.9.60', async () => {
     const { originalFile } = await import('../src/ui/worldFetch');
     expect(originalFile('3.9.60', 'normal')).toBe('world-original-normal.json');

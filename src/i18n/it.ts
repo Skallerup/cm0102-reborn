@@ -2132,6 +2132,7 @@ Object.assign(it, {
   "ng.step.scouting": "Invio degli osservatori...",
   "ng.step.done": "Calcio d'inizio...",
   "ng.step.shortlists": "I club preparano le liste degli obiettivi...",
+  "ng.safeHint": "L'ultima volta il browser ha chiuso il gioco durante la creazione. Ora viene creato in passaggi più piccoli che usano meno memoria: ci vuole un po' di più, lascia la pagina aperta.",
   "ng.slowHint": "Sul telefono può richiedere fino a un minuto: lascia la pagina aperta.",
   "ng.bgHint": "Lascia la pagina aperta: in background la creazione si mette in pausa.",
   "inapp.killedTitle": "Il browser ha chiuso il gioco durante la creazione",

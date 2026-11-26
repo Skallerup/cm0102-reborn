@@ -6666,6 +6666,7 @@ Object.assign(sv, {
   "ng.step.scouting": "Skickar ut scouterna...",
   "ng.step.done": "Dags för avspark...",
   "ng.step.shortlists": "Klubbarna gör sina önskelistor...",
+  "ng.safeHint": "Förra gången stängde webbläsaren spelet medan det skapades. Nu byggs det i mindre steg som använder mindre minne – det tar lite längre tid, låt sidan vara öppen.",
   "ng.slowHint": "Det kan ta upp till en minut på en mobil – låt sidan vara öppen.",
   "ng.bgHint": "Håll sidan öppen – skapandet pausas i bakgrunden.",
   "inapp.killedTitle": "Webbläsaren stängde spelet medan det skapades",

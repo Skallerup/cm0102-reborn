@@ -2132,6 +2132,7 @@ Object.assign(tr, {
   "ng.step.scouting": "Gözlemciler gönderiliyor...",
   "ng.step.done": "Başlıyoruz...",
   "ng.step.shortlists": "Kulüpler transfer listelerini hazırlıyor...",
+  "ng.safeHint": "Geçen sefer tarayıcı oyunu oluşturulurken kapattı. Oyun artık daha az bellek kullanan daha küçük adımlarla oluşturuluyor – biraz daha uzun sürer, sayfayı açık bırakın.",
   "ng.slowHint": "Telefonda bu bir dakika kadar sürebilir – sayfayı açık bırakın.",
   "ng.bgHint": "Sayfayı açık bırakın – arka planda oluşturma duraklar.",
   "inapp.killedTitle": "Tarayıcı oyunu oluşturulurken kapattı",

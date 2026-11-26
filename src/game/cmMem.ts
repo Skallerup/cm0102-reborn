@@ -31,7 +31,11 @@ const PMASK = (1 << PAGE) - 1;
 const NOPAGES: (Uint8Array | null)[] = new Array(1024).fill(null);
 /** genbrugte sider (SparseMem.release) – nulstilles, før de bruges igen */
 const POOL: Uint8Array[] = [];
-const POOL_MAX = 24000;
+let POOL_MAX = 24000;
+/** (hukommelse, iOS 26/11) puljens loft i sider – kun genbrug (en ny side nulstilles altid), så spillet er det samme med ethvert loft */
+export function setPagePoolMax(n: number): void { POOL_MAX = Math.max(0, n | 0); if (POOL.length > POOL_MAX) POOL.length = POOL_MAX; }
+/** exportPages' bidder: højst så mange sider (4 MB) pr. tabel */
+const EXPORT_CHUNK = 1024;
 /** genbrugte andet niveau-tabeller i SparseMem's sidetabel (SparseMem.release) – kun null, før de bruges igen */
 const TPOOL: (Uint8Array | null)[][] = [];
 const TPOOL_MAX = 2048;
@@ -133,15 +137,28 @@ export class SparseMem implements CmMem {
     let fresh: Uint8Array[] = [];
     const flush = () => {
       if (seg) { data.push(from === 0 && to << PAGE === seg.length ? seg : seg.subarray(from << PAGE, to << PAGE)); seg = null; }
-      if (fresh.length) { const d = new Uint8Array(fresh.length << PAGE); for (let k = 0; k < fresh.length; k++) d.set(fresh[k], k << PAGE); data.push(d); fresh = []; }
+      if (fresh.length) {
+        // (hukommelse, iOS 26/11) bidder à højst EXPORT_CHUNK sider (4 MB) i stedet for én tabel med alle nye sider (Minimum 39 MB, Maximum ~79 MB),
+        // og den kopierede side erstattes straks af sit udsnit af bidden (samme bytes), så den gamle side kan frigives undervejs – før levede alle
+        // sider og hele kopien samtidig. Hukommelsen bruges ikke efter eksporten ud over release (udsnit går ikke til puljen).
+        const d = new Uint8Array(fresh.length << PAGE);
+        for (let k = 0; k < fresh.length; k++) {
+          d.set(fresh[k], k << PAGE);
+          const p = freshNum[k], nb = d.subarray(k << PAGE, (k + 1) << PAGE);
+          VIEWS.set(nb, { seg: d, i: k });
+          this.dir[p >>> 10][p & 1023] = nb; this.pages.set(p, nb);
+        }
+        data.push(d); fresh = []; freshNum = [];
+      }
     };
+    let freshNum: number[] = [];
     for (const [p, b] of this.pages) {
       nums[i++] = p;
       const v = VIEWS.get(b);
       if (v && seg === v.seg && v.i === to) { to++; continue; }
-      if (!v && !seg) { fresh.push(b); continue; }
+      if (!v && !seg) { if (fresh.length >= EXPORT_CHUNK) flush(); fresh.push(b); freshNum.push(p); continue; }
       flush();
-      if (v) { seg = v.seg; from = v.i; to = v.i + 1; } else fresh.push(b);
+      if (v) { seg = v.seg; from = v.i; to = v.i + 1; } else { fresh.push(b); freshNum.push(p); }
     }
     flush();
     return { nums, data };

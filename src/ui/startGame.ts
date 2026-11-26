@@ -11,7 +11,7 @@ import type { NewGameProgress } from './NewGameLoader';
 import { listDbs, loadCustomWorld } from './customDb';
 import { communityEdits, loadOriginalWorld, loadWorld, ORIGINAL_VERSIONS, releaseWorldCaches, withCommunityEdits, type OriginalVersion } from './world';
 import { applyCommunityEdits } from './worldFetch';
-import { iosOrUnknownMobile, type DbSize } from './dbSize';
+import { iosOrUnknownMobile, newGameSafe, type DbSize } from './dbSize';
 import { noteNewGameStep } from '../online/newGameTrace';
 import { deserializeState } from '../game/snapshot';
 import type { SaveMeta } from '../game/save';
@@ -108,7 +108,8 @@ export async function openStartWorld(db: Db, ver: OriginalVersion, size: DbSize 
  *  ønskelisterne – levende ~0,3–0,65 GB, kapaciteten op til 2,4 GB), og en afsluttet arbejders heap frigives helt. Spillet går fra arbejder til
  *  arbejder uden om hovedtråden (MessageChannel). `localStorage['cm0102.ngSplit'] = '0'`: alt i én arbejder som før (til målinger). */
 export function newGameStages(opts: Pick<NewGameOptions, 'preview'>): NewGameJob['phases'][] {
-  let split = true, parts = iosOrUnknownMobile() ? SL_PARTS_MOBILE : SL_PARTS;
+  // (hukommelse, iOS 26/11) efter et nyt spil, browseren lukkede (dbSize.ts newGameSafe): den mest konservative vej
+  let split = true, parts = newGameSafe() ? SL_PARTS_SAFE : iosOrUnknownMobile() ? SL_PARTS_MOBILE : SL_PARTS;
   try {
     split = localStorage.getItem('cm0102.ngSplit') !== '0';
     const n = Number(localStorage.getItem('cm0102.ngSlParts'));
@@ -128,11 +129,25 @@ const SL_PARTS = 12;
 /** (hukommelse, iPhone 26/11 – NewGameInterrupted midt i ønskelisterne) iPhone/iPad og mobiler uden navigator.deviceMemory: 4 større portioner.
  *  Hvert arbejderskifte (ny arbejder, newgame-chunken tolket igen, spillet kopieret over) kostede ~5 s på telefonen (78 s for 12 portioner af
  *  ~0,2 s beregning) og en ny heap; WebKit, SLOW=5, produktion: 12 → 4 portioner = Take Control 58,7 → 43,6 s, ønskelisternes top 310 → 335 MB,
- *  fanens footprint × tid −22 %. Bit for bit samme spil (cmShortlistStartPart; scripts/newgame-phases-check.ts … 4: ENS). */
-const SL_PARTS_MOBILE = 4;
+ *  fanens footprint × tid −22 %. Bit for bit samme spil (cmShortlistStartPart; scripts/newgame-phases-check.ts … 4: ENS).
+ *  (26/11 aften) Tilbage til 12: iPad-nedbruddet a5b0f3b8 kom med 4 portioner (68 % = Englands tunge klubber i én arbejder) – med færre portioner
+ *  får hver arbejder mere af det tunge arbejde. WebKit (iPhone-UA, SLOW=5, Minimum, efter exportPages i bidder): ønskelisternes top 4/12/24 =
+ *  328/299/292 MB, Take Control 28/41/57 s. */
+const SL_PARTS_MOBILE = 12;
+/** (hukommelse, iOS 26/11) den konservative vej efter en NewGameInterrupted (dbSize.ts newGameSafe): flest og mindste arbejdere (lavest top) */
+const SL_PARTS_SAFE = 24;
 /** pause mellem to trins arbejdere (ms) – localStorage['cm0102.ngGap'] overstyrer (til målinger) */
 const PHASE_GAP_MS = 400;
-const phaseGap = () => { try { const v = localStorage.getItem('cm0102.ngGap'); const n = Number(v); return v !== null && v !== '' && n >= 0 && n <= 5000 ? n : PHASE_GAP_MS; } catch { return PHASE_GAP_MS; } };
+const phaseGap = () => { const d = newGameSafe() ? PHASE_GAP_SAFE_MS : PHASE_GAP_MS; try { const v = localStorage.getItem('cm0102.ngGap'); const n = Number(v); return v !== null && v !== '' && n >= 0 && n <= 5000 ? n : d; } catch { return d; } };
+/** (hukommelse, iOS 26/11) den konservative vejs pause mellem to arbejdere (forrige arbejders heap frigives imens) */
+const PHASE_GAP_SAFE_MS = 1500;
+/** (hukommelse, iOS 26/11) sidepuljens loft i arbejderne (cmMem.ts setPagePoolMax; kun genbrug – samme spil): iPhone/iPad og den konservative vej
+ *  SL_POOL_SMALL sider, ellers uændret (undefined). localStorage['cm0102.ngPoolMax'] overstyrer (til målinger). */
+const SL_POOL_SMALL = 2048;
+const poolMax = (): number | undefined => {
+  try { const v = localStorage.getItem('cm0102.ngPoolMax'); const n = Number(v); if (v !== null && v !== '' && Number.isInteger(n) && n >= 0) return n; } catch { /* ingen lagring */ }
+  return newGameSafe() || iosOrUnknownMobile() ? SL_POOL_SMALL : undefined;
+};
 /** pause (ms) mellem den sidste arbejders lukning og udpakningen i hovedtråden – localStorage['cm0102.ngUnpackGap'] overstyrer (til målinger) */
 const UNPACK_GAP_MS = 1000;
 const unpackGap = () => { try { const v = localStorage.getItem('cm0102.ngUnpackGap'); const n = Number(v); return v !== null && v !== '' && n >= 0 && n <= 10000 ? n : UNPACK_GAP_MS; } catch { return UNPACK_GAP_MS; } };
@@ -194,7 +209,7 @@ function runPhases(first: NewGameJob, stages: NewGameJob['phases'][], pre: Worke
   return new Promise<PhasesResult>((resolve, reject) => {
     let cur: Worker | null = null, done = false, started = false, step = '', frac = 0;
     const t0 = Date.now();
-    const gap = phaseGap();
+    const gap = phaseGap(), pool = poolMax();
     const fail = (e: Error) => { if (done) return; done = true; cur?.terminate(); cur = null; const pe = Object.assign(new PhasesError(e.message), { name: e.name, stack: e.stack, started, stale: !!(e as StaleBuildError).stale, memory: !!(e as PhasesError).memory || isMemoryText(e.message) }); reject(pe); };
     signal?.addEventListener('abort', () => fail(new DOMException('aborted', 'AbortError')));
     const start = (i: number, w: Worker, job: NewGameJob) => {
@@ -233,7 +248,7 @@ function runPhases(first: NewGameJob, stages: NewGameJob['phases'][], pre: Worke
       };
       w.onmessageerror = () => fail(new Error(`worker ${i + 1}/${stages.length}: messageerror`));
       const ports = [...(ch ? [ch.port1] : []), ...(job.from ? [job.from] : [])];
-      w.postMessage({ ...job, phases: stages[i], ...(ch ? { to: ch.port1 } : {}), ...(first.save ? { save: true } : {}) } satisfies NewGameJob, ports);
+      w.postMessage({ ...job, phases: stages[i], ...(ch ? { to: ch.port1 } : {}), ...(first.save ? { save: true } : {}), ...(pool !== undefined ? { poolMax: pool } : {}) } satisfies NewGameJob, ports);
     };
     start(0, pre ?? newWorker(), first);
   });

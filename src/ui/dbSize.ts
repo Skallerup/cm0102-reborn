@@ -45,4 +45,9 @@ export function dbSizeReason(): 'interrupted' | 'device' | null {
   return get(KEY) === null && smallDevice() ? 'device' : null;
 }
 /** browseren lukkede siden under et nyt spil: næste spil med Normal (spørger ikke – undgår at spilleren genindlæser i en løkke) */
-export function dbSizeAfterInterrupt(): void { set(KEY, 'normal'); set(WHY, 'interrupted'); }
+export function dbSizeAfterInterrupt(): void { set(KEY, 'normal'); set(WHY, 'interrupted'); set(SAFE, '1'); }
+/** (hukommelse, iOS 26/11) browseren har lukket et nyt spil på denne enhed: nye spil bygges herefter ad den mest konservative vej (startGame.ts
+ *  newGameStages – flere og mindre arbejdere, ingen sidepulje, længere pause imellem; bit for bit samme spil). Bliver stående – enheden har vist,
+ *  at den ikke kan mere; spillerens eget valg af databasestørrelse rører den ikke. */
+const SAFE = 'cm0102.ngSafe';
+export function newGameSafe(): boolean { return get(SAFE) === '1'; }

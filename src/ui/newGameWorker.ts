@@ -8,7 +8,7 @@
 import { createGame, createGameBase, createGamePhase, setNewGameProgress, type NewGameCtx, type NewGameOptions, type NewGamePhase, type WorldData } from '../game/newgame';
 import { gs, packCarry, setGame } from '../game/state';
 import { rng } from '../game/rng';
-import { releasePagePool } from '../game/cmMem';
+import { releasePagePool, setPagePoolMax } from '../game/cmMem';
 import { slResumeTransfer } from '../game/cmShortlistGame';
 import { convertOriginal, restartInOriginal, type ConvertReport } from '../game/cmConvert';
 import type { CMWorld } from '../game/data/cm0102';
@@ -33,7 +33,9 @@ export type NewGameJob = { world?: WorldData; src?: WorldSrc; opts: NewGameOptio
   /** (hukommelse) pause i arbejderen, før spillet tages fra `from` (forrige arbejders heap frigives imens) – arbejderens egen timer, ikke hovedtrådens */
   gapMs?: number;
   /** (hukommelse, iPhone 23/11) arbejderen skriver selv nyt spils første gem i IndexedDB (kun et lokalt spil – ikke fællesspil eller den midlertidige verden) */
-  save?: boolean };
+  save?: boolean;
+  /** (hukommelse, iOS 26/11) sidepuljens loft (cmMem.ts setPagePoolMax) – kun genbrug, samme spil */
+  poolMax?: number };
 /** `rng` = talrækkens tilstand (g.rng røres ikke – som i ét forløb, hvor g.rng ikke opdateres undervejs) */
 export type PhaseHandoff = { game: GameState; ctx: NewGameCtx; rng: number } | { gz: ArrayBuffer; ctx: NewGameCtx; rng: number };
 /** `slimOnly`: kun listerne – arbejderen lukkes bagefter (startGame.ts openStartWorld), så databasen tolkes ikke hel (worldFetch.ts fetchSlimWorld) */
@@ -66,6 +68,7 @@ self.onmessage = async (e: MessageEvent<NewGameJob | LoadJob>) => {
       return;
     }
     const job = data as NewGameJob;
+    if (job.poolMax !== undefined) setPagePoolMax(job.poolMax);
     const cv = job.convert;
     // konverteringen: spilstarten er de første 90 %
     setNewGameProgress((step, frac) => post({ type: 'progress', step, frac: cv ? frac * 0.9 : frac }));

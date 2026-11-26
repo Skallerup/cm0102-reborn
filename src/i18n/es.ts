@@ -2132,6 +2132,7 @@ Object.assign(es, {
   "ng.step.scouting": "Enviando a los ojeadores...",
   "ng.step.done": "Saque inicial...",
   "ng.step.shortlists": "Los clubes preparan sus listas de objetivos...",
+  "ng.safeHint": "La última vez el navegador cerró el juego mientras se creaba. Ahora se crea en pasos más pequeños que usan menos memoria; tarda un poco más, deja la página abierta.",
   "ng.slowHint": "En el móvil puede tardar hasta un minuto: deja la página abierta.",
   "ng.bgHint": "Deja la página abierta: la creación se pausa en segundo plano.",
   "inapp.killedTitle": "El navegador cerró el juego mientras se creaba",
