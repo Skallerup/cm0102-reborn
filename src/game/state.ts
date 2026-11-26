@@ -19,7 +19,7 @@ export function hasGame(): boolean {
 import { setEconomy, setModern26 } from './econ';
 import { setSavedModern } from '../ui/modernFlag';
 import { cmPermitMove } from './cmPermit';
-import { cmActive, cmMarketOn, cmMediaOn, cmStaffStateMove } from './cmPlayerData';
+import { cmActive, cmMarketOn, cmMediaOn, cmStaffStateMove, statusCode } from './cmPlayerData';
 import { offInOriginal } from './newsFilter';
 import { legacyExtended } from './rules';
 import { captureCarry, registerCarry, restoreCarry } from './carry';
@@ -230,6 +230,17 @@ export function loanPlacement(g: GameState, p: Player, start: boolean) {
     if (hasReserveTeam(g, parent) ? !first : !!linkedClub(g, parent) && p.club !== parent) p.loan.res = 1; else delete p.loan.res;
     setPlace5e(p, 1);
   } else setPlace5e(p, hasReserveTeam(g, parent) && p.loan.res ? 2 : 1);
+}
+
+/** TRANSFER_MANAGER::move_player_to_club 0x8c9720, 0x8ca7d9–0x8ca81f (efter sign_contract 0x4cf720 @0x8ca724 – den nye kontrakt): staff +0x5e
+ *  ved et almindeligt skifte (køb, klubløs underskrift og forkontrakten – alle via finalise_transfer 0x8c9390). Menneskets klub (0x600a50(klub,
+ *  1, 1, 0, 0) – også på ferie) med reservehold (0x540a50(klub, 0, 1) = 0 og 0x542740(klub)) og kontraktens trupstatus +0x4f >> 4 = 0 eller > 4
+ *  → reserverne 0x540980(staff, 2); ellers førsteholdet (1) – computerens køber altid. Kaldes, når den nye kontrakts trupstatus er sat.
+ *  Før beholdt computerens køb sælgerens reservemærke (Player.reserves/cmPlace), så køberen aldrig udtog ham */
+export function movePlacement(g: GameState, p: Player): void {
+  if (!p.club || !cmMarketOn(g)) return;
+  const sc = statusCode(p);
+  setPlace5e(p, g.clubs[p.club]?.manager === -1 && hasReserveTeam(g, p.club) && (sc === 0 || sc > 4) ? 2 : 1);
 }
 
 /** Flyt spiller mellem klubber og hold indekset opdateret. `left`: hvordan han forlader den gamle klub (Playing Career – CareerLeft); uden

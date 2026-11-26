@@ -28,7 +28,7 @@ import { emptyStats, makePlayer, randomDob, randomName, randomSub, type SubPos }
 import { LEAGUE_RULES } from './leagues';
 import { cmNonLeagueRollover } from './cmNonLeague';
 import { Rng, hash, hash01, rng } from './rng';
-import { addNews, addPlayer, newsRelevant, gs, pushCareerLine, rebuildIndexes, removePlayer, setClub, squad } from './state';
+import { addNews, addPlayer, newsRelevant, gs, movePlacement, pushCareerLine, rebuildIndexes, removePlayer, setClub, squad } from './state';
 export { pushCareerLine };
 import { fansOnDeparture } from './fans';
 import { boardSeasonEnd, setBoardExpectation, strengthRank } from './board';
@@ -236,6 +236,7 @@ function contractsAndLoans() {
         recordMove(p, to, 0, false, false, true);
         setClub(p, to);
         p.squadStatus = role;
+        movePlacement(g, p);   // 0x8ca7d9–0x8ca81f: forkontrakten går også gennem 0x8c9390 → 0x8c9720
         p.joined = today;
         const msg = { cat: 'transfer' as const, key: 'transfer.bosmanDone', params: { player: pname(p), from: fromName, to: g.clubs[to].name } };
         asOwner(to, () => { knowFull(p.id); addNews(msg); });

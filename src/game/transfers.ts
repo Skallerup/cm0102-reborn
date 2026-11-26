@@ -14,7 +14,7 @@ import { NO_CARRY, registerCarry } from './carry';
 import { Rng, hash, hash01, rng } from './rng';
 import { recordDevelopment } from './training';
 import { merchStarSigning } from './finance';
-import { addNews, addPlayer, gs, inSetup, loanedOut, newsRelevant, setClub, squad } from './state';
+import { addNews, addPlayer, gs, inSetup, loanedOut, movePlacement, newsRelevant, setClub, squad } from './state';
 import { clubLevel, knowFull, registerAskingPrice } from './scouting';
 import { clubStrategy } from './strategy';
 import { SHIFT_WEEKS } from './board';
@@ -959,6 +959,7 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
       if (x.squadStatus) setStatusCode(x);
       cmSlMoved(g, x, seller.id, 0);   // (0x8c9579: kun 0x8c9720 – halens 0x84aeb0 for byttespillerne står i hovedspillerens kald)
       setClub(x, seller.id);
+      movePlacement(g, x);   // 0x8ca7d9–0x8ca81f (byttespillerens eget 0x8c9720)
       cmSlPlayerGone(g, x);
       x.joined = g.date;
       asOwner(buyer.id, () => {
@@ -981,6 +982,7 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
     p.squadStatus = !o.loan ? o.cmRole ?? offerStatus(o) : undefined;
     if (p.squadStatus) setStatusCode(p);
   }
+  if (!o.loan) movePlacement(g, p);   // 0x8ca7d9–0x8ca81f: staff +0x5e efter skiftet (den nye kontrakts trupstatus)
   p.wantsAway = false;
   p.promiseUntil = undefined;
   p.renewal = undefined;
@@ -1624,6 +1626,7 @@ function aiClubTurn(club: Club) {
     target.contract = aiNewContract(target, club, () => ({ wage, expires: `${year(g.date) + preferredYears(target)}-06-30` }));
     recordMove(target, club.id, 0);
     setClub(target, club.id);
+    movePlacement(g, target);
     target.joined = g.date;
     forEachHuman(() => { if (origLogic()) originalTransferNews(target, club, undefined, 0, false); else if (otherTransferNews(club, undefined, 0, false)) (g.transferDigest ??= []).push({ player: target.id, from: 0, to: club.id, fee: 0 }); });
     return;
@@ -1818,6 +1821,7 @@ export function aiFillSquads(minSize = 22) {
       taken.add(gk.id);
       gk.contract = aiNewContract(gk, c, () => ({ wage: Math.round(wageDemand(gk, c) * 0.85 / 50) * 50, expires: `${year(g.date) + Math.max(1, preferredYears(gk) - 1)}-06-30` }));
       setClub(gk, c.id);
+      movePlacement(g, gk);
       gk.joined = g.date;
     }
     let size = squad(c.id).length;
@@ -1832,6 +1836,7 @@ export function aiFillSquads(minSize = 22) {
       taken.add(cand.id);
       cand.contract = aiNewContract(cand, c, () => ({ wage: Math.round(wageDemand(cand, c) * 0.85 / 50) * 50, expires: `${year(g.date) + Math.max(1, preferredYears(cand) - 1)}-06-30` }));
       setClub(cand, c.id);
+      movePlacement(g, cand);
       cand.joined = g.date;
       size++;
     }
@@ -2417,6 +2422,7 @@ function cmSignFree(o: TransferOffer, p: Player, buyer: Club): void {
   cmSlMoved(g, p, buyer.id, buyer.id);   // 0x8c9720/0x8c9390: ønskelisterne (før skiftet)
   setClub(p, buyer.id);
   p.squadStatus = offerStatus(o);   // sign_contract 0x4cf720: tilbuddets +0x4f
+  movePlacement(g, p);   // 0x8ca7d9–0x8ca81f: staff +0x5e
   cmSlPlayerGone(g, p);
   p.joined = g.date;
   o.status = 'completed';
