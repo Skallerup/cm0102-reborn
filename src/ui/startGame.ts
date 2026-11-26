@@ -116,8 +116,8 @@ export function newGameStages(opts: Pick<NewGameOptions, 'preview'>): NewGameJob
   } catch { /* ingen lagring */ }
   if (!split) return [undefined];
   // (26/11, 2 GB-telefoner: forhåndsvisningen tog 4–10 min) den midlertidige verden til Select Team er let – uden forkørslen, trupplanen, ønskelisterne
-  // og kampene før start (newgame.ts o.preview) – og bygges i én arbejder
-  if (opts.preview) return [['base', 'fitness', 'plan', 'shortlists', 'rest']];
+  // og kampene før start (newgame.ts o.preview); to arbejdere, så databasen ikke lever sammen med resten af spilstarten (én arbejder: toppen +120 MB)
+  if (opts.preview) return [['base'], ['fitness', 'plan', 'shortlists', 'rest']];
   // (22/11) ønskelisternes klubløkke i `parts` portioner – hver i sin egen arbejder (cmShortlistGame.ts cmShortlistStartPart: bit for bit som én løkke)
   return [['base'], ['fitness'], ['plan'], ...Array.from({ length: parts }, (_, k): NewGamePhase[] => (k === parts - 1 ? [`shortlists:${k}/${parts}`, 'rest'] : [`shortlists:${k}/${parts}`]))];
 }
