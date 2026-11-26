@@ -122,10 +122,11 @@ export function setSquadStatus(g: GameState, p: Player, asking: number | null, n
   const human = isHumanClub(p.club);
   // 0x8ce19e: kontrakttype 2 og spillerdata: udbudsprisen bliver værdien +0x52 – for et menneske kun, hvis den ikke er over formlen 0x4d0c60
   const formula = valueTarget(p);
-  if (asking !== null && asking > 0 && !p.contract?.partTime && (!human || asking <= formula)) {
+  // (lejekontrakten, type 6, er ikke type 2: prisen skrives ikke; menneskets udbudspris over formlen heller ikke – +0x52 står uændret)
+  if (asking !== null && asking > 0 && !p.contract?.partTime && !p.loan && (!human || asking <= formula)) {
     p.value = asking;
-    if (human) p.cmAsk = { v: asking, club: p.club, f: formula }; else p.cmAsk = undefined;
-  } else if (asking !== null && human) { if (p.cmAsk?.f) p.value = p.cmAsk.f; p.cmAsk = undefined; }
+    if (!human) p.cmAsk = undefined;
+  }
   if (next === 0xff) return;                                                   // 0x8ce229: −1 = statusen røres ikke
   const old = ((c.b4f ?? statusCode(p) << 4) >> 4) & 0xf;
   // 0x8ce1f8: ny status 7 (og ikke allerede 7): +0x3d −= 100
@@ -189,7 +190,10 @@ function grievance(g: GameState, p: Player, c: CmContract, old: number, next: nu
 
 // ---------------------------------------------------------------- Set Staff Transfer Status (OK) og transferlisten
 
-export interface TransferStatusIn { status: number; price: number | null; listed: boolean; loan: boolean; request: boolean }
+/** auto = skærmparameter 0xa ("Auto"-prisen): ved åbningen +0x4e & 4 (0x8f6923), Auto-knappen (område 5, 0x8f7735) slår den til/fra og sætter
+ *  prisen til formlen 0x4d0c60, når den slås til; − / + (0x8f7aca / 0x8f7c78) og et valgt beløb (område 0xb, 0x8f7813) slår den fra. Uden auto:
+ *  slået fra, når en pris er sendt, ellers +0x4e & 4 (som en skærm, der ikke er rørt). */
+export interface TransferStatusIn { status: number; price: number | null; listed: boolean; loan: boolean; request: boolean; auto?: boolean }
 
 /** Set Staff Transfer Status-skærmens rækker (0x8f6a10 byg / 0x8f7640 klik): de tre transferrækker er et valg ad gangen (klik på én nulstiller de to
  *  andre). "Transfer listed by request" (parameter 6 = +0x4e & 8 ved åbning, parameter 0xe = +0x45 ≠ 0) kan KUN vælges, når spilleren allerede er
@@ -207,11 +211,17 @@ export function cmSetTransferStatus(g: GameState, p: Player, o: TransferStatusIn
   const rand = cmRand(g.seed ?? 0, p.id, dayNum(g.date), 0x8f7640);
   const flags = (c.b4e ?? (p.listed ? 1 : 0) | (p.loanListed ? 2 : 0)) & 0xff;
   c.b4e = flags;
+  const auto = o.auto ?? (o.price === null && !!(flags & 4));
+  const formula = valueTarget(p);
   setSquadStatus(g, p, o.price, o.status || 0xff, flags, rand);
+  if (p.loan) { syncFlags(p, c); return; }                                    // 0x8f7fe9: lejekontrakten (type 6) – ingen listning og +0x4e & 4 røres ikke
   if (o.listed) listPlayer(g, p, true, rand);                                  // 0x8f801d: 0x842320(staff, 1)
   else if (c.b4e & 1) c.b4e &= ~1;                                             // 0x8f8056: 0x844280
   if (o.loan) c.b4e |= 2; else c.b4e &= ~2;                                    // 0x8f806c / 0x8f808f
   c.b4e = o.request && (flags & 8) ? (c.b4e & ~2) | 8 : c.b4e & ~8;            // 0x8f8094–0x8f80ad (rækken kan kun vælges, når han allerede er listet efter ønske)
+  // 0x8f80b0–0x8f80da: Auto → +0x4e |= 4 (værdien +0x52 følger formlen 0x4d0c60 hver dag, 0x4c7ec5), ellers &= ~4 (+0x52 står fast – Player.cmAsk)
+  if (auto) { c.b4e |= 4; p.cmAsk = undefined; }
+  else { c.b4e &= ~4; p.cmAsk = { v: p.value, club: p.club, f: formula }; }
   syncFlags(p, c);
   if (o.listed && o.price) p.listPrice = p.value;
 }

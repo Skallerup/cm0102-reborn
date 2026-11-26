@@ -142,6 +142,6 @@ export function cmReceivershipValues(g: GameState, cid: number): void {
     const st = M.W.staffOf(p);
     if (!st) continue;
     const v = playerValue_4d0c60(M.c, st, club, 0, -1, 1) | 0;
-    if (v < Math.round(p.value * k)) { p.value = v / k; delete p.cmAsk; }
+    if (v < Math.round(p.value * k)) { p.value = v / k; delete p.cmAsk; if (p.cmContract) p.cmContract.b4e = ((p.cmContract.b4e ?? 0) | 4) & 0xff; }
   }
 }

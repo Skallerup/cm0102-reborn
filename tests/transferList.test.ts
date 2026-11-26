@@ -15,6 +15,7 @@ import { fromGbp, toGbp } from '../src/game/cmTransferBid';
 import { addDays } from '../src/game/dates';
 import { valueTarget } from '../src/game/training';
 import { ATTRS } from '../src/game/attributes';
+import { cmValuesApply } from '../src/game/cmValueGame';
 
 describe('tilfredsheden ved ny trupstatus (0x8ce0e0, springtabellen 0x8ce8f0)', () => {
   it('uden status før: Key +100, First +50, Rotation +25, Backup 0, Not Needed −100; listet (flag & 3) → −100', () => {
@@ -280,5 +281,45 @@ describe('Set Staff Transfer Status: "listed by request" (0x8f6a10 / 0x8f7640)',
     expect(((c.b4e ?? 0) & 8)).toBe(8);
     act({ t: 'cmTransferStatus', pid: p.id, status: 0, price: null, listed: false, loan: false, request: false });
     expect(((c.b4e ?? 0) & 8)).toBe(0);
+  });
+});
+
+describe('Set Staff Transfer Status: Auto-prisen (param 0xa, 0x8f6923 / 0x8f7735 / 0x8f80b0)', { timeout: 120_000 }, () => {
+  it('Auto → +0x4e & 4 og værdien følger formlen dagligt; egen pris → bit 4 ryddet og værdien står; lejekontrakt (type 6) → ingen listning', () => {
+    const w = JSON.parse(readFileSync('public/data/world-original.json', 'utf8')) as WorldData;
+    const eng = w.nations.findIndex((n) => n.name === 'England');
+    const mu = w.clubs.find((c) => c[1] === 'Manchester United')![0];
+    createGame(w, { managerName: 'M S', managerNation: eng, clubId: mu, activeNations: [eng], lang: 'en', masking: true, seed: 3, mode: 'authentic' });
+    const g = gs();
+    const p = squad(g.userClub).sort((a, b) => b.ca - a.ca)[2];
+    const c = cmContractOf(p);
+    expect((c.b4e ?? 0) & 4).toBe(4);                                // ny kontrakt: Auto (0x4c7ec5 regner +0x52 hver dag)
+    const f0 = valueTarget(p);
+    // − / + / valgt beløb: Auto slået fra → bit 4 ryddet, +0x52 = prisen og står fast
+    const price = Math.round(f0 / 2);
+    act({ t: 'cmTransferStatus', pid: p.id, status: 0, price, listed: false, loan: false, request: false, auto: false });
+    expect((c.b4e ?? 0) & 4).toBe(0);
+    expect(p.value).toBe(price);
+    cmValuesApply(g, [p]);
+    expect(p.value).toBe(price);
+    // egen pris over formlen: +0x52 skrives ikke, men bit 4 ryddes stadig
+    act({ t: 'cmTransferStatus', pid: p.id, status: 0, price: Math.round(f0 * 3), listed: false, loan: false, request: false, auto: false });
+    expect(p.value).toBe(price);
+    expect((c.b4e ?? 0) & 4).toBe(0);
+    // Auto slået til: prisen = formlen, bit 4 sat, og værdien følger formlen igen
+    act({ t: 'cmTransferStatus', pid: p.id, status: 0, price: valueTarget(p), listed: false, loan: false, request: false, auto: true });
+    expect((c.b4e ?? 0) & 4).toBe(4);
+    expect(p.cmAsk).toBeUndefined();
+    p.value = 1;
+    cmValuesApply(g, [p]);
+    expect(p.value).toBeGreaterThan(1);
+    // lejekontrakten (type 6, 0x8f7fe9): ingen listning, og bit 4 røres ikke
+    const q = squad(g.userClub).find((x) => x !== p && !x.loan)!;
+    const cq = cmContractOf(q);
+    cq.b4e = 4;
+    q.loan = { from: Object.values(g.clubs).find((x) => x.id !== g.userClub)!.id, until: addDays(g.date, 100) };
+    act({ t: 'cmTransferStatus', pid: q.id, status: 0, price: null, listed: true, loan: false, request: false, auto: false });
+    expect(cq.b4e).toBe(4);
+    expect(q.listed).toBeFalsy();
   });
 });

@@ -60,7 +60,7 @@ export type Action =
   | { t: 'listed'; pid: number; price?: number | null }
   | { t: 'squadStatus'; pid: number; status: SquadStatus | null; loanListed: boolean }
   /** den originale database i ægte tilstand: Set Staff Transfer Status → OK (0x8f7f08) og svaret på en transferanmodning (0x4dcd70) */
-  | { t: 'cmTransferStatus'; pid: number; status: number; price: number | null; listed: boolean; loan: boolean; request: boolean }
+  | { t: 'cmTransferStatus'; pid: number; status: number; price: number | null; listed: boolean; loan: boolean; request: boolean; auto?: boolean }
   | { t: 'cmRequest'; news: number; grant: boolean }
   | { t: 'cmRumour'; news: number; answer: number }
   | { t: 'squadNumber'; pid: number; n: number }

@@ -55,13 +55,17 @@ function CmTransferStatusPanel({ p, onClose }: { p: Player; onClose: () => void 
   const [request, setRequest] = useState(!!(b4e & 8));
   const rows = cmStatusRows(p);
   const [price, setPrice] = useState<number>(p.value);
+  // skærmparameter 0xa: ved åbningen +0x4e & 4 (0x8f6923); Auto (område 5, 0x8f7735) slår den til/fra og sætter prisen til formlen 0x4d0c60, når den
+  // slås til; − / + og et valgt beløb slår den fra (0x8f7ae2 / 0x8f7c90 / 0x8f7813)
+  const [auto, setAuto] = useState(!!(b4e & 4));
   // Cash::step_up 0x43f4e0 / step_down 0x43f580 (0x8f7c78 / 0x8f7aca)
   // udbudsprisen er klubbens penge: € → £ med klubbens faktor (cmMoney.ts; den originale database 0,86)
   const k = cmGbp(g, p.club);
-  const step = (dir: 1 | -1) => setPrice(dir > 0 ? stepUp(price, k) : stepDown(price, k));
+  const step = (dir: 1 | -1) => { setPrice(dir > 0 ? stepUp(price, k) : stepDown(price, k)); setAuto(false); };
+  const toggleAuto = () => { if (!auto) setPrice(valueTarget(p)); setAuto(!auto); };
   const name = `${p.first} ${p.last}`.trim();
   const save = () => {
-    act({ t: 'cmTransferStatus', pid: p.id, status: statusNum(status), price: price !== p.value ? price : null, listed, loan, request });
+    act({ t: 'cmTransferStatus', pid: p.id, status: statusNum(status), price: price !== p.value ? price : null, listed, loan, request, auto });
     onClose();
   };
   return (
@@ -72,10 +76,10 @@ function CmTransferStatusPanel({ p, onClose }: { p: Player; onClose: () => void 
         <div className="cx-ts-price">
           <span className="cx-ts-label">{t('cl.ts.asking')}</span>
           <CxPm disabled={price <= 0} onClick={() => step(-1)} aria-label="-">−</CxPm>
-          <CxDrop className="cx-bid-amt cx-ts-val" label={money(price)} fixed items={PRICE_LIST.map((a) => ({ key: String(a), label: amountLabel(a), checked: false, onClick: () => setPrice(Math.round(fromCurExact(a))) }))} />
+          <CxDrop className="cx-bid-amt cx-ts-val" label={money(price)} fixed items={PRICE_LIST.map((a) => ({ key: String(a), label: amountLabel(a), checked: false, onClick: () => { setPrice(Math.round(fromCurExact(a))); setAuto(false); } }))} />
           <CxPm onClick={() => step(1)} aria-label="+">+</CxPm>
           {/* originalens knap hedder Auto (ejerens billede 13/11): formelværdien 0x4d0c60 */}
-          <button className="cx-pm auto" onClick={() => setPrice(roundGbp(valueTarget(p), k))}>{t('cl.ts.auto')}</button>
+          <button className={`cx-pm auto ${auto ? 'on' : ''}`} onClick={toggleAuto}>{t('cl.ts.auto')}</button>
         </div>
         <div className="cx-ts-head">{t('cl.ts.squad')}</div>
         {SQUAD_STATUSES.map((s) => {
@@ -95,7 +99,6 @@ function CmTransferStatusPanel({ p, onClose }: { p: Player; onClose: () => void 
     </div>
   );
 }
-const roundGbp = (v: number, k: number) => Math.round(Math.round(Math.round(v * k) / 1000) * 1000 / k);
 
 /** "Transfer Request" (0x4dcb30/0x4dcd70): "Put X on the transfer list at his own request ?" – Back, No, Yes */
 export function TransferRequestPanel({ news, onClose }: { news: NewsItem; onClose: () => void }) {
