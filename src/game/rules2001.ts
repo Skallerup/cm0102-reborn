@@ -8,6 +8,7 @@ import { asOwner, isHumanClub } from './humans';
 import type { Club, Player } from './types';
 import { CM_WINDOWS, cmInWindow, cmWindowOpen } from './cmOfferCheck';
 import { cmLoanPeriod } from './cmLoan';
+import { DEMONYM } from '../ui/demonyms';
 
 /** Spilles der med den originale 2001/02-database? */
 // (samme regel som cmDatabase i newgame.ts – ikke importeret derfra, så filen ikke trækker hele newgame med og skaber
@@ -107,8 +108,8 @@ export function englandLoanRefused(p: Player, buyer: Club): boolean {
  *  +4 + 0xc – ikke det tredje) → nej (9); køberens division er en af [0x9cf578..0x9cf588] (turneringerne 26–30: Serie C1/A, C1/B og C2) og ≥ 4
  *  lejet ind i truppen → nej (0x25). Spanien 0x859630: vinduet (0x8e8e50) → nej (9); samme division som kontraktklubben og PlayerStats
  *  0x7c1e30(post, 2, 1, 6,5) (ligakampe) > 5,0 → nej (0x1f).
- *  Sælgerlandets +0x24 (cmLoanSellerOk) for Irland 0x63c530 og Italien 0x6618f0; ikke porteret (*estimeret*: må): Finland 0x5a9ba0, Frankrig
- *  0x5c1ed0, Tyskland 0x5e0210 (de øvrige 0x40a610 = må). */
+ *  Sælgerlandets +0x24 (cmLoanSellerOk) for Irland 0x63c530, Italien 0x6618f0, Finland 0x5a9ba0, Frankrig 0x5c1ed0 og Tyskland 0x5e0210 – de
+ *  eneste fem af de 29 regelobjekter (vtabellerne 0x9674a0–0x970a9c) med egen +0x24; de øvrige 0x40a610 = må. */
 export function cmLoanRulesOk(buyer: Club, home: Club | undefined, p?: Player): boolean { return cmLoanRules(buyer, home, p).ok; }
 
 /** klubbens division +0x57: den kørende liga (CM<id>), ellers club.dat's division (cmFinRaw[0]) – som cmNonLeague.ts */
@@ -119,49 +120,62 @@ function divOf(g: ReturnType<typeof gs>, c: Club): number {
 /** Italiens to første vinduer (0x8e8c40 på TRANSFER_RULES +4 og +4 + 0xc) */
 const italyWin = (date: string) => CM_WINDOWS.Italy.slice(0, 2).some((w) => cmInWindow(w, date));
 
+/** En besked, som originalen skriver i beskedbufferen (0x66f4e0): nøglen i i18n og parametrene */
+export interface LoanMsg { key: string; params?: Record<string, string | number> }
+/** nationalitetsordet (0x6181d0): nation.dat's ord, ellers det engelske */
+export const cmNatAdj = (g: ReturnType<typeof gs>, n: number | undefined) => { const x = n === undefined ? undefined : g.nations[n]; return x ? x.adj ?? DEMONYM[x.name] ?? x.name : ''; };
+const clubNm = (c: Club | undefined) => c?.short || c?.name || '';
+const natAdj = cmNatAdj;
+
 /** TRANSFER_RULES +0x20 med grunden (&grund): 0x1d samme (Premier) Division, 0x1e fem i sæsonen, 0x26 to lejede ind, 0x25 fire lejede ind
  *  (Italien), 0x1f over 5 ligakampe (Spanien), 9 uden for vinduet; 0 = ingen grund (også Finlands nej uden for dag 90–300 –
- *  handle_player_accepted_terms 0x8c2493 ser kun på grunden, can_loan_player 0x8d0040 på svaret) */
-export function cmLoanRules(buyer: Club, home: Club | undefined, p?: Player): { ok: boolean; why: number } {
+ *  handle_player_accepted_terms 0x8c2493 ser kun på grunden, can_loan_player 0x8d0040 på svaret). `msg`: beskeden, funktionen skriver i
+ *  bufferen (menneskets Approach To Loan 0x8f9690 viser den): 0x9c4590 (England/Skotland: divisionens navn), 0x9ea168 (Irland: landet),
+ *  0x9c4534/0x9c44d4/0x9ea9dc (køberen), 0xa82b00 (Spanien: landet), 0x987d38 (vinduet: regelobjektets nationalitet +0xa, stil 2). */
+export function cmLoanRules(buyer: Club, home: Club | undefined, p?: Player): { ok: boolean; why: number; msg?: LoanMsg } {
   const g = gs();
   const nat = g.nations[buyer.nation]?.name ?? '';
   const sameTop = () => !!home && home.league === buyer.league && g.leagues[buyer.league]?.tier === 1;
   const sameDiv = () => !!home && divOf(g, home) === divOf(g, buyer);
-  const no = (why: number) => ({ ok: false, why }), yes = { ok: true, why: 0 };
-  const win = () => (cmWindowOpen(g, buyer, g.date) ? yes : no(9));
+  const no = (why: number, key?: string, params?: Record<string, string | number>) => ({ ok: false, why, ...(key ? { msg: { key, params } } : {}) });
+  const yes = { ok: true, why: 0 };
+  const club = { club: clubNm(buyer) };
+  const deadline = () => no(9, 'cl.loanr.deadline', { nat: natAdj(g, buyer.nation) });
+  const win = () => (cmWindowOpen(g, buyer, g.date) ? yes : deadline());
+  const topDiv = () => no(0x1d, 'cl.loanr.sameComp', { comp: g.leagues[buyer.league]?.name ?? '' });
   switch (nat) {
     case 'England': {
-      if (sameTop()) return no(0x1d);
+      if (sameTop()) return topDiv();
       const L = loanCounts(g);
-      if ((L.season.get(buyer.id) ?? 0) >= 5) return no(0x1e);
-      if ((L.now.get(buyer.id) ?? 0) > 1) return no(0x26);
+      if ((L.season.get(buyer.id) ?? 0) >= 5) return no(0x1e, 'cl.loanr.five', club);
+      if ((L.now.get(buyer.id) ?? 0) > 1) return no(0x26, 'cl.loanr.two', club);
       return win();
     }
-    case 'Scotland': return sameTop() ? no(0x1d) : yes;
+    case 'Scotland': return sameTop() ? topDiv() : yes;
     case 'Australia': case 'France': case 'Russia': case 'Turkey': case 'United States': case 'Holland': case 'Norway': return win();
     case 'Finland': {
-      // 0x5a9af0: vinduet; en computerklub (0x600a50(klub, 1, 1) = 0) kun på dag 90–300 i året (0xae2c90, 0 = 1/1) – uden grund
-      if (!cmWindowOpen(g, buyer, g.date)) return no(9);
+      // 0x5a9af0: vinduet; en computerklub (0x600a50(klub, 1, 1) = 0) kun på dag 90–300 i året (0xae2c90, 0 = 1/1) – uden grund og besked
+      if (!cmWindowOpen(g, buyer, g.date)) return deadline();
       if (isHumanClub(buyer.id)) return yes;
       const d = Math.round((Date.parse(g.date.slice(0, 10) + 'T00:00:00Z') - Date.UTC(Number(g.date.slice(0, 4)), 0, 1)) / 86400000);
       return d >= 90 && d <= 300 ? yes : no(0);
     }
     case 'Republic of Ireland': {
       // 0x63c3d0: sæsontallet (+0x91c) først, så samme division (0x4cf5a0's klub +0x57 = køberens +0x57) – intet vindue
-      if ((loanCounts(g).season.get(buyer.id) ?? 0) >= 5) return no(0x1e);
-      return sameDiv() ? no(0x1d) : yes;
+      if ((loanCounts(g).season.get(buyer.id) ?? 0) >= 5) return no(0x1e, 'cl.loanr.five', club);
+      return sameDiv() ? no(0x1d, 'cl.loanr.sameDiv', { nation: g.nations[buyer.nation]?.name ?? '' }) : yes;
     }
     case 'Italy': {
       // 0x661770: de to første vinduer; i C1/C2 (+0x57 ∈ [0x9cf578..0x9cf588]) højst 3 lejede ind (0x4cf6d0, kontraktklub ≠ køberen)
-      if (!italyWin(g.date)) return no(9);
+      if (!italyWin(g.date)) return deadline();
       const d = divOf(g, buyer);
-      if (d >= 26 && d <= 30 && (loanCounts(g).now.get(buyer.id) ?? 0) >= 4) return no(0x25);
+      if (d >= 26 && d <= 30 && (loanCounts(g).now.get(buyer.id) ?? 0) >= 4) return no(0x25, 'cl.loanr.four', club);
       return yes;
     }
     case 'Spain': {
       // 0x859630: vinduet; samme division og over 5 ligakampe i sæsonen (0x7c1e30(staff +0x61, 2, 1, 6,5) > [0x968990] = 5,0)
-      if (!cmWindowOpen(g, buyer, g.date)) return no(9);
-      return sameDiv() && !!p && statAvg(p, 2, 1, 6.5) > 5 ? no(0x1f) : yes;
+      if (!cmWindowOpen(g, buyer, g.date)) return deadline();
+      return sameDiv() && !!p && statAvg(p, 2, 1, 6.5) > 5 ? no(0x1f, 'cl.loanr.fiveGames', { nation: g.nations[buyer.nation]?.name ?? '' }) : yes;
     }
     default: return yes;
   }
@@ -171,13 +185,45 @@ export function cmLoanRules(buyer: Club, home: Club | undefined, p?: Player): { 
 const dmy = (d: number, m: number, y: number) => new Date(Date.UTC(y, m, d)).toISOString().slice(0, 10);
 
 /** Sælgerlandets TRANSFER_RULES +0x24(kontraktklub, staff, 0, &dato, 1) på datoen: Irland 0x63c530 – vinduet (0x8e8e50); Italien 0x6618f0 –
- *  juni (0x54cfb0 = 5, når femte argument ≠ 0) eller et af de to første vinduer (0x8e8c40); de øvrige (0x40a610) må. */
-function sellerRuleOk(g: ReturnType<typeof gs>, home: Club, date: string): boolean {
-  switch (g.nations[home.nation]?.name ?? '') {
-    case 'Republic of Ireland': return cmWindowOpen(g, home, date);
-    case 'Italy': return Number(date.slice(5, 7)) === 6 || italyWin(date);
-    default: return true;
+ *  juni (0x54cfb0 = 5, når femte argument ≠ 0) eller et af de to første vinduer (0x8e8c40); de øvrige (0x40a610) må.
+ *  Finland 0x5a9ba0 – nej, når Date(18, august, år) < datoen < Date(15, november, år) (0x549f70(0x12, 7, år)/(0xf, 0xa, år), datoens år);
+ *  Frankrig 0x5c1ed0 – vinduet (0x8e8e50 på datoen); Tyskland 0x5e0210 – femte argument ≠ 0 → må; ellers nej, når spillerens klub (+0x39) er
+ *  tysk (eller ingen). Beskeden (kun når bufferen ≠ 0 – can_loan_player giver 0): klubben (første argument) = spillerens klub (+0x39) →
+ *  "sent back", ellers "recalled". Landet i beskeden: regelobjektets faste nation ([0x9cf2dc] Irland, [0x9cf360] Italien, [0x9cf300]
+ *  Frankrig, [0x9cf314] Tyskland). */
+const SELLER_RULES = new Set(['Republic of Ireland', 'Italy', 'Finland', 'France', 'Germany']);
+function sellerRule(g: ReturnType<typeof gs>, club: Club, p: Player, date: string, flag: boolean): { ok: boolean; msg?: LoanMsg } {
+  const ruleNation = club.nation, nm = g.nations[ruleNation]?.name ?? '';
+  const back = club.id === p.club;
+  const deadline = (): { ok: boolean; msg?: LoanMsg } => ({ ok: false, msg: { key: back ? 'cl.loanr.sendBackDeadline' : 'cl.loanr.recallDeadline', params: { nat: natAdj(g, ruleNation) } } });
+  switch (nm) {
+    case 'Republic of Ireland': case 'France': return cmWindowOpen(g, club, date) ? { ok: true } : deadline();   // (klubben er regelobjektets land)
+    case 'Italy': return (flag && Number(date.slice(5, 7)) === 6) || italyWin(date) ? { ok: true } : deadline();
+    case 'Finland': {
+      const y = date.slice(0, 4), d = date.slice(0, 10);
+      return `${y}-08-18` < d && d < `${y}-11-15` ? { ok: false, msg: { key: back ? 'cl.loanr.sendBackNov' : 'cl.loanr.recallNov' } } : { ok: true };
+    }
+    case 'Germany': {
+      if (flag) return { ok: true };
+      const cur = g.clubs[p.club];
+      if (cur && cur.nation !== ruleNation) return { ok: true };
+      return { ok: false, msg: { key: back ? 'cl.loanr.sendBackGer' : 'cl.loanr.recallGer', params: { nat: natAdj(g, ruleNation) } } };
+    }
+    default: return { ok: true };
   }
+}
+const sellerRuleOk = (g: ReturnType<typeof gs>, home: Club, p: Player, date: string) => sellerRule(g, home, p, date, true).ok;
+
+/** TRANSFER_MANAGER 0x8d0530(klub, staff, besked, &dato, flag): spillerens klub (+0x39) og klubben i samme land (+0x53) → det lands regelobjekts
+ *  +0x24(klub, staff, besked, &dato, flag); ellers (eller intet regelobjekt) må. Menneskets Recall/Terminate-dialog 0x8fbcc0 kalder den med
+ *  menneskets klub, dagens dato og flag 0 → nej: "Cannot recall {spiller}" (0xaa15a0) / "Cannot terminate {spiller}'s loan" (0xaa15d4)
+ *  med beskeden. */
+export function cmLoanEndOk(club: Club, p: Player, date = gs().date, flag = false): { ok: boolean; msg?: LoanMsg } {
+  const g = gs();
+  const cur = g.clubs[p.club];
+  if (!cur || cur.nation !== club.nation) return { ok: true };
+  if (!SELLER_RULES.has(g.nations[club.nation]?.name ?? '')) return { ok: true };
+  return sellerRule(g, club, p, date, flag);
 }
 
 /** TRANSFER_MANAGER::can_loan_player 0x8d0040, sælgerdelen (0x8d037f–0x8d052d, efter køberlandets +0x20): kontraktklubbens lands regelobjekt
@@ -188,18 +234,18 @@ export function cmLoanSellerOk(buyer: Club, home: Club | undefined, p: Player): 
   const g = gs();
   if (!home) return true;
   const nat = g.nations[home.nation]?.name ?? '';
-  if (nat !== 'Republic of Ireland' && nat !== 'Italy') return true;          // 0x40a610 (eller intet regelobjekt): må
+  if (!SELLER_RULES.has(nat)) return true;                                      // 0x40a610 (eller intet regelobjekt): må
   const r = cmLoanPeriod(g, buyer.id, p);
   if (r.sm === r.em && r.sy === r.ey) return true;
   const dom = Number(g.date.slice(8, 10));
   const end = dmy(dom, r.em, r.ey);
   let m = r.sm, y = r.sy, cur = dmy(dom, m, y);
-  if (sellerRuleOk(g, home, cur)) return true;
+  if (sellerRuleOk(g, home, p, cur)) return true;
   for (;;) {
     if (++m > 11) { m = 0; y++; }
     if (!(end > cur)) return false;
     cur = dmy(dom, m, y);
-    if (sellerRuleOk(g, home, cur)) return true;
+    if (sellerRuleOk(g, home, p, cur)) return true;
   }
 }
 

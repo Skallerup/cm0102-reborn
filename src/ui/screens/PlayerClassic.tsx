@@ -15,7 +15,7 @@ import { cmKnowOn } from '../../game/cmKnow';
 import { authentic, extended } from '../../game/rules';
 import { avgRating } from '../../game/season';
 import { SCHEDULES } from '../../game/training';
-import { askingPrice, canPreContract, interestedClubs, approachOpen, myPendingBid, nextWindow, releaseCost } from '../../game/transfers';
+import { askingPrice, canPreContract, interestedClubs, approachOpen, loanApproach, myPendingBid, recallRule, nextWindow, releaseCost } from '../../game/transfers';
 import { cmActive, cmLogic, cmMarketOn, cmMediaOn, statCell, statColumns } from '../../game/cmPlayerData';
 import { squadMoveOption } from '../../game/cmBTeam';
 import { cmTalksOpen } from '../../game/cmTransferTalks';
@@ -643,7 +643,12 @@ export function ClassicPlayer({ id }: { id: number }) {
     );
   }
   // CM 01/02 (kun den originale database): kald en udlejet spiller hjem
-  if (p.loan?.from === g.userClub && loanRecallOn()) items.push({ key: 'recall', label: t('loan.recall'), onClick: () => setMsg(t(dispatch<string>({ t: 'recallLoan', pid: p.id }))) });
+  // (originalens marked: Recall-dialogen 0x8fbcc0 spørger først 0x8d0530 – nej → "Cannot recall {spiller}" med beskeden)
+  if (p.loan?.from === g.userClub && loanRecallOn()) items.push({ key: 'recall', label: t('loan.recall'), onClick: () => {
+    const r = recallRule(p.id);
+    if (!r.ok) void askNotice(r.msg ? t(r.msg.key, r.msg.params) : '', { head: t('cl.loanr.recallHead', { player: `${p.first} ${p.last}`.trim() }) });
+    else setMsg(t(dispatch<string>({ t: 'recallLoan', pid: p.id })));
+  } });
   if (!g.draft && !mine && g.userClub > 0) {
     // CM 01/02: Add To Shortlist · Approach To Buy · Approach To Loan · Scout Player · Set Nickname · — · Create Manager Note · Compare Players
     items.push({ key: 'short', label: shortlisted ? t('cl.pl.unshortlist') : t('cl.pl.shortlist'), onClick: () => dispatch({ t: 'shortlist', pid: p.id, on: !shortlisted }) });
@@ -670,7 +675,10 @@ export function ClassicPlayer({ id }: { id: number }) {
       items.push(
         { key: 'bid', label: t('cl.pl.approachBuy'), disabled: !open, title: closedTip, onClick: () => setBidPanel('buy') },
         { key: 'loan', label: t('cl.pl.approachLoan'), disabled: !open, title: closedTip, onClick: () => {
-          if (me && loanBlocked(p, me)) void askNotice(t('cl.pl.loanNonEu', { club: me.short }), { head: t('cl.pl.cannotLoan', { player: `${p.first} ${p.last}`.trim() }) });
+          // CM 01/02 Approach To Loan 0x888260 → 0x8f9690 (originalens marked: arbejdstilladelse, 0x8ce990 og can_loan_player 0x8d0040)
+          const chk = loanApproach(p.id);
+          if (chk && !chk.ok) void askNotice(chk.msg ? t(chk.msg.key, chk.msg.params) : '', { head: t(chk.head === 'offer' ? 'cl.loanr.offerHead' : 'cl.pl.cannotLoan', { player: `${p.first} ${p.last}`.trim() }) });
+          else if (!chk && me && loanBlocked(p, me)) void askNotice(t('cl.pl.loanNonEu', { club: me.short }), { head: t('cl.pl.cannotLoan', { player: `${p.first} ${p.last}`.trim() }) });
           else setBidPanel('loan');
         } },
       );

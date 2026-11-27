@@ -22,7 +22,7 @@
 // TRANSFER_MANAGER's tilbud er spillets åbne bud (uden rival- og forhandlingslister); skaderne 0x62ed70 fra konditionsmodulet; arbejdstilladelsen
 // 0x8c7950 = rules2001.ts workPermitGranted (spil startet med porten: cmPermit.ts cmWorkPermit – originalens 0x8c7950); lejeregler 0x8d0040 = rules2001.ts loanBlocked; spillerens svar på et kontrakttilbud til en fri spiller
 // kommer straks (originalen venter på hans beslutningsdato 0x4cd230).
-import type { GameState, Player, Staff } from './types';
+import type { Club, GameState, Player, Staff } from './types';
 import { type CmCtx, type CmMem, G, getContract, clubAt, SparseMem } from './cmMem';
 import { holidayOpt_5fea50, humanClub0 } from './cmHoliday';
 import { buildSlWantMem, resetSlBase, slMemPages, SLMEM_DEFER, type SlWantState } from './cmSlMem';
@@ -52,7 +52,7 @@ import { isHumanClub } from './humans';
 import { onGameSwitch } from './state';
 import { ageOn } from './dates';
 import { ATTRS } from './attributes';
-import { workPermitGranted, cmLoanRulesOk, cmLoanSellerOk } from './rules2001';
+import { workPermitGranted, cmLoanRules, cmLoanSellerOk, cmNatAdj, needsWorkPermit, type LoanMsg } from './rules2001';
 import { cmCanSign } from './cmOfferCheck';
 import { cmLoanPeriod } from './cmLoan';
 import { cmFitRead } from './cmFitnessGame';
@@ -1695,18 +1695,8 @@ export function buildSlMem(g: GameState, opts: { noStale?: boolean; resume?: SlR
         // TRANSFER_MANAGER::can_loan_player(klub, staff, besked) 0x8d0040; 1 = må: hovedkontrakt (0x4cf5a0) af en anden type end 5, ingen
         // lejekontrakt (0x4cf6d0), jobbet +0x3d = 0xb (ren spiller – ellers "non playing role"), can_club_bid_for_player 0x8ce990(staff, klub,
         // &grund, 0) og køberlandets TRANSFER_RULES +0x20 (rules2001.ts cmLoanRulesOk)
-        const n = a.length, cp = a[n - 3] >>> 0, st = a[n - 2] >>> 0;
-        const cl = g.clubs[m.s32(cp)], p = S.byMem.get(m.s32(st));
-        if (!p || !cl) return 0;
-        const k = getContract(m, st);
-        if (!k || (m.u8(k + 0x35) & 0x3f) === 5) return 0;
-        if (m.s32(m.u32(G.ROWS) + 79 * m.s32(st) + 4) >= 0) return 0;
-        if (m.u8(st + 0x3d) !== 0xb) return 0;
-        const why = 0x5e7f0080; m.w16(why, 0);
-        if (!slCall(S.M.c, 0x8ce990, m.u32(0xde1f54), st, cp, why, 0)) return 0;
-        // … og sælgerlandets +0x24 for hver måned i lejeperioden 0x8d0590 (0x8d0461/0x8d04e7 – rules2001.ts cmLoanSellerOk)
-        const home = g.clubs[m.s32(k + 4)];
-        return cmLoanRulesOk(cl, home, p) && cmLoanSellerOk(cl, home, p) ? 1 : 0;
+        const n = a.length;
+        return canLoan_8d0040(S, a[n - 3] >>> 0, a[n - 2] >>> 0) ? 1 : 0;
       }
       case 0x8ced40: {
         // TRANSFER_MANAGER 0x8ced40(køber, &dato, staff, kontraktklub, 1, &grund): køberlandets can_sign_player 0x8e8560 på datoen (cmOfferCheck.ts
@@ -2525,6 +2515,90 @@ export function cmExchangeCheck(g: GameState, giver: number, receiver: number, c
   }
   (m as SparseMem).release();
   return { ok, refused, tooDear };
+}
+
+/** Hvor TRANSFER_MANAGER::can_loan_player 0x8d0040 sagde nej: 'contract' (ingen hovedkontrakt eller type 5), 'loaned' (lejekontrakt 0x4cf6d0),
+ *  'role' (jobbet +0x3d ≠ 0xb), 'bid' (0x8ce990 – grunden i `why`), 'rules' (køberlandets +0x20), 'seller' (sælgerlandets +0x24) */
+interface CanLoanOut { step?: 'contract' | 'loaned' | 'role' | 'bid' | 'rules' | 'seller'; why?: number; msg?: LoanMsg }
+const CANLOAN_WHY = 0x5e7f0080;
+/** TRANSFER_MANAGER::can_loan_player(klub, staff, besked) 0x8d0040; true = må: hovedkontrakt (0x4cf5a0) af en anden type end 5, ingen lejekontrakt
+ *  (0x4cf6d0), jobbet +0x3d = 0xb (ren spiller – ellers "non playing role", 0xa8f4dc), can_club_bid_for_player 0x8ce990(staff, klub, &grund, 0)
+ *  (beskederne 0x8d0187–0x8d0357), køberlandets TRANSFER_RULES +0x20 (rules2001.ts cmLoanRules) og sælgerlandets +0x24 for hver måned i
+ *  lejeperioden 0x8d0590 (0x8d0461/0x8d04e7 – cmLoanSellerOk; nej → 0xa8f288) */
+function canLoan_8d0040(S: SlMem, cp: number, st: number, out?: CanLoanOut): boolean {
+  const { m, g } = S;
+  const cl = g.clubs[m.s32(cp)], p = S.byMem.get(m.s32(st));
+  if (!p || !cl) return false;
+  const no = (step: CanLoanOut['step'], msg?: LoanMsg) => { if (out) { out.step = step; out.msg = msg; } return false; };
+  const k = getContract(m, st);
+  if (!k || (m.u8(k + 0x35) & 0x3f) === 5) return no('contract');
+  if (m.s32(m.u32(G.ROWS) + 79 * m.s32(st) + 4) >= 0) return no('loaned');
+  if (m.u8(st + 0x3d) !== 0xb) return no('role', { key: 'cl.loanr.role', params: { player: `${p.first} ${p.last}`.trim() } });
+  m.w16(CANLOAN_WHY, 0);
+  if (!slCall(S.M.c, 0x8ce990, m.u32(0xde1f54), st, cp, CANLOAN_WHY, 0)) { if (out) out.why = m.u16(CANLOAN_WHY); return no('bid'); }
+  const home = g.clubs[m.s32(k + 4)];
+  const r = cmLoanRules(cl, home, p);
+  if (!r.ok) return no('rules', r.msg);
+  if (!cmLoanSellerOk(cl, home, p)) return no('seller', { key: 'cl.loanr.notNow' });
+  return true;
+}
+
+/** Svaret på menneskets Approach To Loan (null uden for ønskelisterne): ok, eller originalens boks – 'cannot' = "Cannot loan {spiller}"
+ *  (0xa9f6bc, 0x8f0e40 med art 1) og 'offer' = "Loan offer for {spiller}" (0xa9edcc, 0x8f9690) – med beskeden (ingen = tom boks) */
+export interface CmLoanCheck { ok: boolean; head?: 'cannot' | 'offer'; msg?: LoanMsg }
+/** Action-menuens Approach To Loan 0x888260 (handling 0x16): 0x8c7560(staff, klub, 1) (arbejdstilladelse) → 0x8f0e40 grund 0x29; 0x8ce990(staff,
+ *  klub, &grund, 0) nej → 0x8f0e40 med grunden; lejeperioden 0x8d0590 (slut før start → 0x8f0e40 grund 0); ellers 0x8f9690: can_loan_player
+ *  0x8d0040(klub, staff, 0xde1f64) nej → "Loan offer for {spiller}" med bufferens besked; ja → lejebudskærmen 0x8f9a20.
+ *  0x8f0e40's beskeder (art 1 = leje): 7 0xa8f3c4, 0x27 0xa9f610, 0x21 0xa8f468 (klubben, hvis tilbud han har taget), 0x12/0x20 0xa9f1cc (køberen
+ *  i et bud i tilstand 0xb–0xe/0x13), 0x29 0xa9f514, 0x19/0x28 0xa8f30c (Baskerlandet [0x9cf424] / køberens land), 0x1a 0xa9f444 (Spanien
+ *  [0x9cf488]); grund 1 (listen +0x92c) er tom i hukommelsen og giver ingen besked her. */
+export function cmHumanLoanCheck(g: GameState, p: Player, buyer: number): CmLoanCheck | null {
+  const bc = g.clubs[buyer];
+  if (!cmShortlistOn(g) || !p.club || !bc) return null;
+  const nm = `${p.first} ${p.last}`.trim();
+  const cannot = (msg?: LoanMsg): CmLoanCheck => ({ ok: false, head: 'cannot', msg });
+  if (needsWorkPermit(p, bc)) return cannot({ key: 'cl.pl.loanNonEu', params: { club: bc.short || bc.name } });
+  ensureCmp();
+  const home = p.loan?.from ?? p.club;
+  const clubs = home !== buyer ? [home, buyer] : [home];
+  if (p.club !== home && p.club !== buyer) clubs.push(p.club);
+  const hold: { S?: SlMem } = {};
+  const M = smallWantMem(g, clubs, hold);
+  const st = M.W.staffOf(p), club = M.W.clubOf(buyer);
+  if (!st || !club) return null;
+  const m = M.c.m;
+  const memOf = new Map<number, number>(), byMem = new Map<number, Player>();
+  for (const [q, a] of M.W.players) { const id = m.s32(a); memOf.set(q.id, id); byMem.set(id, q); }
+  const S: SlMem = hold.S = { M, m, c: M.c, g, slm: m.u32(m.u32(0xde1f54) + 0x856), memOf, byMem, clubAdr: (cid) => M.W.clubOf(cid), events: [], slotted: new Set() };
+  writeOffers(S);
+  try {
+    m.w16(CANLOAN_WHY, 0);
+    if (!slCall(M.c, 0x8ce990, m.u32(0xde1f54), st, club, CANLOAN_WHY, 0)) return cannot(bidMsg(g, p, bc, m.u16(CANLOAN_WHY), nm));
+    const r = cmLoanPeriod(g, buyer, p);
+    if (r.ey < r.sy || (r.ey === r.sy && r.em < r.sm)) return cannot();
+    const out: CanLoanOut = {};
+    if (canLoan_8d0040(S, club, st, out)) return { ok: true };
+    return { ok: false, head: 'offer', msg: out.step === 'bid' ? bidMsg(g, p, bc, out.why ?? 0, nm) : out.msg };
+  } finally {
+    (m as SparseMem).release();
+  }
+}
+
+/** 0x8f0e40(staff, klub, grund, 1) / 0x8d0187–0x8d0357: beskeden for can_club_bid_for_player 0x8ce990's grund ved en leje */
+function bidMsg(g: GameState, p: Player, buyer: Club, why: number, player: string): LoanMsg | undefined {
+  const club = (c: Club | undefined) => c?.short || c?.name || '';
+  const fut = g.offers.find((o) => o.player === p.id && o.status === 'accepted' && !!o.cmFut);
+  switch (why) {
+    case 7: return { key: 'cl.loanr.exchange', params: { player } };
+    case 0x27: return { key: 'cl.loanr.saudi' };
+    case 0x21: return { key: 'cl.loanr.accepted', params: { player, club: club(g.clubs[fut?.buyer ?? p.contract?.futureClub ?? p.loan?.from ?? p.club]) } };
+    case 0x12: case 0x20: return { key: 'cl.loanr.setTo', params: { player, club: club(fut ? g.clubs[fut.buyer] : undefined) } };
+    case 0x29: return { key: 'cl.pl.loanNonEu', params: { club: club(buyer) } };
+    case 0x19: return { key: 'cl.loanr.nonNat', params: { club: club(buyer), nat: cmNatAdj(g, g.nations.findIndex((n) => n.name === 'Pays Basque')) } };
+    case 0x28: return { key: 'cl.loanr.nonNat', params: { club: club(buyer), nat: cmNatAdj(g, buyer.nation) } };
+    case 0x1a: return { key: 'cl.loanr.nat', params: { club: club(buyer), nat: cmNatAdj(g, g.nations.findIndex((n) => n.name === 'Spain')) } };
+    default: return undefined;
+  }
 }
 
 export { isoOf };

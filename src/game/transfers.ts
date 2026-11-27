@@ -5,7 +5,7 @@ import { SQUAD_STATUSES } from './squadStatus';
 import { cmBidChance, cmInterested, cmRequestNews } from './cmTransferList';
 import { transferNewsToMe } from './cmNewsScope';
 import { cmSignContractMorale } from './cmMedia';
-import { cmLoanRules, isOriginal2001, loanBlocked, loanRecallOn, noteLoan, noteLoanEnd, permitOk } from './rules2001';
+import { cmLoanEndOk, cmLoanRules, isOriginal2001, loanBlocked, loanRecallOn, noteLoan, noteLoanEnd, permitOk, type LoanMsg } from './rules2001';
 import { A, naturalRole } from './attributes';
 import { addDays, ageOn, daysBetween, month, year } from './dates';
 import { makePlayer, randomDob, randomName, roundValue, wageFor } from './data/generate';
@@ -30,7 +30,7 @@ import { cmLoanRefuses } from './cmLoan';
 import { cmBuildBid } from './cmAiBid';
 import { cmAiRulesBlock, cmAiRulesReason, cmCanSign, cmCompletionDate, cmWindowOpen } from './cmOfferCheck';
 import { cmRumourAdd } from './cmRumours';
-import { cmAskingPrice, cmExchangeCheck, cmInterestedClubs, cmLoanAnswerNow, cmLoanDelayNow, cmSlPlayerGone, cmShortlistOn, cmSlMoved, cmSlLoaned, setSlApply, setSlDue, type SlBid, type SlDueCtx, type SlEvent } from './cmShortlistGame';
+import { cmAskingPrice, cmExchangeCheck, cmHumanLoanCheck, type CmLoanCheck, cmInterestedClubs, cmLoanAnswerNow, cmLoanDelayNow, cmSlPlayerGone, cmShortlistOn, cmSlMoved, cmSlLoaned, setSlApply, setSlDue, type SlBid, type SlDueCtx, type SlEvent } from './cmShortlistGame';
 import { ADDON_APPS, bidClauseWorth, cleanClauses, clauseWorth, defaultRelease, settleSellOn } from './clauses';
 import { asOwner, forEachHuman, isHumanClub, isMultiplayer } from './humans';
 import { AGENT_RULES, agentOf } from './agents';
@@ -2826,6 +2826,20 @@ export function counterPackages(o: TransferOffer): { kind: 'cash' | 'addOn' | 's
   return out;
 }
 
+/** Menneskets Approach To Loan (0x888260 → 0x8f9690 – cmShortlistGame.ts cmHumanLoanCheck): null = spillet kører ikke med originalens marked */
+export function loanApproach(pid: number): CmLoanCheck | null {
+  const g = gs();
+  const p = g.players[pid];
+  return p && cmMarketOn(g) ? cmHumanLoanCheck(g, p, g.userClub) : null;
+}
+
+/** Recall/Terminate-dialogen 0x8fbcc0: 0x8d0530(menneskets klub, staff, besked, i dag, 0) – med originalens marked (rules2001.ts cmLoanEndOk) */
+export function recallRule(pid: number): { ok: boolean; msg?: LoanMsg } {
+  const g = gs();
+  const p = g.players[pid], me = g.clubs[g.userClub];
+  return p && me && cmMarketOn(g) ? cmLoanEndOk(me, p) : { ok: true };
+}
+
 /**
  * Kald en udlejet spiller hjem (CM 01/02: "Recall from loan" – loanRecallOn: CM-databaserne i ægte tilstand). Tidligst 28 dage efter
  * lejeaftalen (*estimeret*: originalens frist er ikke fundet). Lejeklubben får besked.
@@ -2834,6 +2848,8 @@ export function recallLoan(pid: number): string {
   const g = gs();
   const p = g.players[pid];
   if (!p || !p.loan || p.loan.from !== g.userClub || !loanRecallOn()) return 'error';
+  // CM 01/02: Recall-dialogen 0x8fbcc0 spørger først 0x8d0530(klub, staff, besked, i dag, 0) – lejeregler.ts cmLoanEndOk (UI'et viser beskeden)
+  if (!recallRule(pid).ok) return 'error';
   // (lejens start: flytningen til lejeklubben – Player.joined er moderklubbens dato med originalens marked, se completeTransfer)
   const since = [...(p.moves ?? [])].reverse().find((x) => x.loan && x.to === p.club)?.date ?? p.joined;
   if (since && daysBetween(since, g.date) < 28) return 'loan.recallTooSoon';
