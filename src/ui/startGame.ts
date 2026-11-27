@@ -136,11 +136,6 @@ const SL_PARTS = 12;
 const SL_PARTS_MOBILE = 12;
 /** (hukommelse, iOS 26/11) den konservative vej efter en NewGameInterrupted (dbSize.ts newGameSafe): flest og mindste arbejdere (lavest top) */
 const SL_PARTS_SAFE = 24;
-/** pause mellem to trins arbejdere (ms) – localStorage['cm0102.ngGap'] overstyrer (til målinger) */
-const PHASE_GAP_MS = 400;
-const phaseGap = () => { const d = newGameSafe() ? PHASE_GAP_SAFE_MS : PHASE_GAP_MS; try { const v = localStorage.getItem('cm0102.ngGap'); const n = Number(v); return v !== null && v !== '' && n >= 0 && n <= 5000 ? n : d; } catch { return d; } };
-/** (hukommelse, iOS 26/11) den konservative vejs pause mellem to arbejdere (forrige arbejders heap frigives imens) */
-const PHASE_GAP_SAFE_MS = 1500;
 /** (hukommelse, iOS 26/11) sidepuljens loft i arbejderne (cmMem.ts setPagePoolMax; kun genbrug – samme spil): iPhone/iPad og den konservative vej
  *  SL_POOL_SMALL sider, ellers uændret (undefined). localStorage['cm0102.ngPoolMax'] overstyrer (til målinger). */
 const SL_POOL_SMALL = 2048;
@@ -149,6 +144,11 @@ const poolMax = (): number | undefined => {
   return newGameSafe() || iosOrUnknownMobile() ? SL_POOL_SMALL : undefined;
 };
 /** pause (ms) mellem den sidste arbejders lukning og udpakningen i hovedtråden – localStorage['cm0102.ngUnpackGap'] overstyrer (til målinger) */
+/** (iOS) pause mellem to trins arbejdere (ms) – localStorage['cm0102.ngGap'] overstyrer (til målinger) */
+const PHASE_GAP_MS = 400;
+/** (hukommelse, iOS 26/11) den konservative vejs pause mellem to arbejdere (forrige arbejders heap frigives imens) */
+const PHASE_GAP_SAFE_MS = 1500;
+const phaseGap = () => { const d = newGameSafe() ? PHASE_GAP_SAFE_MS : PHASE_GAP_MS; try { const v = localStorage.getItem('cm0102.ngGap'); const n = Number(v); return v !== null && v !== '' && n >= 0 && n <= 5000 ? n : d; } catch { return d; } };
 const UNPACK_GAP_MS = 1000;
 const unpackGap = () => { try { const v = localStorage.getItem('cm0102.ngUnpackGap'); const n = Number(v); return v !== null && v !== '' && n >= 0 && n <= 10000 ? n : UNPACK_GAP_MS; } catch { return UNPACK_GAP_MS; } };
 // (25/11) new URL(..) SKAL stå bogstaveligt i new Worker – ellers bundler Vite ikke arbejderen, men kopierer den rå .ts-fil til assets/, og alle
@@ -208,8 +208,15 @@ class PhasesError extends Error { started = false; stale = false; memory = false
 /** (Firefox 27/11 – "step fitness 17 %" i 39 s, så forlod spilleren siden; Android "fitness stod 5 min") Gecko (Firefox, også på Android) smider en
  *  besked i en MessageChannel væk, hvis afsenderens port lukkes eller dens arbejder afsluttes, før modtagerens port er sendt videre og har den
  *  (målt: Firefox 157 – 0 af 6 varianter kom frem, kun "port åben + arbejderen afsluttet efter modtagelsen"; WebKit og Chromium alle 6). Arbejderen
- *  for trinet efter 'base' ventede for evigt på spillet. Her holdes afsenderen i live med åben port, til den næste har meldt 'received'. */
-export const portsNeedSender = (ua = typeof navigator !== 'undefined' ? navigator.userAgent : ''): boolean => /\bGecko\/\d/.test(ua);
+ *  for trinet efter 'base' ventede for evigt på spillet. (27/11 aften, Android 10/Chrome 138 med 4 GB: samme symptom – "step fitness 17 % at 17 s"
+ *  i 138 s) Nu i alle browsere: afsenderen holdes i live med åben port, til den næste har meldt 'received', og modtageren beder om en gensendelse,
+ *  hvis spillet ikke kommer (ui/handoff.ts). */
+/** (hukommelse, iOS) kun iPhone/iPad (alle browsere dér er WebKit, der leverer kanalens besked, også når afsenderen er afsluttet – målt 27/11, alle
+ *  6 varianter): afsenderen afsluttes straks efter 'handed', og den næste venter phaseGap(), før den tager spillet – ellers er begge arbejderes heap i
+ *  hukommelsen samtidig (WebKit, iPhone-UA, SLOW=5: phys_footprint_peak 640/677 → 723/908 MB med afsenderen i live). Modtagerens gensendelse
+ *  (ui/handoff.ts) får da intet svar, men fejler efter MAX_RESENDS i stedet for at vente for evigt. */
+export const senderMayClose = (ua = typeof navigator !== 'undefined' ? navigator.userAgent : '', touch = typeof navigator !== 'undefined' ? navigator.maxTouchPoints ?? 0 : 0): boolean =>
+  /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && touch > 1);
 /** (26/11, measure 2a7262b5d7f1: en arbejder døde uden fejl og uden besked – hovedtråden ventede i 400 s) så længe uden besked fra arbejderen,
  *  mens siden er synlig, regnes den for død (arbejderne melder fremdrift mange gange i minuttet – også på en langsom telefon) */
 export const WORKER_SILENT_MS = 120000;
@@ -242,7 +249,7 @@ export function runPhases(first: NewGameJob, stages: NewGameJob['phases'][], pre
   return new Promise<PhasesResult>((resolve, reject) => {
     let cur: Worker | null = null, prev: Worker | null = null, done = false, started = false, step = '', frac = 0, cnt = 0;
     const t0 = Date.now();
-    const gap = phaseGap(), pool = poolMax(), keep = portsNeedSender();
+    const pool = poolMax(), early = senderMayClose(), gap = early ? phaseGap() : 0;
     // vagten: tiden uden besked (også hjerteslag) tælles kun, mens siden er synlig og timerne kører (en skjult/frosset fane drosler både arbejderen og timeren)
     const guard = new SilenceGuard();
     const dog = setInterval(() => {
@@ -271,13 +278,12 @@ export function runPhases(first: NewGameJob, stages: NewGameJob['phases'][], pre
           if (sub) noteNewGameStep(sub, 0.98);
         }
         else if (m.type === 'handed' && ch) {
-          // (hukommelse) Safari frigiver en afsluttet arbejders heap lidt efter terminate – næste arbejder venter en kort pause, før den tager spillet
-          // fra kanalen, så de to ikke er i hukommelsen samtidig (målt i WebKit: toppen ved skiftet). (23/11) Pausen ligger i arbejderen, ikke i en
-          // setTimeout i hovedtråden: en skjult fanes timere drosles (≥ 1 s) eller fryses, og forløbet stod da stille mellem to trin.
-          // (Firefox) afsenderen lever, til den næste har spillet ('received') – pausen giver da intet
-          if (keep) prev = w; else w.terminate();
+          // (27/11) afsenderen lever, til den næste har spillet ('received', ui/handoff.ts) – undtagen på iOS (senderMayClose): dér afsluttes den
+          // straks, og den næste venter en kort pause i arbejderen (Safari frigiver heapen lidt efter terminate; en skjult fanes timere i
+          // hovedtråden drosles/fryses), før den tager spillet fra kanalen
+          if (early) w.terminate(); else prev = w;
           cur = null;
-          start(i + 1, newWorker(), { opts: job.opts, from: ch.port2, gapMs: keep ? 0 : gap });
+          start(i + 1, newWorker(), { opts: job.opts, from: ch.port2, ...(gap ? { gapMs: gap } : {}) });
         }
         else if (m.type === 'done' && 'gz' in m) { if (NG_TRACE) console.log('ngtrace main: spillet modtaget'); done = true; clearInterval(dog); w.terminate(); cur = null; prev?.terminate(); prev = null; resolve({ gz: m.gz, saved: m.saved }); }
         else if (m.type === 'done') fail(new Error('worker: no game'));
@@ -291,7 +297,7 @@ export function runPhases(first: NewGameJob, stages: NewGameJob['phases'][], pre
       };
       w.onmessageerror = () => fail(new Error(`worker ${i + 1}/${stages.length}: messageerror`));
       const ports = [...(ch ? [ch.port1] : []), ...(job.from ? [job.from] : [])];
-      w.postMessage({ ...job, phases: stages[i], ...(ch ? { to: ch.port1, ...(keep ? { keepPort: true } : {}) } : {}), ...(first.save ? { save: true } : {}), ...(pool !== undefined ? { poolMax: pool } : {}) } satisfies NewGameJob, ports);
+      w.postMessage({ ...job, phases: stages[i], ...(ch ? { to: ch.port1, ...(early ? { closeEarly: true } : {}) } : {}), ...(first.save ? { save: true } : {}), ...(pool !== undefined ? { poolMax: pool } : {}) } satisfies NewGameJob, ports);
     };
     start(0, pre ?? newWorker(), first);
   });

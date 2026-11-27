@@ -7,7 +7,6 @@ import { createGame, createGameBase, createGamePhase, type NewGameCtx, type NewG
 import { gs, packCarry, setGame } from '../../src/game/state';
 import { rng } from '../../src/game/rng';
 import type { GameState } from '../../src/game/types';
-import { slResumeTransfer } from '../../src/game/cmShortlistGame';
 import { deserializeState, gzConcat, serializeNewGame } from '../../src/game/snapshot';
 import { setPagePoolMax } from '../../src/game/cmMem';
 // POOLMAX=n: sidepuljens loft (som newGameWorker.ts' poolMax på iOS)
@@ -50,7 +49,8 @@ port.once('message', async (msg: { game?: GameState; gz?: ArrayBuffer; ctx?: New
   const g = gs();
   // (23/11) som ui/newGameWorker.ts: det færdige spil som det gemte spils gzip-bytes (serializeState) – hovedtråden pakker det ud (deserializeState)
   if (wd.last && wd.json) { const gz = gzConcat(await serializeNewGame(g)); port.postMessage({ gz }, [gz]); return; }
-  if (process.env.BYTES === '1') { const rs = rng.state, sl = slResumeTransfer(ctx?.sl ?? null); const gz = gzConcat(await serializeNewGame(g)); port.postMessage({ gz, ctx, rng: rs }, [gz, ...sl]); return; }
+  if (process.env.BYTES === '1') { const rs = rng.state; const gz = gzConcat(await serializeNewGame(g)); port.postMessage({ gz, ctx, rng: rs }); return; }
   packCarry(g);
-  port.postMessage({ game: g, ctx, rng: rng.state }, slResumeTransfer(ctx?.sl ?? null));
+  // (27/11) som ui/newGameWorker.ts (ui/handoff.ts): overdragelsen kopieres – ingen Transferable, afsenderen beholder alt til en gensendelse
+  port.postMessage({ game: g, ctx, rng: rng.state });
 });

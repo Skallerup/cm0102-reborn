@@ -10,6 +10,7 @@ import { gs, packCarry, setGame } from '../game/state';
 import { rng } from '../game/rng';
 import { releasePagePool, setPagePoolMax } from '../game/cmMem';
 import { beatSent, setBeat } from '../game/beat';
+import { receiveHandoff, serveHandoff } from './handoff';
 import { slResumeTransfer } from '../game/cmShortlistGame';
 import { convertOriginal, restartInOriginal, type ConvertReport } from '../game/cmConvert';
 import type { CMWorld } from '../game/data/cm0102';
@@ -27,7 +28,7 @@ export type NewGameMsg = { type: 'progress'; step: string; frac: number } | { ty
   /** (hukommelse, iPhone 23/11) det færdige spil som det gemte spils gzip-bytes (Transferable) – og det første gem, hvis arbejderen selv skrev det */
   | { type: 'done'; gz: ArrayBuffer; saved: SaveMeta | null } | { type: 'error'; message: string }
   | { type: 'slim'; slim: WorldData } | { type: 'handed' } | { type: 'trace'; s: string }
-  /** (Firefox 27/11) spillet er modtaget fra forrige trins arbejder (`keepPort`: først nu lukker hovedtråden den) */
+  /** (27/11) spillet er modtaget fra forrige trins arbejder – først nu afslutter hovedtråden afsenderen (ui/handoff.ts) */
   | { type: 'received' }
   /** (27/11) hjerteslag fra en lang løkke (src/game/beat.ts) – hovedtrådens vagt (startGame.ts SilenceGuard) ved, at arbejderen lever */
   | { type: 'beat' };
@@ -35,15 +36,14 @@ export type NewGameJob = { world?: WorldData; src?: WorldSrc; opts: NewGameOptio
   /** (hukommelse, iPhone 22/11) kun disse trin af spilstarten ('base' = createGameBase, så createGamePhase); `from` modtager spillet fra forrige
    *  trins arbejder, `to` sender det videre til næste (uden om hovedtråden) – uden `to` svarer arbejderen med 'done' som før */
   phases?: ('base' | NewGamePhase)[]; from?: MessagePort; to?: MessagePort;
-  /** (hukommelse) pause i arbejderen, før spillet tages fra `from` (forrige arbejders heap frigives imens) – arbejderens egen timer, ikke hovedtrådens */
+  /** (hukommelse, iOS) pause i arbejderen, før spillet tages fra `from` (forrige arbejders heap frigives imens) – arbejderens egen timer, ikke hovedtrådens */
   gapMs?: number;
+  /** (hukommelse, iOS – startGame.ts senderMayClose) hovedtråden afslutter afsenderen straks efter 'handed': tabellerne flyttes (Transferable) */
+  closeEarly?: boolean;
   /** (hukommelse, iPhone 23/11) arbejderen skriver selv nyt spils første gem i IndexedDB (kun et lokalt spil – ikke fællesspil eller den midlertidige verden) */
   save?: boolean;
   /** (hukommelse, iOS 26/11) sidepuljens loft (cmMem.ts setPagePoolMax) – kun genbrug, samme spil */
-  poolMax?: number;
-  /** (Firefox 27/11) `to` lukkes ikke efter overdragelsen: Gecko smider en besked i kanalen væk, når afsenderens port lukkes eller dens arbejder
-   *  afsluttes, før modtageren har den (startGame.ts portsNeedSender) – hovedtråden afslutter arbejderen, når den næste melder 'received' */
-  keepPort?: boolean };
+  poolMax?: number };
 /** `rng` = talrækkens tilstand (g.rng røres ikke – som i ét forløb, hvor g.rng ikke opdateres undervejs) */
 export type PhaseHandoff = { game: GameState; ctx: NewGameCtx; rng: number } | { gz: ArrayBuffer; ctx: NewGameCtx; rng: number };
 /** `slimOnly`: kun listerne – arbejderen lukkes bagefter (startGame.ts openStartWorld), så databasen tolkes ikke hel (worldFetch.ts fetchSlimWorld) */
@@ -89,11 +89,8 @@ self.onmessage = async (e: MessageEvent<NewGameJob | LoadJob>) => {
       // forrige trins spil (med modulernes tilstand og talrækken) – setGame lægger carry.ts' tilstand tilbage
       // (24/11) kan spillet ikke pakkes ud i denne arbejder (messageerror – fx for lidt hukommelse til kopien), meldes fejlen; før ventede
       // arbejderen for evigt ("step fitness 17 %" i 150 s, så "NewGameWorkerFailed: worker")
-      const h = await new Promise<PhaseHandoff>((resolve, reject) => {
-        job.from!.onmessage = (m) => resolve(m.data as PhaseHandoff);
-        job.from!.onmessageerror = () => reject(new Error(`handoff messageerror before ${(job.phases ?? []).join(' ')}`));
-      });
-      job.from.close();
+      // (27/11) alle browsere: afsenderen lever med åben port, til spillet er her; ledig for længe uden spillet → gensendelse (ui/handoff.ts)
+      const h = await receiveHandoff<PhaseHandoff>(job.from, `before ${(job.phases ?? []).join(' ')}`, { onResend: (n) => tr(`beder om gensendelse ${n}`) });
       tr('modtaget');
       post({ type: 'received' });
       // (25/11) nødvej (se afsenderen): spillet som gzip-bytes, når den strukturerede kopi løb tør for hukommelse
@@ -116,21 +113,21 @@ self.onmessage = async (e: MessageEvent<NewGameJob | LoadJob>) => {
         const g = gs();
         packCarry(g);
         releasePagePool();
-        // (ønskelisternes portioner) hukommelsens sider og tabellerne flyttes (Transferable) – ingen kopi
         tr('overdrager');
-        const rs = rng.state, sl = slResumeTransfer(ctx!.sl ?? null);
-        try { job.to.postMessage({ game: g, ctx: ctx!, rng: rs } satisfies PhaseHandoff, sl); }
+        // (27/11) beskeden kopieres (ingen Transferable): afsenderen beholder alt til en gensendelse (ui/handoff.ts) og afsluttes først, når
+        // modtageren har spillet ('received' til hovedtråden) – i alle browsere
+        // (iOS, `closeEarly`) afsenderen afsluttes straks efter 'handed' – ønskelisternes tabeller (~50 MB pr. portion) flyttes da som før
+        const rs = rng.state, resent = (n: number) => tr(`gensender ${n}`), sl = job.closeEarly ? slResumeTransfer(ctx!.sl ?? null) : undefined;
+        try { serveHandoff(job.to, { game: g, ctx: ctx!, rng: rs } satisfies PhaseHandoff, resent, sl); }
         catch (err) {
           // (25/11, "Data cannot be cloned, out of memory" på en 32-bit browser) den strukturerede kopi af hele spillet kan løbe tør for hukommelse:
-          // spillet sendes i stedet som gemt-spil-bytes (gzip-JSON i bidder, Transferable – ingen kopi; g.rng røres ikke, talrækken følger med
-          // for sig). Modtageren pakker det ud som et gemt spil (setGame lægger modulernes tilstand tilbage).
+          // spillet sendes i stedet som gemt-spil-bytes (gzip-JSON i bidder; g.rng røres ikke, talrækken følger med for sig). Modtageren pakker
+          // det ud som et gemt spil (setGame lægger modulernes tilstand tilbage).
           tr(`overdragelse fejlede (${String((err as Error)?.message ?? err).slice(0, 80)}) – sender bytes`);
           const gz = gzConcat(await serializeNewGame(g));
-          job.to.postMessage({ gz, ctx: ctx!, rng: rs } satisfies PhaseHandoff, [gz, ...sl]);
+          serveHandoff(job.to, { gz, ctx: ctx!, rng: rs } satisfies PhaseHandoff, resent, sl && [gz, ...sl]);
         }
         tr('overdraget');
-        if (!job.keepPort) job.to.close();
-        setGame(null);
         post({ type: 'handed' });
         return;
       }
