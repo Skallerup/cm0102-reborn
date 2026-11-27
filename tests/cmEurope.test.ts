@@ -76,7 +76,9 @@ describe('Europa i originalens format', () => {
     const esc = Object.values(g.fixtures).filter((f) => f.comp === 'ESC');
     expect(esc.length).toBe(1);
     // Intertoto (0x633300): oraklets kampdage; de 3 vindere i UEFA Cup'ens 1. runde
-    expect(days('UIC')).toBe(ORACLE_UIC);
+    // ugevis som Champions League: resolve_same_day_clash 0x5ae380 flytter en hjemmekamp for en klub med fælles stadion (Hapoel/Maccabi Haifa,
+    // 1860/Bayern …), når den anden har hjemmekamp samme dag – det afhænger af, hvem der går videre (vores resultater er ikke oraklets)
+    expect([...week(days('UIC'))]).toEqual([...week(ORACLE_UIC)]);
     const uicW = g.comps.UIC.ties.filter((t) => t.stage === 'F').map((t) => t.winner);
     expect(uicW.every((w) => Object.values(g.fixtures).some((f) => f.comp === 'UEFA' && f.stage === 'R1' && (f.home === w || f.away === w)))).toBe(true);
     // England: Charity Shield søndag 12/8 (EngCharity 0x56d640), Liga Cup'ens 1. runde tirsdag 21/8 med 28 + k kampe (EngCcCup 0x56c570), finalen
