@@ -22,7 +22,7 @@ import { registerCarry } from './carry';
 import { cmBodyOn, cmGeneratedNow, cmRand, STAFF_STATE_OFF } from './cmPlayerData';
 import { staffIntrinsic, staffShown } from './engine/grid/roleScore';
 import { npShown } from './cmStaffInit';
-import { gs, hasGame } from './state';
+import { allPlayersEpochNow, gs, hasGame, onGameSwitch } from './state';
 
 // ---------------------------------------------------------------- posten
 
@@ -554,11 +554,10 @@ function rollRecurring(c: FitCtx, r: CmFit, e: CmInjury): void {
   if (x !== 0) return;
   r.rl = x; r.rt = e.t;
   let best = 0, bestP: Player | null = null;
-  // (hastighed 24/11) for…in: samme rækkefølge som Object.values (heltalsnøgler stigende), uden et nyt array med alle spillere pr. kald
-  const all = c.g.players;
-  for (const k in all) {
-    const q = all[k];
-    if (!real(q) || !q.cmFit || q.cmFit.rt === -1) continue;
+  // (hastighed 27/11) spillerne i Object.values' rækkefølge (heltalsnøgler stigende) fra en liste, der genbruges, så længe ingen spiller er
+  // kommet til eller forsvundet (state.ts addPlayer/dropPlayer/removePlayer – allPlayersEpochNow); før for…in over alle nøgler pr. kald
+  for (const q of playerList(c.g)) {
+    if (!q.cmFit || q.cmFit.rt === -1 || !real(q)) continue;
     const v = s8(c.rand(101) + s8(-5 * q.cmFit.rl) - IP(q));
     if (v > best) { best = v; bestP = q; }
     if (best >= 0x5f) break;
@@ -572,6 +571,16 @@ function rollRecurring(c: FitCtx, r: CmFit, e: CmInjury): void {
     return;
   }
   bestP.cmFit!.rt = -1; bestP.cmFit!.rl = 0;
+}
+let realCache: { g: GameState; players: GameState['players']; epoch: number; list: Player[] } | null = null;
+onGameSwitch(() => { realCache = null; });
+function playerList(g: GameState): Player[] {
+  const epoch = allPlayersEpochNow();
+  if (realCache && realCache.g === g && realCache.players === g.players && realCache.epoch === epoch) return realCache.list;
+  const list: Player[] = [], all = g.players;
+  for (const k in all) { const p = all[k]; if (p) list.push(p); }
+  realCache = { g, players: g.players, epoch, list };
+  return list;
 }
 /** 0x62e6cc: behandlingen af en tilbagevendende skade (type 11..59): 0 → 0x4e, 1 → 0x4f, 2 → 0x4d */
 const TREAT = [0, 1, 1, 2, 2, 2, 0, 1, 2, 1, 2, 2, 0, 2, 1, 1, 1, 1, 2, 0, 1, 2, 2, 2, 0, 1, 1, 2, 2, 2, 0, 2, 2, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1];

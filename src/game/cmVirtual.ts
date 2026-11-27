@@ -164,7 +164,9 @@ onGameSwitch(() => { tplCache = null; });
 function templates(g: GameState): Player[] {
   const epoch = playersEpoch();
   if (tplCache && tplCache.g === g && tplCache.players === g.players && tplCache.date === g.date && tplCache.epoch === epoch) return tplCache.list;
-  const list = Object.values(g.players).filter((p) => !p.virtual && !p.regen).slice(0, 30000);
+  // (hastighed 27/11) for…in med stop ved 30000 – samme liste som Object.values(…).filter(…).slice(0, 30000)
+  const list: Player[] = [], all = g.players;
+  for (const k in all) { const p = all[k]; if (p.virtual || p.regen) continue; list.push(p); if (list.length >= 30000) break; }
   tplCache = { g, players: g.players, date: g.date, epoch, list };
   return list;
 }

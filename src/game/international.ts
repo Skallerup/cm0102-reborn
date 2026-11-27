@@ -102,7 +102,10 @@ function byNation(): Map<number, Player[]> {
     // (hastighed) alderen 17–36 som tekstsammenligning af ISO-datoerne: alder ≥ 17 ⇔ dob ≤ (år − 17)-MM-DD, alder > 36 ⇔ dob ≤ (år − 37)-MM-DD
     // (samme som ageOn for datoer på formen ÅÅÅÅ-MM-DD; andre former går gennem ageOn)
     const Y = Number(g.date.slice(0, 4)), md = g.date.slice(4, 10), lo = `${Y - 17}${md}`, hi = `${Y - 37}${md}`, isoD = g.date.length >= 10 && Y >= 1037;
-    for (const p of Object.values(g.players)) {
+    // (hastighed) for…in: samme rækkefølge som Object.values (heltalsnøgler stigende) uden et array med alle spillere
+    const all = g.players;
+    for (const k in all) {
+      const p = all[k];
       if (p.injury || p.ca < 60) continue;
       const dob = p.dob;
       if (isoD && dob.length === 10 && dob[4] === '-' && dob[7] === '-') { if (dob > lo || dob <= hi) continue; }
@@ -135,7 +138,7 @@ export function nationSquad(n: number): Player[] {
   // ægte tilstand (original DB): originalens udtagelse 0x76c120 (cmIntlSquad.ts) – skadede er trukket (0x775cd0) eller spiller ikke; under kampen
   // landsholdets fyldspillere (0x90dc66, cmVirtual.ts – sat af playNation)
   const cq = cmIntlOn(g) ? cmSquadOf(g, n, 0) : null;
-  if (cq) return withFill(cq.ids.map((id) => g.players[id]).filter((p): p is Player => !!p && !p.injury), n, byNation().get(n) ?? []);
+  if (cq) return withFill(cq.ids.map((id) => g.players[id]).filter((p): p is Player => !!p && !p.injury), n, poolSkip ? () => byNation().get(n) ?? [] : byNation().get(n) ?? []);
   const all = byNation().get(n) ?? [];
   const gk = all.filter((p) => naturalRole(p) === 'GK').slice(0, 3);
   const out = all.filter((p) => naturalRole(p) !== 'GK').slice(0, 23 - gk.length);
@@ -144,16 +147,20 @@ export function nationSquad(n: number): Player[] {
 
 /** (ægte tilstand) truppen med kampens fyldspillere (0x90dc66). Zonemotoren (gittermotoren slået fra) kræver en målmand: har hverken truppen eller
  *  fyldspillerne en, tages landets bedste målmand med (kun zonemotoren – gittermotoren spiller som originalen uden) */
-function withFill(sq: Player[], n: number, pool: Player[]): Player[] {
+function withFill(sq: Player[], n: number, pool: Player[] | (() => Player[])): Player[] {
   const fill = fillers?.get(n) ?? [];
   const out = fill.length ? [...sq, ...fill.filter((p) => !sq.includes(p))] : sq.slice();
   if (!zoneNeedsGk || out.some((p) => naturalRole(p) === 'GK')) return out;
-  const gk = pool.find((p) => naturalRole(p) === 'GK' && !out.includes(p) && !p.virtual);
+  const gk = (typeof pool === 'function' ? pool() : pool).find((p) => naturalRole(p) === 'GK' && !out.includes(p) && !p.virtual);
   if (gk) out.push(gk);
   return out;
 }
 /** playNation: kampen spilles i zonemotoren (MatchSim kræver en målmand) */
 let zoneNeedsGk = true;
+/** (hastighed 27/11) playNation i gittermotoren: holdenes trupper (team) bygger ikke landenes lister (byNation) for withFill's målmand, som
+ *  gittermotoren ikke bruger. Listerne kasseres alligevel efter kampen (setNationFillers(null)), og ingen læser dem inden da – undtagen dagens
+ *  landsholdsophold (dutyIds via konditionens aflæsning cmFitSync), så kun når det allerede er regnet for i dag (dutyCache). Bit for bit som før. */
+let poolSkip = false;
 
 /** Landets styrke: snit af de 16 bedste (bruges til udvælgelse af deltagere og seedning) */
 export function nationStrength(n: number): number {
@@ -230,7 +237,9 @@ export function playNation(home: number, away: number, kind: IntlResult['kind'],
   const team = (n: number) => {
     // klubbens reservehold og karantæner gælder ikke på landsholdet (før kunne et U21-hold af reservespillere stille med
     // så få, at der efter skader ingen var tilbage på banen – MatchSim fandt ingen målmand)
-    const real = u21 ? u21Squad(n) : nationSquad(n);
+    poolSkip = !!grid && dutyCache?.g === g && dutyCache.date === g.date;
+    let real: Player[];
+    try { real = u21 ? u21Squad(n) : nationSquad(n); } finally { poolSkip = false; }
     cmFitSync(g, real.filter((p) => !p.virtual));                           // konditionsmodulet (ægte tilstand, original DB): 0x62c590 før kampen
     const sq = real.map((p) => ({ ...p, reserves: false, banned: 0, attrs: p.attrs.slice(), condition: cm ? p.condition : Math.max(80, p.condition) }) as Player);
     const tactic = autoSelect(newTactic('4-4-2'), sq);
@@ -487,7 +496,7 @@ const rowsOf2 = (table: Record<number, IntlRow>, grp: number[]) => grp.map((n) =
 export function u21Squad(n: number): Player[] {
   const g = gs();
   const cq = cmIntlOn(g) ? cmSquadOf(g, n, 2) : null;
-  if (cq) return withFill(cq.ids.map((id) => g.players[id]).filter((p): p is Player => !!p && !p.injury), n, (byNation().get(n) ?? []).filter((p) => ageOn(p.dob, g.date) <= 21));
+  if (cq) return withFill(cq.ids.map((id) => g.players[id]).filter((p): p is Player => !!p && !p.injury), n, poolSkip ? () => (byNation().get(n) ?? []).filter((p) => ageOn(p.dob, g.date) <= 21) : (byNation().get(n) ?? []).filter((p) => ageOn(p.dob, g.date) <= 21));
   const all = (byNation().get(n) ?? []).filter((p) => ageOn(p.dob, g.date) <= 21);
   // to målmænd og 18 markspillere (uden målmand kan kampen ikke spilles)
   const gk = all.filter((p) => naturalRole(p) === 'GK').slice(0, 2);

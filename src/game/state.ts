@@ -361,9 +361,13 @@ export function setAutoNumbers(on: boolean) { autoNumbers = on; }
  *  skabelonliste genbruges, så længe tallet er uændret */
 let realPlayersEpoch = 0;
 export const playersEpoch = () => realPlayersEpoch;
+/** som realPlayersEpoch, men også for fyldspillerne (virtual) */
+let allPlayersEpoch = 0;
+export const allPlayersEpochNow = () => allPlayersEpoch;
 
 export function addPlayer(p: Player) {
   if (!p.virtual) realPlayersEpoch++;
+  allPlayersEpoch++;
   gs().players[p.id] = p;
   if (p.club) {
     let arr = squadIndex.get(p.club);
@@ -390,6 +394,7 @@ export function moveSquadOnly(p: Player, club: number) {
 /** fjern en spiller helt uden klubskiftets følger (cmVirtual.ts' genererede spillere) */
 export function dropPlayer(p: Player) {
   if (!p.virtual) realPlayersEpoch++;
+  allPlayersEpoch++;
   const arr = squadIndex.get(p.club);
   if (arr) squadIndex.set(p.club, arr.filter((id) => id !== p.id));
   delete gs().players[p.id];
@@ -397,6 +402,7 @@ export function dropPlayer(p: Player) {
 
 export function removePlayer(p: Player) {
   if (!p.virtual) realPlayersEpoch++;
+  allPlayersEpoch++;
   setClub(p, 0);
   delete gs().players[p.id];
 }
