@@ -215,8 +215,17 @@ class PhasesError extends Error { started = false; stale = false; memory = false
  *  6 varianter): afsenderen afsluttes straks efter 'handed', og den næste venter phaseGap(), før den tager spillet – ellers er begge arbejderes heap i
  *  hukommelsen samtidig (WebKit, iPhone-UA, SLOW=5: phys_footprint_peak 640/677 → 723/908 MB med afsenderen i live). Modtagerens gensendelse
  *  (ui/handoff.ts) får da intet svar, men fejler efter MAX_RESENDS i stedet for at vente for evigt. */
-export const senderMayClose = (ua = typeof navigator !== 'undefined' ? navigator.userAgent : '', touch = typeof navigator !== 'undefined' ? navigator.maxTouchPoints ?? 0 : 0): boolean =>
-  /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && touch > 1);
+/** (28/11, lav-hukommelses-Android – Chrome 158/Android 10 døde ved overgangen mellem ønskelisternes portioner) også anden mobil/in-app-browser med
+ *  navigator.deviceMemory ≤ 4 GB eller uden deviceMemory: afsenderens heap oven i modtagerens (Chromium +100–140 MB) er værre end risikoen for en
+ *  tabt besked (modtageren fejler da med besked efter ~45 s i stedet for at hænge). Aldrig Gecko (Firefox, også Android – uden deviceMemory): dér
+ *  tabes beskeden altid, når afsenderen afsluttes (målt 27/11, 0 af 6). Desktop og mobiler med > 4 GB beholder den sikre vej. */
+export function senderMayClose(ua = typeof navigator !== 'undefined' ? navigator.userAgent : '', touch = typeof navigator !== 'undefined' ? navigator.maxTouchPoints ?? 0 : 0,
+  mem = typeof navigator !== 'undefined' ? (navigator as { deviceMemory?: number }).deviceMemory : undefined): boolean {
+  if (/iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && touch > 1)) return true;
+  if (/\bGecko\/\d/.test(ua)) return false;
+  const mobile = /Android|Mobile|; wv\)|FBAN|FBAV|FB_IAB|Instagram|Messenger|Discord|TikTok|Snapchat|MicroMessenger|GSA\//i.test(ua);
+  return mobile && (mem === undefined || mem <= 4);
+}
 /** (26/11, measure 2a7262b5d7f1: en arbejder døde uden fejl og uden besked – hovedtråden ventede i 400 s) så længe uden besked fra arbejderen,
  *  mens siden er synlig, regnes den for død (arbejderne melder fremdrift mange gange i minuttet – også på en langsom telefon) */
 export const WORKER_SILENT_MS = 120000;
