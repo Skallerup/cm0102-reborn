@@ -70,6 +70,8 @@ export function NavProvider({ children, initial, storageKey, valid }: { children
   const value = useMemo<NavCtx>(() => ({
     route: stack[stack.length - 1],
     nav: (r) => {
+      // ejerens ønske 27/11: et klik på en klub åbner spilleroversigten – også ens egen klub (uden en bestemt visning)
+      if (r.name === 'club' && r.id != null && !r.state?.cview && hasGame() && Number(r.id) === gs().userClub) r = { name: 'squad' };
       setFwd([]); // en ny destination rydder "frem"-historikken (som i en browser)
       setStack((s) => {
         const top = s[s.length - 1];

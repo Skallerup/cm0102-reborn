@@ -892,6 +892,15 @@ async function run(look) {
     await page.locator('.cx-savegame .cx-sv-foot button.primary').click();
     await page.waitForSelector('.cx-savegame', { state: 'detached', timeout: 10000 });
   });
+  // ejerens ønske 27/11: et klik på en klub (tabel, egen klub) åbner spilleroversigten, ikke Finances & Info
+  if (look === 'klassisk') await step('klik på klub i tabel åbner spillerne', async () => {
+    await go({ name: 'competitions' });
+    const row = page.locator('td.cx-lg-club:not(.me)').first();
+    await row.waitFor({ timeout: 10000 });
+    await row.click();
+    await page.waitForSelector('.cx-subrow', { timeout: 10000 });
+    if (await page.locator('.cx-subtitle', { hasText: /General Info|Finances/ }).count()) throw new Error('klubklik åbnede Finances & Info i stedet for spillerne');
+  });
   if (look === 'klassisk') await step('anden klubs taktik (Tactics ▸)', async () => {
     const other = await gs(() => { const g = window.__cm.gs(); return Object.values(g.clubs).find((c) => c.id !== g.userClub && c.league === g.clubs[g.userClub].league).id; });
     await go({ name: 'club', id: other });
