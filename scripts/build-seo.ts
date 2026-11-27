@@ -15,7 +15,7 @@ import { alternatesFor, langPages, toPage } from './seo/i18n';
 import { guides } from './seo/guides';
 
 /** dato for databasesidernes indhold (sitemap lastmod) – hæv den, når siderne ændres mærkbart */
-const CONTENT_DATE = '2026-11-09';
+const CONTENT_DATE = '2026-11-27';
 
 type Row = (string | number)[];
 interface World { season: number; playerFields: string[]; players: Row[]; clubs: Row[]; nations: { name: string }[]; leagues: { id: string; name: string; nation: number; tier?: number }[]; ratings: Record<string, { ca: number; pa: number; paRaw?: number }> }
@@ -118,16 +118,17 @@ ${shotFig('en', 'classic-squad', 'The squad screen in the classic CM 01/02 look 
 <ul>
 <li><b>Two databases:</b> the original CM 01/02 database for 2001/02 – choose the official release 3.9.60 (the one CM 01/02 itself uses), patch 3.9.65 or the final patch 3.9.68 (${nO} players in ${leaguesO} leagues) – and the community 2026/27 update (${nM} players in ${leaguesM} leagues).</li>
 <li><b>The classic CM 01/02 screens:</b> the blue menus, the yellow-on-blue match commentary, Match Overview, the squad screen with selection buttons, Staff Search, Find – and stadium backgrounds on matchdays.</li>
-<li><b>A match engine calibrated against the original:</b> we played a full season of the original CM 01/02 and matched goals per game (2.87), home wins, cards, corners and shots on target.</li>
+<li><b>The original match engine:</b> ported function by function from the original CM 01/02 program and checked tick by tick against it – the same 11 ticks a minute on a 9 × 12 grid, so goals, home wins, cards, corners and shots come out as in the real game.</li>
+<li><b>The original's rules:</b> in the normal game mode, transfers and AI bids, contracts, finances, the board and manager jobs, scouting, injuries, training and the calendar follow the original's own logic – on both databases.</li>
 <li><b>Real squad numbers</b> from the database, wonderkids with random potential, transfers, loans, press conferences, board confidence and the sack.</li>
 <li><b>Online multiplayer</b> with friends, a fantasy draft league and global rankings.</li>
 <li><b>Saves in your browser</b> (and optional cloud saves) – close the tab and continue later. It installs as an app and works offline.</li>
 <li>Ten languages: English, Dansk, Svenska, Norsk, Español, Français, Deutsch, Italiano, Português and Türkçe.</li>
 </ul>
 <h2>Do I need the original game?</h2>
-<p>No. CM Reborn is built from scratch and runs on its own. If you still play the original CM 01/02 (it has been free since 2008), you will feel at home: the screens, the database and the way the match plays out are modelled on it.</p>
+<p>No. CM Reborn runs on its own in your browser – no CD, no emulator, no original files. If you still play the original CM 01/02 (it has been free since 2008), you will feel at home: the database, the screens, the rules and the match engine are the original's, ported to run in a browser.</p>
 <h2>How is it different from the original?</h2>
-<p>It runs anywhere (Mac, Windows, Linux, Chromebook, iPad, Android, iPhone), it has an optional modern look, a 2026/27 database, multiplayer and a match engine without the famous exploits – but the classic look and the 2001/02 database are there for the nostalgia.</p>`,
+<p>It runs anywhere (Mac, Windows, Linux, Chromebook, iPad, Android, iPhone), it has an optional modern look, a 2026/27 database, multiplayer and global rankings. The game itself plays as the original does – the match engine and the rules are the original's – so the famous tactics still work too.</p>`,
     faq: [
       ['Can I play Championship Manager 01/02 online?', 'You can play CM Reborn, a free fan remake of CM 01/02, online in any browser at cm0102reborn.com – with the original 2001/02 database or a 2026/27 update, no download needed.'],
       ['Is it free?', 'Yes. CM Reborn is free, with no ads and no in-game purchases.'],
@@ -262,8 +263,8 @@ ${table(young(M, 20).slice(0, 30))}`,
     slug: 'cm-01-02-tactics/',
     title: 'CM 01/02 Best Tactics & Formations – The Classics Explained | CM Reborn',
     h1: 'CM 01/02 tactics: the classic formations, and why they worked',
-    description: 'The best CM 01/02 tactics and formations explained: the overpowered DMC, 4-2-4 with arrows, what each team instruction really does in the original code – and how tactics play in CM Reborn.',
-    body: `<p class="lead">CM 01/02 is remembered for tactics that broke the match engine. Here is what the classic ones did, and how the same ideas play out in CM Reborn.</p>
+    description: 'The best CM 01/02 tactics and formations explained: the overpowered DMC, 4-2-4 with arrows, what each team instruction really does in the original code – and why they still work in CM Reborn.',
+    body: `<p class="lead">CM 01/02 is remembered for tactics that broke the match engine. Here is what the classic ones did – and why they still work in CM Reborn, whose match engine is the original's.</p>
 <h2>The famous CM 01/02 exploits</h2>
 <ul>
 <li><b>The DMC.</b> In the original, a defensive midfielder covered far more of the pitch than any other role, so one or two DMCs made almost any team solid.</li>
@@ -284,17 +285,15 @@ ${table(young(M, 20).slice(0, 30))}`,
 <li><b>Teamwork</b> decides how often all of this is ignored: with a chance of 1 in Teamwork the player does his own thing.</li>
 </ul>
 <p>More in <a href="/cm-01-02-match-engine/">how the CM 01/02 match engine works</a> and <a href="/cm-01-02-attributes-explained/">what every attribute does</a>.</p>
-<h2>How tactics work in CM Reborn</h2>
-<p>CM Reborn has no special rules for any formation. The pitch is split into zones, and the shape of your formation decides where you have more players than the opponent. Four strikers leave the midfield empty, so the other team wins more duels and more of the ball. A player out of position gets worse. The result is that classic ideas still work in the right situation, but nothing wins every match.</p>
+<h2>Do they still work in CM Reborn?</h2>
+<p>Yes. CM Reborn plays matches with the original's own match engine, ported from the program, so the choices above are scored exactly as they were in 2001 – the classic tactics keep their strengths and their weaknesses, and the computer manager reacts as it did. Nothing is toned down.</p>
 <ul>
-<li><b>Overloads matter:</b> attack where the opponent is weak (the assistant shows you which side).</li>
-<li><b>Instructions have a price:</b> pressing tires players, a high line invites through balls, and hard tackling brings cards.</li>
-<li><b>Player instructions:</b> playmaker, target man, run with ball, long shots, crossing – per player, like in CM 01/02.</li>
-<li><b>Test it yourself:</b> the built-in tactics benchmark plays many matches with your tactic and shows the points per game.</li>
+<li><b>Instructions have a price:</b> hard tackling brings fouls and cards, a high line invites through balls, and tired players fade.</li>
+<li><b>Player instructions:</b> playmaker, target man, run with ball, long shots, crossing – per player, exactly like in CM 01/02.</li>
 </ul>`,
     faq: [
-      ['What is the best formation in CM 01/02?', 'In the original, narrow formations with one or two defensive midfielders and the 4-2-4 with arrows were the strongest because of how the match engine worked. In CM Reborn no formation is overpowered – the best one depends on your players and the opponent.'],
-      ['Does the DMC exploit work in CM Reborn?', 'No. Every role covers its own zones, so a DMC protects the defence but does not cover the whole pitch.'],
+      ['What is the best formation in CM 01/02?', 'Narrow formations with one or two defensive midfielders and the 4-2-4 with arrows were the strongest because of how the match engine worked – and since CM Reborn uses the original\'s match engine, they still are.'],
+      ['Does the DMC exploit work in CM Reborn?', 'Yes. The match engine is the original CM 01/02 engine, ported from the program, so a defensive midfielder covers as much ground as he did in the original.'],
     ],
   },
   {
@@ -324,13 +323,13 @@ ${table(young(M, 20).slice(0, 30))}`,
     description: 'Everything about CM Reborn, the free browser remake of Championship Manager 01/02: price, databases, saves, multiplayer, devices and how it compares to the original.',
     body: `<p class="lead">CM Reborn is an independent, free fan remake of Championship Manager 01/02 that runs in the browser.</p>`,
     faq: [
-      ['What is CM Reborn?', 'A free football manager in the browser, built from scratch and inspired by Championship Manager 01/02, with the original 2001/02 database, a 2026/27 database, the classic CM look and a modern look.'],
+      ['What is CM Reborn?', 'Championship Manager 01/02 in your browser, for free: the original 2001/02 database, a 2026/27 database, the classic CM look or a modern look, and the original match engine and rules, ported from the original program.'],
       ['Does it cost anything?', 'No. It is free, with no ads or in-game purchases.'],
       ['Do I need to install anything?', 'No. It runs in your browser, and you can install it as an app on phone and desktop. It works offline too.'],
       ['Where is my game saved?', 'Automatically in your browser on your device. You can export and import saves, and with a free account keep them in the cloud.'],
       ['Are the players real?', `Yes: ${nO} players in the original CM 01/02 database (2001/02) and ${nM} in the 2026/27 database.`],
       ['Can I play with friends?', 'Yes. Create an online game, share the code and run your own clubs in the same world. There is also a fantasy draft league.'],
-      ['Is this the original Championship Manager?', 'No. It is an independent fan project, not affiliated with Sports Interactive, SEGA or Eidos.'],
+      ['Is this the original Championship Manager?', 'Not the original release: it is an independent fan project, not affiliated with Sports Interactive, SEGA or Eidos. But it runs the original database and the original match engine and rules, ported from the original program, in your browser.'],
       ['Which CM 01/02 database versions can I play?', 'All three official ones: 3.9.60 (the release, which CM 01/02 itself uses for 2001/02 and CM Reborn\'s default), 3.9.65 and the final patch 3.9.68 with the 2002/03 squads – plus a 2026/27 database. You choose when you start a new game.'],
       ['Are the attributes the same as in CM 01/02?', 'Yes. CM Reborn converts the database exactly as the original does: 18 attributes are stored relative to CA, attributes the database leaves empty are filled from a similar player, and random potential (PA -1/-2) is rolled in every new game with the original\'s rules.'],
       ['Which languages are supported?', 'English, Danish, Swedish, Norwegian, Spanish, French, German, Italian, Brazilian Portuguese and Turkish.'],
@@ -552,20 +551,20 @@ const ABOUT: Page = {
   slug: 'about/', title: 'About CM Reborn – a Free Fan Remake of CM 01/02 | CM 01/02 Reborn', h1: 'About CM Reborn',
   description: 'Who makes CM Reborn, how the free Championship Manager 01/02 remake is built from the original databases, what it costs (nothing), how your data is handled and how to help.',
   crumbs: [], ogType: 'website',
-  body: `<p class="lead">CM Reborn is an independent, free fan remake of Championship Manager 01/02 that runs in the browser. It is made by one developer in Denmark, with help from the CM 01/02 community,.</p>
+  body: `<p class="lead">CM Reborn is an independent, free fan remake of Championship Manager 01/02 that runs in the browser. It is made by one developer in Denmark, with help from the CM 01/02 community.</p>
 <h2>What it is – and is not</h2>
-<p>It is not the original game and it is not affiliated with Sports Interactive, SEGA or Eidos, who made and published Championship Manager 01/02 in 2001. CM Reborn is written from scratch: its own match engine, screens and online features. What it shares with the original is the data – the real CM 01/02 database (patches 3.9.60, 3.9.65 and 3.9.68, which the publisher released as freeware in 2008) and a community data update for 2026/27 – and the look of the classic screens, rebuilt as a tribute.</p>
+<p>It is not the original game and it is not affiliated with Sports Interactive, SEGA or Eidos, who made and published Championship Manager 01/02 in 2001. It is a browser version of the game: the match engine and the game rules are the original's, ported function by function from the original CM 01/02 program, and the screens are rebuilt to look and work like the classic ones. It runs on the real CM 01/02 database (patches 3.9.60, 3.9.65 and 3.9.68, which the publisher released as freeware in 2008) and a community data update for 2026/27. The online features, the rankings and the extras in Game Options are new.</p>
 <h2>How it is built</h2>
-<ul><li><b>The databases</b> are read directly from the original game files, so every player has the attributes, CA and PA, contract and value from the real database (<a href="/cm-01-02/">browse them</a>).</li><li><b>The match engine</b> is calibrated against a full season of the original: goals per game, home wins, cards, corners and shots on target match the real thing (<a href="/cm-01-02-match-engine/">how it works</a>).</li><li><b>Player development, regens, finances and transfers</b> follow the rules found in the original game and documented by the community (<a href="/cm-01-02-regens/">regens</a>, <a href="/cm-01-02-player-values/">values</a>).</li><li><b>The guides</b> on this site are generated from the same databases – the numbers are read from the data, not from memory.</li></ul>
+<ul><li><b>The databases</b> are read directly from the original game files, so every player has the attributes, CA and PA, contract and value from the real database (<a href="/cm-01-02/">browse them</a>).</li><li><b>The match engine</b> is the original's, ported function by function from the original CM 01/02 program and checked tick by tick against it: the same decisions, the same random draws, the same results (<a href="/cm-01-02-match-engine/">how it works</a>).</li><li><b>Player development, regens, finances, transfers, contracts, the board and scouting</b> follow the original game's own logic, ported from the program and compared with the original day by day (<a href="/cm-01-02-regens/">regens</a>, <a href="/cm-01-02-player-values/">values</a>).</li><li><b>The guides</b> on this site are generated from the same databases – the numbers are read from the data, not from memory.</li></ul>
 <h2>Free, no ads, no tracking you did not agree to</h2>
 <p>CM Reborn is free and always will be: no ads, no in-game purchases and no advantages for money. The running costs (servers and database, about 150 € a month) and the further development are paid by voluntary donations – you can <a href="${KOFI_URL}" rel="noopener">support the project on Ko-fi</a> if you want to help, and the game stays exactly the same for everyone either way.</p>
 <p> Your saved games live in your own browser (and in the cloud only if you create an account). Anonymous usage statistics are collected only with your consent. There are no third-party trackers in the game.</p>
 <h2>Where it came from</h2>
-<p>The project started in 2026 as a way to play CM 01/02 on a Mac, an iPad and a phone – devices the 2001 Windows game never ran on. It grew into a full remake with the classic screens, two databases, online multiplayer, a fantasy draft league and global rankings, released as <a href="/changelog/">frequent updates</a>.</p>
+<p>The project started in 2026 as a way to play CM 01/02 on a Mac, an iPad and a phone – devices the 2001 Windows game never ran on. It grew into a full browser version with the classic screens, two databases, online multiplayer, a fantasy draft league and global rankings, released as <a href="/changelog/">frequent updates</a>.</p>
 <h2>Help, feedback and credits</h2>
 <p>Bug reports, ideas and data corrections are welcome in the <a href="/?community=1">community hub</a>, where you can also see the credits: the CM 01/02 community behind the data updates and patches, the Bosman project's documentation of the original, and the players who test and translate the game into ten languages. Want to join the project? Use the form on the <a href="/">front page</a>.</p>`,
   faq: [
-    ['Is CM Reborn the official Championship Manager 01/02?', 'No. It is an independent fan remake, built from scratch and not affiliated with Sports Interactive, SEGA or Eidos. It uses the original database, which has been freeware since 2008.'],
+    ['Is CM Reborn the official Championship Manager 01/02?', 'Not the original release: it is an independent fan project, not affiliated with Sports Interactive, SEGA or Eidos. It uses the original database (freeware since 2008) and runs the original match engine and rules, ported from the original program.'],
     ['Who makes CM Reborn?', 'One developer in Denmark, with help from the CM 01/02 community.'],
     ['Does it cost anything?', 'No. CM Reborn is free, with no ads and no in-game purchases, and it stays free. Voluntary donations on Ko-fi pay for the servers and further development, but give no advantages in the game.'],
   ], faqSchema: true,
@@ -610,7 +609,7 @@ Key facts:
 - Play: open https://cm0102reborn.com, choose New game, pick a database and a look.
 - Databases: original CM 01/02 for 2001/02 – 3.9.60 (default), 3.9.65 or 3.9.68 (${leaguesO} leagues) – and 2026/27 (${leaguesM} leagues); real squad numbers, managers, clubs and stadiums; attributes, random potential (PA -1/-2) and starting finances as in the original game.
 - Classic CM 01/02 screens: blue menus, Match Overview with commentary, squad selection, tactics with player runs, Staff Search, Find, stadium backgrounds on matchdays.
-- Match engine calibrated against a full season of the original CM 01/02.
+- Match engine: the original CM 01/02 engine, ported function by function from the original program and checked tick by tick against it. Transfers, contracts, finances, board, scouting, injuries, training and the calendar follow the original's own logic, on both databases.
 - Saves are stored in the browser (export/import, optional cloud saves). Installable as an app (PWA), works offline.
 - Independent fan project, not affiliated with Sports Interactive, SEGA or Eidos.
 

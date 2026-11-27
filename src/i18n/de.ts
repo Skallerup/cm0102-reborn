@@ -32,7 +32,7 @@ export const de: Record<string, string> = {
   'start.dataNote': 'Daten: {src}. Attribute werden aus Marktwert, Alter und Statistiken abgeleitet.',
   'start.look': 'Design', 'start.lookModernHint': 'Helles oder dunkles Design in deinen Vereinsfarben mit Seitenmenü – gemacht für Handy, Tablet und Desktop.', 'start.lookClassicHint': 'Wie in Championship Manager 01/02: Reiter, Zurück/Weiter, grüne Menüs und die alten Hintergrundfotos.',
   'start.lookNote': 'Das Design gilt im Spiel und kann jederzeit unter Optionen geändert werden.',
-  'start.footer': 'Inoffizielles Fanprojekt, inspiriert von den klassischen Championship-Manager-Spielen. Kein Code aus den Originalspielen; die Datenbanken sind CM-01/02-Daten und Community-Updates.',
+  'start.footer': 'Inoffizielles Fanprojekt auf Basis von Championship Manager 01/02: Spielengine und Spielregeln sind aus dem Originalprogramm übertragen, die Datenbanken sind CM-01/02-Daten und Community-Updates.',
 
   'top.unemployed': 'Arbeitslos', 'top.balance': 'Kontostand', 'top.budget': 'Transferbudget', 'top.next': 'Weiter',
   'top.continue': 'Weiter', 'top.toTheMatch': 'Zum Spiel ›', 'top.toMatch': 'Nächstes Spiel »', 'top.toMatchHint': 'Zum nächsten Spiel springen (stoppt bei wichtigen Nachrichten)',
@@ -1135,7 +1135,7 @@ export const de: Record<string, string> = {
   'db.ver.3960': "Die Originalversion – die, die CM 01/02 selbst für 2001/02 verwendet. Kader vom Sommer 2001 (Ferdinand bei Leeds).",
   'db.ver.3965': "Das offizielle 3.9.65-Update – dieselben Kader von 2001/02 mit den Datenkorrekturen des Updates.",
   'db.ver.3968': "Das letzte offizielle Update: Kader und Transfers von 2002/03 (Ferdinand bei Man Utd), aber das Spiel beginnt weiterhin im Juli 2001.",
-  'land.q6': "Ist das das originale Championship Manager 01/02?", 'land.a6': "Dem Geist nach ja: Es ist das Originalspiel als Browserspiel. Datenbank, Bildschirme, Regeln und Spielengine sind nach dem originalen CM 01/02 nachgebaut und dagegen geprüft. Es ist ein inoffizielles Fanprojekt ohne Verbindung zu den Rechteinhabern und noch in der Beta.",
+  'land.q6': "Ist das das originale Championship Manager 01/02?", 'land.a6': "Dem Geist nach ja: Es ist das Originalspiel als Browserspiel. Die Datenbank ist die des Originals, Spielengine und Spielregeln sind Funktion für Funktion aus dem Originalprogramm übertragen und dagegen geprüft, und die Bildschirme sind originalgetreu nachgebaut. Es ist ein inoffizielles Fanprojekt ohne Verbindung zu den Rechteinhabern und noch in der Beta.",
   'land.finalTitle': 'Dein Verein wartet.', 'land.finalText': 'Die Saison beginnt, wenn du den Knopf drückst.',
   'land.footerData': "Spielerdaten: die Original-Datenbank von CM 01/02 (3.9.60) und das Community-Update 2026/27",
   'land.disclaimer': 'Inoffizielles Fanprojekt. Nicht verbunden mit, unterstützt von oder in Verbindung stehend mit Sports Interactive, Square Enix/Eidos oder der Marke Championship Manager. Vereins- und Spielernamen gehören ihren jeweiligen Eigentümern.',

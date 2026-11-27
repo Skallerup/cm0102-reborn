@@ -35,7 +35,7 @@ export default defineConfig({
       manifest: {
         name: 'CM Reborn',
         short_name: 'CM Reborn',
-        description: 'Football manager with real players, free in your browser – supported by voluntary donations',
+        description: 'Championship Manager 01/02 in your browser – free: the original database and the original match engine, ported',
         theme_color: '#070b16',
         background_color: '#070b16',
         display: 'standalone',

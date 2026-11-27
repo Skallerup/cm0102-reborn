@@ -73,7 +73,7 @@ function AppInner() {
   // forsiden vises for nye besøgende (ikke ved invitationslinks eller når man har trykket "Spil" i denne fane)
   // (sessionStorage kan kaste i indbyggede browsere – playFlag.ts har en hukommelseskopi, så Spil ikke fører tilbage til forsiden)
   const [landing, setLanding] = useState(() => {
-    const q = new URLSearchParams(location.search); return !q.get('room') && !q.get('modern') && !playMarked();
+    const q = new URLSearchParams(location.search); return !q.get('room') && !q.get('modern') && !q.get('play') && !playMarked();
   });
   const play = () => {
     markPlay();

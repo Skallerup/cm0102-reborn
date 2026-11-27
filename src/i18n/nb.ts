@@ -4083,7 +4083,7 @@ export const nb: Record<string, string> = {
   "db.ver.3965": "Den offisielle 3.9.65-oppdateringen – de samme 2001/02-troppene med oppdateringens datarettelser.",
   "db.ver.3968": "Den siste offisielle oppdateringen: tropper og overganger fra 2002/03 (Ferdinand i Man Utd), men spillet starter fortsatt i juli 2001.",
   "land.q6": "Er dette originale Championship Manager 01/02?",
-  "land.a6": "I ånden, ja: det er originalspillet som nettleserspill. Databasen, skjermene, reglene og kampmotoren er gjenskapt etter originale CM 01/02 og kontrollert mot det. Det er et uoffisielt fanprosjekt uten tilknytning til rettighetshaverne, og fortsatt i beta.",
+  "land.a6": "I ånden, ja: det er originalspillet som nettleserspill. Databasen er originalens, kampmotoren og spillreglene er portet funksjon for funksjon fra originalprogrammet og kontrollert mot det, og skjermene er gjenskapt så de ser like ut. Det er et uoffisielt fanprosjekt uten tilknytning til rettighetshaverne, og fortsatt i beta.",
   "land.finalTitle": "Klubben din venter.",
   "land.finalText": "Sesongen starter når du trykker på knappen.",
   "land.footerData": "Spillerdata: den originale CM 01/02-databasen (3.9.60) og fellesskapets 2026/27-oppdatering",

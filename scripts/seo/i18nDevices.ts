@@ -35,7 +35,7 @@ const D: D[] = [
       ['Virker det på iPhone og Android?', 'Ja. CM Reborn kører i Safari og Chrome på telefonen, kan lægges på hjemmeskærmen og virker offline.'],
     ],
     cta: '▶ Spil gratis i browseren', ctaNote: 'Ingen download · ingen reklamer', en: 'Engelske guider', shotAlt: 'CM Reborn på mobilen – det klassiske CM 01/02-udseende',
-    footer: 'CM Reborn er et uafhængigt, gratis fanprojekt inspireret af Championship Manager 01/02 og har ingen forbindelse til Sports Interactive, SEGA eller Eidos.',
+    footer: 'CM Reborn er et uafhængigt, gratis fanprojekt baseret på Championship Manager 01/02 og har ingen forbindelse til Sports Interactive, SEGA eller Eidos.',
   },
   {
     lang: 'sv', hreflang: 'sv', dir: 'sv', slug: 'sv/cm-01-02-mac-iphone-android/',
@@ -55,7 +55,7 @@ const D: D[] = [
       ['Fungerar det på iPhone och Android?', 'Ja. CM Reborn körs i Safari och Chrome på mobilen, kan läggas på hemskärmen och fungerar offline.'],
     ],
     cta: '▶ Spela gratis i webbläsaren', ctaNote: 'Ingen nedladdning · inga annonser', en: 'Engelska guider', shotAlt: 'CM Reborn på mobilen – det klassiska CM 01/02-utseendet',
-    footer: 'CM Reborn är ett oberoende, gratis fanprojekt inspirerat av Championship Manager 01/02 och har ingen koppling till Sports Interactive, SEGA eller Eidos.',
+    footer: 'CM Reborn är ett oberoende, gratis fanprojekt baserat på Championship Manager 01/02 och har ingen koppling till Sports Interactive, SEGA eller Eidos.',
   },
   {
     lang: 'nb', hreflang: 'nb', dir: 'nb', slug: 'no/cm-01-02-mac-iphone-android/',
@@ -75,7 +75,7 @@ const D: D[] = [
       ['Virker det på iPhone og Android?', 'Ja. CM Reborn kjører i Safari og Chrome på mobilen, kan legges på Hjem-skjermen og virker offline.'],
     ],
     cta: '▶ Spill gratis i nettleseren', ctaNote: 'Ingen nedlasting · ingen reklame', en: 'Engelske guider', shotAlt: 'CM Reborn på mobilen – det klassiske CM 01/02-utseendet',
-    footer: 'CM Reborn er et uavhengig, gratis fanprosjekt inspirert av Championship Manager 01/02 og har ingen tilknytning til Sports Interactive, SEGA eller Eidos.',
+    footer: 'CM Reborn er et uavhengig, gratis fanprosjekt basert på Championship Manager 01/02 og har ingen tilknytning til Sports Interactive, SEGA eller Eidos.',
   },
   {
     lang: 'de', hreflang: 'de', dir: 'de', slug: 'de/cm-01-02-windows-11-android-iphone/',
@@ -95,7 +95,7 @@ const D: D[] = [
       ['Kann ich CM 01/02 auf Android oder dem iPhone spielen?', 'Das Original nicht. CM Reborn, ein kostenloses Remake mit der Original-Datenbank 2001/02, läuft in Chrome und Safari auf dem Handy und lässt sich auf dem Home-Bildschirm ablegen.'],
     ],
     cta: '▶ Kostenlos im Browser spielen', ctaNote: 'Kein Download · keine Werbung', en: 'Englische Ratgeber', shotAlt: 'CM Reborn auf dem Handy – der klassische CM 01/02-Look',
-    footer: 'CM Reborn ist ein unabhängiges, kostenloses Fanprojekt nach dem Vorbild von Championship Manager 01/02 und steht in keiner Verbindung zu Sports Interactive, SEGA oder Eidos.',
+    footer: 'CM Reborn ist ein unabhängiges, kostenloses Fanprojekt auf Basis von Championship Manager 01/02 und steht in keiner Verbindung zu Sports Interactive, SEGA oder Eidos.',
   },
   {
     lang: 'es', hreflang: 'es', dir: 'es', slug: 'es/cm-01-02-android-iphone-windows-11/',
@@ -115,7 +115,7 @@ const D: D[] = [
       ['¿Funciona en iPhone y Mac?', 'Sí. CM Reborn funciona en Safari en iPhone, iPad y Mac, se puede añadir a la pantalla de inicio y funciona sin conexión.'],
     ],
     cta: '▶ Juega gratis en el navegador', ctaNote: 'Sin descargas · sin anuncios', en: 'Guías en inglés', shotAlt: 'CM Reborn en el móvil – el aspecto clásico de CM 01/02',
-    footer: 'CM Reborn es un proyecto de fans independiente y gratuito inspirado en Championship Manager 01/02, sin relación con Sports Interactive, SEGA ni Eidos.',
+    footer: 'CM Reborn es un proyecto de fans independiente y gratuito basado en Championship Manager 01/02, sin relación con Sports Interactive, SEGA ni Eidos.',
   },
   {
     lang: 'fr', hreflang: 'fr', dir: 'fr', slug: 'fr/cm-01-02-android-iphone-windows-11/',
@@ -135,7 +135,7 @@ const D: D[] = [
       ['Ça marche sur iPhone et Mac ?', 'Oui. CM Reborn tourne dans Safari sur iPhone, iPad et Mac, s\'ajoute à l\'écran d\'accueil et fonctionne hors ligne.'],
     ],
     cta: '▶ Jouer gratuitement dans le navigateur', ctaNote: 'Sans téléchargement · sans publicité', en: 'Guides en anglais', shotAlt: 'CM Reborn sur mobile – le look classique de CM 01/02',
-    footer: 'CM Reborn est un projet de fans indépendant et gratuit inspiré de Championship Manager 01/02, sans lien avec Sports Interactive, SEGA ou Eidos.',
+    footer: 'CM Reborn est un projet de fans indépendant et gratuit basé sur Championship Manager 01/02, sans lien avec Sports Interactive, SEGA ou Eidos.',
   },
   {
     lang: 'it', hreflang: 'it', dir: 'it', slug: 'it/cm-01-02-android-iphone-windows-11/',
@@ -155,7 +155,7 @@ const D: D[] = [
       ['Funziona su iPhone e Mac?', 'Sì. CM Reborn gira in Safari su iPhone, iPad e Mac, si aggiunge alla schermata Home e funziona offline.'],
     ],
     cta: '▶ Gioca gratis nel browser', ctaNote: 'Nessun download · nessuna pubblicità', en: 'Guide in inglese', shotAlt: 'CM Reborn sul telefono – il look classico di CM 01/02',
-    footer: 'CM Reborn è un progetto di fan indipendente e gratuito ispirato a Championship Manager 01/02, senza legami con Sports Interactive, SEGA o Eidos.',
+    footer: 'CM Reborn è un progetto di fan indipendente e gratuito basato su Championship Manager 01/02, senza legami con Sports Interactive, SEGA o Eidos.',
   },
   {
     lang: 'pt-BR', hreflang: 'pt', dir: 'pt', slug: 'pt/cm-01-02-android-iphone-sem-cd/',
@@ -175,7 +175,7 @@ const D: D[] = [
       ['Funciona no iPhone e no Mac?', 'Sim. O CM Reborn roda no Safari no iPhone, iPad e Mac, pode ser adicionado à tela de início e funciona offline.'],
     ],
     cta: '▶ Jogue grátis no navegador', ctaNote: 'Sem download · sem anúncios', en: 'Guias em inglês', shotAlt: 'CM Reborn no celular – o visual clássico do CM 01/02',
-    footer: 'CM Reborn é um projeto de fãs independente e gratuito inspirado em Championship Manager 01/02, sem ligação com Sports Interactive, SEGA ou Eidos.',
+    footer: 'CM Reborn é um projeto de fãs independente e gratuito baseado em Championship Manager 01/02, sem ligação com Sports Interactive, SEGA ou Eidos.',
   },
   {
     lang: 'tr', hreflang: 'tr', dir: 'tr', slug: 'tr/cm-01-02-cd-istiyor-android-iphone/',
@@ -195,7 +195,7 @@ const D: D[] = [
       ['iPhone ve Mac\'te çalışır mı?', 'Evet. CM Reborn iPhone, iPad ve Mac\'te Safari\'de çalışır, ana ekrana eklenir ve çevrimdışı da oynanır.'],
     ],
     cta: '▶ Tarayıcıda ücretsiz oyna', ctaNote: 'İndirme yok · reklam yok', en: 'İngilizce rehberler', shotAlt: 'Telefonda CM Reborn – klasik CM 01/02 görünümü',
-    footer: 'CM Reborn, Championship Manager 01/02\'den esinlenen bağımsız ve ücretsiz bir hayran projesidir; Sports Interactive, SEGA veya Eidos ile bağlantısı yoktur.',
+    footer: 'CM Reborn, Championship Manager 01/02\'ye dayanan bağımsız ve ücretsiz bir hayran projesidir; Sports Interactive, SEGA veya Eidos ile bağlantısı yoktur.',
   },
 ];
 
@@ -203,7 +203,7 @@ const D: D[] = [
 export function langDevices(nav: Record<string, [string, string]>): { pages: Page[]; alt: [string, string][] } {
   const alt: [string, string][] = [['en', EN], ['x-default', EN], ...D.map((d) => [d.hreflang, `/${d.slug}`] as [string, string])];
   const pages: Page[] = D.map((d) => {
-    const cta = `<p class="cta"><a class="btn" href="/">${d.cta}</a> <span>${d.ctaNote}</span></p>`;
+    const cta = `<p class="cta"><a class="btn" href="/?play=1">${d.cta}</a> <span>${d.ctaNote}</span></p>`;
     const n = nav[d.lang];
     return {
       slug: d.slug, title: d.title, h1: d.h1, description: d.desc, lang: d.lang, alternates: alt, faq: d.faq, faqSchema: true, cta, footer: d.footer,

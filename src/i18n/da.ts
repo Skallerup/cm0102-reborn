@@ -23,7 +23,7 @@ export const da: Record<string, string> = {
   'start.dataNote': 'Data: {src}. Attributter er beregnet ud fra markedsværdi, alder og statistik.',
   'start.look': 'Udseende', 'start.lookModernHint': 'Lyst eller mørkt tema i klubbens farver med sidemenu – bygget til mobil, tablet og computer.', 'start.lookClassicHint': 'Som Championship Manager 01/02: faner, Tilbage/Frem, grønne menuer og de gamle baggrundsfotos.',
   'start.lookNote': 'Udseendet gælder inde i spillet og kan altid skiftes i Indstillinger.',
-  'start.footer': 'Uofficielt fanprojekt inspireret af de klassiske Championship Manager-spil. Ingen kode fra originalspillene; databaserne er CM 01/02-data og fællesskabets opdateringer.',
+  'start.footer': 'Uofficielt fanprojekt baseret på Championship Manager 01/02: kampmotoren og spillets regler er oversat fra det originale program, og databaserne er CM 01/02-data og fællesskabets opdateringer.',
 
   // topbar og menu
   'top.unemployed': 'Arbejdsløs', 'top.balance': 'Saldo', 'top.budget': 'Transferbudget', 'top.next': 'Næste',
@@ -1267,7 +1267,7 @@ export const da: Record<string, string> = {
   'db.ver.3960': "Den oprindelige udgivelse – den, CM 01/02 selv bruger til 2001/02. Trupperne fra sommeren 2001 (Ferdinand i Leeds).",
   'db.ver.3965': "Den officielle 3.9.65-opdatering – de samme 2001/02-trupper med opdateringens datarettelser.",
   'db.ver.3968': "Den sidste officielle opdatering: trupper og skifter fra 2002/03 (Ferdinand i Man Utd), men spillet starter stadig i juli 2001.",
-  'land.q6': "Er det det originale Championship Manager 01/02?", 'land.a6': "I ånden, ja: det er det originale spil lavet om til et browserspil. Databasen, skærmene, reglerne og kampmotoren er genskabt efter det originale CM 01/02 og kontrolleret mod det. Det er et uofficielt fanprojekt uden tilknytning til rettighedshaverne, og det er stadig i beta.",
+  'land.q6': "Er det det originale Championship Manager 01/02?", 'land.a6': "I ånden, ja: det er det originale spil lavet om til et browserspil. Databasen er originalens, kampmotoren og spillets regler er oversat funktion for funktion fra det originale program og kontrolleret mod det, og skærmene er genskabt, så de ligner. Det er et uofficielt fanprojekt uden tilknytning til rettighedshaverne, og det er stadig i beta.",
   'land.finalTitle': 'Din klub venter.', 'land.finalText': 'Sæsonen starter, når du trykker på knappen.',
   'land.footerData': "Spillerdata: den originale CM 01/02-database (3.9.60) og fællesskabets 2026/27-opdatering",
   'land.disclaimer': 'Uofficielt fanprojekt. Ikke tilknyttet, godkendt af eller forbundet med Sports Interactive, Square Enix/Eidos eller varemærket Championship Manager. Klub- og spillernavne tilhører deres respektive ejere.',

@@ -4083,7 +4083,7 @@ export const sv: Record<string, string> = {
   "db.ver.3965": "Den officiella 3.9.65-patchen – samma trupper från 2001/02 med uppdateringens datarättelser.",
   "db.ver.3968": "Den sista officiella uppdateringen: trupper och övergångar från 2002/03 (Ferdinand i Man Utd), men spelet startar fortfarande i juli 2001.",
   "land.q6": "Är det originalet Championship Manager 01/02?",
-  "land.a6": "I andan, ja: det är originalspelet som webbläsarspel. Databasen, skärmarna, reglerna och matchmotorn är återskapade efter originalet CM 01/02 och kontrollerade mot det. Det är ett inofficiellt fanprojekt utan koppling till rättighetsinnehavarna, och fortfarande i beta.",
+  "land.a6": "I andan, ja: det är originalspelet som webbläsarspel. Databasen är originalets, matchmotorn och spelreglerna är portade funktion för funktion från originalprogrammet och kontrollerade mot det, och skärmarna är återskapade så att de ser likadana ut. Det är ett inofficiellt fanprojekt utan koppling till rättighetsinnehavarna, och fortfarande i beta.",
   "land.finalTitle": "Din klubb väntar.",
   "land.finalText": "Säsongen startar när du trycker på knappen.",
   "land.footerData": "Spelardata: den ursprungliga CM 01/02-databasen (3.9.60) och communityns 2026/27-uppdatering",

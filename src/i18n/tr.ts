@@ -32,7 +32,7 @@ export const tr: Record<string, string> = {
   'start.dataNote': 'Veri: {src}. Özellikler piyasa değeri, yaş ve istatistiklerden türetilir.',
   'start.look': 'Görünüm', 'start.lookModernHint': 'Kulüp renklerinde açık veya koyu tema, yan menüyle – telefon, tablet ve masaüstü için.', 'start.lookClassicHint': 'Championship Manager 01/02 gibi: sekmeler, Geri/İleri, yeşil menüler ve eski arka plan fotoğrafları.',
   'start.lookNote': 'Görünüm oyun içinde geçerlidir ve Seçenekler’den istediğin zaman değiştirilebilir.',
-  'start.footer': 'Klasik Championship Manager oyunlarından ilham alan resmi olmayan bir hayran projesi. Orijinal oyunlardan kod içermez; veritabanları CM 01/02 verisi ve topluluk güncellemeleridir.',
+  'start.footer': 'Championship Manager 01/02\'ye dayanan resmi olmayan bir hayran projesi: maç motoru ve oyun kuralları orijinal programdan aktarılmıştır; veritabanları CM 01/02 verisi ve topluluk güncellemeleridir.',
 
   'top.unemployed': 'İşsiz', 'top.balance': 'Bakiye', 'top.budget': 'Transfer bütçesi', 'top.next': 'İleri',
   'top.continue': 'Devam', 'top.toTheMatch': 'Maça git ›', 'top.toMatch': 'Sonraki maç »', 'top.toMatchHint': 'Sonraki maça atla (önemli haberlerde durur)',
@@ -1135,7 +1135,7 @@ export const tr: Record<string, string> = {
   'db.ver.3960': "Orijinal sürüm – CM 01/02'nin 2001/02 için kullandığı. 2001 yazı kadroları (Ferdinand Leeds'te).",
   'db.ver.3965': "Resmi 3.9.65 yaması – aynı 2001/02 kadroları, güncellemenin veri düzeltmeleriyle.",
   'db.ver.3968': "Son resmi güncelleme: 2002/03 kadroları ve transferleri (Ferdinand Man Utd'de), ama oyun yine Temmuz 2001'de başlar.",
-  'land.q6': "Bu orijinal Championship Manager 01/02 mi?", 'land.a6': "Ruh olarak evet: orijinal oyunun tarayıcı oyununa dönüştürülmüş hali. Veri tabanı, ekranlar, kurallar ve maç motoru orijinal CM 01/02’den yeniden kuruldu ve onunla karşılaştırıldı. Hak sahipleriyle bağlantısı olmayan gayriresmî bir hayran projesidir ve hâlâ beta aşamasındadır.",
+  'land.q6': "Bu orijinal Championship Manager 01/02 mi?", 'land.a6': "Ruh olarak evet: orijinal oyunun tarayıcı oyununa dönüştürülmüş hali. Veri tabanı orijinalinin veri tabanıdır; maç motoru ve oyun kuralları orijinal programdan fonksiyon fonksiyon aktarıldı ve onunla karşılaştırıldı, ekranlar ise aynısı olacak şekilde yeniden kuruldu. Hak sahipleriyle bağlantısı olmayan gayriresmî bir hayran projesidir ve hâlâ beta aşamasındadır.",
   'land.finalTitle': "Kulübün seni bekliyor.", 'land.finalText': "Sezon, düğmeye bastığında başlar.",
   'land.footerData': "Oyuncu verisi: orijinal CM 01/02 veritabanı (3.9.60) ve topluluğun 2026/27 güncellemesi",
   'land.disclaimer': "Resmi olmayan hayran projesi. Sports Interactive, Square Enix/Eidos veya Championship Manager markasıyla bağlantılı değildir, onlar tarafından desteklenmez. Kulüp ve oyuncu adları ilgili sahiplerine aittir.",

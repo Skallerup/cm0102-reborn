@@ -21,7 +21,7 @@ export const en: Record<string, string> = {
   'start.dataNote': 'Data: {src}. Attributes are derived from market value, age and statistics.',
   'start.look': 'Look', 'start.lookModernHint': 'Light or dark theme in your club colours with a side menu – built for phone, tablet and desktop.', 'start.lookClassicHint': 'Like Championship Manager 01/02: tabs, Back/Next, green menus and the old background photos.',
   'start.lookNote': 'The look applies inside the game and can be changed any time in Options.',
-  'start.footer': 'Unofficial fan project inspired by the classic Championship Manager games. No code from the original games; the databases are CM 01/02 data and community updates.',
+  'start.footer': 'Unofficial fan project based on Championship Manager 01/02: the match engine and the game rules are ported from the original program, and the databases are CM 01/02 data and community updates.',
 
   'top.unemployed': 'Unemployed', 'top.balance': 'Balance', 'top.budget': 'Transfer budget', 'top.next': 'Next',
   'top.continue': 'Continue', 'top.toTheMatch': 'To the match ›', 'top.toMatch': 'Next match »', 'top.toMatchHint': 'Skip to the next match (stops on important news)',
@@ -1243,7 +1243,7 @@ export const en: Record<string, string> = {
   'db.ver.3960': "The original release – the one CM 01/02 itself uses for 2001/02. Squads from summer 2001 (Ferdinand at Leeds).",
   'db.ver.3965': "The official 3.9.65 patch – the same 2001/02 squads with the data corrections from the update.",
   'db.ver.3968': "The last official update: 2002/03 squads and transfers (Ferdinand at Man Utd), but the game still starts in July 2001.",
-  'land.q6': "Is this the original Championship Manager 01/02?", 'land.a6': "In spirit, yes: it is the original game turned into a browser game. The database, screens, rules and match engine are rebuilt from the original CM 01/02 and checked against it. It is an unofficial fan project, not affiliated with the rights holders, and still in beta.",
+  'land.q6': "Is this the original Championship Manager 01/02?", 'land.a6': "In spirit, yes: it is the original game turned into a browser game. The database is the original's, the match engine and the game rules are ported function by function from the original program and checked against it, and the screens are rebuilt to match. It is an unofficial fan project, not affiliated with the rights holders, and still in beta.",
   'land.finalTitle': 'Your club is waiting.', 'land.finalText': 'The season starts when you press the button.',
   'land.footerData': "Player data: the original CM 01/02 database (3.9.60) and the community 2026/27 update",
   'land.disclaimer': 'Unofficial fan project. Not affiliated with, endorsed by or connected to Sports Interactive, Square Enix/Eidos or the Championship Manager trademark. Club and player names belong to their respective owners.',

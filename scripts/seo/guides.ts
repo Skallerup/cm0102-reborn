@@ -131,7 +131,7 @@ export function guides(db: DbOut, ver: VersionData): Page[] {
 <li><b>Hard tackling is four times Normal's challenge weight</b> (Easy 0.5, Normal 2, Hard 4): more ball won – and the AI rarely punished the extra fouls.</li>
 <li><b>Instructions stacked:</b> Run With Ball, Long Shots and Cross Ball each add thousands of points to their option, so a tactic could force the same pattern every time.</li>
 </ul>
-<p>In CM Reborn no formation is overpowered on purpose – the shape decides where you outnumber the opponent, and every instruction has a price. <a href="/cm-01-02-tactics/">The classic formations explained →</a></p>
+<p>CM Reborn plays matches with the original's match engine, so these tactics still work as they did in 2001. <a href="/cm-01-02-tactics/">The classic formations explained →</a></p>
 <h2>Cheat players: world-beaters for pennies</h2>
 <p>The best value in CM 01/02 is potential: the value formula cuts the price of teenagers hard, so a 17-year-old with a PA of 170+ costs a fraction of a star. These are the cheapest players with a potential of 170 or more in the database:</p>
 ${ptable(cheat, ['Value', (p) => pounds(p.value)])}
@@ -139,7 +139,7 @@ ${ptable(cheat, ['Value', (p) => pounds(p.value)])}
 <h2>And the "real" cheats?</h2>
 <p>Money and work-permit cheats edited the save game or the database. CM Reborn has a database editor in the start menu for that – and <a href="/cm-01-02-work-permit/">the work permit rules</a> explain which non-EU players a British club can sign without one.</p>`,
       faq: [
-        ['What is the best cheat tactic in CM 01/02?', 'The famous ones – Diablo, Wib Wob and the 4-1-3-2 variants – exploited forward runs, through balls, defensive midfielders and hard tackling in the original match engine. CM Reborn has no overpowered formation.'],
+        ['What is the best cheat tactic in CM 01/02?', 'The famous ones – Diablo, Wib Wob and the 4-1-3-2 variants – exploited forward runs, through balls, defensive midfielders and hard tackling in the original match engine – and CM Reborn uses that same engine, so they still work.'],
         ['Who are the cheat players in CM 01/02?', `Cheap teenagers with huge potential – the cheapest with a PA of 170+ are ${cheat.slice(0, 3).map((p) => p.name).join(', ')} – plus the random-potential legends like Tsigalko and Cherno Samba.`],
       ],
     },
@@ -187,14 +187,14 @@ ${ptable(cheat, ['Value', (p) => pounds(p.value)])}
 <h2>Who needs a permit</h2>
 <p>Players from outside the EU and EEA (EU countries plus Norway, Iceland and Liechtenstein) joining a British club. Players from EU countries – France, Italy, Spain, Holland, Denmark, Sweden and the rest – need nothing.</p>
 <h2>Who gets one</h2>
-<p>The real rule of the time: the player must have played 75 % of his country's competitive internationals in the last two years, and the country must be in FIFA's top 70 – otherwise an appeal for an exceptional talent. The database only holds a player's total caps, so CM Reborn uses an estimate: an established international (15+ caps), a big name (reputation 70+) or a high-class international (5+ caps and CA 140+) gets the permit.</p>
+<p>The real rule of the time: the player must have played 75 % of his country's competitive internationals in the last two years, and the country must be in FIFA's top 70 – otherwise an appeal for an exceptional talent. CM Reborn runs the original's own permit routine, ported from the program: it keeps each player's national-team record and the country's FIFA ranking, as the original does.</p>
 <h2>No loans</h2>
 <p>As in the original ("… are not allowed to loan non-EU players"), British clubs cannot take non-EU players on loan.</p>
 <h2>Ways round it</h2>
 <ul><li>Sign young non-EU talents and wait for the caps, or play them abroad first.</li><li>Manage outside Britain – the rule only applies to British clubs.</li><li>Look for players with an EU second nationality.</li></ul>
-<p>The rule applies to the original 2001/02 database only; the 2026/27 database follows today's rules. <a href="/cm-01-02-wonderkids/">The wonderkids worth waiting for →</a></p>`,
+<p>The same routine runs on both databases, using each database's nations. <a href="/cm-01-02-wonderkids/">The wonderkids worth waiting for →</a></p>`,
       faq: [
-        ['How do I get a work permit in CM 01/02?', 'A non-EU player joining a British club needs one. In CM Reborn an established international (15+ caps), a big name or a high-class international with 5+ caps gets it; otherwise the move is blocked.'],
+        ['How do I get a work permit in CM 01/02?', 'A non-EU player joining a British club needs one. In CM Reborn the original\'s own permit check decides it: roughly, the player must have played most of his country\'s recent competitive internationals (and the country must be high enough in the FIFA ranking); otherwise the move is blocked.'],
         ['Can I loan non-EU players in CM 01/02?', 'Not to a British club – as in the original, British clubs cannot loan players from outside the EU.'],
       ],
     },
@@ -341,7 +341,7 @@ ${((): string => { const old = db.kept.filter((p) => p.age >= 33 && p.pa >= 150)
 <li>Players over 32 lose value fast, whatever their ability.</li>
 </ul>
 <h2>How CM Reborn does it</h2>
-<p>CM Reborn's values for the original database were fitted to the values the original shows for 3,134 players in its own player search (read on screen), using ability, age, club reputation, wage, the player's reputation and the league. The typical difference from the original is about a factor of 1.7, mostly individual noise the formula cannot see. Every player's value is on his profile in the <a href="/cm-01-02/">CM 01/02 database</a>; the cheapest good players are in <a href="/cm-01-02/lists/bargains/">the bargains list</a>.</p>`,
+<p>CM Reborn uses the original's own value routine, ported from the program, and recalculates the values as the original does. Every player's value is on his profile in the <a href="/cm-01-02/">CM 01/02 database</a>; the cheapest good players are in <a href="/cm-01-02/lists/bargains/">the bargains list</a>.</p>`,
       faq: [
         ['How is player value calculated in CM 01/02?', 'From the player\'s position (a base of £6m–£13m), his age against a peak age (28 for forwards, 33 for keepers, 29 for others), his reputation and ability, a few attributes, his caps and the strength of his club and league.'],
         ['Why are wonderkids so cheap in CM 01/02?', 'The value formula cuts the price of very young players hard (an age table from 10 % to 100 %), so a 17-year-old with world-class potential costs a fraction of a star.'],
@@ -378,7 +378,7 @@ ${((): string => { const old = db.kept.filter((p) => p.age >= 33 && p.pa >= 150)
 <h2>Substitutions by the computer</h2>
 <p>The AI considers a change when the minute passes 10 + rand(50) and at least five minutes after its last one. It takes off the lowest by rating and condition – when his rating is under 6 after half-time, or his condition under 67.5 % after an hour.</p>
 <h2>How CM Reborn uses this</h2>
-<p>CM Reborn's own engine plays a match as a chain of passages over pitch zones and is calibrated against a full season played in the original CM 01/02. The rules above that it already uses: the referees and their Discipline, the card rules, stoppage time, fatigue by stamina and age, half-time recovery, knocks and the computer's substitutions. The rest of the ball-carrier rule is the next step.</p>`,
+<p>CM Reborn plays matches with exactly this engine. It was ported function by function from the original program and is checked tick by tick against the original: the same 990 ticks, the same decisions, referees, cards, stoppage time, fatigue, injuries, ratings and substitutions – so a match in CM Reborn plays out like one in the original.</p>`,
       faq: [
         ['How does the CM 01/02 match engine work?', 'It runs 11 ticks a minute with the 22 players on a 9 × 12 grid. Each time a player has the ball it scores four options – pass, run, hold and shoot – adds random noise that shrinks with his Decisions, and takes the highest.'],
         ['How many goals per game in CM 01/02?', 'About 2.87 a match in a Premier League season, with 17.2 shots (10.3 on target), 5 corners and 1.7 yellow cards.'],
@@ -392,7 +392,7 @@ ${((): string => { const old = db.kept.filter((p) => p.age >= 33 && p.pa >= 150)
       h1: 'CM 01/02 attributes explained: what each one does in the match',
       description: 'What finishing, flair, decisions, teamwork, pace, stamina and the other CM 01/02 attributes actually do in the match engine – read from the original game\'s code – with the best players in each.',
       body: `<p class="lead">Championship Manager 01/02 shows 1–20 for every attribute, but they are not equal. Some feed directly into the player's choices on the ball, some only matter when he gets tired, and some do almost nothing for certain positions. This guide is based on the original game's own code (the ball-carrier decision, fatigue and discipline routines), with the best players in each attribute from the <a href="/cm-01-02/">CM 01/02 database</a> (3.9.68).</p>
-<p class="note">"From the code" = read in cm0102.exe. Everything else is general CM 01/02 knowledge or how CM Reborn models it.</p>
+<p class="note">"From the code" = read in cm0102.exe. Everything else is general CM 01/02 knowledge.</p>
 <h2>Attacking</h2>
 <ul>
 <li><b>Finishing</b> – the heart of a close-range chance. From the code: a shot from close in scores 100 × Finishing + 3000 against passing, running or holding the ball, so a 20-finisher shoots almost every time he is near goal, while a 10 often looks for a pass. Best: ${tops(K, 'finishing')}.</li>
@@ -468,7 +468,7 @@ ${moveTable(ver.late, ver, true)}
       description: 'Championship Manager 01/02 has been free to download since Eidos released it as freeware in 2008. Here is where the official download and patch 3.9.68 live, how to run it on Windows, Mac and Linux – and how to play it in a browser with no download at all.',
       body: `<p class="lead">Yes – CM 01/02 is free. In December 2008 Eidos released Championship Manager 01/02 as freeware, and the fan community has kept it alive ever since. But if you just want to play, you no longer need to download anything.</p>
 <h2>Option 1: play in your browser (no download)</h2>
-<p><a href="/">CM Reborn</a> is a free fan remake of CM 01/02 that runs in any browser. It ships with the original 2001/02 database in all three official versions (3.9.60, 3.9.65 and 3.9.68), the classic blue CM screens and a match engine calibrated against the original – and it works on Mac, iPad, Chromebook and phones, where the original never ran.</p>
+<p><a href="/">CM Reborn</a> is a free fan remake of CM 01/02 that runs in any browser. It ships with the original 2001/02 database in all three official versions (3.9.60, 3.9.65 and 3.9.68), the classic blue CM screens and the original match engine, ported – and it works on Mac, iPad, Chromebook and phones, where the original never ran.</p>
 <h2>Option 2: download the original</h2>
 <ul>
 <li><b>Where:</b> the community site <a href="https://champman0102.net" rel="nofollow noopener">champman0102.net</a> hosts the free download, the official 3.9.68 patch and unofficial data updates.</li>
@@ -622,12 +622,12 @@ ${loyal.length ? `<h2>One-club men (loyalty 18+)</h2>${ptable(loyal, ['Loyalty',
       slug: 'free-football-manager-browser-game/',
       title: 'Free Football Manager Game in Your Browser – No Download | CM Reborn',
       h1: 'A free football manager game you play in your browser',
-      description: 'Looking for a free football manager game that runs in the browser? CM Reborn has 50,000+ real players in two databases, a proper match engine, transfers, tactics, multiplayer and the classic Championship Manager look – no download, no ads.',
+      description: 'Looking for a free football manager game that runs in the browser? CM Reborn has 50,000+ real players in two databases, the original match engine, transfers, tactics, multiplayer and the classic Championship Manager look – no download, no ads.',
       body: `<p class="lead">CM Reborn is a complete football management game that runs in any web browser – free, without ads and without anything to install.</p>
 <ul>
 <li><b>Real players:</b> the 2026/27 season and the classic 2001/02 database from Championship Manager 01/02.</li>
 <li><b>Manage everything:</b> tactics, training, transfers, contracts, scouting, finances, the board and the press.</li>
-<li><b>A match engine that thinks:</b> watch the commentary or the 2D pitch and change tactics live.</li>
+<li><b>The original match engine:</b> watch the commentary or the 2D pitch and change tactics live – ported from CM 01/02 itself.</li>
 <li><b>Play together:</b> online leagues with friends, a fantasy draft and global rankings.</li>
 <li><b>Anywhere:</b> PC, Mac, Chromebook, iPad, Android and iPhone – it installs as an app and works offline.</li>
 <li><b>Ten languages</b> and seven currencies.</li>
