@@ -7,7 +7,7 @@ import { fixClubName } from './data/clubNames';
 import { cmDatabase } from './newgame';
 import { get, keys, set } from 'idb-keyval';
 import { deleteSaveData, readSaveBlob, sweepSaveChunksOnce, writeSave } from './saveStore';
-import { gs, setGame, addNews, notify, ensureNumbers, previewInfo, setPreview } from './state';
+import { gs, setGame, addNews, notify, ensureNumbers, previewInfo, setPreview, NEWS_RING } from './state';
 import { splitReserves } from './reserves';
 import { cmCupName, cmLeagueRules, cmPlayoffRules } from './cmCalendar';
 import { cashRound } from './cmTransferBid';
@@ -388,6 +388,9 @@ export function upgradeLoaded() {
   // ferien kører kun, mens Shell's ferieløkke kører (manager.holiday sættes ved start og ryddes bagefter). Et spil gemt midt i ferien (fx før en
   // fejl i ferieløkken 20/11) havde ferien hængende: assistenten svarede på bud resten af spillet, uden at man var på ferie
   if (!g.humans?.length && g.manager?.holiday) g.manager.holiday = undefined;
+  // (27/11) nyhedslisten som originalens ring på 100 pr. manager (state.ts NEWS_RING) – gemte spil fra før havde op til 700
+  if (g.news?.length > NEWS_RING) g.news.length = NEWS_RING;
+  for (const h of g.humans ?? []) if (h.news?.length > NEWS_RING) h.news.length = NEWS_RING;
   if (!currentSave(g) && addMissingConference()) {
     const club = g.clubs[g.userClub];
     if (club && g.comps.UECL?.clubs.includes(club.id)) addNews({ cat: 'general', key: 'news.ueclQualified', params: { club: club.name } });

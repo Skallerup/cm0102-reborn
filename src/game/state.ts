@@ -424,6 +424,9 @@ export function newsRelevant(...clubIds: (number | undefined)[]): boolean {
   });
 }
 
+/** (27/11) originalens nyhedsliste er en ring på 100 poster pr. manager (deliver_to_manager 0x785d40 – News [0xb7431c], notes/news-list.md):
+ *  den 101. nyhed overskriver den ældste. Før 700 (og 400 pr. manager i fællesspil). Gamle gemte spil afkortes ved indlæsningen (save.ts). */
+export const NEWS_RING = 100;
 /** Ny besked til den aktive manager. all=true sender til alle menneskelige managere (multiplayer). */
 /** nyhedens tidspunkt (AM/PM/EVE = 0/1/2) – sat af cmCalendar.ts (ingen cirkulær import) */
 export const newsStamp: { tod?: (g: GameState) => 0 | 1 | 2 | null } = {};
@@ -435,12 +438,12 @@ export function addNews(n: Omit<NewsItem, 'id' | 'date' | 'read'> & { date?: str
   const tod = n.date === undefined || n.date === g.date ? newsStamp.tod?.(g) ?? null : null;
   const item = { id: g.nextId.news++, date: n.date ?? g.date, read: muted, ...n, ...(muted ? { muted: true } : {}), ...(tod !== null ? { tod } : {}) };
   g.news.unshift(item);
-  if (g.news.length > 700) g.news.length = 700;
+  if (g.news.length > NEWS_RING) g.news.length = NEWS_RING;
   if (opts?.all && g.humans) {
     for (const h of g.humans) {
       if (h.pid === g.active) continue;
       h.news.unshift({ ...item });
-      if (h.news.length > 400) h.news.length = 400;
+      if (h.news.length > NEWS_RING) h.news.length = NEWS_RING;
     }
   }
 }
