@@ -56,7 +56,7 @@ import { Scouting } from './screens/Scouting';
 import { StaffScreen } from './screens/Staff';
 import { Finance } from './screens/Finance';
 import { ClubScreen } from './screens/Club';
-import { Assistant } from './screens/Assistant';
+import { Assistant, ComparePage } from './screens/Assistant';
 import { MatchScreen } from './screens/Match';
 import { ReportScreen } from './screens/Report';
 import { PlayedMatchClassic } from './screens/PlayedMatchClassic';
@@ -769,7 +769,7 @@ function Screen({ allowed }: { allowed: (k: ScreenName) => boolean }) {
           if (p) nav({ name: 'player', id: p.id });
         } : undefined} /></div>;
     case 'assistant': return <Assistant tab={route.tab} />;
-    case 'compare': return <Assistant tab="compare" />;
+    case 'compare': return <ComparePage />;
     case 'benchmark': return <Assistant tab="bench" />;
     case 'match': return <MatchScreen id={Number(route.id)} />;
     case 'matchday': return <MatchDay id={Number(route.id)} />;

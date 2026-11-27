@@ -1434,7 +1434,7 @@ export const de: Record<string, string> = {
   'opt.save.monthly.hint': 'Speichert einmal pro Spielmonat. Beim Neuladen kannst du bis zu einen Monat Spielzeit verlieren.',
   'opt.save.off.hint': 'Das Spiel wird nur gespeichert, wenn du auf Spiel speichern drückst. Beim Neuladen geht alles seit dem letzten Speichern verloren.', 'opt.speed': 'Spieltempo',
   'opt.saves': 'Speichern / Export', 'opt.export': 'Spielstand exportieren', 'opt.exportHint': 'Speichere die Datei und lade sie auf einem anderen Gerät über den Startbildschirm.',
-  'opt.about': 'Über', 'opt.aboutText': 'CM Reborn ist von den klassischen Championship Manager-Spielen inspiriert – von Grund auf als Web-App mit vielen neuen Features gebaut. Die Spiel-Engine ist eine eigene, zonenbasierte Engine nach dem Vorbild von CM 01/02 – mit der Originaldatenbank an Spielen im Originalspiel kalibriert, mit der modernen Datenbank an echten Statistiken.',
+  'opt.about': 'Über', 'opt.aboutText': 'CM Reborn ist von den klassischen Championship Manager-Spielen inspiriert – von Grund auf als Web-App mit vielen neuen Features gebaut. Die Spiel-Engine ist eine Portierung der originalen CM-01/02-Spiel-Engine.',
   'opt.dataCredit': 'Spielerdaten: transfermarkt-datasets von David Cariboo (CC0). Die Attribute sind abgeleitet, nicht offiziell.',
 
   'news.welcome': 'Willkommen bei {club}, {manager}!', 'news.welcome.body': 'Der Vorstand hat dir die Schlüssel übergeben. Sieh dir den Kader an, stell deine Taktik ein und drück auf Weiter. Viel Glück!',
@@ -1479,7 +1479,7 @@ export const de: Record<string, string> = {
   'as.noMatch': 'Keine anstehenden Spiele.', 'as.current': 'Deine Aufstellung', 'as.suggested': 'Vorschlag des Co-Trainers', 'as.use': 'Vorschlag übernehmen',
   'as.agrees': 'Dein Co-Trainer stimmt deiner Aufstellung zu.', 'as.suggestHint': 'Der Vorschlag berücksichtigt Position, Fähigkeit und Kondition.',
   'as.compareHint': 'Wähle im Spielerprofil mit „Vergleichen“ mindestens zwei Spieler aus.', 'as.radar': 'Profil', 'as.attributes': 'Attribute',
-  'as.benchHint': 'Spielt im Hintergrund Hunderte Spiele mit deinem Kader und deiner Taktik gegen dieselben Spieler in anderen Formationen, damit du siehst, ob die Taktik standhält. Die Engine hat keine Abkürzungen wie den alten 4-2-4-Exploit.',
+  'as.benchHint': 'Spielt im Hintergrund Hunderte Spiele mit deinem Kader und deiner Taktik gegen dieselben Spieler in anderen Formationen, damit du siehst, ob die Taktik standhält. Der Benchmark spielt die Spiele mit der originalen CM-01/02-Spiel-Engine.',
   'as.matchesPer': 'Spiele pro Formation', 'as.runBench': 'Benchmark starten', 'as.vs': 'Gegen', 'as.ppg': 'Pkt/Sp',
   'an.opponent': 'Gegner: {club}', 'an.formation': 'Erwartete Formation', 'an.keyPlayers': 'Schlüsselspieler', 'an.odds': 'Chancen (S/U/N)',
   'an.win': 'Sieg', 'an.draw': 'Remis', 'an.loss': 'Niederlage', 'an.oddsHint': 'Berechnet durch 150-fache Simulation des Spiels mit der Engine.',

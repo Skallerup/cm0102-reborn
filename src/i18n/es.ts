@@ -1434,7 +1434,7 @@ export const es: Record<string, string> = {
   'opt.save.monthly.hint': 'Guarda una vez por mes de juego. Si recargas, puedes perder hasta un mes de partida.',
   'opt.save.off.hint': 'La partida solo se guarda cuando pulsas Guardar partida. Si recargas, pierdes todo desde el último guardado.', 'opt.speed': 'Velocidad de los partidos',
   'opt.saves': 'Guardar / exportar', 'opt.export': 'Exportar archivo de partida', 'opt.exportHint': 'Guarda el archivo y cárgalo en otro dispositivo desde la pantalla de inicio.',
-  'opt.about': 'Acerca de', 'opt.aboutText': 'CM Reborn está inspirado en los clásicos Championship Manager, creado desde cero como aplicación web con muchas funciones nuevas. El motor de partidos es propio y se basa en zonas, inspirado en CM 01/02: con la base de datos original está calibrado con partidos del juego original y con la moderna, con estadísticas reales.',
+  'opt.about': 'Acerca de', 'opt.aboutText': 'CM Reborn está inspirado en los clásicos Championship Manager, creado desde cero como aplicación web con muchas funciones nuevas. El motor de partidos es una adaptación del motor de partidos original de CM 01/02.',
   'opt.dataCredit': 'Datos de jugadores: transfermarkt-datasets de David Cariboo (CC0). Los atributos son derivados, no oficiales.',
 
   'news.welcome': '¡Bienvenido a {club}, {manager}!', 'news.welcome.body': 'La directiva te ha dado las llaves. Revisa la plantilla, prepara tu táctica y pulsa Continuar. ¡Suerte!',
@@ -1479,7 +1479,7 @@ export const es: Record<string, string> = {
   'as.noMatch': 'No hay próximos partidos.', 'as.current': 'Tu alineación', 'as.suggested': 'Sugerencia del asistente', 'as.use': 'Usar sugerencia',
   'as.agrees': 'Tu asistente está de acuerdo con tu alineación.', 'as.suggestHint': 'La sugerencia tiene en cuenta la posición, la habilidad y la forma física.',
   'as.compareHint': 'Elige al menos dos jugadores con "Comparar" en la ficha del jugador.', 'as.radar': 'Perfil', 'as.attributes': 'Atributos',
-  'as.benchHint': 'Juega cientos de partidos en segundo plano con tu plantilla y tu táctica contra los mismos jugadores en otras formaciones, para que veas si la táctica aguanta. El motor no tiene atajos como el antiguo truco del 4-2-4.',
+  'as.benchHint': 'Juega cientos de partidos en segundo plano con tu plantilla y tu táctica contra los mismos jugadores en otras formaciones, para que veas si la táctica aguanta. El benchmark juega los partidos con el motor de partidos original de CM 01/02.',
   'as.matchesPer': 'Partidos por formación', 'as.runBench': 'Ejecutar prueba', 'as.vs': 'Contra', 'as.ppg': 'Pts/partido',
   'an.opponent': 'Rival: {club}', 'an.formation': 'Formación prevista', 'an.keyPlayers': 'Jugadores clave', 'an.odds': 'Probabilidades (V/E/D)',
   'an.win': 'Victoria', 'an.draw': 'Empate', 'an.loss': 'Derrota', 'an.oddsHint': 'Calculado simulando el partido 150 veces con el motor.',

@@ -1434,7 +1434,7 @@ export const pt: Record<string, string> = {
   'opt.save.monthly.hint': 'Salva uma vez por mês de jogo. Você pode perder até um mês de jogo se recarregar.',
   'opt.save.off.hint': 'O jogo só é salvo quando você aperta Salvar jogo. Recarregar faz perder tudo desde o último salvamento.', 'opt.speed': 'Velocidade da partida',
   'opt.saves': 'Salvar / exportar', 'opt.export': 'Exportar arquivo salvo', 'opt.exportHint': 'Salve o arquivo e carregue-o em outro dispositivo pela tela inicial.',
-  'opt.about': 'Sobre', 'opt.aboutText': 'O CM Reborn é inspirado nos clássicos jogos Championship Manager – feito do zero como um web app com muitos recursos novos. O motor de partida é nosso, baseado em zonas e inspirado no CM 01/02 – calibrado com partidas do jogo original na base de dados original e com estatísticas reais na base moderna.',
+  'opt.about': 'Sobre', 'opt.aboutText': 'O CM Reborn é inspirado nos clássicos jogos Championship Manager – feito do zero como um web app com muitos recursos novos. O motor de partida é uma portagem do motor de partida original do CM 01/02.',
   'opt.dataCredit': 'Dados dos jogadores: transfermarkt-datasets por David Cariboo (CC0). Os atributos são derivados, não oficiais.',
 
   'news.welcome': 'Bem-vindo ao {club}, {manager}!', 'news.welcome.body': 'A diretoria entregou as chaves a você. Confira o elenco, defina sua tática e aperte Continuar. Boa sorte!',
@@ -1479,7 +1479,7 @@ export const pt: Record<string, string> = {
   'as.noMatch': 'Nenhuma partida próxima.', 'as.current': 'Sua escalação', 'as.suggested': 'Sugestão do auxiliar', 'as.use': 'Usar sugestão',
   'as.agrees': 'Seu auxiliar concorda com sua escalação.', 'as.suggestHint': 'A sugestão considera posição, habilidade e condição física.',
   'as.compareHint': 'Escolha pelo menos dois jogadores com "Comparar" no perfil do jogador.', 'as.radar': 'Perfil', 'as.attributes': 'Atributos',
-  'as.benchHint': 'Simula centenas de partidas em segundo plano com seu elenco e sua tática contra os mesmos jogadores em outras formações, para você ver se a tática se sustenta. O motor não tem atalhos como o velho truque do 4-2-4.',
+  'as.benchHint': 'Simula centenas de partidas em segundo plano com seu elenco e sua tática contra os mesmos jogadores em outras formações, para você ver se a tática se sustenta. O benchmark simula as partidas com o motor de partida original do CM 01/02.',
   'as.matchesPer': 'Partidas por formação', 'as.runBench': 'Rodar teste', 'as.vs': 'Contra', 'as.ppg': 'Pts/jogo',
   'an.opponent': 'Adversário: {club}', 'an.formation': 'Formação esperada', 'an.keyPlayers': 'Jogadores-chave', 'an.odds': 'Chances (V/E/D)',
   'an.win': 'Vitória', 'an.draw': 'Empate', 'an.loss': 'Derrota', 'an.oddsHint': 'Calculado simulando a partida 150 vezes com o motor.',

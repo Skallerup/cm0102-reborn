@@ -1434,7 +1434,7 @@ export const fr: Record<string, string> = {
   'opt.save.monthly.hint': "Sauvegarde une fois par mois de jeu. Vous pouvez perdre jusqu'à un mois de jeu si vous rechargez.",
   'opt.save.off.hint': "La partie n'est sauvegardée que lorsque vous appuyez sur Sauvegarder la partie. Recharger fait perdre tout ce qui s'est passé depuis la dernière sauvegarde.", 'opt.speed': 'Vitesse des matchs',
   'opt.saves': 'Sauvegarde / export', 'opt.export': 'Exporter la sauvegarde', 'opt.exportHint': "Enregistrez le fichier et chargez-le sur un autre appareil depuis l'écran d'accueil.",
-  'opt.about': 'À propos', 'opt.aboutText': "CM Reborn s'inspire des jeux Championship Manager classiques – développé de zéro comme application web avec de nombreuses nouveautés. Le moteur de match est le nôtre, basé sur des zones et inspiré de CM 01/02 – calibré sur des matchs du jeu original avec la base originale, et sur des statistiques réelles avec la base moderne.",
+  'opt.about': 'À propos', 'opt.aboutText': "CM Reborn s'inspire des jeux Championship Manager classiques – développé de zéro comme application web avec de nombreuses nouveautés. Le moteur de match est un portage du moteur de match original de CM 01/02.",
   'opt.dataCredit': 'Données des joueurs : transfermarkt-datasets par David Cariboo (CC0). Les attributs sont dérivés, non officiels.',
 
   'news.welcome': 'Bienvenue à {club}, {manager} !', 'news.welcome.body': "Le conseil vous a confié les clés. Examinez l'effectif, définissez votre tactique et appuyez sur Continuer. Bonne chance !",
@@ -1479,7 +1479,7 @@ export const fr: Record<string, string> = {
   'as.noMatch': 'Aucun match à venir.', 'as.current': 'Votre composition', 'as.suggested': "Suggestion de l'adjoint", 'as.use': 'Utiliser la suggestion',
   'as.agrees': 'Votre adjoint approuve votre composition.', 'as.suggestHint': 'La suggestion tient compte du poste, de la capacité et de la condition physique.',
   'as.compareHint': 'Choisissez au moins deux joueurs avec « Comparer » sur la fiche du joueur.', 'as.radar': 'Profil', 'as.attributes': 'Attributs',
-  'as.benchHint': "Joue des centaines de matchs en arrière-plan avec votre effectif et votre tactique contre les mêmes joueurs dans d'autres dispositifs, pour voir si la tactique tient la route. Le moteur n'a pas de failles comme l'ancien exploit du 4-2-4.",
+  'as.benchHint': "Joue des centaines de matchs en arrière-plan avec votre effectif et votre tactique contre les mêmes joueurs dans d'autres dispositifs, pour voir si la tactique tient la route. Le benchmark joue les matchs avec le moteur de match original de CM 01/02.",
   'as.matchesPer': 'Matchs par dispositif', 'as.runBench': 'Lancer le test', 'as.vs': 'Contre', 'as.ppg': 'Pts/match',
   'an.opponent': 'Adversaire : {club}', 'an.formation': 'Dispositif attendu', 'an.keyPlayers': 'Joueurs clés', 'an.odds': 'Chances (V/N/D)',
   'an.win': 'Victoire', 'an.draw': 'Nul', 'an.loss': 'Défaite', 'an.oddsHint': 'Calculé en simulant le match 150 fois avec le moteur.',

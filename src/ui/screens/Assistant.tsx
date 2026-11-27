@@ -103,6 +103,11 @@ function Suggest() {
 
 const COLORS = ['#ffd447', '#7fd1ff', '#ff8fd0'];
 
+/** Ren sammenligningsside (Compare Players): kun sammenligningen, ingen Assistant-faner */
+export function ComparePage() {
+  return <div><Head title={isRetro() ? t('cl.pl.compare') : t('as.compare')} /><Compare /></div>;
+}
+
 function Compare() {
   const g = useGame()!;
   const { nav } = useNav();

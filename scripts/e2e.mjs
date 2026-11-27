@@ -271,6 +271,16 @@ async function run(look) {
     { name: 'find' }, { name: 'staff', id: Number(await gs(() => Object.keys(window.__cm.gs().staff)[0])) }, { name: 'nation', tab: 'managers' }, { name: 'nation', tab: 'jobs' }, { name: 'nation', tab: 'transfers' }, { name: 'options' }, { name: 'help' },
   ];
   for (const [i, r] of screens.entries()) await step(`skærm ${r.name}${r.id ? ` (${r.id})` : ''}`, async () => { await go(r); await checkScreen(r.name); if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/${look}-s${String(i).padStart(2, '0')}-${r.name}.png` }); });
+  // sammenligning af to spillere åbner kun sammenligningssiden – ikke Assistant-skærmen med dens faner
+  await step('sammenligning: kun sammenligningssiden', async () => {
+    const ids = await gs(() => { const g = window.__cm.gs(); return Object.values(g.players).filter((p) => p.club === g.userClub).sort((a, b) => b.ca - a.ca).slice(0, 2).map((p) => p.id); });
+    await page.evaluate((ids) => { window.__cm.setCompareSlot(0, ids[0]); window.__cm.setCompareSlot(1, ids[1]); }, ids);
+    await go({ name: 'compare' });
+    await page.waitForSelector('table.grid, .cx-grid, table', { timeout: 5000 });
+    const txt = await page.evaluate(() => document.body.innerText);
+    for (const bad of ['Opponent report', 'Team suggestion', 'Tactics benchmark']) if (txt.includes(bad)) throw new Error(`sammenligningssiden viser Assistant-fanen "${bad}"`);
+    if (!/Compare/.test(txt)) throw new Error('sammenligningssiden mangler overskriften Compare');
+  });
   // standardbaggrunden i klassisk = originalens billeder (/original-bg/); nulstil sættet, hvis noget har gemt et andet
   if (look === 'klassisk') await step('baggrund fra originalen', async () => {
     for (const r of [{ name: 'inbox' }, { name: 'squad' }, { name: 'club' }, { name: 'training' }, { name: 'board' }, { name: 'transfers' }, { name: 'find' }]) {

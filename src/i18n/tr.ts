@@ -1434,7 +1434,7 @@ export const tr: Record<string, string> = {
   'opt.save.monthly.hint': "Her oyun ayında bir kez kaydeder. Yeniden yüklersen bir aya kadar oyun kaybedebilirsin.",
   'opt.save.off.hint': "Oyun yalnızca Oyunu kaydet'e bastığında kaydedilir. Yeniden yüklemek son kayıttan beri her şeyi kaybettirir.", 'opt.speed': "Maç hızı",
   'opt.saves': "Kaydet / dışa aktar", 'opt.export': "Kayıt dosyasını dışa aktar", 'opt.exportHint': "Dosyayı kaydet ve başka bir cihazda başlangıç ekranından yükle.",
-  'opt.about': "Hakkında", 'opt.aboutText': "CM Reborn klasik Championship Manager oyunlarından ilham alır – birçok yeni özellikle sıfırdan bir web uygulaması olarak geliştirildi. Maç motoru bize ait, bölge tabanlıdır ve CM 01/02 örnek alınarak yapılmıştır – orijinal veritabanında orijinal oyundaki maçlara, modern veritabanında gerçek istatistiklere göre kalibre edilmiştir.",
+  'opt.about': "Hakkında", 'opt.aboutText': "CM Reborn klasik Championship Manager oyunlarından ilham alır – birçok yeni özellikle sıfırdan bir web uygulaması olarak geliştirildi. Maç motoru, orijinal CM 01/02 maç motorunun bir portudur.",
   'opt.dataCredit': "Oyuncu verisi: David Cariboo'nun transfermarkt-datasets projesi (CC0). Özellikler türetilmiştir, resmi değildir.",
 
   'news.welcome': "{club}'a hoş geldin, {manager}!", 'news.welcome.body': "Yönetim anahtarları sana teslim etti. Kadroyu incele, taktiğini belirle ve Devam'a bas. Bol şans!",
@@ -1479,7 +1479,7 @@ export const tr: Record<string, string> = {
   'as.noMatch': "Yaklaşan maç yok.", 'as.current': "Senin ilk 11'in", 'as.suggested': "Yardımcının önerisi", 'as.use': "Öneriyi kullan",
   'as.agrees': "Yardımcın ilk 11'ine katılıyor.", 'as.suggestHint': "Öneri mevki, yetenek ve kondisyonu dikkate alır.",
   'as.compareHint': "Oyuncu profilinde \"Karşılaştır\" ile en az iki oyuncu seç.", 'as.radar': "Profil", 'as.attributes': "Özellikler",
-  'as.benchHint': "Kadronla ve taktiğinle, aynı oyunculara karşı farklı dizilişlerde arka planda yüzlerce maç oynatır; böylece taktiğin dayanıp dayanmadığını görürsün. Motorda eski 4-2-4 açığı gibi kestirmeler yok.",
+  'as.benchHint': "Kadronla ve taktiğinle, aynı oyunculara karşı farklı dizilişlerde arka planda yüzlerce maç oynatır; böylece taktiğin dayanıp dayanmadığını görürsün. Kıyaslama, maçları orijinal CM 01/02 maç motoruyla oynatır.",
   'as.matchesPer': "Diziliş başına maç", 'as.runBench': "Testi çalıştır", 'as.vs': "Karşı", 'as.ppg': "P/maç",
   'an.opponent': "Rakip: {club}", 'an.formation': "Beklenen diziliş", 'an.keyPlayers': "As oyuncular", 'an.odds': "Şanslar (G/B/M)",
   'an.win': "Galibiyet", 'an.draw': "Beraberlik", 'an.loss': "Mağlubiyet", 'an.oddsHint': "Maçın motorla 150 kez simüle edilmesiyle hesaplandı.",

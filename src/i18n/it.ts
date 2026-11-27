@@ -1434,7 +1434,7 @@ export const it: Record<string, string> = {
   'opt.save.monthly.hint': 'Salva una volta al mese di gioco. Se ricarichi, potresti perdere fino a un mese di gioco.',
   'opt.save.off.hint': "La partita viene salvata solo quando premi Salva partita. Ricaricando perdi tutto dall'ultimo salvataggio.", 'opt.speed': 'Velocità partita',
   'opt.saves': 'Salva / esporta', 'opt.export': 'Esporta file di salvataggio', 'opt.exportHint': 'Salva il file e caricalo su un altro dispositivo dalla schermata iniziale.',
-  'opt.about': 'Informazioni', 'opt.aboutText': 'CM Reborn è ispirato ai classici Championship Manager, costruito da zero come web app con tante novità. Il motore partita è nostro, basato su zone e ispirato a CM 01/02: con il database originale è calibrato sulle partite del gioco originale, con quello moderno sulle statistiche reali.',
+  'opt.about': 'Informazioni', 'opt.aboutText': 'CM Reborn è ispirato ai classici Championship Manager, costruito da zero come web app con tante novità. Il motore partita è un porting del motore partita originale di CM 01/02.',
   'opt.dataCredit': 'Dati dei giocatori: transfermarkt-datasets di David Cariboo (CC0). Gli attributi sono derivati, non ufficiali.',
 
   'news.welcome': 'Benvenuto al {club}, {manager}!', 'news.welcome.body': 'La dirigenza ti ha consegnato le chiavi. Controlla la rosa, imposta la tattica e premi Continua. In bocca al lupo!',
@@ -1479,7 +1479,7 @@ export const it: Record<string, string> = {
   'as.noMatch': 'Nessuna partita in programma.', 'as.current': 'La tua formazione', 'as.suggested': 'Il consiglio del vice', 'as.use': 'Usa il consiglio',
   'as.agrees': 'Il tuo vice è d\'accordo con la tua formazione.', 'as.suggestHint': 'Il consiglio tiene conto di ruolo, abilità e condizione.',
   'as.compareHint': 'Scegli almeno due giocatori con «Confronta» nel profilo del giocatore.', 'as.radar': 'Profilo', 'as.attributes': 'Attributi',
-  'as.benchHint': 'Gioca centinaia di partite in background con la tua rosa e la tua tattica contro gli stessi giocatori schierati con altri moduli, così puoi vedere se la tattica regge. Il motore non ha scorciatoie come il vecchio exploit del 4-2-4.',
+  'as.benchHint': 'Gioca centinaia di partite in background con la tua rosa e la tua tattica contro gli stessi giocatori schierati con altri moduli, così puoi vedere se la tattica regge. Il benchmark gioca le partite con il motore partita originale di CM 01/02.',
   'as.matchesPer': 'Partite per modulo', 'as.runBench': 'Avvia test', 'as.vs': 'Contro', 'as.ppg': 'Pt/partita',
   'an.opponent': 'Avversario: {club}', 'an.formation': 'Modulo previsto', 'an.keyPlayers': 'Giocatori chiave', 'an.odds': 'Probabilità (V/N/P)',
   'an.win': 'Vittoria', 'an.draw': 'Pareggio', 'an.loss': 'Sconfitta', 'an.oddsHint': 'Calcolate simulando la partita 150 volte con il motore.',
