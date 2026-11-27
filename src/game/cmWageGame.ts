@@ -215,6 +215,9 @@ export interface WageMem {
 /** spiltilstandens gennemløb, som alle opbygninger samme dag deler (største database-id, udlejede pr. moderklub, staben pr. klub) – genbruges,
  *  så længe dato, antal spillere og antal stab er de samme */
 const SCAN = new WeakMap<GameState, { key: string; maxId: number; loanedOut: Map<number, Player[]>; staffOf: Map<number, import('./types').Staff[]> }>();
+/** (27/11) spilstartens trin (newgame.ts createGamePhase): hvert trin ser spillet som en frisk Web Worker – uden gennemløbet fra et tidligere trin samme
+ *  dag (forkørslens sidste dag byggede det før trupplanens lejeaftaler/stabsskift, og ét forløb gav et andet spil end trinene i browseren) */
+export function resetScan(g: GameState): void { SCAN.delete(g); }
 export function scanOf(g: GameState) {
   // samme dag og ingen nye personer (lejeaftaler og stabsskift samme dag ses først næste dag – *estimeret*, kun for hastigheden)
   const key = `${g.date}|${g.nextId?.player}|${g.nextId?.staff}`;

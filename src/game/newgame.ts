@@ -58,7 +58,7 @@ import { cmContractEnd } from './cmContractEnd';
 import { cmPermitNewGame } from './cmPermit';
 import { cmSquadPlanStart, SQUADPLAN_PROGRESS } from './cmSquadPlanGame';
 import { PRERUN_PROGRESS } from './cmPrerun';
-import { cmStaffWageNewGame, cmStaffWagePrepare, cmWageFillNewGame } from './cmWageGame';
+import { cmStaffWageNewGame, cmStaffWagePrepare, cmWageFillNewGame, resetScan } from './cmWageGame';
 import { cmShortlistStart, cmShortlistStartPart, SL_START_PROGRESS, type SlResume } from './cmShortlistGame';
 import { cmValuesApply } from './cmValueGame';
 import { cmRefreshTransferBudgets } from './cmBudget';
@@ -797,6 +797,9 @@ export function createGameBase(world: WorldData, o: NewGameOptions): NewGameCtx 
 
 export function createGamePhase(phase: NewGamePhase, ctx: NewGameCtx): void {
   const g = gs(), o = ctx.o, season = ctx.season, cmRawLogic = ctx.cmRawLogic;
+  // (27/11) trinene, der i browseren starter i en ny arbejder (ui/startGame.ts newGameStages – 'rest' kører i ønskelisternes sidste), ser spillet uden
+  // gennemløbet fra det forrige trin (cmWageGame.ts scanOf): ét forløb (createGame) = trinene i browseren, bit for bit
+  if (phase !== 'rest') resetScan(g);
   if (phase === 'fitness') {
   PRERUN_PROGRESS.cb = (f) => progress('fitness', 0.17 + 0.19 * f);
   // (26/11, 2 GB-telefoner) den midlertidige verden til Select Team: posterne på databasens dato uden forkørslen 0x5cc850 – den viser databasens
