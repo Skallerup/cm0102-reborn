@@ -395,7 +395,7 @@ function playResMatch(f: Fixture): MatchReport | null {
     if (p.contract?.goalBonus || p.contract?.cleanSheetBonus || p.contract?.cmAssistBonus || p.addOn) afterAppearance(p, line.goals, cmKeeperConceded(line, rep), { assists: line.assists, pay: true });
   }
   // 0x7c0d70 i de «hurtige» kampes snit (engine+0 = 1) – kun personer i hukommelsen (id < [0xae2364]; databasestørrelsens udvalg, cmInMemory)
-  cmAfterMatch(g, f, rep, squad, { cats, avg: true, quick: true, avgOf: (p) => cmInMemory(g, p) }, (p) => cmInMemory(g, p));
+  cmAfterMatch(g, f, rep, squad, { cats, avg: true, quick: true, post: false, avgOf: (p) => cmInMemory(g, p) }, (p) => cmInMemory(g, p));
   cmPermitAfterMatch(g, f, rep, (p) => !!p.injury || p.banned > 0);
   cmFitMatch(g, rep, true, f.id, [f.home, f.away]);
   // 0x84c339–0x84c493 kalder ikke spejderne (0x7f8c00) – og 0x7b5be0 ser ingen hurtige kampe (resultatposten +0x4c = engine+0 = 1)

@@ -656,12 +656,14 @@ export function cmApplyPost(g: GameState, f: Fixture, rep: MatchReport, world200
 
 /** 0x7c0d70 + 0x4ca6d0 for en klubkamp: statistik pr. kategori, formen, karaktersnittet og kontraktens tællere for begge hold. */
 export function cmAfterMatch(g: GameState, f: Fixture, rep: MatchReport, squadOf: (club: number) => Player[],
-  bg?: { cats: [number, number]; avg?: boolean; contract?: boolean; quick?: boolean; avgOf?: (p: Player) => boolean }, inMemory?: (p: Player) => boolean): void {
+  bg?: { cats: [number, number]; avg?: boolean; contract?: boolean; quick?: boolean; post?: boolean; avgOf?: (p: Player) => boolean }, inMemory?: (p: Player) => boolean): void {
   // 2026/27 i ægte tilstand (cmLogic uden cmActive): ældre spil uden moralmodulet (g.cmMedia) kun kampmotorens omdømme (spillerne +9/+0xb/+0xd,
   // klubben +0x80) – spillets egen moral i sim.ts gælder dér. Med cmMediaOn (MODERN_PARITY 8) som 2001: moralen, managerens omdømme, PlayerStats
   // og kontraktens tællere (0x5ce2d0's kontraktdel læser dem)
   if (!cmMediaOn(g)) { if (cmLogic(g) && !g.draft) cmApplyPost(g, f, rep, false); return; }
-  cmApplyPost(g, f, rep);
+  // 0x6b6cc0 (moralen +0x45, spillerens omdømme +9/+0xb/+0xd, managerens og klubbens +0x80 fra kamprapporten) kaldes kun fra MATCH_DAY 0x6b5f00
+  // (0x6b60bc) – baggrundskampens kæde 0x84c339–0x84c493 kalder den ikke (bg.post = false): rapporten 0x6d1cc0 regnes i motoren, men overføres aldrig
+  if (bg?.post !== false) cmApplyPost(g, f, rep);
   // baggrundskampene (fixture −2, 0x84be20 – cmReserves.ts): kategorien pr. hold rand(9) ? 2 : 3; init_match(kampen, 1, 0, 0) 0x84c3e8 giver
   // engine+0 = 1, så 0x729ff0's +0x4c = 1 og 0x7c0d70 lægger karaktererne i de «hurtige» kampes snit +0x20/+0x28 (bg.quick)
   const cat = statCategory(g, f);

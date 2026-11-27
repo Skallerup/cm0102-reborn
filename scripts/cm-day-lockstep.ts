@@ -184,7 +184,8 @@ function compareDay(v: View) {
     if (!a || !a.pr || !p) continue;
     const mClub = clubName(v, a.clubAdr), oClub = g.clubs[p.club]?.name ?? '';
     const mNat = a.clubAdr ? str(m, m.u32(a.clubAdr + 0x53) + 4, 51) : '';
-    if (!(engClub(p.club) || mNat === 'England')) continue;
+    // FOREIGN=1: kun spillerne i klubber uden for England (baggrundslandene – Europas modstandere)
+    if (process.env.FOREIGN ? !p.club || engClub(p.club) || mNat === 'England' || !mNat : !(engClub(p.club) || mNat === 'England')) continue;
     pairedEng++;
     const lab = (e: string) => () => `${p.first} ${p.last} (${oClub || '-'}): ${e}`;
     const row = rowOf(v, mid), k = contractAt(v, m.s32(row)), kl = contractAt(v, m.s32(row + 4));
