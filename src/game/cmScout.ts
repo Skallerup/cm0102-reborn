@@ -38,7 +38,7 @@ import { addNews } from './state';
 import { asOwner, isHumanClub } from './humans';
 import { clubRepMem, cmActive, cmMediaOn, cmRand, cmScoutLogic, statusCode } from './cmPlayerData';
 import { cmScoutAddRumour } from './cmShortlistGame';
-import { cmRumourAdd } from './cmRumours';
+import { cmRumourAdd } from './cmRumQueue';
 import { cmGbp } from './cmMoney';
 import { cmClubLevelOf, cmStaffAttr, scoutJudgement } from './cmStaff';
 import { cmKnowSee } from './cmKnow';

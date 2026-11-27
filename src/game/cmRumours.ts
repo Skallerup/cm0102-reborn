@@ -70,21 +70,8 @@ const sh = (p: Player, k: string) => s8(Math.round(p.attrs[ATTRS.indexOf(k as ne
 const worldRep = (p: Player) => Math.round((p.cmRepMem ?? p.cmRep ?? [p.rep * 2, p.rep * 2, p.rep * 2])[2] * 50);
 const clubRep = (g: GameState, c: number) => s16(g.cmClubRep?.[c] ?? (g.clubs[c]?.rep ?? 50) * 100);
 const cl10k = (v: number) => (v < 1 ? 1 : v > 10000 ? 10000 : v);
-/** £50.000.000 (0x2faf080) i spillets penge for den interesserede klub (cmMoney: 2001 £ = € · 0,86, 2026/27 ligaens faktor) */
-const feeCap = (g: GameState, club: number) => Math.round(50_000_000 / cmGbp(g, club));
-
-export interface RumEntry { p: number; c: number; d: string; st: number; amt: number; will: number; from: number }
-export interface CmRumState { q: RumEntry[]; last: number }
-const stateOf = (g: GameState): CmRumState => (g.cmRum ??= { q: [], last: lastOfferId(g) });
-const lastOfferId = (g: GameState) => g.offers.reduce((m, o) => Math.max(m, o.id), 0);
-
-/** 0x754740: posten (spiller, klub) – findes parret, sker intet */
-export function cmRumourAdd(g: GameState, p: Player, club: number, amt: number, will: number): void {
-  const st = stateOf(g);
-  if (st.q.some((e) => e.p === p.id && e.c === club)) return;
-  st.q.push({ p: p.id, c: club, d: g.date, st: 0, amt: Math.max(0, Math.min(Math.round(amt), feeCap(g, club))), will, from: p.club || 0 });
-  st.q.sort((a, b) => a.p - b.p || a.c - b.c);
-}
+import { cmRumourAdd, cmRumState as stateOf, type RumEntry } from './cmRumQueue';
+export { cmRumourAdd, type RumEntry, type CmRumState } from './cmRumQueue';
 
 /** menneskets "Add Player To Shortlist" → Yes (0x8f48b0 → 0x8f4c07): rygtet med udbudsprisen 0x4d1600 (cmShortlistGame.ts
  *  cmShortlistAddRumour – null = intet rygte); beløbet i £ → køberens penge (cmMoney). Menneskets bud giver intet rygte (0x8be300 kalder kun 0x7f75f0). */
