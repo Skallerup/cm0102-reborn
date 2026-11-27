@@ -861,8 +861,25 @@ async function run(look) {
     await page.waitForSelector('[data-testid="cx-credits"]', { timeout: 5000 });
     if (await page.locator('[data-testid="cx-credits"] a[href*="github.com/Skallerup"]').count()) throw new Error('Credits må ikke linke til vores GitHub');
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-credits.png` });
+    // "Write to us" åbner feedback-formularen (eller profil-formularen) i en ny modal – ikke et link væk fra spillet
+    const urlBefore = page.url();
+    await page.locator('[data-testid="cr-write"]').click();
+    await page.waitForFunction(() => document.querySelectorAll('.modal').length >= 2 || document.querySelectorAll('.modal-head').length >= 2, null, { timeout: 5000 });
+    if (page.url() !== urlBefore) throw new Error('Write to us må ikke navigere væk fra spillet');
+    await page.locator('.modal-head .x').last().click();
     await page.locator('.modal-head .x').first().click();
     await page.waitForSelector('[data-testid="cx-credits"]', { state: 'detached', timeout: 5000 });
+    // Game Options → Fællesskab: hele hubben i en popup (faner), og Manager Status/Restart Game findes ikke
+    await page.locator('.cx-side .cx-drop-btn', { hasText: 'Game Options' }).first().click();
+    const names = await page.locator('.cx-drop-pop button').allInnerTexts();
+    if (names.some((n) => /Manager Status|Restart Game/.test(n))) throw new Error('Manager Status/Restart Game skal være fjernet fra Game Options');
+    // punktet kræver fællesskabets server (rankingAvailable) – findes ikke i en offline e2e
+    if (await page.locator('.cx-drop-pop button', { hasText: /^Community$/ }).count()) {
+      await page.locator('.cx-drop-pop button', { hasText: /^Community$/ }).first().click();
+      await page.waitForSelector('[data-testid="cx-community"] .hub-tabs', { timeout: 5000 });
+      await page.locator('.modal-head .x').first().click();
+      await page.waitForSelector('[data-testid="cx-community"]', { state: 'detached', timeout: 5000 });
+    } else await page.keyboard.press('Escape');
   });
   // Game Options → Save Game (CM 01/02 "Enter File Name"): navngivet gemt spil
   if (look === 'klassisk') await step('Save Game med filnavn', async () => {
@@ -1176,8 +1193,7 @@ async function run(look) {
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-turneringshistorik.png` });
     await checkScreen('turneringens historik');
   });
-  if (look === 'klassisk') await step('Manager Status og Selected League(s)', async () => {
-    await go({ name: 'mgrstatus' }); await page.waitForSelector('.cx-mstat .cx-chist-row', { timeout: 5000 });
+  if (look === 'klassisk') await step('Selected League(s)', async () => {
     await go({ name: 'leagues' }); await page.waitForSelector('.cx-sl .cx-sl-row.lg-sel', { timeout: 5000 });
     if (ENGINE_GRID && await page.locator('.cx-sl .cx-tac-hint').count()) throw new Error('Selected League(s): forklaringsteksten findes ikke i CM 01/02');
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-ligaer.png` });

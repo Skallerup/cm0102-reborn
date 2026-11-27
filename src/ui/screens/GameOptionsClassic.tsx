@@ -9,29 +9,11 @@ import type { GameState } from '../../game/types';
 import { fetchBoard, type Board, type RankRow } from '../../online/rank';
 import { ordinal } from './Competitions';
 import { compName, dateFmt, natName, t } from '../../i18n';
-import { CxDrop, CxLink, clubRoute } from '../classic';
+import { CxDrop } from '../classic';
 import { useGame } from '../core';
 import { gs } from '../../game/state';
 import { Head } from './common';
 import { rebornOn } from '../reborn';
-
-export function ClassicManagerStatus() {
-  const g = useGame()! as GameState;
-  // alle menneskelige managere (fællesspil) – ellers kun én selv
-  const rows = g.humans?.length
-    ? g.humans.filter((h) => !h.bot).map((h) => ({ name: h.name, club: h.pid === g.active ? g.userClub : h.userClub, me: h.pid === g.active }))
-    : [{ name: g.manager.name, club: g.userClub, me: true }];
-  const status = (club: number) => t(!club ? 'cl.ms2.unemployed' : g.manager.holiday ? 'cl.ms2.holiday' : 'cl.ms2.playing');
-  return (
-    <div>
-      <Head title={t('cl.nc.title')} />
-      <div className="cx-subtitle">{t('cl.go.status')}</div>
-      <div className="cx-chist-tbl cx-mstat">{rows.map((r, i) => (
-        <div key={i} className="cx-chist-row three"><span className={r.me ? 'c-yel' : ''}>{r.name}</span><span>{r.club ? <CxLink to={clubRoute(r.club)}>{g.clubs[r.club]?.short}</CxLink> : '-'}</span><span className="dim">{status(r.club)}</span></div>
-      ))}</div>
-    </div>
-  );
-}
 
 export function ClassicSelectedLeagues() {
   const g = useGame()! as GameState;

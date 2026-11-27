@@ -84,7 +84,7 @@ import { ClassicNation } from './screens/NationClassic';
 import { IntlDay, MatchDay } from './screens/MatchDayClassic';
 import { ClassicClubHistory } from './screens/ClubHistoryClassic';
 import { ClassicNations } from './screens/NationsClassic';
-import { ClassicHallOfFame, ClassicManagerStatus, ClassicSelectedLeagues } from './screens/GameOptionsClassic';
+import { ClassicHallOfFame, ClassicSelectedLeagues } from './screens/GameOptionsClassic';
 import { useSetup, SetupSide } from './setupCtx';
 import { ClassicSlotCtx, CxDrop, setFootSlot, useClassicFootActive, classicDate, setClassicAllowed, useClassicDialogOpen, useClassicMatchSideState, useClassicNextAction, titleColors, useClassicDialog, classicContinue, cxLongDate, shownComp } from './classic';
 import { canInstall, installApp, notifyAskable, notifyEnabled, notifyUser, onInstallChange, setNotify } from './notify';
@@ -120,7 +120,7 @@ async function saveBeforeQuit(): Promise<boolean> {
 export const GROUP_KEY = 'cm-nav-closed';
 // Standard: kun "Holdet" er foldet ud ved spilstart (resten huskes derefter)
 export const NAV_CLOSED_DEFAULT = ['matches', 'market', 'club', 'manager', 'community'];
-const UNEMPLOYED: ScreenName[] = ['find', 'community', 'profile', 'inbox', 'competitions', 'jobs', 'history', 'options', 'transfers', 'awards', 'ranking', 'help', 'managers', 'nation', 'international', 'coefficients', 'clubhistory', 'nations', 'mgrstatus', 'leagues'];
+const UNEMPLOYED: ScreenName[] = ['find', 'community', 'profile', 'inbox', 'competitions', 'jobs', 'history', 'options', 'transfers', 'awards', 'ranking', 'help', 'managers', 'nation', 'international', 'coefficients', 'clubhistory', 'nations', 'leagues'];
 
 /** Spillere på holdet eller bænken, der ikke kan spille (CM 01/02 Team Selection) – teksten, eller null */
 function selectionProblems(): string | null {
@@ -778,7 +778,6 @@ function Screen({ allowed }: { allowed: (k: ScreenName) => boolean }) {
     case 'intlday': return <IntlDay match={typeof route.id === 'string' ? route.id : undefined} />;
     case 'coefficients': return <UefaCoefficients />;
     case 'nations': return <ClassicNations />;
-    case 'mgrstatus': return <ClassicManagerStatus />;
     case 'leagues': return <ClassicSelectedLeagues />;
     case 'clubhistory': return <ClassicClubHistory cid={Number(route.id ?? g.userClub)} />;
     // klassisk: en spillet kamp vises som kampskærmen efter slutfløjt (samme faner og sidebjælke)

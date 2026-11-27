@@ -12,7 +12,8 @@ import { ProfileGate, WriteModal } from './Community';
 import { GameInfoTable } from './GameInfoPanel';
 import { gameInfoMeta } from './gameInfo';
 import { Modal } from './components';
-import { CreditsTab } from './CommunityHub';
+import { CommunityHub, CreditsTab } from './CommunityHub';
+import { gs } from '../game/state';
 import { SupportBox } from './SupportBox';
 import { createPortal } from 'react-dom';
 import { communityAvailable } from '../online/community';
@@ -90,7 +91,7 @@ applyFlash();
 
 export function GameOptionsMenu({ onSave, onQuit, online, allowed }: { onSave: () => void; onQuit: () => void; online: boolean; allowed: (k: string) => boolean }) {
   const { nav, route } = useNav();
-  const [show, setShow] = useState<'changelog' | 'feedback' | 'info' | 'support' | 'credits' | null>(null);
+  const [show, setShow] = useState<'changelog' | 'feedback' | 'info' | 'support' | 'credits' | 'community' | null>(null);
   const fresh = useChangelogFresh();
   const go = (k: string) => () => nav({ name: k as never });
   const [, setInst] = useState(0);
@@ -103,15 +104,15 @@ export function GameOptionsMenu({ onSave, onQuit, online, allowed }: { onSave: (
   const items: DropItem[] = [];
   if (!online) items.push({ key: 'save', label: t('cl.go.save'), onClick: onSave });
   const add = (k: string, label: string) => { if (allowed(k)) items.push({ key: k, label, onClick: go(k) }); };
-  // CM 01/02: Save Game · Manager Status · Game Settings · (Edition) Options · Hall of Fame · Game Credits · Web Sites · Restart · Exit
-  items.push({ key: 'mstatus', label: t('cl.go.status'), onClick: () => nav({ name: 'mgrstatus' }) });
+  // CM 01/02: Save Game · Manager Status · Game Settings · (Edition) Options · Hall of Fame · Game Credits · Web Sites · Restart · Exit.
+  // Manager Status og Restart Game er fjernet efter ejerens ønske 27/11 (bruges ikke); Exit er beholdt.
   items.push({ key: 'settings', label: t('cl.go.settings'), onClick: () => nav({ name: 'options' }) });
   items.push({ key: 'leagues', label: t('cl.sl.title'), onClick: () => nav({ name: 'leagues' }) });
   items.push({ key: 'info', label: t('info.title'), onClick: () => setShow('info') });
   add('ranking', t('cl.go.hall'));
   // ægte CM 01/02 har hverken Awards eller Help i Game Options (Awards ligger under Manager Stats/History)
   if (rebornOn('menus')) add('awards', t('nav.awards'));
-  if (allowed('community')) items.push({ key: 'community', label: t('cl.go.credits'), onClick: () => setShow('credits') });
+  if (allowed('community')) items.push({ key: 'credits', label: t('cl.go.credits'), onClick: () => setShow('credits') });
   if (rebornOn('menus')) add('help', t('nav.help'));
   // som i det moderne tema: hvad er nyt, fejlrapport og feedback (sendes til fællesskabets forslag)
   items.push({ key: 'sep0', sep: true }, { key: 'news', label: <>{t('cl.go.whatsNew', { v: APP_VERSION })}{fresh && <i className="cx-dot" data-testid="cx-news-dot" />}</>, onClick: () => { markChangelogSeen(); setShow('changelog'); } });
@@ -122,8 +123,10 @@ export function GameOptionsMenu({ onSave, onQuit, online, allowed }: { onSave: (
   items.push({ key: 'sepR', sep: true });
   items.push({ key: 'support', label: <>♥ {t('sb.menu')}</>, onClick: () => setShow('support') });
   if (canInst) items.push({ key: 'install', label: <span title={t('cl.go.installWhy')}>{t('cl.go.install')}</span>, onClick: runInstall });
+  // Fællesskab (CM Reborn): hele hubben – forslag, Hall of Fame, legender, database, feed, baggrunde og credits
+  if (allowed('community') && communityAvailable()) items.push({ key: 'community', label: t('nav.community'), onClick: () => setShow('community') });
   if (!online) items.push({ key: 'cloud', label: t('cl.go.cloud'), onClick: () => { if (getAccount()) void cloudSave(); else setLogin(true); } });
-  items.push({ key: 'sep', sep: true }, { key: 'restart', label: t('cl.go.restart'), onClick: onQuit }, { key: 'quit', label: t('cl.go.exit'), onClick: onQuit });
+  items.push({ key: 'sep', sep: true }, { key: 'quit', label: t('cl.go.exit'), onClick: onQuit });
   return (
     <>
       <CxDrop className="cx-gameopt" fixed caret={false} label={<>{t('cl.options')}{fresh && <i className="cx-dot" data-testid="cx-opt-dot" />}</>} items={items} btn={{ className: 'cx-sbtn cx-gopt' }} />
@@ -131,6 +134,7 @@ export function GameOptionsMenu({ onSave, onQuit, online, allowed }: { onSave: (
       {show === 'changelog' && createPortal(<ChangelogModal onClose={() => setShow(null)} />, document.body)}
       {show === 'support' && createPortal(<Modal title={t('sb.menu')} onClose={() => setShow(null)}><SupportBox full /></Modal>, document.body)}
       {show === 'credits' && createPortal(<Modal title={t('cl.go.credits')} onClose={() => setShow(null)}><div data-testid="cx-credits"><CreditsTab /></div></Modal>, document.body)}
+      {show === 'community' && createPortal(<Modal title={t('nav.community')} onClose={() => setShow(null)}><div data-testid="cx-community"><CommunityHub defaultName={gs().manager.name} /></div></Modal>, document.body)}
       {show === 'info' &&createPortal(<Modal title={t('info.title')} onClose={() => setShow(null)}><GameInfoTable route={route.name} /></Modal>, document.body)}
       {show === 'feedback' && createPortal(getProfile()
         ? <WriteModal kind="suggest" pick meta={gameInfoMeta(route.name)} onClose={() => setShow(null)} />

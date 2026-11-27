@@ -11,7 +11,8 @@ import {
 } from '../online/hub';
 import { dateFmt, getLang, t } from '../i18n';
 import { bgPack, setBgPack } from './backgrounds';
-import { CommunityBoard, ProfileGate } from './Community';
+import { createPortal } from 'react-dom';
+import { CommunityBoard, ProfileGate, WriteModal } from './Community';
 import { Modal, Panel, Tabs } from './components';
 
 export type HubTab = 'suggestions' | 'hall' | 'legends' | 'database' | 'feed' | 'skins' | 'credits';
@@ -309,6 +310,7 @@ const DATA_CREDITS: [string, string, string?][] = [
 export function CreditsTab() {
   const [rows, setRows] = useState<Credit[] | null>(null);
   const [cfg, setCfg] = useState<{ discord: string | null } | null>(null);
+  const [writing, setWriting] = useState(false); // "Write to us" åbner feedback-formularen (ikke et link væk fra spillet)
   useEffect(() => { void listCredits().then((r) => setRows(r?.rows ?? [])); void hubConfig().then(setCfg); }, []);
   return (
     <div className="cols">
@@ -326,10 +328,13 @@ export function CreditsTab() {
       <Panel title={t('hub.credits.join')}>
         <p style={{ marginTop: 0 }}>{t('hub.credits.joinText')}</p>
         <div className="col" style={{ alignItems: 'flex-start' }}>
-          <a className="button primary" href="/#join">{t('hub.credits.apply')}</a>
+          <button className="button primary" data-testid="cr-write" onClick={() => setWriting(true)}>{t('hub.credits.apply')}</button>
           {cfg?.discord && <a className="button" href={cfg.discord} target="_blank" rel="noreferrer">💬 {t('hub.credits.discord')}</a>}
         </div>
       </Panel>
+      {writing && createPortal(getProfile()
+        ? <WriteModal kind="suggest" pick onClose={() => setWriting(false)} />
+        : <Modal title={t('hub.credits.apply')} onClose={() => setWriting(false)}><ProfileGate onDone={() => setWriting(false)} /></Modal>, document.body)}
     </div>
   );
 }
