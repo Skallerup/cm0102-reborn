@@ -36,6 +36,7 @@ import { isHumanClub } from './humans';
 import { linkedClub } from './cmBTeam';
 import { RSV_COMP } from './cmReserveMatches';
 import { cmLoanBar } from './cmLoan';
+import { cmIneligible } from './cmEligibility';
 import { CM_COMP_ID } from './engine/grid/gameInputs';
 import { cmGenerated, postHooks } from './cmPlayerData';
 
@@ -51,7 +52,7 @@ function scouted(g: GameState, f: Fixture): boolean {
     const p = g.players[r.pid];
     if (!p || (p.club !== f.home && p.club !== f.away)) continue;
     if (p.injury || p.banned > 0) continue;
-    if (cmLoanBar(g, p, f) === 0) return true;
+    if ((cmIneligible(g, p, f) || cmLoanBar(g, p, f)) === 0) return true;          // 0x7f984a: 0x8cf5e0
   }
   return false;
 }

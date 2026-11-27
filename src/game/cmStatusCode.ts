@@ -31,14 +31,16 @@
 // fyldspillere); Abs/Wpm/Trn/Bid/Wnt/Req/Lst/Loa/Ctr springes over, når klubben er et landshold (0x53b900). Uden klub (0x485161–0x485466):
 // Trn, Bid, Wnt, Sct, Req, Lst, Loa, Ctr, Ret (uden aldersgrænsen), Bos, Unh, Fut, Inj (2), Inj (1).
 //
-// Ikke porteret (mangler i modellen): udlændingereglerne for kampen (7/9 Fgn – 0x8cf6b0 findes ikke hos os), 0x8cf5e0's kode 1 (kun lejereglerne
-// 0xa/0xb – cmLoan.ts cmLoanBar), genoptræningen 0x62c400 = 1 (vores skade dækker begge) og kontraktens begivenheder +0x40.
+// 0x8cf5e0 er cmEligibility.ts cmIneligible (pokalbundne 1, Europas tilmelding 8, lejeklausulerne 0xa/0xb).
+// Ikke porteret (mangler i modellen): udlændingereglerne for kampen (7/9 Fgn – 0x8cf6b0 findes ikke hos os), genoptræningen 0x62c400 = 1 (vores
+// skade dækker begge) og kontraktens begivenheder +0x40.
 import type { Fixture, GameState, Player } from './types';
 import { isInternational } from './international';
 import { interestedClubs } from './transfers';
 import { hasScoutRequest } from './cmScout';
 import { underOffer } from './cmRetire';
 import { cmLoanBar } from './cmLoan';
+import { cmIneligible } from './cmEligibility';
 import { cmNeedsPermit, cmPermitOn } from './cmPermit';
 import { ageOn } from './dates';
 import { onGameSwitch } from './state';
@@ -117,7 +119,7 @@ export function playerStatusTag(g: GameState, p: Player, club = p.club): StatusT
   if (p.injury?.key === 'cm81') return 'Abs';                                   // 0x631550: skadetype 0x51
   if (needsPermit(g, p, club)) return 'Wpm';                                    // 0x8c7560
   const f = nextFixture(g, club);
-  if (f) { const bar = cmLoanBar(g, p, f); if (bar === 0xa) return 'Cup'; if (bar === 0xb) return 'Ine'; }
+  if (f) { const bar = cmIneligible(g, p, f) || cmLoanBar(g, p, f); if (bar === 1 || bar === 0xa) return 'Cup'; if (bar) return 'Ine'; }   // 0x484c20–0x484cb4
   if (isInternational(p)) return 'Int';                                         // 0x7757d0
   if (p.banned > 0) return 'Sus';                                               // 0x55d270
   if (injured) return 'Inj';                                                    // 0x62c400 = 2 (og 1)

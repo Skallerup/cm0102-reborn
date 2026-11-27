@@ -19,7 +19,7 @@ import { POSITIONS, SIDES } from '../../game/types';
 import { dateFmt, money, moneyWage, natName, t } from '../../i18n';
 import { CxDrop, type DropItem } from '../classic';
 import { Rating, age, posStr } from '../components';
-import { aiTactic } from '../../game/sim';
+import { aiTactic, pickableFor } from '../../game/sim';
 import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
 import { Cliques, SquadTable } from './Squad';
@@ -537,7 +537,7 @@ export function ClassicFirstSquad({ reserves = false, cid, pick }: { reserves?: 
         <span className="grow" />
         {/* CM 01/02: én Assistant-menu */}
         <CxDrop label={t('cl.sq.assistantMenu')} align="right" items={[
-          { key: 'pick', label: t('cl.sq.assistant'), disabled: ro, onClick: () => save(autoSelect(tac, reserves ? players.filter((p) => p.club === g.userClub) : players.filter((p) => !p.reserves && p.club === g.userClub))) },
+          { key: 'pick', label: t('cl.sq.assistant'), disabled: ro, onClick: () => save(autoSelect(tac, reserves ? players.filter((p) => p.club === g.userClub) : pickableFor(g.userClub, players.filter((p) => !p.reserves && p.club === g.userClub)))) },
           { key: 'clear', label: t('cl.sq.clear'), disabled: ro, onClick: () => save({ ...tac, lineup: tac.lineup.map(() => 0), bench: [] }) },
         ]} />
         <CxDrop label={t('cl.sq.filter')} align="right" items={orig ? [

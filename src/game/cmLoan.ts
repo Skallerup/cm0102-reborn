@@ -111,6 +111,16 @@ export function cmLoanBar(g: GameState, p: Player, f: Fixture): 0 | 0xa | 0xb {
   if (!comp || comp.type === 'continental' || comp.nation < 0) return 0;
   const nat = g.nations[comp.nation]?.name ?? '';
   if (!KEY_NATIONS.has(nat) && regionOf(nat) !== 'europe') return 0;          // 0x8d2fa0: intet regelsæt
+  return cmLoanBase(g, p, f);
+}
+/** de 27 nøglelandes eget regelsæt (0x8d2fa0 → TRANSFER_MANAGER +0x8b0…) – øvrige europæiske lande har Europas (cmEligibility.ts) */
+export const cmKeyRules = (nation: string): boolean => KEY_NATIONS.has(nation);
+
+/** 0x8e8a60's lejeregler uden regelsættets valg – kaldt af landenes og Europas +0x18 (cmEligibility.ts) */
+export function cmLoanBase(g: GameState, p: Player, f: Fixture): 0 | 0xa | 0xb {
+  const l = p.loan;
+  if (!l || (!l.noCup && !l.noAgainst)) return 0;
+  if (f.home <= -1000) return 0;                                              // 0x8e8ae1: ude mod et landshold (0x53b900 – cmVirtual natOfClub)
   if (p.club !== f.home && p.club !== f.away) return 0;
   const club = g.clubs[p.club];
   if (l.noCup && club) {

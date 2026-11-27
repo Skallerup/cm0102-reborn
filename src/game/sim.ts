@@ -7,9 +7,9 @@ import { cmOwnStaffContractsDaily, cmStaffOffersDaily } from './cmStaff';
 import { cmStaffMovesDaily, cmStaffNpDaily } from './cmStaffMove';
 import { cmActive, cmGenerated, cmLogic, cmMarketOn, cmMediaOn, cmStaffOn, cmAfterMatch, clubRepMem, cmContractDaily, cmFlagSet, cmRand, cmSquadMoraleDaily, MORALE_OFF, withFlagCtx } from './cmPlayerData';
 import { HOLIDAY_AI } from './cmHoliday';
-import { cmLoanBar } from './cmLoan';
+import { cmCupTiedAfterMatch, cmIneligible } from './cmEligibility';
 import { cmFitAfterMatch, cmFitDay, cmFitMatch, cmFitOn, cmFitPreMatch, setMatchSquad } from './cmFitnessGame';
-import { cmPermitAfterMatch, cmPermitDaily } from './cmPermit';
+import { cmNeedsPermit, cmPermitAfterMatch, cmPermitDaily, cmPermitOn } from './cmPermit';
 import { cmScoutDaily, cmScoutMatch } from './cmScout';
 import { cmSquadPlanDaily } from './cmSquadPlanGame';
 import { cmDevDaily } from './cmDevelop';
@@ -251,17 +251,41 @@ export const ORIGINAL_LOWER: { level: [number, number]; openDamp: [number, numbe
 export const ORIGINAL_FINISH = ORIGINAL.finish;
 
 /** Taktik for en klub: menneskets egen (via dets slot) eller AI'ens */
-/** europæiske kampe: kun den tilmeldte trup (European Squad); færre end 11 spilleklare tilmeldte (fx en tom liste): så gælder
- *  tilmeldingen ikke (*estimeret* – ellers stod holdet uden spillere) */
-function euroOnly(club: number, comp?: string, f?: Fixture): Set<number> | null {
+/** De spillere, der må spille kampen for klubben (null = alle). Originalens logik (cmLogic): pick_team 0x6dbc50's kandidatregler 0x6dcb16–0x6dcbed
+ *  – arbejdstilladelsen 0x8c7560(spiller, klub, 0) (ikke landshold; menneskets klub kun uden for venskabskampe som Team Selection 0x7263a8)
+ *  og 0x8cf5e0 (cmEligibility.ts: pokalbundne, Europas tilmelding, lejeklausuler, udeblevne); skade og karantæne tester udtagelsen selv.
+ *  Uden originalens logik: kun den tilmeldte trup i europæiske kampe – med færre end 11 spilleklare tilmeldte gælder tilmeldingen ikke. */
+export function matchOnly(club: number, comp?: string, f?: Fixture): Set<number> | null {
   const g = gs();
-  const reg = comp && g.comps[comp]?.type === 'continental' ? euroRegistered(club) : null;
-  const only = reg && squad(club).filter((p) => reg.has(p.id) && available(p)).length >= 11 ? reg : null;
-  // 0x8cf5e0 → 0x8e8a60: lejespillere, der ikke må spille pokalkampe / mod moderklubben (cmLoan.ts cmLoanBar)
-  if (!f || !cmLogic(g)) return only;
-  const bar = new Set(squad(club).filter((p) => cmLoanBar(g, p, f) !== 0).map((p) => p.id));
-  if (!bar.size) return only;
-  return new Set([...(only ?? squad(club).map((p) => p.id))].filter((id) => !bar.has(id)));
+  if (!f || !cmLogic(g)) {
+    const reg = comp && g.comps[comp]?.type === 'continental' ? euroRegistered(club) : null;
+    return reg && squad(club).filter((p) => reg.has(p.id) && available(p)).length >= 11 ? reg : null;
+  }
+  const permit = cmPermitOn(g) && club > -1000 && (!isHumanClub(club) || !!g.comps[f.comp]);
+  const sq = squad(club);
+  const out = sq.filter((p) => cmIneligible(g, p, f) === 0 && !(permit && cmNeedsPermit(g, p, club, false)));
+  return out.length === sq.length ? null : new Set(out.map((p) => p.id));
+}
+const euroOnly = matchOnly;
+
+/** klubbens næste kamp (0x5acbe0): dagens ventende kamp, ellers den første uspillede fra i dag */
+export function nextClubFixture(club: number): Fixture | undefined {
+  const g = gs();
+  const pf = g.pendingFixture ? g.fixtures[g.pendingFixture] : undefined;
+  if (pf && !pf.result && (pf.home === club || pf.away === club)) return pf;
+  let best: Fixture | undefined;
+  for (const f of Object.values(g.fixtures)) {
+    if (f.result || f.date < g.date || (f.home !== club && f.away !== club)) continue;
+    if (!best || f.date < best.date) best = f;
+  }
+  return best;
+}
+/** assistentens udtagelse for mennesket ("Pick Team" – pick_team 0x6dbc50 med klubbens næste kamp fra 0x5acbe0): kun spillere, der må spille
+ *  kampen (matchOnly – pokalbundne, Europas tilmelding, lejeklausuler, arbejdstilladelse); skade/karantæne frasorterer autoSelect selv */
+export function pickableFor(club: number, ps: Player[]): Player[] {
+  const f = nextClubFixture(club);
+  const only = f ? matchOnly(club, f.comp, f) : null;
+  return only ? ps.filter((p) => only.has(p.id)) : ps;
 }
 
 function tacticFor(club: number, opp: number, home: boolean, userAuto: boolean, comp?: string, f?: Fixture): Tactic {
@@ -557,6 +581,8 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
   cmAwardsAfterMatch(g, f, rep);
   // 0x8c39f0: arbejdstilladelsens historik (kampe spillet/ikke spillet – cmPermit.ts)
   cmPermitAfterMatch(g, f, rep, (p) => !!p.injury || p.banned > 0);
+  // Comp_Stats::record_match_result 0x4a0bdb: klubben, spillerne sidst spillede for i pokalen (pokalbundne – cmEligibility.ts)
+  cmCupTiedAfterMatch(g, f, rep);
   // 0x62c080: kampkonditionen, trætheden og kampens skader (konditionsmodulet, cmFitness.ts)
   if (fit) cmFitAfterMatch(g, f, rep);
   // 0x6951e0: bestyrelsen efter kampen (efter tabellen) – begge hold (cmBoardGame.ts)

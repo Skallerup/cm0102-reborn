@@ -40,7 +40,7 @@ import { closeSession, session } from '../online/client';
 import { submitPending } from '../online/rank';
 import { focusNews } from './inboxFocus';
 import { newsDue } from './screens/newsRespond';
-import { euroRegistered } from '../game/euroSquad';
+import { teamSelectionProblem } from '../game/teamSelection';
 import { act } from '../game/actions';
 import { setScrollElement, useGame, useNav, type ScreenName } from './core';
 import { Inbox } from './screens/Inbox';
@@ -128,19 +128,15 @@ function selectionProblems(): string | null {
   const tac = g.tactic;
   if (!tac) return null;
   const ids = [...tac.lineup, ...tac.bench].filter(Boolean);
-  const groups: [string, string[]][] = [['inj', []], ['ban', []], ['res', []], ['unreg', []]];
-  // europæisk kamp: kun den tilmeldte trup (European Squad)
+  // 0x7260f0: den første grund (landshold, ikke til rådighed, 0x8cf5e0's kode, karantæne, skade, arbejdstilladelse – game/teamSelection.ts)
   const pf = g.pendingFixture ? g.fixtures[g.pendingFixture] : undefined;
-  const reg = pf && g.comps[pf.comp]?.type === 'continental' ? euroRegistered(g.userClub) : null;
-  for (const id of ids) {
-    const p = g.players[id];
-    if (!p || p.club !== g.userClub) continue;
-    const nm = `${p.first} ${p.last}`.trim();
-    if (p.injury) groups[0][1].push(nm); else if (p.banned > 0) groups[1][1].push(nm); else if (p.reserves) groups[2][1].push(nm); else if (reg && !reg.has(p.id)) groups[3][1].push(nm);
-  }
-  const join = (n: string[]) => (n.length > 1 ? `${n.slice(0, -1).join(', ')} ${t('common.and')} ${n.at(-1)}` : n[0]);
-  const lines = groups.filter(([, n]) => n.length).map(([k, n]) => t(`cl.mt.sel.${k}${n.length > 1 ? 'N' : '1'}`, { names: join(n) }));
-  return lines.length ? lines.join(' ') : null;
+  const sel = teamSelectionProblem(g, g.userClub, pf, ids);
+  if (!sel) return null;
+  const n = sel.ids.map((id) => g.players[id]).map((p) => `${p.first} ${p.last}`.trim());
+  // 0xa17b40 "<1> and <2>", 0xa17af4 "<liste>, <spiller>", 0xa17b18 "<liste>, and <spiller>"
+  const names = n.length === 1 ? n[0] : n.length === 2 ? t('cl.mt.sel.list2', { a: n[0], b: n[1] })
+    : t('cl.mt.sel.listN', { list: n.slice(0, -1).join(', '), p: n.at(-1)! });
+  return t(`cl.mt.sel.${sel.key}${n.length > 1 ? 'N' : '1'}`, { names });
 }
 
 /** venter, til browseren har tegnet en ramme (rAF → næste opgave); i en skjult fane kommer rAF ikke – så højst 100 ms */
