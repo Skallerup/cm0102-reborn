@@ -7,6 +7,7 @@
 // genindlæse siden). Første afvigende skridt og hvilke dele af GameState, der afviger, udskrives.
 // WORLD=fil, CLUB=navn (Wrexham), SEED=n (1). Udskriver "OK <punkt>" eller "DIFF <punkt> skridt <n> …". Afslutningskode 1 ved afvigelse.
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readWorld } from './lib/world';
 import { spawnSync } from 'node:child_process';
 import { serialize, deserialize } from 'node:v8';
 import { createHash } from 'node:crypto';
@@ -104,7 +105,7 @@ if (childFile) {
 }
 
 const [until = '2001-08-15', pointsArg = '2001-07-20', mode = 'inproc'] = args;
-const world = JSON.parse(readFileSync(worldFile, 'utf8')) as WorldData;
+const world = readWorld(worldFile);
 const eng = world.nations.findIndex((x) => x.name === 'England');
 const club = world.clubs.find((c) => c[1] === (process.env.CLUB ?? 'Wrexham'))![0];
 createGame(world, { managerName: 'Lab', managerNation: eng, clubId: club, activeNations: [eng], lang: 'en', masking: true, seed: +(process.env.SEED ?? 1), mode: 'authentic' });

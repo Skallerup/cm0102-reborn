@@ -101,7 +101,7 @@ function leagueRb(g: GameState, club: number): number {
   const lg = g.clubs[club]?.league;
   return lg ? rbOfComp(g, lg) : -1;
 }
-const isFriendly = (g: GameState, f: Fixture) => !g.comps[f.comp] || f.comp === 'FRIENDLY' || f.comp.startsWith('FR');
+const isFriendly = (g: GameState, f: Fixture) => !g.comps[f.comp] || f.comp === 'FRIENDLY';
 
 // ---------------------------------------------------------------- posterne
 
@@ -311,7 +311,7 @@ function syncPlayer(g: GameState, p: Player, comp: string | null) {
   const rb = comp === null ? leagueRb(g, p.club) : isFriendlyComp(g, comp) ? -1 : rbOfComp(g, comp);
   p.banned = cmBanLeft(g, p, rb);
 }
-const isFriendlyComp = (g: GameState, c: string) => !g.comps[c] || c === 'FRIENDLY' || c.startsWith('FR');
+const isFriendlyComp = (g: GameState, c: string) => !g.comps[c] || c === 'FRIENDLY';
 function cmBanSyncClubs(g: GameState, clubs: Set<number>) {
   if (!clubs.size) return;
   const next = nextComps(g, clubs);

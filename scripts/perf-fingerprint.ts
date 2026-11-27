@@ -2,7 +2,7 @@
 // Til optimeringer, der ikke må ændre resultaterne: samme frø → samme hashes bit for bit før og efter.
 //   npx tsx scripts/perf-fingerprint.ts [slutdato = 2002-05-20] [frø = 1] [klub = Wrexham]   (HASH=0: kun tiden; CM_GAME_CACHE_USE=1: spilstarten fra
 //   tests/helpers/gameCache.ts – første gang bygges og gemmes den, næste gang indlæses den)
-import { readFileSync } from 'node:fs';
+import { readWorld } from './lib/world';
 import { createHash } from 'node:crypto';
 import { createGame, type WorldData } from '../src/game/newgame';
 import { gs } from '../src/game/state';
@@ -15,7 +15,7 @@ import type { GameState } from '../src/game/types';
 
 const until = process.argv[2] ?? '2002-05-20', seed = Number(process.argv[3] ?? 1), clubName = process.argv[4] ?? 'Wrexham';
 const t0 = performance.now();
-const world = JSON.parse(readFileSync(process.env.WORLD ?? 'public/data/world-original.json', 'utf8')) as WorldData;
+const world = readWorld(process.env.WORLD ?? 'public/data/world-original.json');
 const t1 = performance.now();
 const eng = world.nations.findIndex((x) => x.name === 'England');
 (process.env.CM_GAME_CACHE_USE === '1' ? (w: WorldData, o: Parameters<typeof createGame>[1]) => cachedCreateGame(createGame, w, o) : createGame)(world, { managerName: 'Lab', managerNation: eng, clubId: world.clubs.find((c) => c[1] === clubName)![0], activeNations: [eng], lang: 'en', masking: true, seed, mode: 'authentic' });

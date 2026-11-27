@@ -266,7 +266,7 @@ function scopeOf(g: GameState): Scope {
 
 /** AWARD_MANAGER::process_fixture 0x4134c0 (MONTH_RATINGS 0x767ee0, YEAR_RATINGS 0x9315d0) + Comp_Stats for ligaerne + Staff_Records 0x868830 */
 export function cmAwardsAfterMatch(g: GameState, f: Fixture, rep: MatchReport): void {
-  if (!cmAwOn(g) || f.comp === 'FRIENDLY' || f.comp.startsWith('FR')) return;
+  if (!cmAwOn(g) || f.comp === 'FRIENDLY') return;
   const comp = g.comps[f.comp];
   if (!comp) return;
   const s = st(g);

@@ -219,7 +219,7 @@ export function cmNextOpponent(g: GameState, club: number): number | null {
   return best && best.opp && g.clubs[best.opp] ? best.opp : null;
 }
 /** fixture +0x40/+0x41 = 0: venskabskampene (og reserveholdets kampe – cmReserves.ts RES_COMP, uden turnering i g.comps) */
-const isFriendlyFx = (g: GameState, c: string) => !g.comps[c] || c === 'FRIENDLY' || c.startsWith('FR');
+const isFriendlyFx = (g: GameState, c: string) => !g.comps[c] || c === 'FRIENDLY';
 
 /** 0x7ae9c0 + 0x7b0050: opgaven sættes (Assign Scout ▸ Nation / Region / Youth Players / Next Opposition, turneringen) */
 export function cmAssignScout(g: GameState, s: Staff, o: { nation?: number; region?: number; comp?: string; youth?: boolean; nextOpp?: boolean }): void {

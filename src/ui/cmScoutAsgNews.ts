@@ -76,7 +76,7 @@ function recBody(g: GameState, n: NewsItem): string {
     const res = gf > ga ? 0 : gf === ga ? 1 : 2;
     const comp = String(q.mcomp ?? ''), rsv = Number(q.rsv) === 1;
     const plain = !rsv && g.comps[comp]?.type === 'league';
-    const friendly = comp === 'FRIENDLY' || comp.startsWith('FR');
+    const friendly = comp === 'FRIENDLY';
     const stage = rsv ? t('cmsr.reserve') : friendly ? k('friendly') : q.stg && has(`stage.${q.stg}`) ? t(`stage.${q.stg}`) : g.comps[comp]?.name ?? '';
     const tab = a === 5 || (a === 4 && pt === 5) ? MATCH.ex : a === 3 && pt === 5 ? MATCH.good : MATCH.pros;
     parts.push(k(tab[(plain ? 0 : 3) + res], { ...base, team: g.clubs[Number(q.mt)]?.name ?? '', opp: g.clubs[Number(q.mo)]?.name ?? '',

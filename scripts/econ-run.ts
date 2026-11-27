@@ -3,7 +3,7 @@
 // Kør: npx tsx scripts/econ-run.ts [sæsoner] [world-fil]
 // Flere ligaer (standarddatabasen, valuta €): NATIONS="England,Spain,Germany,Italy,France,Holland,Portugal,Denmark"
 // giver en tabel pr. liga og sæson (medianer over klubberne) – benchmark i docs/ECONOMY_2026.md.
-import { readFileSync } from 'node:fs';
+import { readWorld } from './lib/world';
 import { createGame, type WorldData } from '../src/game/newgame';
 import { continueGame, quickPlayUserMatch } from '../src/game/sim';
 import { gs, squad } from '../src/game/state';
@@ -13,7 +13,7 @@ if (process.env.INCOME) setOriginalIncome(Number(process.env.INCOME));
 import { monthlyFigures } from '../src/game/finance';
 
 const seasons = Number(process.argv[2] ?? 3);
-const world = JSON.parse(readFileSync(process.argv[3] ?? 'public/data/world-original.json', 'utf8')) as WorldData;
+const world = readWorld(process.argv[3] ?? 'public/data/world-original.json');
 const natNames = (process.env.NATIONS ?? 'England').split(',').map((s) => s.trim());
 const nats = natNames.map((n) => world.nations.findIndex((x) => x.name === n)).filter((i) => i >= 0);
 const eng = nats[0];

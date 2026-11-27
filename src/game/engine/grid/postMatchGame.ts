@@ -64,7 +64,7 @@ function fixtureOfGame(o: PostOpts, goals: [number, number], fix?: Fixture): PmF
   // is_friendly_comp 0x5c6710 = special); baggrundskampen (fixture −2) ingen
   const compId = o.intl ? undefined : f?.comp ?? g.clubs[o.home]?.league;
   const codes = o.intl ? null : fixtureCodesOf(g, f, compId, o.home);
-  const friendly = !o.intl && !!compId && (compId === 'FRIENDLY' || compId.startsWith('FR'));
+  const friendly = !o.intl && !!compId && compId === 'FRIENDLY';
   const info = o.intl ? { fx3a: o.intl.b3a, comp: o.intl.compId >= 0 ? { rep: g.cmCompRep?.[o.intl.compId] ?? 0 } : null }
     : friendly ? { fx3a: codes!.b3a, comp: { rep: g.cmCompRep?.[FRIENDLY_COMP] ?? 0 } }
     : { fx3a: codes!.b3a, comp: codes!.compId >= 0 && !isResFixture(f) ? { rep: codes!.compRep } : null };

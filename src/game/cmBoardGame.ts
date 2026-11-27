@@ -1272,7 +1272,7 @@ export function cmBoardAfterMatch(g: GameState, f: Fixture, rep: MatchReport): v
     // oraklets crowd1.txt: comp 72, +0x3a = 1)
     compRep: comp ? codes.compRep : f.comp === FRIENDLY_COMP ? g.cmCompRep?.[CC_FRIENDLY] ?? 0 : null,
     isDivision: (c) => g.clubs[c]?.league === f.comp,
-    friendly: comp?.id === 'FRIENDLY' || f.comp.startsWith('FR'),
+    friendly: f.comp === 'FRIENDLY',
     inContention: (c) => inContention(g, f, c),
     derby: (c, o) => {
       const cr = g.cmCrowd?.[c], or = g.cmCrowd?.[o];

@@ -1,7 +1,7 @@
 // Funktionstest gennem spillets egne handlinger (de samme, som knapperne i UI'et sender): køb, salg, kontrakter,
 // udleje, spejdere, træning, stab, bestyrelse, presse, venskabskampe, træningslejr, gem/indlæs og job.
 // Kør: npx tsx scripts/features.ts [world-fil] [klubnavn]
-import { readFileSync } from 'node:fs';
+import { readWorld } from './lib/world';
 import { createGame, type WorldData } from '../src/game/newgame';
 import { continueGame, quickPlayUserMatch } from '../src/game/sim';
 import { gs, squad } from '../src/game/state';
@@ -15,7 +15,7 @@ import { naturalRole } from '../src/game/attributes';
 
 const file = process.argv[2] ?? 'public/data/world.json';
 const clubName = process.argv[3] ?? 'Brentford FC';
-const world = JSON.parse(readFileSync(file, 'utf8')) as WorldData;
+const world = readWorld(file);
 const eng = world.nations.findIndex((x) => x.name === 'England');
 createGame(world, { managerName: 'Feature', managerNation: eng, clubId: world.clubs.find((c) => c[1] === clubName)![0], activeNations: [eng], lang: 'en', masking: true, mode: 'extended', seed: 21 });
 const g = gs();

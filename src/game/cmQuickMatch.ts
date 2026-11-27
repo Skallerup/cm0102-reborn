@@ -40,7 +40,7 @@ import { CM_COMP_ID } from './engine/grid/gameInputs';
 import { cmGenerated, postHooks } from './cmPlayerData';
 
 const s16 = (v: number) => (v << 16) >> 16;
-const isFriendly = (c: string) => c === 'FRIENDLY' || c.startsWith('FR');
+const isFriendly = (c: string) => c === 'FRIENDLY';
 /** nation +0x11c & 2: landet spilles fuldt (Select League(s) = g.activeNations) */
 const fullNation = (g: GameState, n: number) => n >= 0 && g.activeNations.includes(n);
 const contOf = (g: GameState, n: number) => (n >= 0 ? g.cmNationCont?.[n] ?? -1 : -1);

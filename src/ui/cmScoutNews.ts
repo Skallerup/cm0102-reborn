@@ -67,7 +67,7 @@ export function cmScoutReportBody(g: GameState, n: NewsItem): string {
     const res = gf > ga ? 'w' : gf === ga ? 'd' : 'l';
     const comp = String(q.comp ?? ''), rsv = Number(q.rsv) === 1;
     const plain = !rsv && g.comps[comp]?.type === 'league';
-    const friendly = comp === 'FRIENDLY' || comp.startsWith('FR');
+    const friendly = comp === 'FRIENDLY';
     const stage = rsv ? k('reserve') : friendly ? k('friendly') : q.stg && has(`stage.${q.stg}`) ? t(`stage.${q.stg}`) : g.comps[comp]?.name ?? '';
     const tab = (plain ? PLAIN : STAGE)[cnt === 1 ? 1 : 'n'][res];
     parts.push(k(tab[mode === 2 ? 0 : 1], { ...base, scout: String(q.s0 ?? ''), num: num(cnt), team: g.clubs[Number(q.mt)]?.name ?? '', opp: g.clubs[Number(q.mo)]?.name ?? '',

@@ -51,7 +51,7 @@ import { nation01 } from '../../cmFitness';
 const RES_COMP = 'RES';
 /** club_comp.dat "Friendly" (venskabskampenes turnering, fixture +0x14) */
 const FRIENDLY_CC = 72;
-const isFriendlyComp = (c: string) => c === 'FRIENDLY' || c.startsWith('FR');
+const isFriendlyComp = (c: string) => c === 'FRIENDLY';
 
 /** landskampens fixture-koder (international.ts intlCodes): +0x3a, +0x30, +0x3c (neutral bane) og turneringens id (−1 = ingen) */
 export interface IntlFixtureCodes { b3a: number; w30: number; b3c: number; compId: number }
