@@ -9,6 +9,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.40.0',
+    date: '2026-11-28',
+    title: { da: 'Mere af det originale CM 01/02', en: 'More of the original CM 01/02' },
+    items: [
+      { da: "Nyt spil på en meget langsom computer kunne fejle til sidst med 'for lidt hukommelse', selv om spillet næsten var færdigt – spilstarten melder nu løbende, at den arbejder, og vagten venter længere på langsomme maskiner.", en: "Starting a new game on a very slow computer could fail at the very end with 'out of memory' although the game was almost ready – the game setup now reports that it is still working, and the watchdog waits longer on slow machines." },
+    ],
+  },
+  {
     version: '0.39.0',
     date: '2026-11-27',
     title: { da: 'Mere af det originale CM 01/02', en: 'More of the original CM 01/02' },
