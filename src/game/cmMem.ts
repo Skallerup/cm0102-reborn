@@ -183,6 +183,26 @@ export class SparseMem implements CmMem {
       }
     }
   }
+  /** hukommelsens sidenumre i sidetabellens rækkefølge (keepPages) */
+  pageNums(): Int32Array { return Int32Array.from(this.pages.keys()); }
+  /** (hukommelse, Android 27/11) behold kun siderne `nums` i den rækkefølge – resten går til puljen. Til en hukommelse, der netop er bygget forfra af
+   *  det samme spil som afsenderens (ønskelisternes portioner: den varige hukommelses sider er de samme – kun dem, dagens har overtaget, mangler): så
+   *  behøver indholdet ikke sendes med. En side, der ikke findes her, er en fejl (afsenderens hukommelse var ikke den samme). */
+  keepPages(nums: Int32Array): void {
+    const old = this.pages;
+    this.pages = new Map();
+    this.dir = new Array(1024).fill(NOPAGES);
+    for (const p of nums) {
+      const b = old.get(p);
+      if (!b) throw new Error(`keepPages: side ${p} findes ikke`);
+      old.delete(p);
+      let t = this.dir[p >>> 10];
+      if (t === NOPAGES) { t = new Array(1024).fill(null); this.dir[p >>> 10] = t; }
+      t[p & 1023] = b;
+      this.pages.set(p, b);
+    }
+    for (const b of old.values()) if (POOL.length < POOL_MAX && !VIEWS.has(b)) POOL.push(b);
+  }
   /** siderne tilbage til puljen (hukommelsen bruges ikke mere – ønskelisternes dag bygger 18.000 sider à 4 KB hver dag) */
   release(): void {
     // udsnit af en importeret tabel genbruges ikke: tabellen gives videre (exportPages) og må ikke nulstilles som en ny side

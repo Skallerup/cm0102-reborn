@@ -115,11 +115,13 @@ export function readInterrupted(now = Date.now(), dbSize = ''): InterruptInfo | 
     const st = tr.steps;
     const last = st[st.length - 1];
     parts.push(last ? `step ${last[0]} ${Math.round(last[2] * 100)}% at ${sec(last[1] - tr.t0)} s` : 'step none');
+    // (27/11) enhedens hukommelse og skjult-tiden lige efter trinnet: meldingen afkortes til 300 tegn (online/errors.ts), og de stod sidst – Android-meldingerne
+    // 27/11 manglede dem
+    parts.push(`mem ${tr.mem ?? '?'}`, `cores ${tr.cores ?? '?'}`, tr.hidden.length ? `hidden ${tr.hidden.length}x first at ${sec(tr.hidden[0] - tr.t0)} s, ${sec(tr.hiddenMs)} s total` : 'hidden 0 s before');
     if (st.length) parts.push(`times ${st.map((s, i) => `${s[0]} ${sec((st[i + 1]?.[1] ?? (tr!.leave || s[1])) - s[1])}s`).join(' > ')}`);
-    parts.push(tr.hidden.length ? `hidden ${tr.hidden.length}x first at ${sec(tr.hidden[0] - tr.t0)} s, ${sec(tr.hiddenMs)} s total` : 'hidden 0 s before');
     if (tr.self?.length) parts.push(`selfReload ${tr.self.join(' + ')}`);
     parts.push(tr.leave ? `pagehide yes at ${sec(tr.leave - tr.t0)} s${tr.persisted ? ' persisted' : ''}` : 'pagehide no');
-    parts.push(`mem ${tr.mem ?? '?'}`, `cores ${tr.cores ?? '?'}`, `standalone ${tr.standalone ? 'yes' : 'no'}`, `iab ${tr.iab ? 'yes' : 'no'}`);
+    parts.push(`standalone ${tr.standalone ? 'yes' : 'no'}`, `iab ${tr.iab ? 'yes' : 'no'}`);
   } else parts.push('no trace');
   parts.push(`nav ${nav}`);
   const head = abandoned ? 'NewGameAbandoned' : 'NewGameInterrupted';

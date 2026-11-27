@@ -32,4 +32,17 @@ describe('SparseMem.exportPages', () => {
     expect(none).toBe(big);
     expect(small).toBe(big);
   });
+  it('keepPages (Android 27/11): en hukommelse bygget forfra beholder afsenderens sider i dens rækkefølge – som importPages af indholdet', () => {
+    const a = new SparseMem();
+    fill(a, 3000, 5);
+    // afsenderen har mistet nogle sider (dagens hukommelse overtog dem – moveBase)
+    const nums = a.pageNums().filter((_p, i) => i % 3 !== 1);
+    const ref = new SparseMem(); ref.importPages({ nums: Int32Array.from(nums), data: [Int32Array.from(nums).reduce((d, p, i) => { d.set(a.pageList().find(([q]) => q === p)![1], i * 4096); return d; }, new Uint8Array(nums.length * 4096))] });
+    const b = new SparseMem();
+    fill(b, 3000, 5);
+    b.keepPages(Int32Array.from(nums));
+    expect(dump(b)).toBe(dump(ref));
+    expect([...b.pageNums()]).toEqual([...nums]);
+    expect(() => b.keepPages(Int32Array.from([999999]))).toThrow();
+  });
 });

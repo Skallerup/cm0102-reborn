@@ -35,6 +35,25 @@ if (process.env.CPU && kind === 'chromium') {
   await bs.send('Target.setDiscoverTargets', { discover: true });
   process.on('exit', () => console.log(`CPU-drosling ×${rate} på ${nThr} mål`));
 }
+// WHEAP=1 (Chromium): hver Web Workers V8-heap (CDP Runtime.getHeapUsage, uden GC) hvert sekund – arbejdernes top pr. trin (Android: V8's heapgrænse
+// gælder hver arbejder for sig; fanens proces rummer dem alle)
+const wHeap = new Map(); let wPeak = 0, wPeakAt = '', wHeapPoll = () => 0;
+if (process.env.WHEAP && kind === 'chromium') {
+  const bs = await browser.newBrowserCDPSession();
+  const sess = new Set(); let mid = 100;
+  bs.on('Target.attachedToTarget', (e) => { if (e.targetInfo.type !== 'worker') return; sess.add(e.sessionId); void bs.send('Target.sendMessageToTarget', { sessionId: e.sessionId, message: JSON.stringify({ id: 1, method: 'Runtime.runIfWaitingForDebugger' }) }).catch(() => {}); });
+  bs.on('Target.detachedFromTarget', (e) => { sess.delete(e.sessionId); wHeap.delete(e.sessionId); });
+  bs.on('Target.receivedMessageFromTarget', (e) => { try { const m = JSON.parse(e.message); if (m.result && typeof m.result.usedSize === 'number') wHeap.set(e.sessionId, m.result.usedSize / 1048576); } catch { /* */ } });
+  bs.on('Target.targetCreated', (e) => { if (e.targetInfo.type === 'worker') void bs.send('Target.attachToTarget', { targetId: e.targetInfo.targetId, flatten: false }).catch(() => {}); });
+  await bs.send('Target.setDiscoverTargets', { discover: true });
+  wHeapPoll = (at) => {
+    for (const sid of sess) void bs.send('Target.sendMessageToTarget', { sessionId: sid, message: JSON.stringify({ id: ++mid, method: 'Runtime.getHeapUsage' }) }).catch(() => {});
+    let sum = 0; for (const v of wHeap.values()) sum += v;
+    if (sum > wPeak) { wPeak = sum; wPeakAt = at; }
+    return sum;
+  };
+  process.on('exit', () => console.log(`arbejdernes V8-heap, top (sum over levende arbejdere): ${wPeak.toFixed(0)} MB (${wPeakAt})`));
+}
 // SLOW=<faktor>: CDP kan ikke drosle Web Workers ("only supported for pages") – fanens proces (hovedtråd + arbejdere) stoppes i stedet
 // (SIGSTOP/SIGCONT) i (1 − 1/faktor) af hver 40 ms-periode, så hele fanen kører med 1/faktor af en kerne-tid (en langsom telefon)
 let slowT = null, stopSlow = () => {};
@@ -67,6 +86,10 @@ if (process.env.DBSIZE || process.env.NGSPLIT || process.env.SLPARTS) await page
 // KEEPLOAD=1: indlæsningens arbejder beholdes til den midlertidige verdens første trin (som før 22/11 – startGame.ts openStartWorld)
 if (process.env.TIMELINE) await page.addInitScript(() => { localStorage.setItem('cm0102.ngTrace', '1'); });
 if (process.env.KEEPLOAD) await page.addInitScript(() => { localStorage.setItem('cm0102.ngKeepLoad', '1'); });
+// MEM=<GB>: navigator.deviceMemory i siden som en telefon (Android Chrome melder 0.25–8; MEM=none fjerner den)
+if (process.env.MEM) await page.addInitScript((m) => { Object.defineProperty(Navigator.prototype, 'deviceMemory', { get: () => (m === 'none' ? undefined : Number(m)), configurable: true }); }, process.env.MEM);
+// LS=nøgle=værdi,…: ekstra localStorage før start (fx LS=cm0102.ngSafe=1 – den konservative vej efter en NewGameInterrupted)
+if (process.env.LS) await page.addInitScript((kv) => { for (const x of kv.split(',')) { const i = x.indexOf('='); if (i > 0) localStorage.setItem(x.slice(0, i), x.slice(i + 1)); } }, process.env.LS);
 // NOWORKER=1: uden Web Workers (som når dagens arbejder fejler – alt i hovedtråden)
 if (process.env.NOWORKER) await page.addInitScript(() => { Object.defineProperty(window, 'Worker', { value: undefined, configurable: true }); });
 // Chromium: hovedtrådens levende V8-heap efter en GC (CDP) ved hvert trin
@@ -91,7 +114,7 @@ let phase = 'start';
 // TIMELINE=1: fanens footprint hvert sekund med trinnet under fremdriftsbjælken ([data-ng-step])
 let ngStep = '';
 const stepT = process.env.TIMELINE ? setInterval(() => { page.evaluate(() => document.querySelector('[data-ng-step]')?.getAttribute('data-ng-step') ?? '').then((s) => { ngStep = s; }).catch(() => {}); }, 500) : null;
-const rssT = setInterval(() => { const r = rssNow(); if (process.env.TIMELINE) console.log(`  t ${T()} ${phase}/${ngStep} fp ${r.toFixed(0)} MB ${lastPer}`); if (r > peakRss) { peakRss = r; peakAt = phase + (ngStep ? '/' + ngStep : ''); } }, Number(process.env.TICK) || 1000);
+const rssT = setInterval(() => { const r = rssNow(); const wh = wHeapPoll(phase + '/' + ngStep); if (process.env.TIMELINE) console.log(`  t ${T()} ${phase}/${ngStep} fp ${r.toFixed(0)} MB ${lastPer}${wh ? ` wheap ${wh.toFixed(0)} MB` : ''}`); if (r > peakRss) { peakRss = r; peakAt = phase + (ngStep ? '/' + ngStep : ''); } }, Number(process.env.TICK) || 1000);
 const T = () => `${((Date.now() - t0) / 1000).toFixed(1)} s`;
 let res = 'ok';
 try {

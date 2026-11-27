@@ -752,13 +752,18 @@ export function buildSlWantMem(g: GameState, clubs: Iterable<number>, opts: { ca
   // arbejder kan bygge det samme af det samme spil og fortsætte præcis hvor den forrige slap
   const slState = (): SlWantState => {
     if (deferred.size || done.size) throw new Error('buildSlWantMem: udskudte spillere i en portion');
-    return { divs: [...divs], natInit: natInit.slice(), gen, genPid: [...genPid], P: P.exportPages(), m: m.exportPages() };
+    // (hukommelse, Android 27/11) den varige hukommelses sider sendes uden indhold: modtageren bygger den forfra af det samme spil (resetSlBase), og
+    // dens sider er de samme – efter opbygningen skrives kun i dagens (moveBase flytter siden derover; refreshClub kører ikke i en portion, se
+    // ovenfor). Kun numrene følger med (keepPages). Før lå både de modtagne og de nybyggede sider i modtageren (Minimum ~2.900 sider/12 MB ekstra).
+    // CM_SL_PDATA=1: indholdet med som før (til kontrol).
+    return { divs: [...divs], natInit: natInit.slice(), gen, genPid: [...genPid], P: ENV.CM_SL_PDATA === '1' ? P.exportPages() : { nums: P.pageNums(), data: [] }, m: m.exportPages() };
   };
   const slRestore = (s: SlWantState): void => {
     divs.clear(); for (const [k, v] of s.divs) divs.set(k, v);
     natInit.set(s.natInit); gen = s.gen;
     genPid.clear(); for (const [k, v] of s.genPid) genPid.set(k, v);
-    P.importPages(s.P); m.importPages(s.m);
+    if (s.P.data.length || !s.P.nums.length) P.importPages(s.P); else P.keepPages(s.P.nums);
+    m.importPages(s.m);
   };
   return { W, c: gc, g, env: envOf, setRand: (f) => { rand = f; }, get byStaff() { return byStaffOf(); }, refreshClub, deferredPids,
     pidStaff: (pid: number) => byPid.get(pid), staffMemId: (sid: number) => staffMemIds.get(sid), slState, slRestore };
