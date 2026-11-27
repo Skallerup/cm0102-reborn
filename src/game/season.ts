@@ -898,6 +898,9 @@ export function seasonRollover(sc: Scope | null = null) {
       }
       continue;
     }
+    // (27/11) originalens fyldspillere (cmVirtual.ts 0x90dae0) laves før kampen og slettes efter – de ikke-valgte landes klubber får ingen
+    // opdigtede spillere ved sæsonskiftet (som ved spilstarten, newgame.ts memAll): før ~7.400 nye, gemte spillere pr. sæson (Normal)
+    if (cmVirtualOn(g) && !g.activeNations.includes(c.nation)) continue;
     if (sq.length < 18 && !g.leagues[c.league]?.hidden) fillSquad(c, sq, clubLevel(c.id) - 6, g.date, hash(g.seed, g.season, c.id), 20);
   }
   newSeasonBudgets(sc ? inClub : undefined);
