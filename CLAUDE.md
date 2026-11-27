@@ -117,5 +117,7 @@ regler, arkitektur og faldgruber.
   `tests/worldBuild.test.ts` fanger håndrettede filer). `npx tsx scripts/world-repro.ts [3965|3968]` genbygger fra kilderne og viser forskellen.
   Kilder: 3.9.60 = `.orig-db/…-3.9.60-Database-Swedish_fixed`, 3.9.65 = appens officielle `game/Data-3.9.65`, 3.9.68 = `.orig-db/…-3.9.68-Database` + `NO_LEGACY=1`.
 
+- Vitest kører uden originalens ønskelister (`CM_SL=0` i vite.config.ts – ellers ~2 s pr. spilledag); tsx/browser har dem. Sammenlign derfor aldrig et vitest-forløb med tsx uden `CM_SL=0`. `src/game` må ikke læse VITEST/NODE_ENV (tests/envDeterminism.test.ts).
+
 ## Udgivelseslog
 Se `docs/RELEASE_LOG.md` (nyeste først) – `grep -n <emne> docs/RELEASE_LOG.md` før du leder i koden.
