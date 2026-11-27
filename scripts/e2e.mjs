@@ -853,6 +853,17 @@ async function run(look) {
     await page.locator('.modal-head .x').first().click();
     if (await page.locator('.cx-side [data-testid="cx-opt-dot"]').count()) throw new Error('Prikken skal forsvinde, når ændringsloggen er åbnet');
   });
+  // Game Options → Game Credits: popup (som Game Info), ingen link til vores GitHub-repo
+  if (look === 'klassisk') await step('Game Options: Game Credits-popup', async () => {
+    await go({ name: 'inbox' });
+    await page.locator('.cx-side .cx-drop-btn', { hasText: 'Game Options' }).first().click();
+    await page.locator('.cx-drop-pop button', { hasText: 'Game Credits' }).first().click();
+    await page.waitForSelector('[data-testid="cx-credits"]', { timeout: 5000 });
+    if (await page.locator('[data-testid="cx-credits"] a[href*="github.com/Skallerup"]').count()) throw new Error('Credits må ikke linke til vores GitHub');
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-credits.png` });
+    await page.locator('.modal-head .x').first().click();
+    await page.waitForSelector('[data-testid="cx-credits"]', { state: 'detached', timeout: 5000 });
+  });
   // Game Options → Save Game (CM 01/02 "Enter File Name"): navngivet gemt spil
   if (look === 'klassisk') await step('Save Game med filnavn', async () => {
     await go({ name: 'inbox' });

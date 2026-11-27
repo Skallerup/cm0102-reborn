@@ -552,7 +552,7 @@ const ABOUT: Page = {
   slug: 'about/', title: 'About CM Reborn – a Free Fan Remake of CM 01/02 | CM 01/02 Reborn', h1: 'About CM Reborn',
   description: 'Who makes CM Reborn, how the free Championship Manager 01/02 remake is built from the original databases, what it costs (nothing), how your data is handled and how to help.',
   crumbs: [], ogType: 'website',
-  body: `<p class="lead">CM Reborn is an independent, free fan remake of Championship Manager 01/02 that runs in the browser. It is made by one developer in Denmark, with help from the CM 01/02 community, and the code is open source on <a href="https://github.com/Skallerup/cm0102-reborn" rel="noopener">GitHub</a>.</p>
+  body: `<p class="lead">CM Reborn is an independent, free fan remake of Championship Manager 01/02 that runs in the browser. It is made by one developer in Denmark, with help from the CM 01/02 community,.</p>
 <h2>What it is – and is not</h2>
 <p>It is not the original game and it is not affiliated with Sports Interactive, SEGA or Eidos, who made and published Championship Manager 01/02 in 2001. CM Reborn is written from scratch: its own match engine, screens and online features. What it shares with the original is the data – the real CM 01/02 database (patches 3.9.60, 3.9.65 and 3.9.68, which the publisher released as freeware in 2008) and a community data update for 2026/27 – and the look of the classic screens, rebuilt as a tribute.</p>
 <h2>How it is built</h2>
@@ -566,7 +566,7 @@ const ABOUT: Page = {
 <p>Bug reports, ideas and data corrections are welcome in the <a href="/?community=1">community hub</a>, where you can also see the credits: the CM 01/02 community behind the data updates and patches, the Bosman project's documentation of the original, and the players who test and translate the game into ten languages. Want to join the project? Use the form on the <a href="/">front page</a>.</p>`,
   faq: [
     ['Is CM Reborn the official Championship Manager 01/02?', 'No. It is an independent fan remake, built from scratch and not affiliated with Sports Interactive, SEGA or Eidos. It uses the original database, which has been freeware since 2008.'],
-    ['Who makes CM Reborn?', 'One developer in Denmark, with help from the CM 01/02 community. The source code is public on GitHub.'],
+    ['Who makes CM Reborn?', 'One developer in Denmark, with help from the CM 01/02 community.'],
     ['Does it cost anything?', 'No. CM Reborn is free, with no ads and no in-game purchases, and it stays free. Voluntary donations on Ko-fi pay for the servers and further development, but give no advantages in the game.'],
   ], faqSchema: true,
 };

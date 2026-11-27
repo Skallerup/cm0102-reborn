@@ -32,7 +32,7 @@ async function post<T = { ok: true }>(op: string, data: Record<string, unknown>)
 }
 const me = () => getProfile()?.pid ?? '';
 
-export const hubConfig = () => get<{ discord: string | null; github: string }>('op=config');
+export const hubConfig = () => get<{ discord: string | null }>('op=config');
 export const listHall = (sort: 'new' | 'top') => get<{ rows: HallRow[] }>(`op=hall&sort=${sort}`);
 export const getHall = (id: number) => get<{ entry: HallRow & { summary: HallSummary | null }; comments: HallComment[]; starred: boolean }>(`op=hall-one&id=${id}&pid=${me()}`);
 export const shareCareer = (d: { career: string; title: string; club: string; league: string; db: string; seasons: number; trophies: number; summary: HallSummary }) => post<{ ok: true; id: number }>('hall-share', d);

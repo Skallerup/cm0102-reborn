@@ -68,7 +68,7 @@ export async function GET(request: Request) {
   const admin = isAdmin(request);
 
   if (op === 'config') {
-    return json({ discord: process.env.DISCORD_INVITE ?? null, github: process.env.GITHUB_URL ?? 'https://github.com/Skallerup/cm0102-reborn' });
+    return json({ discord: process.env.DISCORD_INVITE ?? null });
   }
 
   // ----- Hall of Fame -----

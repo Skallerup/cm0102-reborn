@@ -306,9 +306,9 @@ const DATA_CREDITS: [string, string, string?][] = [
   ['CM0102 Background Image Pack', 'Naydav – stadium, club, competition, nation, training and boardroom backgrounds (1280x800)', 'https://github.com/naydav/CM0102-Pictures'],
 ];
 
-function CreditsTab() {
+export function CreditsTab() {
   const [rows, setRows] = useState<Credit[] | null>(null);
-  const [cfg, setCfg] = useState<{ discord: string | null; github: string } | null>(null);
+  const [cfg, setCfg] = useState<{ discord: string | null } | null>(null);
   useEffect(() => { void listCredits().then((r) => setRows(r?.rows ?? [])); void hubConfig().then(setCfg); }, []);
   return (
     <div className="cols">
@@ -328,8 +328,6 @@ function CreditsTab() {
         <div className="col" style={{ alignItems: 'flex-start' }}>
           <a className="button primary" href="/#join">{t('hub.credits.apply')}</a>
           {cfg?.discord && <a className="button" href={cfg.discord} target="_blank" rel="noreferrer">💬 {t('hub.credits.discord')}</a>}
-          {cfg?.github && <a className="button" href={`${cfg.github}/blob/main/CONTRIBUTING.md`} target="_blank" rel="noreferrer">🛠 {t('hub.credits.contribute')}</a>}
-          {cfg?.github && <a className="button" href={`${cfg.github}/issues?q=is%3Aopen+label%3A%22good+first+issue%22`} target="_blank" rel="noreferrer">🌱 {t('hub.credits.firstIssue')}</a>}
         </div>
       </Panel>
     </div>

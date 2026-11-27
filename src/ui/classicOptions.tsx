@@ -12,6 +12,7 @@ import { ProfileGate, WriteModal } from './Community';
 import { GameInfoTable } from './GameInfoPanel';
 import { gameInfoMeta } from './gameInfo';
 import { Modal } from './components';
+import { CreditsTab } from './CommunityHub';
 import { SupportBox } from './SupportBox';
 import { createPortal } from 'react-dom';
 import { communityAvailable } from '../online/community';
@@ -89,7 +90,7 @@ applyFlash();
 
 export function GameOptionsMenu({ onSave, onQuit, online, allowed }: { onSave: () => void; onQuit: () => void; online: boolean; allowed: (k: string) => boolean }) {
   const { nav, route } = useNav();
-  const [show, setShow] = useState<'changelog' | 'feedback' | 'info' | 'support' | null>(null);
+  const [show, setShow] = useState<'changelog' | 'feedback' | 'info' | 'support' | 'credits' | null>(null);
   const fresh = useChangelogFresh();
   const go = (k: string) => () => nav({ name: k as never });
   const [, setInst] = useState(0);
@@ -110,7 +111,7 @@ export function GameOptionsMenu({ onSave, onQuit, online, allowed }: { onSave: (
   add('ranking', t('cl.go.hall'));
   // ægte CM 01/02 har hverken Awards eller Help i Game Options (Awards ligger under Manager Stats/History)
   if (rebornOn('menus')) add('awards', t('nav.awards'));
-  add('community', t('cl.go.credits'));
+  if (allowed('community')) items.push({ key: 'community', label: t('cl.go.credits'), onClick: () => setShow('credits') });
   if (rebornOn('menus')) add('help', t('nav.help'));
   // som i det moderne tema: hvad er nyt, fejlrapport og feedback (sendes til fællesskabets forslag)
   items.push({ key: 'sep0', sep: true }, { key: 'news', label: <>{t('cl.go.whatsNew', { v: APP_VERSION })}{fresh && <i className="cx-dot" data-testid="cx-news-dot" />}</>, onClick: () => { markChangelogSeen(); setShow('changelog'); } });
@@ -129,7 +130,8 @@ export function GameOptionsMenu({ onSave, onQuit, online, allowed }: { onSave: (
       {login && createPortal(<LoginModal onClose={() => setLogin(false)} onDone={() => { setLogin(false); void cloudSave(); }} />, document.body)}
       {show === 'changelog' && createPortal(<ChangelogModal onClose={() => setShow(null)} />, document.body)}
       {show === 'support' && createPortal(<Modal title={t('sb.menu')} onClose={() => setShow(null)}><SupportBox full /></Modal>, document.body)}
-      {show === 'info' && createPortal(<Modal title={t('info.title')} onClose={() => setShow(null)}><GameInfoTable route={route.name} /></Modal>, document.body)}
+      {show === 'credits' && createPortal(<Modal title={t('cl.go.credits')} onClose={() => setShow(null)}><div data-testid="cx-credits"><CreditsTab /></div></Modal>, document.body)}
+      {show === 'info' &&createPortal(<Modal title={t('info.title')} onClose={() => setShow(null)}><GameInfoTable route={route.name} /></Modal>, document.body)}
       {show === 'feedback' && createPortal(getProfile()
         ? <WriteModal kind="suggest" pick meta={gameInfoMeta(route.name)} onClose={() => setShow(null)} />
         : <Modal title={t('cm.feedbackBug')} onClose={() => setShow(null)}><ProfileGate onDone={() => setShow(null)} /></Modal>, document.body)}
