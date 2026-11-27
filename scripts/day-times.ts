@@ -79,16 +79,51 @@ let session: import('node:inspector/promises').Session | null = null;
 async function profStart() {
   const { Session } = await import('node:inspector/promises');
   session = new Session(); session.connect();
-  await session.post('Profiler.enable'); await session.post('Profiler.setSamplingInterval', { interval: 500 }); await session.post('Profiler.start');
+  await session.post('Debugger.enable'); await session.post('Profiler.enable'); await session.post('Profiler.setSamplingInterval', { interval: 500 }); await session.post('Profiler.start');
 }
 async function profStop(label: string) {
   if (!session) return;
-  const { profile } = await session.post('Profiler.stop') as { profile: { nodes: { id: number; callFrame: { functionName: string; url: string; lineNumber: number }; hitCount?: number }[]; timeDeltas: number[] } };
+  const { profile } = await session.post('Profiler.stop') as { profile: { nodes: { id: number; callFrame: { functionName: string; url: string; lineNumber: number; columnNumber: number }; hitCount?: number; children?: number[] }[]; timeDeltas: number[]; samples: number[] } };
+  // funktionernes plads i kildefilen (tsx' kode er én linje pr. modul: kildekortet i scriptet)
+  const { SourceMapConsumer } = await import('source-map-js');
+  const maps = new Map<string, InstanceType<typeof SourceMapConsumer> | null>();
+  const where = async (cf: { scriptId?: string; url: string; lineNumber: number; columnNumber: number }) => {
+    if (!cf.scriptId || !cf.url.includes('/src/')) return `${cf.url.split('/').slice(-2).join('/')}`;
+    if (!maps.has(cf.scriptId)) {
+      let m: InstanceType<typeof SourceMapConsumer> | null = null;
+      try { const { scriptSource } = await session!.post('Debugger.getScriptSource', { scriptId: cf.scriptId }) as { scriptSource: string }; const b = scriptSource.match(/sourceMappingURL=data:application\/json;base64,([A-Za-z0-9+/=]+)/); if (b) m = new SourceMapConsumer(JSON.parse(Buffer.from(b[1], 'base64').toString())); } catch { m = null; }
+      maps.set(cf.scriptId, m);
+    }
+    const m = maps.get(cf.scriptId);
+    const o = m?.originalPositionFor({ line: cf.lineNumber + 1, column: cf.columnNumber });
+    return `${cf.url.split('/src/')[1]}:${o?.line ?? '?'}`;
+  };
+  const keyOf = new Map<number, string>();
+  for (const n of profile.nodes) keyOf.set(n.id, `${n.callFrame.functionName || '(anon)'} ${await where(n.callFrame as never)}`);
   session.disconnect(); session = null;
   const total = profile.timeDeltas.reduce((a, b) => a + b, 0) / 1000;
   const hits = profile.nodes.reduce((a, n) => a + (n.hitCount ?? 0), 0);
   const self = new Map<string, number>();
-  for (const n of profile.nodes) { const k = `${n.callFrame.functionName || '(anon)'} ${n.callFrame.url.split('/').slice(-2).join('/')}:${n.callFrame.lineNumber + 1}`; self.set(k, (self.get(k) ?? 0) + (n.hitCount ?? 0)); }
+  for (const n of profile.nodes) { const k = keyOf.get(n.id)!; self.set(k, (self.get(k) ?? 0) + (n.hitCount ?? 0)); }
+  // samlet tid (med kaldte funktioner) pr. funktion: hver prøve tæller én gang pr. funktion i stakken
+  const parent = new Map<number, number>();
+  for (const n of profile.nodes) for (const c of n.children ?? []) parent.set(c, n.id);
+  const incl = new Map<string, number>();
+  for (const sId of profile.samples) { const seen = new Set<string>(); for (let id: number | undefined = sId; id !== undefined; id = parent.get(id)) { const k = keyOf.get(id)!; if (!seen.has(k)) { seen.add(k); incl.set(k, (incl.get(k) ?? 0) + 1); } } }
+  const ns = profile.samples.length;
+  console.log(`samlet tid ${label}: ` + [...incl].filter(([k]) => k.includes('.ts')).sort((a, b) => b[1] - a[1]).slice(0, Number(process.env.INCL ?? 40)).map(([k, h]) => `\n  ${(h / ns * total / 1000).toFixed(2)} s ${k}`).join(''));
+  // PARENT=navn: hvem kalder funktionen (egen tid fordelt på kaldernes kæde, 4 led)
+  if (process.env.PARENT) {
+    const par = new Map<number, number>(), byId = new Map(profile.nodes.map((n) => [n.id, n]));
+    for (const n of profile.nodes) for (const c of n.children ?? []) par.set(c, n.id);
+    const chains = new Map<string, number>();
+    for (const n of profile.nodes) if (n.callFrame.functionName === process.env.PARENT && n.hitCount) {
+      const ch: string[] = []; let id = par.get(n.id);
+      while (id !== undefined && ch.length < 6) { const f = byId.get(id)!.callFrame; ch.push(`${f.functionName || '?'}@${f.url.split('/').pop()}:${f.columnNumber}`); id = par.get(id); }
+      const k = ch.join(' < '); chains.set(k, (chains.get(k) ?? 0) + n.hitCount);
+    }
+    console.log(`kaldere af ${process.env.PARENT}: ` + [...chains].sort((a, b) => b[1] - a[1]).slice(0, 12).map(([k, h]) => `\n  ${(h / hits * total / 1000).toFixed(2)} s ${k}`).join(''));
+  }
   console.log(`prof ${label} (${(total / 1000).toFixed(1)} s): ` + [...self].sort((a, b) => b[1] - a[1]).slice(0, 25).map(([k, h]) => `\n  ${(h / hits * total / 1000).toFixed(2)} s ${k}`).join(''));
 }
 
@@ -107,7 +142,7 @@ while (end ? gs().date < end : gs().season < startSeason + seasons) {
     flush();
     if (PROF && session) await profStop(month);
     month = d.slice(0, 7); bucket = { n: 0, ms: 0, mn: 0, mms: 0, max: 0, maxD: '' };
-    if (PROF && month.endsWith('-10')) await profStart();
+    if (PROF && month.endsWith(process.env.PROF_MONTH ?? '-10')) await profStart();
   }
   const a = performance.now();
   const r = continueGame();
@@ -120,5 +155,6 @@ while (end ? gs().date < end : gs().season < startSeason + seasons) {
   if (gs().season !== lastSeason) { lastSeason = gs().season; season++; flush(); month = ''; if (season < seasons) await seasonReport(`S${season + 1}`); }
 }
 flush();
+if (session) await profStop(month);
 await seasonReport('slut');
 console.log(`\nialt ${((performance.now() - T) / 1000).toFixed(0)} s`);

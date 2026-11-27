@@ -18,7 +18,13 @@ const t0 = performance.now();
 const world = readWorld(process.env.WORLD ?? 'public/data/world-original.json');
 const t1 = performance.now();
 const eng = world.nations.findIndex((x) => x.name === 'England');
-(process.env.CM_GAME_CACHE_USE === '1' ? (w: WorldData, o: Parameters<typeof createGame>[1]) => cachedCreateGame(createGame, w, o) : createGame)(world, { managerName: 'Lab', managerNation: eng, clubId: world.clubs.find((c) => c[1] === clubName)![0], activeNations: [eng], lang: 'en', masking: true, seed, mode: 'authentic' });
+// LOAD=<gem-fil>: start fra et gemt spil (save.ts-format, fx scripts/day-times.ts SAVES=…) i stedet for et nyt spil
+if (process.env.LOAD) {
+  const { deserializeState } = await import('../src/game/snapshot');
+  const { upgradeLoaded, ensureAllNumbers } = await import('../src/game/save');
+  const { setGame } = await import('../src/game/state');
+  setGame(await deserializeState(new Blob([(await import('node:fs')).readFileSync(process.env.LOAD)]))); upgradeLoaded(); ensureAllNumbers();
+} else (process.env.CM_GAME_CACHE_USE === '1' ? (w: WorldData, o: Parameters<typeof createGame>[1]) => cachedCreateGame(createGame, w, o) : createGame)(world, { managerName: 'Lab', managerNation: eng, clubId: world.clubs.find((c) => c[1] === clubName)![0], activeNations: [eng], lang: 'en', masking: true, seed, mode: 'authentic' });
 gs().options.engine = 'original';
 // PO_OFF=1: spillet uden play-off-modulet (g.cmPlayoff/cmPlayoffRules, 22/11) – som et spil fra før modulet (kontrol: intet flytter sig før maj)
 if (process.env.PO_OFF === '1') { const g = gs(); delete g.cmPlayoff; g.customRules = cmLeagueRules((world as unknown as { rules: GameState['customRules'] }).rules); Object.assign(LEAGUE_RULES, g.customRules); }
