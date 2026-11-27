@@ -53,6 +53,7 @@ function ours(): W {
 
 // ------------------------------------------------------------------ vores skrivere (stakken)
 const dayIx: { d: string; m: Map<number, any> } = { d: '', m: new Map() };
+const cupLines: string[] = [];
 const byComp = new Map<string, [number, number, number, number]>();
 const byMon = new Map<string, [number, number]>();
 const oxDay = new Map<string, number>();
@@ -103,8 +104,11 @@ function install() {
         const e = bySrc.get(src) ?? { n: 0, sum: 0, up: 0, down: 0 }; bySrc.set(src, e);
         if (src === 'cmApplyPost') {
           if (dayIx.d !== g.date) { dayIx.d = g.date; dayIx.m = new Map(); for (const fx of Object.values(g.fixtures)) if (fx.date === g.date) { dayIx.m.set(fx.home, fx); dayIx.m.set(fx.away, fx); } }
-          const fx = dayIx.m.get(id), cp = fx ? g.comps[fx.comp] : undefined;
+          let fx = dayIx.m.get(id);
+          if (!fx) for (const x of Object.values(g.fixtures)) if (x.date === g.date && (x.home === id || x.away === id)) fx = x;
+          const cp = fx ? g.comps[fx.comp] : undefined;
           const ck = fx ? `${cp?.type ?? '?'} ${cp?.name ?? fx.comp}` : '(ingen kamp i dag)';
+          if (cp && (cp.type === 'continental' || cp.type === 'cup')) cupLines.push(`${g.date} ${g.clubs[id]?.name} ${cp.name} ${fx.stage ?? ''} r${fx.round} ${old}→${v} (${v - old})`);
           const e2 = byComp.get(ck) ?? [0, 0, 0, 0]; e2[0] += v - old; e2[1]++; if (v > old) e2[2] += v - old; else e2[3] += v - old; byComp.set(ck, e2);
         }
         const mk = `${src} ${g.date.slice(0, 7)}`; const em = byMon.get(mk) ?? [0, 0]; em[0] += v - old; em[1]++; byMon.set(mk, em);
@@ -127,11 +131,13 @@ function step(side: 'o' | 'u', iso: string, w: W) {
   if (!P) return;
   const a = A[side], mk = iso.slice(0, 7);
   for (const [name, r] of w) {
-    const q = P.get(name); if (!q || q.div !== r.div) continue;
+    const q = P.get(name); if (!q) continue;
+    if (q.div !== r.div) { if (iso >= (process.env.DAYSUM ?? '9999')) { const dk = `dag ${iso} (ny division)`; const de = a.cat.get(dk) ?? [0, 0]; de[0] += r.rep - q.rep; de[1]++; a.cat.set(dk, de); } continue; }
     const d = r.rep - q.rep;
     const mo = a.month.get(mk) ?? [0, 0]; a.month.set(mk, mo);
     if (side === 'o' && Math.abs(oxDay.get(name) ?? 0) >= 10 && r.p === q.p) { const e = oxDay.get(name)!; oxChk.n++; oxChk.exp += e; oxChk.act += d; if (oxChk.lines.length < 60) oxChk.lines.push(`${iso} ${name} forventet ${e} faktisk ${d}`); }
     if (r.p === q.p && Math.abs(d) >= 2 && Math.abs(d) < 300 && wd(iso) !== 2 && !(side === 'o' && oxDay.has(name))) { a.pos.push(`${iso} ${name} ${d}`); const pk = `${iso.slice(0, 7)} ${d > 0 ? '+' : '-'}`; const pe = a.posM.get(pk) ?? [0, 0]; pe[0] += d; pe[1]++; a.posM.set(pk, pe); }
+    if (iso >= (process.env.DAYSUM ?? '9999')) { const dk = `dag ${iso}`; const de = a.cat.get(dk) ?? [0, 0]; de[0] += d; de[1] += d ? 1 : 0; a.cat.set(dk, de); }
     const tue = wd(iso) === 1, played = r.p === q.p + 1;
     const ck = Math.abs(d) >= 300 ? 'stor (|Δ| ≥ 300)' : `${played ? 'kampdag' : 'uden kamp'} ${tue ? 'tirsdag' : 'ikke tirsdag'}`;
     if (!played && d !== 0 && Math.abs(d) < 300) { const hk = `${mk} ${tue ? 'ti' : '  '} ${d === -1 ? '−1' : d === 1 ? '+1' : d < 0 ? '<−1' : '>+1'}`; const he = a.cat.get('hist ' + hk) ?? [0, 0]; he[0] += d; he[1]++; a.cat.set('hist ' + hk, he); }
@@ -211,6 +217,7 @@ console.log('\n## vores kamprapporter (0x6d3de0) pr. turnering: sum, antal, op, 
 for (const [k, e] of [...byComp].sort((a, b) => a[1][0] - b[1][0])) console.log(`  ${k.padEnd(40)} ${e[0]} (${e[1]}) +${e[2]} ${e[3]}`);
 console.log(`\n## oraklet: klubskifter (|forventet| ≥ 10, uden ligakamp) ${oxChk.n}: forventet ${oxChk.exp}, faktisk ${oxChk.act}`);
 for (const l of oxChk.lines) console.log('  ' + l);
+if (process.env.CUPLIST) for (const l of cupLines) console.log('  cup ' + l);
 console.log('\n## vores skrivere pr. måned (sum, antal)');
 for (const [k, e] of [...byMon].sort()) console.log(`  ${k.padEnd(30)} ${e[0]} (${e[1]})`);
 console.log('\n## oraklets klubskifter (kontraktklub) pr. måned: forventet +0x80-sum (antal)');
