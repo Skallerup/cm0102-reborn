@@ -9,7 +9,7 @@ import { createGame, type WorldData } from '../src/game/newgame';
 import { gs, squad } from '../src/game/state';
 import { cmCupTiedAfterMatch, cmIneligible, cmSquadCounts, cmSquadRule } from '../src/game/cmEligibility';
 import { quotaFix } from '../src/game/engine/grid/pickTeam';
-import { matchOnly, pickableFor, prepareMatch, quickReport, userTactic } from '../src/game/sim';
+import { assistantSelect, matchOnly, pickableFor, prepareMatch, quickReport, userTactic } from '../src/game/sim';
 import { autoSelect, newTactic } from '../src/game/tactics';
 import { teamSelectionProblem } from '../src/game/teamSelection';
 import { cmNeedsPermit } from '../src/game/cmPermit';
@@ -198,6 +198,29 @@ describe('spilleberettigelsen 0x8cf5e0 og udtagelsen', () => {
     expect([...used].filter((id) => cmSquadCounts(g, rule, g.players[id], che)).length).toBeLessThanOrEqual(3);
   });
 
+  it('assistenten (Pick Team, autoSelect + 0x6e8910): højst 3 ikke-EU-spillere på holdarket, og kampen kan starte', () => {
+    const g = gs();
+    const che = Object.values(g.clubs).find((c) => c.name === 'Chelsea')!.id;
+    const f = fixture(g.clubs[che].league, che, mu);
+    const rule = cmSquadRule(g, f)!;
+    const ne = (t: { lineup: number[]; bench: number[] }) => [...t.lineup, ...t.bench].filter((id) => id && cmSquadCounts(g, rule, g.players[id], che)).length;
+    // tre af de bedste EU-udespillere gøres til brasilianere med arbejdstilladelse – så vælger autoSelect alene flere end 3
+    const bra = g.nations.findIndex((n) => n.name === 'Brazil');
+    const made = best(che).filter((p) => !cmSquadCounts(g, rule, p, che)).slice(0, 3);
+    const saved = made.map((p) => ({ p, nation: p.nation, n2: p.cmNation2, wp: g.cmPermit?.[p.id] }));
+    try {
+      for (const p of made) { p.nation = bra; p.cmNation2 = undefined; (g.cmPermit ??= {})[p.id] = [0, 0, 2001, g.clubs[che].nation]; }
+      const ps = pickableFor(che, squad(che));
+      expect(ne(autoSelect(newTactic('4-4-2'), ps))).toBeGreaterThan(3);
+      const sel = assistantSelect(newTactic('4-4-2'), che, ps, f);
+      expect(ne(sel)).toBeLessThanOrEqual(3);
+      expect(sel.lineup.every((id) => id > 0)).toBe(true);
+      expect(sel.bench.length).toBeGreaterThanOrEqual(3);
+      expect(teamSelectionProblem(g, che, f, [...sel.lineup, ...sel.bench])).toBeNull();
+    } finally {
+      for (const x of saved) { x.p.nation = x.nation; x.p.cmNation2 = x.n2; if (x.wp) g.cmPermit![x.p.id] = x.wp; else delete g.cmPermit?.[x.p.id]; }
+    }
+  });
   it('0x6e8910: de 11 med mindst tab og bænken bagefter (syntetisk – 6 talte af de 16 bedste, grænse 3)', () => {
     const n = 20, out: (number | null)[] = Array.from({ length: 16 }, (_, i) => i);
     const counted = Array.from({ length: n }, (_, i) => i < 6 || i === 12);

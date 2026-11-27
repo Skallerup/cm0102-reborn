@@ -18,7 +18,7 @@ import { ZonePitch, type Zone } from './ZonePitch';
 import { TAKERS, TI_CHOICES, TI_LABEL, tiSetValue } from './Match';
 import { ClassicTactics } from './TacticsClassic';
 import { coarse } from './runs';
-import { pickableFor } from '../../game/sim';
+import { assistantSelect, pickableFor } from '../../game/sim';
 
 export function Tactics() {
   const g = useGame()!;
@@ -32,7 +32,7 @@ export function Tactics() {
   return (
     <div>
       <Head title={t('nav.tactics')}>
-        <button className={empty ? 'primary' : ''} onClick={() => set(autoSelect(g.tactic!, pickableFor(g.userClub, squad(g.userClub))))}>{t('tac.assistantPick')}</button>
+        <button className={empty ? 'primary' : ''} onClick={() => set(assistantSelect(g.tactic!, g.userClub, pickableFor(g.userClub, squad(g.userClub))))}>{t('tac.assistantPick')}</button>
         {orig && <button onClick={() => set({ ...g.tactic!, lineup: g.tactic!.lineup.map(() => 0), bench: [] })}>{t('cl.sq.clear')}</button>}
         {orig && <button disabled={!g.lastMatchTactic} onClick={() => setLastOpen(!lastOpen)}>{t('cl.lastMatch')}</button>}
         <button onClick={() => act({ t: 'savedTactics', list: [...g.savedTactics.filter((x) => x.formation !== g.tactic!.formation), structuredClone(g.tactic!)].slice(-6) })}>{t('tac.save')}</button>

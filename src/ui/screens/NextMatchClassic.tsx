@@ -15,6 +15,15 @@ import { cmFixtureWeather, cmPitchText, cmWeatherText, cmWxOn } from '../../game
 import { compName, natName, t } from '../../i18n';
 import { useGame, useNav } from '../core';
 import { classicDate, cxLongDate } from '../classic';
+import { cmSquadRule } from '../../game/cmEligibility';
+
+/** Next Match 0x45df0b–0x45e06c: holdarkets regel (0x8cf7e0) – "Max N foreign/non-EU players …" (0x98f550/0x98f51c/0x98f4dc), ellers
+ *  "No player restrictions" (0x98f4c4) */
+function matchRule(g: GameState, f: Fixture): string {
+  const r = cmSquadRule(g, f);
+  if (!r) return t('cl.nm.noRestr');
+  return r.type === 3 ? t('cl.nm.maxAge', { n: r.limit, age: r.age }) : t(r.type === 1 ? 'cl.nm.maxNonEu' : 'cl.nm.maxFgn', { n: r.limit });
+}
 
 // landskampvinduerne (som WINDOWS i game/international.ts)
 const INTL_WINDOWS = ['09-05', '10-09', '11-13', '03-26'];
@@ -56,7 +65,7 @@ export function origNextMatchRows(g: GameState, f: Fixture): { rows: [string, st
   const rows: [string, string | string[]][] = [
     [t('cl.nm.date'), when],
     [t('cl.nm.venue'), club(f.home)?.stadium ?? '-'],
-    [t('cl.nm.rules'), [t('cl.nm.noRestr'), t('cl.nm.subs', { named: benchSize(), used: maxSubs() })]],
+    [t('cl.nm.rules'), [matchRule(g, f), t('cl.nm.subs', { named: benchSize(), used: maxSubs() })]],
     [t('cl.nm.last'), meetings[0] ? score(meetings[0]) : '-'],
     ...(cmWx ? [[t(days <= 0 ? 'cl.nm.weather' : 'cl.nm.forecast'), days <= 1 ? cmWeatherText(cmWx.rec, t) : t('cl.nm.unknown')] as [string, string]]
       : days <= 7 ? [[t('cl.nm.weather'), t(`wx.${w}`)] as [string, string]] : [[t('cl.nm.forecast'), t('cl.nm.unknown')] as [string, string]]),
@@ -107,7 +116,7 @@ export function ClassicNextMatch({ onAssistant }: { onAssistant?: () => void }) 
   const rows: [string, string | string[]][] = orig ? [
     [t('cl.nm.date'), when],
     [t('cl.nm.venue'), ven?.stadium ?? '-'],
-    [t('cl.nm.rules'), [t('cl.nm.noRestr'), t('cl.nm.subs', { named: benchSize(), used: maxSubs() })]],
+    [t('cl.nm.rules'), [matchRule(g, f), t('cl.nm.subs', { named: benchSize(), used: maxSubs() })]],
     [t('cl.nm.last'), meetings[0] ? score(meetings[0]) : '-'],
     // originalens Next Match 0x45e76a–0x45e9a8: "Weather" på kampdagen, ellers "Weather Forecast"; vejret først, når kampen er før i dag + 2
     // dage (0x54c770(2)), ellers "Unknown"; banen kun på kampdagen
@@ -119,7 +128,7 @@ export function ClassicNextMatch({ onAssistant }: { onAssistant?: () => void }) 
   ] : [
     [t('cl.nm.date'), when],
     [t('cl.nm.venue'), ven ? `${ven.stadium ?? ''}, ${ven.short}` : '-'],
-    [t('cl.nm.rules'), [t('cl.nm.noRestr'), t('cl.nm.subs', { named: benchSize(), used: maxSubs() })]],
+    [t('cl.nm.rules'), [matchRule(g, f), t('cl.nm.subs', { named: benchSize(), used: maxSubs() })]],
     [t('cl.nm.last'), meetings[0] ? score(meetings[0]) : t('common.none')],
     [t('cl.nm.weather'), t(`wx.${w}`)],
     [t('cl.nm.pitch'), t(`pitch.${pitchFor(f, w)}`)],

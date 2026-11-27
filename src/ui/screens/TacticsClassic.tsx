@@ -12,7 +12,7 @@ import { SlotGuides, coarse, holdDrag } from './runs';
 import { FORMATIONS, autoSelect, available, changeFormation, neutralPlayerInstructions, newTactic, runTarget, slotTaken, snapFreeSlot } from '../../game/tactics';
 import { cmMatchOn } from '../../game/cmPlayerData';
 import type { Fixture, Player, PlayerInstructions, Slot, Tactic } from '../../game/types';
-import { aiTactic, pickableFor } from '../../game/sim';
+import { aiTactic, assistantSelect, pickableFor } from '../../game/sim';
 import { money, t } from '../../i18n';
 import { ClassicFoot, CxDrop, useClassicDialog, type DropItem } from '../classic';
 import { askText } from '../confirm';
@@ -222,7 +222,7 @@ export function ClassicTactics() {
     { key: 'reflect', label: t('cl.tac.reflect'), onClick: reflect },
     { key: 'runs', label: t('cl.tac.showRuns'), checked: pane === 'with', onClick: () => setPane(pane === 'with' ? 'overview' : 'with') },
     { key: 'sep', sep: true },
-    { key: 'auto', label: t('tac.assistantPick'), onClick: () => change(autoSelect(tac, pickableFor(g.userClub, players))) },
+    { key: 'auto', label: t('tac.assistantPick'), onClick: () => change(assistantSelect(tac, g.userClub, pickableFor(g.userClub, players))) },
     { key: 'clear', label: t('cl.sq.clear'), onClick: () => change({ ...tac, lineup: tac.lineup.map(() => 0), bench: [] }) },
     ...(['playmaker', 'targetMan'] as const).map((k) => ({ key: k, label: t(`tac.${k}`), sub: [{ key: `${k}0`, label: t('common.none'), checked: !tac.team[k], onClick: () => change({ ...tac, team: { ...tac.team, [k]: undefined } }) }, ...starters.map((id) => ({ key: `${k}${id}`, label: nm(id), checked: tac.team[k] === id, onClick: () => change({ ...tac, team: { ...tac.team, [k]: id } }) }))] })),
   ];

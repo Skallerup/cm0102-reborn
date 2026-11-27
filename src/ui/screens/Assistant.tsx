@@ -4,8 +4,8 @@ import { opponentReport, radar, RADAR_AXES } from '../../game/analysis';
 import { attrRange } from '../../game/scouting';
 import { gs, squad } from '../../game/state';
 import { act } from '../../game/actions';
-import { autoSelect, FORMATIONS } from '../../game/tactics';
-import { pickableFor, userTactic } from '../../game/sim';
+import { FORMATIONS } from '../../game/tactics';
+import { assistantSelect, pickableFor, userTactic } from '../../game/sim';
 import { t } from '../../i18n';
 import type { BenchRow } from '../../worker/bench.worker';
 import { AttrVal, Panel, Pct, PlayerLink, Radar, Tabs } from '../components';
@@ -85,7 +85,7 @@ function Suggest() {
   const g = useGame()!;
   const cur = userTactic(false);
   const players = squad(g.userClub);
-  const sugg = autoSelect(cur, pickableFor(g.userClub, players));
+  const sugg = assistantSelect(cur, g.userClub, pickableFor(g.userClub, players));
   const changed = sugg.lineup.some((id, i) => id !== cur.lineup[i]);
   return (
     <div className="cols2">

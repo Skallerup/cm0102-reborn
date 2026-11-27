@@ -7,7 +7,8 @@ import { cmOwnStaffContractsDaily, cmStaffOffersDaily } from './cmStaff';
 import { cmStaffMovesDaily, cmStaffNpDaily } from './cmStaffMove';
 import { cmActive, cmGenerated, cmLogic, cmMarketOn, cmMediaOn, cmStaffOn, cmAfterMatch, clubRepMem, cmContractDaily, cmFlagSet, cmRand, cmSquadMoraleDaily, MORALE_OFF, withFlagCtx } from './cmPlayerData';
 import { HOLIDAY_AI } from './cmHoliday';
-import { cmCupTiedAfterMatch, cmIneligible } from './cmEligibility';
+import { cmCupTiedAfterMatch, cmIneligible, cmSquadCounts, cmSquadRule } from './cmEligibility';
+import { quotaFix } from './engine/grid/pickTeam';
 import { cmFitAfterMatch, cmFitDay, cmFitMatch, cmFitOn, cmFitPreMatch, setMatchSquad } from './cmFitnessGame';
 import { cmNeedsPermit, cmPermitAfterMatch, cmPermitDaily, cmPermitOn } from './cmPermit';
 import { cmScoutDaily, cmScoutMatch } from './cmScout';
@@ -40,7 +41,7 @@ import { GRID_ENGINE_DEFAULT, getGridFactory, setGridFactory, type LiveSim } fro
 import { gridFactory } from './engine/grid/adapter';
 import type { Rng } from './rng';
 import { pitchFor, refereeFor, weatherFor, type Pitch, type Weather } from './weather';
-import { maxSubs, legacyExtended, origLogic } from './rules';
+import { benchSize, maxSubs, legacyExtended, origLogic } from './rules';
 import { recordsAfterMatch } from './records';
 import { campDaily } from './camp';
 import { trialsDaily } from './trials';
@@ -146,9 +147,9 @@ export function aiTactic(clubId: number, oppId?: number, home = true, players?: 
 export function userTactic(auto = false, only?: Set<number> | null): Tactic {
   const g = gs();
   const players = only ? squad(g.userClub).filter((p) => only.has(p.id)) : squad(g.userClub);
-  if (!g.tactic) g.tactic = autoSelect(newTactic('4-4-2'), players);
+  if (!g.tactic) g.tactic = assistantSelect(newTactic('4-4-2'), g.userClub, players);
   let t = validateTactic(g.tactic, players);
-  if (auto) t = autoSelect(t, players);
+  if (auto) t = assistantSelect(t, g.userClub, players);
   else if (!lineupComplete(t)) {
     // assistenten udfylder tomme pladser med bedste ledige spiller
     const used = new Set(t.lineup.filter(Boolean));
@@ -286,6 +287,36 @@ export function pickableFor(club: number, ps: Player[]): Player[] {
   const f = nextClubFixture(club);
   const only = f ? matchOnly(club, f.comp, f) : null;
   return only ? ps.filter((p) => only.has(p.id)) : ps;
+}
+
+/** Assistentens udtagelse med holdarkets grænse (pick_team 0x6dd44e → 0x6e8910 for menneskets klub, hold +0x19): autoSelect og derefter 0x6e8910
+ *  (pickTeam.ts quotaFix, højst to gange) med autoSelects egne værdier (slotValue; bænken efter CA og kondition) – ellers kunne assistenten selv
+ *  sætte et hold, Team Selection 0x7272b7 stopper. `f` = kampen (standard klubbens næste, 0x5acbe0). */
+export function assistantSelect(t: Tactic, club: number, players: Player[], f: Fixture | undefined = nextClubFixture(club), considerCondition = true): Tactic {
+  const sel = autoSelect(t, players, considerCondition);
+  const g = gs();
+  const rule = cmSquadRule(g, f);
+  if (!rule) return sel;
+  const ps = players.filter(available);
+  const idx = new Map(ps.map((p, i) => [p.id, i]));
+  const counted = ps.map((p) => cmSquadCounts(g, rule, p, club));
+  const nb = benchSize();
+  const out: (number | null)[] = [...sel.lineup.map((id) => idx.get(id) ?? null), ...Array.from({ length: nb }, (_, j) => idx.get(sel.bench[j]) ?? null)];
+  const xi = (i: number, s: number) => Math.round(slotValue(ps[i], sel.slots[s], considerCondition) * 1000);
+  const bn = (i: number) => Math.round(ps[i].ca * (0.6 + 0.4 * ps[i].condition / 100) * 1000);
+  for (let pass = 0; ; pass++) {
+    let c11 = 0, cb = 0;
+    out.forEach((i, s) => { if (i !== null && counted[i]) { if (s < 11) c11++; else cb++; } });
+    if (c11 + cb <= rule.limit || pass === 2) break;
+    quotaFix(out, nb, ps.length, counted, rule.limit, c11, cb, xi, bn, (i) => ps[i].pos[0], (s) => sel.slots[s]?.pos === 'GK', () => false);
+  }
+  const lineup = out.slice(0, 11).map((i) => (i === null ? 0 : ps[i].id));
+  const bench = out.slice(11).filter((i): i is number => i !== null).map((i) => ps[i].id);
+  const keep = (id: number | undefined) => (id && lineup.includes(id) ? id : 0);
+  const byXi = (f2: (p: Player) => number) => lineup.map((id) => g.players[id]).filter(Boolean).sort((a, b) => f2(b) - f2(a))[0]?.id ?? 0;
+  return { ...sel, lineup, bench,
+    captain: keep(sel.captain) || byXi((p) => p.attrs[21] * 2 + p.ca / 20), penalties: keep(sel.penalties) || byXi((p) => p.attrs[8] + p.attrs[2] * 0.3),
+    freeKicks: keep(sel.freeKicks) || byXi((p) => p.attrs[10]), corners: keep(sel.corners) || byXi((p) => p.attrs[11]) };
 }
 
 function tacticFor(club: number, opp: number, home: boolean, userAuto: boolean, comp?: string, f?: Fixture): Tactic {
