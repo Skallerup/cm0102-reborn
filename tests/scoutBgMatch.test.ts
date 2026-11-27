@@ -35,12 +35,16 @@ describe('Scout Player i en baggrundsklub (ægte tilstand, original DB)', () => 
     // 0x7f8750 sletter anmodningen uden rapport, hvis spilleren er skadet efter de 30 dage (0x62c400 = 2) – det sker for nogle talrækker
     // (24/11: frø 5 med formændenes udfyldte Patience → Gallardo, Monaco, skadet 20/9)
     let hurt = false;
+    // (27/11) han kan blive solgt undervejs (frø 5 efter transferbudgettet 0x598800 på dagen: Gallardo, Monaco → Rangers 28/8) – så ser
+    // spejderne rigtigt hans nye klubs kampe (Rangers–Westerlo i UEFA-cuppen 13/9)
+    const clubs = new Set([fra.id]);
     for (let i = 0; i < 400 && g.date < until && !reps().some((n) => n.link?.id === target.id); i++) {
       step();
+      clubs.add(target.club);
       if (target.injury && target.injury.key !== 'awol' && !(g.cmScoutReq ?? []).some((r) => r.pid === target.id)) { hurt = true; break; }
     }
-    // en spejderliste, der har set en kamp (0x7b5be0 sætter +0x1a5 = i morgen), har set en af klubbens kampe i kampprogrammet – ingen baggrundskamp
-    const days = new Set(Object.values(g.fixtures).filter((f) => f.home === fra.id || f.away === fra.id).map((f) => addDays(f.date, 1)));
+    // en spejderliste, der har set en kamp (0x7b5be0 sætter +0x1a5 = i morgen), har set en af hans klubbers kampe i kampprogrammet – ingen baggrundskamp
+    const days = new Set(Object.values(g.fixtures).filter((f) => clubs.has(f.home) || clubs.has(f.away)).map((f) => addDays(f.date, 1)));
     const seen = Object.entries(g.cmScoutWatch ?? {}).filter(([id, d]) => watch0[+id] !== d).map(([, d]) => d);
     expect(seen.filter((d) => !days.has(d)), 'spejderne så en baggrundskamp').toEqual([]);
     expect(reps().map((n) => n.link?.id).filter((id) => id !== target.id), 'rapporter om andre spillere').toEqual([]);
