@@ -31,6 +31,7 @@ import type { Fixture, GameState, MatchReport, Player } from './types';
 import { cmActive, cmLogic } from './cmPlayerData';
 import { squad } from './state';
 import { ageOn } from './dates';
+import { regionOf } from './leagues';
 
 /** nation.dat +0x7f = 2 (3.9.60) – EU/EØS-borgere i originalens forstand (0x53d740) */
 export const CM_EU = new Set(['Andorra', 'Austria', 'Belgium', 'Denmark', 'England', 'Faroe Islands', 'Finland', 'France', 'Germany', 'Greece',
@@ -49,6 +50,38 @@ const nameOf = (g: GameState, n: number | undefined) => (n === undefined || n < 
 export function cmEuCitizen(g: GameState, p: Player): boolean {
   const n = nameOf(g, p.nation);
   return eu7f(g, p.nation) || n === 'Switzerland' || eu7f(g, p.cmNation2);
+}
+/** 0x53d740(staff, land) med klubbens land: som cmEuCitizen, og desuden land = Tyskland [0x9cf314] og hans nations verdensdel (+0x71) er Europa
+ *  [0x9cfa10] (kun hans første nation), land = Italien [0x9cf360] (alle), land = Danmark [0x9cf2c0] og hans nation er Island/Norge/Liechtenstein
+ *  ([0x9cf348]/[0x9cf408]/[0x9cf3a0]) */
+export function cmEuCitizenIn(g: GameState, p: Player, nation: number | undefined): boolean {
+  if (cmEuCitizen(g, p)) return true;
+  if (nation === undefined || nation < 0) return false;
+  const c = nameOf(g, nation), pn = nameOf(g, p.nation);
+  if (c === 'Germany' && p.nation !== undefined && p.nation >= 0) {
+    const cont = g.cmNationCont?.[p.nation];
+    if (g.cmNationCont && g.cmEurope !== undefined ? cont === g.cmEurope : regionOf(pn) === 'europe') return true;
+  }
+  if (c === 'Italy') return true;
+  return c === 'Denmark' && (pn === 'Iceland' || pn === 'Norway' || pn === 'Liechtenstein');
+}
+/** de britiske øer (0x53d9cf: England [0x9cf2e4], Skotland [0x9cf45c], Wales [0x9cf510], Nordirland [0x9cf3e4], Irland [0x9cf2dc]) */
+const BRIT_ISLES = new Set(['England', 'Scotland', 'Wales', 'Northern Ireland', 'Republic of Ireland']);
+/** 0x53d980(staff, land, 1): udlænding i landet – ingen af hans nationer er landet; de britiske øer er ikke udlændinge for hinanden (begge
+ *  nationer), Australien/New Zealand ([0x9cf224]/[0x9cf3f4], første nation) heller ikke, ukrainere ikke i Italien ([0x9cf4f0]), og i Portugal
+ *  [0x9cf434] ikke en ikke-EU-borger (0x53d740(staff, 0)), hvis hovedkontrakt (0x4cf5a0) startede (+0x25/+0x27) før 1/1-1998 (0x549f70) */
+export function cmForeignIn(g: GameState, p: Player, nation: number | undefined): boolean {
+  if (nation === undefined || nation < 0) return true;
+  if (p.nation === nation || p.cmNation2 === nation) return false;
+  const c = nameOf(g, nation), pn = nameOf(g, p.nation), p2 = nameOf(g, p.cmNation2);
+  if (BRIT_ISLES.has(c) && (BRIT_ISLES.has(pn) || BRIT_ISLES.has(p2))) return false;
+  if ((c === 'Australia' || c === 'New Zealand') && (pn === 'Australia' || pn === 'New Zealand')) return false;
+  if (c === 'Italy' && pn === 'Ukraine') return false;
+  if (c === 'Portugal' && !cmEuCitizen(g, p) && p.contract) {
+    const j = p.joined ?? p.cmJoined;
+    if (j && +j.slice(0, 4) < 1998) return false;
+  }
+  return true;
 }
 /** nation +0x7f = 2: den originale database efter CM_EU, 2026/27 fra databasens nation.dat (g.cmNation7f – som cmScoutAsg.ts) */
 function eu7f(g: GameState, n: number | undefined): boolean {

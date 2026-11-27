@@ -21,7 +21,7 @@ import { ATTRS } from '../../attributes';
 import { ageOn } from '../../dates';
 import { CM_INT_OFFSETS } from '../../playerInit';
 import { AI_TACTIC_LIST, chooseAiTactic, type AiTacticEntry, type ChoiceManager, type ChoicePlayer, type TacticStat } from './aiTacticChoice';
-import { assignSquad, benchSlots, pickFlags, setPieceTakers, type Rand } from './pickTeam';
+import { assignSquad, benchSlots, pickFlags, quotaFix, setPieceTakers, type Rand } from './pickTeam';
 import { gs, hasGame } from '../../state';
 import { benchSize } from '../../rules';
 import { cmGeneratedNow, cmLogic, cmMediaOn, cmContractOf, cmFormRatings, leagueAverage, statAvg, statusCode } from '../../cmPlayerData';
@@ -172,6 +172,8 @@ export interface AiPickCtx {
   fit?: boolean;
   /** managerens taktiske egenskaber (team+0x1f, Staff.tac) – omrokeringens taktikvalg 0x6e1aa0 → 0x6e0230/0x6ddab0 */
   manager?: { id: number; ca: number; tac: number[] } | null;
+  /** holdarkets grænse for kampen (0x8cf7e0, cmEligibility.ts cmSquadRule): højst `limit` spillere, for hvem `counts` (0x8cf880's tælling) er sand */
+  quota?: { limit: number; counts: (p: Player) => boolean } | null;
 }
 
 export interface AiTeamInput {
@@ -280,7 +282,7 @@ export function aiTeamSetup(o: AiTeamInput): AiTeamResult {
     : { pos: bpos[j - 11], att: 0, lo: 0, hi: 0, tb: 0, tf: entry.flags };
   const memo = new Map<string, number>();
   const sc = (i: number, s: ReturnType<typeof slot>, fl: number) => {
-    const k = `${i}|${s.pos}|${s.att}|${s.lo}|${s.tb}|${fl}`;
+    const k = `${i}|${s.pos}|${s.att}|${s.lo}|${s.tb}|${s.tf}|${fl}`;
     let v = memo.get(k);
     if (v === undefined) { v = roleScore(input(i, s, fl)); memo.set(k, v); }
     return v;
@@ -288,6 +290,21 @@ export function aiTeamSetup(o: AiTeamInput): AiTeamResult {
   const out = assignSquad(ps.length, 11, bench, (j, i) => sc(i, slot(j), flags),
     (j, i) => sc(i, { ...slot(11 + j), lo: entry.lo[j] >>> 0, tb: entry.tb[j] }, flags | 0x200),
     (i) => ps[i].pos[0], (j) => (slot(j).pos & 1) === 1);
+  // 0x6dd44e–0x6dd61c: holdarkets grænse – 0x8cf880 over de 11 og bænken, for mange → 0x6e8910 (højst to gange, 0x6dd488)
+  const q = ctx.quota;
+  if (q) {
+    const counted = ps.map((p) => q.counts(p));
+    // 0x6e8910's værdier: holdets +0x584 = 0 og intet MATCH_MAN (arg16 = 0 fra pick_team); bænkpladserne uden instruktioner/taktikbyte
+    const xiSlot = (s: number) => ({ ...slot(s), tf: 0 });
+    const bSlot = (j: number) => ({ pos: bpos[j], att: 0, lo: 0, hi: 0, tb: 0, tf: 0 });
+    for (let pass = 0; ; pass++) {
+      let xi = 0, b = 0;
+      out.forEach((i, s) => { if (i !== null && counted[i]) { if (s < 11) xi++; else b++; } });
+      if (xi + b <= q.limit || pass === 2) break;
+      quotaFix(out, bench, ps.length, counted, q.limit, xi, b, (i, s) => sc(i, xiSlot(s), flags), (i, j) => sc(i, bSlot(j), flags),
+        (i) => ps[i].pos[0], (s) => (slot(s).pos & 1) === 1, (j) => (bpos[j] & 1) === 1);
+    }
+  }
   // 0x6dd6bf: anføreren over de 11
   const xi = out.slice(0, 11);
   const c2 = chooseCaptain(xi.map((i) => (i === null ? null : capIn[i])), judgeJa);

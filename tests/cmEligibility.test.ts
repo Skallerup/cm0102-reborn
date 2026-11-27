@@ -7,7 +7,8 @@ import { readFileSync } from 'node:fs';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { createGame, type WorldData } from '../src/game/newgame';
 import { gs, squad } from '../src/game/state';
-import { cmCupTiedAfterMatch, cmIneligible } from '../src/game/cmEligibility';
+import { cmCupTiedAfterMatch, cmIneligible, cmSquadCounts, cmSquadRule } from '../src/game/cmEligibility';
+import { quotaFix } from '../src/game/engine/grid/pickTeam';
 import { matchOnly, pickableFor, prepareMatch, quickReport, userTactic } from '../src/game/sim';
 import { autoSelect, newTactic } from '../src/game/tactics';
 import { teamSelectionProblem } from '../src/game/teamSelection';
@@ -163,5 +164,48 @@ describe('spilleberettigelsen 0x8cf5e0 og udtagelsen', () => {
     expect(cmNeedsPermit(g, p, ars, false)).toBe(true);
     expect(matchOnly(ars, f.comp, f)?.has(p.id)).toBe(false);
     g.cmPermit![p.id] = rec;
+  });
+  it('0x8cf880/0x6e8910: England 0x579c50 – højst 3 ikke-EU-spillere blandt de 11 og bænken (mennesket stoppes, computeren retter holdet)', () => {
+    const g = gs();
+    const che = Object.values(g.clubs).find((c) => c.name === 'Chelsea')!.id;   // Babayaro, Stanic, Jokanovic, Bosnich
+    const f = fixture(g.clubs[mu].league, che, mu);
+    const rule = cmSquadRule(g, f)!;
+    expect(rule).toEqual({ type: 1, limit: 3, age: -1 });
+    expect(cmSquadRule(g, fixture(lc, che, mu))).toEqual(rule);                     // alle engelske turneringer
+    expect(cmSquadRule(g, fixture('CL', che, mu, 1085))).toBeNull();                 // Europas regelobjekt: ingen grænse
+    // 0x53d980/0x53d740: de britiske øer er ikke udlændinge i England; en EU-borger tæller ikke
+    const nat = (name: string) => g.nations.findIndex((n) => n.name === name);
+    const any = squad(che)[0];
+    const as = (nation: number, n2?: number) => ({ ...any, nation, cmNation2: n2 }) as Player;
+    expect(cmSquadCounts(g, rule, as(nat('Scotland')), che)).toBe(false);
+    expect(cmSquadCounts(g, rule, as(nat('France')), che)).toBe(false);
+    expect(cmSquadCounts(g, rule, as(nat('Brazil')), che)).toBe(true);
+    expect(cmSquadCounts(g, rule, as(nat('Brazil'), nat('Republic of Ireland')), che)).toBe(false);
+    expect(cmSquadCounts(g, rule, as(nat('Switzerland')), che)).toBe(false);
+    // mennesket: 4 ikke-EU-spillere på holdarket → "Team Selection" med 0xa8f208, kampen starter ikke; 3 er tilladt
+    const ok = (p: Player) => teamSelectionProblem(g, che, f, [p.id]) === null;
+    const ne = squad(che).filter((p) => cmSquadCounts(g, rule, p, che) && ok(p));
+    const eu = squad(che).filter((p) => !cmSquadCounts(g, rule, p, che) && ok(p));
+    expect(ne.length).toBeGreaterThanOrEqual(4);
+    const four = [...ne.slice(0, 4), ...eu.slice(0, 12)].map((p) => p.id);
+    expect(teamSelectionProblem(g, che, f, four)).toEqual({ key: 'quota', ids: [], quota: { keys: ['cl.mt.sel.q.nonEuN'], n: 4, limit: 3, age: -1 } });
+    expect(teamSelectionProblem(g, che, f, [...ne.slice(0, 3), ...eu.slice(0, 13)].map((p) => p.id))).toBeNull();
+    expect(teamSelectionProblem(g, che, fixture('CL', che, mu, 1085), four.filter((id) => !g.players[id].reserves))?.key).not.toBe('quota');
+    // computeren (pick_team → 0x6e8910): højst 3 i kamptruppen
+    g.pendingFixture = f.id; g.tactic = null;
+    const rep = quickReport()!;
+    const used = new Set([...rep.players.filter((l) => l.team === 0).map((l) => l.id), ...(rep.bench?.[0] ?? [])]);
+    expect([...used].filter((id) => cmSquadCounts(g, rule, g.players[id], che)).length).toBeLessThanOrEqual(3);
+  });
+
+  it('0x6e8910: de 11 med mindst tab og bænken bagefter (syntetisk – 6 talte af de 16 bedste, grænse 3)', () => {
+    const n = 20, out: (number | null)[] = Array.from({ length: 16 }, (_, i) => i);
+    const counted = Array.from({ length: n }, (_, i) => i < 6 || i === 12);
+    const sc = (i: number) => 1000 - 10 * i;
+    quotaFix(out, 5, n, counted, 3, 6, 1, sc, sc, () => 1, () => false, () => false);
+    const cnt = out.filter((i) => i !== null && counted[i]).length;
+    expect(cnt).toBe(3);
+    expect(out.slice(0, 11).filter((i) => i !== null && counted[i])).toEqual([0, 1, 2]);   // de tre bedste talte bliver (mindst tab: 5, 4, 3 ud)
+    expect(new Set(out).size).toBe(16);
   });
 });

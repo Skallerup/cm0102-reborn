@@ -22,12 +22,24 @@
 // og de indskiftede, +0x32 ≠ 0xff), og som er en af databasens personer, sin post (0x4ad030, hvis han ikke har en) og posten +8 = holdets klub.
 // Posterne nulstilles med turneringens sæson (0x4a1c50) – hos os g.cmCupTied pr. turnering og sæson, kun for pokalerne med reglen ovenfor.
 //
-// Ikke porteret: kode 3 (prøvespillere – findes ikke i spillet), 2/4/5/6/7 (andre landes regler, ikke Englands), Europas tilmelding for computerens
+// Ikke porteret: kode 3 (prøvespillere – findes ikke i spillet), 2/4/5/6/7 (andre landes regler, ikke Englands) og Europas tilmelding for computerens
 // klubber SQUAD_MANAGER::select_euro_registered_players 0x85aae0 (computerens klubber regnes som tilmeldte; menneskets er European Squad,
-// euroSquad.ts) og holdarkets udlændinge-/ikke-EU-grænser 0x8cf880/0x6e8910 (TRANSFER_RULES +0x1c – England 0x579c50: højst 3 ikke-EU-spillere).
+// euroSquad.ts).
+//
+// Holdarkets grænse for udlændinge/ikke-EU-spillere/ældre spillere (afkodet 27/11-2026):
+//   0x8cf7e0/0x8cf6b0  reglen for kampen: 0x8d2fa0 finder regelobjektet (TRANSFER_MANAGER +0x8ac, 28 stk. bygget af 0x8d26b0 med landenes
+//                      globaler) – Reserve: hjemmeklubbens land; venskabskampe (0x5c6710): ingen; ellers turneringens land (0x669470), de
+//                      kontinentale: Europas (ingen grænse). Objektets +0x1c fylder 42 bytes; samlet (flag 1): +5/+3 → type 1 (ikke-EU),
+//                      +2/+0 → type 2 (udlændinge), +0x16/+0x17 → type 3 (over N år); grænsen i +5 (alderen i +1). squadRuleOf nedenfor.
+//   0x8cf880           holdarket (de 11 + turneringens +0x4d & 0xf udskiftere): tæller de 11 (+2), bænken (+3) og alle (+4) – type 1
+//                      0x53d980(staff, klubbens land, 1) og ikke 0x53d740(staff, klubbens land), type 2 kun 0x53d980, type 3 alder > N –
+//                      og svarer 1 med beskeden (0xa8f07c–0xa8f208 / 0xa8ee68–0xa8effc / 0xa8ed48–0xa8ee08), når alle > grænsen.
+//   pick_team 0x6dd44e computerens udtagelse retter holdet med 0x6e8910 (aiTeam.ts quotaFix) højst to gange; Team Selection 0x7272b7 (menneskets
+//                      kamp, efter de øvrige grunde) viser beskeden og starter ikke kampen (teamSelection.ts). Reservekampene (fixture −2) springes over.
 import type { Competition, Fixture, GameState, MatchReport, Player } from './types';
 import { cmKeyRules, cmLoanBar, cmLoanBase } from './cmLoan';
 import { cmLogic, cmGeneratedNow } from './cmPlayerData';
+import { cmEuCitizenIn, cmForeignIn } from './cmPermit';
 import { euroRegistered } from './euroSquad';
 import { regionOf } from './leagues';
 import { ageOn } from './dates';
@@ -100,4 +112,85 @@ export function cmCupTiedAfterMatch(g: GameState, f: Fixture, rep: MatchReport):
     if (!p || cmGeneratedNow(p)) continue;                                     // 0x4a0b99: id < [0xae2364]
     e.m[p.id] = line.team === 0 ? f.home : f.away;                             // 0x4a0bdb: posten +8 = holdets klub
   }
+}
+
+// ---------------------------------------------------------------- holdarkets grænse 0x8cf7e0/0x8cf880
+
+/** 0x8cf7e0's sammendrag: type 1 ikke-EU, 2 udlændinge, 3 over `age` år; højst `limit` på holdarket */
+export interface SquadRule { type: 1 | 2 | 3; limit: number; age: number }
+/** turneringsglobalernes navne (0x601a40/0x60efd0 – strcmp uden store/små bogstaver, 0x951c50) */
+const nameIs = (c: Competition, ...names: string[]) => names.some((n) => n.toLowerCase() === c.name.toLowerCase());
+/** landets pokalturnering (German Cup [0x9cf714], Spanish Cup [0x9cf740], turkish fa cup [0x9cf8f8]) – hos os CUP-<land> */
+const nationalCup = (c: Competition) => c.id === `CUP-${c.nation}`;
+const nonEu = (limit: number): SquadRule => ({ type: 1, limit, age: -1 });
+const fgn = (limit: number): SquadRule => ({ type: 2, limit, age: -1 });
+/** regelobjekternes +0x1c (vtbl-slot 7) pr. land (0x8d26b0) – kun dem, der giver en grænse, holdarket læser (Belgien 0x424f80 og Italien 0x6619e0
+ *  sætter kun +6/+8; Finland, Holland, Irland, Nordirland, Wales og Europa 0x63c330/0x5832c0 intet; Skotland 0x7f64c0 og Tyrkiets aldersgrænse
+ *  kun i reservekampe). `season` = fixture +0x2c (sæsonens år). */
+function squadRuleOf(nat: string, c: Competition, season: number): SquadRule | null {
+  switch (nat) {
+    case 'England': case 'Denmark': case 'Sweden': return nonEu(3);                               // 0x579c50 (+5 = 3)
+    case 'Norway': return nonEu(2);                                                               // 0x794740
+    case 'France': return nonEu(nameIs(c, 'French First Division') ? 5 : 3);                      // 0x5c1a30 [0x9cf5cc]
+    case 'Germany': return nonEu(nationalCup(c) ? 3 : 5);                                         // 0x5e02d0 [0x9cf714]
+    case 'Greece': return nonEu(nameIs(c, 'greek premier division', 'Greek National A Division') ? 5 : 4);   // 0x5ed020 [0x9cf86c]
+    case 'Portugal': return nonEu(nameIs(c, 'Portuguese Second Division B', 'Portuguese Second Division B North') ? 3 : 4);   // 0x7d43c0 (+3) [0x9cf7c0]
+    case 'Spain':                                                                                 // 0x859570 [0x9cf624]/[0x9cf740], fixture +0x2c
+      if (nameIs(c, 'Spanish First Division') || nationalCup(c)) return nonEu(season === 2000 ? 4 : 3);
+      return nonEu(season === 2000 ? 4 : season === 2001 || season === 2002 ? 3 : 2);
+    case 'Argentina': return fgn(4);                                                              // 0x40aa10 (+2 = 4)
+    case 'Australia': return fgn(6);                                                              // 0x412db0
+    case 'Brazil': return fgn(2);                                                                 // 0x43f2a0 (ikke Reserve)
+    case 'Croatia': return fgn(4);                                                                // 0x518620 (+0 = 4)
+    case 'Japan': return fgn(3);                                                                  // 0x667090
+    case 'South Korea': return fgn(3);                                                            // 0x66e750 (+0 = 3)
+    case 'Poland': return fgn(5);                                                                 // 0x7cd960
+    case 'Russia': return nameIs(c, 'russian first division') ? fgn(3) : null;                   // 0x7ec950 [0x9cf92c]
+    case 'Turkey': return nameIs(c, 'turkish premier division') || nationalCup(c) ? fgn(6) : null;   // 0x9021d0 [0x9cf8d8]/[0x9cf8f8] ([0x9cf8d0] sættes aldrig)
+    case 'United States': return nameIs(c, 'American MLS All-Stars') ? null : fgn(4);            // 0x90ba60 [0x9cf690]
+    default: return null;
+  }
+}
+
+/** 0x8cf7e0: holdarkets regel for kampen (null = ingen) – kun spil med originalens logik. Turneringens land (0x8d2fa0 → 0x669470); venskabs-,
+ *  reserve- og landskampe og de kontinentale turneringer har ingen. */
+export function cmSquadRule(g: GameState, f: Fixture | undefined): SquadRule | null {
+  if (!f || !cmLogic(g)) return null;
+  const c = g.comps[f.comp];
+  if (!c || c.type === 'continental' || c.nation < 0) return null;
+  const nat = g.nations[c.nation]?.name;
+  if (!nat) return null;
+  const y = +f.date.slice(0, 4), season = +f.date.slice(5, 7) >= 7 ? y : y - 1;
+  return squadRuleOf(nat, c, season);
+}
+
+/** 0x8cf880's tælling: spilleren tæller med i reglen for klubben (klubbens land club +0x53) */
+export function cmSquadCounts(g: GameState, rule: SquadRule, p: Player, club: number): boolean {
+  if (rule.type === 3) return ageOn(p.dob, g.date) > rule.age;
+  const nation = g.clubs[club]?.nation;
+  if (!cmForeignIn(g, p, nation)) return false;
+  return rule.type === 2 || !cmEuCitizenIn(g, p, nation);
+}
+
+export interface SquadCount { rule: SquadRule; xi: number; bench: number; total: number }
+/** 0x8cf880 over holdarket (de 11 og de navngivne udskiftere i pladsrækkefølge): tallene, når der er for mange (ellers null) */
+export function cmSquadOver(g: GameState, club: number, f: Fixture | undefined, lineup: readonly (number | null)[], bench: readonly (number | null)[]): SquadCount | null {
+  const rule = cmSquadRule(g, f);
+  if (!rule) return null;
+  let xi = 0, b = 0;
+  for (const id of lineup) { const p = id === null ? undefined : g.players[id]; if (p && cmSquadCounts(g, rule, p, club)) xi++; }
+  for (const id of bench) { const p = id === null ? undefined : g.players[id]; if (p && cmSquadCounts(g, rule, p, club)) b++; }
+  return xi + b > rule.limit ? { rule, xi, bench: b, total: xi + b } : null;
+}
+
+/** 0x8cf9f7–0x8cfc69: beskedens nøgle(r) – type 3 er to dele ("…over N years old. " + "Only … allowed. "); null = ingen tekst (sic: 0x8cfac5) */
+export function cmSquadMessage(o: SquadCount): { keys: string[]; n: number; limit: number; age: number } | null {
+  const { rule: { type, limit, age }, total: n } = o;
+  const base = { n, limit, age };
+  if (type === 3) return { keys: [n > 1 ? 'cl.mt.sel.q.ageN' : 'cl.mt.sel.q.age1', limit > 1 ? 'cl.mt.sel.q.ageLimN' : limit === 1 ? 'cl.mt.sel.q.ageLim1' : 'cl.mt.sel.q.ageLim0'], ...base };
+  const k = type === 1 ? 'nonEu' : 'fgn';
+  if (n > 1) return { keys: [`cl.mt.sel.q.${k}${limit > 1 ? 'N' : limit === 1 ? 'One' : 'No'}`], ...base };
+  if (limit === 1) return { keys: [`cl.mt.sel.q.${k}1`], ...base };
+  if (limit === 0) return { keys: [`cl.mt.sel.q.${k}1No`], ...base };
+  return null;
 }

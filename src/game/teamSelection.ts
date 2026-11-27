@@ -8,17 +8,18 @@
 //   5 udelukket 0x55d270                 0xa17300/0xa17328
 //   6 skadet 0x62c400                    0xa17278/0xa172b8
 //   7 arbejdstilladelse 0x8c7560(…, 0) – ikke i reserve- og venskabskampe (0x7263ab/0x7263be)  0xa171d4/0xa17224
+//   8 holdarkets grænse 0x8cf880(klub, kamp, tekst, 0x8968f0's plader) (0x7272b7, cmEligibility.ts cmSquadOver) – beskeden 0xa8f07c–0xa8f208 m.fl.
 // Navnene: "<1> and <2>" (0xa17b40), "<liste>, <spiller>" (0xa17af4), sidste "<liste>, and <spiller>" (0xa17b18).
 // CM Reborn: spillere i reserverne (Player.reserves) melder vi som "in-eligible" (kode 2, 0xa175e0) – samme plads som koderne.
 import type { Fixture, GameState, Player } from './types';
-import { cmIneligible } from './cmEligibility';
+import { cmIneligible, cmSquadMessage, cmSquadOver } from './cmEligibility';
 import { cmNeedsPermit, cmPermitOn } from './cmPermit';
 import { euroRegistered } from './euroSquad';
 import { cmLogic } from './cmPlayerData';
 /** cmReserveMatches.ts RSV_COMP (reserveturneringen [0x9cf684]) */
 const RSV_COMP = 'RSV';
 
-export type SelKey = 'unav' | 'cup' | 'res' | 'unreg' | 'awol' | 'loanC' | 'loanM' | 'ban' | 'inj' | 'wp';
+export type SelKey = 'unav' | 'cup' | 'res' | 'unreg' | 'awol' | 'loanC' | 'loanM' | 'ban' | 'inj' | 'wp' | 'quota';
 /** 0x8cf5e0's koder → beskedens nøgle (0x726b75–0x726d7f); 3–7 (prøvespiller, anden klub, fristerne) giver vores regler ikke */
 const CODE_KEY: Record<number, SelKey> = { 1: 'cup', 2: 'res', 8: 'unreg', 9: 'awol', 0xa: 'loanC', 0xb: 'loanM' };
 
@@ -26,7 +27,8 @@ const CODE_KEY: Record<number, SelKey> = { 1: 'cup', 2: 'res', 8: 'unreg', 9: 'a
 const unavailable = (p: Player) => /^cm(7[7-9]|8[01])$/.test(p.injury?.key ?? '');
 
 /** Den første grund til, at holdet ikke kan spille kampen, og spillerne med den (null = holdet er klar) */
-export function teamSelectionProblem(g: GameState, club: number, f: Fixture | undefined, ids: number[]): { key: SelKey; ids: number[] } | null {
+export function teamSelectionProblem(g: GameState, club: number, f: Fixture | undefined, ids: number[]):
+  { key: SelKey; ids: number[]; quota?: { keys: string[]; n: number; limit: number; age: number } } | null {
   const ps = ids.map((id) => g.players[id]).filter((p): p is Player => !!p && p.club === club);
   const groups = new Map<SelKey, number[]>();
   const add = (k: SelKey, p: Player) => { const a = groups.get(k); if (a) a.push(p.id); else groups.set(k, [p.id]); };
@@ -47,5 +49,8 @@ export function teamSelectionProblem(g: GameState, club: number, f: Fixture | un
   }
   const order: SelKey[] = ['unav', code ? CODE_KEY[code] : 'res', 'res', 'unreg', 'ban', 'inj', 'wp'];
   for (const k of order) { const a = groups.get(k); if (a?.length) return { key: k, ids: a }; }
-  return null;
+  // 0x7272b7: holdarkets grænse over de 11 og bænken (kun det samlede tal giver beskeden)
+  if (!orig) return null;
+  const over = cmSquadOver(g, club, f, ids.filter((id) => g.players[id]?.club === club), []);
+  return over ? { key: 'quota', ids: [], quota: cmSquadMessage(over) ?? { keys: [], n: over.total, limit: over.rule.limit, age: over.rule.age } } : null;
 }

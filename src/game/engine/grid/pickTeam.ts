@@ -11,9 +11,10 @@
 //   0x6dd07f–0x6dd2c3  pladserne: de 11 fra taktikken; bænkpladserne (11 .. 10 + turneringens +0x4d & 0xf) får rand(10) → D/M/F (0–2 D, 3–5 M,
 //                      6–9 F), plads 12 målmand, når bænken har mindst 4, ellers når rand(10) = 0
 //   0x6dd37e           0x6e2000(kandidater, n, pladser, 11, bænk, …) → ud[0..10] = de 11, ud[11..] = bænken i pladsrækkefølge
+//   0x6dd44e           holdarkets grænse 0x8cf880 → 0x6e8910 (quotaFix, højst to gange)
 //   0x6dd6bf           anføreren igen over de 11 → 0x897760
 // Ikke porteret: rotationen før en vigtigere kamp (0x6dbdc4–0x6dc59f, hold +0x1a ≠ 3 – kræver kampprogrammet; gælder klubber med omdømme
-// ≥ 6000 og over 30 spillere) og turneringens udtagelsesregler 0x8cf880/0x6e8910 (udlændingekvoter – ingen i de engelske 2001-turneringer).
+// ≥ 6000 og over 30 spillere). Holdarkets grænse 0x8cf880/0x6e8910 (udlændinge/ikke-EU – England 3 ikke-EU i alle turneringer): quotaFix.
 
 import { assignPhase12, memoScore, type ScoreFn } from './subs';
 
@@ -133,6 +134,103 @@ export function assignSquad(n: number, k: number, extra: number, score0: ScoreFn
     if (!swapped) break;
   }
   return out;
+}
+
+// ---------------------------------------------------------------- holdarkets grænse 0x6e8910
+
+/** 0x6dd488–0x6dd5db + MATCH_MAN 0x6e8910 (cdecl: klub, manager, reglen, flag, 11, bænk, ekstra, de 11, bænken, ekstra, ud, pladsernes masker,
+ *  angrebsflag, instruktioner, taktikbyte, MATCH_MAN = 0): ret udtagelsen `out` (kandidatindeks pr. plads, 11 + nb), så højst `limit` af de
+ *  talte (counted) er med. pick_team giver bænken (B, kopi af ud[11..]) og de ubrugte kandidater i listens rækkefølge (E – kun når der er flere
+ *  kandidater end pladser). `xi(i, s)`/`bn(i, j)` = 0x6e2f20 for kandidat i på plads s / bænkplads j (6e8910's argumenter: +0x584 = 0).
+ *   A 0x6e897b  de talte fjernes fra E (den sidste flyttes ind på pladsen, sic)
+ *   B 0x6e8a96  (kun når de 11 har flere end grænsen) de 11's talte pladser fyldes af 0x6e2000 med bænkens ikke-talte + E; så længe der er for
+ *               mange: pladsen med mindst tab (spillerens værdi − afløserens, ingen afløser −1000000) får afløseren, som fjernes fra E og
+ *               bænken; kom han fra bænken, fordeles bænken igen (0x6e8f9b: 0x6e2000 af bænkens resterende + E på bænkpladserne)
+ *   C 0x6e9083  bænkens talte pladser fyldes af 0x6e2000 med E's spillere, der ikke er på bænken; samme tab-regel for resten */
+export function quotaFix(out: (number | null)[], nb: number, n: number, counted: readonly boolean[], limit: number, c11: number, cb: number,
+  xi: (i: number, s: number) => number, bn: (i: number, j: number) => number, gkOf: (i: number) => number,
+  xiIsGk: (s: number) => boolean, bIsGk: (j: number) => boolean): void {
+  const NONE = -1000000;
+  const total = c11 + cb;
+  if (!total || total <= limit) return;
+  const B: (number | null)[] = out.slice(11, 11 + nb);
+  const inOut = new Set(out.filter((i): i is number => i !== null));
+  const E: number[] = [];
+  if (n > 11 + nb) for (let i = 0; i < n; i++) if (!inOut.has(i)) E.push(i);
+  const dropE = (x: number | null) => {
+    const a = x === null ? -1 : E.indexOf(x);
+    if (a < 0) return;
+    if (a < E.length - 1) E[a] = E[E.length - 1];
+    E.pop();
+  };
+  // A: E uden de talte (den sidste flyttes ind på pladsen og prøves igen)
+  for (let i = 0; i < E.length; i++) if (counted[E[i]]) { if (i < E.length - 1) { E[i] = E[E.length - 1]; E.pop(); i--; } else E.pop(); }
+  let benchLeft: number;
+  if (c11 <= limit) benchLeft = total - limit;
+  else {
+    let left = c11 - limit;
+    benchLeft = cb;
+    const R: number[] = [];
+    for (let s = 0; s < 11; s++) { const i = out[s]; if (i !== null && i !== undefined && counted[i]) R.push(s); }
+    const pool = [...B.filter((i): i is number => i !== null && !counted[i]), ...E];
+    let benchChanged = false;
+    if (pool.length) {
+      const rep = assignSquad(pool.length, R.length, 0, (j, i) => xi(pool[i], R[j]), () => 0, (i) => gkOf(pool[i]), (j) => xiIsGk(R[j]));
+      const used = new Array(R.length).fill(false);
+      while (left > 0 && R.length) {
+        let best = -1, bestLoss = 0;
+        for (let j = 0; j < R.length; j++) {
+          if (used[j]) continue;
+          const cur = out[R[j]];
+          if (cur === null) continue;
+          const r = rep[j];
+          const loss = xi(cur, R[j]) - (r === null ? NONE : xi(pool[r], R[j]));
+          if (best === -1 || loss < bestLoss) { best = j; bestLoss = loss; }
+        }
+        if (best < 0) break;
+        const r = rep[best] === null ? null : pool[rep[best]!];
+        out[R[best]] = r;
+        dropE(r);
+        if (r !== null) for (let j = 0; j < nb; j++) if (B[j] === r) { B[j] = null; benchChanged = true; }
+        used[best] = true;
+        left--;
+      }
+      // 0x6e8f9b: bænken igen – de tilbageværende på bænken og E på bænkpladserne
+      if (benchChanged) {
+        const p2 = [...B.filter((i): i is number => i !== null), ...E];
+        if (p2.length) {
+          const r2 = assignSquad(p2.length, nb, 0, (j, i) => bn(p2[i], j), () => 0, (i) => gkOf(p2[i]), bIsGk);
+          for (let j = 0; j < nb; j++) out[11 + j] = r2[j] === null ? null : p2[r2[j]!];
+        }
+      }
+    }
+  }
+  // C: bænken
+  if (benchLeft <= 0) return;
+  const R2: number[] = [];
+  for (let j = 0; j < nb; j++) { const i = out[11 + j]; if (i !== null && i !== undefined && counted[i]) R2.push(j); }
+  const onBench = new Set(out.slice(11, 11 + nb));
+  const pool3 = E.filter((i) => !onBench.has(i));
+  if (!pool3.length) return;
+  const rep3 = assignSquad(pool3.length, R2.length, 0, (j, i) => bn(pool3[i], R2[j]), () => 0, (i) => gkOf(pool3[i]), (j) => bIsGk(R2[j]));
+  const used = new Array(R2.length).fill(false);
+  while (benchLeft > 0 && R2.length) {
+    let best = -1, bestLoss = 0;
+    for (let j = 0; j < R2.length; j++) {
+      if (used[j]) continue;
+      const cur = out[11 + R2[j]];
+      if (cur === null) continue;
+      const r = rep3[j];
+      const loss = bn(cur, R2[j]) - (r === null ? NONE : bn(pool3[r], R2[j]));
+      if (best === -1 || loss < bestLoss) { best = j; bestLoss = loss; }
+    }
+    if (best < 0) return;
+    const r = rep3[best] === null ? null : pool3[rep3[best]!];
+    out[11 + R2[best]] = r;
+    dropE(r);
+    used[best] = true;
+    benchLeft--;
+  }
 }
 
 /** 0x6dcf6b–0x6dd035: dødboldsskytterne (kun med flag 0x80000) – tre gange den første med højest (verdens- + nuværende omdømme, word)

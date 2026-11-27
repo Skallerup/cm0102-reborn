@@ -31,6 +31,7 @@ import { gamePostReport } from './postMatchGame';
 import { natOfClub } from '../../cmVirtual';
 import { cmQuickMatch } from '../../cmQuickMatch';
 import { cmMediaOn } from '../../cmPlayerData';
+import { cmSquadCounts, cmSquadRule } from '../../cmEligibility';
 /** cmReserves.ts RES_COMP (baggrundskampene, fixture −2) */
 const RES_COMP = 'RES';
 import type { CmPostResult } from '../../types';
@@ -152,7 +153,14 @@ export class GridSim implements LiveSim {
       // (Staff.cmNp: ikke-spillerposten efter originalens spilstart, +0x21 som intern værdi – gridTacOf, cmStaffInit.ts)
       managers: [home.club, away.club].map((c, i) => { const st = engineManager(c, this.ai[i]); const tac = gridTacOf(st); return st && tac ? { id: st.id, ca: st.ca ?? st.rep * 2, tac } : null; }) as [GridManager | null, GridManager | null],
       // computerens holdudtagelse (aiTeam.ts): dato, spillets frø [0xdd7120] og managerens bedømmelse (viste Judging Ability/Potential)
-      pick: [home.club, away.club].map((c, i) => aiPickCtx(c, this.ai[i])) as [AiPickCtx | null, AiPickCtx | null],
+      // (27/11) + holdarkets grænse for kampen (0x8cf7e0/0x8cf880 → pick_team's 0x6e8910, cmEligibility.ts) – ikke landskampe
+      pick: [home.club, away.club].map((c, i) => {
+        const x = aiPickCtx(c, this.ai[i]);
+        const f = opts.fixtureId !== undefined && !opts.intl ? gs().fixtures[opts.fixtureId] : undefined;
+        const rule = x && !x.national ? cmSquadRule(gs(), f) : null;
+        if (x && rule) x.quota = { limit: rule.limit, counts: (p) => cmSquadCounts(gs(), rule, p, c) };
+        return x;
+      }) as [AiPickCtx | null, AiPickCtx | null],
       // computerstyret hold: sub_6c54a0 retter og skifter kun dem (menneskets hold ændres aldrig af motoren)
       ai: this.ai,
       subs: [subs, subs],

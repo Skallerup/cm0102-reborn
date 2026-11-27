@@ -132,6 +132,8 @@ function selectionProblems(): string | null {
   const pf = g.pendingFixture ? g.fixtures[g.pendingFixture] : undefined;
   const sel = teamSelectionProblem(g, g.userClub, pf, ids);
   if (!sel) return null;
+  // 0x7272cd: holdarkets grænse – 0x8cf880's tekst (kan være tom: kampen stopper alligevel, 0x8cfac5)
+  if (sel.quota) return sel.quota.keys.map((k) => t(k, { n: sel.quota!.n, limit: sel.quota!.limit, age: sel.quota!.age })).join('').trim() || ' ';
   const n = sel.ids.map((id) => g.players[id]).map((p) => `${p.first} ${p.last}`.trim());
   // 0xa17b40 "<1> and <2>", 0xa17af4 "<liste>, <spiller>", 0xa17b18 "<liste>, and <spiller>"
   const names = n.length === 1 ? n[0] : n.length === 2 ? t('cl.mt.sel.list2', { a: n[0], b: n[1] })
