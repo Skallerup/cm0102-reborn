@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { isMemoryText, workerFailure } from '../src/ui/startGame';
+import { isMemoryText, portsNeedSender, workerFailure } from '../src/ui/startGame';
 
 // "NewGameWorkerFailed: worker" (24/11): onerror uden besked – diagnosen skal sige, hvilket trin, og om arbejderens fil findes (404 = ældre udgivelse)
 describe('workerFailure', () => {
@@ -57,5 +57,14 @@ describe('workerFailure', () => {
     expect(isMemoryText('Uncaught RangeError: Array buffer allocation failed')).toBe(true);
     expect(isMemoryText('worker 2/3: messageerror')).toBe(true);
     expect(isMemoryText('worker: no game')).toBe(false);
+  });
+
+  // (27/11) Gecko taber kanalens besked, når afsenderen lukkes før modtageren – kun Firefox (også Android) holder afsenderen i live
+  it('portsNeedSender: Firefox ja, Chrome/Safari/Firefox på iOS nej', () => {
+    expect(portsNeedSender('Mozilla/5.0 (Android 14; Mobile; rv:160.0) Gecko/160.0 Firefox/160.0')).toBe(true);
+    expect(portsNeedSender('Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:157.0) Gecko/20100101 Firefox/157.0')).toBe(true);
+    expect(portsNeedSender('Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36')).toBe(false);
+    expect(portsNeedSender('Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Mobile/15E148 Safari/604.1')).toBe(false);
+    expect(portsNeedSender('Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) FxiOS/140.0 Mobile/15E148 Safari/605.1.15')).toBe(false);
   });
 });

@@ -205,15 +205,32 @@ export class StaleBuildError extends Error { stale = true; }
 /** arbejdernes svar: spillet som gzip-bytes (+ det første gem, hvis arbejderen skrev det); `started` = en arbejder nåede at svare (så kører de) */
 type PhasesResult = { gz: ArrayBuffer; saved: SaveMeta | null };
 class PhasesError extends Error { started = false; stale = false; memory = false; }
+/** (Firefox 27/11 – "step fitness 17 %" i 39 s, så forlod spilleren siden; Android "fitness stod 5 min") Gecko (Firefox, også på Android) smider en
+ *  besked i en MessageChannel væk, hvis afsenderens port lukkes eller dens arbejder afsluttes, før modtagerens port er sendt videre og har den
+ *  (målt: Firefox 157 – 0 af 6 varianter kom frem, kun "port åben + arbejderen afsluttet efter modtagelsen"; WebKit og Chromium alle 6). Arbejderen
+ *  for trinet efter 'base' ventede for evigt på spillet. Her holdes afsenderen i live med åben port, til den næste har meldt 'received'. */
+export const portsNeedSender = (ua = typeof navigator !== 'undefined' ? navigator.userAgent : ''): boolean => /\bGecko\/\d/.test(ua);
+/** (26/11, measure 2a7262b5d7f1: en arbejder døde uden fejl og uden besked – hovedtråden ventede i 400 s) så længe uden besked fra arbejderen,
+ *  mens siden er synlig, regnes den for død (arbejderne melder fremdrift mange gange i minuttet – også på en langsom telefon) */
+export const WORKER_SILENT_MS = 120000;
 function runPhases(first: NewGameJob, stages: NewGameJob['phases'][], pre: Worker | null, onProgress: (p: NewGameProgress) => void, signal?: AbortSignal): Promise<PhasesResult> {
   return new Promise<PhasesResult>((resolve, reject) => {
-    let cur: Worker | null = null, done = false, started = false, step = '', frac = 0;
+    let cur: Worker | null = null, prev: Worker | null = null, done = false, started = false, step = '', frac = 0, cnt = 0;
     const t0 = Date.now();
-    const gap = phaseGap(), pool = poolMax();
-    const fail = (e: Error) => { if (done) return; done = true; cur?.terminate(); cur = null; const pe = Object.assign(new PhasesError(e.message), { name: e.name, stack: e.stack, started, stale: !!(e as StaleBuildError).stale, memory: !!(e as PhasesError).memory || isMemoryText(e.message) }); reject(pe); };
+    const gap = phaseGap(), pool = poolMax(), keep = portsNeedSender();
+    // vagten: tiden uden besked tælles kun, mens siden er synlig og timerne kører (en skjult/frosset fane drosler både arbejderen og timeren)
+    let quiet = 0, tick = Date.now();
+    const dog = setInterval(() => {
+      const n = Date.now(), dt = n - tick; tick = n;
+      if (done) { clearInterval(dog); return; }
+      if (dt > 15000 || (typeof document !== 'undefined' && document.visibilityState !== 'visible')) return;
+      quiet += dt;
+      if (quiet > WORKER_SILENT_MS) fail(Object.assign(new Error(`worker died: no message for ${Math.round(quiet / 1000)} s, ${cnt}/${stages.length} [${(stages[cnt - 1] ?? ['all']).join(' ')}] after ${Math.round((n - t0) / 1000)} s, step ${step || 'none'} ${Math.round(frac * 100)}%`), { memory: true }));
+    }, 5000);
+    const fail = (e: Error) => { if (done) return; done = true; clearInterval(dog); cur?.terminate(); cur = null; prev?.terminate(); prev = null; const pe = Object.assign(new PhasesError(e.message), { name: e.name, stack: e.stack, started, stale: !!(e as StaleBuildError).stale, memory: !!(e as PhasesError).memory || isMemoryText(e.message) }); reject(pe); };
     signal?.addEventListener('abort', () => fail(new DOMException('aborted', 'AbortError')));
     const start = (i: number, w: Worker, job: NewGameJob) => {
-      cur = w;
+      cur = w; cnt = i + 1; quiet = 0;
       const wStart = Date.now();
       const last = i === stages.length - 1;
       // næste trins arbejder startes først, når denne er færdig og lukket: spillet venter imens i kanalen (uden om hovedtråden)
@@ -221,8 +238,9 @@ function runPhases(first: NewGameJob, stages: NewGameJob['phases'][], pre: Worke
       w.onmessage = (e: MessageEvent<import('./newGameWorker').NewGameMsg>) => {
         const m = e.data;
         if (done) return;
-        started = true;
-        if (m.type === 'progress') { step = m.step; frac = m.frac; onProgress({ step: m.step, frac: m.frac }); }
+        started = true; quiet = 0;
+        if (m.type === 'received') { prev?.terminate(); prev = null; }
+        else if (m.type === 'progress') { step = m.step; frac = m.frac; onProgress({ step: m.step, frac: m.frac }); }
         else if (m.type === 'trace') {
           if (NG_TRACE) console.log(`ngtrace ${i}: ${m.s}`);
           // (24/11) trinene efter 'done' (pakning, gem, afsendelse) i nyt-spil-sporet – NewGameInterrupted viser, hvor siden blev lukket
@@ -233,10 +251,12 @@ function runPhases(first: NewGameJob, stages: NewGameJob['phases'][], pre: Worke
           // (hukommelse) Safari frigiver en afsluttet arbejders heap lidt efter terminate – næste arbejder venter en kort pause, før den tager spillet
           // fra kanalen, så de to ikke er i hukommelsen samtidig (målt i WebKit: toppen ved skiftet). (23/11) Pausen ligger i arbejderen, ikke i en
           // setTimeout i hovedtråden: en skjult fanes timere drosles (≥ 1 s) eller fryses, og forløbet stod da stille mellem to trin.
-          w.terminate(); cur = null;
-          start(i + 1, newWorker(), { opts: job.opts, from: ch.port2, gapMs: gap });
+          // (Firefox) afsenderen lever, til den næste har spillet ('received') – pausen giver da intet
+          if (keep) prev = w; else w.terminate();
+          cur = null;
+          start(i + 1, newWorker(), { opts: job.opts, from: ch.port2, gapMs: keep ? 0 : gap });
         }
-        else if (m.type === 'done' && 'gz' in m) { if (NG_TRACE) console.log('ngtrace main: spillet modtaget'); done = true; w.terminate(); cur = null; resolve({ gz: m.gz, saved: m.saved }); }
+        else if (m.type === 'done' && 'gz' in m) { if (NG_TRACE) console.log('ngtrace main: spillet modtaget'); done = true; clearInterval(dog); w.terminate(); cur = null; prev?.terminate(); prev = null; resolve({ gz: m.gz, saved: m.saved }); }
         else if (m.type === 'done') fail(new Error('worker: no game'));
         else if (m.type === 'error') fail(new Error(m.message));
       };
@@ -248,7 +268,7 @@ function runPhases(first: NewGameJob, stages: NewGameJob['phases'][], pre: Worke
       };
       w.onmessageerror = () => fail(new Error(`worker ${i + 1}/${stages.length}: messageerror`));
       const ports = [...(ch ? [ch.port1] : []), ...(job.from ? [job.from] : [])];
-      w.postMessage({ ...job, phases: stages[i], ...(ch ? { to: ch.port1 } : {}), ...(first.save ? { save: true } : {}), ...(pool !== undefined ? { poolMax: pool } : {}) } satisfies NewGameJob, ports);
+      w.postMessage({ ...job, phases: stages[i], ...(ch ? { to: ch.port1, ...(keep ? { keepPort: true } : {}) } : {}), ...(first.save ? { save: true } : {}), ...(pool !== undefined ? { poolMax: pool } : {}) } satisfies NewGameJob, ports);
     };
     start(0, pre ?? newWorker(), first);
   });

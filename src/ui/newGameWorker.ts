@@ -25,7 +25,9 @@ export interface WorldSrc { base: 'original' | 'modern'; ver: OriginalVersion; c
 export type NewGameMsg = { type: 'progress'; step: string; frac: number } | { type: 'done'; game: unknown; report?: ConvertReport }
   /** (hukommelse, iPhone 23/11) det færdige spil som det gemte spils gzip-bytes (Transferable) – og det første gem, hvis arbejderen selv skrev det */
   | { type: 'done'; gz: ArrayBuffer; saved: SaveMeta | null } | { type: 'error'; message: string }
-  | { type: 'slim'; slim: WorldData } | { type: 'handed' } | { type: 'trace'; s: string };
+  | { type: 'slim'; slim: WorldData } | { type: 'handed' } | { type: 'trace'; s: string }
+  /** (Firefox 27/11) spillet er modtaget fra forrige trins arbejder (`keepPort`: først nu lukker hovedtråden den) */
+  | { type: 'received' };
 export type NewGameJob = { world?: WorldData; src?: WorldSrc; opts: NewGameOptions; convert?: { kind: 'convert' | 'restart'; old: GameState; picked?: boolean };
   /** (hukommelse, iPhone 22/11) kun disse trin af spilstarten ('base' = createGameBase, så createGamePhase); `from` modtager spillet fra forrige
    *  trins arbejder, `to` sender det videre til næste (uden om hovedtråden) – uden `to` svarer arbejderen med 'done' som før */
@@ -35,7 +37,10 @@ export type NewGameJob = { world?: WorldData; src?: WorldSrc; opts: NewGameOptio
   /** (hukommelse, iPhone 23/11) arbejderen skriver selv nyt spils første gem i IndexedDB (kun et lokalt spil – ikke fællesspil eller den midlertidige verden) */
   save?: boolean;
   /** (hukommelse, iOS 26/11) sidepuljens loft (cmMem.ts setPagePoolMax) – kun genbrug, samme spil */
-  poolMax?: number };
+  poolMax?: number;
+  /** (Firefox 27/11) `to` lukkes ikke efter overdragelsen: Gecko smider en besked i kanalen væk, når afsenderens port lukkes eller dens arbejder
+   *  afsluttes, før modtageren har den (startGame.ts portsNeedSender) – hovedtråden afslutter arbejderen, når den næste melder 'received' */
+  keepPort?: boolean };
 /** `rng` = talrækkens tilstand (g.rng røres ikke – som i ét forløb, hvor g.rng ikke opdateres undervejs) */
 export type PhaseHandoff = { game: GameState; ctx: NewGameCtx; rng: number } | { gz: ArrayBuffer; ctx: NewGameCtx; rng: number };
 /** `slimOnly`: kun listerne – arbejderen lukkes bagefter (startGame.ts openStartWorld), så databasen tolkes ikke hel (worldFetch.ts fetchSlimWorld) */
@@ -84,6 +89,7 @@ self.onmessage = async (e: MessageEvent<NewGameJob | LoadJob>) => {
       });
       job.from.close();
       tr('modtaget');
+      post({ type: 'received' });
       // (25/11) nødvej (se afsenderen): spillet som gzip-bytes, når den strukturerede kopi løb tør for hukommelse
       setGame('game' in h ? h.game : await deserializeState(new Blob([h.gz])));
       rng.state = h.rng;
@@ -117,7 +123,7 @@ self.onmessage = async (e: MessageEvent<NewGameJob | LoadJob>) => {
           job.to.postMessage({ gz, ctx: ctx!, rng: rs } satisfies PhaseHandoff, [gz, ...sl]);
         }
         tr('overdraget');
-        job.to.close();
+        if (!job.keepPort) job.to.close();
         setGame(null);
         post({ type: 'handed' });
         return;

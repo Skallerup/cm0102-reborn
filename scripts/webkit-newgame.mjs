@@ -1,8 +1,8 @@
 // Det klassiske nye-spil-forløb med den originale database (3.9.60, England, Arsenal) + Continue Game i WebKit (Safari "RangeError: Out of memory" 19/11).
-// Brug: node scripts/webkit-newgame.mjs [klik på Continue=4] [webkit|chromium]
+// Brug: node scripts/webkit-newgame.mjs [klik på Continue=4] [webkit|chromium|firefox] (firefox: npx playwright install firefox – Android/Firefox-meldingerne)
 // Samme trin som scripts/e2e.mjs' klassiske startforløb (dev-server, testkrogen window.__cm).
 import { spawn, execSync } from 'node:child_process';
-import { webkit, chromium } from 'playwright';
+import { webkit, chromium, firefox } from 'playwright';
 
 const conts = Number(process.argv[2] ?? 4);
 const kind = process.argv[3] ?? 'webkit';
@@ -18,7 +18,7 @@ const START_PIDS = execSync('ps -A -o pid=,command=', { encoding: 'utf8', maxBuf
 // CH=chromium: Chromium i den nye headless-tilstand (fanernes synlighed som i en rigtig browser – BG=hidden skjuler siden; den gamle headless-shell gør ikke)
 // JSHEAP=<MB> (Chromium): V8's heapgrænse pr. isolat (--max-old-space-size) som en lille telefon
 const jsArgs = process.env.JSHEAP ? [`--js-flags=--max-old-space-size=${process.env.JSHEAP}`] : [];
-const browser = await (kind === 'chromium' ? chromium : webkit).launch({ ...(process.env.CH ? { channel: process.env.CH } : {}), args: [...jsArgs, ...(process.env.HEADED ? ['--window-position=-2400,-2400'] : [])], ...(process.env.HEADED ? { headless: false } : {}) });
+const browser = await (kind === 'chromium' ? chromium : kind === 'firefox' ? firefox : webkit).launch({ ...(process.env.CH ? { channel: process.env.CH } : {}), args: [...jsArgs, ...(process.env.HEADED ? ['--window-position=-2400,-2400'] : [])], ...(process.env.HEADED ? { headless: false } : {}) });
 // CPU=<faktor> (Chromium): CPU-drosling (CDP Emulation.setCPUThrottlingRate) for siden OG hver Web Worker (som en langsom telefon)
 if (process.env.CPU && kind === 'chromium') {
   const rate = Number(process.env.CPU);
@@ -80,7 +80,7 @@ const t0 = Date.now();
 // fanens proces (WebKit: WebContent, Chromium: renderer) – største RSS undervejs (hovedtråd + arbejdere i samme proces)
 let peakRss = 0, peakAt = '';
 // macOS: phys_footprint (med komprimeret hukommelse – RSS falder under pres) via footprint(1); `peak` = processens egen top
-const allTabPids = () => execSync('ps -A -o pid=,command=', { encoding: 'utf8', maxBuffer: 1 << 24 }).split('\n').filter((l) => l.includes('ms-playwright') && /WebContent|--type=renderer/.test(l)).map((l) => l.trim().split(/\s+/)[0]);
+const allTabPids = () => execSync('ps -A -o pid=,command=', { encoding: 'utf8', maxBuffer: 1 << 24 }).split('\n').filter((l) => l.includes('ms-playwright') && /WebContent|--type=renderer|-contentproc/.test(l)).map((l) => l.trim().split(/\s+/)[0]);
 // (kun denne browsers processer – ældre kørslers kan stadig være i gang med at lukke)
 const oldPids = new Set(START_PIDS);
 const tabPids = () => allTabPids().filter((x) => !oldPids.has(x));
