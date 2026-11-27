@@ -80,8 +80,10 @@ const ENV = typeof process !== 'undefined' ? process.env ?? {} : {};
  *  klubløse og bud på menneskets spillere kommer herfra (0x83b6e0/0x84a020/0x8e5d60), og spillets egne skøn (aiClubTurn, aiPursuits,
  *  weeklyRumours, aiBosman, aiReleaseClauses, aiFillSquads, freeAgentDrift, cmBidsForListed) er slået fra. Dagen koster ~1,5–2,5 s med
  *  databasestørrelsen Maximum (docs/ENGINE_PORT_PLAN.md "Ønskelisterne", runde 14) – i browseren kører Continue Game/ferien derfor i en Web Worker
- *  (ui/dayRunner.ts), så siden ikke fryser. I Node: til, undtagen under vitest (testene ville tage minutter) og med CM_SL=0; CM_SL=1 tvinger dem til. */
-export const SL_ON = { on: ENV.CM_SL ? ENV.CM_SL === '1' : !ENV.VITEST };
+ *  (ui/dayRunner.ts), så siden ikke fryser. Til i alle miljøer (browser, tsx, vitest); CM_SL=0 slår dem fra (CM_SL sat til andet end 1 = fra). Spillet må aldrig afhænge af,
+ *  hvilket værktøj det kører i (27/11: før var de fra, når VITEST var sat – samme spil gav andre resultater under vitest end under tsx); vitest
+ *  sætter selv CM_SL=0 som standard (vite.config.ts test.env – testene ville ellers tage minutter), så en test svarer til `CM_SL=0 npx tsx …`. */
+export const SL_ON = { on: ENV.CM_SL ? ENV.CM_SL === '1' : true };
 /** ønskelisterne kører (den originale database i ægte tilstand, ikke draft, og SL_ON) */
 export const cmShortlistOn = (g: GameState) => SL_ON.on && cmMarketOn(g) && !g.draft;
 
