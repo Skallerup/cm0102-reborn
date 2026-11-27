@@ -79,8 +79,8 @@ const AGE_CAP = [4500000.0, 6000000.0, 8000000.0, 12000000.0, 15000000.0, 120000
 
 export const EVAL_STATS = { ts: 0, gen: 0, bad: 0 };
 /** (runde 14) 0x6e6340 for ønskelisternes hukommelse direkte (cmShortlistGame.ts planValue) – samme svar som kæden c.call → genCtx → adapterne
- *  (0x6e6340 står i ADAPTED; buildSlMem's switch kalder planValue med de fem første argumenter). Sat af buildSlMem; CM_SL_PVDIRECT=0: kæden. */
-export const PV_DIRECT: { c: CmCtx | null; f: ((st: number, a1: number, mask: number, club: number, a4: number) => number) | null } = { c: null, f: null };
+ *  (0x6e6340 står i ADAPTED; buildSlMem's switch kalder planValue med alle seks argumenter – arg6 = vurderingsmanden [esp+0x18]). Sat af buildSlMem; CM_SL_PVDIRECT=0: kæden. */
+export const PV_DIRECT: { c: CmCtx | null; f: ((st: number, a1: number, mask: number, club: number, a4: number, a6: number) => number) | null } = { c: null, f: null };
 
 /** (runde 14) 0x840ded–0x84115a's maske og vurderingsmand (v18) som mask · 2^32 + v18 – kun læsninger (0x5408c0, 0x544410), ingen
  *  sidevirkninger – gemt pr. hukommelse og (klub, staff, gruppevariant), når CM_SL_ASSESS=1 (standard: regnet hver gang – assessFast er billigere end opslaget); =check: gemt, og begge veje
@@ -288,7 +288,7 @@ export function value_840d80(c: CmCtx, self: number, club: number, st: number, s
   let a4 = -1;
   if (thr > -1) a4 = ftolE((thr * 2.5e-05 * thr) / f);
   const a1 = ((v18 & 0xffff0000) | m.u16(slot + 1)) | 0;
-  let o = (PV_DIRECT.c === c ? PV_DIRECT.f!(st, a1, mask, club, a4) : c.call(0x6e6340, st, a1, mask, club | 0, a4, v18 | 0)) | 0;
+  let o = (PV_DIRECT.c === c ? PV_DIRECT.f!(st, a1, mask, club, a4, v18) : c.call(0x6e6340, st, a1, mask, club | 0, a4, v18 | 0)) | 0;
   if (EVAL_DIAG.pv) EVAL_DIAG.pv(st, a1, mask, club, a4, v18, o);
   m.w32(out, o);
   if (m.u32(st + 0x39) !== club && contractFlag_5445x0(c, st, 0, 9)) { o = ftolE(o * 1.05); m.w32(out, o); }

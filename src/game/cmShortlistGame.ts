@@ -22,7 +22,7 @@
 // TRANSFER_MANAGER's tilbud er spillets åbne bud (uden rival- og forhandlingslister); skaderne 0x62ed70 fra konditionsmodulet; arbejdstilladelsen
 // 0x8c7950 = rules2001.ts workPermitGranted (spil startet med porten: cmPermit.ts cmWorkPermit – originalens 0x8c7950); lejeregler 0x8d0040 = rules2001.ts loanBlocked; spillerens svar på et kontrakttilbud til en fri spiller
 // kommer straks (originalen venter på hans beslutningsdato 0x4cd230).
-import type { GameState, Player } from './types';
+import type { GameState, Player, Staff } from './types';
 import { type CmCtx, type CmMem, G, getContract, clubAt, SparseMem } from './cmMem';
 import { holidayOpt_5fea50, humanClub0 } from './cmHoliday';
 import { buildSlWantMem, resetSlBase, slMemPages, SLMEM_DEFER, type SlWantState } from './cmSlMem';
@@ -35,7 +35,7 @@ import { playerValue_4d0c60, knowsNation_53d980, seenRep_5407e0, knowledge_5408c
 import { contractForClub_4cf5f0, expiryBand_867d30, setToDesiredContract_85fc50, hasActiveReleaseClause_867b50, constructContract_85e410, calcContractValue_866830 } from './cmContractWant';
 import { getMaxWage_5968d0 } from './cmMaxWage';
 import { addDays_54c5b0, subDays_54c8e0, listRemove_68d1f0, offerContract_4cda70, daysSince_54cdb0 } from './cmContract';
-import { entryOf, storeEntry, fromRow, staffTailed, afterBudgetHooks, clubDivRep, managerNp, mgrLoyalty } from './cmSquadPlanGame';
+import { entryOf, storeEntry, fromRow, staffTailed, afterBudgetHooks, clubDivRep, managerNp } from './cmSquadPlanGame';
 import { newPlanEntry, type PlanEntry } from './cmSquadPlan';
 import { registerImpl, enter, QSORT_CMP, QSORT_CMP8, SHARED, PC_HOOK, FASTHOST, stackBelow, FAKE_RET, HEAP0, HEAP_PTR, type X86 } from './cmGen/x86';
 import { msvcQsort, naturalPositions, type PositionRecord } from './engine/grid/subs';
@@ -59,7 +59,7 @@ import { cmFitRead } from './cmFitnessGame';
 import { clubInSeason_669bd0 } from './cmClubLinks';
 import { aiPickCtx, roleDataOf, playerRecord } from './engine/grid/aiTeam';
 import { planScore, type ManagerBlockIn } from './engine/grid/planScore';
-import { judgeAbility, recPositions, type Day } from './engine/grid/roleScore';
+import { recPositions, type Day } from './engine/grid/roleScore';
 import { nationLanguage, playerLanguages } from './languages';
 import { dislikesClub, dislikesPerson, favoursClub, favoursPerson, managerStaff, relHas, DIS_CLUB, FAV_CLUB } from './cmRelations';
 import { withSharedPersons } from './cmBoardGame';
@@ -142,6 +142,8 @@ export interface SlMem {
     rd: Map<string, ReturnType<typeof roleDataOf>> };
   /** spillerne pr. klub (refreshClub) */
   byClub?: Map<number, [Player, number][]>;
+  /** planValue: dommerens (0x6e6340's J) og arg6's dele pr. personpost; hukommelsens id → stabens person */
+  jinf?: Map<number, JInf>; a6inf?: Map<number, A6Inf | null>; memStaff?: Map<number, Staff>;
   /** (runde 13) frasorteringens faste dele pr. person og liste for dagens hukommelse (frBits, skipRun) */
   frDay?: FrDay;
   /** (spilstartens portioner) skadeposternes tæller (0x62ed70) og den aktuelle talrække (slRand: frøet og antal træk; null = sat uden for slRand) */
@@ -619,17 +621,56 @@ function writeOffers(S: SlMem): void {
   }
 }
 
-/** 0x6e6340 (staff, positionsflag, flag, klub, tærskel, manager) på spillets data (planScore.ts – som cmSquadPlanGame.ts' kald) */
-function planValue(S: SlMem, st: number, mask: number, flags: number, clubAdr: number, thr: number): number {
+/** 0x6e6340's dommer J = arg6, ellers klub+0xcf (0x6e6406–0x6e642e): hans ikke-spillerpost J+0x69 (managerblokken – hukommelsens bytes) og Loyalty
+ *  J+0x59 (0x6e7b09) – pr. hukommelse og person */
+interface JInf { np: number[] | null; j59: number }
+const JINF_NONE: JInf = { np: null, j59: 10 };
+function jInf(S: SlMem, J: number): JInf {
+  if (!J) return JINF_NONE;
+  const M = (S.jinf ??= new Map());
+  let v = M.get(J);
+  if (v) return v;
+  const m = S.m, np = m.u32(J + 0x69);
+  if (!np) v = JINF_NONE;
+  else { const b = new Array<number>(0x48); for (let k = 0; k < 0x48; k++) b[k] = m.u8(np + k); v = { np: b, j59: s8(m.u8(J + 0x59)) }; }
+  M.set(J, v);
+  return v;
+}
+/** arg6's person i spillet (0x547840/0x547810(staff, arg6): hans uvenner/yndlinge +0x28../+0x1c.. – Staff.cmRel) og ankomstdato +0x3e/+0x40
+ *  (0x6e678d: kom spilleren til klubben efter ham og inden for et år) – null = intet arg6 */
+interface A6Inf { st: Staff | null; joined: Day }
+function a6Inf(S: SlMem, a6: number): A6Inf | null {
+  if (!a6) return null;
+  const M = (S.a6inf ??= new Map());
+  let v = M.get(a6);
+  if (v) return v;
+  if (!S.memStaff) {
+    const R = new Map<number, Staff>(), smi = (S.M as { staffMemId?: (sid: number) => number | undefined }).staffMemId;
+    if (smi) for (const s of Object.values(S.g.staff)) { const id = smi(s.id); if (id !== undefined) R.set(id, s); }
+    S.memStaff = R;
+  }
+  const m = S.m;
+  v = { st: S.memStaff.get(m.s32(a6)) ?? null, joined: { day: m.s16(a6 + 0x3e), year: m.u16(a6 + 0x40) } };
+  M.set(a6, v);
+  return v;
+}
+
+/** 0x6e6340 (staff, positionsflag, flag, klub, tærskel, manager) på spillets data (planScore.ts – som cmSquadPlanGame.ts' kald). Dommeren
+ *  (0x6e86d0, 0x5407e0, managerblokkens ikke-spillerpost og +0x59) er arg6 – i 0x840d80 vurderingsmanden [esp+0x18] (manageren eller en træner/
+ *  spejder med bedre Judging), ellers klubbens manager; bedømmelsen 0x6e86d0 og det sete omdømme 0x5407e0 regnes på hukommelsen (frøet [0xdd7120]
+ *  + hukommelsens id'er – før spillets id'er og altid klubbens manager, og repSeen = omdømmet · 50) */
+function planValue(S: SlMem, st: number, mask: number, flags: number, clubAdr: number, thr: number, a6 = 0): number {
   const { g, m } = S;
   const mid = m.s32(st);
   const p = S.byMem.get(mid);
   if (!p) return -10000;
   const cid = clubAdr ? m.s32(clubAdr) : 0;
   PV_STATS.n++;
+  const J = a6 ? a6 : clubAdr ? m.u32(clubAdr + 0xcf) : 0;
+  const JI = jInf(S, J), A6 = a6Inf(S, a6);
   if (!PVPAIR) {
     const club = g.clubs[cid];
-    return planValue0(S, st, mask, flags, clubAdr, thr, p, cid, club, p.loan ? p.loan.from : p.club);
+    return planValue0(S, st, mask, flags, clubAdr, thr, p, cid, club, p.loan ? p.loan.from : p.club, J, JI, A6);
   }
   // (hastighed, runde 11) spillerens og klubbens faste dele bygges én gang for hukommelsens levetid (spillets data står stille fra buildSlMem
   // til finishSl) og sættes ind i én genbrugt PlanInput; kun positionen/flagene/tærsklen, transferlisten og kontraktens bytes (hukommelsen)
@@ -645,15 +686,18 @@ function planValue(S: SlMem, st: number, mask: number, flags: number, clubAdr: n
   i.langDiff = !!CB.lang && !!B.pLang && CB.lang !== B.pLang; i.lang = CB.lang && B.langs.includes(CB.lang) ? 10 : 0;
   i.nationOfClub = !!club && (B.nation === CB.nation || B.nation2 === CB.nation);
   i.clubRep = CB.clubRep; i.stClubRep = B.stClubRep; i.listed = !!p.listed; i.daysNoClub = B.daysNoClub; i.league69 = CB.league69;
-  if (CB.np) {
-    const mg = MG_IN; mg.np = CB.np;
-    const r = mg.rel, rl = B.rel; r.d30 = relHas(rl, DIS_CLUB, cid); r.d60 = relHas(rl, FAV_CLUB, cid); r.m840 = CB.mgDis(B.id); r.m810 = CB.mgFav(B.id);
-    // 0x6e7ae7–0x6e7b13: spillerens +0x5b/+0x59 (hukommelsens personpost) og dommerens +0x59 (managerens Loyalty)
-    mg.b59 = s8(m.u8(st + 0x59)); mg.b5b = s8(m.u8(st + 0x5b)); mg.j59 = CB.j59;
+  i.mgrJoined = A6 ? A6.joined : null;
+  if (JI.np) {
+    const mg = MG_IN; mg.np = JI.np;
+    const r = mg.rel, rl = B.rel, o = A6 ? A6.st : null;
+    r.d30 = relHas(rl, DIS_CLUB, cid); r.d60 = relHas(rl, FAV_CLUB, cid); r.m840 = dislikesPerson(o, B.id); r.m810 = favoursPerson(o, B.id);
+    // 0x6e7ae7–0x6e7b13: spillerens +0x5b/+0x59 (hukommelsens personpost) og dommerens +0x59
+    mg.b59 = s8(m.u8(st + 0x59)); mg.b5b = s8(m.u8(st + 0x5b)); mg.j59 = JI.j59;
     i.mgr = mg;
   } else i.mgr = MG_NONE;
   const d = R.data;
-  JUDGE.p = p; JUDGE.ctx = CB.ctx; JUDGE.age = B.age;
+  JUDGE.p = p; JUDGE.S = S; JUDGE.J = J; JUDGE.st = st; JUDGE.club = clubAdr;
+  d.repSeen = s16(seenRep_5407e0(S.c, st, J, 0));                                   // 0x6e6440: [esp+0x24]
   const k = B.cc ? contractForClub_4cf5f0(S.c, st, clubAdr) : 0;
   if (k) {
     const c = R.con;
@@ -664,7 +708,7 @@ function planValue(S: SlMem, st: number, mask: number, flags: number, clubAdr: n
   i.posRec = B.posRec; i.nat = B.nat;
   const v = planScore(i);
   if (PVCHECK) {
-    const w = planValue0(S, st, mask, flags, clubAdr, thr, p, cid, g.clubs[cid], p.loan ? p.loan.from : p.club);
+    const w = planValue0(S, st, mask, flags, clubAdr, thr, p, cid, g.clubs[cid], p.loan ? p.loan.from : p.club, J, JI, A6);
     if (v !== w) { PV_STATS.bad++; if (PV_STATS.bad < 20) console.log(`planValue afviger: ${p.id} klub ${cid} maske ${mask} flag ${flags} tærskel ${thr}: ${v} mod ${w}`); }
   }
   return v;
@@ -690,7 +734,7 @@ interface PlBase {
 }
 interface RdMemo { la: number | undefined; data: PlanD; con: { b3d: number; b3e: number; b3f: number; b44: number; b45: number; b4f: number } }
 type PickCtx = NonNullable<ReturnType<typeof aiPickCtx>>;
-interface ClBase { club: GameState['clubs'][number] | undefined; nation: number | undefined; j59: number; mgDis: (id: number) => boolean; mgFav: (id: number) => boolean; ctx: PickCtx; lang: ReturnType<typeof nationLanguage> | null; mg: ReturnType<typeof managerStaff> | null; np: number[] | null; clubRep: number; league69: number | null }
+interface ClBase { club: GameState['clubs'][number] | undefined; nation: number | undefined; ctx: PickCtx; lang: ReturnType<typeof nationLanguage> | null; clubRep: number; league69: number | null }
 const MG_NONE: ManagerBlockIn = { np: null, j59: 10, b59: 10, b5b: 10, rel: { d30: false, d60: false, m840: false, m810: false } };
 const MG_IN: ManagerBlockIn = { np: null, j59: 10, b59: 10, b5b: 10, rel: { d30: false, d60: false, m840: false, m810: false } };
 const D0: Day = { day: 0, year: 0 };
@@ -698,20 +742,13 @@ const D0: Day = { day: 0, year: 0 };
 const PI: PlanIn = { id: 0, real: false, age: 0, joined: D0, rec: [], pos: 0, flags: 0, thr: -1, hasClub: false, atClub: false, stHasClub: false, sameNationClub: false,
   mgrJoined: null, today: D0, yearAgo: D0, nationRep: 0, british: false, caps: 0, b56: 0, langDiff: false, lang: 0, nationOfClub: false, clubRep: 0, stClubRep: 0,
   listed: false, daysNoClub: 0, league69: null, mgr: MG_NONE, data: null as unknown as PlanD, posRec: undefined, nat: undefined };
-/** den aktuelle vurderings dommer (0x6e86d0 – som aiTeam.ts' judgeFor) */
-const JUDGE = { p: null as Player | null, ctx: {} as PickCtx, age: 0 };
-/** (runde 14) judgeAbility er en ren funktion – inddata i genbrugte objekter (ingen allokering pr. vurdering) */
-const JIN: Parameters<typeof judgeAbility>[0] = { playerId: 0, ca: 0, pa: 0, age: 0, gk: 0, gameSeed: 0, judge: null, kind: 1, hint: 0, repSeen: 0 };
-const JJ = { id: 0, ja: 0, jp: 0 };
+/** den aktuelle vurderings dommer: 0x6e86d0(J, staff, klub, art, hint) på hukommelsen (cmValue.ts) */
+const JUDGE = { p: null as Player | null, S: null as SlMem | null, J: 0, st: 0, club: 0 };
 // (hukommelse) de genbrugte inddata peger på forrige spils data (PlanD's load-lukning holder spillet) – alle felter skrives før hver brug
-onGameSwitch(() => { PI.data = null as unknown as PlanD; PI.rec = []; PI.mgr = MG_NONE; MG_IN.np = null; JUDGE.p = null; JUDGE.ctx = {} as PickCtx; JIN.judge = null; });
+onGameSwitch(() => { PI.data = null as unknown as PlanD; PI.rec = []; PI.mgr = MG_NONE; PI.mgrJoined = null; MG_IN.np = null; JUDGE.p = null; JUDGE.S = null; });
 const judgeCur = (kind: 1 | 2, hint: number) => {
-  const p = JUDGE.p!, ctx = JUDGE.ctx, j = JIN;
-  j.playerId = p.id; j.ca = p.ca; j.pa = p.pa; j.age = JUDGE.age; j.gk = p.pos[0]; j.gameSeed = ctx.gameSeed ?? 0;
-  if (ctx.judge) { JJ.id = ctx.judge.id; JJ.ja = ctx.judge.ja; JJ.jp = ctx.judge.jp; j.judge = JJ; } else j.judge = null;
-  j.kind = kind; j.hint = hint; const rr = p.cmRepMem ?? p.cmRep; j.repSeen = (rr ? rr[1] : p.rep * 2) * 50;
-  const v = judgeAbility(j);
-  if (PV_STATS.judge) PV_STATS.judge(p, kind, hint, v);
+  const v = s16(judge_6e86d0(JUDGE.S!.c, JUDGE.J, JUDGE.st, JUDGE.club, kind, hint));
+  if (PV_STATS.judge) PV_STATS.judge(JUDGE.p!, kind, hint, v);
   return v;
 };
 function playerBase(S: SlMem, p: Player, mid: number): PlBase {
@@ -751,9 +788,7 @@ function clubBase(S: SlMem, cid: number): ClBase {
   let ctxPick = club ? C.ctx.get(cid) : null;
   if (club && ctxPick === undefined) { ctxPick = aiPickCtx(cid) ?? {}; C.ctx.set(cid, ctxPick); }
   ctxPick ??= {};
-  const mg = club ? managerStaff(g, cid) : null;
-  B = { club, nation: club?.nation, mgDis: (id: number) => dislikesPerson(mg, id), mgFav: (id: number) => favoursPerson(mg, id), ctx: ctxPick as PickCtx, lang: club ? nationLanguage(g, club.nation) : null, mg: club ? managerStaff(g, cid) : null, np: club ? managerNp(g, cid) : null,
-    j59: mgrLoyalty(club ? g.staff[club.manager ?? -1] : null),
+  B = { club, nation: club?.nation, ctx: ctxPick as PickCtx, lang: club ? nationLanguage(g, club.nation) : null,
     clubRep: club ? clubRepMem(g, cid) : 0, league69: club ? clubDivRep(g, cid) : null };
   if (cid >= 0) cb[cid] = B;
   return B;
@@ -780,7 +815,7 @@ function rdOf(g: GameState, B: PlBase, p: Player, ctx: PickCtx): RdMemo {
   if (cm) B.rdC = R; else B.rdN = R;
   return R;
 }
-function planValue0(S: SlMem, st: number, mask: number, flags: number, clubAdr: number, thr: number, p: Player, cid: number, club: GameState['clubs'][number] | undefined, pClub: number): number {
+function planValue0(S: SlMem, st: number, mask: number, flags: number, clubAdr: number, thr: number, p: Player, cid: number, club: GameState['clubs'][number] | undefined, pClub: number, J: number, JI: JInf, A6: A6Inf | null): number {
   const { g, m } = S;
   const fit = cmFitRead(g);
   S.cache ??= { ctx: new Map(), rec: new Map(), day: null, pl: new Map(), cl: new Map(), rd: new Map() };
@@ -805,22 +840,22 @@ function planValue0(S: SlMem, st: number, mask: number, flags: number, clubAdr: 
   let CL = C.cl.get(cid);
   if (!CL) { CL = { lang: club ? nationLanguage(g, club.nation) : null, mg: club ? managerStaff(g, cid) : null, np: club ? managerNp(g, cid) : null }; C.cl.set(cid, CL); }
   const clubLang = CL.lang, pLang = P.pLang;
-  const mg = CL.mg;
-  const np = CL.np;
-  const mgr: ManagerBlockIn = np ? { np, j59: mgrLoyalty(club ? g.staff[club.manager ?? -1] : null), b59: s8(m.u8(st + 0x59)), b5b: s8(m.u8(st + 0x5b)), rel: { d30: dislikesClub(p, cid), d60: favoursClub(p, cid), m840: dislikesPerson(mg, p.id), m810: favoursPerson(mg, p.id) } }
+  const o = A6 ? A6.st : null;
+  const np = JI.np;
+  const mgr: ManagerBlockIn = np ? { np, j59: JI.j59, b59: s8(m.u8(st + 0x59)), b5b: s8(m.u8(st + 0x5b)), rel: { d30: dislikesClub(p, cid), d60: favoursClub(p, cid), m840: dislikesPerson(o, p.id), m810: favoursPerson(o, p.id) } }
     : { np: null, j59: 10, b59: 10, b5b: 10, rel: { d30: false, d60: false, m840: false, m810: false } };
   let rec = S.cache.rec.get(p.id);
   if (!rec) { rec = playerRecord(p); S.cache.rec.set(p.id, rec); }
   return planScore({
     id: p.id, real: !cmGenerated(g, p), age, joined, rec, pos: mask & 0xffff, flags, thr,
     hasClub: !!clubAdr, atClub: pClub === cid, stHasClub: pClub > 0, sameNationClub: !!club && (g.clubs[pClub]?.nation ?? -1) === club.nation,
-    mgrJoined: null, today, yearAgo,
+    mgrJoined: A6 ? A6.joined : null, today, yearAgo,
     nationRep: nationRepMem(g, p.nation), british: BRITISH.has(g.nations[p.nation]?.code ?? ''), caps: p.caps, b56: sh(p, 'adaptability'),
     langDiff: !!clubLang && !!pLang && clubLang !== pLang, lang: clubLang && P.langs.includes(clubLang) ? 10 : 0,
     nationOfClub: !!club && (p.nation === club.nation || p.cmNation2 === club.nation),
     clubRep: club ? clubRepMem(g, cid) : 0, stClubRep: clubRepMem(g, pClub), listed: !!p.listed, daysNoClub: pClub ? 0 : Math.max(0, dayNum(g.date) - dayNum(staffJoined(p) ?? g.date)),
     league69: club ? clubDivRep(g, cid) : null, mgr,
-    data: { ...d, contract: k && cc ? { b3d: s8(m.u8(k + 0x3d)), b3e: s8(m.u8(k + 0x3e)), b3f: s8(m.u8(k + 0x3f)), b44: s8(m.u8(k + 0x44)), b45: m.u32(k + 0x45), b4f: m.u8(k + 0x4f) } : null,
+    data: { ...d, repSeen: s16(seenRep_5407e0(S.c, st, J, 0)), judge: (kind: 1 | 2, hint: number) => s16(judge_6e86d0(S.c, J, st, clubAdr, kind, hint)), contract: k && cc ? { b3d: s8(m.u8(k + 0x3d)), b3e: s8(m.u8(k + 0x3e)), b3f: s8(m.u8(k + 0x3f)), b44: s8(m.u8(k + 0x44)), b45: m.u32(k + 0x45), b4f: m.u8(k + 0x4f) } : null,
       injury: () => (inj ? { w28: inj.w28, w2c: inj.w2c } : null) },
   });
 }
@@ -1613,7 +1648,7 @@ export function memDiff(a: SparseMem, b: SparseMem): [string, string][] & { page
  *  "ikke porteret" (nedbruddet 18/11, 0.30.0). */
 function slShared(S: SlMem, adr: number, a: number[]): number | undefined {
   switch (adr) {
-    case 0x6e6340: return planValue(S, a[0] >>> 0, a[1], a[2], a[3] >>> 0, a[4]);
+    case 0x6e6340: return planValue(S, a[0] >>> 0, a[1], a[2], a[3] >>> 0, a[4], (a[5] ?? 0) >>> 0);
     case 0x8c7950: {
       // TRANSFER_MANAGER::is_work_permit_granted(staff, land, 0, 0, 0) – 0x84b180 har afgjort, at han skal have en: spil startet med porten
       // originalens 0x8c7950 (cmPermit.ts cmWorkPermit på spiltilstanden), gamle spil rules2001.ts' skøn
@@ -1783,7 +1818,7 @@ export function buildSlMem(g: GameState, opts: { noStale?: boolean; resume?: SlR
   const memOf = pidStaff ? { get: (pid: number) => { const st = pidStaff(pid); return st === undefined ? undefined : (st - base0) / 0x6e; } } : memOfM;
   const byMem = { get: (id: number) => (id >= 0 ? byMemA[id] : undefined) };
   S = { M, m, c: M.c, g, slm: m.u32(m.u32(0xde1f54) + 0x856), memOf, byMem, clubAdr: (cid) => M.W.clubOf(cid), events: [], slotted: new Set(), inj: injC, rnd: null };
-  if (ENV.CM_SL_PVDIRECT !== '0') { const S0 = S; PV_DIRECT.c = M.c; PV_DIRECT.f = (st, a1, mask, club, a4) => planValue(S0, st >>> 0, a1, mask, club >>> 0, a4); }
+  if (ENV.CM_SL_PVDIRECT !== '0') { const S0 = S; PV_DIRECT.c = M.c; PV_DIRECT.f = (st, a1, mask, club, a4, a6) => planValue(S0, st >>> 0, a1, mask, club >>> 0, a4, a6 >>> 0); }
   // (portionerne) M.setRand uden for slRand: talrækkens tilstand kendes ikke (en portion kan da ikke gives videre)
   const rawSet = M.setRand;
   M.setRand = (f) => { S.rnd = null; rawSet(f); };

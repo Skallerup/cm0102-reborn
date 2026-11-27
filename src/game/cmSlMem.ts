@@ -560,7 +560,9 @@ export function buildSlWantMem(g: GameState, clubs: Iterable<number>, opts: { ca
       // landet var alle klubløse "ukendte" (4: verdensomdømmet, 0x6e6340 → −10000 for regens med verdensomdømme 1), så næsten ingen klub satte
       // dem som mål (spilstarten: klubløse 25+ mål 3 mod oraklets 36)
       m.w8(st + 0x18, s.dob ? ageOn(s.dob, g.date) : 45); m.w32(st + 0x1a, natAdr(s.nation));
-      m.w8(st + 0x57, s.cmHid?.[1] ?? 10);
+      // personpostens skjulte egenskaber +0x56..+0x5d (Adaptability … Temperament – Staff.cmHid, som cmContractGame.ts): 0x6e6340's managerblok
+      // læser dommerens Loyalty +0x59 (0x6e7b09). Før stod kun +0x57 (de øvrige 0)
+      for (let k = 0; k < 8; k++) m.w8(st + 0x56 + k, s.cmHid?.[k] ?? 10);
       // ankomstdatoen +0x3e/+0x40 (0x846920 @0x8474a2) – som cmWageGame.ts
       if (s.cmJoined) { m.w16(st + 0x3e, isoD(s.cmJoined)); m.w16(st + 0x40, isoY(s.cmJoined)); }
       m.w8(st + 0x3d, s.role === 'manager' ? 5 : s.role === 'assistant' ? 6 : s.role === 'coach' ? 8 : s.role === 'scout' ? 9 : 10);
