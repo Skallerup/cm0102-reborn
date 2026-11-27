@@ -757,6 +757,8 @@ export function createGameBase(world: WorldData, o: NewGameOptions): NewGameCtx 
   // create_game 0x82992b: klubbernes manglende omdømme, tilskuertal og træningsanlæg (cmFinance.ts – kun den originale database i ægte tilstand)
   if (cm) cmClubDataFill_829960(g, cm, seed);
   // originalens bestyrelse: init_club_board_records 0x68f130 på databasens dato (cmBoardGame.ts – kun den originale database i ægte tilstand)
+  // formændenes præferencepost (0x547810/0x547840 i 0x697c40 §15 og 0x69d1b0)
+  if (cm?.cmRaw?.chairPrefs) g.cmChairPrefs = { ...cm.cmRaw.chairPrefs };
   cmBoardInit(g, cm?.cmRaw?.chairBoard, cm?.cmRaw?.nationBoard, natDbGame ?? undefined, cm ? (c) => cmStartBalanceGbp(g, cm, seed, c) : undefined);
   // formændenes navne (0x6a1190's brødtekster) – kun med bestyrelsens poster
   if (g.cmBoard && cm?.cmRaw?.chairName) g.cmChairName = { ...cm.cmRaw.chairName };

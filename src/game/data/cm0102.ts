@@ -144,7 +144,9 @@ export interface CMWorld extends WorldData {
      *  nationsindeks (−1)] pr. klub – kun formænd med ikke-spillerpost */
     chairBoard?: Record<number, [number, number, number, number]>;
     /** formandens navn (common name, ellers for- og efternavn) pr. klub – alle formænd (club.dat +0xbf) */
-    chairName?: Record<number, string> };
+    chairName?: Record<number, string>;
+    /** formandens præferencepost (staff +0x65 = staff.dat +97..+144, 12 id'er: klubber/klubber/personer/personer) pr. klub */
+    chairPrefs?: Record<number, number[]> };
   clubColors: Record<number, [string, string]>;
   /** originalens økonomi ved start (£): saldo (club.dat 101), gns. tilskuere (115), træningsanlæg 0-20 (127) */
   clubFinance?: Record<number, [number, number, number]>;
@@ -1096,7 +1098,7 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
   }
   const clubPrefs = Object.fromEntries(rawClubs.filter((c) => clubRep[c.id] !== undefined && c.prefs.some((x) => x > 0)).map((c) => [c.id, c.prefs.map((x) => (x > 0 ? x : 0))]));
   // (økonomien, cmFinance.ts) formanden: personpost +0x57/+0x59 og ikke-spillerposten +0x0f (Business) / +0x20
-  const chairOf = new Map<number, number[]>();
+  const chairOf = new Map<number, number[]>(), chairPrefOf = new Map<number, number[]>();
   {
     const want = new Set(rawClubs.filter((c) => inGame.has(c.id) && c.chairman > 0).map((c) => c.chairman));
     for (let i = 0; i < tStaff.count && want.size; i++) {
@@ -1111,6 +1113,9 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
       for (let k = 0x0e; k <= 0x22; k++) raw.push(S.u8(np + k));
       raw.push(S.u8(o + 61), S.u8(np + 0x43), nationIdx.get(S.i32(o + 26)) ?? -1, S.i8(o + 0x57), S.i8(o + 0x59));
       chairOf.set(sid, raw);
+      // (bestyrelsen) formandens præferencepost +97..+144 (0x547810/0x547840: yndlings-/uvenpersonerne i 0x697c40 §15 og 0x69d1b0)
+      const at = staffSize >= 145 ? o + 97 : PREF_REF >= 0 ? prefAt.get(S.i32(o + PREF_REF)) : undefined;
+      if (at !== undefined) { const v = Array.from({ length: 12 }, (_, k) => { const x = S.i32(at + 4 * k); return x > 0 ? x : 0; }); if (v.some(Boolean)) chairPrefOf.set(sid, v); }
     }
   }
   const lowerDiv = [...comps.entries()].find(([, c]) => c.name === 'A Lower Division')?.[0] ?? -1;
@@ -1121,6 +1126,7 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
     return [c.id, [c.division, c.plc, sf[0], sf[1]]];
   })) as Record<number, [number, number, number, number]>;
   const chair = Object.fromEntries(finClubs.filter((c) => chairOf.has(c.chairman)).map((c) => [c.id, chairOf.get(c.chairman)!])) as Record<number, number[]>;
+  const chairPrefs = Object.fromEntries(finClubs.filter((c) => chairPrefOf.has(c.chairman)).map((c) => [c.id, chairPrefOf.get(c.chairman)!])) as Record<number, number[]>;
 
   return {
     kind: 'cm0102', version: 1, attrScale: 'stored', source: 'Championship Manager 01/02 (brugerens egen installation)', season: 2001,
@@ -1141,7 +1147,7 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
       nation7e: [...nationIdx.keys()].map((id) => nationVal.get(id)![0]),
       nation85: [...nationIdx.keys()].map((id) => nationVal.get(id)![2]),
       nation76, nation7f,
-      fin, chair, chairBoard, ...(Object.keys(chairName).length ? { chairName } : {}), nationBoard, lowerDiv, ...(confDiv >= 0 ? { confDiv } : {}), nationCont, europe, ...(clubMem ? { clubMem } : {}), ...(city33.length ? { city33 } : {}), ...(Object.keys(prefs).length ? { prefs, clubPrefs } : {}) }, ...(officials.length ? { officials } : {}), ...(cmTrim ? { cmTrim } : {}), ...(Object.keys(compHist).length ? { compHist } : {}), ...(staff.length ? { staff } : {}), ...(staffX.length ? { staffX, clubNames: Object.fromEntries(rawClubs.filter((c) => nationIdx.has(c.nation)).map((c) => [c.id, [c.short || c.name, nationIdx.get(c.nation)!]])) } : {}), rules,
+      fin, chair, chairBoard, ...(Object.keys(chairName).length ? { chairName } : {}), ...(Object.keys(chairPrefs).length ? { chairPrefs } : {}), nationBoard, lowerDiv, ...(confDiv >= 0 ? { confDiv } : {}), nationCont, europe, ...(clubMem ? { clubMem } : {}), ...(city33.length ? { city33 } : {}), ...(Object.keys(prefs).length ? { prefs, clubPrefs } : {}) }, ...(officials.length ? { officials } : {}), ...(cmTrim ? { cmTrim } : {}), ...(Object.keys(compHist).length ? { compHist } : {}), ...(staff.length ? { staff } : {}), ...(staffX.length ? { staffX, clubNames: Object.fromEntries(rawClubs.filter((c) => nationIdx.has(c.nation)).map((c) => [c.id, [c.short || c.name, nationIdx.get(c.nation)!]])) } : {}), rules,
   };
 }
 

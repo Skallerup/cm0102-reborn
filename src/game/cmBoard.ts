@@ -172,6 +172,13 @@ export interface LeagueInfo {
 export interface BoardEnv {
   /** 0x694c80's slutning (0x695147 → 0x84abe0): trupplanen for klubben med den nye manager (cmSquadPlanGame.ts – hooks i cmBoardGame.ts) */
   newManagerPlan?(c: number): void;
+  /** 0x5477d0/0x547790 club_dislikes_staff/club_favours_staff(m, c): klubbens uvenner (club +0xa7/+0xab/+0xaf) → −1, yndlinge (+0x9b/+0x9f/+0xa3)
+   *  → 1, ellers 0 (Club.cmPrefs, cmRelations.ts) */
+  clubOpinion?(c: number, m: Person): number;
+  /** 0x547840/0x547810 staff_is_disliked_by/staff_is_favoured_by(s, ev): ev's præferencepost (+0x65 +0x28..+0x30 / +0x1c..+0x24) → −1 / 1 / 0 */
+  personOpinion?(ev: Person, s: Person): number;
+  /** det samme for klubbens formand (club +0xbf → staff +0x65) */
+  chairOpinion?(c: number, s: Person): number;
   today: CmDate;
   /** [0xdd6ec8] spillets start (hovedlandets sæsonstart) */
   gameStart: CmDate;
@@ -331,7 +338,12 @@ export function scoreStaffForJob(env: BoardEnv, s: Person, c: number, job: numbe
     if (s16(s.rep[2]) > 3250) sc += 5 * s16(s.pa);
   }
   if (s.club === c) sc += s.human ? 100 : s8(s.b59) * s8(s.b59);
-  // klubbens og formandens likes/dislikes: listerne findes ikke i spillet (0)
+  // klubbens likes (club +0x9b..+0xa3 / +0xa7..+0xaf: 0x547790/0x5477d0), så evaluatorens (ev +0x65 +0x1c..+0x24 / +0x28..+0x30: 0x547810/0x547840 –
+  // seeren eller formanden)
+  const op = env.clubOpinion?.(c, s) ?? 0;
+  if (op > 0) sc = ftol(Math.max(sc * 1.1, sc + 2000.0)); else if (op < 0) sc = ftol(sc * 0.25);
+  const eo = sp ? env.personOpinion?.(sp, s) ?? 0 : ch ? env.chairOpinion?.(c, s) ?? 0 : 0;
+  if (eo > 0) sc = ftol(Math.max(sc * 1.1, sc + 2000.0)); else if (eo < 0) sc = ftol(sc * 0.25);
   const blk = STAFF_BLOCK[BLOCK_OF[job] ?? -1];
   if (blk) {
     // stabens jobblok (0x69db39/0x69deb6/0x69e22d/0x69e4e7): foreneligheden med evaluatoren ev (seeren eller formanden med ikke-spillerpost)
@@ -1514,8 +1526,14 @@ export function weeklyUpdate(env: BoardEnv, st: CmBoardState, rand: Rand): void 
     }
     const dconf = s16(s16(R.w6) - conf0);
     if (s16(R.w6) > 10000) R.w6 = 10000; else if (s16(R.w6) < 0) R.w6 = 0;
-    // (formandens/klubbens likes og dislikes af manageren 0x547840/0x547810/0x5477d0/0x547790: listerne findes ikke)
+    // §15 (0x69a287): formandens uvenner/yndlinge 0x547840/0x547810 (+6 ≤ 5250 / ≥ 4250), klubbens 0x5477d0/0x547790 (+8 ≤ 3000 / ≥ 7000)
+    const co = env.chair(c) ? env.chairOpinion?.(c, m) ?? 0 : 0;
+    if (co < 0) { if (s16(R.w6) > 5250) R.w6 = 5250; }
+    else if (co > 0) { if (s16(R.w6) < 4250) R.w6 = 4250; }
     if (s16(R.w8) > 10000) R.w8 = 10000; else if (s16(R.w8) < 0) R.w8 = 0;
+    const op = env.clubOpinion?.(c, m) ?? 0;
+    if (op < 0) { if (s16(R.w8) > 3000) R.w8 = 3000; }
+    else if (op > 0) { if (s16(R.w8) < 7000) R.w8 = 7000; }
     if (!(R.b2 & 0x0d)) {
       weeklyRep(env, c, m, dconf);
       if (env.isNat?.(c)) continue;                                      // §17 kun klubhold (0x69a8a7)

@@ -36,8 +36,12 @@ describe('cmBoard – i spillet (3.9.60, ægte tilstand)', () => {
     expect(g.cmBoard).toBeTruthy();
     const mu = Object.values(g.clubs).find((c) => c.name === 'Manchester United')!;
     const R = g.cmBoard!.rec[mu.id];
-    expect(R.w6).toBeGreaterThanOrEqual(5750);
-    expect(R.w6).toBeLessThanOrEqual(10000);
+    // 0x697c40 §15: formanden Martin Edwards har Ferguson som uven (staff +0x65 +0x28..) → +6 ≤ 5250 (oraklet 14/7-01: 5250)
+    expect(g.cmChairPrefs?.[mu.id]).toBeTruthy();
+    expect(R.w6).toBeLessThanOrEqual(5250);
+    // klubbens yndling (club +0x9b..): Birmingham/Trevor Francis → +8 ≥ 7000 (oraklet 7000)
+    const bir = Object.values(g.clubs).find((c) => c.name === 'Birmingham City')!;
+    expect(g.cmBoard!.rec[bir.id].w8).toBeGreaterThanOrEqual(7000);
     expect(g.cmBoard!.rec[ars]).toBeTruthy();
     expect(g.manager.cmRep?.[0]).toBeGreaterThan(3000);
     const fergie = g.staff[mu.manager];

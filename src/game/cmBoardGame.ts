@@ -43,7 +43,7 @@ import { boardRequestAvailable, issueUltimatum, ultimatumOffered, type Ultimatum
 import { leagueClash, projectPositions, staffInterest, type InterestEnv } from './cmBoardInterest';
 import { msvcQsort } from './engine/grid/subs';
 import { registerPrerun } from './cmPrerun';
-import { personKey } from './cmRelations';
+import { clubDislikes, clubFavours, DIS_PERSON, dislikesPerson, FAV_PERSON, favoursPerson, personKey, relHas } from './cmRelations';
 import { cmClubEuro } from './cmFitnessGame';
 import { cmFineReset, cmFineSeasonHalve } from './cmFine';
 import { clubNewsToMe, cmForeign } from './cmNewsScope';
@@ -419,6 +419,24 @@ export function boardEnv(g: GameState, todayIso = g.date, startIso?: string, laz
   const env: BoardEnv = {
     today, gameStart,
     get clubs() { return (cl ??= clubList(g)); },
+    clubOpinion: (c, m) => {
+      const cl = g.clubs[c], s = m.human ? null : g.staff[m.id];
+      if (!cl?.cmPrefs || !s) return 0;
+      const k = personKey(s);
+      return clubDislikes(cl, k) ? -1 : clubFavours(cl, k) ? 1 : 0;
+    },
+    chairOpinion: (c, m) => {
+      const pr = g.cmChairPrefs?.[c], s = m.human ? null : g.staff[m.id];
+      if (!pr || !s) return 0;
+      const k = personKey(s);
+      return relHas(pr, DIS_PERSON, k) ? -1 : relHas(pr, FAV_PERSON, k) ? 1 : 0;
+    },
+    personOpinion: (ev, m) => {
+      const e = ev.human ? null : g.staff[ev.id], s = m.human ? null : g.staff[m.id];
+      if (!e?.cmRel || !s) return 0;
+      const k = personKey(s);
+      return dislikesPerson(e, k) ? -1 : favoursPerson(e, k) ? 1 : 0;
+    },
     clubRep: (c) => { const n = natOfClub(c); return n !== null ? natRep(n) : clubRepMem(g, c); },
     clubNation: (c) => { const n = natOfClub(c); return n !== null ? n : g.clubs[c]?.nation ?? -1; },
     division: (c) => leagueOf(g, c),
