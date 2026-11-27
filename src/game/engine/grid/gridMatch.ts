@@ -45,7 +45,7 @@ import { ATTRS } from '../../attributes';
 import type { Player, Tactic } from '../../types';
 import { DIS_PERSON, FAV_PERSON, relPersons } from '../../cmRelations';
 import { recordBytes, staffBytes } from './gameInputs';
-import { quickSimulate, type QuickFixture, type QuickResult } from './quickSim';
+import { quickSimulate, type QuickEnv, type QuickFixture, type QuickResult } from './quickSim';
 
 export type Rand = (n: number) => number;
 /** tællere til fejlsøgning (scripts/grid-stats.ts DEBUG=1) */
@@ -3791,7 +3791,7 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
   const quickRun = (): QuickResult => {
     const qf = ctx.quickFixture ?? { bg: false, hasComp: false, tour: true, nation: null, homeLeague: false };
     const sides = [0, 1].map((s) => gp.filter((q) => q.side === s)) as [GP[], GP[]];
-    const r = quickSimulate({
+    const env: QuickEnv = {
       m, rand, sides, blk: teamBlk, rec: (q, o) => (recByte(q, o) << 24) >> 24,
       ca: (q) => (q.recRaw ? ((q.recRaw[5] & 0xff) | (q.recRaw[6] << 8)) : q.src.ca),
       fx: { ...qf, rep: [ctx.rep?.[0] ?? 5000, ctx.rep?.[1] ?? 5000], flags38: ctx.fixtureInfo?.flags38 ?? 0, firstLeg: ctx.fixtureInfo?.firstLeg ?? null },
@@ -3800,7 +3800,9 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
       comment: (id, q, side) => comment(id, q, side, null, -1, 0),
       onGoal: (q, a, pen) => on?.goal?.(q, a, pen),
       onCard: (q, code) => on?.card?.(q, code, true),
-    });
+    };
+    (globalThis as { cmQuickTap?: (e: QuickEnv) => void }).cmQuickTap?.(env);                // kun målinger (hurtigkampens inddata)
+    const r = quickSimulate(env);
     for (const s of [0, 1] as Side[]) {
       const b = teamBlk[s], x = st(s);
       x.goals = m.goals[s]; x.shots = b[2]; x.onTarget = b[3]; x.corners = b[0xb]; x.throwIns = b[0xc]; x.fouls = b[0xd]; x.offsides = b[0xe]; x.reds = b[0xf]; x.yellows = b[0x10];

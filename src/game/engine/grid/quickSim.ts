@@ -68,6 +68,8 @@ export interface QuickEnv {
   comment: (id: number, p: GP | null, side: number) => void;
   onGoal?: (p: GP, assister: GP | null, pen: boolean) => void;
   onCard?: (p: GP, code: number) => void;
+  /** kun låsetrinet (scripts/quick-lockstep.ts): de syv styrker efter hvert kald af 0x6c0c60 */
+  onStrengths?: (T: number[][], s: 0 | 1) => void;
 }
 
 export interface QuickResult {
@@ -195,6 +197,7 @@ function sideStrengths(e: QuickEnv, T: number[][], s: 0 | 1): void {
   } else if (d < -750 && u8(e.m.goals[1]) === 0) {                                          // 0x6c1fd1–0x6c2030
     T[2][1] = s16(ftol(T[2][1] * 1.02)); T[0][1] = s16(ftol(T[0][1] * 1.01));
   }
+  e.onStrengths?.(T, s);
 }
 
 /** karakterjusteringerne for siden's spillere på banen: rating += ftol(delta·k[pladsen]) (0 = ingen, NaN = delta uden ftol) */
