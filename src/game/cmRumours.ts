@@ -5,7 +5,8 @@
 //   +0 staff-id (spilleren), +4 klub-id (den interesserede), +8 dato, +0x10 tilstand (0 ny, 1 rygtet, 2 "concerned"), +0x11 beløb (højst
 //   £50.000.000 = 0x2faf080), +0x15 ftol(viljen 0x846920 · 100).
 //   0x754740 add_rumour(staff, klub, beløb, vilje): findes parret allerede (bsearch), sker intet. Kaldt fra computerens ønskeliste 0x83f3a0
-//   (0x840c4b/0x84079d), spejderrapporten 0x7b62a0 (0x7b6e86 – ikke porteret) og menneskets "Add Player To Shortlist" → Yes 0x8f48b0
+//   (0x840c4b/0x84079d), spejderrapporten 0x7b62a0 (0x7b6e86, ved mindst 3 stjerner: samme vej, viljen 0x846920(…, 1, 0, 1, 0) ≥ 3,15 og som rygtets vilje –
+//   cmScoutAddRumour i cmScout.ts) og menneskets "Add Player To Shortlist" → Yes 0x8f48b0
 //   (0x8f4c07: udbudsprisen 0x4d1600/0x4d42d0, kun hvis budgettet 0x598800 eller saldoen ≥ 0,75 · prisen, vilje 0 – cmShortlistAddRumour).
 //   Menneskets bud (0x8be300) giver INTET rygte – før 27/11 gav hvert bud fra mennesket et rygte med spillets skønnede askingPrice.
 //   Computerens rygter kommer KUN fra ønskelisternes mål 0x83f3a0 (adapteren

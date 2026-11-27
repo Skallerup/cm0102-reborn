@@ -28,7 +28,7 @@
 //   0x7f9a60 send_scout_report_news     nyheden 0x138e til klubbens manager (højst tre spejdere) – teksten 0x7f9d10 (src/ui/cmScoutNews.ts)
 //
 // Spejderlister med opgave (0x7ae9c0/0x7b0050/0x7b3e20, nyheden 0x138b) og listens resultattabel i 0x7b62a0 (force 0): cmScoutAsg.ts.
-// Ikke porteret: medierne 0x754740 (rygtet om interessen), 0x546ab0/0x5465a0 (spillerens beskrivelse i stedet for
+// Medierne: rygtet om interessen 0x754740 (0x7b6e86 – cmShortlistGame.ts cmScoutAddRumour → cmRumours.ts). Ikke porteret: 0x546ab0/0x5465a0 (spillerens beskrivelse i stedet for
 //   positionsordet – nyheden får derfor ikke markøren 0x420e9), turneringsrundens navn 0x4b4850 (vores rundenavne), Portugal-reglen i 0x53d980.
 // Tilfældige tal: cmRand (egen talrække – spillets rng røres ikke).
 import type { Fixture, GameState, MatchReport, Player, Staff } from './types';
@@ -36,7 +36,9 @@ import { addDays, ageOn } from './dates';
 import { isResFixture } from './cmReserves';
 import { addNews } from './state';
 import { asOwner, isHumanClub } from './humans';
-import { clubRepMem, cmActive, cmRand, cmScoutLogic, statusCode } from './cmPlayerData';
+import { clubRepMem, cmActive, cmMediaOn, cmRand, cmScoutLogic, statusCode } from './cmPlayerData';
+import { cmScoutAddRumour } from './cmShortlistGame';
+import { cmRumourAdd } from './cmRumours';
 import { cmGbp } from './cmMoney';
 import { cmClubLevelOf, cmStaffAttr, scoutJudgement } from './cmStaff';
 import { cmKnowSee } from './cmKnow';
@@ -172,6 +174,12 @@ export function reportOnPlayer(g: GameState, s: Staff, p: Player, force: 0 | 1 |
   }
   // 0x7b69cf: listens resultattabel (cmScoutAsg.ts)
   const five = cmAsgRecord(g, s, p, raw.est, raw.pot, ab, pot);
+  // 0x7b6bfb–0x7b6e86: mindst 3 stjerner → mediets rygte om interessen (add_rumour 0x754740 med udbudsprisen – cmShortlistGame.ts
+  // cmScoutAddRumour); rand-kaldene i rapportens talrække før arbejdstilladelsens
+  if ((ab > 2 || pot > 2) && cmMediaOn(g)) {
+    const r = cmScoutAddRumour(g, p, club, rnd);
+    if (r) cmRumourAdd(g, p, club, r.amt / cmGbp(g, club), r.will);
+  }
   // 0x7b6e99/0x7b6eb7: 0x8c7560(…, 1) og 0x8c7950(spiller, land, 0, 0, 1) – med tilfældighed (rand(1000), 2 × rand(3), 2 × rand(10)). Spil startet
   // med porten (cmPermitOn – også 2026/27); gamle 2001-spil uden den: CM Reborns skøn (rules2001.ts)
   const permits = cmActive(g) || cmPermitOn(g);

@@ -2427,6 +2427,21 @@ export function cmAskingPrice(g: GameState, p: Player, buyer?: number, why?: { r
 const RUM_POST = 0x5e7f0500, RUM_OUT = 0x5e7f0540;
 export function cmShortlistAddRumour(g: GameState, p: Player, buyer: number): number | null {
   if (!cmShortlistOn(g) || !g.clubs[buyer] || p.club === buyer) return null;
+  return rumourCore(g, p, buyer, cmRand(g.seed ?? 0, p.id, buyer, dayNum(g.date), 0x8f48b0), 0, 2.75, false)?.amt ?? null;
+}
+
+/** Spejderrapporten PLAYER_SEARCH::report_on_player 0x7b62a0 (0x7b6bfb–0x7b6e86), efter listens tabel og før arbejdstilladelsen: ved mindst
+ *  3 stjerner (evne +0x29 eller potentiale +0x2a > 2) samme vej som 0x8f48b0 (0x5a0590, omdømmet, sælgeren, budposten, 0x84b6f0, udbudsprisen
+ *  0x4d1600/0x4d42d0, budgettet/saldoen ≥ 0,75 · beløbet) – men viljen er 0x846920(staff, klub, 1, 0, 1, 0) med grænsen 3,15 ([0x968e58]), og
+ *  rygtet 0x754740 får viljen 0x846920(staff, klub, 1, 0, 1, 0) (kaldt igen). `rand` = rapportens talrække (rand-kaldene ligger før
+ *  arbejdstilladelsens). Svaret: beløbet i £ og viljen (null = intet rygte). */
+export function cmScoutAddRumour(g: GameState, p: Player, club: number, rand: (n: number) => number): { amt: number; will: number } | null {
+  if (!cmShortlistOn(g) || !g.clubs[club] || p.club === club) return null;
+  return rumourCore(g, p, club, rand, 1, 3.15, true);
+}
+
+/** 0x8f49e4–0x8f4c07 / 0x7b6c0d–0x7b6e86: `a3` = 0x846920's tredje argument, `thr` = viljens grænse, `will` = rygtet får viljen (ellers 0) */
+function rumourCore(g: GameState, p: Player, buyer: number, rand: (n: number) => number, a3: number, thr: number, will: boolean): { amt: number; will: number } | null {
   // 0x598800(staff, 1, 0, 1, 0) på sin egen hukommelse (kendskabet 0x5b02f0 – cmBudget.ts) før rygtets: den bruger ingen af dettes rand-kald
   const budget = cmStaffBudget(g, p, buyer, 1) ?? 0;
   const clubs = [...new Set([buyer, p.club, p.loan?.from].filter((c): c is number => !!c && !!g.clubs[c]))];
@@ -2434,7 +2449,6 @@ export function cmShortlistAddRumour(g: GameState, p: Player, buyer: number): nu
   const M = smallWantMem(g, clubs, hold);
   const st = M.W.staffOf(p), bc = M.W.clubOf(buyer), fin = M.W.finOf(buyer);
   if (!st || !bc || !fin) return null;
-  const rand = cmRand(g.seed ?? 0, p.id, buyer, dayNum(g.date), 0x8f48b0);
   M.setRand(rand);
   const m = M.c.m;
   const memOf = new Map<number, number>(), byMem = new Map<number, Player>();
@@ -2453,8 +2467,8 @@ export function cmShortlistAddRumour(g: GameState, p: Player, buyer: number): nu
       const sc = m.u32(st + 0x39);
       if (!sc || !humanClub_600a50(M.c, sc, 0)) return null;
     }
-    // 0x8f4a93: viljen (fcomp 2,75: under – eller NaN – ingen henvendelse)
-    if (!(slCall(M.c, 0x846920, S.slm, st, bc, 0, 0, 1, 0) >= 2.75)) return null;
+    // 0x8f4a93 / 0x7b6cc0: viljen (fcomp 2,75 / 3,15: under – eller NaN – ingen henvendelse)
+    if (!(slCall(M.c, 0x846920, S.slm, st, bc, a3, 0, 1, 0) >= thr)) return null;
     // 0x8f4ab0: sælgeren (kontrakten, ikke en lejeaftale +0x35 & 0x3f = 5)
     const k = getContract(m, st);
     const seller = k && (m.u8(k + 0x35) & 0x3f) !== 5 ? clubAt(m, m.s32(k + 4)) : 0;
@@ -2472,7 +2486,8 @@ export function cmShortlistAddRumour(g: GameState, p: Player, buyer: number): nu
     // 0x8f4bb7–0x8f4bf8: budgettet eller saldoen ≥ 0,75 · beløbet
     const need = amt * 0.75;
     if (budget < need && balance < need) return null;
-    return amt;
+    // 0x8f4c00: viljen 0 / 0x7b6e72: 0x846920(staff, klub, 1, 0, 1, 0) – ftol(· 100) i posten +0x15
+    return { amt, will: will ? Math.trunc(slCall(M.c, 0x846920, S.slm, st, bc, 1, 0, 1, 0) * 100) : 0 };
   } finally {
     (m as SparseMem).release();
   }

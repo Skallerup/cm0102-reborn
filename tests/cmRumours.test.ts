@@ -15,7 +15,8 @@ import { personKey } from '../src/game/cmRelations';
 import { newRec } from '../src/game/cmBoard';
 import { newsBody, newsTitle } from '../src/ui/screens/common';
 import { applyAction } from '../src/game/actions';
-import { SL_ON, cmAskingPrice, cmShortlistAddRumour } from '../src/game/cmShortlistGame';
+import { SL_ON, cmAskingPrice, cmScoutAddRumour, cmShortlistAddRumour } from '../src/game/cmShortlistGame';
+import { reportOnPlayer, scoutLists } from '../src/game/cmScout';
 import { cmGbp } from '../src/game/cmMoney';
 import { money } from '../src/i18n';
 import type { GameState, Player } from '../src/game/types';
@@ -128,6 +129,43 @@ describe('kampprogrammet og rygterne (ægte tilstand, 3.9.60)', { timeout: 600_0
       let n;
       for (let d = 0; d < 31 && !n; d++) { g.date = addDays(g.date, 1); cmRumoursDaily(g); n = g.news.find((x) => x.key === 'cm.rum' && Number(x.params.pid) === p.id); }
       if (n) expect(newsBody(n)).toContain(money(e.amt));
+    } finally { SL_ON.on = on; }
+  });
+  it('spejderrapportens rygte (0x7b62a0 → 0x7b6e86): samme beløb som 0x8f48b0, viljen ≥ 3,15 følger med, kun ved mindst 3 stjerner', () => {
+    const on = SL_ON.on;
+    SL_ON.on = true;
+    try {
+      const w = world.clubs.find((x) => x[1] === 'Manchester United')!;
+      const eng = world.nations.findIndex((x) => x.name === 'England');
+      createGame(world, { managerName: 'M S', managerNation: eng, clubId: w[0], activeNations: [eng], lang: 'en', masking: true, seed: 1, mode: 'authentic' });
+      const g = gs();
+      const p = Object.values(g.players).find((q) => q.last === 'Tsigalko')!;
+      // kernen: en dag, hvor rand(37 − omdømme/300) = 0 osv.
+      let r: { amt: number; will: number } | null = null;
+      for (let d = 0; d < 200 && !r; d++) { g.date = addDays(g.date, 1); r = cmScoutAddRumour(g, p, g.userClub, cmRand(g.seed ?? 0, p.id, d, 0x7b62a0)); }
+      expect(r).not.toBeNull();
+      expect(r!.amt).toBe(cmAskingPrice(g, p, g.userClub));
+      expect(r!.will).toBeGreaterThanOrEqual(315);
+      // rapporten (anmodningen, force 1): rygtet i køen kun med 3+ stjerner, med viljen (Tsigalko får 0 stjerner af Man Utds spejder – Vieri 5)
+      const s = scoutLists(g, g.userClub)[0];
+      const v = Object.values(g.players).find((q) => q.last === 'Vieri' && g.clubs[q.club]?.name === 'Internazionale')!;
+      const r0 = reportOnPlayer(g, s, p, 1, -1000, cmRand(1));
+      expect(r0 && r0.ab <= 2 && r0.pot <= 2).toBe(true);
+      expect(g.cmRum?.q.some((x) => x.p === p.id) ?? false).toBe(false);
+      expect(s).toBeTruthy();
+      let hit = 0;
+      for (let d = 0; d < 300 && !hit; d++) {
+        g.date = addDays(g.date, 1);
+        if (g.cmRum) g.cmRum.q = [];
+        const rec = reportOnPlayer(g, s, v, 1, -1000, cmRand(g.seed ?? 0, s.id, v.id, d, 0x7f8750));
+        const e = g.cmRum?.q.find((x) => x.p === v.id && x.c === g.userClub);
+        if (e) {
+          expect(rec && (rec.ab > 2 || rec.pot > 2)).toBe(true);
+          expect(e.will).toBeGreaterThanOrEqual(315);
+          hit++;
+        }
+      }
+      expect(hit).toBe(1);
     } finally { SL_ON.on = on; }
   });
 });

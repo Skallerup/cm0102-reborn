@@ -34,8 +34,7 @@
 //            vilje og dækning. 0x7b3e20: én runde, posterne bliver i renseløkken, ingen 0x138b; runde 1 → 0x138a "{klub} scouting completed"
 //            med analysen (cmNextOppAnalysis: nøglespillerne 0x7b4ec1, holdets bytes 0x549100–0x549940 og niveauet 0x549a30) – rapportens tekst
 //            er 0x7be670 (src/ui/cmScoutAsgNews.ts). Opgaven nulstilles ikke; 0x7f8c00 sætter den forfra efter hver af klubbens kampe.
-// Ikke porteret: Club (klubvagten +0x170/0x7bd310) – kører stadig som før (scouting.ts); mediernes rygte om interessen (0x754740 i 0x7b62a0 – 0x84b6f0's vurdering med en delvist
-//   uinitialiseret post); 0x5465a0 (spillerens beskrivelse i stedet for positionsordet, som i 0x138e).
+// Ikke porteret: Club (klubvagten +0x170/0x7bd310) – kører stadig som før (scouting.ts); 0x5465a0 (spillerens beskrivelse i stedet for positionsordet, som i 0x138e).
 // Tilfældige tal: cmRand (egen talrække – spillets rng røres ikke).
 import type { GameState, Player, Staff } from './types';
 import { addDays, ageOn } from './dates';
