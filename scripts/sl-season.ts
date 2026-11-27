@@ -1,6 +1,6 @@
 // En sæson med CM 01/02's ønskelister slået til (ægte tilstand, den originale database) – tallene, K2 sammenligner med oraklet
 // (docs/ORIGINAL_PARITY.md: originalen 621 køb, 226 lejeaftaler, 95 klubløse skriver under, 65 frigivne – England, Arsenal, frø 1, størrelse 2).
-// Brug: npx tsx scripts/sl-season.ts [world-fil]   (DAYS=n: kun n dage; CLUB=navn, standard Arsenal)
+// Brug: npx tsx scripts/sl-season.ts [world-fil]   (DAYS=n: kun n dage; CLUB=navn, standard Arsenal; SEED=frø, standard 1)
 // Tæller som scripts/cm-day-lockstep.ts (skifterne Player.moves med en engelsk klub i én af enderne), buddene på menneskets spillere,
 // tid pr. dag (i alt og ønskelisterne), og økonomien (de engelske klubbers saldo, klubber i minus) – og fanger nedbrud.
 import { readFileSync } from 'node:fs';
@@ -16,7 +16,7 @@ const eng = world.nations.findIndex((x) => x.name === 'England');
 const clubName = process.env.CLUB ?? 'Arsenal';
 const user = world.clubs.find((c) => c[1] === clubName)![0];
 let t = performance.now();
-createGame(world, { managerName: 'Sl', managerNation: eng, clubId: user, activeNations: [eng], lang: 'en', masking: true, seed: 1, mode: 'authentic' });
+createGame(world, { managerName: 'Sl', managerNation: eng, clubId: user, activeNations: [eng], lang: 'en', masking: true, seed: +(process.env.SEED ?? 1), mode: 'authentic' });
 const g = gs();
 console.log(`${file}: SL_ON ${SL_ON.on}, createGame ${Math.round(performance.now() - t)} ms (ønskelisternes start ${Math.round(SL_STATS.startMs)} ms), ${g.date}`);
 const start = g.date;

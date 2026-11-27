@@ -82,7 +82,7 @@ describe('bud på en spiller, der skifter klub (3.9.68, ægte tilstand)', { time
     g.fixes = (g.fixes ?? []).filter((f) => f !== 'staleOffers');
     repairStaleOffers(g);
     expect(stale.status).toBe('withdrawn');
-    expect(aiOnly.status).toBe('pending');   // rene computerbud: cmAiAiDue lukker dem på svardagen
+    expect(aiOnly.status).toBe('pending');   // rene computerbud: på svardagen svarer den nye klub (cmAiAiDue, 0x8c63a0)
     expect(dropStaleOffers(g, isHumanClub)).toBe(0);
   });
 });

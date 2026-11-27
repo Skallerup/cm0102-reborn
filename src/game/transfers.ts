@@ -2137,7 +2137,7 @@ function cm7News(o: TransferOffer, p: Player, buyer: Club, e: SlBid): void {
     link: { kind: 'player', id: p.id } }));
 }
 /** målinger (fejlsøgning): computer → computer-svarene på ønskelisternes bud */
-export const CM_AIAI = { delayed: 0, money: 0, declined: 0, noContract: 0, free: 0, freeRefused: 0, freeDone: 0, pre: 0, preFut: 0, preDone: 0, loan: 0, loanOk: 0, bid: 0, accept: 0, counter: 0, counterOk: 0, reject: 0, refused: 0, withdrawn: 0, review: 0, rebid: 0, rules: 0, done: 0, open: 0, openDays: 0 };
+export const CM_AIAI = { delayed: 0, money: 0, declined: 0, noContract: 0, free: 0, freeRefused: 0, freeDone: 0, pre: 0, preFut: 0, preDone: 0, loan: 0, loanOk: 0, bid: 0, accept: 0, counter: 0, counterOk: 0, reject: 0, refused: 0, withdrawn: 0, follow: 0, review: 0, rebid: 0, rules: 0, done: 0, open: 0, openDays: 0 };
 const cmOpen = (o: TransferOffer) => o.status === 'pending' || o.status === 'countered' || o.status === 'negotiating';
 /** CM 01/02: menneskets lejebud til en computerklub. add_transfer_offer 0x8be300 giver svartiden 0x8cc5b0 (+ 0x8c6220, regnet første gang
  *  dagens behandling ser buddet, fra buddets dag); på svardagen process_due_offer 0x8c63a0 (tilstand 0, +0x1f = 1) →
@@ -2271,6 +2271,11 @@ function cmAiAiDue(cx: SlDueCtx) {
     const p = g.players[o.player];
     let buyer = g.clubs[o.buyer];
     const home = p ? p.loan?.from ?? p.club : 0;   // hovedkontraktens klub (en udlejet: moderklubben)
+    // process_due_offer 0x8c63a0 (@0x8c63f1): buddet har ingen sælger – sælgeren er spillerens kontraktklub på dagen (get_contract 0x4cf5a0 →
+    // kontrakten +4; ingen kontrakt eller prøvekontrakt +0x35 & 0x3f = 5 → ingen sælger, 0x8c6a42). Er han skiftet til en anden computerklub (eller
+    // blevet klubløs), svarer den NYE klub (og handlen 0x8c9390 går til den); før blev buddet lukket (0xf). Et menneske som ny klub får buddet via
+    // offersFollowPlayer (offerLive.ts); er køberen selv den nye klub, er buddet faldet (0x8c47d0).
+    if (p && buyer && home !== o.seller && home !== buyer.id && !isHumanClub(home)) { o.seller = home; CM_AIAI.follow++; }
     if (!p || !buyer || home !== o.seller || (p.loan && o.loan) || p.contract?.futureClub || ((isHumanClub(home) || isHumanClub(p.club)) && !o.cm7) || (humanClub0(g, buyer.id) && !o.cmLoanH)) {
       // (han er skiftet: 0x8c47d0's 0xf; ellers trukket 0x8bfcb0)
       if (p && home !== o.seller) cmTmClose(o, 0xf, 10, 'withdrawn'); else cmTmClose(o, 3, 10, 'withdrawn');

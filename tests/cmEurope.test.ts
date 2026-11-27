@@ -105,6 +105,9 @@ describe('Europa i originalens format', () => {
     expect(fi(one('CUP-60', (f) => f.stage === 'F'))).toEqual([15, 6]);
     const fr = Object.values(g.fixtures).find((f) => f.comp === 'FRIENDLY');
     if (fr) expect(fi(fr)).toEqual([1, 1]);
+    // fixture-posten selv (fixtureCodesOf – økonomien cmGate og tilskuerne): turneringen Friendly 72 med omdømmet 1, +0x3a = 1
+    const k = fixtureCodesOf(g, fr, 'FRIENDLY', fr?.home ?? 1);
+    expect([k.compId, k.compRep, k.b3a]).toEqual([72, 1, 1]);
     const rep = Object.values(g.fixtures).find((f) => f.comp === 'CUP-60' && (f.cm?.rep ?? 0) > 0);
     if (rep) {
       const orig = Object.values(g.fixtures).find((f) => f.tieId === rep.tieId && f.cm?.rep === 0)!;

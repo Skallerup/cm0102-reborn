@@ -22,7 +22,7 @@ export const offerOpen = (o: TransferOffer) => OPEN.includes(o.status);
  *  menneskets klub bliver et bud til mennesket (svaret 0x8c63a0: ubesvaret på svardagen → tilstand 4, ingen nyhed – processOffers trækker det),
  *  menneskets bud går til den nye klub (som svarer på dagen). Køberen er den nye klub → buddet trækkes; et computerbud, der var til mennesket og nu
  *  står til en computerklub, trækkes (computer ↔ computer-svaret kører kun for ønskelisternes bud – cmAiAiDue). Forhandlinger, der var i gang med
- *  den gamle klub (modbud, kontraktforhandling), falder. Rene computerbud røres ikke (cmAiAiDue lukker dem på svardagen). */
+ *  den gamle klub (modbud, kontraktforhandling), falder. Rene computerbud røres ikke: på svardagen svarer den nye klub (cmAiAiDue, 0x8c63a0). */
 export function offersFollowPlayer(g: GameState, done: TransferOffer, isHuman: (club: number) => boolean): void {
   const p = g.players[done.player];
   if (!p || done.loan) return;
