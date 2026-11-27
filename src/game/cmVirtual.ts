@@ -30,10 +30,11 @@
 //             'B'-trup er udtaget – 0x775520), mål pr. gruppe række 1 [6,4,4,12,4,8,4,8] (U21: række 0), førsteholdet = de udtagne (+0x5e & 4);
 //             under målet laves en spiller til førsteholdet, ellers en "fantom"; U21: ingen, når landet har over 500 spillere (+0x88) og ingen
 //             trup er udtaget; spilleren 0x90e0a0 med landsholdets omdømme (> 5000 ? omd/100 + 40 : 0,052·omd − 150), U21 17 år og −30 − rand(41)
-// *estimeret*: 0x85add0 (trøjenumre altid), 0x7757d0 (landsholdsophold – ingen), Japans særregel (0x90dc04), 0x539c60's navnelister (spillets egne pr. land, randomName), CA under 1 gemmes som 1
-// (de viste egenskaber bruger originalens negative CA), lønnen betales aldrig (fyldspillerne er væk ved dagens start, som i originalen
+// *estimeret*: 0x85add0 (trøjenumre altid), 0x7757d0 (landsholdsophold – ingen), Japans særregel (0x90dc04), 0x539c60's navnelister (spillets egne pr. land, randomName), lønnen betales aldrig (fyldspillerne er væk ved dagens start, som i originalen
 // hvor de kun findes omkring kampene). Reservespillerne laves ikke (spillets reserver kan ikke spille, og frøene er pr. spiller).
 import type { GameState, Player, Staff } from './types';
+
+const s16 = (v: number) => (v << 16) >> 16;
 import { ATTRS } from './attributes';
 import { addPlayer, dropPlayer, onGameSwitch, playersEpoch, squad } from './state';
 import { cmActive, cmIntlOn, cmLogic, clubRepMem, NO_RESERVES } from './cmPlayerData';
@@ -207,7 +208,9 @@ export function makeVirtual(g: GameState, cid: number, slot: VirtualSlot, crt: C
   const cmInt = src?.cmInt ? src.cmInt.slice() : undefined;
   const pos = src ? src.pos.slice() : [1, 1, 1, 1, 1, 1, 1, 1];
   if (cmInt) shownFromInternal(attrs, cmInt, v, pos[0]);                  // de 18 interne vises efter den nye CA (sub_544380)
-  const ca = Math.max(1, Math.min(200, v));
+  // 0x90e6dc/0x90e6e0: CA (+5) og PA (+7) = v som word uden klemning – omdømme under 2525 giver negativ CA (oraklet: −60, −100, −146), og
+  // kampmotoren læser den med fortegn (kamp-CA'en 0x6ec665)
+  const ca = s16(v);
   return {
     id: virtualId(cid, slot.grp, slot.n), first, last, dob, nation, club: cid,
     foot: src?.foot ?? 'R', ...(src?.feet ? { feet: [src.feet[0], src.feet[1]] as [number, number] } : {}), height: src?.height ?? 180,
@@ -387,7 +390,9 @@ function makeNationalVirtual(g: GameState, n: number, u21: boolean, cid: number,
   const cmInt = t?.cmInt ? t.cmInt.slice() : undefined;
   const pos = t ? t.pos.slice() : [1, 1, 1, 1, 1, 1, 1, 1];
   if (cmInt) shownFromInternal(attrs, cmInt, v, pos[0]);
-  const ca = Math.max(1, Math.min(200, v));
+  // 0x90e6dc/0x90e6e0: CA (+5) og PA (+7) = v som word uden klemning – omdømme under 2525 giver negativ CA (oraklet: −60, −100, −146), og
+  // kampmotoren læser den med fortegn (kamp-CA'en 0x6ec665)
+  const ca = s16(v);
   return {
     id: virtualId(cid, slot.grp, slot.n), first, last, dob, nation: n, club: 0,
     foot: t?.foot ?? 'R', ...(t?.feet ? { feet: [t.feet[0], t.feet[1]] as [number, number] } : {}), height: t?.height ?? 180,
