@@ -13,6 +13,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '2026-11-27',
     title: { da: 'Mere af det originale CM 01/02', en: 'More of the original CM 01/02' },
     items: [
+      { da: "Udvikling: samme spil giver nu de samme resultater i testene som i spillet.", en: "Development: the same game now gives identical results in tests and in the game." },
       { da: "Game Credits åbner nu som en grøn popup ('Credits og tak til'). Tekster på forsiden, i guiderne og på databasesiderne er opdateret: kampmotoren beskrives nu rigtigt som originalens, porteret funktion for funktion. Databasesiderne har fået forsidens stil og en 'Spil gratis'-knap.", en: "Game Credits now opens as a green popup. The texts on the front page, in the guides and on the database pages have been updated: the match engine is now described correctly as the original's, ported function by function. The database pages share the front page's look and have a 'Play free' button." },
       { da: "Interne kontrolværktøjer til hurtigkampene.", en: "Internal verification tools for quick matches." },
       { da: "Baggrundskampene for klubber uden for de spillede ligaer ændrer ikke længere spillernes moral og omdømme – som i originalen.", en: "Background matches for clubs outside the played leagues no longer change players' morale and reputation – as in the original." },
