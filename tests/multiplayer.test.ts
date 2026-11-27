@@ -46,7 +46,8 @@ describe('online multiplayer (motor)', () => {
     // begge har fået kampnyheder og rapporter med kommentar
     for (const pid of ['p1', 'p2']) {
       withHuman(pid, () => {
-        expect(g.news.filter((n) => n.cat === 'match').length).toBeGreaterThan(10);
+        // (27/11) nyhedslisten er en ring på 100 pr. manager som i originalen (0x785d40) – efter en hel sæson er kun de seneste tilbage
+        expect(g.news.filter((n) => n.cat === 'match').length).toBeGreaterThan(0);
         expect(g.manager.history.length + g.manager.sacked).toBeGreaterThanOrEqual(1);
       });
     }
