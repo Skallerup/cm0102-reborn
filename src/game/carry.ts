@@ -16,7 +16,9 @@ export function registerCarry<T>(name: string, get: () => T | typeof NO_CARRY, s
 }
 export function captureCarry(): Record<string, unknown> {
   const out: Record<string, unknown> = {};
-  for (const [k, c] of CARRY) { const v = c.get(); if (v !== NO_CARRY) out[k] = v; }
+  // (27/11) navnene sorteret: rækkefølgen af registreringerne følger modulernes importrækkefølge, som er en anden i dagens arbejder end i
+  // hovedtråden – gemmets tekst (cmCarry) skal være bit for bit den samme, hvem der end gemmer (game/workerSave.ts)
+  for (const k of [...CARRY.keys()].sort()) { const v = CARRY.get(k)!.get(); if (v !== NO_CARRY) out[k] = v; }
   return out;
 }
 /** læg tilstanden tilbage; moduler uden en gemt værdi nulstilles */

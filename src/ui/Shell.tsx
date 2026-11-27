@@ -22,6 +22,7 @@ import { Fragment, useEffect, useLayoutEffect, useRef, useState, type CSSPropert
 import { flushAutosave, forgetLast, getLast, saveGame, scheduleAutosave } from '../game/save';
 import { runUntil, watchedDay } from '../game/sim';
 import { GameRunError, runDays } from './dayRunner';
+import { sealWorkerSave } from '../game/workerSave';
 import { reportError } from '../online/errors';
 import { realCompName, setCompEra } from '../i18n/comps';
 import { authentic, origLogic } from '../game/rules';
@@ -471,8 +472,10 @@ export function Shell() {
       return {};
     }
     setRunning(null); setRunNote(null); setRunFrac(0); setRunPhase(null);
-    if (r.stop === 'news') { notify(); return r; }
+    // (27/11) skærmens notify'er er sendt – arbejderens gem gælder spillet, til næste ændring (game/workerSave.ts)
+    if (r.stop === 'news') { notify(); sealWorkerSave(); return r; }
     handle(r);
+    sealWorkerSave();
     return r;
   };
 

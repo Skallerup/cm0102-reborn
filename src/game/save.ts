@@ -13,6 +13,7 @@ import { cmCupName, cmLeagueRules, cmPlayoffRules } from './cmCalendar';
 import { cashRound } from './cmTransferBid';
 import { deserializeState, gunzipText, gzSize, serializeBytes, serializeState } from './snapshot';
 import { rng } from './rng';
+import { takeWorkerSave } from './workerSave';
 import { guardWrite, isQuotaError, StorageFullError, type SaveRescue } from './storageGuard';
 import { legacyExtendedFromText, saveKindFromText, saveKindOf, type SaveKind } from './saveKind';
 import type { GameState, Player } from './types';
@@ -44,6 +45,22 @@ export const namedSaveId = (gameId: string, name: string) => `${gameId}~${name.t
 
 /** (målinger) gemmets trin i konsollen – localStorage['cm0102.ngTrace'] = '1' (scripts/webkit-newgame-raw.mjs) */
 const ngTrace = () => { try { return localStorage.getItem('cm0102.ngTrace') === '1'; } catch { return false; } };
+/** (målinger) arbejderens gem sammenlignes byte for byte med hovedtrådens – localStorage['cm0102.saveCheck'] = '1' (scripts/perf-days.mjs) */
+const saveCheck = () => { try { return localStorage.getItem('cm0102.saveCheck') === '1'; } catch { return false; } };
+async function checkWorkerBytes(g: GameState, w: Uint8Array<ArrayBuffer>[]): Promise<void> {
+  const own = await serializeBytes(g);
+  const a = new Uint8Array(gzSize(w)), b = new Uint8Array(gzSize(own));
+  let o = 0; for (const x of w) { a.set(x, o); o += x.byteLength; }
+  o = 0; for (const x of own) { b.set(x, o); o += x.byteLength; }
+  let same = a.length === b.length;
+  for (let i = 0; same && i < a.length; i++) if (a[i] !== b[i]) same = false;
+  console.log(`savecheck ${same ? 'SAME' : 'DIFF'} worker ${a.length} B / main ${b.length} B (${g.date})`);
+  if (!same) {
+    const [ta, tb] = await Promise.all([gunzipText(new Blob([a])), gunzipText(new Blob([b]))]);
+    let i = 0; while (i < ta.length && ta[i] === tb[i]) i++;
+    console.log(`savecheck tekst ${ta === tb ? 'ENS (kun gzip)' : `forskel ved ${i}/${ta.length}: worker …${ta.slice(Math.max(0, i - 120), i + 80)}… main …${tb.slice(Math.max(0, i - 120), i + 80)}…`}`);
+  }
+}
 
 export async function serialize(g: GameState): Promise<Blob> {
   return serializeState(g);
@@ -74,7 +91,10 @@ export async function saveGame(opts?: { cloud?: boolean; name?: string }): Promi
   const tr = ngTrace();
   if (tr) console.log('ngtrace save: start');
   // (iPhone 24/11 phase=buffer NotReadableError) bytes i sidens hukommelse, ikke en Blob, til lageret (saveStore.ts)
-  const parts = await serializeBytes(g);
+  // (27/11) lige efter en kørsel i dagens arbejder: arbejderens bytes for præcis dette spil (workerSave.ts) – ellers serialiseres her
+  const wparts = await takeWorkerSave(g);
+  const parts = wparts ?? await serializeBytes(g);
+  if (wparts && saveCheck()) await checkWorkerBytes(g, wparts);
   if (tr) console.log(`ngtrace save: serialiseret ${(gzSize(parts) / 1048576).toFixed(1)} MB`);
   const name = opts?.name?.trim();
   const id = name ? namedSaveId(g.id, name) : g.id;

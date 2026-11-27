@@ -86,8 +86,16 @@ export function* jsonChunks(v: unknown, depth = 2): Generator<string> {
   yield '}';
 }
 
-/** gzip af tekstbidder (jsonChunks) – bytes skrives til komprimeringen i portioner på ~1 MB; uddata som Uint8Array-bidder (GzBytes) */
-export async function gzipChunks(chunks: Iterable<string>): Promise<GzBytes> {
+/** gzip af tekstbidder (jsonChunks) – bytes skrives til komprimeringen i portioner på ~1 MB; uddata som Uint8Array-bidder (GzBytes).
+ *  `abort` (dagens arbejders gem, ui/dayWorker.ts): spørges før hver portion – true afbryder med SaveAbortedError */
+export class SaveAbortedError extends Error { constructor() { super('save aborted'); this.name = 'SaveAbortedError'; } }
+/** en ny opgave (ikke kun mikroopgaver) mellem portionerne, så arbejderens næste besked (ny kørsel) kan nå frem og afbryde – uden setTimeouts 4 ms-gulv */
+const yieldTask = (): Promise<void> => (typeof MessageChannel === 'undefined' ? new Promise<void>((r) => { setTimeout(r, 0); }) : new Promise<void>((r) => {
+  const ch = new MessageChannel();
+  ch.port1.onmessage = () => { ch.port1.close(); r(); };
+  ch.port2.postMessage(0);
+}));
+export async function gzipChunks(chunks: Iterable<string>, abort?: () => boolean): Promise<GzBytes> {
   const enc = new TextEncoder();
   if (typeof CompressionStream === 'undefined') return [...chunks].map((c) => enc.encode(c));
   const cs = new CompressionStream('gzip');
@@ -97,7 +105,7 @@ export async function gzipChunks(chunks: Iterable<string>): Promise<GzBytes> {
   try {
     for (const c of chunks) {
       buf.push(c); n += c.length;
-      if (n >= 1 << 20) { beat(); await w.write(enc.encode(buf.join(''))); buf = []; n = 0; }
+      if (n >= 1 << 20) { beat(); if (abort) { await yieldTask(); if (abort()) throw new SaveAbortedError(); } await w.write(enc.encode(buf.join(''))); buf = []; n = 0; }
     }
     if (buf.length) await w.write(enc.encode(buf.join('')));
     await w.close();
@@ -260,13 +268,13 @@ export async function gunzipText(blob: Blob): Promise<string> {
 
 /** `streamed` (kun spilstartens arbejder, hvor intet andet ændrer spillet undervejs): teksten skrives i bidder mellem await – i hovedtråden kunne
  *  spillet ellers ændre sig midt i et gem, så dér er tolkningen ét synkront øjebliksbillede som før */
-export async function serializeBytes(g: GameState, streamed = false): Promise<GzBytes> {
+export async function serializeBytes(g: GameState, streamed = false, abort?: () => boolean): Promise<GzBytes> {
   g.rng = rng.state;
   stash(g);
   // modulernes tilstand (carry.ts) følger med det aktive spil, så det indlæste spil fortsætter præcis som dette
   packCarry(g);
   // (24/11) i bidder (samme tekst som JSON.stringify) – hele teksten findes aldrig som én streng
-  try { return streamed ? await gzipChunks(jsonChunks(g)) : await gzipTextBytes(JSON.stringify(g)); } finally { delete g.cmCarry; }
+  try { return streamed ? await gzipChunks(jsonChunks(g), abort) : await gzipTextBytes(JSON.stringify(g)); } finally { delete g.cmCarry; }
 }
 export async function serializeState(g: GameState, streamed = false): Promise<Blob> {
   return new Blob(await serializeBytes(g, streamed));

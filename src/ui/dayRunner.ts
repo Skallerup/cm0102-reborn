@@ -4,7 +4,9 @@
 // præcis samme spil (sha1 pr. dag). Uden Worker (Node/test), i fællesspil online og nyt spil-forløbet, eller hvis arbejderen fejler: i hovedtråden
 // (spillet er urørt, til arbejderen er færdig – en fejl midt i kørslen starter forfra her).
 import { runUntil, type DayResult } from '../game/sim';
-import { gs, hasGame, inSetup, setGame, indexSnapshot, restoreIndexes, packCarry } from '../game/state';
+import { gs, hasGame, inSetup, setGame, indexSnapshot, restoreIndexes, packCarry, previewInfo } from '../game/state';
+import { dropWorkerSave, offerWorkerSave } from '../game/workerSave';
+import type { GzBytes } from '../game/snapshot';
 import { cmShortlistOn } from '../game/cmShortlistGame';
 import { getLang } from '../i18n';
 import { rng } from '../game/rng';
@@ -50,6 +52,31 @@ let worker: Worker | null = null;
 /** arbejderen fejlede én gang – resten af sessionen i hovedtråden */
 let broken = false;
 
+/** (27/11) autogemmets bytes fra arbejderen pr. kørsel (game/workerSave.ts); null = arbejderen gemte ikke (afbrudt, fejl, lukket) */
+let seq = 0;
+const pendingSaves = new Map<number, (p: GzBytes | null) => void>();
+const SAVE_STATS = { ms: 0, mb: 0 };
+function onSaveMessage(e: MessageEvent<DayOut>) {
+  const m = e.data;
+  if (m.type !== 'save') return;
+  const r = pendingSaves.get(m.seq);
+  pendingSaves.delete(m.seq);
+  if (m.error) console.warn('dayWorker: gem i arbejderen fejlede – hovedtråden gemmer selv', m.error);
+  if (m.parts) { SAVE_STATS.ms = m.ms; SAVE_STATS.mb = m.parts.reduce((n, b) => n + b.byteLength, 0) / 1048576; }
+  r?.(m.parts);
+}
+function failPendingSaves() {
+  for (const r of pendingSaves.values()) r(null);
+  pendingSaves.clear();
+  dropWorkerSave();
+}
+/** skal arbejderen lave gemmets bytes efter kørslen? (autogem slået til, et lokalt spil, ikke en admin-preview – som saveGame) */
+function wantWorkerSave(): boolean {
+  const g = gs();
+  const mode = g.options.autosaveMode ?? (g.options.autosave === false ? 'off' : 'changes');
+  return mode !== 'off' && !g.humans?.length && !previewInfo();
+}
+
 /** kør i arbejderen? (kun ønskelisternes tunge dage; ikke fællesspil online, draft eller nyt spil-forløbet). Lokalt spil mod AI-managere
  *  (g.localMp – samme browser, Shell's Continue Game) kører også i arbejderen: hele runUntil med alle managerpladserne følger med i kopien
  *  (scripts/day-worker-check.ts BOTS=n CLONE=1: samme sha1 pr. dag) */
@@ -63,7 +90,7 @@ export function useDayWorker(): boolean {
 const STATS = { sendMs: 0, recvMs: 0, runMs: 0, days: 0 };
 
 export async function runDays(opts: Opts): Promise<DayResult> {
-  if (!useDayWorker()) return runUntil(opts);
+  if (!useDayWorker()) { dropWorkerSave(); return runUntil(opts); }
   try {
     return await inWorker(opts);
   } catch (e) {
@@ -73,18 +100,27 @@ export async function runDays(opts: Opts): Promise<DayResult> {
       void import('./UpdateToast').then((m) => m.staleBuildNotice());
       broken = true;
       worker?.terminate(); worker = null;
+      failPendingSaves();
       return runUntil(opts);
     }
     reportError(e, '\n--- dayWorker (infrastruktur) – kører i hovedtråden ---');
     console.warn('Continue Game i en Worker fejlede – kører i hovedtråden', e);
     broken = true;
     worker?.terminate(); worker = null;
+    failPendingSaves();
     return runUntil(opts);
   }
 }
 
 function inWorker(opts: Opts): Promise<DayResult> {
-  const w = (worker ??= new Worker(new URL('./dayWorker.ts', import.meta.url), { type: 'module' }));
+  if (!worker) {
+    worker = new Worker(new URL('./dayWorker.ts', import.meta.url), { type: 'module' });
+    worker.addEventListener('message', onSaveMessage);
+  }
+  const w = worker;
+  const mySeq = ++seq;
+  const save = wantWorkerSave();
+  const bytes = save ? new Promise<GzBytes | null>((r) => { pendingSaves.set(mySeq, r); }) : null;
   const { onProgress, shouldStop, onFrac, ...rest } = opts;
   let engine: string | null = null;
   try { engine = localStorage.getItem('cm0102.engine'); } catch { engine = null; }
@@ -96,6 +132,7 @@ function inWorker(opts: Opts): Promise<DayResult> {
     const done = () => { clearInterval(poll); w.onmessage = null; w.onerror = null; };
     w.onmessage = (e: MessageEvent<DayOut>) => {
       const m = e.data;
+      if (m.type === 'save') return;
       if (m.type === 'progress') {
         if (m.frac >= 1) onProgress?.(m.date);
         else onFrac?.(m.date, m.frac, m.phase, m.i, m.n);
@@ -103,6 +140,7 @@ function inWorker(opts: Opts): Promise<DayResult> {
       }
       done();
       if (m.type === 'error') {
+        pendingSaves.get(mySeq)?.(null); pendingSaves.delete(mySeq);
         const err = new GameRunError(m.message.split('\n')[0], m.date ?? start);
         err.stack = m.message;
         reject(err);
@@ -111,10 +149,11 @@ function inWorker(opts: Opts): Promise<DayResult> {
       const t1 = performance.now();
       setGame(m.game);
       restoreIndexes(m.idx);
+      if (bytes) offerWorkerSave(gs(), bytes);
       STATS.recvMs = Math.round(performance.now() - t1);
       STATS.runMs = Math.round(performance.now() - t0);
       STATS.days = Math.max(0, Math.round((Date.parse(gs().date) - Date.parse(start)) / 86400000));
-      (globalThis as { __cmDayRun?: typeof STATS }).__cmDayRun = { ...STATS };
+      (globalThis as { __cmDayRun?: typeof STATS & { save?: typeof SAVE_STATS } }).__cmDayRun = { ...STATS, save: SAVE_STATS };
       resolve(m.result);
     };
     w.onerror = (e) => { done(); void classifyWorkerError(e).then(reject); };
@@ -123,7 +162,7 @@ function inWorker(opts: Opts): Promise<DayResult> {
     gs().rng = rng.state;
     // modulernes tilstand (carry.ts) med – arbejderen fortsætter præcis som hovedtråden (og sender sin tilbage)
     packCarry(gs());
-    const msg: DayIn = { type: 'run', game: gs(), idx: indexSnapshot(), opts: rest as RunOpts, env: { engine, lang: getLang() } };
+    const msg: DayIn = { type: 'run', seq: mySeq, save, game: gs(), idx: indexSnapshot(), opts: rest as RunOpts, env: { engine, lang: getLang() } };
     try { w.postMessage(msg); } finally { delete gs().cmCarry; }
     STATS.sendMs = Math.round(performance.now() - t1);
   });
