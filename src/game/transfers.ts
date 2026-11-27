@@ -887,10 +887,16 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
   if (o.loan && p.loan) { o.status = 'withdrawn'; return false; }
   // CM 01/02 0x8c7690 (handlen: 0x8c7560(spiller, køber, 0) 0x8c7704) / 0x8c38b0 (den klubløse: flag 1 0x8c38d5) og 0x8c7950 med det aftalte kontrakttilbud (klub, løn,
   // udløb) – afslag: nyheden 0x13 ("Work permit refused"), tilbuddet +0x2c = 0x10 (spil startet med porten – cmPermit.ts)
-  if (!o.loan && cmPermitOn(g) && cmNeedsPermit(g, p, buyer.id, !seller)
+  // (menneskets køb uden tidsnibble: afgjort før bekræftelsen – 0x8c2f50 tilstand 0xa → 0x8c7690, cmTransferTalks.ts cmAgreed – permitDone)
+  if (!o.loan && cmPermitOn(g) && !o.cmTalks?.permitDone && cmNeedsPermit(g, p, buyer.id, !seller)
     && !cmWorkPermit(g, p, { club: buyer.id, wageGbp: Math.round(wage * cmGbp(g, buyer.id)), expires: `${year(g.date) + Math.max(1, years)}-06-30` }, null)) {
     o.status = 'collapsed';
-    asOwner(buyer.id, () => addNews({ cat: 'transfer', key: 'transfer.permitRefused', params: { player: pname(p), club: buyer.name }, link: { kind: 'player', id: p.id } }));
+    // 0x8c7744: nyheden 0xfb0 med grunden 0x13 (0x8de790; modtagerne 0x8d1130 med flagene 0x2f – køberen og sælgeren her): overskriften
+    // 0xa9d514 "<X> fails to get work permit" (0x8e3aee), brødteksten 0xa9ade8 (med kontraktklub) / 0xa9ad4c (uden) (0x8dee56)
+    const params = { player: pname(p), last: p.last || pname(p), seller: seller?.short || seller?.name || '', buyer: buyer.short || buyer.name, nat: g.nations[buyer.nation]?.adj ?? '' };
+    const news = () => addNews({ cat: 'transfer', key: seller ? 'transfer.cmPermit' : 'transfer.cmPermitFree', params, link: { kind: 'player', id: p.id } });
+    asOwner(buyer.id, news);
+    if (seller && isHumanClub(seller.id)) asOwner(seller.id, news);
     return false;
   }
   if (o.loan) {

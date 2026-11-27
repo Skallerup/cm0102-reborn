@@ -31,6 +31,7 @@ import { cmBoardWageAllowGbp } from './cmBudget';
 import { isHumanClub } from './humans';
 import { regionOf } from './leagues';
 import { cmCheckOffer } from './cmOfferCheck';
+import { cmNeedsPermit, cmPermitOn, cmWorkPermit } from './cmPermit';
 import { expectedStatus, type SquadStatus } from './squadStatus';
 
 const STATUS_OF: SquadStatus[] = ['key', 'first', 'rotation', 'backup', 'prospect', 'young'];
@@ -52,7 +53,11 @@ export interface CmTalks {
   /** +0x2e: afviste tilbud (3 = endeligt) */
   rounds: number;
   /** +0x10: 0 intet tilbud endnu, 1 tilbudt, 4 afvist, 5 enig om vilkårene – venter på menneskets "Confirm Transfer Offer" */
-  state: 0 | 1 | 4 | 5;
+  state: 0 | 1 | 4 | 5 | 10;
+  /** tilstand 0xa (0x8c2f50 → 0x8c7690): arbejdstilladelsen afgøres denne dag */
+  permitDue?: string;
+  /** arbejdstilladelsen er afgjort i 0x8c2f50/0x8c7690 (givet, ikke nødvendig eller sprunget over, +0x2e ≠ 0) – handlen 0x8c34e0 tjekker ikke igen */
+  permitDone?: boolean;
   /** de aftalte vilkår (state 5) */
   agreed?: { wage: number; years: number; clauses?: ContractClauses };
   /** Delay (0x8c36b0): bekræftelsen kommer igen først på denne dato (en uge, *estimeret*) */
@@ -233,6 +238,21 @@ export function cmTalksDaily(o: TransferOffer, complete: (o: TransferOffer, wage
     asOwner(o.buyer, () => addNews({ cat: 'transfer', key: 'transfer.cmRejects', params: { ...params, again: rounds < 3 ? 1 : 0 }, link: { kind: 'offer', id: o.id } }));
     return;
   }
+  // tilstand 0xa forfalder (0x8c63a0 → 0x8c7690(tilbud, 0)): 0x8c7560(spiller, køber, 0) og kontrakttilbuddet (0x4cc9e0) → 0x8c7950 uden
+  // tilfældighed; afslag → nyheden 0x8de790 (grund 0x13), tilstand 0x10 (buddet falder); givet → nyheden 0x8e3130, og 0x8c2f50 igen (tilstand 0xa
+  // → 0x8c31e7: tilstand 0xb, Confirm Transfer Offer)
+  if (t.state === 10 && t.permitDue && g.date >= t.permitDue && t.agreed) {
+    const a = t.agreed;
+    const needs = cmNeedsPermit(g, p, o.buyer, false);
+    if (needs && !cmWorkPermit(g, p, { club: o.buyer, wageGbp: Math.round(a.wage * cmGbp(g, o.buyer)), expires: `${year(g.date) + Math.max(1, a.years)}-06-30` }, null)) {
+      cmPermitNews(o, p, 'transfer.cmPermit');
+      o.status = 'collapsed';
+      return;
+    }
+    if (needs) cmPermitNews(o, p, 'transfer.cmPermitOk');
+    o.cmTalks = { ...t, state: 5, permitDue: undefined, permitDone: true };
+    return;
+  }
   // Delay: efter en uge kommer bekræftelsen igen (nyheden sendes igen, *estimeret*)
   if (t.state === 5 && t.delayUntil && g.date >= t.delayUntil) {
     t.delayUntil = undefined;
@@ -254,7 +274,31 @@ export function cmAgreed(o: TransferOffer, p: Player, terms: { wage: number; yea
   // også forkontrakten (Bosman) og den klubløse: Offer Contract-skærmen laver et transferbud (0x4e50ef → add_transfer_offer 0x8be300, beløb 0)
   // før kontrakttilbuddet, så 0x4ce4e0 går gennem 0x8c2180 → 0x8c2f50, og menneskets køber skal bekræfte (0x8f2ec0: "Sign X from Y?" / "Sign X?")
   if (!human) { complete(o, terms.wage, terms.years, terms.clauses); return; }
-  o.cmTalks = { ...(o.cmTalks ?? { rounds: 0 }), state: 5, agreed: terms };
+  const t0 = o.cmTalks ?? { rounds: 0 };
+  // 0x8c2f50 0x8c319b: uden tidsnibble (+0x30 & 0xf = 0), skal spilleren have arbejdstilladelse i køberen (0x8c7470 → 0x8c7560(spiller, køber, 0))
+  // og +0x2e (runderne) = 0 → nyheden 0x8e2a00 "transfer delayed due to work permit", tilstand 0xa, afgøres om 0x12 + rand(7) dage (0x8c6220).
+  // +0x2e ≠ 0 → ingen tilladelse (tilstand 0xb – bekræftelsen); med tidsnibble afgøres den på datoen (0x8cbbe0 → 0x8c7690(…, 1) – transfers.ts).
+  // (0x8c7470's byttespillere – 0x8c7560(bytte, sælger, 0) – og deres afgørelse 0x8e35a0 er ikke porteret.)
+  if (!(o.cmTime ?? 0) && cmPermitOn(g) && cmNeedsPermit(g, p, o.buyer, false)) {
+    if (t0.rounds === 0) {
+      const r = cmRand(g.seed ?? 0, p.id, o.buyer, o.id, 0x8c31ca);
+      o.cmTalks = { ...t0, state: 10, agreed: terms, permitDue: addDays(g.date, 0x12 + r(7)) };
+      cmPermitNews(o, p, 'transfer.cmPermitWait');
+      return;
+    }
+  }
+  o.cmTalks = { ...t0, state: 5, agreed: terms, ...(o.cmTime ? {} : { permitDone: true }) };
+}
+
+/** nyhederne om arbejdstilladelsen (0x8e2a00 venter, 0x8e3130 givet, 0x8de790 grund 0x13 afslået): til køberen og sælgeren (0x8d1130 flag 1/2);
+ *  brødteksten med kontraktklubben (sælgeren) eller uden */
+function cmPermitNews(o: TransferOffer, p: Player, key: string): void {
+  const g = gs();
+  const seller = o.seller ? g.clubs[o.seller] : undefined, buyer = g.clubs[o.buyer];
+  const params = { player: pname(p), last: p.last || pname(p), seller: seller ? short(g, seller.id) : '', buyer: short(g, o.buyer), nat: g.nations[buyer?.nation ?? -1]?.adj ?? '' };
+  const news = () => addNews({ cat: 'transfer', key: seller ? key : `${key}Free`, params, link: { kind: 'player', id: p.id } });
+  asOwner(o.buyer, news);
+  if (seller && isHumanClub(seller.id)) asOwner(seller.id, news);
 }
 
 // ---------------------------------------------------------------- Confirm Transfer Offer (0x8f2ec0)
