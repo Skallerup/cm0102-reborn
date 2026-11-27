@@ -37,9 +37,8 @@ import { cmSlOffer842c00 } from './cmShortlistGame';
 import { cmActive, cmContractOf, cmFlagClear, cmFlagSet, cmHid, cmInDeal, cmLogic, cmRand, contractExtHook, curRep, newCmContract, statusCode, withFlagCtx, type CmContract } from './cmPlayerData';
 import { contractSatisfaction_866620, deservedStatus_4ca470 } from './cmContractWant';
 import type { CmCtx } from './cmMem';
-import { isHumanClub } from './humans';
-import { holidayClub } from './cmHoliday';
-import { recordFreeTransfer, setClub } from './state';
+import { asOwner, isHumanClub } from './humans';
+import { addNews, recordFreeTransfer, setClub } from './state';
 import { ageOn } from './dates';
 import { ATTRS } from './attributes';
 import { HEAP0, HEAP_PTR } from './cmGen/x86';
@@ -76,9 +75,13 @@ const BANDS = new Set([182, 152, 121, 91, 60, 30, 7]);
 export function cmCmScope(g: GameState, p: Player): boolean {
   if (!p.club || !p.contract || p.loan || p.virtual || p.contract.futureClub) return false;
   const c = g.clubs[p.club];
-  // menneskets klub: spillets eget system – men på ferie er 0x600a50(klub, 0, 1, 0, 0) = 0 (cmContract.ts isHuman(…, 0, 1)), så
-  // CONTRACT_MANAGER forlænger, tilbyder og sætter fri som for en computerklub (oraklet: Arsenal på ferie, Henry £53k → £84k)
-  if (!c || (isHumanClub(c.id) && !holidayClub(g, c.id))) return false;
+  // menneskets klub: også med – 0x4c7ac0's personløkke går over alle personer; kun klubbens egne tilbud (0x4cda70, båndene) springes over for
+  // mennesket (cmContract.ts isHuman(…, 0, 1) = 0x600a50(klub, 0, 1, 0, 0)), mens båndenes 0x842c00 (0x4c8a79 – spilleren tilbydes computerens
+  // ønskelister → forkontrakttilbud), Bosman-frigivelsen 0x4c88b5, udløbet 0x4c9819 (type 1, bliver i klubben) og fri transfer 31 dage efter
+  // 0x4c8603 gælder også menneskets spillere – med nyhederne 0x4d6790/0x4da590/0x4d6d70 til mennesket (humanNews). Før stod menneskets klub uden
+  // for porten (undtagen på ferie, hvor 0x600a50 = 0): ingen forkontrakttilbud før kontrakten var udløbet, og spillets eget udløb satte ham fri
+  // dagen efter (season.ts leaveOnFree)
+  if (!c) return false;
   // også klubberne uden aktiv liga (de valgte landes inaktive divisioner – England: 146 non-league-klubber, 1.610 spillere i oraklets hukommelse):
   // 0x4c7ac0's personløkke går over alle personer i hukommelsen, og 0x83a1b0/0x83cb40 giver dem trupplanen (cmSquadPlanStart). Før stod de uden
   // for porten, og cmExpireOutsideDaily (*estimeret*) satte dem fri dagen efter udløbet – klubløse 30/6 918 mod oraklets 202
@@ -308,8 +311,11 @@ function cmContractManagerRun(g: GameState, renew?: Player[], ext?: Player[]): v
   if (!renew) CMD_STATS.days++;
   if (!clubs.size) { if (t0) CMD_STATS.ms += performance.now() - t0; return; }
   const signed: { p: Player; k: number }[] = [], released: Player[] = [], offered: [number, number][] = [];
+  const news: HumanNews[] = [];
   let M: WantMem | null = null;
   const byMem = new Map<number, Player>();
+  // kontraktens adresse → spilleren (hukommelsens kontrakter har ikke staff-id'et på +0)
+  const byCon = new Map<number, Player>();
   const pOf = (st: number) => byMem.get(M!.c.m.s32(st));
   const rel = cmRand(g.seed ?? 0, T, 0x547a10);
   const call = (adr: number, a: number[]): number | undefined => {
@@ -327,6 +333,16 @@ function cmContractManagerRun(g: GameState, renew?: Player[], ext?: Player[]): v
         return p && cmInDeal(g, p) ? 1 : 0;
       }
       case 0x8c16b0: case 0x8c1af0: { const p = pOf(a[1] >>> 0); if (p && !released.includes(p)) released.push(p); return 0; }
+      // nyhederne til menneskets klub (0x7861e0 leverer kun til klubbens menneskemanager): 0x4d6790(kontrakt, kode, Bosman, …),
+      // 0x4da590(staff, art, bred), 0x4d6d70(kontrakt, destination)
+      case 0x4d6790: {
+        const p = byCon.get(a[1] >>> 0), st = p ? M!.W.staffOf(p) : 0;
+        // pladserne 7 (Bosman) og 8 (staff +0x61 ≠ 0: spiller) vælger brødteksten (0x4d6a00)
+        if (p) news.push({ p, kind: 0xbbd, code: a[2] | 0, bosman: a[3] & 0xff ? 2 : st && m.u32(st + 0x61) ? 1 : 0 });
+        return 0;
+      }
+      case 0x4da590: { const p = pOf(a[1] >>> 0); if (p) news.push({ p, kind: 0xbb9, code: a[2] | 0, bosman: a[3] | 0 }); return 0; }
+      case 0x4d6d70: { const p = byCon.get(a[1] >>> 0); if (p) news.push({ p, kind: 0xbbe, code: a[2] | 0, bosman: 0 }); return 0; }
       // Shortlist_Manager 0x842c00(staff, flag): i ønskelisternes hukommelse efter dagen (cmShortlistGame.ts cmSlOffer842c00)
       case 0x842c00: { const p = pOf(a[1] >>> 0); if (p) offered.push([p.id, a[2] | 0]); return 0; }
       case 0x8c38b0: {
@@ -348,7 +364,7 @@ function cmContractManagerRun(g: GameState, renew?: Player[], ext?: Player[]): v
   const m = c.m;
   M.setRand(renew ? cmRand(g.seed ?? 0, T, 0x868c50, renew[0].id) : cmRand(g.seed ?? 0, T, 0x4c7ac0));
   const memId = new Map<number, number>();
-  for (const [p, st] of W.players) { const id = m.s32(st); byMem.set(id, p); memId.set(p.id, id); }
+  for (const [p, st] of W.players) { const id = m.s32(st); byMem.set(id, p); memId.set(p.id, id); const k = W.contractOf(p); if (k) byCon.set(k >>> 0, p); }
   const memOf = (pid: number) => (pid > -1 ? memId.get(pid) ?? (g.players[pid] && !g.players[pid].regen && pid < 1_000_000 ? pid : -1) : -1);
   // globalerne: spillet er lavet, spilstarten, [0xae2330]
   m.w32(0xdd711c, 1);
@@ -464,6 +480,8 @@ function cmContractManagerRun(g: GameState, renew?: Player[], ext?: Player[]): v
     if (pid === undefined) continue;
     dec.push([pid, m.s16(ea + 4), m.u16(ea + 6), m.u8(ea + 0xc), m.u8(ea + 0xd)]);
   }
+  // nyhederne til mennesket (før frigivelserne – klubben er spillerens)
+  for (const x of news) humanNews(g, x);
   // underskrifterne: originalens kontrakt i spillets enheder
   for (const { p, k } of signed) applySigned(g, p, m, k);
   // frigivelserne: fri transfer 0x8c1af0 (spilleren forlader klubben uden kontrakt) – historikposten art 3 (+0x10 = −1, +0x14 = klubben, +0x18 = 0)
@@ -482,6 +500,32 @@ function cmContractManagerRun(g: GameState, renew?: Player[], ext?: Player[]): v
   CMD_STATS.cand += cands.length; CMD_STATS.clubs += clubs.size; CMD_STATS.signed += signed.length;
   if (t0) CMD_STATS.ms += performance.now() - t0;
   cmSlOffer842c00(g, offered.filter(([pid]) => g.players[pid]?.club));
+}
+
+/** CONTRACT_MANAGER's nyheder til menneskets klub (0x7861e0: kun klubbens menneskemanager):
+ *  – 0xbbd 0x4d6790(kontrakt, kode, Bosman, …) → tekst 0x4d6a00: overskriften 0x9aa520 "X's contract"; brødteksten efter koden (1 = three months,
+ *    2 two, 3 next month, 4 next week, 5 six, 6 twelve – 0x4d6d4c; 7 = 0x9aad3c "no longer protected … tribunal") og pladserne 7 (Bosman: "He will
+ *    be eligible to leave the club under the Bosman ruling …") / 8 (spiller: "… transfer fee decided by a tribunal if necessary.") / ellers staben;
+ *  – 0xbb9 0x4da590(staff, art, 0) → 0x4daa00: art 2 "X's contract expires" / 0x9aec58 "X is now out of contract. …", art 1 "X leaves club" /
+ *    0x9aedc8 "… has been out of contract for some time and has decided to leave in order to find himself a new club.";
+ *  – 0xbbe 0x4d6d70(kontrakt, 0) → 0x4d6ee0: 0x9ab1e4 "Owen to leave club" / 0x9ab258 "… has decided to leave {Club} at the end of his contract
+ *    under the Bosman ruling."
+ *  *Estimeret*: 0x4d6790's arg 4 (andre menneskeklubber med spilleren på ønskelisten, 0x842180) sendes ikke. */
+interface HumanNews { p: Player; kind: number; code: number; bosman: number }
+const REM_DAYS: Record<number, number> = { 1: 91, 2: 61, 3: 30, 4: 7, 5: 182, 6: 365 };
+function humanNews(g: GameState, { p, kind, code, bosman }: HumanNews): void {
+  const club = g.clubs[p.club];
+  if (!club || !isHumanClub(club.id)) return;
+  const name = `${p.first} ${p.last}`.trim(), link = { kind: 'player' as const, id: p.id };
+  asOwner(club.id, () => {
+    if (kind === 0xbbd) {
+      if (code === 7) addNews({ cat: 'contract', key: 'scout.contractReminder', params: { scout: name, prot: 1 }, link });
+      else if (REM_DAYS[code]) addNews({ cat: 'contract', key: 'scout.contractReminder', params: { scout: name, days: REM_DAYS[code], ...(bosman ? { pv: bosman === 2 ? 'b' : 't' } : {}) }, link });
+    } else if (kind === 0xbb9) {
+      if (code === 2 && !bosman) addNews({ cat: 'contract', key: 'cm.staffExpires', params: { name }, link });
+      else if (code === 1) addNews({ cat: 'contract', key: 'cm.pLeaves', params: { name }, link });
+    } else if (kind === 0xbbe && !code) addNews({ cat: 'contract', key: 'cm.pBosmanLeave', params: { name, last: p.last, club: club.name }, link });
+  });
 }
 
 /** Kontrakten (80 bytes) efter sign_contract som spillets kontrakt; Signing On Fee betales af klubben, moralen +20 (cmMedia.ts) */

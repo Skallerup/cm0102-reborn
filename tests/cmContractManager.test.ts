@@ -21,10 +21,10 @@ beforeAll(() => {
 }, 600_000);
 
 describe('0x4c7ac0 på spillets data', () => {
-  it('kun computerklubber i de spilbare lande (+ hukommelsens udvalgte andre steder) – menneskets spillere og de udlejede har spillets eget system', () => {
+  it('klubberne i de spilbare lande (+ hukommelsens udvalgte andre steder) – også menneskets spillere (0x4c7ac0 går over alle personer); de udlejede har spillets eget system', () => {
     const ps = scoped();
     expect(ps.length).toBeGreaterThan(3000);
-    expect(ps.some((p) => p.club === g.userClub)).toBe(false);
+    expect(ps.some((p) => p.club === g.userClub)).toBe(true);
     expect(ps.every((p) => !p.loan && (g.clubs[p.club].nation === g.clubs[g.userClub].nation || p.cmMem === 1))).toBe(true);
   });
 
@@ -65,6 +65,23 @@ describe('0x4c7ac0 på spillets data', () => {
     cmContractManagerDay(g);
     expect(c.club).toBe(0);
     expect(b.club).toBe(cb);
+  });
+
+  it('menneskets spillere: båndenes nyheder 0x4d6790 (182 dage: "six months" + Bosman/tribunal) og udløbet 0x4da590(staff, 2) – han bliver i klubben', () => {
+    const mine = scoped().filter((p) => p.club === g.userClub && p.contract!.expires > '2003-01-01' && !p.contract!.cmB49).slice(0, 2) as Player[];
+    const [a, b] = mine;
+    g.date = '2001-11-01';
+    a.contract!.expires = addDays(g.date, 182); delete a.contract!.cmType;
+    b.contract!.expires = g.date; delete b.contract!.cmType;
+    const n0 = g.news.length;
+    cmContractManagerDay(g);
+    const news = g.news.slice(0, g.news.length - n0);
+    const rem = news.find((n) => n.key === 'scout.contractReminder' && n.link?.id === a.id);
+    expect(rem?.params?.days).toBe(182);
+    expect(['b', 't']).toContain(rem?.params?.pv);
+    expect(news.some((n) => n.key === 'cm.staffExpires' && n.link?.id === b.id)).toBe(true);
+    expect(b.club).toBe(g.userClub);
+    expect(b.contract!.cmType).toBe(1);
   });
 });
 

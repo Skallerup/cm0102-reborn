@@ -56,17 +56,18 @@ describe('ferien i spillet (3.9.60, ægte tilstand)', () => {
     g.manager.holiday = undefined;
     expect(look().hol).toBe(0);
   });
-  it('på ferie er menneskets klub en computerklub for 0x600a50(klub, 0, …): CONTRACT_MANAGER, trupplanens daglige kald og buddene', () => {
+  it('på ferie er menneskets klub en computerklub for 0x600a50(klub, 0, …): trupplanens daglige kald og buddene (CONTRACT_MANAGER: altid med)', () => {
     const g = gs();
     const p = Object.values(g.players).find((x) => x.club === mu && !x.loan && x.contract && !x.contract.futureClub)!;
-    expect([holidayClub(g, mu), humanClub0(g, mu), cmCmScope(g, p)]).toEqual([false, true, false]);
+    // CONTRACT_MANAGER 0x4c7ac0's personløkke går over alle personer – også menneskets spillere (0x842c00 på båndene, udløbet 0x4c9819)
+    expect([holidayClub(g, mu), humanClub0(g, mu), cmCmScope(g, p)]).toEqual([false, true, true]);
     // 0x83cb40(entry, klub, 1, 0): menneskets klub springes over (0x83cbdf) – ikke på ferie
     expect(cmSquadPlanClub(g, mu, true, false)?.ran).toBeFalsy();
     g.manager.holiday = {};
     expect([holidayClub(g, mu), humanClub0(g, mu), cmCmScope(g, p)]).toEqual([true, false, true]);
     expect(cmSquadPlanClub(g, mu, true, false)?.ran).toBe(true);
     g.manager.holiday = undefined;
-    expect(cmCmScope(g, p)).toBe(false);
+    expect(cmCmScope(g, p)).toBe(true);
   });
   it('bud på hans spillere: "Reject all offers" afviser; uden valg svarer assistenten som computeren (0x8c8090)', () => {
     const g = gs();

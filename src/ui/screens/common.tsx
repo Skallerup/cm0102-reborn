@@ -236,7 +236,9 @@ function bodyKey(n: NewsItem): string {
   // landsholdenes nyheder (cmIntlSquad.ts): brødteksten er valgt i spillet
   if (n.key.startsWith('cmint.') && typeof n.params?.body === 'string') return n.key.startsWith('cmint.r.') ? 'cmint.r.body' : `cmint.b.${n.params.body}`;
   // CM 01/02 (0x5982 ff.): "Kim Rømer's contract is due to expire in twelve months time." – efter dagene til udløbet (ældre nyheder uden days: datoen)
-  if (n.key === 'scout.contractReminder' && typeof n.params?.days === 'number' && SCOUT_EXP[n.params.days]) return `scout.contractReminder.d${SCOUT_EXP[n.params.days]}`;
+  // spillerne (CONTRACT_MANAGER 0x4d6790 → 0x4d6a00): pladsen 7 (Bosman, pv b) eller 8 (spiller, pv t) giver sætningen efter; kode 7 = 0x9aad3c
+  if (n.key === 'scout.contractReminder' && n.params?.prot) return 'scout.contractReminder.prot';
+  if (n.key === 'scout.contractReminder' && typeof n.params?.days === 'number' && SCOUT_EXP[n.params.days]) return `scout.contractReminder.d${SCOUT_EXP[n.params.days]}${n.params.pv === 'b' || n.params.pv === 't' ? `.${n.params.pv}` : ''}`;
   // CM 01/02's priser (cmAwards.ts): brødteksten er valgt i spillet (0x767580 / 0x930880)
   if (n.key.startsWith('cmaw.mh.') && typeof n.params?.body === 'string') return `cmaw.mb.${n.params.body}`;
   if (n.key.startsWith('cmaw.yh.') && typeof n.params?.body === 'string') return `cmaw.yb.${n.params.body}`;
