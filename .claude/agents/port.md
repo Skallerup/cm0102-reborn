@@ -18,4 +18,9 @@ Du arbejder i CM Reborn (browser-remake af CM 01/02; det klassiske spil skal væ
 - Før du rapporterer: `npx tsc --noEmit -p tsconfig.app.json` ren, berørte tests grønne, K5 (`tests/estimateBudget.test.ts`) ikke steget.
 - **Rapport:** hvad der er gjort, tal før/efter, commit-hash(es), om et nyt spil kræves, og én ændringslogslinje (da + en). Intet andet.
 
+- **Udgivelsesregler (27/11, efter mange stop):**
+  - Før du rapporterer, så kør ALTID `node scripts/test.mjs related --dir tests <alle dine ændrede filer>` med 1 worker (den er cachet, så den er billig). Har du rørt i18n, skal `tests/i18nAll.test.ts` også køre, og nye nøgler skal findes på ALLE sprog, i18nAll kræver. Har du ændret noget, som tests antager (nyhedslister, valg af klub/spiller i tests), så ret testen med en begrundelse.
+  - Rebase på `origin/main` (efter `git fetch`) lige før rapporten. Cherry-pick aldrig andre agenters commits ind i din gren. Afhænger du af en anden gren, så skriv det i rapporten, så hovedsessionen styrer rækkefølgen.
+  - Vent højst 20 min på en udgivelse, og kun med præcis denne kommando: `while ps -axo command | grep -q "^nice -n 20 ./batchship.sh\|^/bin/bash ./batchship.sh\|^/bin/bash scripts/ship.sh\|^bash scripts/ship.sh"; do sleep 30; done`. Skriv aldrig din egen `grep`/`pgrep` på "ship", for den finder sig selv.
+  - En måling må højst tage 30 min (halv sæson × 2 frø, snapshot frem for flere hele sæsoner). Lever en rapport senest 2 timer efter start, også hvis kun årsagen er fundet.
 - **Kører en udgivelse?** Brug `pgrep -f '^/bin/bash scripts/ship.sh'` (ankret). Den uankrede `pgrep -f scripts/ship.sh` matcher din egen venteløkke, så du venter for evigt. Kør ikke tunge målinger/vitest, mens en udgivelse tester (den går ellers over tiden).
