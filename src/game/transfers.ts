@@ -39,6 +39,7 @@ import { origLogic, legacyExtended } from './rules';
 import { aiRespond, aiReview, applyRejectReason, clauseOptIn, newTerms, putTerms, stepUp, termsOf, totalValue, valueCtx, weightedValue, GBP, MAX_SWAP, type BidTerms, type RejectKey } from './cmTransferBid';
 import { bookBlockEur, K as CMK } from './cmFinance';
 import { cmGbp } from './cmMoney';
+import { offerLive, offersFollowPlayer } from './offerLive';
 import { cashRound, cashUnits } from '../i18n';
 import { cmNeedsPermit, cmPermitOn, cmWorkPermit } from './cmPermit';
 
@@ -522,6 +523,8 @@ export function respondToOffer(id: number, action: 'accept' | 'reject' | 'counte
   const g = gs();
   const o = g.offers.find((x) => x.id === id);
   if (!o || o.status !== 'pending' || o.seller !== g.userClub) return;
+  // spilleren er ikke længere hos os (solgt på et andet bud): buddet er ikke vores at svare på (offerLive.ts)
+  if (!offerLive(g, o)) { o.status = 'withdrawn'; return; }
   const p = g.players[o.player];
   const buyer = g.clubs[o.buyer];
   const myName = g.clubs[g.userClub]?.name ?? '';
@@ -876,6 +879,10 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
   const buyer = g.clubs[o.buyer];
   const seller = o.seller ? g.clubs[o.seller] : undefined;
   if (!p || !buyer) return false;
+  // sælgeren er spillerens kontraktklub (offerLive.ts): er han skiftet, er buddet ikke længere til den klub – intet nyt skifte (et andet
+  // accepteret bud solgte ham før en gang til)
+  if (o.seller && !offerLive(g, o)) { o.status = 'withdrawn'; return false; }
+  if (o.loan && p.loan) { o.status = 'withdrawn'; return false; }
   // CM 01/02 0x8c7690 (handlen: 0x8c7560(spiller, køber, 0) 0x8c7704) / 0x8c38b0 (den klubløse: flag 1 0x8c38d5) og 0x8c7950 med det aftalte kontrakttilbud (klub, løn,
   // udløb) – afslag: nyheden 0x13 ("Work permit refused"), tilbuddet +0x2c = 0x10 (spil startet med porten – cmPermit.ts)
   if (!o.loan && cmPermitOn(g) && cmNeedsPermit(g, p, buyer.id, !seller)
@@ -1015,6 +1022,8 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
     else if (origLogic()) originalTransferNews(p, buyer, seller, o.fee, o.loan, o.addOn, o);
     else if (otherTransferNews(buyer, seller, o.fee, o.loan)) (g.transferDigest ??= []).push({ player: p.id, from: o.seller, to: buyer.id, fee: o.fee, ...(o.loan ? { loan: true } : {}) });
   });
+  // originalens bud følger spilleren (sælgeren = kontraktklubben): de andre bud på ham er nu bud til den nye klub (offerLive.ts)
+  offersFollowPlayer(g, o, isHumanClub);
   return true;
 }
 
@@ -1405,6 +1414,7 @@ export function acceptCounter(id: number) {
   const g = gs();
   const o = g.offers.find((x) => x.id === id);
   if (!o || o.status !== 'countered' || !o.counter) return 'error';
+  if (!offerLive(g, o)) { o.status = 'collapsed'; return 'error'; }   // spilleren er skiftet (offerLive.ts)
   const buyer = g.clubs[o.buyer];
   if (o.counter > buyer.transferBudget && !cmMarketOn(g)) return 'transfer.overBudget';   // CM 01/02: først ved Confirm Transfer Offer (0x8cfc90)
   if (o.cmCounter && cmMarketOn(g)) { putTerms(o, o.cmCounter); o.cmCounter = undefined; }

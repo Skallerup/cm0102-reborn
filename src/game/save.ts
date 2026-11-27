@@ -21,6 +21,7 @@ import { cmRsvNewGame } from './cmReserveMatches';
 import { cmMarketOn, cmRand, setStatusCode } from './cmPlayerData';
 import { cmRoleExpected } from './cmTransferTalks';
 import { isHumanClub } from './humans';
+import { dropStaleOffers } from './offerLive';
 import { repairPositions } from './playerInit';
 
 export interface SaveMeta {
@@ -281,6 +282,14 @@ export function repairOldMarket(): void {
   if (!g.cmRsv) cmRsvNewGame(g);
 }
 
+/** (27/11) gemte spil fra før offerLive.ts: åbne bud med et menneske som part, hvor sælgeren ikke længere er spillerens klub (efter et køb stod
+ *  et andet klubs bud som aktivt; to accepterede bud solgte spilleren to gange) – de trækkes én gang ved indlæsningen */
+export function repairStaleOffers(g: GameState = gs()): void {
+  if (g.draft || g.fixes?.includes('staleOffers')) return;
+  dropStaleOffers(g, isHumanClub);
+  (g.fixes ??= []).push('staleOffers');
+}
+
 export function ensureAllNumbers() {
   const g = gs();
   // et spil fra den nuværende kode har sine numre (dubletter, fx fyldspillerne og lejespillere, er spillets egne – en omnummerering ved
@@ -472,6 +481,7 @@ export async function loadGame(id: string): Promise<boolean> {
   await repairStadiums();
   ensureAllNumbers();
   repairOldMarket();
+  repairStaleOffers();
   rememberLast({ kind: 'local', id });
   return true;
 }
@@ -486,6 +496,7 @@ export async function openPreview(blob: Blob, label: string, theme?: string): Pr
   await repairStadiums();
   ensureAllNumbers();
   repairOldMarket();
+  repairStaleOffers();
   notify();
 }
 
@@ -510,6 +521,7 @@ export async function importSave(file: File): Promise<boolean> {
     upgradeLoaded();
     ensureAllNumbers();
     repairOldMarket();
+    repairStaleOffers();
     await saveGame();
     return true;
   } catch {

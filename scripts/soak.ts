@@ -7,7 +7,9 @@ import { createGame, type WorldData } from '../src/game/newgame';
 import { loadOrCreate } from './lib/snapshot';
 import { continueGame, quickPlayUserMatch } from '../src/game/sim';
 import { applyAction } from '../src/game/actions';
-import { gs, squad } from '../src/game/state';
+import { gs, squad, squadIds } from '../src/game/state';
+import { offerLive, offerOpen } from '../src/game/offerLive';
+import { isHumanClub } from '../src/game/humans';
 import { ageOn } from '../src/game/dates';
 import { naturalRole } from '../src/game/attributes';
 import { en } from '../src/i18n/en';
@@ -68,6 +70,15 @@ function check(label: string) {
     if (p.club && !g.clubs[p.club]) err(`${label}: ${p.last} spiller for en klub, der ikke findes (${p.club})`);
     if (p.club && p.contract && p.contract.expires < g.date && !p.loan) expired++;
     if (p.club && ageOn(p.dob, g.date) > 42) old++;
+  }
+  // hver spiller står i præcis én trup (squadIds = hans klubs liste), og intet åbent bud med et menneske som part står til en klub, han har forladt
+  const inSquads = new Map<number, number>();
+  for (const c of Object.values(g.clubs)) for (const id of squadIds(c.id)) if (g.players[id]?.club === c.id) inSquads.set(id, (inSquads.get(id) ?? 0) + 1);
+  for (const [id, n] of inSquads) if (n > 1) err(`${label}: ${g.players[id].last} står i ${n} trupper`);
+  for (const o of g.offers) {
+    if (!offerOpen(o) || offerLive(g, o)) continue;
+    const p = g.players[o.player];
+    if (isHumanClub(o.buyer) || isHumanClub(o.seller) || (p && isHumanClub(p.loan?.from ?? p.club))) err(`${label}: bud ${o.id} på ${p?.last} står til ${o.seller}, men han er hos ${p?.club}`);
   }
   if (expired) warn(`${label}: ${expired} spillere med udløbet kontrakt er stadig på en klub`);
   if (old) warn(`${label}: ${old} spillere over 42 år er stadig aktive`);
