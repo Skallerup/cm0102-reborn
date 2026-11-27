@@ -4,10 +4,10 @@ import { readFileSync } from 'node:fs';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { createGame, type WorldData } from '../src/game/newgame';
 import { gs } from '../src/game/state';
-import { windowLastDay, windowOpen, nextWindow, makeBid } from '../src/game/transfers';
+import { windowLastDay, windowOpen, nextWindow, makeBid, completeTransfer } from '../src/game/transfers';
 import { cmInWindow, cmWindowOpen, CM_WINDOWS } from '../src/game/cmOfferCheck';
 import { needsWorkPermit } from '../src/game/rules2001';
-import { cmTransferBudget } from '../src/game/cmBudget';
+import { cmTransferBudget, cmTransferFunds } from '../src/game/cmBudget';
 import { addDays } from '../src/game/dates';
 import type { Club, GameState } from '../src/game/types';
 
@@ -82,5 +82,14 @@ describe('ægte tilstand: England 2001/02 (3.9.60)', { timeout: 600_000 }, () =>
     const a = cmTransferBudget(g, mu)!, b = cmTransferBudget(g, poor.id)!;
     expect(a).toBeGreaterThan(b);
     expect(b).toBeGreaterThanOrEqual(0);
+  });
+  it('efter en handel er Funds 0x598800 af den nye saldo for køber og sælger (originalen gemmer intet budget – intet fast −sum/+60 %)', () => {
+    const leeds = Object.values(g.clubs).find((c) => c.name === 'Leeds United')!, bury = Object.values(g.clubs).find((c) => c.name === 'Bury')!;
+    const p = Object.values(g.players).filter((x) => x.club === bury.id && !x.loan).sort((x, y) => y.value - x.value)[0];
+    const fee = Math.max(250_000, p.value);
+    const o = { id: 990001, player: p.id, buyer: leeds.id, seller: bury.id, fee, loan: false, status: 'accepted', created: g.date, respondBy: g.date } as Parameters<typeof completeTransfer>[0];
+    g.offers.push(o);
+    expect(completeTransfer(o, p.contract?.wage ?? 1000, 3)).toBe(true);
+    for (const c of [leeds, bury]) expect(Math.abs(c.transferBudget - cmTransferFunds(g, c.id)!)).toBeLessThan(1);
   });
 });

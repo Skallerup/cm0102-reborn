@@ -56,6 +56,7 @@ import { cmStaffOn, cmRand, clubRepMem, cmPlanKick } from './cmPlayerData';
 import { boardEnv, sharedScope, staffJobInterest } from './cmBoardGame';
 import { repFor, scoreStaffForJob, type BoardEnv, type Person } from './cmBoard';
 import { bookBlockEur, K as CMK } from './cmFinance';
+import { cmFundsAfterDeal } from './cmBudget';
 import { cmStaffDemand, cmStaffRestGbp, cmStaffCompensation } from './cmStaff';
 import { asOwner, forEachHuman, isHumanClub } from './humans';
 import { careerEnd } from './careers';
@@ -388,8 +389,9 @@ export function cmStaffMovesDaily(g: GameState): void {
     forEachHuman(() => staffMoveNews(g, s, buyer, seller, m.job));
     if (seller && m.fee > 0) {
       buyer.balance -= m.fee; buyer.finance.transfersOut += m.fee; bookBlockEur(g, buyer, CMK.bought, m.fee);
-      buyer.transferBudget = Math.max(0, buyer.transferBudget - m.fee);
       seller.balance += m.fee; seller.finance.transfersIn += m.fee; bookBlockEur(g, seller, CMK.sold, m.fee);
+      // Funds = 0x598800 på den nye saldo (originalen gemmer intet budget); uden originalens økonomi trækkes summen
+      if (!cmFundsAfterDeal(g, [buyer.id, seller.id])) buyer.transferBudget = Math.max(0, buyer.transferBudget - m.fee);
     }
     const last = s.career?.[s.career.length - 1];
     if (last && !last.to && s.club) { last.to = g.date; last.why = 'poached'; }

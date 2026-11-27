@@ -19,6 +19,7 @@ import type { Club, Fixture, GameState, MatchReport, Staff } from './types';
 import { squad, addNews } from './state';
 import { cmActive, cmBoardLogic, cmLogic, cmRand, clubRepMem, postHooks } from './cmPlayerData';
 import { cmGbp } from './cmMoney';
+import { cmFundsAfterDeal, cmTransferBudget } from './cmBudget';
 import { personalFill_535a80, personality_535ea4 } from './cmStaffInit';
 import { financeStatus } from './cmSquadPlan';
 import { cmClubPredictValue, cmSquadPlanNewManager } from './cmSquadPlanGame';
@@ -437,7 +438,9 @@ export function boardEnv(g: GameState, todayIso = g.date, startIso?: string, laz
     },
     isAustralia: (c) => nationName(g.clubs[c]?.nation ?? -1) === 'Australia',
     wealthBand: (c) => natOfClub(c) !== null ? 0 : financeStatus(Math.round((g.clubs[c]?.balance ?? 0) * gbpOf(g, c)), clubRepMem(g, c)),
-    transferBudget: (c) => Math.round((g.clubs[c]?.transferBudget ?? 0) * gbpOf(g, c)),
+    // 0x598800(0, 0, 0, 1, 0) på dagen (originalen gemmer intet budget – det gemte tal var op til en måned gammelt og for klubber uden for de
+    // valgte lande spilstartens)
+    transferBudget: (c) => cmTransferBudget(g, c) ?? Math.round((g.clubs[c]?.transferBudget ?? 0) * gbpOf(g, c)),
     balance: (c) => Math.round((g.clubs[c]?.balance ?? 0) * gbpOf(g, c)),
     chair: (c) => { const x = g.cmChair?.[c]; return x ? { b16: x[0], b1d: x[1], amb: x[2], nation: x[3], np: x[4] } : null; },
     manager: (c) => {
@@ -920,7 +923,7 @@ export function cmBoardRequest(g: GameState, req: 1 | 2 | 3 | 4 | 5): string | n
     if (amt > bal && rand(ch ? s8(business) : 10) !== 0) return reply(2);
     R.d28 = amt;
     // "… will make extra transfer funds available to you immediately" – beløbet lægges til klubbens Transfer Funds (0x598800 læser R +0x28)
-    club.transferBudget = Math.round((club.transferBudget ?? 0) + amt / gbpOf(g, c));
+    if (!cmFundsAfterDeal(g, [c])) club.transferBudget = Math.round((club.transferBudget ?? 0) + amt / gbpOf(g, c));
     return reply(0);
   }
   if (req === 4) {

@@ -23,7 +23,7 @@ import { pushCareerLine, recordMove } from './season';
 import { blockedMoveReaction, playerPraises, targetReaction, type RejectReason } from './will';
 import type { Club, Contract, ContractClauses, GameState, Player, Role, TransferOffer } from './types';
 import { aiContract, cmAiTerms, cmContractAnswer, cmMoveInterest, cmTalkDemand } from './cmContractGame';
-import { cmBoardWageAllow, cmTransferBudget } from './cmBudget';
+import { cmBoardWageAllow, cmFundsAfterDeal, cmFundsNow, cmTransferBudget } from './cmBudget';
 import { cmCmOn, cmCmScope } from './cmContractManager';
 import { cmAcceptBid, cmOfferContract, cmSwapAccept, cmSwapDaily, cmSwapOn, cmTalksDaily, cmTalksOn, cmTalksOpen, offerTerms } from './cmTransferTalks';
 import { cmLoanRefuses } from './cmLoan';
@@ -37,7 +37,7 @@ import { AGENT_RULES, agentOf } from './agents';
 import { econ } from './econ';
 import { origLogic, legacyExtended } from './rules';
 import { aiRespond, aiReview, applyRejectReason, clauseOptIn, newTerms, putTerms, stepUp, termsOf, totalValue, valueCtx, weightedValue, GBP, MAX_SWAP, type BidTerms, type RejectKey } from './cmTransferBid';
-import { bookBlockEur, K as CMK } from './cmFinance';
+import { bookBlockEur, cmFinOn, K as CMK } from './cmFinance';
 import { cmGbp } from './cmMoney';
 import { offerLive, offersFollowPlayer } from './offerLive';
 import { cashRound, cashUnits } from '../i18n';
@@ -657,8 +657,9 @@ function cmReviewKeep(o: TransferOffer): boolean {
   const p = g.players[o.player], buyer = g.clubs[o.buyer];
   if (!p || !buyer) { o.status = 'withdrawn'; return false; }
   const c = valueCtx(g, p, buyer.id);
-  const M = toK(o.maxFee ?? Math.min(buyer.transferBudget, Math.round(o.fee * 1.25)), buyer.id);
-  const r = aiReview(termsOf(o), c, M, (id) => (g.players[id] ? toK(askingPrice(g.players[id]), g.players[id].club) : 0), toK(buyer.transferBudget, buyer.id));
+  const funds = cmFundsNow(g, buyer.id);   // 0x8c0810: 0x598800 på dagen
+  const M = toK(o.maxFee ?? Math.min(funds, Math.round(o.fee * 1.25)), buyer.id);
+  const r = aiReview(termsOf(o), c, M, (id) => (g.players[id] ? toK(askingPrice(g.players[id]), g.players[id].club) : 0), toK(funds, buyer.id));
   if (r.kind === 'withdraw') {
     o.status = 'withdrawn';
     asOwner(o.seller, () => addNews({ cat: 'transfer', key: 'transfer.aiWithdrew', params: { club: buyer.name, player: pname(p) } }));
@@ -681,8 +682,9 @@ function cmReviewHumanCounter(o: TransferOffer): void {
   if (!p || !buyer || !t || p.club !== o.seller) { o.status = 'withdrawn'; return; }
   // (MODERN_PARITY 3) pengene i £ med køberens faktor (bytte-spillerne deres klubs – cmMoney.ts; den originale database 0,86)
   const c = valueCtx(g, p, buyer.id);
-  const M = toK(o.maxFee ?? Math.min(buyer.transferBudget, Math.round(o.fee * 1.25)), buyer.id);
-  const r = aiReview(t, c, M, (id) => (g.players[id] ? toK(askingPrice(g.players[id]), g.players[id].club) : 0), toK(buyer.transferBudget, buyer.id));
+  const funds = cmFundsNow(g, buyer.id);   // 0x8c0810: 0x598800 på dagen
+  const M = toK(o.maxFee ?? Math.min(funds, Math.round(o.fee * 1.25)), buyer.id);
+  const r = aiReview(t, c, M, (id) => (g.players[id] ? toK(askingPrice(g.players[id]), g.players[id].club) : 0), toK(funds, buyer.id));
   if (r.kind === 'withdraw') {
     o.status = 'withdrawn';
     asOwner(o.seller, () => addNews({ cat: 'transfer', key: 'transfer.aiWithdrew', params: { club: buyer.name, player: pname(p) } }));
@@ -903,17 +905,19 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
     // en tidligere klub kan have krav på en del af fortjenesten (CM 01/02 0x8cb0f0: procent af hele summen + bytte-spillernes værdi, ≥ £1000)
     if (cm) { if (p.sellOn) settleSellOn(p, o.fee + (o.swap ?? []).reduce((s2, id) => s2 + (g.players[id]?.value ?? 0), 0), seller, fromK(1000, buyer.id), buyer); }
     else if (o.fee > 0) settleSellOn(p, o.fee, seller, 0, buyer);
-    // CM 01/02 0x8ca8a0: med rater betales første rate nu (transferbudgettet trækkes for hele summen, *estimeret*)
+    // CM 01/02 0x8ca8a0: med rater betales første rate nu. Transferbudgettet: med originalens økonomi 0x598800 af saldoen og sæsonblokken
+    // efter handlen (cmFundsAfterDeal nedenfor); ellers trækkes hele summen
     const now = cm ? cmBookClauses(o, p, buyer, seller!) : o.fee;
+    const liveFunds = cmFinOn(g);
     buyer.balance -= now;
-    buyer.transferBudget = Math.max(0, buyer.transferBudget - o.fee);
+    if (!liveFunds) buyer.transferBudget = Math.max(0, buyer.transferBudget - o.fee);
     buyer.finance.transfersOut += now;
     bookBlockEur(g, buyer, CMK.bought, now);
     if (seller) {
       seller.balance += now;
       seller.finance.transfersIn += now;
       bookBlockEur(g, seller, CMK.sold, now);
-      seller.transferBudget += Math.round(o.fee * (isHumanClub(seller.id) ? 0.5 : 0.6));
+      if (!liveFunds) seller.transferBudget += Math.round(o.fee * (isHumanClub(seller.id) ? 0.5 : 0.6));
     }
     const exp = `${year(g.date) + Math.max(1, years)}-06-30`;
     const rel = isHumanClub(buyer.id) ? undefined : defaultRelease(p, buyer);
@@ -1022,6 +1026,8 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
     else if (origLogic()) originalTransferNews(p, buyer, seller, o.fee, o.loan, o.addOn, o);
     else if (otherTransferNews(buyer, seller, o.fee, o.loan)) (g.transferDigest ??= []).push({ player: p.id, from: o.seller, to: buyer.id, fee: o.fee, ...(o.loan ? { loan: true } : {}) });
   });
+  // Funds = 0x598800 på den nye saldo/sæsonblok (originalen gemmer intet budget – før: −summen hos køberen, +50/60 % hos sælgeren til den 1.)
+  cmFundsAfterDeal(g, [buyer.id, seller?.id]);
   // originalens bud følger spilleren (sælgeren = kontraktklubben): de andre bud på ham er nu bud til den nye klub (offerLive.ts)
   offersFollowPlayer(g, o, isHumanClub);
   return true;
@@ -2337,7 +2343,7 @@ function cmAiAiDue(cx: SlDueCtx) {
       CM_AIAI.review++;
       const t = o.cmCounter ?? termsOf(o);
       const c = valueCtx(g, p, buyer.id);
-      const r = aiReview(t, c, toK(o.maxFee ?? o.fee, buyer.id), (id) => (g.players[id] ? toK(askingPrice(g.players[id]), g.players[id].club) : 0), toK(buyer.transferBudget, buyer.id));
+      const r = aiReview(t, c, toK(o.maxFee ?? o.fee, buyer.id), (id) => (g.players[id] ? toK(askingPrice(g.players[id]), g.players[id].club) : 0), toK(cmFundsNow(g, buyer.id), buyer.id));
       o.cmCounter = undefined;
       if (r.kind === 'withdraw') { cmTmClose(o, 3, 10, 'withdrawn'); closed = true; continue; }
       CM_AIAI.rebid++;

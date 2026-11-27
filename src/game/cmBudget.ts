@@ -91,6 +91,20 @@ export function cmTransferFunds(g: GameState, cid: number): number | null {
   return v === null ? null : v / cmGbp(g, cid);
 }
 
+/** transferbudgettet på dagen i € – originalen gemmer intet budget, men kalder 0x598800 hver gang (bestyrelsen 0x6a8810/0x6a4f80, pengeprøven
+ *  0x8cfc90, 0x8c0810's vurdering): med originalens økonomi (cmFinOn) det levende kald, ellers det gemte Club.transferBudget */
+export function cmFundsNow(g: GameState, cid: number): number {
+  return cmTransferFunds(g, cid) ?? g.clubs[cid]?.transferBudget ?? 0;
+}
+
+/** efter en handel (saldoen og sæsonblokkens Bought/Sold er bogført): det gemte Funds = 0x598800 for køber og sælger – originalen regner
+ *  budgettet af saldoen; et fast fradrag/tillæg af summen findes ikke (true = gjort; false uden originalens økonomi) */
+export function cmFundsAfterDeal(g: GameState, ids: (number | undefined)[]): boolean {
+  if (!cmFinOn(g)) return false;
+  cmRefreshTransferBudgets(g, [...new Set(ids.filter((x): x is number => !!x && !!g.clubs[x]))]);
+  return true;
+}
+
 /** Club.transferBudget = originalens Funds (0x598800, negativ → 0) for klubberne (standard: alle) – originalens økonomi (cmFinOn: den originale
  *  database og nye 2026/27-spil; beløbet i klubbens £ → € med cmMoney-faktoren) */
 export function cmRefreshTransferBudgets(g: GameState, cids?: number[]): void {
