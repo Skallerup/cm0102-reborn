@@ -10,6 +10,7 @@ import { gs, notify, packCarry, setGame } from '../src/game/state';
 import { deserializeState, gzConcat, serializeBytes, SaveAbortedError, type GzBytes } from '../src/game/snapshot';
 import { dropWorkerSave, offerWorkerSave, sealWorkerSave, takeWorkerSave } from '../src/game/workerSave';
 import { captureCarry } from '../src/game/carry';
+import { lowMemMobile } from '../src/ui/dbSize';
 import type { GameState } from '../src/game/types';
 
 process.env.CM_GAME_CACHE = '0'; delete process.env.CM_GAME_CACHE_USE;
@@ -76,5 +77,20 @@ describe('gem i dagens arbejder', () => {
     const big = { a: Array.from({ length: 400_000 }, (_, i) => ({ i, s: `x${i}` })) } as unknown as GameState;
     let n = 0;
     await expect(serializeBytes(big, true, () => ++n > 1)).rejects.toBeInstanceOf(SaveAbortedError);
+  });
+
+  it('arbejderens gem er slået fra på iPhone/iPad og telefoner med ≤ 4 GB/ukendt hukommelse – desktop beholder det', () => {
+    const iphone = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
+    const ipados = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15';
+    const android = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Mobile Safari/537.36';
+    const win = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36';
+    expect(lowMemMobile(iphone, 5, 8)).toBe(true);
+    expect(lowMemMobile(ipados, 5, undefined)).toBe(true);
+    expect(lowMemMobile(ipados, 0, undefined)).toBe(false); // Mac
+    expect(lowMemMobile(android, 5, 4)).toBe(true);
+    expect(lowMemMobile(android, 5, undefined)).toBe(true);
+    expect(lowMemMobile(android, 5, 8)).toBe(false);
+    expect(lowMemMobile(win, 0, 4)).toBe(false);
+    expect(lowMemMobile(win, 0, undefined)).toBe(false);
   });
 });

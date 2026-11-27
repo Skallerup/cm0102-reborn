@@ -6,6 +6,7 @@
 import { runUntil, type DayResult } from '../game/sim';
 import { gs, hasGame, inSetup, setGame, indexSnapshot, restoreIndexes, packCarry, previewInfo } from '../game/state';
 import { dropWorkerSave, offerWorkerSave } from '../game/workerSave';
+import { lowMemMobile } from './dbSize';
 import type { GzBytes } from '../game/snapshot';
 import { cmShortlistOn } from '../game/cmShortlistGame';
 import { getLang } from '../i18n';
@@ -70,8 +71,10 @@ function failPendingSaves() {
   pendingSaves.clear();
   dropWorkerSave();
 }
-/** skal arbejderen lave gemmets bytes efter kørslen? (autogem slået til, et lokalt spil, ikke en admin-preview – som saveGame) */
+/** skal arbejderen lave gemmets bytes efter kørslen? (autogem slået til, et lokalt spil, ikke en admin-preview – som saveGame; ikke på iOS/svage telefoner) */
 function wantWorkerSave(): boolean {
+  // iPhone/iPad og telefoner med lidt/ukendt hukommelse gemmer i hovedtråden som før (dbSize.ts lowMemMobile)
+  if (lowMemMobile()) return false;
   const g = gs();
   const mode = g.options.autosaveMode ?? (g.options.autosave === false ? 'off' : 'changes');
   return mode !== 'off' && !g.humans?.length && !previewInfo();

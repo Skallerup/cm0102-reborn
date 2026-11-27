@@ -27,6 +27,15 @@ export function iosOrUnknownMobile(): boolean {
   return dm === undefined && /Android|Mobile/i.test(UA);
 }
 
+/** (hukommelse 27/11) iPhone/iPad (også iPadOS som Mac) eller en telefon/tablet med navigator.deviceMemory ≤ 4 GB eller uden oplysning: her laver
+ *  dagens arbejder IKKE autogemmet (game/workerSave.ts) – arbejderen holdt ellers sit eksemplar af spillet lidt længere; de gemmer i hovedtråden som før */
+export function lowMemMobile(ua = UA, touch = typeof navigator === 'undefined' ? 0 : navigator.maxTouchPoints ?? 0, dm = typeof navigator === 'undefined' ? undefined : (navigator as { deviceMemory?: number }).deviceMemory): boolean {
+  if (/iPhone|iPad|iPod/i.test(ua)) return true;
+  if (/Macintosh/.test(ua) && touch > 1) return true;
+  if (!/iPhone|iPad|iPod|Android|Mobile|; wv\)|FBAN|FBAV|FB_IAB|Instagram|Messenger|Discord|TikTok|Snapchat|MicroMessenger|GSA\//i.test(ua)) return false;
+  return dm === undefined || dm <= 4;
+}
+
 const get = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
 const set = (k: string, v: string | null) => { try { if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch { /* ingen lagring */ } };
 
