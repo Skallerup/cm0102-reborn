@@ -20,6 +20,7 @@
 // porteringer (kontrakterne 0x4c7ac0, økonomien 0x59b9c0, managerne 0x68f9c0 …) kan koble sig på samme sted – et trin uden port gør intet.
 // Kun den originale database i ægte tilstand.
 import type { GameState } from './types';
+import { beat } from './beat';
 
 /** forkørslens trin (pr. dag, i originalens rækkefølge) */
 export type PrerunStage =
@@ -55,6 +56,7 @@ export const PRERUN_PROGRESS: { cb?: (frac: number) => void } = {};
 export function runPrerun(g: GameState, from: number, to: number): void {
   for (let d = from; d < to; d++) {
     PRERUN_PROGRESS.cb?.((d - from) / Math.max(1, to - from));
+    beat();
     const iso = isoOf(d);
     for (let slot = 0; slot <= 2; slot++) {
       for (const s of SLOT_STAGES) run(s, g, d, iso, slot);

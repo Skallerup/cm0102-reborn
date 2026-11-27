@@ -213,24 +213,46 @@ export const portsNeedSender = (ua = typeof navigator !== 'undefined' ? navigato
 /** (26/11, measure 2a7262b5d7f1: en arbejder døde uden fejl og uden besked – hovedtråden ventede i 400 s) så længe uden besked fra arbejderen,
  *  mens siden er synlig, regnes den for død (arbejderne melder fremdrift mange gange i minuttet – også på en langsom telefon) */
 export const WORKER_SILENT_MS = 120000;
-function runPhases(first: NewGameJob, stages: NewGameJob['phases'][], pre: Worker | null, onProgress: (p: NewGameProgress) => void, signal?: AbortSignal): Promise<PhasesResult> {
+/** (27/11, "worker died: no message for 125 s, 15/15 [shortlists:11/12 rest] after 4030 s, step done 97%" – en meget langsom pc: hele spilstarten
+ *  67 min, og spilstartens sidste stræk (forkørslens kampe efter 'done' 97 %) sendte ingen besked i over 2 min) Arbejderne sender nu hjerteslag fra
+ *  alle lange løkker (src/game/beat.ts, højst hvert 5. s), så tavshed betyder en død/hængt arbejder – eller en blok, der ikke kan slå (den strukturerede
+ *  kopi ved overdragelsen, en tabt kanalbesked). Grænsen følger maskinens hastighed: mindst WORKER_SILENT_MS, ellers en fjerdedel af den tid,
+ *  spilstarten allerede har kørt (synlig tid) – på denne Mac er spilstartens længste blok uden hjerteslag ≈ 4 % af hele spilstarten (resten ≤ 2,7 %, den strukturerede kopi 1,4 %)
+ *  (scripts/newgame-gaps.ts). Tid, mens siden er skjult, eller mens timerne er frosset (> 15 s mellem to slag af vagten), tæller ikke. */
+export const WORKER_SILENT_FRAC = 0.25;
+export class SilenceGuard {
+  /** tavs synlig tid siden sidste besked / al synlig tid siden starten (ms) */
+  quiet = 0; active = 0;
+  private tick: number;
+  private now: () => number;
+  private visible: () => boolean;
+  constructor(now: () => number = Date.now, visible: () => boolean = () => typeof document === 'undefined' || document.visibilityState === 'visible') { this.now = now; this.visible = visible; this.tick = now(); }
+  heard(): void { this.quiet = 0; }
+  limit(): number { return Math.max(WORKER_SILENT_MS, (this.active - this.quiet) * WORKER_SILENT_FRAC); }
+  /** vagtens slag (hvert 5. s): true = arbejderen regnes for død */
+  check(): boolean {
+    const n = this.now(), dt = n - this.tick; this.tick = n;
+    if (dt > 15000 || !this.visible()) return false;
+    this.quiet += dt; this.active += dt;
+    return this.quiet > this.limit();
+  }
+}
+/** (test) kører trinene; `pre` = arbejderen til første trin */
+export function runPhases(first: NewGameJob, stages: NewGameJob['phases'][], pre: Worker | null, onProgress: (p: NewGameProgress) => void, signal?: AbortSignal): Promise<PhasesResult> {
   return new Promise<PhasesResult>((resolve, reject) => {
     let cur: Worker | null = null, prev: Worker | null = null, done = false, started = false, step = '', frac = 0, cnt = 0;
     const t0 = Date.now();
     const gap = phaseGap(), pool = poolMax(), keep = portsNeedSender();
-    // vagten: tiden uden besked tælles kun, mens siden er synlig og timerne kører (en skjult/frosset fane drosler både arbejderen og timeren)
-    let quiet = 0, tick = Date.now();
+    // vagten: tiden uden besked (også hjerteslag) tælles kun, mens siden er synlig og timerne kører (en skjult/frosset fane drosler både arbejderen og timeren)
+    const guard = new SilenceGuard();
     const dog = setInterval(() => {
-      const n = Date.now(), dt = n - tick; tick = n;
       if (done) { clearInterval(dog); return; }
-      if (dt > 15000 || (typeof document !== 'undefined' && document.visibilityState !== 'visible')) return;
-      quiet += dt;
-      if (quiet > WORKER_SILENT_MS) fail(Object.assign(new Error(`worker died: no message for ${Math.round(quiet / 1000)} s, ${cnt}/${stages.length} [${(stages[cnt - 1] ?? ['all']).join(' ')}] after ${Math.round((n - t0) / 1000)} s, step ${step || 'none'} ${Math.round(frac * 100)}%`), { memory: true }));
+      if (guard.check()) fail(Object.assign(new Error(`worker died: no message for ${Math.round(guard.quiet / 1000)} s (limit ${Math.round(guard.limit() / 1000)} s), ${cnt}/${stages.length} [${(stages[cnt - 1] ?? ['all']).join(' ')}] after ${Math.round((Date.now() - t0) / 1000)} s (visible ${Math.round(guard.active / 1000)} s), step ${step || 'none'} ${Math.round(frac * 100)}%`), { memory: true }));
     }, 5000);
     const fail = (e: Error) => { if (done) return; done = true; clearInterval(dog); cur?.terminate(); cur = null; prev?.terminate(); prev = null; const pe = Object.assign(new PhasesError(e.message), { name: e.name, stack: e.stack, started, stale: !!(e as StaleBuildError).stale, memory: !!(e as PhasesError).memory || isMemoryText(e.message) }); reject(pe); };
     signal?.addEventListener('abort', () => fail(new DOMException('aborted', 'AbortError')));
     const start = (i: number, w: Worker, job: NewGameJob) => {
-      cur = w; cnt = i + 1; quiet = 0;
+      cur = w; cnt = i + 1; guard.heard();
       const wStart = Date.now();
       const last = i === stages.length - 1;
       // næste trins arbejder startes først, når denne er færdig og lukket: spillet venter imens i kanalen (uden om hovedtråden)
@@ -238,8 +260,9 @@ function runPhases(first: NewGameJob, stages: NewGameJob['phases'][], pre: Worke
       w.onmessage = (e: MessageEvent<import('./newGameWorker').NewGameMsg>) => {
         const m = e.data;
         if (done) return;
-        started = true; quiet = 0;
-        if (m.type === 'received') { prev?.terminate(); prev = null; }
+        started = true; guard.heard();
+        if (m.type === 'beat') { /* hjerteslag (src/game/beat.ts) – kun vagten */ }
+        else if (m.type === 'received') { prev?.terminate(); prev = null; }
         else if (m.type === 'progress') { step = m.step; frac = m.frac; onProgress({ step: m.step, frac: m.frac }); }
         else if (m.type === 'trace') {
           if (NG_TRACE) console.log(`ngtrace ${i}: ${m.s}`);

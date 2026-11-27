@@ -1,6 +1,7 @@
 // (De)serialisering af hele spiltilstanden som gzip-komprimeret JSON
 import { stash } from './humans';
 import { rng } from './rng';
+import { beat } from './beat';
 import { packCarry } from './state';
 import type { GameState } from './types';
 
@@ -96,7 +97,7 @@ export async function gzipChunks(chunks: Iterable<string>): Promise<GzBytes> {
   try {
     for (const c of chunks) {
       buf.push(c); n += c.length;
-      if (n >= 1 << 20) { await w.write(enc.encode(buf.join(''))); buf = []; n = 0; }
+      if (n >= 1 << 20) { beat(); await w.write(enc.encode(buf.join(''))); buf = []; n = 0; }
     }
     if (buf.length) await w.write(enc.encode(buf.join('')));
     await w.close();
@@ -239,6 +240,7 @@ export async function parseJsonBlob(blob: Blob, depth = 2): Promise<unknown> {
     for (;;) {
       const { done, value } = await read();
       if (done) break;
+      beat();
       const t = dec.decode(value, { stream: true });
       if (t) p.feed(t);
     }

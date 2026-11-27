@@ -79,6 +79,7 @@ import { chemistryMorale, monthlyPersonality } from './personality';
 import { monthlyWill, weeklyPlayerContact } from './will';
 import { recordRivalry } from './careers';
 import { boardMeeting, fansAfterMatch, fansMonthly } from './fans';
+import { beat } from './beat';
 import { expirePress, invitePress, motivation, resolvePressPromise } from './press';
 import { monthlyColumn, weeklyRumours } from './media';
 import { monthlyAwards, snapshotMonth } from './awards';
@@ -402,6 +403,7 @@ export function createLiveMatch(f: Fixture, o: { playByPlay?: boolean } = {}): L
 }
 
 export function simulateFixture(f: Fixture, userAuto = true, commentary = false): MatchReport {
+  beat(); // (27/11) spilstartens arbejder: hjerteslag (forkørslens kampe – beat.ts)
   const m = prepareMatch(f, userAuto);
   const opts = { neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, var: m.var, weather: m.weather, aggregate: m.aggregate, finish: m.finish, homeAdv: m.homeAdv, finSlope: m.finSlope, squash: m.squash, squashAtt: m.squashAtt, squashDef: m.squashDef, ease: m.ease, cards: m.cards, corners: m.corners, countBlocked: m.countBlocked, close: m.close, closeSlope: m.closeSlope, onTarget: m.onTarget, offside: m.offside, shotSpread: m.shotSpread, oneOnOneK: m.oneOnOneK, level: m.level, openDamp: m.openDamp, rules: m.rules, pitch: m.pitch, referee: m.referee, subs: maxSubs(), fixtureId: f.id, date: gs().date };
   const rep = commentary

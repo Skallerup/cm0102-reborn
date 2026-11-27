@@ -34,6 +34,7 @@ import { cmShortlistDaily, cmShortlistOn } from './cmShortlistGame';
 import { memKnown, nationLoaded } from './cmFinance';
 import { cmGbp } from './cmMoney';
 import { withSharedPersons } from './cmBoardGame';
+import { beat } from './beat';
 
 const dayNum = (iso: string) => Math.round(Date.parse(iso + 'T00:00:00Z') / 86400000);
 const dayOf = (iso: string): Day => { const d = new Date(iso + 'T00:00:00Z'), y = d.getUTCFullYear(); return { day: Math.round((d.getTime() - Date.UTC(y, 0, 1)) / 86400000), year: y }; };
@@ -289,6 +290,7 @@ export function cmSquadPlanStart(g: GameState): void {
     for (let i = 0; i < clubs.length; i++) {
       const c = clubs[i];
       if (prog && (i & 63) === 0) prog(i / clubs.length);                          // fremdriftsbjælken ved nyt spil (rører intet i spillet)
+      beat();
       cmSquadPlanClub(g, c.id, false, true, false);
       if (isHumanClub(c.id)) cmSquadPlanClub(g, c.id, false, true, true); // overtagelsen 0x84abe0 (P1 = P2 = 1)
     }

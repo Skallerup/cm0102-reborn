@@ -63,6 +63,7 @@ import { recPositions, type Day } from './engine/grid/roleScore';
 import { nationLanguage, playerLanguages } from './languages';
 import { dislikesClub, dislikesPerson, favoursClub, favoursPerson, managerStaff, relHas, DIS_CLUB, FAV_CLUB } from './cmRelations';
 import { withSharedPersons } from './cmBoardGame';
+import { beat } from './beat';
 
 const SLOTS0 = 0x5f100000, OFFERS0 = 0x5e800000, OREC0 = 0x5e900000, RIV0 = 0x5eb00000, T86E0 = 0x5ec00000, INJ0 = 0x5e780000, LISTS0 = 0x61000000;
 const SLOT = 0x25, NSLOT = 40;
@@ -2558,6 +2559,7 @@ export function cmShortlistStartPart(g: GameState, part: number, parts: number, 
       // fremdriftsbjælken ved nyt spil (rører intet i spillet): (25/11) hver klub, højst hvert 200. ms – før hver 64. klub, og bjælken stod stille i
       // minutter på en langsom telefon (de store klubber har de længste lister)
       if (prog) { const t = now(); if (t - progT >= 200 || i === from) { progT = t; prog(i / clubs.length); } }
+      beat();
       if (g.cmPlan![clubs[i].id]) afterPlan(S, clubs[i].id, []);
     }
   }));

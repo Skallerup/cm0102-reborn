@@ -9,6 +9,7 @@ import { createGame, createGameBase, createGamePhase, setNewGameProgress, type N
 import { gs, packCarry, setGame } from '../game/state';
 import { rng } from '../game/rng';
 import { releasePagePool, setPagePoolMax } from '../game/cmMem';
+import { beatSent, setBeat } from '../game/beat';
 import { slResumeTransfer } from '../game/cmShortlistGame';
 import { convertOriginal, restartInOriginal, type ConvertReport } from '../game/cmConvert';
 import type { CMWorld } from '../game/data/cm0102';
@@ -27,7 +28,9 @@ export type NewGameMsg = { type: 'progress'; step: string; frac: number } | { ty
   | { type: 'done'; gz: ArrayBuffer; saved: SaveMeta | null } | { type: 'error'; message: string }
   | { type: 'slim'; slim: WorldData } | { type: 'handed' } | { type: 'trace'; s: string }
   /** (Firefox 27/11) spillet er modtaget fra forrige trins arbejder (`keepPort`: først nu lukker hovedtråden den) */
-  | { type: 'received' };
+  | { type: 'received' }
+  /** (27/11) hjerteslag fra en lang løkke (src/game/beat.ts) – hovedtrådens vagt (startGame.ts SilenceGuard) ved, at arbejderen lever */
+  | { type: 'beat' };
 export type NewGameJob = { world?: WorldData; src?: WorldSrc; opts: NewGameOptions; convert?: { kind: 'convert' | 'restart'; old: GameState; picked?: boolean };
   /** (hukommelse, iPhone 22/11) kun disse trin af spilstarten ('base' = createGameBase, så createGamePhase); `from` modtager spillet fra forrige
    *  trins arbejder, `to` sender det videre til næste (uden om hovedtråden) – uden `to` svarer arbejderen med 'done' som før */
@@ -58,8 +61,11 @@ const take = (): WorldData | undefined => { const w = heldWorld; heldWorld = und
 let heldWorld: WorldData | undefined;
 
 self.onmessage = async (e: MessageEvent<NewGameJob | LoadJob>) => {
-  const post = (m: NewGameMsg, tf?: Transferable[]) => (self as unknown as Worker).postMessage(m, tf ?? []);
+  const post = (m: NewGameMsg, tf?: Transferable[]) => { (self as unknown as Worker).postMessage(m, tf ?? []); beatSent(); };
   const data = e.data;
+  // (27/11) hjerteslag fra de lange løkker (forkørslen, kampene, pakningen …) – kun fra arbejde, der skrider frem: en arbejder, der venter på en
+  // tabt kanalbesked (Firefox), slår ikke, så vagten fanger den stadig
+  setBeat(() => post({ type: 'beat' }));
   // (målinger: webkit-newgame.mjs TIMELINE) trinenes tidspunkter i arbejderen – hovedtråden skriver dem i konsollen med localStorage cm0102.ngTrace
   const tr = (s: string) => post({ type: 'trace', s });
   try {
