@@ -23,6 +23,7 @@ import { cmRoleExpected } from './cmTransferTalks';
 import { isHumanClub } from './humans';
 import { dropStaleOffers } from './offerLive';
 import { repairPositions } from './playerInit';
+import { purgeInvisibleFakes } from './purgeFakes';
 
 export interface SaveMeta {
   id: string;
@@ -290,6 +291,14 @@ export function repairStaleOffers(g: GameState = gs()): void {
   (g.fixes ??= []).push('staleOffers');
 }
 
+/** (27/11) gemte spil fra før 6c3386bb: sæsonskiftets opdigtede spillere i de ikke-valgte landes klubber (purgeFakes.ts) – de usynlige fjernes
+ *  én gang ved indlæsningen (originalen har kun fyldspillerne 0x90dae0 omkring kampene) */
+export function repairFakePlayers(g: GameState = gs()): void {
+  if (g.draft || g.fixes?.includes('fakePurge')) return;
+  purgeInvisibleFakes(g);
+  (g.fixes ??= []).push('fakePurge');
+}
+
 export function ensureAllNumbers() {
   const g = gs();
   // et spil fra den nuværende kode har sine numre (dubletter, fx fyldspillerne og lejespillere, er spillets egne – en omnummerering ved
@@ -482,6 +491,7 @@ export async function loadGame(id: string): Promise<boolean> {
   ensureAllNumbers();
   repairOldMarket();
   repairStaleOffers();
+  repairFakePlayers();
   rememberLast({ kind: 'local', id });
   return true;
 }
@@ -497,6 +507,7 @@ export async function openPreview(blob: Blob, label: string, theme?: string): Pr
   ensureAllNumbers();
   repairOldMarket();
   repairStaleOffers();
+  repairFakePlayers();
   notify();
 }
 
@@ -522,6 +533,7 @@ export async function importSave(file: File): Promise<boolean> {
     ensureAllNumbers();
     repairOldMarket();
     repairStaleOffers();
+    repairFakePlayers();
     await saveGame();
     return true;
   } catch {
