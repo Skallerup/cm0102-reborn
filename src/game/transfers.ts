@@ -25,7 +25,7 @@ import type { Club, Contract, ContractClauses, GameState, Player, Role, Transfer
 import { aiContract, cmAiTerms, cmContractAnswer, cmMoveInterest, cmTalkDemand } from './cmContractGame';
 import { cmBoardWageAllow, cmFundsAfterDeal, cmFundsNow, cmTransferBudget } from './cmBudget';
 import { cmCmOn, cmCmScope } from './cmContractManager';
-import { cmAcceptBid, cmOfferContract, cmSwapAccept, cmSwapDaily, cmSwapOn, cmTalksDaily, cmTalksOn, cmTalksOpen, offerTerms } from './cmTransferTalks';
+import { cmAcceptBid, cmOfferContract, cmPermitSwaps, cmSwapAccept, cmSwapDaily, cmSwapOn, cmTalksDaily, cmTalksOn, cmTalksOpen, offerTerms } from './cmTransferTalks';
 import { cmLoanRefuses } from './cmLoan';
 import { cmBuildBid } from './cmAiBid';
 import { cmAiRulesBlock, cmAiRulesReason, cmCanSign, cmCompletionDate, cmWindowOpen } from './cmOfferCheck';
@@ -899,6 +899,8 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
     if (seller && isHumanClub(seller.id)) asOwner(seller.id, news);
     return false;
   }
+  // 0x8c7690 0x8c7829: byttespillerne (afslag → ud af handlen, beløbet + hans værdi – nyheden 0x8e35a0; flaget a2 = 1 her: ingen 0x8e3130)
+  if (!o.loan && seller && !o.cmTalks?.permitDone) cmPermitSwaps(o, false);
   if (o.loan) {
     // CM 01/02: lejekontrakten 0x85e590 med buddets udløb og lønprocent (menneskets Loan bid / computerens 0x842740 – køberlandets lejeperiode
     // 0x8d0590, cmLoan.ts); lejeklubben betaler andelen `share`

@@ -279,6 +279,9 @@ function bodyKey(n: NewsItem): string {
   if (n.key === 'transfer.preContract' && !n.params?.from) return '';
   // 0xfaf (0x8d8af0): "The transfer fee will be adjusted to …" kun, når beløbet steg
   if (n.key === 'transfer.cmSwapOut') return n.params?.adj ? 'transfer.cmSwapOut.bodyFee' : 'transfer.cmSwapOut.body';
+  // 0xfbb (0x8e3780): byttespilleren uden arbejdstilladelse – beløbslinjen kun, når beløbet steg; 0xfb9 (0x8e2cd0): byttespillernes varianter
+  if (n.key === 'transfer.cmPermitSwap') return n.params?.adj ? 'transfer.cmPermitSwap.bodyFee' : 'transfer.cmPermitSwap.body';
+  if (n.key === 'transfer.cmPermitWait' && (n.params?.w === 'all' || n.params?.w === 'for')) return `transfer.cmPermitWait.${n.params.w}`;
   return `${n.key}.body`;
 }
 

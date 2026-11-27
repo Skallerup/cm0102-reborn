@@ -26,7 +26,7 @@ import { asOwner } from './humans';
 import { addDays, year } from './dates';
 import { cmLogic, cmRand } from './cmPlayerData';
 import { cmGbp } from './cmMoney';
-import { cmContractAnswer, cmExpectedStatus, cmMoveCheck, cmOfferScreenData, cmTalkDemand, cmTalkStatus, type CmOfferTerms, type CmTerms } from './cmContractGame';
+import { cmAiTerms, cmContractAnswer, cmExpectedStatus, cmMoveCheck, cmOfferScreenData, cmTalkDemand, cmTalkStatus, type CmOfferTerms, type CmTerms } from './cmContractGame';
 import { cmBoardWageAllowGbp } from './cmBudget';
 import { isHumanClub } from './humans';
 import { regionOf } from './leagues';
@@ -250,6 +250,8 @@ export function cmTalksDaily(o: TransferOffer, complete: (o: TransferOffer, wage
       return;
     }
     if (needs) cmPermitNews(o, p, 'transfer.cmPermitOk');
+    // 0x8c7829–0x8c7902: byttespillerne (afslag → ud af handlen, beløbet + hans værdi; givet → nyheden 0x8e3130)
+    cmPermitSwaps(o, true);
     o.cmTalks = { ...t, state: 5, permitDue: undefined, permitDone: true };
     return;
   }
@@ -278,27 +280,80 @@ export function cmAgreed(o: TransferOffer, p: Player, terms: { wage: number; yea
   // 0x8c2f50 0x8c319b: uden tidsnibble (+0x30 & 0xf = 0), skal spilleren have arbejdstilladelse i køberen (0x8c7470 → 0x8c7560(spiller, køber, 0))
   // og +0x2e (runderne) = 0 → nyheden 0x8e2a00 "transfer delayed due to work permit", tilstand 0xa, afgøres om 0x12 + rand(7) dage (0x8c6220).
   // +0x2e ≠ 0 → ingen tilladelse (tilstand 0xb – bekræftelsen); med tidsnibble afgøres den på datoen (0x8cbbe0 → 0x8c7690(…, 1) – transfers.ts).
-  // (0x8c7470's byttespillere – 0x8c7560(bytte, sælger, 0) – og deres afgørelse 0x8e35a0 er ikke porteret.)
-  if (!(o.cmTime ?? 0) && cmPermitOn(g) && cmNeedsPermit(g, p, o.buyer, false)) {
+  // 0x8c7470: også byttespillerne (+4-listen) – 0x8c7560(bytte, sælger, 0) for hver; nyheden 0x8e2a00 (0xfb9) tæller dem (param 6 = hovedspilleren,
+  // 7 = antal byttespillere, 8–0xb = den første) til brødteksten 0x8e2cd0
+  const main = cmPermitOn(g) && cmNeedsPermit(g, p, o.buyer, false);
+  const swaps = cmPermitOn(g) ? cmPermitSwapIds(o).filter((id) => cmNeedsPermit(g, g.players[id], o.seller, false)) : [];
+  if (!(o.cmTime ?? 0) && (main || swaps.length)) {
     if (t0.rounds === 0) {
       const r = cmRand(g.seed ?? 0, p.id, o.buyer, o.id, 0x8c31ca);
       o.cmTalks = { ...t0, state: 10, agreed: terms, permitDue: addDays(g.date, 0x12 + r(7)) };
-      cmPermitNews(o, p, 'transfer.cmPermitWait');
+      // 0x8e2cd0: ingen byttespiller → 0xa9d17c/0xa9d0cc; én og ikke hovedspilleren → 0xa9d25c ("… for <bytte>"); ellers 0xa9cfc8/0xa9cef4
+      const x = swaps.length ? g.players[swaps[0]] : undefined;
+      cmPermitNews(o, p, 'transfer.cmPermitWait', !x ? {} : swaps.length === 1 && !main ? { w: 'for', player2: pname(x) } : { w: 'all' });
       return;
     }
   }
   o.cmTalks = { ...t0, state: 5, agreed: terms, ...(o.cmTime ? {} : { permitDone: true }) };
 }
 
-/** nyhederne om arbejdstilladelsen (0x8e2a00 venter, 0x8e3130 givet, 0x8de790 grund 0x13 afslået): til køberen og sælgeren (0x8d1130 flag 1/2);
- *  brødteksten med kontraktklubben (sælgeren) eller uden */
-function cmPermitNews(o: TransferOffer, p: Player, key: string): void {
+/** nyhederne om arbejdstilladelsen (0x8e2a00 venter, 0x8e3130 givet, 0x8de790 grund 0x13 afslået, 0x8e35a0 byttespilleren ude): til køberen og
+ *  sælgeren (0x8d1130 flag 1/2); brødteksten med kontraktklubben (sælgeren) eller uden. `swapFor` = byttespilleren (0x8e3130(bytte, sælger, tilbud):
+ *  "{hans klub}'s X … for his move to {sælgeren}" med sælgerens nationalitet) */
+function cmPermitNews(o: TransferOffer, p: Player, key: string, extra: Record<string, string | number> = {}, swapFor?: boolean): void {
   const g = gs();
-  const seller = o.seller ? g.clubs[o.seller] : undefined, buyer = g.clubs[o.buyer];
-  const params = { player: pname(p), last: p.last || pname(p), seller: seller ? short(g, seller.id) : '', buyer: short(g, o.buyer), nat: g.nations[buyer?.nation ?? -1]?.adj ?? '' };
+  const seller = o.seller ? g.clubs[o.seller] : undefined;
+  const from = swapFor ? o.buyer : o.seller, to = swapFor ? o.seller : o.buyer;
+  const params = { player: pname(p), last: p.last || pname(p), seller: from ? short(g, from) : '', buyer: to ? short(g, to) : '', nat: g.nations[g.clubs[to ?? -1]?.nation ?? -1]?.adj ?? '', ...extra };
   const news = () => addNews({ cat: 'transfer', key: seller ? key : `${key}Free`, params, link: { kind: 'player', id: p.id } });
   asOwner(o.buyer, news);
   if (seller && isHumanClub(seller.id)) asOwner(seller.id, news);
+}
+
+/** byttespillerne i buddet (+4-listen), der stadig er hos køberen */
+function cmPermitSwapIds(o: TransferOffer): number[] {
+  const g = gs();
+  return o.seller && !o.loan ? (o.swap ?? []).filter((id) => g.players[id]?.club === o.buyer && !g.players[id]?.loan) : [];
+}
+
+/** Byttespillerens kontrakttilbud fra sælgeren (0x4cc9e0(bytte, sælger)): menneskets sælger – det aftalte (cmSwapTalks, 0x4cc490); computerens
+ *  sælger – 0x8c1e40's tilbud 0x4cda70 (tilstand 7, 0x8c68ff), her regnet med den samme port (aiContract/cmAiTerms), som underskriver det i
+ *  completeTransfer. Intet tilbud → null (0x8c788f: ingen afgørelse, tilladelsen gives) */
+function cmSwapContract(o: TransferOffer, x: Player): { wageGbp: number; expires: string } | null {
+  const g = gs();
+  const ag = o.cmSwapTalks?.[x.id]?.agreed;
+  if (ag) return { wageGbp: Math.round(ag.wage * cmGbp(g, o.seller)), expires: `${year(g.date) + Math.max(1, ag.years)}-06-30` };
+  if (isHumanClub(o.seller)) return null;
+  const k = cmAiTerms(g, x, o.seller);
+  return k?.offered ? { wageGbp: k.raw.wage, expires: k.expires } : null;
+}
+
+/**
+ * 0x8c7690's løkke over byttespillerne (0x8c7829–0x8c7902; kun når hovedspilleren fik tilladelsen eller ikke skal have den): for hver byttespiller,
+ * der skal have tilladelse hos sælgeren (0x8c7560(bytte, sælger, 0)), og som har et kontrakttilbud fra sælgeren (0x4cc9e0), 0x8c7950(bytte,
+ * sælgerens land, tilbud, 0, 0). Afslag → nyheden 0x8e35a0 (0xfbb, "<X> fails to get work permit" – "… has been removed from the part exchange offer
+ * …", med det nye beløb, når det steg), han fjernes fra buddet (0x68d1f0) og beløbet +0x1b += hans værdi +0x52. Givet (eller intet tilbud) → nyheden
+ * 0x8e3130, når flaget a2 = 0 (`news`). Handlen falder ikke.
+ */
+export function cmPermitSwaps(o: TransferOffer, news: boolean): void {
+  const g = gs();
+  if (!cmPermitOn(g)) return;
+  for (const id of cmPermitSwapIds(o)) {
+    const x = g.players[id];
+    if (!cmNeedsPermit(g, x, o.seller, false)) continue;
+    const k = cmSwapContract(o, x);
+    if (k && !cmWorkPermit(g, x, { club: o.seller, ...k }, null)) {
+      const old = o.fee, fee = old + x.value;
+      const p = g.players[o.player];
+      cmPermitNews(o, x, 'transfer.cmPermitSwap', { club: short(g, o.buyer), club2: short(g, o.seller), player2: p ? pname(p) : '', nat: g.nations[g.clubs[o.seller]?.nation ?? -1]?.adj ?? '', fee, ...(fee > old ? { adj: 1 } : {}) });
+      o.swap = o.swap?.filter((s) => s !== id);
+      if (o.cmSwapTalks) delete o.cmSwapTalks[id];
+      o.fee = fee;
+      continue;
+    }
+    if (news) cmPermitNews(o, x, 'transfer.cmPermitOk', {}, true);
+  }
+  if (!o.swap?.length) o.swap = undefined;
 }
 
 // ---------------------------------------------------------------- Confirm Transfer Offer (0x8f2ec0)
