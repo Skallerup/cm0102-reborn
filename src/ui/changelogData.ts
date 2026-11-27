@@ -13,6 +13,8 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '2026-11-27',
     title: { da: 'Mere af det originale CM 01/02', en: 'More of the original CM 01/02' },
     items: [
+      { da: "Den franske liga i den udvidede verden blev på nogle punkter behandlet som venskabskampe – nu genkendes venskabskampe korrekt.", en: "The French league in the expanded world was in places treated as friendlies – friendlies are now recognised correctly." },
+      { da: "Interne måleværktøjer til klubbernes omdømme.", en: "Internal measuring tools for club reputation." },
       { da: "⚠ Kræver et nyt spil: Pokal-, Europa- og venskabskampe spilles som i originalen: kampmotoren får turneringens rigtige omdømme og kamptype (fx Champions League 20, FA Cup 15, Super Cup 15), også for de andre landes pokaler.", en: "⚠ Requires a new game: Cup, European and friendly matches play as in the original: the match engine now gets each competition's real reputation and match type (e.g. Champions League 20, FA Cup 15, Super Cup 15), including other countries' cups." },
     ],
   },
