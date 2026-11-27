@@ -5,12 +5,13 @@
 //   +0 staff-id (spilleren), +4 klub-id (den interesserede), +8 dato, +0x10 tilstand (0 ny, 1 rygtet, 2 "concerned"), +0x11 beløb (højst
 //   £50.000.000 = 0x2faf080), +0x15 ftol(viljen 0x846920 · 100).
 //   0x754740 add_rumour(staff, klub, beløb, vilje): findes parret allerede (bsearch), sker intet. Kaldt fra computerens ønskeliste 0x83f3a0
-//   (0x840c4b/0x84079d), menneskets vurdering 0x7b62a0 og menneskets henvendelse 0x8f44d0 (0x8f4c07: udbudsprisen 0x4d1600/0x4d42d0, kun
-//   hvis budgettet 0x598800 eller saldoen ≥ 0,75 · prisen, vilje 0). Computerens rygter kommer KUN fra ønskelisternes mål 0x83f3a0 (adapteren
+//   (0x840c4b/0x84079d), spejderrapporten 0x7b62a0 (0x7b6e86 – ikke porteret) og menneskets "Add Player To Shortlist" → Yes 0x8f48b0
+//   (0x8f4c07: udbudsprisen 0x4d1600/0x4d42d0, kun hvis budgettet 0x598800 eller saldoen ≥ 0,75 · prisen, vilje 0 – cmShortlistAddRumour).
+//   Menneskets bud (0x8be300) giver INTET rygte – før 27/11 gav hvert bud fra mennesket et rygte med spillets skønnede askingPrice.
+//   Computerens rygter kommer KUN fra ønskelisternes mål 0x83f3a0 (adapteren
 //   0x754740 i cmShortlistGame.ts → transfers.ts cmShortlistApply): spillerplads, rand(37 − nuv. omdømme/300) = 0 og nuv. omdømme > 5000 +
 //   rand(2000) eller spilleren er menneskets (0x840ac2–0x840c4b; 0x84079d menneskets spiller) – ikke hvert bud. (Før 18/11 kom hvert computerbud
 //   i køen, så ukendte spillere i ikke-valgte lande – fx Atlante om Shanghais Wei Du – gav rygter, originalen ikke har.)
-//   Menneskets bud (TransferOffer) med udbudsprisen som 0x8f4c07.
 //   0x7549b0 (fra kontrakten 0x4ce4e0): alle poster for spilleren fjernes, når han skriver under – her: når han skifter klub.
 //   0x754a30 daily_update (0x5cccd0 → 0x5cdd8f), for hver post:
 //     – fjernes efter 31 dage (0x54c5b0(+8, 0x1f) < i dag), eller når spillerens klub (kontrakt 0x4cf5a0) mangler manager (+0xcf), eller han
@@ -57,7 +58,7 @@ import { forEachHuman, isHumanClub } from './humans';
 import { cmGenerated, cmMediaOn, cmAdjustMorale, cmContractOf, cmFlagSet, cmRand, curRep, wantsToLeave, withFlagCtx } from './cmPlayerData';
 import { addDisPerson, clubDislikes, clubFavours, managerStaff, personKey } from './cmRelations';
 import { newRec } from './cmBoard';
-import { askingPrice, windowOpen } from './transfers';
+import { windowOpen } from './transfers';
 import { cmGbp } from './cmMoney';
 import { cmDayWill } from './cmAiBid';
 
@@ -84,19 +85,13 @@ export function cmRumourAdd(g: GameState, p: Player, club: number, amt: number, 
   st.q.sort((a, b) => a.p - b.p || a.c - b.c);
 }
 
-/** menneskets nye bud siden sidst → køen (0x8f4c07); computerens rygter kommer fra ønskelisterne (0x83f3a0 → cmShortlistApply) */
-function fromOffers(g: GameState, st: CmRumState): void {
-  for (const o of g.offers) {
-    if (o.id <= st.last) continue;
-    st.last = Math.max(st.last, o.id);
-    if (o.loan || o.swap?.length) continue;
-    const p = g.players[o.player], buyer = g.clubs[o.buyer];
-    if (!p || !buyer || p.club === o.buyer) continue;
-    if (!isHumanClub(o.buyer)) continue;
-    const price = askingPrice(p);
-    if (buyer.transferBudget < 0.75 * price && buyer.balance < 0.75 * price) continue;
-    cmRumourAdd(g, p, o.buyer, price, 0);
-  }
+/** menneskets "Add Player To Shortlist" → Yes (0x8f48b0 → 0x8f4c07): rygtet med udbudsprisen 0x4d1600 (cmShortlistGame.ts
+ *  cmShortlistAddRumour – null = intet rygte); beløbet i £ → køberens penge (cmMoney). Menneskets bud giver intet rygte (0x8be300 kalder kun 0x7f75f0). */
+export function cmRumourHumanShortlist(g: GameState, p: Player, buyer: number, price: () => number | null): void {
+  if (!cmMediaOn(g)) return;
+  const gbp = price();
+  if (gbp === null) return;
+  cmRumourAdd(g, p, buyer, gbp / cmGbp(g, buyer), 0);
 }
 
 /** 0x735870(manager, staff, 0x1f) for en computerklub: 2 Confirm (listet), 1 Deny, 3 No Comment */
@@ -190,7 +185,6 @@ function headline(id: number, v: number, n: number, cur: number): string {
 export function cmRumoursDaily(g: GameState): void {
   if (!cmMediaOn(g)) return;
   const st = stateOf(g);
-  fromOffers(g, st);
   if (!st.q.length) return;
   const today = dayNum(g.date);
   const drop = new Set<RumEntry>();

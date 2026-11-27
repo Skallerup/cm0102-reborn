@@ -45,6 +45,7 @@ import { GEN } from './cmGen/index';
 import { humanClub_600a50, withMemScope } from './cmWageGame';
 import { contractFlag_5445x0, value_840d80_impl, value_840d80_any, PV_DIRECT } from './cmSlEval';
 import { registerAskingPrice, askingForget } from './cmAskingPrice';
+import { cmStaffBudget } from './cmBudget';
 import { registerPlayerWill } from './cmPlayerWill';
 import { ensureImpls } from './cmGen/impls';
 import { isHumanClub } from './humans';
@@ -2386,6 +2387,69 @@ export function cmAskingPrice(g: GameState, p: Player, buyer?: number, why?: { r
   // (hastighed) siderne tilbage til puljen – hukommelsen bruges ikke mere
   (m as SparseMem).release();
   return v | 0;
+}
+
+/** Menneskets "Add Player To Shortlist" → Yes (dialogen 0x8f4160: "Add <spiller> to shortlist?", Yes-handleren 0x8f48b0 efter SCOUT_MANAGER::
+ *  add_to_shortlist 0x7f75f0) – mediets rygte 0x754740 (0x8f4a0d–0x8f4c07). Køberen = managerens klub (+0x39), staff = spilleren:
+ *    rand(37 − trunc(spillerens aktuelle omdømme (+0x61 → +0xb)/300)) = 0; omdømmet > 5000 + rand(2000), ellers skal spillerens klub (+0x39)
+ *    være et menneskes (0x600a50(klub, 0, 1, 0, 0)); viljen 0x846920(staff, køber, 0, 0, 1, 0) ≥ 2,75;
+ *    sælgeren = kontraktens klub (0x4cf5a0, ikke type 5); budposten {+3 = s16 rand(40000), +0xb = s16 rand(20000) – −10000 når budgettet
+ *    0x598800(staff, 1, 0, 1, 0) eller saldoen ≤ 0}; 0x84b6f0(&post, kontrakt, køber, &ud) = 0 og en sælger → beløbet = udbudsprisen
+ *    0x4d1600(sælger, køber, staff, 0, 1, 1) (sælgeren et menneskes: 0x4d42d0(sælger, køber, staff)), ellers 0;
+ *    budgettet eller saldoen ≥ 0,75 · beløbet → 0x754740(staff, køber, beløb, 0, 0).
+ *  Svaret: beløbet i £ (null = intet rygte). Et bud (0x8be300) giver intet rygte – det sætter kun spilleren på listen (0x8be9ad → 0x7f75f0). */
+const RUM_POST = 0x5e7f0500, RUM_OUT = 0x5e7f0540;
+export function cmShortlistAddRumour(g: GameState, p: Player, buyer: number): number | null {
+  if (!cmShortlistOn(g) || !g.clubs[buyer] || p.club === buyer) return null;
+  // 0x598800(staff, 1, 0, 1, 0) på sin egen hukommelse (kendskabet 0x5b02f0 – cmBudget.ts) før rygtets: den bruger ingen af dettes rand-kald
+  const budget = cmStaffBudget(g, p, buyer, 1) ?? 0;
+  const clubs = [...new Set([buyer, p.club, p.loan?.from].filter((c): c is number => !!c && !!g.clubs[c]))];
+  const hold: { S?: SlMem } = {};
+  const M = smallWantMem(g, clubs, hold);
+  const st = M.W.staffOf(p), bc = M.W.clubOf(buyer), fin = M.W.finOf(buyer);
+  if (!st || !bc || !fin) return null;
+  const rand = cmRand(g.seed ?? 0, p.id, buyer, dayNum(g.date), 0x8f48b0);
+  M.setRand(rand);
+  const m = M.c.m;
+  const memOf = new Map<number, number>(), byMem = new Map<number, Player>();
+  for (const [q, a] of M.W.players) { const id = m.s32(a); memOf.set(q.id, id); byMem.set(id, q); }
+  const S: SlMem = hold.S = { M, m, c: M.c, g, slm: m.u32(m.u32(0xde1f54) + 0x856), memOf, byMem, clubAdr: (cid) => M.W.clubOf(cid), events: [], slotted: new Set() };
+  try {
+    for (const cid of clubs) if (g.cmPlan?.[cid]) writeSlots(S, cid, entryOf(g, cid), true);
+    {
+      const k = getContract(m, st), cl = k ? clubAt(m, m.s32(k + 4)) : 0;
+      m.w32(st + 0x52, k && cl ? playerValue_4d0c60(M.c, st, cl, 0, -1, humanClub_600a50(M.c, cl) ? 1 : 0) | 0 : 0);
+    }
+    // 0x8f4a0d–0x8f4a78: omdømmet
+    const rep = m.s16(m.u32(st + 0x61) + 0xb);
+    if (rand(37 - Math.trunc(rep / 300)) !== 0) return null;
+    if (!(rep > rand(2000) + 5000)) {
+      const sc = m.u32(st + 0x39);
+      if (!sc || !humanClub_600a50(M.c, sc, 0)) return null;
+    }
+    // 0x8f4a93: viljen (fcomp 2,75: under – eller NaN – ingen henvendelse)
+    if (!(slCall(M.c, 0x846920, S.slm, st, bc, 0, 0, 1, 0) >= 2.75)) return null;
+    // 0x8f4ab0: sælgeren (kontrakten, ikke en lejeaftale +0x35 & 0x3f = 5)
+    const k = getContract(m, st);
+    const seller = k && (m.u8(k + 0x35) & 0x3f) !== 5 ? clubAt(m, m.s32(k + 4)) : 0;
+    // 0x8f4aef–0x8f4b44: budposten
+    const r20 = s16(rand(20000)), r40 = s16(rand(40000));
+    const balance = m.u32(fin) + m.s32(fin + 4) * 4294967296;
+    for (let i = 0; i < 0x20; i++) m.w8(RUM_POST + i, 0);
+    m.w32(RUM_POST + 3, r40);
+    m.w32(RUM_POST + 0xb, budget > 0 && balance > 0 ? r20 : -10000);
+    m.w32(RUM_OUT, 0);
+    const free = slCall(M.c, 0x84b6f0, S.slm, RUM_POST, k, bc, RUM_OUT);
+    // 0x8f4b69–0x8f4bad: beløbet
+    let amt = 0;
+    if (seller && !free) amt = humanClub_600a50(M.c, seller, 0) ? slCall(M.c, 0x4d42d0, m.u32(G.CM), seller, bc, st) | 0 : slCall(M.c, 0x4d1600, m.u32(G.CM), seller, bc, st, 0, 1, 1) | 0;
+    // 0x8f4bb7–0x8f4bf8: budgettet eller saldoen ≥ 0,75 · beløbet
+    const need = amt * 0.75;
+    if (budget < need && balance < need) return null;
+    return amt;
+  } finally {
+    (m as SparseMem).release();
+  }
 }
 
 /** Bytte-skærmen 0x47c180 ("Add Player To {spiller} Transfer Bid"), 0x47ed52–0x47edec og 0x4811c0–0x481243: for hver af giverens spillere, der

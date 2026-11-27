@@ -165,9 +165,20 @@ export function cmKnowledgeLevel(g: GameState, p: Player): number {
 export function cmBidBudget(g: GameState, p: Player, buyer: number): CmBidBudget | null {
   // (MODERN_PARITY 7) også 2026/27 i ægte tilstand med originalens bestyrelse (cmBoardLogic) – beløbet i køberens £ (cmMoney)
   if (!(cmActive(g) || cmBoardLogic(g)) || !g.clubs[buyer] || !p.club) return null;
+  const r = staffBudget(g, p, buyer, 0);
+  return r && { budget: Math.max(0, r.v) / cmGbp(g, buyer), level: r.level, limited: r.limited };
+}
+
+/** 0x598800(staff, a2, &begrænset, 1, 0) for køberen i £ med fortegn (de nederste 32 bit) – a2 ≠ 0: + værdien +0x52 af klubbens ikke-listede
+ *  spillere (0x59884a). Menneskets "Add Player To Shortlist" (0x8f4b23/0x8f4bd0) kalder den med (staff, 1, 0, 1, 0). */
+export function cmStaffBudget(g: GameState, p: Player, buyer: number, a2: number): number | null {
+  if (!g.clubs[buyer]) return null;
+  return staffBudget(g, p, buyer, a2)?.v ?? null;
+}
+function staffBudget(g: GameState, p: Player, buyer: number, a2: number): { v: number; level: number; limited: boolean } | null {
   const level = cmKnowledgeLevel(g, p);
   const KOBJ = 0x6a000000, OUTF = 0x6a000100;
-  const M = buildWantMem(g, [buyer, p.club], {
+  const M = buildWantMem(g, p.club ? [buyer, p.club] : [buyer], {
     useLog: (adr) => adr === 0x600a50 || adr === 0x849f00 || adr === 0x5afde0 || adr === 0x5b02f0,
     call: (adr) => (adr === 0x5afde0 ? KOBJ : adr === 0x5b02f0 ? level : undefined),
   });
@@ -181,9 +192,8 @@ export function cmBidBudget(g: GameState, p: Player, buyer: number): CmBidBudget
   m.w32(0xae2a60, KOBJ); m.w32(OUTF, 0);
   ensureImpls();
   let v: number;
-  try { v = GEN[0x598800](M.c, fin, [st, 0, OUTF, 1, 0]) | 0; } finally { m.w32(0xae2a60, old); }
-  const limited = m.u32(OUTF) === 1;
-  return { budget: Math.max(0, v) / cmGbp(g, buyer), level, limited };
+  try { v = GEN[0x598800](M.c, fin, [st, a2, OUTF, 1, 0]) | 0; } finally { m.w32(0xae2a60, old); }
+  return { v, level, limited: m.u32(OUTF) === 1 };
 }
 
 /** bestyrelseslinjen på budskærmen (0x8ea327–0x8ea3c8): kendskabet vælger teksten, beløbet 0 free-transfer-varianten */

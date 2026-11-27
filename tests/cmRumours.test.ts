@@ -14,6 +14,10 @@ import { cmContractOf, cmRand } from '../src/game/cmPlayerData';
 import { personKey } from '../src/game/cmRelations';
 import { newRec } from '../src/game/cmBoard';
 import { newsBody, newsTitle } from '../src/ui/screens/common';
+import { applyAction } from '../src/game/actions';
+import { SL_ON, cmAskingPrice, cmShortlistAddRumour } from '../src/game/cmShortlistGame';
+import { cmGbp } from '../src/game/cmMoney';
+import { money } from '../src/i18n';
 import type { GameState, Player } from '../src/game/types';
 
 const world = JSON.parse(readFileSync('public/data/world-original.json', 'utf8')) as WorldData;
@@ -92,5 +96,38 @@ describe('kampprogrammet og rygterne (ægte tilstand, 3.9.60)', { timeout: 600_0
     c.b4e = 1;
     expect(cmRumourAiAnswer(p, cmRand(7))).toBe(2);
     c.b4e = 0;
+  });
+
+  it('"linked with"-rygtet fra mennesket: "Add Player To Shortlist" → Yes (0x8f48b0 → 0x8f4c07) med udbudsprisen 0x4d1600, ikke buddet', () => {
+    const on = SL_ON.on;
+    SL_ON.on = true;   // (vitest kører med CM_SL=0 – rygtets beløb kræver ønskelisternes hukommelse)
+    try {
+      const w = world.clubs.find((x) => x[1] === 'Manchester United')!;
+      const eng = world.nations.findIndex((x) => x.name === 'England');
+      createGame(world, { managerName: 'M S', managerNation: eng, clubId: w[0], activeNations: [eng], lang: 'en', masking: true, seed: 1, mode: 'authentic' });
+      const g = gs();
+      const p = Object.values(g.players).find((q) => q.last === 'Tsigalko')!;
+      expect(g.clubs[p.club].name).toBe('Dinamo Minsk');
+      // et bud fra mennesket giver intet rygte (0x8be300 kalder kun 0x7f75f0)
+      applyAction({ t: 'bid', pid: p.id, fee: 100_000, loan: false });
+      g.date = addDays(g.date, 1);
+      cmRumoursDaily(g);
+      expect((g.cmRum?.q ?? []).some((e) => e.p === p.id)).toBe(false);
+      g.shortlist = g.shortlist.filter((x) => x !== p.id);
+      // en dag, hvor rand(37 − omdømme/300) = 0 osv. (frø 1)
+      let gbp: number | null = null;
+      for (let d = 0; d < 120 && gbp === null; d++) { g.date = addDays(g.date, 1); gbp = cmShortlistAddRumour(g, p, g.userClub); }
+      expect(gbp).not.toBeNull();
+      // beløbet = 0x4d1600(sælger, køber, staff, 0, 1, 1) – ikke spillerens værdi (vores skøn gav £65K)
+      expect(gbp).toBe(cmAskingPrice(g, p, g.userClub));
+      expect(gbp!).toBeGreaterThan(1_000_000);
+      applyAction({ t: 'shortlist', pid: p.id, on: true });
+      const e = g.cmRum!.q.find((x) => x.p === p.id && x.c === g.userClub)!;
+      expect(e.amt).toBe(Math.round(gbp! / cmGbp(g, g.userClub)));
+      // nyheden viser beløbet i spillets penge (money)
+      let n;
+      for (let d = 0; d < 31 && !n; d++) { g.date = addDays(g.date, 1); cmRumoursDaily(g); n = g.news.find((x) => x.key === 'cm.rum' && Number(x.params.pid) === p.id); }
+      if (n) expect(newsBody(n)).toContain(money(e.amt));
+    } finally { SL_ON.on = on; }
   });
 });

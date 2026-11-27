@@ -9,7 +9,8 @@ import { cmDiscLogic, cmMarketOn, cmMediaOn, cmStaffOn, setStatusCode } from './
 import { CM_INTENSITIES, CM_SCHED_SLOTS, setPlayerSlot } from './cmTraining';
 import { cmOfferStaff } from './cmStaff';
 import { cmAnswerRequest, cmSetTransferStatus, cmToggleListed } from './cmTransferList';
-import { cmRumourAnswer } from './cmRumours';
+import { cmRumourAnswer, cmRumourHumanShortlist } from './cmRumours';
+import { cmShortlistAddRumour } from './cmShortlistGame';
 import { submitEuroSquad } from './euroSquad';
 import { replacePlayer } from './draft';
 import { endTrial, inviteTrial } from './trials';
@@ -272,10 +273,15 @@ export function applyAction(a: Action): unknown {
     case 'enquire': return enquire(a.pid);
     case 'bid': return makeBid(a.pid, a.fee, a.loan, { loanUntil: a.loanUntil, loanShare: a.loanShare, loanNoCup: a.loanNoCup, loanNoAgainst: a.loanNoAgainst, sellOn: a.sellOn, addOn: a.addOn, swap: a.swap, terms: a.terms, change: a.change });
     case 'preContract': return startPreContract(a.pid);
-    case 'shortlist':
+    case 'shortlist': {
+      const was = g.shortlist.includes(a.pid);
       g.shortlist = g.shortlist.filter((x) => x !== a.pid);
       if (a.on) g.shortlist.push(a.pid);
+      // "Add Player To Shortlist" → Yes (0x8f48b0): efter 0x7f75f0 mediets rygte 0x754740 med udbudsprisen (cmShortlistAddRumour)
+      const p = g.players[a.pid];
+      if (a.on && !was && p) cmRumourHumanShortlist(g, p, g.userClub, () => cmShortlistAddRumour(g, p, g.userClub));
       return 'ok';
+    }
     case 'scout': return startScoutAssignment(a.staffId, a.assignment) ?? 'ok';
     case 'scoutStatus': {
       const g = gs(), p = g.players[a.pid];
