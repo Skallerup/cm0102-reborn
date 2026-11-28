@@ -8,7 +8,7 @@ import { cmSearchInterested } from '../src/game/cmSearchInterest';
 import { cmMoveInterest, cmTalkDemand } from '../src/game/cmContractGame';
 import { cmBoardWageAllow } from '../src/game/cmBudget';
 import { cmGbp, GBP_2001 } from '../src/game/cmMoney';
-import { makeBid, playerInterest, processOffers, respondToOffer } from '../src/game/transfers';
+import { humanRenewDemand, makeBid, playerInterest, processOffers, respondToOffer } from '../src/game/transfers';
 import { cmMarketOn } from '../src/game/cmPlayerData';
 import { SL_ON } from '../src/game/cmShortlistGame';
 import { newTerms, stepUp, valueCtx } from '../src/game/cmTransferBid';
@@ -96,5 +96,21 @@ describe('2026/27 i ægte tilstand: originalens vilje og kontrakter', () => {
     expect(bid.status).toBe('rejected');
     expect(own.squadStatus).toBe('key');
     expect(g.pursuits?.some((x) => x.player === own.id) ?? false).toBe(false);
+  });
+
+  it('(fællesskab #35) Bruno Fernandes: startløn = databasens £35.000 og fornyelseskravet efter 32-årsdagen er ikke loftet 250.000', () => {
+    // Før 91fb2f68 beholdt han spillets moderne løn (£89.400 i originalens £), så 0x860f10 (alder > 31 og krav > 75.000 → 250.000) gav
+    // £250.000 · 1/cmGbp ≈ €1,44M ("He wants £1,200,000 p/w for 3 years").
+    const p = find('Bruno', 'Fernandes');
+    const utd = clubId('Manchester United');
+    expect(p.club).toBe(utd);
+    expect(Math.round(p.contract!.wage * cmGbp(g, utd))).toBe(35000);
+    const d0 = g.date;
+    try {
+      g.date = '2026-09-20';
+      const t = cmTalkDemand(g, p, utd, p.squadStatus)!;
+      expect(t.raw.wage).toBeLessThan(75000);
+      expect(humanRenewDemand(p, g.clubs[utd]).wage).toBeLessThan(400_000);
+    } finally { g.date = d0; }
   });
 });
