@@ -38,7 +38,7 @@ for (const k of ['w8', 'w16', 'w32']) {
     return o.call(this, a, v);
   };
 }
-createGame(w, { managerName: 'T', managerNation: eng, clubId: w.clubs.find((c) => c[1] === 'Arsenal')![0], activeNations: [eng], lang: 'en', masking: true, seed: 1, mode: 'authentic' });
+createGame(w, { managerName: 'T', managerNation: eng, clubId: w.clubs.find((c) => c[1] === (process.env.CLUB ?? 'Arsenal'))![0], activeNations: [eng], lang: 'en', masking: true, seed: 1, mode: 'authentic' });
 const g = gs();
 for (let d = 0; d < days; d++) { const r = continueGame(); if (r?.match) quickPlayUserMatch(); }
 console.log(`${g.date}: ${STALECHECK.days} dage, ${reads} læsninger, udskudte ${SLMEM_STATS.stale} (skrevet igen ${SLMEM_STATS.deferredWritten}), afvigende læsninger ${hits}`, first);

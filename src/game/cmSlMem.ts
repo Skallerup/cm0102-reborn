@@ -227,12 +227,15 @@ const recAdr = (id: number) => PREC0 + 0x50 * (id % 0x200000);
 const natA = (n: number | undefined, nNat: number) => (n === undefined || n < 0 || n >= nNat ? 0 : NAT0 + 0x200 * n);
 
 /** fingeraftrykket for én post (alt, writeRec/writeWant læser, undtagen præferenceposten): tallene i `o` fra `at` (giver den nye længde),
- *  datoerne (strenge) i `ss` fra `si` */
+ *  datoerne (strenge, 6 pr. post) i `ss` fra `si` */
 function fpInto(o: Float64Array, at: number, ss: (string | undefined)[], si: number, e: Ent, date: string, dy: number, dmd: number): number {
   const p = e.p, ct = p.contract, rp = p.cmRepMem ?? p.cmRep, cc = p.cmContract, A = p.attrs;
   ss[si] = p.dob; ss[si + 1] = p.cmJoined; ss[si + 2] = p.joined; ss[si + 3] = ct?.expires;
   o[at++] = e.id; o[at++] = e.cid; o[at++] = e.hasK ? 1 : 0;
-  ss[si + 4] = e.home !== undefined ? p.loan?.until : undefined; o[at++] = e.home ?? -1; o[at++] = e.home !== undefined ? p.loan?.share ?? 0 : 0;
+  ss[si + 4] = e.home !== undefined ? p.loan?.until : undefined;
+  // staff +0x3e for de klubløse (staffJoined: Player.cmFreeSince – cmRetire.ts sætter den først, når han er blevet klubløs, uden at andet i posten skifter)
+  ss[si + 5] = p.club ? undefined : p.cmFreeSince;
+  o[at++] = e.home ?? -1; o[at++] = e.home !== undefined ? p.loan?.share ?? 0 : 0;
   o[at++] = ageFast(p.dob, dy, dmd, date); o[at++] = num(p.nation); o[at++] = num(p.caps);
   o[at++] = num(A[A_AMB]); o[at++] = num(A[A_DET]); o[at++] = num(A[A_LOY]); o[at++] = num(A[A_PRE]); o[at++] = num(A[A_PRO]);
   o[at++] = p.ca; o[at++] = p.pa;
@@ -442,7 +445,7 @@ export function buildSlWantMem(g: GameState, clubs: Iterable<number>, opts: { ca
     }
     else {
       if (FP.length < 80 * es.length) FP = new Float64Array(160 * es.length);
-      for (const e of es) { n = fpInto(FP, n, strs, ns, e, date, dYear, dMd); ns += 5; }
+      for (const e of es) { n = fpInto(FP, n, strs, ns, e, date, dYear, dMd); ns += 6; }
       sameCore = sameNum(old, FP, n) && sameStr(B.fs.get(id), strs, ns);
     }
     if (sameCore && same(oldP, scr2, n2)) continue;
