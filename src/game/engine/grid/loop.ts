@@ -141,7 +141,7 @@ export interface Match {
   counterFlag: [boolean, boolean];        // match+6+side
   teamFlags: [number, number];            // +0x9766 per side
   aiMode: [number, number];               // +0x1ab+side (5 = slow down when well ahead – rettelse 3, PROMPT_FOR_CM_REBORN.md)
-  touchCount: [number, number];           // +0x8d46+side (raised by last touch, gættet)
+  touchCount: [number, number];           // +0x8d46+side: signed BYTES (inc byte 0x6cd90c/0x6f292d/0x7100e9, add 5/0xa) – løber rundt ved 127
   loftCountdown: number;                  // +0x1c5 boldens flyvetid i spillerture (sub_6fad40 §6.4)
   passTo?: Player | null;                 // +0x477e spilleren, bolden er på vej til
   landX?: number; landY?: number;         // +0x1c6/+0x1c7 landingsfeltet
@@ -994,7 +994,7 @@ export function passWrapper(m: Match, p: Player, type: number, receiver: Player 
   }
   if (m.state === 0 && (typeof setReceiver === 'boolean' ? setReceiver : setReceiver.v)) {   // arg3 – sub_6fad40 kan sætte den (§6.2)
     m.receiver = receiver; m.lastTouch = p.side;                   // 0x6fa34e (+ touchCount via 0x6fa367)
-    m.touchCount[p.side]++;
+    m.touchCount[p.side] = ((m.touchCount[p.side] + 1) << 24) >> 24;
     const o = p.side === 0 ? 1 : 0; if (m.touchCount[o] > 0) m.touchCount[o] -= 10;
     if (receiver && receiver.busy === 0 && receiver.roll.anticipation * receiver.roll.offTheBall > rand(80))
       playerTurn(m, receiver, rand, h);                           // 0x6fa3cf

@@ -1603,7 +1603,7 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
     if (p.side === 1 ? p.y >= 6 : p.y < 6) m.ballEvent = 0;                                  // 0x6f086c: taget på egen halvdel
     m.ballX = p.x; m.ballY = p.y; m.poss = p.side; m.carrier = p; m.ballDir = p.facing; m.ballSpeed = 0;
     if (m.lastTouch !== p.side) m.x4782 = 0;                                                  // 0x6f0904–0x6f090e: før +0x8eab sættes
-    m.lastTouch = p.side; m.touchCount[p.side]++; if (m.touchCount[other(p.side)] > 0) m.touchCount[other(p.side)] -= 10;
+    m.lastTouch = p.side; m.touchCount[p.side] = ((m.touchCount[p.side] + 1) << 24) >> 24; if (m.touchCount[other(p.side)] > 0) m.touchCount[other(p.side)] -= 10;
     p.w29 = 0; p.momentum = 0;
   };
   const restart = (state: number, side: Side, x: number, y: number) => {
@@ -3048,7 +3048,7 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
     if (p !== m.carrier) return;
     if (waste) {                                                                               // 0x70ecee: tidsspild ved hjørneflaget (arg = 1, 0x711a42)
       for (const q of gp) if (q.side !== p.side) scaleAg(q, 2.25);                             // sub_6bb950(modstanderne, 2,25) → sub_716450
-      m.touchCount[p.side] += 10;
+      m.touchCount[p.side] = ((m.touchCount[p.side] + 10) << 24) >> 24;   // add byte [+0x8d46+side], 0xa (0x70ed1c) – en byte
     }
     const r = randS(rand, 50 * m.ballH);
     const vc = randS(rand, p.momentum - tired + p.skill[0x10] - r);
@@ -3060,7 +3060,7 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
         p.agitation = Math.min(Math.max(Math.fround(p.agitation * Math.fround(1.05)), 2 * (25 - p.temperament)), 100);
         comment(0x211d, null, other(p.side), null, -1, 0);                                    // 0x7100ce BOO_SPECIFIC_PLAYER
       }
-      m.lastTouch = p.side; m.touchCount[p.side]++; if (m.touchCount[other(p.side)] > 0) m.touchCount[other(p.side)] -= 10;
+      m.lastTouch = p.side; m.touchCount[p.side] = ((m.touchCount[p.side] + 1) << 24) >> 24; if (m.touchCount[other(p.side)] > 0) m.touchCount[other(p.side)] -= 10;
       p.momentum = Math.max(-200, Math.min(200, p.momentum + vc - vd));
       if (d) d.busy += c.delayChallenger;
       if (m.ballH !== -1 && p.action !== 0x10) {
@@ -3259,7 +3259,7 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
         p.agitation = Math.min(Math.max(Math.fround(p.agitation * Math.fround(1.05)), 2 * (25 - p.temperament)), 100);
         comment(0x211d, null, other(p.side), null, -1, 0);                                    // 0x6f2912 BOO_SPECIFIC_PLAYER (p1 −1, modstanderne)
       }
-      m.lastTouch = p.side; m.touchCount[p.side]++; if (m.touchCount[other(p.side)] > 0) m.touchCount[other(p.side)] -= 10; m.touchCount[p.side] += 5;
+      m.lastTouch = p.side; m.touchCount[p.side] = ((m.touchCount[p.side] + 1) << 24) >> 24; if (m.touchCount[other(p.side)] > 0) m.touchCount[other(p.side)] -= 10; m.touchCount[p.side] = ((m.touchCount[p.side] + 5) << 24) >> 24;
       // 0x6f29a9–0x6f29c0: fld 0,0; fcomp st(1); je → værdien er min(x, 0) – momentum kan kun FALDE her (før max(0, …), sic)
       p.momentum = Math.max(-200, Math.min(200, p.momentum + Math.trunc(Math.min(0, vc - Math.max(c.value + 50, 250) + p.f.technique * p.f.dribbling))));
       if (!gp.some((o) => o.active && o.side !== p.side && o.x === p.x && o.y === p.y)) p.momentum = Math.min(200, p.momentum + 50);

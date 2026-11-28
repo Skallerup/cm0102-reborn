@@ -240,7 +240,7 @@ export interface PassCtx {
 export function makePass(c: PassCtx) {
   const m = c.m, rand = c.rand;
   const dbg = (k: string) => c.dbg?.(k);
-  const touch = (side: Side) => { m.lastTouch = side; m.touchCount[side]++; const o = other(side); if (m.touchCount[o] > 0) m.touchCount[o] -= 10; };
+  const touch = (side: Side) => { m.lastTouch = side; m.touchCount[side] = ((m.touchCount[side] + 1) << 24) >> 24; const o = other(side); if (m.touchCount[o] > 0) m.touchCount[o] -= 10; };
   // feltets liste for siden (engine+0x215e, indsættelsesorden – cells.ts)
   const playersIn = (side: Side, x: number, y: number) => cellList(m, x, y, side).slice();
 
