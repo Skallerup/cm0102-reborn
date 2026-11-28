@@ -2,6 +2,8 @@
 
 Flyttet fra CLAUDE.md 17/11-2026 (så CLAUDE.md er kort i hver session). Nyeste først. Tilføj en linje øverst ved hver udgivelse.
 
+- 2026-11-28 – Skudt live (v0.40.0): K3 159 -> 144
+- 2026-11-28 – Skudt live (v0.40.0): CI grøn igen (dcd78faa): forkørslens kampe gemte assistentens elleve i managerens taktik (regression fra 951167f9) – sim.ts prerunPlay; CI-tidsgrænser × CI_TIMEOUT_FACTOR (vite.config ciTimeouts), 6 shards; e2e: T()-faktor i CI, England fravælges i standardkørslen, gates på originalens logik, p2-init i multiplayer
 - 2026-11-28 – Skudt live (v0.40.0): Ønskelisterne ved lukket computerbud samme øjeblik (0x8bf680/0x8bfa30/0x8bfcb0/0x8c44e0/0x8c0080/0x8c28c0 → 0x843e10), K5 231->230, fp 2001 2a4e02d8857614fd
 - 2026-11-28 – Skudt live (v0.40.0): 2026-11-28 – Nyt spil hurtigere (72ebe7e8): SparseMem én-sides cache + s32 direkte, portionernes nye varige hukommelse uden fingeraftryk (CM_SL_NOFP), byNation via playerListOf, allPersons sorterer kun hvis nødvendigt. Node Maximum (tråd-CPU, 12 portioner, 2 runder): fitness 6,67 → 6,18 s, shortlists 29,0 → 28,7 s, Normal inden for støj. Bit for bit: ng sha Normal/Maximum/2026, fp2001 bfa4c22479be1768, fp2026 Wrexham 96aca1559ce513c2.
 - 2026-11-28 – Skudt live (v0.40.0): 2026-11-28 – K7-måling (8cf8e49e): k7-seasons nøgler oraklets handler på staff-id – id genbruges af regens, så senere billeder talte samme post igen. Oraklet fri 167/289/280 -> 96/177/262, klubløs skriver under 114/229/178 -> 95/190/177, forkontrakt 175/143/164 -> 139/128/161. K7g nr. 2 var en målefejl (vores 83/194/322: -14/+10/+23 %). Rest: udløber -> anden klub S2 +20 % (unge under 21 forlænges for sjældent; oraklet har 76 unge med udløb 24/3-03, vi 0). EXP/PROBE_EXP-udtræk.

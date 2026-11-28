@@ -13,6 +13,8 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '2026-11-28',
     title: { da: 'Mere af det originale CM 01/02', en: 'More of the original CM 01/02' },
     items: [
+      { da: "Tekster som originalen: bud-svar, ny kontrakt, spiller tilbage fra udeblivelse, fratræden og filtertitler", en: "Texts as in the original: bid replies, new contract, player returns from AWOL, resignation and filter titles" },
+      { da: "Rettet: i et nyt spil, hvor klubben spiller venskabskampe før startdatoen (fx en dansk klub med England som første land), var holdet allerede udtaget fra start – nu er udtagelsen tom som i originalen.", en: "Fixed: in a new game where your club plays friendlies before the start date (e.g. a Danish club with England as the first nation), the team was already picked at the start – the selection is now empty as in the original." },
       { da: "Computerklubberne finder et nyt mål til en plads på ønskelisten samme dag, som et bud bliver afvist eller trukket (som originalen) – før først dagen efter.", en: "Computer clubs now find a new shortlist target the same day a bid is rejected or withdrawn (as in the original) – previously only the next day." },
       { da: "Nyt spil: lidt hurtigere forkørsel og ønskelister (samme spil bit for bit)", en: "New game: slightly faster pre-run and shortlists (same game bit for bit)" },
       { da: "Målingen af kontraktudløb mod originalen talte samme frie transfer flere gange; rettet (ingen ændring i spillet).", en: "The contract-expiry comparison against the original counted the same free transfer several times; fixed (no change in the game)." },
