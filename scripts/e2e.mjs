@@ -483,7 +483,7 @@ async function run(look) {
     // lønnen og Signing On Fee er rullelister som spillernes (0x4e2280 id 7/8 og 25): vælg det første beløb i lønlisten
     if ((await page.locator('.cx-staff-neg .cx-neg-val .cx-drop-btn').count()) < 2) throw new Error('Offer Contract mangler rullelisterne');
     await page.locator('.cx-staff-neg .cx-neg-val .cx-drop-btn').first().click();
-    await page.locator('.cx-drop-pop').last().locator('[role=menuitem]').first().click();
+    await page.locator('.cx-drop-pop').last().locator('[role=menuitemcheckbox]').first().click();
     await page.locator('.cx-staff-neg .cx-dlg-foot button.primary').click();
     if (!(await page.locator('.cx-staff-neg').innerText()).includes('Offer contract to')) throw new Error('"Offer contract to … ?" mangler');
     await page.locator('.cx-staff-neg .cx-dlg-foot button.primary').click();
