@@ -87,8 +87,7 @@ regler, arkitektur og faldgruber.
   draft, admin, fællesskab, ConfirmHost) hentes lazy ved Spil/url-parametre/genoptag. Moduler, forsiden bruger (theme, online/rank,
   account, notify, errors, i18n), må ikke importere motoren (game/sim, competitions …) eller `changelogData` – brug `src/version.ts`
   og dynamiske imports. Tjek med `npx vite build --sourcemap` + sourcemap-analyse, at hovedchunken ikke vokser.
-- i18n: 10 sprog (sv/nb fra 2026-11-07). Kun `en` ligger i hovedfilen – `da` og resten hentes ved behov (ensureLang før første tegning). Nye tekster skal i både `en.ts` og `da.ts`
-  (øvrige sprog falder tilbage til engelsk).
+- i18n: 10 sprog (sv/nb fra 2026-11-07). Kun `en` ligger i hovedfilen – `da` og resten hentes ved behov (ensureLang før første tegning). **Nye tekster oversættes ALTID til alle 10 sprog** (ejerens regel 28/11; `tests/i18nAll.test.ts` kræver det) – engelsk = originalens exe-streng, hvor den findes; ingen nyhed/skærm må vise en tom tekst eller en rå nøgle.
 - SEO-siderne (`scripts/build-seo.ts`, ≈17.500 statiske sider): CSS inline; ægte `lastmod` pr. side via indholdsfingeraftryk i
   `scripts/seo/lastmod.json` – filen opdateres af `npm run build` lokalt og SKAL med i samme commit; `/about/`; enhedsguider på
   9 sprog (`scripts/seo/i18nDevices.ts`, hreflang til `/cm-01-02-windows-11/`); skærmbilleder fra `public/landing/<sprog>/` på
