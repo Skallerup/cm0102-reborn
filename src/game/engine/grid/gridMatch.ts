@@ -144,6 +144,10 @@ export interface GridMatchCtx {
   national?: [boolean, boolean];
   /** kampen er en ligakamp mellem to hold i samme række (aiMode: sameDivision/compLink) – standard true; derby = rivaler */
   league?: boolean;
+  /** 0x6df87d: hold +0x2f/+0x33 → klub +0x53 (landet) ens – aiMode sameDivision; mangler = league */
+  sameNation?: boolean;
+  /** 0x6df8a0: fixture +0x14 ≠ 0 (kampen har en turnering) – aiMode compLink; mangler = league */
+  compLink?: boolean;
   /** klubbens række i turneringens tabel (0x4a4850 på fixture-turneringens +8, samme række som 0x6df460's) – stimerne
    *  [+0x19, +0x2d, +0x41, +0x55] til kommentarens holdhistorier sub_6d4b70 (0x6d4c5f ebx); mangler = ingen række (0) */
   teamRuns?: (side: Side) => [number, number, number, number] | null;
@@ -1262,7 +1266,7 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
       const rep = (c: Side) => ctx.rep?.[c] ?? 5000;
       const pre = aiModeOf({ side: side as Side, inMatch: false, strength: [rep(0), rep(1)], rep: [rep(0), rep(1)], territory: [0, 0, 0], clock: 0, periodEnd: 495,
         crowd: [sideByte[0], sideByte[1]], goals: [0, 0], firstLeg: ctx.fixtureInfo?.firstLeg ?? null, fixtureFlags: ctx.fixtureInfo?.flags38 ?? 0, fixtureKind: ctx.fixtureInfo?.code30 ?? 0, onPitch: [11, 11],
-        sameDivision: ctx.league !== false, compLink: ctx.league !== false, league: null, mgrAttacking: ctx.managers?.[side]?.tac[0] ?? null, rivals: !!ctx.derby, prevMode: 2, prevR: -1000 });
+        sameDivision: ctx.sameNation ?? ctx.league !== false, compLink: ctx.compLink ?? ctx.league !== false, league: null, mgrAttacking: ctx.managers?.[side]?.tac[0] ?? null, rivals: !!ctx.derby, prevMode: 2, prevR: -1000 });
       // reservekampen (ctx.reserve – cmReserveMatches.ts): holdet er allerede reservesidens kandidater (sim.ts rsvCands)
       const cands = [...ps.values()].filter((p) => !p.injury && !(p.banned > 0) && (ctx.reserve || !p.reserves));
       // pick_team 0x6dbc50 (aiTeam.ts): flagenes og bænkpladsernes rand trækkes her – før MATCH_PLAYER::init (initMotivation) som i originalen
@@ -2071,7 +2075,7 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
       side: s, inMatch, strength: [strength(0), strength(1)], rep: [ctx.rep?.[0] ?? 5000, ctx.rep?.[1] ?? 5000], territory: [...territory] as [number, number, number],
       clock: m.clock, periodEnd: m.periodEnd, crowd: [sideByte[0], sideByte[1]], goals: [m.goals[0], m.goals[1]], firstLeg: ctx.fixtureInfo?.firstLeg ?? null,
       fixtureFlags: ctx.fixtureInfo?.flags38 ?? 0, fixtureKind: ctx.fixtureInfo?.code30 ?? 0, onPitch: [gp.filter((q) => q.side === 0 && q.active).length, gp.filter((q) => q.side === 1 && q.active).length],
-      sameDivision: ctx.league !== false, compLink: ctx.league !== false, league: ctx.leagueTable?.(s) ?? null, mgrAttacking: ctx.managers?.[s]?.tac[0] ?? null, rivals: !!ctx.derby, prevMode: m.aiMode[s], prevR: aiR[s],
+      sameDivision: ctx.sameNation ?? ctx.league !== false, compLink: ctx.compLink ?? ctx.league !== false, league: ctx.leagueTable?.(s) ?? null, mgrAttacking: ctx.managers?.[s]?.tac[0] ?? null, rivals: !!ctx.derby, prevMode: m.aiMode[s], prevR: aiR[s],
     };
     return ctx.aiModeInput ? ctx.aiModeInput(inp) : inp;
   };

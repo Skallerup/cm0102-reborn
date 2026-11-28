@@ -242,6 +242,11 @@ export function captainEnvOfPlayer(p: Player, pos: number, ctx: AiPickCtx, clubR
     s18: s8(ageOn(p.dob, date)), s59: s8(sh(p, 'loyalty')), s5b: s8(sh(p, 'professionalism')), days: ci.days };
 }
 
+/** klub +0x53: klubbens land (landsholdet: nat_club-postens land) */
+function nationOfSide(g: ReturnType<typeof gs>, c: number): number {
+  const n = natOfClub(c);
+  return n !== null ? n : g.clubs[c]?.nation ?? -1;
+}
 /** GridMatchCtx-delen med spillets inddata for kampen mellem to klubber (adapteren og grid-stats.ts) */
 /** `ai`: holdene, motoren styrer (ctx.ai). En menneskeklub, motoren styrer (ferien), er ikke "menneskets" for 0x6ec010 (0x600a50(klub, 0, 1, 0, 0)
  *  med ferietjekket 0x5fe040 – oraklets HU-linje: 0 for Arsenal på ferie) og har menneskets managerpost (aiTeam.ts engineManager) */
@@ -273,6 +278,9 @@ export function gameInputsCtx(home: number, away: number, o: { compId?: string; 
     // ligakampen: fixture-posten som standarden (egen liga); en pokalkamp ligger uden for klubbernes liga (fixture+0x14 ≠ klub+0x57) –
     // europæisk turnering (club+0x1db) og +0x30/+0x38 er ikke afbildet (*afvigelse*: 0)
     league: fx.fx3a !== 1 && fx.fx3a !== 9,                                                    // som låsetrinet: kun venskabskampe tæller ikke klubben (0x48f150)
+    // 0x6df87d–0x6df8a8 (0x6df460, AI-tilstanden): hold +0x2f/+0x33 → klub +0x53 (landet) ens – ellers R · 0,9; hold+0x37 → fixture +0x14 ≠ 0
+    // (turneringen findes – også venskabskampens Friendly 72; baggrundskampen −2 har ingen) fordobler R. Europas kampe er mellem lande.
+    ...(g ? { sameNation: nationOfSide(g, home) === nationOfSide(g, away), compLink: !!fx.comp } : {}),
     ...(fx.fx3a !== 2 ? { fixtureInfo: { hasComp: !!fx.comp, ownLeague: [false, false] as [boolean, boolean], ownContinental: [false, false] as [boolean, boolean],
       code30: codes?.w30 ?? 0, firstLeg: codes?.firstLeg ?? null, flags38: codes?.flags38 ?? 0 } } : {}),
     // (runde 9) tilskuertallet sub_85cba0 (crowd.ts) med kampens tilfældige tal ved kampstarten, og 0x6df460's ligadel af spillets tabel
