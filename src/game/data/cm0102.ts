@@ -43,7 +43,11 @@ export interface CMRatings { ca: number; pa: number; attrs: number[]; pos: numbe
 
 /** (kun den originale database) 0x524d70's tal til reserveposterne 0x52638a: antallet af beholdte personer uden valgte lande (`k0`) og
  *  det ekstra antal pr. valgt nation (world-indeks → antal), og nationaliteterne blandt de `k0` (world-indeks → antal) */
-export interface CMTrim { k0: number; kn: Record<number, number>; nat0: Record<number, number>; /** reserveposternes andel (0x524dcf: 0,02 ved størrelse 1/2, ellers 0,01) – udeladt = 0,02 */ pct?: number }
+export interface CMTrim { k0: number; kn: Record<number, number>; nat0: Record<number, number>;
+  /** 0x526402: reservepostens nationalitet er en tilfældig beholdt persons (rand(antal − reserver − 16) – de sidste 16 tælles ikke med). nat0 = de
+   *  altid beholdtes nationaliteter, kx[land] = ændringen i nationaliteterne, når landet er valgt (de ekstra er ikke kun landets egne – fx udlændinge i
+   *  landets klubber). Udeladt (ældre world-filer): de ekstra regnes som landets egne */
+  kx?: Record<number, Record<number, number>>; /** reserveposternes andel (0x524dcf: 0,02 ved størrelse 1/2, ellers 0,01) – udeladt = 0,02 */ pct?: number }
 
 export interface CMWorld extends WorldData {
   kind: 'cm0102';
@@ -807,8 +811,14 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
   if (opts.cmMem && (dbSize2 || !mem)) {
     const none = trim2(new Set());
     const nat0: Record<number, number> = {};
-    for (let i = 0; i < tStaff.count; i++) if (none.keep[i]) { const x = nationIdx.get(S.i32(tStaff.offset + i * staffSize + 26)); if (x !== undefined) nat0[x] = (nat0[x] ?? 0) + 1; }
-    cmTrim = { k0: none.kept, kn: {}, nat0, pct: 0.02 };
+    // nationaliteterne blandt de beholdte, reserveposterne trækker fra (0x526402: alle undtagen de sidste 16)
+    const natsOf = (keep: Uint8Array) => {
+      const out: Record<number, number> = {};
+      for (let i = 0; i < tStaff.count - 16; i++) if (keep[i]) { const x = nationIdx.get(S.i32(tStaff.offset + i * staffSize + 26)); if (x !== undefined) out[x] = (out[x] ?? 0) + 1; }
+      return out;
+    };
+    Object.assign(nat0, natsOf(none.keep));
+    cmTrim = { k0: none.kept, kn: {}, nat0, pct: 0.02, kx: {} };
     // de spilbare nationer (med en liga i spillet): det ekstra antal, når netop den er valgt
     const playable = new Set(clubs.map((c) => rawClubs.find((r) => r.id === c[0])?.nation).filter((x): x is number => x !== undefined));
     for (const nid of playable) {
@@ -816,6 +826,9 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
       if (x === undefined) continue;
       const t = trim2(new Set([nid]));
       cmTrim.kn[x] = t.kept - none.kept;
+      const nt = natsOf(t.keep), d: Record<number, number> = {};
+      for (const k of new Set([...Object.keys(nt), ...Object.keys(nat0)].map(Number))) { const v = (nt[k] ?? 0) - (nat0[k] ?? 0); if (v) d[k] = v; }
+      cmTrim.kx![x] = d;
       // klubspillerne (CMRatings.tc): de nationer, hvis valg beholder ham (keep = 2)
       for (let i = 0; i < tStaff.count; i++) if (t.keep[i] === 2 && !none.keep[i]) { const cur = clubTc[i]; if (Array.isArray(cur)) cur.push(x); else clubTc[i] = [x]; }
     }
@@ -844,18 +857,21 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
   } else if (opts.cmMem && mem) {
     // Maximum: trimMemory for alle personer; reserveposterne 0x52638a er 1 % af de beholdte (0x524de1: 0,01 ved argumentet ≠ 1/2)
     const nat0: Record<number, number> = {};
-    cmTrim = { k0: 0, kn: {}, nat0, pct: 0.01 };
+    const kx: Record<number, Record<number, number>> = {};
+    cmTrim = { k0: 0, kn: {}, nat0, pct: 0.01, kx };
     const playable = new Set(clubs.map((c) => nationIdx.get(rawClubs.find((r) => r.id === c[0])?.nation ?? -1)).filter((x): x is number => x !== undefined));
-    for (const x of playable) cmTrim.kn[x] = 0;
+    for (const x of playable) { cmTrim.kn[x] = 0; kx[x] = {}; }
     for (let i = 0; i < tStaff.count; i++) {
       const o = tStaff.offset + i * staffSize;
       if (o + staffSize > files['staff.dat'].byteLength) break;
       const m = mem(o);
       if (m === 0) continue;
+      // reserveposternes nationalitet (0x526402): de beholdtes, undtagen de sidste 16
+      const pn = i < tStaff.count - 16 ? nationIdx.get(S.i32(o + 26)) : undefined;
       if (m === 1) {
         cmTrim.k0++;
-        const x = nationIdx.get(S.i32(o + 26)); if (x !== undefined) nat0[x] = (nat0[x] ?? 0) + 1;
-      } else for (const x of m) if (cmTrim.kn[x] !== undefined) cmTrim.kn[x]++;
+        if (pn !== undefined) nat0[pn] = (nat0[pn] ?? 0) + 1;
+      } else for (const x of m) if (cmTrim.kn[x] !== undefined) { cmTrim.kn[x]++; if (pn !== undefined) kx[x][pn] = (kx[x][pn] ?? 0) + 1; }
       // klubløse spillere: kun de lande, der kan vælges (en liga i spillet) – uden et af dem kan han aldrig komme i hukommelsen
       if (S.i32(o + 57) === -1 && playerAt.has(S.i32(o + PLAYER_REF))) {
         const sel = m === 1 ? 1 : m.filter((x) => playable.has(x));

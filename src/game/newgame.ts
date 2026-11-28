@@ -1276,14 +1276,25 @@ function reserveRows(cm: CMWorld, T: CMTrim, active: number[], names: Record<num
   const K = T.k0 + sel.reduce((s, n) => s + T.kn[n], 0);
   const n = Math.trunc(K * (T.pct ?? 0.02));
   const nat0 = Object.entries(T.nat0).map(([k, v]) => [Number(k), v] as const);
+  // 0x526402: nationaliteten fra en tilfældig beholdt person (rand(antal − reserver − 16) – de sidste 16 ikke med; uden nationalitet → nyt træk):
+  // de altid beholdtes nationaliteter (nat0) plus de valgte landes ændring (kx – de ekstra er ikke kun landets egne)
+  let natW: (readonly [number, number])[] | undefined;
+  if (T.kx) {
+    const w: Record<number, number> = { ...T.nat0 };
+    for (const s of sel) for (const [k, v] of Object.entries(T.kx[s] ?? {})) w[Number(k)] = (w[Number(k)] ?? 0) + v;
+    natW = Object.entries(w).map(([k, v]) => [Number(k), Math.max(0, v)] as const).filter(([, v]) => v > 0);
+  }
+  const natTot = natW?.reduce((s, [, v]) => s + v, 0) ?? 0;
   const rr = new Rng(hash(seed, 52638) || 1);
   const rows: WorldData['players'] = [];
   const nAttr = Object.values(cm.ratings)[0]?.attrs.length ?? 0;
   for (let i = 0; i < n; i++) {
-    // nationaliteten fra en tilfældig beholdt person (0x526402): de ekstra for et valgt land regnes som landets egne (*estimeret*)
-    let x = rr.int(0, Math.max(0, K - 1)), nation = -1;
-    for (const s of sel) { if (x < T.kn[s]) { nation = s; break; } x -= T.kn[s]; }
-    if (nation < 0) for (const [s, v] of nat0) { if (x < v) { nation = s; break; } x -= v; }
+    let x = rr.int(0, Math.max(0, (natW ? natTot : K) - 1)), nation = -1;
+    if (natW) { for (const [s, v] of natW) { if (x < v) { nation = s; break; } x -= v; } } else {
+      // ældre world-filer uden kx: de ekstra for et valgt land regnes som landets egne
+      for (const s of sel) { if (x < T.kn[s]) { nation = s; break; } x -= T.kn[s]; }
+      if (nation < 0) for (const [s, v] of nat0) { if (x < v) { nation = s; break; } x -= v; }
+    }
     if (nation < 0) nation = sel[0] ?? active[0] ?? 0;
     const id = 8_900_000 + i;
     const [first, last] = randomName(names, nation, rr);
