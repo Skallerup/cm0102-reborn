@@ -458,6 +458,7 @@ export function makeBid(pid: number, fee: number, loan = false, extra?: { sellOn
   if (g.offers.some((o) => o.player === pid && o.buyer === buyer.id && (['pending', 'negotiating', 'countered'].includes(o.status) || (o.status === 'accepted' && !!o.cmFut)))) return 'transfer.alreadyBidding';
   // add_transfer_offer 0x8be300 (0x8be979–0x8be9ad): menneskets køber får spilleren på sin shortliste (SCOUT_MANAGER::add_to_shortlist 0x7f75f0)
   if (cmMarketOn(g) && p.club && !g.shortlist.includes(pid)) g.shortlist.push(pid);
+  if (!loan) (g.lastBid ??= {})[pid] = extra?.terms ? { ...extra.terms, swap: [...extra.terms.swap] } : { fee, months: 0, sellOn: extra?.sellOn ?? 0, lgFee: 0, lgApps: 10, intFee: 0, intApps: 10, pub: 0, swap: [...(extra?.swap ?? [])] };
   const humanSeller = isHumanClub(p.club);
   const o: TransferOffer = {
     id: g.nextId.offer++, player: pid, buyer: buyer.id, seller: p.club, fee: p.club ? fee : 0, loan,

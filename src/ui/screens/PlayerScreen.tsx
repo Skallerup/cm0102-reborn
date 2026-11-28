@@ -321,7 +321,7 @@ export function BidModal({ pid, onClose, onDone, offerId: initialOffer, loan: lo
   const p = g.players[pid];
   const budget = g.clubs[g.userClub].transferBudget;
   const known = knownEnquiry(pid);
-  const [fee, setFee] = useState(Math.min(budget, known?.fee ?? Math.round(p.value / 50_000) * 50_000));
+  const [fee, setFee] = useState(g.lastBid?.[pid] && !loanInit ? g.lastBid[pid].fee : Math.min(budget, known?.fee ?? Math.round(p.value / 50_000) * 50_000));
   const [loan, setLoan] = useState(!!loanInit);
   const [sellOn, setSellOn] = useState(0);
   const [addOn, setAddOn] = useState(0);

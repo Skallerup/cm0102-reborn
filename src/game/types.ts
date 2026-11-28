@@ -1450,6 +1450,8 @@ export interface GameState {
   scoutFinds?: Record<number, string>;
   shortlist: number[];
   offers: TransferOffer[];
+  /** menneskets sidste bud pr. spiller (vilkår) – budskærmen åbner med dem igen, også efter afslag */
+  lastBid?: Record<number, import('./cmTransferBid').BidTerms>;
   tactic: Tactic | null; // brugerens taktik
   /** startopstillingen fra brugerens seneste kamp (klassisk Last Match) */
   lastMatchTactic?: Tactic;

@@ -123,7 +123,7 @@ export function OrigBidModal({ pid, loan, change, onClose, onSent }: { pid: numb
   const known = knownEnquiry(pid);
   const pend = change ? myPendingBid(pid) : undefined;
   const counter = g.offers.slice().reverse().find((o) => o.player === pid && o.buyer === g.userClub && o.status === 'countered' && o.cmCounter);
-  const [terms, setTerms] = useState<BidTerms>(() => pend ? termsOf(pend) : counter?.cmCounter ? { ...counter.cmCounter, swap: [...counter.cmCounter.swap] } : newTerms(g, p, g.userClub, Math.min(budget, known?.fee ?? p.value)));
+  const [terms, setTerms] = useState<BidTerms>(() => pend ? termsOf(pend) : counter?.cmCounter ? { ...counter.cmCounter, swap: [...counter.cmCounter.swap] } : g.lastBid?.[pid] ? { ...g.lastBid[pid], swap: g.lastBid[pid].swap.filter((id) => g.players[id]?.club === g.userClub) } : newTerms(g, p, g.userClub, Math.min(budget, known?.fee ?? p.value)));
   const [exch, setExch] = useState(false);
   const [ask, setAsk] = useState(false);
   const [err, setErr] = useState('');

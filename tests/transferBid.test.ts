@@ -176,6 +176,17 @@ describe('i spillet (3.9.60, ægte tilstand)', { timeout: 120_000 }, () => {
     expect(p.cmContract?.b44).toBe(100);
     expect(g.news.slice(before).some((n) => n.key.startsWith('reject.r.'))).toBe(false);
   });
+  it('afvist bud: næste bud på samme spiller åbner med det sidste bud (fee + vilkår), ikke værdien', () => {
+    const g = gs();
+    const seller = Object.values(g.clubs).find((c) => c.id !== mu && c.league === g.clubs[mu].league)!;
+    const p = squad(seller.id).sort((a, b) => b.ca - a.ca)[7];
+    const t = { ...newTerms(g, p, mu, gbp(777_000)), months: 12, sellOn: 10 };
+    const r = act<TransferOffer | string>({ t: 'bid', pid: p.id, fee: t.fee, loan: false, swap: [], terms: t });
+    expect(typeof r).not.toBe('string');
+    (r as TransferOffer).status = 'rejected';
+    expect(g.lastBid?.[p.id]).toMatchObject({ fee: t.fee, months: 12, sellOn: 10 });
+    expect(JSON.parse(JSON.stringify(g)).lastBid[p.id].fee).toBe(t.fee);
+  });
   it('køb med rater og klausuler: første rate nu, resten hver måned; beløbet efter N kampe betales ved N', () => {
     const g = gs();
     const seller = Object.values(g.clubs).find((c) => c.id !== mu && c.league === g.clubs[mu].league)!;
