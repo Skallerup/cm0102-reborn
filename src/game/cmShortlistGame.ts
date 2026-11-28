@@ -2060,8 +2060,9 @@ function onList(S: SlMem, id: number, cid: number): boolean {
 /** Et afsluttet bud uden handel (afvist, trukket, udløbet – i spillet: ikke længere åbent i g.offers, og målet er ikke kommet til klubben):
  *  TRANSFER_MANAGER::reject_transfer_offer 0x8bf680's del for køberens ønskeliste – 0x84aeb0(køber, staff) rydder budmærket +0x17 på
  *  pladserne med ham, og har køberen en plads med ham (0x849ce0(køber, staff, 0, 0)), fjernes han som mål 0x843e10(staff, køber, 1, rolle ≠ 0xb)
- *  (som genudfylder pladsen). Uden det stod pladserne med et afvist bud låst resten af sæsonen (14/11). Kørt dagen efter (*estimeret*: i
- *  originalen sker det, når svaret kommer). Computer → computer-buddene står i g.offers, til svaret er kommet (transfers.ts cmAiAiDue). */
+ *  (som genudfylder pladsen). Uden det stod pladserne med et afvist bud låst resten af sæsonen (14/11). Computer → computer-buddene lukkes nu i
+ *  dagsbehandlingen i samme øjeblik som i originalen (cmSlBidClosed fra transfers.ts cmTmClose – før her næste morgen); her tages kun de bud,
+ *  der er lukket uden for den (menneskets svar mellem to dage) – næste morgen før klubløkken, så intet i ønskelisterne kører imellem. */
 export const SL_DROP = { n: 0 };
 function dropDeadBids(S: SlMem): void {
   if (ENV.CM_SL_DROP === '0') return;
@@ -2103,6 +2104,45 @@ function dropDeadBids(S: SlMem): void {
 
 /** dagens hukommelse, mens transfers.ts behandler de forfaldne bud (dueHook) – cmSlMoved bruger den i stedet for at bygge en ny */
 let DUE_S: SlMem | null = null;
+export const SL_CLOSED = { n: 0, refill: 0 };
+
+/** Et computer → computer-bud lukkes i TRANSFER_MANAGER's dagsbehandling (process_due_offer 0x8c63a0 – transfers.ts cmTmClose), i samme
+ *  øjeblik, som originalen gør det (før: dropDeadBids næste morgen). Alle afslagsveje rydder køberens budmærker: 0x84aeb0(køber, staff) og
+ *  0x84aeb0(spillerens kontraktklub, x) for byttespillerne (buddets liste +4). refill (afvist 0x8bf680 @0x8bf8aa, lejebud afvist 0x8bfa30
+ *  @0x8bfc61, trukket 0x8bfcb0 @0x8bfeea, faldet 0x8c44e0 @0x8c46e8, spilleren siger nej 0x8c0080 @0x8c039e): har køberen en plads med ham
+ *  (0x849ce0(køber, staff, buddets +0x11 ≠ 0xb, 0)), fjernes han som mål 0x843e10(staff, køber, 1, pladsens rolle ≠ 0xb), som genudfylder pladsen
+ *  (0x83f3a0); refill 2: handle_player_rejected_terms 0x8c28c0 @0x8c2b13 kalder 0x843e10(staff, køber, 1, +0x11 ≠ 0xb) uden 0x849ce0 (kun en
+ *  computerkøber – transfers.ts).
+ *  0x8bf680/0x8bfcb0's hale: sælgeren er en computerklub (0x600a50(kontraktklub, 0, 1, 0, 0) = 0) → byttespillerne med parret (x, køber) på
+ *  ønskelisten (0x842080) får 0x843e10(x, køber, 1, 0). Uden refill (kun mærket): collapse_offers_for_player 0x8c47d0, lejens 0x8c0660/0x8c2180.
+ *  Uden dagens hukommelse (bud lukket uden for dagsbehandlingen) tager dropDeadBids det næste morgen, før klubløkken. */
+export function cmSlBidClosed(g: GameState, o: { buyer: number; player: number; swap?: number[] }, refill: 0 | 1 | 2): void {
+  const S = DUE_S;
+  if (!S || !cmShortlistOn(g) || !g.cmPlan?.[o.buyer] || ENV.CM_SL_DROP === '0') return;
+  const { m } = S;
+  const id = S.memOf.get(o.player), club = S.clubAdr(o.buyer);
+  if (id === undefined || !club) return;
+  const staffOf = (mid: number) => (m.u32(G.STAFF) + 0x6e * mid) >>> 0;
+  const staff = staffOf(id), p = g.players[o.player];
+  const kClub = p ? S.clubAdr(p.loan?.from ?? p.club) : 0;
+  refreshClub(S, o.buyer); writeSlots(S, o.buyer, entryOf(g, o.buyer), true);
+  S.M.setRand(cmRand(g.seed ?? 0, o.buyer, dayNum(g.date), 0x8bf680));
+  SL_CLOSED.n++;
+  shared(() => {
+    slCall(S.c, 0x84aeb0, S.slm, club, staff);
+    for (const x of o.swap ?? []) { const xm = S.memOf.get(x); if (kClub && xm !== undefined) slCall(S.c, 0x84aeb0, S.slm, kClub, staffOf(xm)); }
+    if (!refill) return;
+    // (buddets +0x11: køb og leje af en spiller = 0xb – addBid)
+    if (refill === 2) { slCall(S.c, 0x843e10, S.slm, staff, club, 1, 0); SL_CLOSED.refill++; return; }
+    const sl = slCall(S.c, 0x849ce0, S.slm, club, staff, 0, 0) >>> 0;
+    if (sl) { slCall(S.c, 0x843e10, S.slm, staff, club, 1, m.u8(sl) !== 0xb ? 1 : 0); SL_CLOSED.refill++; }
+    const seller = p ? p.loan?.from ?? p.club : 0;
+    if (o.swap?.length && kClub && seller && !isHumanClub(seller))
+      for (const x of o.swap) { const xm = S.memOf.get(x); if (xm !== undefined && (slCall(S.c, 0x842080, S.slm, staffOf(xm), club) & 0xff)) slCall(S.c, 0x843e10, S.slm, staffOf(xm), club, 1, 0); }
+  }, S);
+  readSlots(S, o.buyer);
+  readPairs(S);
+}
 export const SL_MOVED = { n: 0, slot: 0, holder: 0, own: 0, old: 0 };
 
 /** Ønskelisternes del af et klubskifte, før spilleren skifter (staff +0x39 er stadig den gamle klub):

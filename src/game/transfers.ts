@@ -31,7 +31,7 @@ import { cmLoanRefuses } from './cmLoan';
 import { cmBuildBid } from './cmAiBid';
 import { cmAiRulesBlock, cmAiRulesReason, cmCanSign, cmCompletionDate, cmWindowOpen } from './cmOfferCheck';
 import { cmRumourAdd } from './cmRumours';
-import { cmAskingPrice, cmExchangeCheck, cmHumanLoanCheck, type CmLoanCheck, cmInterestedClubs, cmLoanAnswerNow, cmLoanDelayNow, cmSlPlayerGone, cmShortlistOn, cmSlMoved, cmSlLoaned, setSlApply, setSlDue, type SlBid, type SlDueCtx, type SlEvent } from './cmShortlistGame';
+import { cmAskingPrice, cmExchangeCheck, cmHumanLoanCheck, type CmLoanCheck, cmInterestedClubs, cmLoanAnswerNow, cmLoanDelayNow, cmSlPlayerGone, cmShortlistOn, cmSlBidClosed, cmSlMoved, cmSlLoaned, setSlApply, setSlDue, type SlBid, type SlDueCtx, type SlEvent } from './cmShortlistGame';
 import { ADDON_APPS, bidClauseWorth, cleanClauses, clauseWorth, defaultRelease, settleSellOn } from './clauses';
 import { asOwner, forEachHuman, isHumanClub, isMultiplayer } from './humans';
 import { AGENT_RULES, agentOf } from './agents';
@@ -2283,15 +2283,18 @@ function cmLoanRejectsMove(o: TransferOffer, p: Player) {
  *  afvist 0x8bfa30 (2, 10), trukket 0x8bfcb0 (3, 10), spilleren vil ikke 0x8c0080/0x8c28c0 og de andre bud ved en aftale (0x8c3310 →
  *  collapse_offers_for_player 0x8c47d0) – tilstand 0xf med +0x2e = 3 (computerkøber), 10 dage; faldet collapse_offer 0x8c44e0 (0x10, 20);
  *  gennemført finalise_transfer 0x8c9390 (0x14, 10). Tabellen (writeOffers) giver 0x8cdc90/0x8cde70/0x8c5cf0 rivallisterne og +0x86e-flaget. */
-function cmTmClose(o: TransferOffer, st: number, days: number, status?: TransferOffer['status']): void {
+// sl (ønskelisterne, cmSlBidClosed – i samme øjeblik som originalen): 1 = mærket 0x84aeb0 + 0x849ce0 → 0x843e10(…, 1) (0x8bf680, 0x8bfa30,
+// 0x8bfcb0, 0x8c44e0, 0x8c0080's nej), 2 = 0x8c28c0 (0x843e10 direkte), 0 = kun mærket (0x8c47d0, lejens 0x8c0660/0x8c2180); 0x14 → cmSlMoved
+function cmTmClose(o: TransferOffer, st: number, days: number, status?: TransferOffer['status'], sl: 0 | 1 | 2 = 1): void {
   const g = gs();
   if (status) o.status = status;
+  if (st !== 0x14) cmSlBidClosed(g, o, sl);
   (g.cmTmKept ??= []).push({ id: o.id, buyer: o.buyer, player: o.player, seller: o.seller, fee: o.fee, ...(o.loan ? { loan: true as const } : {}), created: o.created,
     st, r: st === 0xf ? 3 : 0, until: addDays(g.date, days), ...(o.pub ? { pub: o.pub } : {}) });
 }
 /** confirm_offer_by_club 0x8c3310 → collapse_offers_for_player 0x8c47d0: de andre åbne bud på spilleren falder (0xf, 3, 10 dage) */
 function cmTmCollapseOthers(o: TransferOffer): void {
-  for (const x of gs().offers) if (x !== o && x.cmAi && x.player === o.player && cmOpen(x)) cmTmClose(x, 0xf, 10, 'collapsed');
+  for (const x of gs().offers) if (x !== o && x.cmAi && x.player === o.player && cmOpen(x)) cmTmClose(x, 0xf, 10, 'collapsed', 0);
 }
 /** TRANSFER_MANAGER::daily_update 0x8c5880 → process_due_offer 0x8c63a0 for computer → computer-buddene, hvis tid er kommet:
  *  tilstand 0 (pending): lejebud → 0x84af00 (0 = ja → lejen; ellers reject_loan_offer 0x8bfa30), køb → 0x8c8090 (aiRespond): accept → 0x8c0080
@@ -2360,7 +2363,7 @@ function cmAiAiDue(cx: SlDueCtx) {
     if (p && buyer && home !== o.seller && home !== buyer.id && !isHumanClub(home)) { o.seller = home; CM_AIAI.follow++; }
     if (!p || !buyer || home !== o.seller || (p.loan && o.loan) || p.contract?.futureClub || ((isHumanClub(home) || isHumanClub(p.club)) && !o.cm7) || (humanClub0(g, buyer.id) && !o.cmLoanH)) {
       // (han er skiftet: 0x8c47d0's 0xf; ellers trukket 0x8bfcb0)
-      if (p && home !== o.seller) cmTmClose(o, 0xf, 10, 'withdrawn'); else cmTmClose(o, 3, 10, 'withdrawn');
+      if (p && home !== o.seller) cmTmClose(o, 0xf, 10, 'withdrawn', 0); else cmTmClose(o, 3, 10, 'withdrawn');
       CM_AIAI.withdrawn++; closed = true; continue;
     }
     if (o.status === 'pending') {
@@ -2399,7 +2402,7 @@ function cmAiAiDue(cx: SlDueCtx) {
         // oraklet sæson 1 226 lejer af 330 lejebud (60 falder i 0x8c2180, 0x10), vi 278 af 294.
         CM_AIAI.loan++;
         if (cx.loanAnswer(p.id, buyer.id, o.seller) !== 0) { cmTmClose(o, 2, 10, 'rejected'); closed = true; continue; }
-        if (cmLoanRefuses(g, p, buyer.id)) { cmLoanRejectsMove(o, p); cmTmClose(o, 0xf, 10); closed = true; continue; }
+        if (cmLoanRefuses(g, p, buyer.id)) { cmLoanRejectsMove(o, p); cmTmClose(o, 0xf, 10, undefined, 0); closed = true; continue; }
         o.status = 'negotiating';
         o.cmK = LOAN_K;
         o.respondBy = addDays(g.date, Math.min(cx.rand(p.id, buyer.id)(5) + 1, Math.max(1, cx.delay(p.id, buyer.id, 0x4cd230))));
@@ -2451,7 +2454,7 @@ function cmAiAiDue(cx: SlDueCtx) {
       const cands = g.offers.filter((x) => (x.cmAi || x.cmLoanH) && x.player === p.id && x.status === 'negotiating' && x.cmK && !!g.clubs[x.buyer] && (!humanClub0(g, x.buyer) || x.cmLoanH));
       let best = 2.75, win: TransferOffer | null = null;
       for (const x of cands) { const t = cx.decide(p.id, x.buyer, x.cmK!); if (t > best) { best = t; win = x; } }
-      for (const x of cands) if (x !== win) { CM_AIAI.declined++; cmTmClose(x, 0xf, 10, 'collapsed'); if (x.cmLoanH) cmLoanHumanRejected(x, p); }
+      for (const x of cands) if (x !== win) { CM_AIAI.declined++; cmTmClose(x, 0xf, 10, 'collapsed', isHumanClub(x.buyer) ? 0 : 2); if (x.cmLoanH) cmLoanHumanRejected(x, p); }
       if (!win) { closed = true; continue; }
       o = win;
       buyer = g.clubs[o.buyer];
@@ -2462,7 +2465,7 @@ function cmAiAiDue(cx: SlDueCtx) {
     if (o.loan) {
       const home = g.clubs[o.seller];
       const why = squad(buyer.id).filter((x) => !x.virtual).length + loanedOut(g, buyer.id).length + 1 > 50 ? 4 : cmLoanRules(buyer, home, p).why;
-      if (why) { CM_AIAI.rules++; cmLoanCancelled(o, p, why); cmTmClose(o, 0x10, 20, 'collapsed'); closed = true; continue; }
+      if (why) { CM_AIAI.rules++; cmLoanCancelled(o, p, why); cmTmClose(o, 0x10, 20, 'collapsed', 0); closed = true; continue; }
       CM_AIAI.loanOk++;
       cmTmCollapseOthers(o);
       completeTransfer(o, p.contract?.wage ?? 0, 0);
