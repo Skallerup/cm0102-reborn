@@ -539,6 +539,11 @@ function writePairs(S: SlMem): void {
   const n = pairs.length, cap = Math.max(100, Math.ceil(n / 100) * 100 + 100);
   const A = 0x5d000000, B = 0x5d800000;
   m.w32(slm, A); m.w32(slm + 4, B); m.w32(slm + 8, cap); m.w32(slm + 0xc, cap); m.w32(slm + 0x10, n); m.w32(slm + 0x14, n);
+  // blokkenes størrelse foran tabellerne (som heapAlloc, cmGen/x86.ts): 0x8423f0 gør dem 100 større med realloc 0x945667 (0x842586/0x84261f),
+  // når de er fulde, og realloc kopierer kun de bytes, der står ved p − 4. Uden den kom tabellerne tomme tilbage, så alle parrene før det 101.
+  // forsvandt – ved spilstarten (cap 100) halvdelen (200 mål, 100 par); målet uden par blev ikke pladsens indehaver ved købet (0x842080 i
+  // 0x8c9720), og pladsen hang med klubbens egen spiller som mål (8/9: 19 af 79 mål, bl.a. Everton med £28m låst i to måneder)
+  m.w32(A - 4, 8 * cap); m.w32(B - 4, 8 * cap);
   const byP = [...pairs].sort((x, y) => x[0] - y[0] || x[1] - y[1]), byC = [...pairs].sort((x, y) => x[1] - y[1] || x[0] - y[0]);
   byP.forEach(([p, c], i) => { m.w32(A + 8 * i, p); m.w32(A + 8 * i + 4, c); });
   byC.forEach(([p, c], i) => { m.w32(B + 8 * i, p); m.w32(B + 8 * i + 4, c); });
