@@ -28,7 +28,7 @@ console.log(await page.evaluate(async (b64) => {
   const t0 = performance.now();
   const g = await sn.deserializeState(new Blob([bin]));
   const t1 = performance.now();
-  st.setGame(g); sv.upgradeLoaded();
+  st.setGame(g); sv.upgradeLoaded(); sv.ensureAllNumbers(); sv.repairOldMarket(); sv.repairStaleOffers(); sv.repairFakePlayers();   // som save.ts loadGame
   return `indlæs: parse ${(t1 - t0).toFixed(0)} ms + setGame ${(performance.now() - t1).toFixed(0)} ms`;
 }, b64));
 await page.waitForSelector('.cx-side', { timeout: 60000 });

@@ -49,6 +49,7 @@ import { registerAskingPrice, askingForget } from './cmAskingPrice';
 import { cmStaffBudget } from './cmBudget';
 import { registerPlayerWill } from './cmPlayerWill';
 import { ensureImpls } from './cmGen/impls';
+import { fast_8c5cf0 } from './cmGen/fast_8c5cf0';
 import { isHumanClub } from './humans';
 import { onGameSwitch } from './state';
 import { ageOn } from './dates';
@@ -1584,6 +1585,8 @@ function ensureCmp(): void {
   if (ENV.CM_SL_FAST !== '0') PC_HOOK[0x83fa25] = fastReject;
   // kun oversættelser med ret N (R.ret – de nyere); de ældre (runde 2) kaldes som før med egne registre
   for (const [a, f] of Object.entries(GEN)) if (!ADAPTED.has(+a) && ((f as { shared?: boolean }).shared ?? f.toString().includes('R.ret('))) registerImpl(+a, f, true);
+  // (hastighed, 28/11) get_offers_for_player 0x8c5cf0 med tilbudsløkken i TS (cmGen/fast_8c5cf0.ts – samme registre, flag og hukommelse)
+  if (ENV.CM_GEN_FAST !== '0') registerImpl(0x8c5cf0, fast_8c5cf0, true);
   // 0x4d0c60 håndporteret (cmValue.ts – bit for bit som den oversatte, scripts/cm-value-check.ts)
   if (ENV.CM_SL_GENVALUE !== '1') registerImpl(0x4d0c60, (c, _e, a) => playerValue_4d0c60(c, a[0] >>> 0, a[1] >>> 0, a[2], a[3], a[4]));
   // (hastighed, 14/11) de små hjælpefunktioner, 0x840d80 og 0x83f3a0 kalder, håndporteret (cmValue.ts, frasorteringen) – som delte (cdecl)

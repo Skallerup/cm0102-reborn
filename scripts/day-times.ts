@@ -3,7 +3,7 @@
 // + setGame/indekser, som ui/dayRunner.ts), heap og JSON-størrelse pr. felt i GameState (hvad vokser?).
 //   node --expose-gc --import tsx scripts/day-times.ts [world=public/data/world-original.json] [sæsoner=5] [klub=Manchester United] [frø=1]
 //   PROF=1: CPU-profil af oktober i hver sæson (top 25 funktioner, egen tid) · SAVES=<mappe>: gemmet ved hver sæsonstart (til browsermålingen)
-//   LOAD=<gem-fil> + UNTIL=<dato>: start fra et gemt spil (save.ts-format) og spil til datoen (før/efter-målinger på et sent spil)
+//   DAYLOG=1: ms for hver dag · LOAD=<gem-fil> + UNTIL=<dato>: start fra et gemt spil (save.ts-format) og spil til datoen (før/efter-målinger på et sent spil)
 import { readWorld } from './lib/world';
 import { writeFileSync, readFileSync, mkdirSync } from 'node:fs';
 import { serialize as v8s, deserialize as v8d } from 'node:v8';
@@ -12,7 +12,7 @@ import { gs, setGame, indexSnapshot, restoreIndexes, packCarry } from '../src/ga
 import { rng } from '../src/game/rng';
 import { continueGame, quickPlayUserMatch } from '../src/game/sim';
 import { serializeState, deserializeState } from '../src/game/snapshot';
-import { upgradeLoaded, ensureAllNumbers } from '../src/game/save';
+import { upgradeLoaded, ensureAllNumbers, repairOldMarket, repairStaleOffers, repairFakePlayers } from '../src/game/save';
 
 const [file = 'public/data/world-original.json', seasonsS = '5', clubName = 'Manchester United', seedS = '1'] = process.argv.slice(2);
 const seasons = Number(seasonsS), seed = Number(seedS);
@@ -23,6 +23,8 @@ if (SAVES) mkdirSync(SAVES, { recursive: true });
 const t0 = performance.now();
 if (process.env.LOAD) {
   setGame(await deserializeState(new Blob([readFileSync(process.env.LOAD)]))); upgradeLoaded(); ensureAllNumbers();
+  // som save.ts loadGame (gem fra skyen/appen: samme reparationer ved indlæsningen)
+  repairOldMarket(); repairStaleOffers(); repairFakePlayers();
 } else {
   const world = readWorld(file);
   const eng = world.nations.findIndex((x) => x.name === 'England');
@@ -152,6 +154,7 @@ while (end ? gs().date < end : gs().season < startSeason + seasons) {
   const b = bucket!;
   if (human) { b.mn++; b.mms += ms; } else { b.n++; b.ms += ms; }
   if (ms > b.max) { b.max = ms; b.maxD = d; }
+  if (process.env.DAYLOG) console.log(`  ${d} ${ms.toFixed(0).padStart(6)} ms${human ? ' (egen kamp)' : ''}`);
   if (gs().season !== lastSeason) { lastSeason = gs().season; season++; flush(); month = ''; if (season < seasons) await seasonReport(`S${season + 1}`); }
 }
 flush();
