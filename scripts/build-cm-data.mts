@@ -812,6 +812,8 @@ if (cmSide && !process.env.NO_MEM26) {
   const cm = wm.cmRaw?.clubMem ?? {};
   for (const row of [...w.clubs, ...(euroClubs?.clubs ?? [])]) { const v = cm[row[0] as number]; if (v !== undefined) c[row[0] as number] = v; }
   cmSide.mem26 = { p, c };
+  // reserveposterne 0x52638a: samme trim (antallet af beholdte personer pr. nation) – newgame.ts reserveRows
+  if (wm.cmTrim) cmSide.cmTrim = wm.cmTrim;
   console.error(`0x524d70/0x5267c0 (${process.env.CM_DBSIZE === '2' ? 'størrelse 2' : 'Maximum'}): spillere altid ${kept}, efter valg ${sel}, aldrig ${never}; klubber i trimmet ${Object.keys(c).length} af ${w.clubs.length + (euroClubs?.clubs.length ?? 0)}`);
 }
 writeFileSync(out, JSON.stringify(w));

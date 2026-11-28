@@ -26,7 +26,7 @@ import { refreshShortlists, windowLastDay, windowOpen } from './transfers';
 import { autoSelect, neutralPlayerInstructions, newTactic, FORMATIONS } from './tactics';
 import { cmLoadPreset } from './engine/grid/tacticTable';
 import type { Club, GameState, Lang, Player, Role, Staff, StaffRole } from './types';
-import { cmRandomDob, cmStaffDob, subPos, type CMWorld } from './data/cm0102';
+import { cmRandomDob, cmStaffDob, subPos, type CMTrim, type CMWorld } from './data/cm0102';
 import { setBoardExpectation } from './board';
 import { appointBody, cmBoardHumanAppoint, cmBoardInit, cmBoardOn, cmInitStaffRep } from './cmBoardGame';
 import { fairTicketPrice, transferBudgetFor } from './finance';
@@ -347,17 +347,21 @@ export function createGameBase(world: WorldData, o: NewGameOptions): NewGameCtx 
   const dbWage = new Map<number, number>(), dbWageGbp = new Map<number, number>();
   // (2026/27 i ægte tilstand: kun som originalens staff +0x4e og til pengefaktoren cmGbp – spillets lønninger forbliver de moderne)
   if ((g.econ || cmRawLogic) && F.wage !== undefined) for (const r of world.players) if ((r[F.wage] as number) > 0) { if (g.econ) dbWage.set(r[F.id] as number, Math.round((r[F.wage] as number) / GBP)); dbWageGbp.set(r[F.id] as number, r[F.wage] as number); }
-  const cmStartGame = !!cm && season < 2020 && mode === 'authentic';
+  // originalens spilstart (create_game: 0x524d70's trim og reserveposter, sub_535a80's manglende/klubløses CA, ankomstdatoerne, ingen opdigtede
+  // spillere i fulde trupper) – (28/11, "Altid som originalen") alle CM-databaser i ægte tilstand, før kun den originale (season < 2020)
+  const cmStartGame = !!cm && mode === 'authentic';
+  // reserveposternes trim: den originale databases world-fil, 2026/27's world-cm.json (cmRaw.cmTrim – build-cm-data.mts)
+  const cmTrim = cm?.cmTrim ?? (cmRawLogic ? cm?.cmRaw?.cmTrim : undefined);
   const initRng = new Rng(1);
   let initPool: ReturnType<typeof makePool> | undefined;
   // (den originale database i ægte tilstand) 0x524d70's reserveposter 0x52638a: trunc(1 % (Maximum; størrelse 2: 2 %) af de beholdte personer) klubløse, født 1982, med
   // nationaliteten fra en tilfældig beholdt person, CA 0, alle egenskaber 0 og PA −2 (1/100), −1 (1/50) eller 0 – sub_535a80 udfylder dem som de
   // andre (databasestørrelsen fra world-filen – Maximum; CMTrim). Navnene er spillets egne pr. land (originalen: 0x539c60's lister – *estimeret*)
   const extraRt: Record<number, CMWorld['ratings'][number]> = {};
-  const rows = cmStartGame && cm?.cmTrim ? [...world.players, ...reserveRows(cm, o.activeNations, names, seed, F, world.playerFields.length, extraRt)] : world.players;
+  const rows = cmStartGame && cmTrim ? [...world.players, ...reserveRows(cm!, cmTrim, o.activeNations, names, seed, F, world.playerFields.length, extraRt)] : world.players;
   const rtOf = (id: number) => cm?.ratings[id] ?? extraRt[id];
-  if (cmStartGame && cm?.cmTrim?.pct === 0.01) g.cmMaxMem = true;
-  if (cmStartGame && !o.preview) g.cmSaveVer = CM_SAVE_VER;
+  if (cmStartGame && cmTrim?.pct === 0.01) g.cmMaxMem = true;
+  if (cmStartGame && season < 2020 && !o.preview) g.cmSaveVer = CM_SAVE_VER;
   for (const r of rows) {
     const club = r[F.club] as number;
     if (club && !g.clubs[club]) continue;
@@ -437,8 +441,11 @@ export function createGameBase(world: WorldData, o: NewGameOptions): NewGameCtx 
         // (oraklet: ALLE 277 klubløse har staff +0x3e = 1/1-2001 – også dem uden dato i databasen; før fik 60 % ingen dato, så 0x7a8050's år uden
         // klub talte fra spilstarten og hukommelsens +0x3e var 0)
         if (cmStartGame && !club) p.cmJoined = `${date.slice(0, 4)}-01-01`;
-        else if (rt.j) p.cmJoined = cmStartGame ? (rt.j > addDays(date, -35) ? addDays(date, -35) : rt.j)
-          : season >= 2020 ? `${Number(rt.j.slice(0, 4)) + season - 2001}${rt.j.slice(4)}` : rt.j;
+        else if (rt.j) {
+          // (28/11) 2026/27 klippes også (oraklet: Q. Timber 2026-07-20 → 159/2001 = spilstarten − 35 dage)
+          const j = season >= 2020 ? `${Number(rt.j.slice(0, 4)) + season - 2001}${rt.j.slice(4)}` : rt.j;
+          p.cmJoined = cmStartGame && j > addDays(date, -35) ? addDays(date, -35) : j;
+        }
       }
       let attrs = rec.attrs;
       if (stored) {
@@ -1263,9 +1270,8 @@ function clampInt(v: number, lo: number, hi: number) {
 export type { Staff };
 
 /** 0x52638a's reserveposter som world-rækker (se createGame) – id 8.900.000 + i */
-function reserveRows(cm: CMWorld, active: number[], names: Record<number, [string[], string[]]>, seed: number, F: Record<string, number>, nf: number,
+function reserveRows(cm: CMWorld, T: CMTrim, active: number[], names: Record<number, [string[], string[]]>, seed: number, F: Record<string, number>, nf: number,
   out: Record<number, CMWorld['ratings'][number]>): WorldData['players'] {
-  const T = cm.cmTrim!;
   const sel = active.filter((n) => T.kn[n] !== undefined);
   const K = T.k0 + sel.reduce((s, n) => s + T.kn[n], 0);
   const n = Math.trunc(K * (T.pct ?? 0.02));

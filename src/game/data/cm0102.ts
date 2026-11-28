@@ -138,6 +138,8 @@ export interface CMWorld extends WorldData {
      *  0 = aldrig i hukommelsen, ellers de nationer, hvis valg beholder ham (mangler = altid); `c` klub-id → 1 = altid, ellers nationerne (mangler =
      *  aldrig). newgame.ts bruger det i ægte tilstand som CMRatings.tc/clubMem med memAll */
     mem26?: { p: Record<number, 0 | number[]>; c: Record<number, 1 | number[]> };
+    /** (28/11, kun 2026/27's world-cm.json) reserveposterne ved spilstarten 0x52638a for samme trim (CMTrim som den originale databases cmTrim) */
+    cmTrim?: CMTrim;
     /** (2026/27, MODERN_PARITY 12) nation +0x77/+0x78/+0x79 (sprogene) pr. nationsindeks – originalens sprogtabel (cmLanguage.ts) */
     nationLang?: number[][];
     /** (2026/27, MODERN_PARITY 4) originalens økonomi ved start (£) som CMWorld.clubFinance: [saldo (club.dat 101), gns. tilskuere (115), træningsanlæg (127)] */
