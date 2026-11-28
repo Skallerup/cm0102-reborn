@@ -34,7 +34,9 @@ const LOANS = process.env.LOANS;
 const BUYS = process.env.BUYS;
 const STAFF = process.env.STAFF;
 const GONE = process.env.GONE;   // fil: personerne væk fra hukommelsen pr. sæson (begge sider, startens række) + vores cmRetLog (årsagen)
-const goneDump: { si: number; side: 'o' | 'u'; rows: PRow[] }[] = [];   // fil: stabsskifterne (art 5 / Staff.moves, begge sider) med divisionerne – opdeling efter måned/type
+const goneDump: { si: number; side: 'o' | 'u'; rows: PRow[] }[] = [];
+const EXP = process.env.EXP;   // fil: spillerne med udløbende kontrakt pr. sæson (begge sider) og hvor de er ved slut
+const expDump: { si: number; side: 'o' | 'u'; rows: unknown[] }[] = [];   // fil: stabsskifterne (art 5 / Staff.moves, begge sider) med divisionerne – opdeling efter måned/type
    // fil: alle handler (begge sider) med alder/CA/land/division – k7-købsanalyse   // fil: lejeaftalerne (begge sider) + lejelisten pr. billede (engelske klubber) – k7-loans-analyse
 const llSeries: { o: { iso: string; keys: string[] }[]; u: { iso: string; keys: string[] }[] } = { o: [], u: [] };
 const CLUB = 'Arsenal';
@@ -108,7 +110,8 @@ function oracleWorld(m: SparseMem): World {
     if (!d) continue;
     // målt 1/9-01 (253/253 køb): +0x10 = den nye klub (køber/lejeklub), +0x14 = den gamle (−1 = klubløs); art 3: +0x10 = −1; art 5 = stab
     const to = m.s32(r + 0x10), from = m.s32(r + 0x14), pid = m.s32(r);
-    const key = `${byId.get(pid)?.key ?? pid}|${d}|${to}|${art}`;
+    // nøglen er staff-id'et (ikke navnet): id'et genbruges af nye regens, så et senere billede gav samme post et andet navn → dobbelt talt
+    const key = `${pid}|${d}|${to}|${from}|${art}`;
     if (oTransfers.has(key)) continue;
     const cNat = (ix: number) => (ix >= 0 && ix < nc ? str(m, m.u32(C + 0x245 * ix + 0x53) + 4, 51) : '');
     const pp = byId.get(pid);
@@ -234,6 +237,8 @@ for (const s of snaps) {
     if (isKey(s.iso)) uWorlds.set(s.iso, uw);
   }
   const ow = oracleWorld(s.load());
+  // PROBE_EXP=<åååå-mm>: oraklets engelske spillere med kontraktudløb i måneden pr. billede
+  if (process.env.PROBE_EXP) { const pe = process.env.PROBE_EXP; const xs = ow.players.filter((p) => p.exp.startsWith(pe) && p.eng); console.log(`  PROBE ${s.iso} exp ${pe}: ${xs.length} (${xs.slice(0, 3).map((p) => `${p.key} ${p.club} ${Math.round(p.age)}`).join('; ')})`); }
   tally('o', s.iso, ow);
   if (LOANS) llSeries.o.push({ iso: s.iso, keys: ow.players.filter((p) => p.ll && p.eng).map((p) => `${p.key}|${p.club}|${p.div}|${Math.round(p.age)}|${p.ca}|${p.loan ? 1 : 0}`) });
   for (const r of ow.league) { const k = `${seasonOf(s.iso)}|${r.div}`; const old = oLeague.get(k) ?? []; const sum = (xs: LRow[]) => xs.reduce((t, x) => t + x.p, 0); if (sum(ow.league.filter((x) => x.div === r.div)) >= sum(old)) oLeague.set(k, ow.league.filter((x) => x.div === r.div)); }
@@ -318,6 +323,7 @@ function seasonMetrics(si: number, A: World, B: World, divW: [World | undefined,
   set('kontrakter', 'udløber i sæsonen → anden klub', expiring.filter((p) => { const b = bKey.get(p.key); return b && b.club && b.club !== p.club; }).length);
   set('kontrakter', 'udløber i sæsonen → klubløs', expiring.filter((p) => { const b = bKey.get(p.key); return b && !b.club; }).length);
   set('kontrakter', 'udløber i sæsonen → væk', expiring.filter((p) => !bKey.has(p.key)).length);
+  if (EXP) expDump.push({ si, side, rows: expiring.map((p) => { const b = bKey.get(p.key); return { key: p.key, age: Math.round(p.age), ca: p.ca, div: p.div, exp: p.exp, club: p.club, to: b ? b.club : null, toDiv: b?.div ?? '', toExp: b?.exp ?? '' }; }) });
   set('kontrakter', 'ugeløn gns. £ engelske klubber (slut)', mean(engB.filter((p) => p.wage > 0).map((p) => p.wage)));
   set('kontrakter', 'ugeløn gns. £ Premier (slut)', mean(engB.filter((p) => p.wage > 0 && p.div === DIVS[0]).map((p) => p.wage)));
   set('kontrakter', 'ugeløn gns. £ Third Division (slut)', mean(engB.filter((p) => p.wage > 0 && p.div === DIVS[3]).map((p) => p.wage)));
@@ -429,5 +435,6 @@ if (process.env.JSON) writeFileSync(process.env.JSON, JSON.stringify({ keyDates:
 if (!existsSync(Y23)) process.exitCode = 0;
 if (GONE) writeFileSync(GONE, JSON.stringify({ keyDates: Object.fromEntries(keyDates), gone: goneDump, log: ONLY_ORACLE ? [] : g.cmRetLog ?? [] }));
 if (STAFF) writeFileSync(STAFF, JSON.stringify({ o: [...oTransfers.values()].filter((t) => t.staff && t.eng), u: [...uTransfers.values()].filter((t) => t.staff && t.eng) }));
+if (EXP) writeFileSync(EXP, JSON.stringify(expDump));
 if (BUYS) writeFileSync(BUYS, JSON.stringify({ keyDates: Object.fromEntries(keyDates), o: [...oTransfers.values()].filter((t) => !t.staff), u: [...uTransfers.values()].filter((t) => !t.staff) }));
 if (LOANS) writeFileSync(LOANS, JSON.stringify({ keyDates: Object.fromEntries(keyDates), o: { loans: [...oTransfers.values()].filter((t) => t.loan), ll: llSeries.o }, u: { loans: [...uTransfers.values()].filter((t) => t.loan), ll: llSeries.u } }));
