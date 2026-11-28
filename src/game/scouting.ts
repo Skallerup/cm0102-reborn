@@ -6,7 +6,7 @@ import { regionOf } from './leagues';
 import { natName } from '../i18n';
 import { hash01 } from './rng';
 import { addNews, gs, hasGame, squad } from './state';
-import type { Club, Player, ScoutAssignment } from './types';
+import type { Club, GameState, Player, ScoutAssignment } from './types';
 import { cmScoutLogic, cmStaffOn } from './cmPlayerData';
 import { rng } from './rng';
 import { NO_CARRY, registerCarry } from './carry';
@@ -274,6 +274,13 @@ export function scoutDaily() {
 }
 
 /** Opgavens mål som tekst-parametre til nyhederne (land/liga/klub/region – oversættes i newsParams via targetKey) */
+/** Spilleren er allerede givet en spejderopgave, og rapporten er ikke afleveret (ekstra spejdere: watch/assignment; CM-spejdere: 0x7f8ff0 status 3) – "Scout Player" vises så ikke (ejeren 28/11). */
+export function scoutPending(g: GameState, pid: number): boolean {
+  if (Object.values(g.staff).some((x) => x.club === g.userClub && (x.watch?.includes(pid) || (x.assignment?.kind === 'player' && x.assignment.target === pid)))) return true;
+  const p = g.players[pid];
+  return !!p && cmScoutOn(g) && scoutRequestStatus(g, p) === 3;
+}
+
 export function scoutTarget(a: ScoutAssignment): { target: string; targetKey?: string } {
   const g = gs();
   if (a.kind === 'nation') return { target: natName(g.nations[a.target as number]?.name) || '?' };

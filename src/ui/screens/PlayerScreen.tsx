@@ -6,7 +6,7 @@ import { IncomingOffersFor } from './Transfers';
 import { askConfirm } from '../confirm';
 import { Info } from '../help';
 import { A, GROUPS, POSITIONS_LABEL } from '../../game/attributes';
-import { attrRange, knowledgeOf, scoutRecommendation, scoutStars } from '../../game/scouting';
+import { attrRange, knowledgeOf, scoutPending, scoutRecommendation, scoutStars } from '../../game/scouting';
 import { avgRating } from '../../game/season';
 import { gs } from '../../game/state';
 import { SCHEDULES } from '../../game/training';
@@ -169,7 +169,7 @@ function ModernPlayer({ id }: { id: number }) {
                     {!p.club && <button className="primary" disabled={!open} title={tip} onClick={() => act(dispatch<TransferOffer | string>({ t: 'bid', pid: p.id, fee: 0, loan: false }))}>{t('player.offerContract')}</button>}
                     {canPreContract(p) && <button onClick={() => act(dispatch<TransferOffer | string>({ t: 'preContract', pid: p.id }))}>{t('player.preContract')}</button>}
                     <button onClick={() => dispatch({ t: 'shortlist', pid: p.id, on: !shortlisted })}>{shortlisted ? t('cl.pl.unshortlist') : t('cl.pl.shortlist')}</button>
-                    {cmScoutOn(g) && <button onClick={async () => {
+                    {cmScoutOn(g) && !scoutPending(g, p.id) && <button onClick={async () => {
                       const st = dispatch<number>({ t: 'scoutStatus', pid: p.id });
                       if (st === 2) void askNotice(t('cmsr.a8b1e4'), { head: t('cmsr.a8b1c8') });
                       else if (st === 4) void askNotice(t('cmsr.a8b16c'), { head: t('cmsr.a8b1c8') });

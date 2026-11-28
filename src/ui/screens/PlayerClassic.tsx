@@ -10,7 +10,7 @@ import { ageOn, daysBetween } from '../../game/dates';
 import { traits } from '../../game/personality';
 import { playerLanguages } from '../../game/languages';
 import { expectedStatus, SQUAD_STATUSES } from '../../game/squadStatus';
-import { attrMasked, attrRange, knowledgeOf } from '../../game/scouting';
+import { attrMasked, attrRange, knowledgeOf, scoutPending } from '../../game/scouting';
 import { cmKnowOn } from '../../game/cmKnow';
 import { authentic, extended } from '../../game/rules';
 import { avgRating } from '../../game/season';
@@ -687,7 +687,7 @@ export function ClassicPlayer({ id }: { id: number }) {
       if (!trialOf(p.id) && !authentic()) items.push({ key: 'trial', label: t('trial.invite'), onClick: () => { const r = dispatch<string>({ t: 'trial', pid: p.id }); setMsg(r === 'ok' ? t('trial.invited') : t(`trial.err.${r}`)); } });
     }
     if (canPreContract(p)) items.push({ key: 'pre', label: t('player.preContract'), onClick: () => act(dispatch<TransferOffer | string>({ t: 'preContract', pid: p.id })) });
-    if (authentic() && cmScoutOn(g)) {
+    if (scoutPending(g, p.id) && !(authentic() && cmScoutOn(g))) { /* udvidet: opgaven givet, rapport ikke afleveret → ingen knap (ejeren 28/11); originalen (0x889880) beholder punktet og svarer "already scouting" */ } else if (authentic() && cmScoutOn(g)) {
       // CM 01/02 Action → Scout Player (0x889880): status 0x7f8ff0 → besked eller spørgsmålet, Yes → anmodningen 0x7f9290 (cmScout.ts)
       const nm = `${p.first} ${p.last}`.trim();
       items.push({ key: 'scout', label: t('cl.pl.scoutPlayer'), onClick: async () => {
