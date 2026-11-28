@@ -168,9 +168,13 @@ export function planSquad(e: PlanEntry, ind: PlanInput, ctx: PlanCtx): PlanResul
   if (ind.status === 3) return exit();
   if (ind.partnerIsParent) return exit();
   const Bt = ind.bTeam;
-  // 0x83cc2b: 0x844540 (ønskelistens åbne mål) – ingen hos os (ikke porteret)
-  if (e.state === 2) { e.state = 1; first = true; }
-  if (!ind.activeLeague && ind.rep < 4000) {                                   // 0x83cc88
+  // 0x83cc2b: 0x844540(klub, −1) – pladserne med et mål (+0xf > −1) og et budmærke (+0x17 > −1). (Dens rydning af forældede mærker – kun ved
+  // +4 = 2 i menneskets klub – er sket i 0x5cccd0's kald samme dag, før planen.) Åbne bud: +4 = 2 → ud uden ændring (0x83ccca → 0x83cc1a, +4
+  // forbliver 2); ellers videre UDEN porten for inaktive ligaer (0x83ccc8 → 0x83ccd0). Ingen: +4 = 2 → +4 = 1 og første gang (0x83cc53/0x83cc5b)
+  const open = e.slots.some((s) => s.f > -1 && s.s17 > -1);
+  if (open && e.state === 2) return res;
+  if (!open && e.state === 2) { e.state = 1; first = true; }
+  if (!open && !ind.activeLeague && ind.rep < 4000) {                          // 0x83cc88
     const a = ctx.rand(ind.rep + 1000), b = ctx.rand(5000);
     if (a < b) return exit();
   }

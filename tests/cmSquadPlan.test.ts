@@ -3,7 +3,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { checkCalls } from '../scripts/sq-trace-check';
-import { buildSlots, clubStrength, dailyGate, financeStatus, newPlanEntry, slotGroup } from '../src/game/cmSquadPlan';
+import { buildSlots, clubStrength, dailyGate, financeStatus, newPlanEntry, planSquad, slotGroup, type PlanCtx, type PlanInput } from '../src/game/cmSquadPlan';
 import { createGame, type WorldData } from '../src/game/newgame';
 import { gs, squad } from '../src/game/state';
 
@@ -42,6 +42,24 @@ describe('0x83c090 og 0x7bca90', () => {
     expect(dailyGate(e, () => 0)).toBe(true);
     expect(e.counter).toBe(200);
     expect(dailyGate(e, (n) => (n === 5 ? 1 : 0))).toBe(false);
+  });
+  it('0x83cc2b: 0x844540(klub, −1) – åbne bud: +4 = 2 → ud uden ændring; ellers ingen port for inaktive ligaer (0x83cc88)', () => {
+    const ind = { clubId: 1, daily: true, first: false, rep: 100, status: 1, national: false, hasNation: true, activeLeague: false, human1: false, human2: false,
+      humanSettings: false, bTeam: false, partnerIsParent: false, x18: false, managerId: null, managerForm: null, managerJoinedDay: 0, managerJoinedYear: 1900,
+      T: 1000, R: 100, daysSinceStart: 10, today: { day: 200, year: 2001 }, squad: [] } as PlanInput;
+    const ctx = { rand: (n: number) => (n === 5000 ? 4999 : 0) } as unknown as PlanCtx;           // rand(omd + 1000) < rand(5000): porten springer over
+    const open = () => { const e = newPlanEntry(); e.slots[3].f = 7; e.slots[3].s17 = 12; return e; };
+    let e = open(); e.state = 2; e.counter = 50;
+    expect(planSquad(e, ind, ctx).ran).toBe(false);
+    expect(e.state).toBe(2);
+    expect(e.counter).toBe(0);
+    e = newPlanEntry(); e.state = 1;
+    expect(planSquad(e, ind, ctx).ran).toBe(false);                                                 // ingen bud: porten 0x83cc88
+    expect(e.state).toBe(0);
+    e = open(); e.state = 1;
+    let ran = false;
+    try { ran = planSquad(e, ind, ctx).ran; } catch { ran = true; }                                 // forbi porten (resten af ctx findes ikke her)
+    expect(ran).toBe(true);
   });
 });
 
