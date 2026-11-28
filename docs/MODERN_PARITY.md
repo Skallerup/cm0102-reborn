@@ -540,3 +540,28 @@ Målt (`scripts/cm-finance-2026.ts`, PL frø 1, Brentford, 1/7-26 → 30/6-27, f
 PL omsætning €7,42 mia. → €3,77 mia., løn 60 % → 127 %; Championship 97 % → 82 %; tv PL €2,45 mia. → €52m (første sæson: ingen tv-rettigheder
 – FinanceTable findes ikke ved create_table, som i originalen), præmier PL €444m → €771m, udbytte PL 0 → €420m. 2001 bit for bit uændret
 (9e533ca1b89331df, measure 84dd659f8e7f). Kræver et nyt spil.
+
+## Økonomien på 2026/27 mod originalen selv (28/11-2026): lønnen over omsætningen er databasens, ikke portens
+Spørgsmål: PL løn 142 % af omsætningen (Championship 94 %), merchandise ≈ billetindtægt, tv €4,8m pr. klub – skalering/inddata-fejl?
+Svar: **nej – originalen (Bosman-binæren, `.bosman-repo/build/cm0102_recomp`, frø 1, 330 dage, Select England, Go on Holiday) kørt på selve
+"October 2026 Data Update" giver det samme.** Spilmappe `~/cm0102-engine/oracle/game-2026` (symlinks til oracle/game, `Data` = 2026-dataene +
+de manglende filer fra grundspillets Data), `database = 3.9.68`; udtræk `~/cm0102-engine/oracle/out/fin2026/s1-d330.json` (scripts/orig-finance.py,
+measure a8eca69292f7). Sæsonens poster (£, "this year" ≈ 10/6) mod vores (cm-finance-2026, Brentford frø 1 til 30/6, € · PL-faktor 0,1741):
+
+| | Originalen på 2026-dataene | CM Reborn 2026/27 (i £) |
+|---|---|---|
+| PL løn / omsætning | £721m / £492m = **147 %** | £790m / £555m = **142 %** |
+| Championship løn / omsætning | £180m / £187m = **96 %** | 94 % |
+| PL billetindtægt / merchandise | £182m / £167m (≈ ens) | £173m / £175m |
+| PL tv (1. sæson: kun kampenes tv-penge, 0x683010 tom) | £18,4m (£0,9m pr. klub) | £19,2m |
+| PL ugens lønsum pr. klub (+0xc) | £762k | £798k (DB-lønnen £657k + omdømmeleddet + stab, measure 0a44a7726ad2) |
+| PL præmier | £84m | £152m – **afviger** (næste spor: pokal-/Europapræmier) |
+| PL køb / salg / signing-on | £206m / £365m / £103m | £255m / £84m / £69m – **afviger** (PL nettosælger i originalen, nettokøber hos os) |
+| Klubber i minus (alle med økonomi) | 926 af 2.774 (33 %) | 269 af 1.205 (22 %) |
+
+Årsagen: databasens lønninger (staff.dat, £/uge) er på 2026-niveau – PL i snit £709k/uge pr. klub, næsten alle spillere har løn (Haaland £100k)
+– mens 2001-databasen har £228k (418 af 866 PL-spillere uden løn, 0x83a1b0 fylder ud). Originalens indtægter (calc_gate_receipts, merchandise
+0x59b7e0, kampenes tv, præmierne) regnes kun af omdømme (højst 10.000), tilskuere og faste beløb – de følger ikke databasens pengeniveau. Vores
+lønsum i £ er databasens (ligasummen af kontrakt · cmGbp = DB-lønnen ±0,2 %), så pengefaktoren er rigtig. Merchandise ≈ billetindtægt er også
+originalens (2001-oraklet Man Utd: merch £18,4m, gate £25,5m). **Ingen rettelse** – en ændring af lønnen/faktoren ville gøre os anderledes end
+originalen på samme database. Tilbage som egne opgaver: præmierne (×1,8) og transferbalancen i PL.
