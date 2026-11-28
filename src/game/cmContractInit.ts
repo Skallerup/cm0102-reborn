@@ -208,7 +208,13 @@ export function cmContractsNewGame(g: GameState, dbWage: Map<number, number>, se
     if (unset.has(p.id) && std.has(p.id)) x.fallbackWage = std.get(p.id)!;
     const o = initialContract_85e960(x, cmRand(seed, p.id, 0x85e960));
     if (x.dbWage && o.wage < 0) dbRejected++;
-    applyInitialContract(p.contract!, o, cmGbp(g, p.loan?.from ?? p.club));
+    const k = cmGbp(g, p.loan?.from ?? p.club);
+    applyInitialContract(p.contract!, o, k);
+    // (28/11, MODERN_PARITY) 0x85e960's løn +0xc = databasens ugeløn (staff.dat, £) – som den originale database (newgame.ts dbWage). 2026/27
+    // beholdt spillets moderne løn pr. spiller, så kun lønsummen fulgte databasen (cmGbp er ligaens median): klubbens højeste løn +0x10 og
+    // lønloftet +0x14 (Swansea £6,6k mod oraklets £22k, Brentford £34k mod £65k), som ønskelisternes mål og tilbud regner med, afveg.
+    // De afviste (−1) udfylder 0x83a1b0 (cmWageFillNewGame). Den originale database har ingen g.cmGbp – uændret.
+    if (g.cmGbp && o.wage >= 0) p.contract!.wage = Math.max(0, Math.round(o.wage / k));
     initContractBytes(g, p);
     n++;
   }
