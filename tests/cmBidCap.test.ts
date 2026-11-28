@@ -11,6 +11,7 @@ import { exchangeList, myPendingBid } from '../src/game/transfers';
 import { cmBidBudget, cmBoardLine } from '../src/game/cmBudget';
 import { cmAgreed, cmConfirmAnswer, cmConfirmScreen } from '../src/game/cmTransferTalks';
 import { SL_ON } from '../src/game/cmShortlistGame';
+import { cmNeedsPermit } from '../src/game/cmPermit';
 import type { TransferOffer } from '../src/game/types';
 
 afterEach(() => { SL_ON.on = false; });
@@ -52,7 +53,9 @@ describe('budskærmens loft og bekræftelsen som originalen (3.9.60, ægte tilst
   });
 
   it('accepteret over loftet, men inden for budget × 1,1: Confirm Transfer Offer (loftet er ikke en betingelse); over: Delay/Cancel', () => {
-    const p = squad(koch.club).find((x) => x.id !== koch.id)!;
+    // en spiller uden arbejdstilladelse: ellers står buddet først i 0x8c2f50's tilstand 0xa (tilladelsen afgøres, før Confirm Transfer Offer
+    // kommer – cmPermitTalks.test.ts), og bekræftelsen kan ikke besvares endnu
+    const p = squad(koch.club).find((x) => x.id !== koch.id && !cmNeedsPermit(g, x, mu, false))!;
     g.knowledge[p.id] = 0;
     const cap = cmBidBudget(g, p, mu)!.budget;
     const budget = g.clubs[mu].transferBudget;
