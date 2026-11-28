@@ -9,6 +9,7 @@ import { ATTRS } from '../../game/attributes';
 import { interestedClubs, myPendingBid, transferRealism } from '../../game/transfers';
 import { nationLanguage } from '../../game/languages';
 import { willJoin } from '../../game/staff';
+import { cmStaffSearchInterested } from '../../game/cmContractGame';
 import { attrMasked, attrRange, knowledgeOf, scoutStars } from '../../game/scouting';
 import type { Trait } from '../../game/personality';
 import type { GameState, Player, ScoutAssignment, Staff, StaffRole } from '../../game/types';
@@ -437,7 +438,8 @@ function StaffSearch() {
       const bn = g.clubs[s.club]?.nation ?? s.nation;
       if (sf.based === 'home' ? bn !== home : sf.based === 'abroad' ? bn === home : bn !== sf.basedNation) return false;
     }
-    if (sf.interested && !willJoin(s)) return false;
+    // Interested: originalens SearchFilters 0x807450 (cmStaffSearchInterested – samme vilje 0x844780 som forhandlingen); ellers spillets eget
+    if (sf.interested && !(cmStaffSearchInterested(g, s, g.userClub, sf.role === 'free') ?? willJoin(s))) return false;
     return !mins.some(([i, v]) => staffAttrValue(s, i) < v);
   });
   useEffect(() => setPg(0), [list.length, view]);

@@ -2942,7 +2942,7 @@ Object.assign(es, {
   "cl.neg.type": "Tipo de contrato",
   "cl.neg.fullTime": "Tiempo completo",
   "cl.neg.bonusIntro": "Ofrecer al jugador las siguientes primas:",
-  "cl.neg.goalBonus": "Prima por gol",
+  "cl.neg.goalBonus": "Prima por gol", "cl.neg.assistBonus": "Prima por asistencia",
   "cl.neg.cleanSheetBonus": "Prima por portería a cero",
   "cl.neg.clauseIntro": "Ofrecer al jugador las siguientes cláusulas:",
   "cl.neg.release": "Cláusula de rescisión por importe mínimo",

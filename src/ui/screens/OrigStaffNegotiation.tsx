@@ -13,7 +13,9 @@ import { poachFee } from '../../game/staff';
 import { cashRound, cashStepEur, cashUnits, moneyCm, moneyFull, moneyWage, t } from '../../i18n';
 import { addDays } from '../../game/dates';
 import { expDown, expDownOff, expIso, expUp, expUpOff, ymOf, type YM } from '../../game/cmContractScreen';
+import { negSignOnOptions, negWageOptions } from '../../game/cmContractScreen';
 import { Modal } from '../components';
+import { Row } from './OrigNegotiation';
 
 const r50 = (v: number) => Math.max(0, Math.round(v / 50) * 50);
 const fee8 = (v: number) => moneyCm(v, 6, 8);
@@ -97,9 +99,10 @@ export function OrigStaffNegotiation({ staffId, role, onClose }: { staffId: numb
         <div className="col">
           <p>{interested ? t('cl.neg.wants', { player: name, wage: moneyWage(demand), until: expTxt(ymOf(wantExp)), fee: '' }) : own ? t('cm.neg.noRenewNow', { player: name }) : t('cm.neg.noInterest', { name })}</p>
           <p className="muted">{t('cl.neg.allow', { allow: moneyWage(allow) })}</p>
-          <StepRow label={t('cl.neg.wage')} text={moneyWage(wage)} onDown={() => setWage(wDown)} downOff={Math.round(wage * k) <= 100} onUp={() => setWage(wUp)} upOff={wUpOff} onEq={() => setWage(demand)} />
-          <StepRow label={t('cl.neg.signOn')} text={fee8(signOn)} onDown={() => setSignOn(cashStepEur(signOn, 4, -1))} downOff={signOn <= 0}
-            onUp={() => setSignOn(sUp)} upOff={Math.round(sUp * k) > Math.round(signMax * k)} onEq={() => setSignOn(signReq)} />
+          <Row label={t('cl.neg.wage')} value={wage} show={moneyWage} options={negWageOptions(demand, cmAllow, wage)} onSet={setWage} reset={demand}
+            stepper={(d) => (d > 0 ? wUp : wDown)} downOff={Math.round(wage * k) <= 100} upOff={wUpOff} />
+          <Row label={t('cl.neg.signOn')} value={signOn} show={fee8} options={negSignOnOptions(signReq, demand, signMax, signOn)} onSet={(v) => setSignOn(Math.min(v, signMax))} reset={signReq}
+            stepper={(d) => (d > 0 ? sUp : cashStepEur(signOn, 4, -1))} downOff={signOn <= 0} upOff={Math.round(sUp * k) > Math.round(signMax * k)} />
           <StepRow label={t('cl.neg.expires')} text={expTxt(exp)} onDown={() => setExp(expDown(exp, today))} downOff={expDownOff(exp, today, min)}
             onUp={() => setExp(expUp(exp, today, min))} upOff={expUpOff(exp, today)} onEq={() => setExp(ymOf(wantExp))} />
           <div className="row" style={{ gap: 8, alignItems: 'center' }}><span style={{ minWidth: 170 }}>{t('cl.neg.type')}</span><span>{t('cl.neg.fullTime')}</span></div>

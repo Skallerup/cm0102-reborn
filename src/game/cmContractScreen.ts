@@ -30,3 +30,16 @@ export function expDownOff(cur: YM, start: YM, min: YM): boolean {
 export function expIso([y, m]: YM, today: string): string {
   return `${y}-${String(m + 1).padStart(2, '0')}-${String(Math.min(28, Number(today.slice(8, 10)))).padStart(2, '0')}`;
 }
+
+/** Kontraktskærmens rullelister (Offer Contract 0x4e06e0, spillere og stab): lønnen (ids 7/8 i 0x4e2280 – valget skriver kontraktens +0xc) og
+ *  Signing On Fee (id 25 – valget skriver +8, højst skærmparameter 0x15). Listernes indhold (0x8040a0's kontrol) er ikke afkodet; samme trin
+ *  som spillernes skærm, så de to er ens. */
+const r50 = (v: number) => Math.max(0, Math.round(v / 50) * 50);
+export function negWageOptions(demand: number, allow: number | null, cur: number): number[] {
+  const xs = [...new Set([0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 1, 1.05, 1.1, 1.2, 1.3, 1.5, 1.75, 2].map((f) => r50(demand * f)).map((v) => (allow !== null && v > allow ? Math.floor(allow / 50) * 50 : v)))];
+  return xs.includes(cur) ? xs : [...xs, cur].sort((a, b) => a - b);
+}
+export function negSignOnOptions(req: number, demand: number, max = Infinity, cur?: number): number[] {
+  const xs = [...new Set([0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 2].map((f) => Math.min(max, Math.round(Math.max(req, demand * 10) * f / 5000) * 5000)))];
+  return cur === undefined || xs.includes(cur) ? xs : [...xs, cur].sort((a, b) => a - b);
+}

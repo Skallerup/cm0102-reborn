@@ -5689,7 +5689,7 @@ export const nb: Record<string, string> = {
   "cl.neg.type": "Kontraktstype",
   "cl.neg.fullTime": "Heltid",
   "cl.neg.bonusIntro": "Tilby spilleren følgende bonuser:",
-  "cl.neg.goalBonus": "Målbonus",
+  "cl.neg.goalBonus": "Målbonus", "cl.neg.assistBonus": "Assistbonus",
 
   "cl.neg.cleanSheetBonus": "Bonus for holdt nullen",
   "cl.neg.clauseIntro": "Tilby spilleren følgende klausuler:",

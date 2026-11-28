@@ -2942,7 +2942,7 @@ Object.assign(de, {
   "cl.neg.type": "Vertragsart",
   "cl.neg.fullTime": "Vollzeit",
   "cl.neg.bonusIntro": "Dem Spieler folgende Prämien anbieten:-",
-  "cl.neg.goalBonus": "Torprämie",
+  "cl.neg.goalBonus": "Torprämie", "cl.neg.assistBonus": "Vorlagenprämie",
   "cl.neg.cleanSheetBonus": "Prämie für ein Spiel ohne Gegentor",
   "cl.neg.clauseIntro": "Dem Spieler folgende Klauseln anbieten:-",
   "cl.neg.release": "Ausstiegsklausel (Mindestablöse)",

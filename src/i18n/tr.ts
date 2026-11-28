@@ -2942,7 +2942,7 @@ Object.assign(tr, {
   "cl.neg.type": "Sözleşme Türü",
   "cl.neg.fullTime": "Tam Zamanlı",
   "cl.neg.bonusIntro": "Oyuncuya şu primleri teklif et:-",
-  "cl.neg.goalBonus": "Gol Primi",
+  "cl.neg.goalBonus": "Gol Primi", "cl.neg.assistBonus": "Asist Primi",
   "cl.neg.cleanSheetBonus": "Gol Yememe Primi",
   "cl.neg.clauseIntro": "Oyuncuya şu maddeleri teklif et:-",
   "cl.neg.release": "Asgari Bedelli Serbest Kalma Maddesi",

@@ -2942,7 +2942,7 @@ Object.assign(fr, {
   "cl.neg.type": "Type de contrat",
   "cl.neg.fullTime": "Temps plein",
   "cl.neg.bonusIntro": "Proposer au joueur les primes suivantes :-",
-  "cl.neg.goalBonus": "Prime de but",
+  "cl.neg.goalBonus": "Prime de but", "cl.neg.assistBonus": "Prime de passe décisive",
   "cl.neg.cleanSheetBonus": "Prime de clean sheet",
   "cl.neg.clauseIntro": "Proposer au joueur les clauses suivantes :-",
   "cl.neg.release": "Clause libératoire à montant minimum",

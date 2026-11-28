@@ -2942,7 +2942,7 @@ Object.assign(pt, {
   "cl.neg.type": "Tipo de Contrato",
   "cl.neg.fullTime": "Tempo Integral",
   "cl.neg.bonusIntro": "Ofereça ao jogador os seguintes bônus:-",
-  "cl.neg.goalBonus": "Bônus por Gol",
+  "cl.neg.goalBonus": "Bônus por Gol", "cl.neg.assistBonus": "Bônus por Assistência",
   "cl.neg.cleanSheetBonus": "Bônus por Jogo sem Sofrer Gols",
   "cl.neg.clauseIntro": "Ofereça ao jogador as seguintes cláusulas:-",
   "cl.neg.release": "Cláusula de Rescisão com Valor Mínimo",

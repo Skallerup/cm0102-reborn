@@ -21,6 +21,7 @@ import { CxDrop, CxPm, titleColors, useClassicDialog } from '../classic';
 import { SQUAD_STATUSES, statusAllowed, type SquadStatus } from '../../game/squadStatus';
 import { addDays, ageOn, year } from '../../game/dates';
 import { expDown, expDownOff, expIso, expUp, expUpOff, ymOf, type YM } from '../../game/cmContractScreen';
+import { negSignOnOptions, negWageOptions } from '../../game/cmContractScreen';
 import { authentic } from '../../game/rules';
 import { cmNoInterest, cmOfferScreen, cmRoleDefault, cmRoleExpected, cmTalksDemand } from '../../game/cmTransferTalks';
 import { cmWhyText } from './common';
@@ -29,7 +30,7 @@ type Tab = 'basic' | 'bonuses' | 'clauses';
 const r50 = (v: number) => Math.max(0, Math.round(v / 50) * 50);
 
 /** En række: etiket · − · værdi ▾ (grøn liste) · + · = (tilbage til spillerens krav) */
-function Row({ label, value, show, options, onSet, reset, on = true, onToggle, star, stepper, upOff, downOff }: {
+export function Row({ label, value, show, options, onSet, reset, on = true, onToggle, star, stepper, upOff, downOff }: {
   label: string; value: number; show: (v: number) => string; options: number[]; onSet: (v: number) => void; reset?: number;
   on?: boolean; onToggle?: () => void; star?: boolean;
   /** originalens trin (fx Cash::step_up/step_down 0x43f4e0/0x43f580) i stedet for listens næste mulighed, med skærmens grå knapper */
@@ -119,7 +120,8 @@ export function ClassicStaffNegotiation({ staffId, role, onClose }: { staffId: n
   const col = titleColors(s.club || undefined);
   // 0x4e2280: løn + (id 4) = Contract 0x867b70 (Cash::step_up 0x43f4e0, flag 8 – ugeløn), grå når det næste trin (0x43f460 flag 8) er over loftet
   // (parameter 0x18); − (5) 0x867c50, grå ved £100 eller derunder; = (6) kravets løn. Signing On: + (23) step_up flag 4, grå over parameter 0x15;
-  // − (24) step_down flag 4, grå ved 0; = (22) kravets, højst 0x15. Værdicellerne har ingen handling (ingen liste).
+  // − (24) step_down flag 4, grå ved 0; = (22) kravets, højst 0x15. Værdicellerne er rullelister: løn ids 7/8 (valget → +0xc), Signing On id 25
+  // (valget → +8, højst 0x15) – 0x4e2464/0x4e2664.
   const k = cmGbp(g, club.id);
   const wUp = cashStepEur(wage, 8, 1), wDown = cashStepEur(wage, 8, -1);
   const wUpOff = cmAllow !== null && cashRound(cashUnits(wUp), 8) > cashRound(cashUnits(cmAllow), 8);
@@ -137,10 +139,10 @@ export function ClassicStaffNegotiation({ staffId, role, onClose }: { staffId: n
           <p className="cx-ts-intro">{interested ? t('cl.neg.wants', { player: name, wage: moneyWage(demand), until: expTxt(ymOf(wantExp)), fee: '' }) : own ? t('cm.neg.noRenewNow', { player: name }) : t('cm.neg.noInterest', { name })}</p>
           <p className="cx-ts-intro">{t('cl.neg.allow', { allow: moneyWage(allow) })}</p>
           {<>
-          <StepRow label={t('cl.neg.wage')} text={moneyWage(wage)} onDown={() => setWage(wDown)} downOff={Math.round(wage * k) <= 100}
-            onUp={() => setWage(wUp)} upOff={wUpOff} onEq={() => setWage(demand)} />
-          <StepRow label={t('cl.neg.signOn')} text={fee8(signOn)} onDown={() => setSignOn(cashStepEur(signOn, 4, -1))} downOff={signOn <= 0}
-            onUp={() => setSignOn(sUp)} upOff={Math.round(sUp * k) > Math.round(signMax * k)} onEq={() => setSignOn(signReq)} />
+          <Row label={t('cl.neg.wage')} value={wage} show={moneyWage} options={negWageOptions(demand, cmAllow, wage)} onSet={setWage} reset={demand}
+            stepper={(d) => (d > 0 ? wUp : wDown)} downOff={Math.round(wage * k) <= 100} upOff={wUpOff} />
+          <Row label={t('cl.neg.signOn')} value={signOn} show={fee8} options={negSignOnOptions(signReq, demand, signMax, signOn)} onSet={(v) => setSignOn(Math.min(v, signMax))} reset={signReq}
+            stepper={(d) => (d > 0 ? sUp : cashStepEur(signOn, 4, -1))} downOff={signOn <= 0} upOff={Math.round(sUp * k) > Math.round(signMax * k)} />
           <StepRow label={t('cl.neg.expires')} text={expTxt(exp)} onDown={() => setExp(expDown(exp, today))} downOff={expDownOff(exp, today, min)}
             onUp={() => setExp(expUp(exp, today, min))} upOff={expUpOff(exp, today)} onEq={() => setExp(ymOf(wantExp))} />
           <div className="cx-neg-row"><span className="cx-neg-label">{t('cl.neg.type')}</span><span /><span className="cx-neg-static cx-neg-type">{t('cl.neg.fullTime')}</span></div>
@@ -267,7 +269,7 @@ function NegotiationBody({ offer, renewPid, onClose }: { offer?: TransferOffer; 
     else { setMsg(t('cl.neg.refused', { player: name })); setTimeout(onClose, 2600); }
   };
   const bonus = (k: 'goalBonus' | 'appBonus' | 'cleanSheetBonus', base: number) => (
-    <Row key={k} label={t(`cl.neg.${k}`)} value={cl[k] ?? Math.max(10, Math.round(base / 10) * 10)} show={bonus8} options={bonusOpts(base)}
+    <Row key={k} label={t(k === 'appBonus' ? (cmLogic(g) ? 'cl.neg.assistBonus' : 'clause.appBonus') : `cl.neg.${k}`)} value={cl[k] ?? Math.max(10, Math.round(base / 10) * 10)} show={bonus8} options={bonusOpts(base)}
       on={!!cl[k]} onToggle={() => toggle(k, Math.max(10, Math.round(base / 10) * 10))} onSet={(v) => set(k, v)} reset={Math.max(10, Math.round(base / 10) * 10)} />
   );
   if (roleStep) {

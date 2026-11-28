@@ -22,7 +22,7 @@ const fee8 = (v: number) => moneyCm(v, 6, 8);
 const bonus8 = (v: number) => moneyCm(v, 0xa, 8);
 
 /** etiket · − · værdi ▾ · + · = ; en slået-fra række er grå, og et klik på etiketten slår den til */
-function Row({ label, value, show, options, onSet, reset, on = true, onToggle, stepper, upOff, downOff }: {
+export function Row({ label, value, show, options, onSet, reset, on = true, onToggle, stepper, upOff, downOff }: {
   label: string; value: number; show: (v: number) => string; options: number[]; onSet: (v: number) => void; reset?: number;
   on?: boolean; onToggle?: () => void; stepper?: (d: 1 | -1) => number; upOff?: boolean; downOff?: boolean;
 }) {
@@ -152,7 +152,7 @@ export function OrigNegotiation({ offer, renewPid, onClose }: { offer?: Transfer
     else { setMsg(t('cl.neg.refused', { player: name })); setTimeout(onClose, 2600); }
   };
   const bonus = (k: 'goalBonus' | 'appBonus' | 'cleanSheetBonus', base: number) => (
-    <Row key={k} label={t(`cl.neg.${k}`)} value={cl[k] ?? Math.max(10, Math.round(base / 10) * 10)} show={bonus8} options={bonusOpts(base)}
+    <Row key={k} label={t(k === 'appBonus' ? (cmLogic(g) ? 'cl.neg.assistBonus' : 'clause.appBonus') : `cl.neg.${k}`)} value={cl[k] ?? Math.max(10, Math.round(base / 10) * 10)} show={bonus8} options={bonusOpts(base)}
       on={!!cl[k]} onToggle={() => toggle(k, Math.max(10, Math.round(base / 10) * 10))} onSet={(v) => set(k, v)} reset={Math.max(10, Math.round(base / 10) * 10)} />
   );
   return (

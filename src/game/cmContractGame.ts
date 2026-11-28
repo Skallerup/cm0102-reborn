@@ -46,7 +46,7 @@ import { squadIds } from './state';
 import { boardEnv, memStaffPerson, staffJobInterest } from './cmBoardGame';
 import { leagueClash } from './cmBoardInterest';
 import type { BoardEnv } from './cmBoard';
-import { registerStaffContractAnswer, registerStaffOfferCheck } from './cmStaff';
+import { cmDbJob, cmJobCode, registerStaffContractAnswer, registerStaffOfferCheck } from './cmStaff';
 
 /** € → £: 0,86 for den originale database, 2026/27's faktor pr. liga (cmMoney.ts) – beløbene tilhører den købende/tilbydende klub */
 import { cmGbp } from './cmMoney';
@@ -718,6 +718,38 @@ export function cmStaffWill(g: GameState, s: import('./types').Staff, clubId: nu
   // (hastighed, 25/11) hukommelsens sider tilbage til puljen bagefter (cmMem.ts release – en ny side nulstilles altid): før blev en hukommelse pr.
   // kandidat smidt ud til affaldsopsamlingen (ønskelisternes stabsmål, cmStaffMove.ts findStaffTarget)
   try { return staffWill(g, s, clubId, job, S, X); } finally { (X.M.c.m as SparseMem).release(); }
+}
+/** Staff Search-filteret "Interested" (Filters for Staff Search, bit 0x10000 i filterets +4) som originalens SearchFilters 0x807450, grenen for en
+ *  ikke-spiller 0x807e89–0x807ecc: ikke-spillerpostens omdømme +0xc > klubbens +0x80 + 5000 → ikke med; ellers 0x844780(staff, klub, **1**, job, NULL)
+ *  (cmStaffWill) under 3,15 ([0x968e58]) → ikke med. Jobbet (0x807d08–0x807d2d, byte): ansat i en klub → +0x3d; ellers landsholdsjobbet +0x28,
+ *  når det ikke er 0xb; ellers 0, når filterets Job er Unemployed (9), ellers +0x3d. Null uden for cmStaffOn (spillets eget willJoin). */
+export function cmStaffSearchInterested(g: GameState, s: import('./types').Staff, clubId: number, unemployedFilter: boolean): boolean | null {
+  if (!cmStaffOn(g) || g.draft || !g.clubs[clubId]) return null;
+  // (hastighed) svaret gemmes pr. dag, klub og filter – skærmen tegner listen igen ved hvert klik; 0x844780 trækker ingen tilfældige tal
+  if (!ssiCache || ssiCache.g !== g || ssiCache.key !== `${g.date}:${clubId}`) ssiCache = { g, key: `${g.date}:${clubId}`, m: new Map() };
+  const ck = s.id * 2 + (unemployedFilter ? 1 : 0), hit = ssiCache.m.get(ck);
+  if (hit !== undefined) return hit;
+  const v = staffSearchInterested(g, s, clubId, unemployedFilter);
+  ssiCache.m.set(ck, v);
+  return v;
+}
+let ssiCache: { g: GameState; key: string; m: Map<number, boolean> } | null = null;
+function staffSearchInterested(g: GameState, s: import('./types').Staff, clubId: number, unemployedFilter: boolean): boolean {
+  const nat = s.cmNat && s.cmNat[0] >= 0 ? s.cmNat[1] : -1;
+  const job = (s.club ? cmJobCode(s) : nat >= 0 && nat !== 0xb ? nat : unemployedFilter ? 0 : cmDbJob(s)) & 0xff;
+  const X = staffMem(g, s, clubId, job, 0xff);
+  if (!X) return false;
+  try {
+    const { M, st, club } = X, m = M.c.m;
+    const np = m.u32(st + 0x69);
+    if (!np) return false;
+    if (m.s16(np + 0xc) > m.s16(club + 0x80) + 5000) return false;
+    const env = M.env();
+    let p = env.person(s.id);
+    if (p && !p.np && s.cmExtra && !s.club) p = memStaffPerson(g, s) ?? p;
+    if (!p) return false;
+    return staffWill(g, s, clubId, job, staffJobInterest(g, env, p, clubId, job), X) >= 3.15;
+  } finally { (X.M.c.m as SparseMem).release(); }
 }
 function staffWill(g: GameState, s: import('./types').Staff, clubId: number, job: number, S: number, X: NonNullable<ReturnType<typeof staffMem>>): number {
   const { M, st, club, k } = X, m = M.c.m;
