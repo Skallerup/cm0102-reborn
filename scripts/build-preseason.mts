@@ -1,5 +1,5 @@
 // Forsæsonens data fra originalens filer → src/game/data/cmPreseason.ts
-//   npx tsx scripts/build-preseason.mts
+//   [ONLY=2026] npx tsx scripts/build-preseason.mts
 // (1) player_setup.cfg (0x7a30c0 → 0x7a3a10, kaldt af 0x5cc850 efter forkørslen med maske 0x203b): linjerne "INJURY" findes i databasen
 //     som 0x7a50f0 gør det (klubben på navnet – strncmp 0x33 – og dens trup, ellers hele staff-tabellen ved tom klub; fornavn/kælenavn/
 //     efternavn med strncmp 0x1a, et tomt felt sammenlignes ikke) og skadens navn → type som 0x7a32e0 (strncmp med originalens længder).
@@ -167,6 +167,14 @@ for (const [ver, dir] of Object.entries(DBS)) {
   const { list: ll, miss: lmiss } = loanList(db, players, clubs26, parseCfg('LOAN', `${DB2026}/player_setup.cfg`), w26.season - 2001, '2026');
   loans['2026'] = ll;
   console.log('2026', `LOAN: ${ll.length} fundet, ${lmiss} ikke fundet`);
+}
+// ONLY=2026 (kommasepareret): kun de nævnte databaser genbygges – de øvrige nøgler beholdes fra den nuværende cmPreseason.ts (fx når kun
+// world.json er bygget om, så 2001-spillenes lister ikke flytter sig uden en måling)
+if (process.env.ONLY) {
+  const only = new Set(process.env.ONLY.split(','));
+  const cur = await import('../src/game/data/cmPreseason.ts');
+  for (const [k, v] of Object.entries(cur.CM_SETUP_INJURIES)) if (!only.has(k)) out[k] = v as never;
+  for (const [k, v] of Object.entries(cur.CM_SETUP_LOANS)) if (!only.has(k)) loans[k] = v as never;
 }
 const ts = `// Genereret af scripts/build-preseason.mts – ret ikke i hånden.
 // Originalens player_setup.cfg (INJURY-linjerne, appens Data/ – også brugt med 3.9.60/3.9.65; '2026' = opdateringens egen fil) fundet i databasen som 0x7a50f0:

@@ -10,8 +10,9 @@ import { compHooks } from '../src/game/hooks';
 import { K } from '../src/game/cmFinance';
 
 const until = process.argv[2] ?? '2027-06-10';
-const w = JSON.parse(readFileSync('public/data/world.json', 'utf8')) as WorldData & { cmRaw?: unknown };
-Object.assign(w, JSON.parse(readFileSync('public/data/world-cm.json', 'utf8')));
+// WORLD=<world-fil> (fx world-original.json – 2001 til sammenligning med oracle-pl-moves.ts); uden: world.json + world-cm.json
+const w = JSON.parse(readFileSync(process.env.WORLD ?? 'public/data/world.json', 'utf8')) as WorldData & { cmRaw?: unknown };
+if (!process.env.WORLD) Object.assign(w, JSON.parse(readFileSync('public/data/world-cm.json', 'utf8')));
 const eng = w.nations.findIndex((x) => x.name === 'England');
 const name = process.argv[3] ?? 'Brentford';
 createGame(w, { managerName: 'Test Smoke', managerNation: eng, clubId: w.clubs.find((c) => c[1] === name || c[2] === name)![0], activeNations: [eng], lang: 'en', masking: true,

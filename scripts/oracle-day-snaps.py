@@ -2,7 +2,7 @@
 """Oraklets hukommelsesbilleder dag for dag (eller pr. uge) en hel sæson frem – til scripts/cm-day-lockstep.ts.
 
     python3 -I scripts/oracle-day-snaps.py [--seed 1] [--database 3.9.60] [--from 2001-07-14] [--to 2002-06-30] [--every 1]
-                                           [--out ~/cm0102-engine/oracle/daysnap/s1-3.9.60-e1] [--par 2]
+                                           [--out ~/cm0102-engine/oracle/daysnap/s1-3.9.60-e1] [--par 2] [--game <spilmappe>]
     (kør via node scripts/measure.mjs --oracle -- python3 -I scripts/oracle-day-snaps.py …, uden for sandkassen)
 
 Binæren er sporbinæren ~/cm0102-engine/.bosman-ct/build/cm0102_recomp (Bosman 0.6.1 + sn_trace.c), kørt af
@@ -47,6 +47,8 @@ def main():
     d1 = dt.date.fromisoformat(arg("--to", "2002-06-30"))
     every = int(arg("--every", "1"))
     par = int(arg("--par", "2"))
+    # --game <spilmappe>: en anden kopi af spilmappen (fx oracle/game-2026 med "October 2026 Data Update" – aldrig appens egen)
+    game = arg("--game", None)
     out = os.path.abspath(os.path.expanduser(arg("--out", os.path.join(E, f"oracle/daysnap/s{seed}-{db}-e{every}"))))
     dates = []
     d = d0
@@ -59,7 +61,7 @@ def main():
     for i, x in enumerate(dates):
         key_of[x] = x if every >= 7 or i % 7 == 0 else key_of[dates[i - 1]]
     chunks = [dates[i:i + CHUNK] for i in range(0, len(dates), CHUNK)]
-    tag = f"ds{seed}-{db}-e{every}"
+    tag = f"ds{seed}-{db}-e{every}" + (f"-{os.path.basename(os.path.normpath(game))}" if game else "")
     index = {}
     idx_path = os.path.join(out, "index.json")
     if os.path.exists(idx_path):
@@ -82,7 +84,7 @@ def main():
         env = dict(os.environ, RECOMP_SNAP=raw, RECOMP_SNAP_DAYS=",".join(f"{doy(x)}:{x.year}" for x in ch))
         t0 = time.time()
         p = subprocess.Popen([sys.executable, "-I", RUNNER, "--seed", str(seed), "--days", str(days), "--database", db,
-                              "--run", run, "--program", PROGRAM], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+                              "--run", run, "--program", PROGRAM] + (["--game", game] if game else []), env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         pend = list(ch)
 
         def ready(x, done):
@@ -160,7 +162,7 @@ def main():
     # sæsonens kampe fra SAMME kørsel (frø 1 i en anden binær/kørsel – fx out/season-s1a.json – er et andet spil): extract.py på den sidste
     # kørsels filer; navnene fra rt-id'erne (extract.py giver ingen navne, når fixtures_2002.tmp også har næste sæsons hold)
     files = os.path.join(out, "files")
-    if os.path.isdir(files):
+    if os.path.isdir(files) and not game:
         sj = os.path.join(out, "season.json")
         subprocess.run([sys.executable, "-I", os.path.join(E, "oracle/tools/extract.py"), files, os.path.join(E, "oracle/game/Data-3.9.60"), sj], check=True,
                        stdout=subprocess.DEVNULL)
