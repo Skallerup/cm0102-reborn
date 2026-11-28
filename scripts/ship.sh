@@ -6,13 +6,18 @@
 #                 scripts/ship.sh --file punkter.json [--no-e2e]     (JSON: [{"ref": "…", "da": "…", "en": "…", "newGame": true, "log": "…"}, …])
 #   --new-game/--log gælder punktet foran. Hvert punkt får sin egen ændringslogslinje og RELEASE_LOG-linje (i den givne rækkefølge).
 # SHIP_DRY=1: alt undtagen push og oprydning.
+# Tests (28/11): standard det hurtige værn `scripts/test.mjs fast` (faste vagter K3/K5/ændringslog/i18nAll/worldBuild/envDeterminism/låsetrin +
+#   testfiler, der direkte importerer/nævner de ændrede filer; de tunge går til CI, der kører hele pakken efter push – tjek `gh run list -w ci.yml`).
+#   --full-tests (eller SHIP_TIER=full): som før – alle `vitest related` for de ændrede src-filer.
+# e2e: kun når noget, browseren kører, er ændret (src/, public/, index.html, vite.config.ts, package-lock.json, scripts/e2e.mjs), og den kører
+#   samtidig med testene. --no-e2e: aldrig, --e2e: altid.
 # Trin: cherry-pick (alle punkter; konflikt → meld punktet, nulstil main, intet push) → ændringslog i dagens version (ny version pr. dag)
 #       + RELEASE_LOG → tsc → berørte tests (scripts/test.mjs: resultat-cachen) + K3/K5/ændringslog → én e2e (klassisk, original motor)
 #       → commit → push → live-tjek → ryd worktree'erne. Stopper ved første fejl uden at pushe.
 set -euo pipefail
 export PATH="$HOME/.local/share/node/bin:$PATH"
 cd "$(git rev-parse --show-toplevel)"
-REFS=(); DAS=(); ENS=(); NGS=(); LOGS=(); E2E=1
+REFS=(); DAS=(); ENS=(); NGS=(); LOGS=(); E2E=auto; TIER=${SHIP_TIER:-fast}
 add_item(){ REFS+=("$1"); DAS+=("$2"); ENS+=("$3"); NGS+=(0); LOGS+=(""); }
 last(){ echo $(( ${#REFS[@]} - 1 )); }
 if [ $# -gt 0 ] && [ "$1" != --item ] && [ "$1" != --file ]; then
@@ -34,13 +39,15 @@ while [ $# -gt 0 ]; do
     --new-game) [ ${#REFS[@]} -gt 0 ] || { echo "✗ --new-game før et punkt"; exit 2; }; NGS[$(last)]=1;;
     --log) [ ${#REFS[@]} -gt 0 ] || { echo "✗ --log før et punkt"; exit 2; }; LOGS[$(last)]=$2; shift;;
     --no-e2e) E2E=0;;
+    --e2e) E2E=1;;
+    --full-tests) TIER=full;;
     *) echo "ukendt flag $1"; exit 2;;
   esac; shift
 done
 N=${#REFS[@]}
 [ $N -gt 0 ] || { echo "✗ ingen punkter"; exit 2; }
 fail(){ echo "✗ $*"; echo "  (intet er pushet – main lokalt står efter cherry-pick; ret op eller 'git reset --hard origin/main')"; exit 1; }
-[ "${SHIP_PARSE_ONLY:-0}" = 1 ] && { for i in "${!REFS[@]}"; do printf '%s|%s|%s|%s|%s\n' "${REFS[$i]}" "${DAS[$i]}" "${ENS[$i]}" "${NGS[$i]}" "${LOGS[$i]}"; done; echo "e2e=$E2E"; exit 0; }   # kun til test af argumenterne
+[ "${SHIP_PARSE_ONLY:-0}" = 1 ] && { for i in "${!REFS[@]}"; do printf '%s|%s|%s|%s|%s\n' "${REFS[$i]}" "${DAS[$i]}" "${ENS[$i]}" "${NGS[$i]}" "${LOGS[$i]}"; done; echo "e2e=$E2E tier=$TIER"; exit 0; }   # kun til test af argumenterne
 
 [ "$(git branch --show-current)" = main ] || { echo "✗ ikke på main"; exit 1; }
 [ -z "$(git status --porcelain --untracked-files=no)" ] || { echo "✗ main har ikke-committede ændringer"; exit 1; }
@@ -101,22 +108,40 @@ i=s.index("\n- "); s=s[:i]+new+s[i:]; open(p,"w").write(s)
 ' "$TODAY" "$VERSION"
 echo "✓ ændringslog v$VERSION ($N punkt(er))"
 
-# 3) typetjek og tests
-npx tsc --noEmit -p tsconfig.app.json || fail "tsc"
-echo "✓ tsc"
-SRC=$(echo "$CHANGED" | grep -E '^src/.*\.tsx?$' || true)
-TESTS=$(echo "$CHANGED" | grep -E '^tests/.*\.test\.ts$' || true)
-node scripts/test.mjs run --testTimeout=120000 --dir tests tests/changelog.test.ts tests/textParity.test.ts tests/estimateBudget.test.ts $TESTS >/tmp/ship-vitest.$$ 2>&1 || { tail -40 /tmp/ship-vitest.$$; fail "faste tests/ændrede testfiler"; }
-if [ -n "$SRC" ]; then node scripts/test.mjs related --testTimeout=120000 --dir tests $SRC >>/tmp/ship-vitest.$$ 2>&1 || { tail -40 /tmp/ship-vitest.$$; fail "berørte tests"; }; fi
-grep -E "Tests +[0-9]|test-cache:" /tmp/ship-vitest.$$ | sed 's/^/  /'; rm -f /tmp/ship-vitest.$$
-echo "✓ tests"
-
-# 4) én e2e
-if [ $E2E = 1 ]; then
-  E2E_ENGINE=original PORT=5760 node scripts/e2e.mjs klassisk >/tmp/ship-e2e.$$ 2>&1 || { grep -E "✗" /tmp/ship-e2e.$$ | head; fail "e2e"; }
-  grep -q "Alle ende-til-ende-tests bestået" /tmp/ship-e2e.$$ || { tail -20 /tmp/ship-e2e.$$; fail "e2e"; }
-  rm -f /tmp/ship-e2e.$$; echo "✓ e2e"
+# 3) typetjek, tests og e2e (e2e i baggrunden samtidig med testene)
+T0=$SECONDS; tm(){ echo "$(( SECONDS - ${1:-$T0} )) s"; }
+if [ "$E2E" = auto ]; then
+  if echo "$CHANGED" | grep -qE '^(src/|public/|index\.html$|vite\.config\.ts$|package-lock\.json$|scripts/e2e\.mjs$)'; then E2E=1; else E2E=0; echo "· e2e springes over (ingen ændring i src/, public/ o.l.)"; fi
 fi
+npx tsc --noEmit -p tsconfig.app.json || fail "tsc"
+echo "✓ tsc ($(tm))"
+E2E_PID=
+if [ $E2E = 1 ]; then
+  T_E2E=$SECONDS
+  ( E2E_ENGINE=original PORT=5760 node scripts/e2e.mjs klassisk >/tmp/ship-e2e.$$ 2>&1; echo "rc=$? sek=$(( SECONDS - T_E2E ))" >>/tmp/ship-e2e.$$ ) &
+  E2E_PID=$!
+fi
+T_TEST=$SECONDS
+SRC=$(echo "$CHANGED" | grep -E '^src/.*\.tsx?$' || true)
+TESTS=$(echo "$CHANGED" | grep -E '^tests/.*\.test\.tsx?$' || true)
+testfail(){ tail -40 /tmp/ship-vitest.$$; [ -n "$E2E_PID" ] && { kill $E2E_PID 2>/dev/null; pkill -f "vite --port 5760" 2>/dev/null; }; fail "$1"; }
+if [ "$TIER" = full ]; then
+  node scripts/test.mjs run --testTimeout=120000 --dir tests tests/changelog.test.ts tests/textParity.test.ts tests/estimateBudget.test.ts $TESTS >/tmp/ship-vitest.$$ 2>&1 || testfail "faste tests/ændrede testfiler"
+  if [ -n "$SRC" ]; then node scripts/test.mjs related --testTimeout=120000 --dir tests $SRC >>/tmp/ship-vitest.$$ 2>&1 || testfail "berørte tests"; fi
+else
+  # alle ændrede filer (også data, scripts, tests); ændringsloggen/versionen er med via vagterne
+  node scripts/test.mjs fast --testTimeout=120000 --dir tests $CHANGED >/tmp/ship-vitest.$$ 2>&1 || testfail "hurtigt værn (scripts/test.mjs fast)"
+fi
+grep -E "Tests +[0-9]|test-cache:|test fast:" /tmp/ship-vitest.$$ | sed 's/^/  /' | cut -c1-400; rm -f /tmp/ship-vitest.$$
+echo "✓ tests ($TIER, $(tm $T_TEST))"
+
+# 4) e2e (startet ovenfor)
+if [ -n "$E2E_PID" ]; then
+  wait $E2E_PID || true
+  grep -q "Alle ende-til-ende-tests bestået" /tmp/ship-e2e.$$ || { grep -E "✗" /tmp/ship-e2e.$$ | head; tail -5 /tmp/ship-e2e.$$; fail "e2e"; }
+  echo "✓ e2e ($(sed -n 's/^rc=.* sek=//p' /tmp/ship-e2e.$$) s)"; rm -f /tmp/ship-e2e.$$
+fi
+echo "✓ tjek i alt $(tm)"
 
 # 5) commit + push
 git add src/ui/changelogData.ts package.json package-lock.json docs/RELEASE_LOG.md

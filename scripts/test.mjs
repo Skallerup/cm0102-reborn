@@ -2,6 +2,10 @@
 // Vitest med testresultat-cache: samme testfil køres ikke to gange på samme kode (heller ikke på tværs af worktrees).
 //   node scripts/test.mjs run [vitest-flag …] <testfiler …>        (= npx vitest run …)
 //   node scripts/test.mjs related [vitest-flag …] <kildefiler …>    (= npx vitest related --run …; samme udvælgelse som vitest)
+//   node scripts/test.mjs fast [vitest-flag …] <ændrede filer …>     det hurtige værn (scripts/lib/testSelect.mjs): de faste vagter (K3, K5,
+//             ændringslog, i18nAll, worldBuild, envDeterminism, låsetrinnene) + testfiler, der DIREKTE importerer/nævner de ændrede filer – minus
+//             de tunge (> --max-s=60 s, scripts/data/test-times.json) og ud over --budget=900 CPU-s, som kun kører i CI (hele pakken efter push)
+//   node scripts/test.mjs --update-times   scripts/data/test-times.json (median pr. testfil) fra cachens kørsler
 //   --list    vis kun de valgte filer (+ om de springes over)  ·  --force   kør alle de valgte filer (resultatet gemmes igen)      ·   CM_TEST_CACHE=0 / CI: ren vitest uden cache
 // Nøglen pr. testfil: testfilens indhold + vite.config.ts, package-lock.json, tsconfig*, setup-filerne, Node/vitest-version, relevante
 // miljøvariabler (CI, CM_*, GRID_*, MODE, RECOMP_*, ENGINE, NATIONS, NODE_OPTIONS, TZ) og vitest-flagene, der ændrer kørslen (fx -t) – OG
@@ -25,7 +29,36 @@ let argv = process.argv.slice(2);
 const force = argv.includes('--force');
 const listOnly = argv.includes('--list');   // vis kun udvælgelsen og hvad der ville springes over
 argv = argv.filter((a) => a !== '--force' && a !== '--list');
-const mode = argv[0] === 'related' || argv[0] === 'run' ? argv.shift() : 'run';
+let mode = argv[0] === 'related' || argv[0] === 'run' || argv[0] === 'fast' ? argv.shift() : 'run';
+
+if (argv.includes('--update-times')) {
+  const { timesFromCache, listTests } = await import('./lib/testSelect.mjs');
+  const all = timesFromCache(path.join(DIR, 'entries'));
+  const t = new Set(listTests(ROOT));
+  const seconds = Object.fromEntries(Object.entries(all).filter(([k]) => t.has(k)));
+  fs.writeFileSync(path.join(ROOT, 'scripts/data/test-times.json'), JSON.stringify({ note: 'median-sekunder pr. testfil lokalt (3 workers, under agentbelastning) – node scripts/test.mjs --update-times', seconds }, null, 1) + '\n');
+  console.log(`scripts/data/test-times.json: ${Object.keys(seconds).length} testfiler`);
+  process.exit(0);
+}
+// fast: de ændrede filer → de valgte testfiler (derefter som `run`)
+if (mode === 'fast') {
+  const { selectFast } = await import('./lib/testSelect.mjs');
+  const num = (k, d) => { const a = argv.find((x) => x.startsWith(`--${k}=`)); return a ? Number(a.split('=')[1]) : d; };
+  const maxS = num('max-s', 60), budget = num('budget', 900), guards = !argv.includes('--no-guards');
+  argv = argv.filter((a) => !/^--(max-s|budget)=/.test(a) && a !== '--no-guards');
+  // positionelle = ændrede filer; resten (vitest-flag, også `--flag værdi`) går videre til vitest
+  const flags = [], changed = [];
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (a.startsWith('-')) { flags.push(a); if (!a.includes('=') && /^--(dir|testTimeout|maxWorkers|reporter|project|root|config|t|testNamePattern)$|^-t$/.test(a) && i + 1 < argv.length) flags.push(argv[++i]); }
+    else changed.push(a);
+  }
+  const sel = selectFast(ROOT, changed, { maxS, budget, guards });
+  console.log(`test fast: ${sel.run.length} testfiler (≈${sel.seconds} CPU-s) for ${changed.length} ændrede filer${sel.heavy.length ? ` · ${sel.heavy.length} tunge til CI: ${sel.heavy.map((h) => path.basename(h)).join(', ')}` : ''}`);
+  if (listOnly) for (const t of sel.run) console.log(`  ${t}  (${sel.why.get(t)})`);
+  argv = [...flags, ...sel.run];
+  mode = 'run';
+}
 
 // CI og CM_TEST_CACHE=0: præcis den almindelige vitest
 if (process.env.CI || process.env.CM_TEST_CACHE === '0') {
