@@ -412,7 +412,7 @@ export function applyMatchEffects(c: FitCtx, entries: MatchEntry[], competitive:
     const sev = n.sev > 95 ? 2 : n.sev > 65 ? 1 : n.sev > 50 ? 0 : staleSev;
     staleSev = sev;
     const t = chooseInjuryType(c, n.cat, sev, p);
-    if (t > -1) { endInjury(c, p, false); addInjury(c, t, false, p, fixture === -2 ? 0 : fixture, true, 0); }
+    if (t > -1) { endInjury(c, p, false); FIT_TRACE.src = 'match'; addInjury(c, t, false, p, fixture === -2 ? 0 : fixture, true, 0); }
   }
 }
 
@@ -468,6 +468,8 @@ function physio(c: FitCtx, club: number): number {
 
 /** målinger (scripts): nye skader fra kampe og andet (træning, smitte, behandling) – påvirker intet */
 export const FIT_COUNT = { match: 0, other: 0 };
+/** målinger (scripts): kilden til den næste skade (kamp/træning/sygdom/behandling) – påvirker intet */
+export const FIT_TRACE: { src: string; on?: (p: Player, t: number, fixture: number, src: string) => void } = { src: '' };
 
 /** Injury::add_injury 0x62d250(type, backdate, staff, fixture, allow_outbreak, news_arg, perm, future). `perm`/`future` (arg 7/8) bruges kun af
  *  player_setup.cfg (0x7a3a10: "PERMANENT_<skade> n" → (n, 0), "FUTURE_PERMANENT_<skade> n" → (n, 1)); alle andre kald giver (0, 0). */
@@ -519,7 +521,7 @@ export function addInjury(c: FitCtx, t: number, backdate: boolean, p: Player, fi
   if (w2a + 60 < days) w2a = s16(days - 60);
   const d0 = backdate ? c.today - (c.rand(days) + 1) : c.today;                   // 0x54c8e0
   const e: CmInjury = { t, d: d0, w28: days, w2a, w2c: days, w2e: w2a };
-  if (!backdate) FIT_COUNT[fixture ? 'match' : 'other']++;
+  if (!backdate) { FIT_COUNT[fixture ? 'match' : 'other']++; FIT_TRACE.on?.(p, t, fixture, FIT_TRACE.src); }
   updateFitness(c, p);
   r.inj = e;
   if (!backdate && p.club && c.human(p.club)) c.news?.('injury', p, e);          // 0x62dca0 (nyheden går også til landet m.fl. – ikke porteret)
@@ -567,6 +569,7 @@ function rollRecurring(c: FitCtx, r: CmFit, e: CmInjury): void {
   if (club && clubRep(c.g, club) > 0x109a && !c.human(club.id) && c.rand(3) === 0) {
     const rt = bestP.cmFit!.rt;
     const k = rt >= 11 && rt <= 59 ? TREAT[rt - 11] : 2;
+    FIT_TRACE.src = 'treat';
     addInjury(c, k === 0 ? 0x4e : k === 1 ? 0x4f : 0x4d, false, bestP, 0, true, -1);
     return;
   }
@@ -601,6 +604,7 @@ function spreadOutbreaks(c: FitCtx): void {
       const s = sq[c.rand(50)];
       if (!real(s)) continue;
       if (fitOf(c.g, s).lt === o.t) continue;
+      FIT_TRACE.src = 'ill';
       addInjury(c, o.t, false, s, 0, false, o.fx);
       n--;
     }
@@ -621,20 +625,21 @@ function closeSeason(c: FitCtx, p: Player): boolean {
 
 /** Injury::daily_update 0x62b7b0: knocklisten tømmes, skadernes tællere tæller ned, træningsskader på hverdage (n = max(10, spillere/150)
  *  tilfældige spillere), og sygdomsudbruddene smitter. `players` = posterne i staff-tabellens rækkefølge. */
-export function injuryDaily(c: FitCtx, players: Player[], nonPlayers = 0): void {
+export function injuryDaily(c: FitCtx, players: Player[], nonPlayers = 0, draw: Player[] = players): void {
   knocks.clear();
   for (const p of players) { const e = p.cmFit?.inj; if (e) { e.w2c = s16(e.w2c - 1); e.w2e = s16(e.w2e - 1); } }
   const start = dayNum(c.g.cmFitStart ?? c.g.date);
   if (c.today < start && doyOf(c.today) === 180) for (const p of players) updateFitness(c, p);
   const wd = (new Date(c.today * 86400000).getUTCDay() + 6) % 7;                // 0x54a3f0: 0 = mandag
-  if (wd !== 6 && wd !== 5 && players.length) {
+  if (wd !== 6 && wd !== 5 && draw.length) {
     // [0xae2364] tæller hele staff-tabellen (også trænere, managere …): en ikke-spiller trækkes om (0x62b8e9) – her pladserne efter spillerne
-    const cnt = players.length + nonPlayers;
+    // (`draw` = spillerne i originalens hukommelse; tællerne ovenfor går for alle)
+    const cnt = draw.length + nonPlayers;
     const n = s16(Math.max(10, ftol(cnt / 150)));
     const t7 = n + Math.floor((n * -1840700269) / 4294967296);                     // 0x92492493: n/14
     const m = (t7 >> 3) + ((t7 >> 3) < 0 ? 1 : 0);
     for (let i = 0; i < n; i++) {
-      const p = players[c.rand(cnt)] as Player | undefined;
+      const p = draw[c.rand(cnt)] as Player | undefined;
       if (!real(p)) { i--; continue; }
       if (p.injury?.key === 'awol') continue;                                     // 0x418f60
       if (gkRating(p) === 20 && c.rand(5) > c.rand(2)) continue;
@@ -659,6 +664,7 @@ export function injuryDaily(c: FitCtx, players: Player[], nonPlayers = 0): void 
       const t = chooseInjuryType(c, cat, i < m ? -1 : 0, p);
       if (t === 20) continue;                                                     // 0x62bcc0: shin splints springes over
       trainingAttrDrop(c, p, t, cat);
+      FIT_TRACE.src = 'train';
       addInjury(c, t, false, p, 0, true, -1);
     }
   }

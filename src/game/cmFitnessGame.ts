@@ -14,7 +14,7 @@ import { cmRand } from './cmPlayerData';
 import { cmTrainPlayer, humanLevels, setTrainCtx } from './cmTraining';
 import { setDevCtx } from './cmDevelop';
 import { registerPrerun, runPrerun } from './cmPrerun';
-import { cmRetireInjury } from './cmRetire';
+import { cmInMemory, cmRetireInjury } from './cmRetire';
 import { intlHooks } from './hooks';
 import { CM_SETUP_INJURIES, CM_SETUP_LOANS } from './data/cmPreseason';
 import { cmPermitMove } from './cmPermit';
@@ -164,6 +164,15 @@ function realPlayers(g: GameState): Player[] {
   // regens med PLAYER_REGEN har den pensioneredes staffpost (0x7abac0) – under [0xae2364] som de andre (0x62c2f0/0x62c3d0; cmGenerated)
   return Object.values(g.players).filter((p) => !p.regen || !cmGenerated(g, p));
 }
+/** 0x62b7b0's træk: rand([0xae2364]) over staff-tabellen = kun personerne i originalens hukommelse (0x524d70) – spillerne (cmInMemory) og
+ *  ikke-spillerne (Staff.cmMem; world-filer uden oplysningen: hele staben). Før trak vi n = max(10, alle 23.931/150) blandt alle 8.236 spillere
+ *  (oraklet, størrelse 2: 8.904 poster, 6.781 spillere → 59 pr. dag) – 2,4 × træningsskaderne i England. */
+function injuryPool(g: GameState, ps: Player[]): { ps: Player[]; staff: number; all: Player[] } {
+  const mem = ps.filter((p) => cmInMemory(g, p));
+  let staff = 0;
+  if (g.cmStaffMem) { for (const s of Object.values(g.staff)) if (s.cmMem) staff++; } else staff = Object.keys(g.staff).length;
+  return { ps: mem, staff, all: ps };
+}
 
 /** Nyt spil: Injury::Injury (0x62cf70) på databasens dato (1/1) og dagene frem til spillets start (0x5cc850 kører 0x62b7b0 hver dag – uden
  *  kampe og uden 0x5ce2d0). Efter løkken (0x5ccc91–0x5cccaa) kommer trupplanen 0x83a1b0 (newgame.ts cmSquadPlanStart … cmShortlistStart – den
@@ -183,8 +192,7 @@ export function cmFitNewGame(g: GameState, noPrerun = false): void {
   cmStaffStateInit(g, `${g.date.slice(0, 4)}-01-01`);                                 // 0x828110: staffpostens +0xa (indkøringsbyten) på databasens dato
   if (noPrerun) return;
   // forkørslen 0x5cc850 (cmPrerun.ts): trinet Injury 0x62b7b0 hver dag fra dagen efter databasens dato til dagen før start
-  const staff = Object.keys(g.staff).length;
-  prerunInjury = { ps, staff };
+  prerunInjury = injuryPool(g, ps);
   try { runPrerun(g, db + 1, start); } finally { prerunInjury = null; }
 }
 
@@ -270,8 +278,8 @@ export function cmSetupLoans(g: GameState): number {
 }
 
 /** forkørslens Injury-trin (0x5cc850 → 0x62b7b0 ved tidspunkt 2) – spillerlisten og stabens antal fra cmFitNewGame */
-let prerunInjury: { ps: Player[]; staff: number } | null = null;
-registerPrerun('injury', (g, d) => { if (prerunInjury) injuryDaily(fitCtx(g, SALT.prerun, d), prerunInjury.ps, prerunInjury.staff); });
+let prerunInjury: { ps: Player[]; staff: number; all: Player[] } | null = null;
+registerPrerun('injury', (g, d) => { if (prerunInjury) injuryDaily(fitCtx(g, SALT.prerun, d), prerunInjury.all, prerunInjury.staff, prerunInjury.ps); });
 
 /** Dagen (sim.ts newDay): 0x62b7b0, så 0x5ce2d0's del – trætheden falder for alle (0x62c2f0) – og aflæsningerne: menneskets spillere
  *  (0x5cf226) og de skadede (deres status, så spillets udtagelse og skærme ser skaden). */
@@ -283,7 +291,8 @@ export function cmFitDay(g: GameState): void {
   const ps = realPlayers(g);
   const today = dayNum(g.date);
   for (const p of ps) p.cmFit ??= newFit(today);
-  injuryDaily(fitCtx(g, SALT.daily), ps, Object.keys(g.staff).length);
+  const pool = injuryPool(g, ps);
+  injuryDaily(fitCtx(g, SALT.daily), ps, pool.staff, pool.ps);
   const rc = fitCtx(g, SALT.recover), rd = fitCtx(g, SALT.read);
   for (const p of ps) {
     recoverFatigue(rc, p);
