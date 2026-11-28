@@ -1342,6 +1342,22 @@
     {
       "key": "transfer.cmBidSeen.b.wpFin",
       "reason": "Budnyhedens tekst er exe-strengen 0xa90bc4 (0x8d3520) ordret – strengudtrækket har slået fortsættelseslinjen \"4 million)> for {}<%s - Club name 2…\" sammen for alle \"worth\"-varianterne, så K3 ikke kan samle \"worth … for\"; teksten ER originalens"
+    },
+    {
+      "key": "cl.sq.h.stats",
+      "reason": "Squad-fanens overskrift er sammensat af originalens skabelon '<scope> Stats' + 'Overall' (begge i exe'en: '<%s - scope e.g. Overall> Stats', 'Overall') – ordlyden som én streng findes ikke"
+    },
+    {
+      "key": "cl.sq.h.more",
+      "reason": "Som cl.sq.h.stats: '<scope> Stats' med scope 'Overall' (exe)"
+    },
+    {
+      "key": "transfer.overBudget",
+      "reason": "Returneres kun, når !cmMarketOn(g) (gamle gemte spil/udvidet); spil startet med markedsporten har ingen budgetgrænse ved buddet (0x8ef9f0), så teksten vises aldrig i ægte tilstand"
+    },
+    {
+      "key": "transfer.noWorkPermit",
+      "reason": "Returneres kun, når !cmPermitOn(g) (gamle gemte spil/udvidet); spil startet med porten afgør arbejdstilladelsen først ved handlens gennemførelse (0x8c7950)"
     }
   ],
   "patterns": [

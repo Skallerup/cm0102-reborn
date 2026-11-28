@@ -231,7 +231,7 @@ function FilterDialog({ f: initial, defaults, nations, onOk, onClose }: { f: Fil
   return (
     <div className="modal-bg" onClick={onClose}>
       <div className="modal cx-settings cx-filters" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-head"><span>{t('cl.fl.title')}</span><button className="x" onClick={onClose}>×</button></div>
+        <div className="modal-head"><span>{t('cl.fl.title', { name: t('tr.search') })}</span><button className="x" onClick={onClose}>×</button></div>
         <div className="modal-body">
           <div className="cx-set-top">
             <div className="cx-fl-tabs">
@@ -348,7 +348,7 @@ function StaffFilterDialog({ f: initial, nations, onOk, onClose }: { f: StaffFil
   return (
     <div className="modal-bg" onClick={onClose}>
       <div className="modal cx-settings cx-filters" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-head"><span>{t('cl.sf.title')}</span><button className="x" onClick={onClose}>×</button></div>
+        <div className="modal-head"><span>{t('cl.sf.title', { name: t('cl.tr.staffSearch') })}</span><button className="x" onClick={onClose}>×</button></div>
         <div className="modal-body">
           <div className="cx-set-top">
             <div className="cx-fl-tabs">

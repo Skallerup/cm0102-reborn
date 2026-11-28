@@ -850,7 +850,7 @@ function newDay() {
         p.injury = null;
         if (!wasAwol) p.condition = Math.min(p.condition, 75);
         // CM 01/02: "Irwin resumes full training" – "Denis Irwin has begun full training following his foot injury."
-        asOwner(p.club, () => addNews({ cat: 'injury', key: wasAwol ? 'awol.back' : 'news.recovered', params: wasAwol ? { player: pname(p) } : { player: pname(p), last: p.last, injury: injKey }, link: { kind: 'player', id: p.id } }));
+        asOwner(p.club, () => addNews({ cat: 'injury', key: wasAwol ? 'awol.back' : 'news.recovered', params: wasAwol ? { player: pname(p), club: g.clubs[p.club]?.name ?? '' } : { player: pname(p), last: p.last, injury: injKey }, link: { kind: 'player', id: p.id } }));
       }
     }
     // restitution: en spiller med Natural Fitness 10 er klar igen 2-3 dage efter en kamp (som i CM 01/02, *estimeret*).

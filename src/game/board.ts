@@ -209,7 +209,7 @@ export function resignJob(): string {
   const midSeason = m >= 8 || m <= 4;
   if (midSeason) g.manager.rep = clamp(g.manager.rep - 3, 1, 100);
   g.manager.declinedJobs = { ...(g.manager.declinedJobs ?? {}), [club.id]: g.date }; // de ringer ikke lige foreløbig
-  addNews({ cat: 'job', key: midSeason ? 'job.resignedMid' : 'job.resigned', params: { club: club.name } });
+  addNews({ cat: 'job', key: midSeason ? 'job.resignedMid' : 'job.resigned', params: { club: club.name, name: g.manager.name } });
   club.manager = 0;
   club.tactic = null;
   openVacancy(club.id);

@@ -1162,7 +1162,7 @@ export function renewContract(pid: number, wage: number, years: number, clauses?
     p.renewal = undefined;
     // en tilfreds spiller takker for den nye kontrakt
     if (hadDemand || wage >= demand * 1.1) playerPraises(p, 'contract');
-    addNews({ cat: 'contract', key: 'contract.renewed', params: { player: pname(p), years } });
+    addNews({ cat: 'contract', key: 'contract.renewed', params: { player: pname(p), years, club: club.name } });
     fansOnRenewal(p, club);
     return 'accepted';
   }
