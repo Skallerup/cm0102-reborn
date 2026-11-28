@@ -122,7 +122,8 @@ try {
   if (process.env.SLOW) { let cache = tabPids(); setInterval(() => { cache = tabPids(); }, 2000).unref(); startSlow(() => cache); console.log(`SLOW ×${process.env.SLOW} på ${cache.length} fane-proces(ser)`); }
   await page.waitForSelector('.cxs [data-field=new]', { timeout: 120000 });
   await page.locator('[data-field=database]').click();
-  await page.locator('[data-field="db-3.9.60"]').click();
+  // DB=<data-field-endelse> (standard 3.9.60; modern = 2026/27), CLUB=<klub> (standard Arsenal)
+  await page.locator(`[data-field="db-${process.env.DB ?? '3.9.60'}"]`).click();
   await page.waitForSelector('[data-field=new]');
   await page.locator('[data-field=new]').click();
   await page.waitForSelector('.cxs-lrow', { timeout: 120000 });
@@ -141,7 +142,7 @@ try {
   await page.waitForTimeout(3000); console.log(`Select Team ${T()} fp-top ${peakRss.toFixed(0)} MB (${peakAt}) nu ${rssNow().toFixed(0)} MB${await mainHeap()}`); phase = 'take control';
   // PREVIEWONLY=1: stop ved Select Team (kun den midlertidige verden)
   if (process.env.PREVIEWONLY) throw Object.assign(new Error('previewonly'), { previewOnly: true });
-  await page.locator('[data-club="Arsenal"]').click();
+  await page.locator(`[data-club="${process.env.CLUB ?? 'Arsenal'}"]`).click();
   await page.waitForSelector('[data-take]', { timeout: 60000 });
   await page.locator('[data-take]').click();
   await page.waitForSelector('[data-confirm]');
