@@ -2,6 +2,7 @@
 
 Flyttet fra CLAUDE.md 17/11-2026 (så CLAUDE.md er kort i hver session). Nyeste først. Tilføj en linje øverst ved hver udgivelse.
 
+- 2026-11-28 – Skudt live (v0.40.0): Offer Trial 1:1 (0x8724a3/0x8f8be0/0x8fb9e0/0x4ce4e0/0x4cf720/0x4c9b76/0x8e8a60 kode 3, cmTrial.ts); 2001-fingeraftryk uændret
 - 2026-11-28 – Skudt live (v0.40.0): K3 159 -> 144
 - 2026-11-28 – Skudt live (v0.40.0): CI grøn igen (dcd78faa): forkørslens kampe gemte assistentens elleve i managerens taktik (regression fra 951167f9) – sim.ts prerunPlay; CI-tidsgrænser × CI_TIMEOUT_FACTOR (vite.config ciTimeouts), 6 shards; e2e: T()-faktor i CI, England fravælges i standardkørslen, gates på originalens logik, p2-init i multiplayer
 - 2026-11-28 – Skudt live (v0.40.0): Ønskelisterne ved lukket computerbud samme øjeblik (0x8bf680/0x8bfa30/0x8bfcb0/0x8c44e0/0x8c0080/0x8c28c0 → 0x843e10), K5 231->230, fp 2001 2a4e02d8857614fd
