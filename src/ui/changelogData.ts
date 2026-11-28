@@ -13,6 +13,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '2026-11-28',
     title: { da: 'Mere af det originale CM 01/02', en: 'More of the original CM 01/02' },
     items: [
+      { da: "Computerklubberne finder et nyt mål til en plads på ønskelisten samme dag, som et bud bliver afvist eller trukket (som originalen) – før først dagen efter.", en: "Computer clubs now find a new shortlist target the same day a bid is rejected or withdrawn (as in the original) – previously only the next day." },
       { da: "Nyt spil: lidt hurtigere forkørsel og ønskelister (samme spil bit for bit)", en: "New game: slightly faster pre-run and shortlists (same game bit for bit)" },
       { da: "Målingen af kontraktudløb mod originalen talte samme frie transfer flere gange; rettet (ingen ændring i spillet).", en: "The contract-expiry comparison against the original counted the same free transfer several times; fixed (no change in the game)." },
       { da: "Har du en spiller på din shortlist, får du nu en nyhed, når en anden klub byder på ham eller vil leje ham – med originalens tekster (\"… have made an offer of £X for Arsenal's …\", endeligt/ikke til forhandling, U21-stjerne, klubrekord, bytte) og klubbens svar under nyheden.", en: "If a player is on your shortlist, you now get a news item when another club bids for him or tries to loan him – with the original texts (\"… have made an offer of £X for Arsenal's …\", final/non-negotiable, U21 starlet, club record, exchange) and the club's answer below it." },
