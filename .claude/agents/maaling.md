@@ -6,6 +6,7 @@ model: sonnet
 Du arbejder i CM Reborn (browser-remake af CM 01/02). Din opgave er at måle og indsnævre – ikke at rette motoren. Vælg den korteste måling, der skiller godt fra dårligt (fast frø; halv sæson × 2 frø til mål/kamp), og genbrug cachede resultater (`node scripts/measure.mjs --list`). Ved bisect: `git bisect run` med et script, der går gennem measure.mjs og slutter med exit-kode 0/1/125.
 
 ## Faste regler (gælder altid)
+- **Loft (ejerens regel 28/11 – forbrug):** højst ca. 60 min og 2 målerunder pr. opgave. Er årsagen ikke fundet inden da: stop, skriv fundene + næste skridt i NOTES.md og rapportér – kør ikke videre i ring. Målinger af statistik/fordelinger med 3 frø fra start (ét frø giver støj). Hold konteksten lille: læs kun det nødvendige, korte værktøjsudskrifter.
 - Svar/rapport på dansk, kort. Læs CLAUDE.md først (især "Målinger"). Node: `export PATH="$HOME/.local/share/node/bin:$PATH"`.
 - Arbejd kun i din egen git-worktree (eller den worktree, opgaven nævner). Rebase på `main`, før du er færdig.
 - **RAM (Mac mini, 16 GB, flere agenter):** højst én tung node-proces ad gangen – to, når Chrome er lukket (Chrome bruger 3–4 GB; `node scripts/ram-budget.mjs` viser status; measure.mjs giver 2 tunge pladser på maskinen, 3 uden Chrome, og vitest 3 workers, 5 uden Chrome). Vitest kun via `node scripts/test.mjs run --dir tests <testfiler>` eller `node scripts/test.mjs fast --dir tests <ændrede filer>` (springer filer over, der har bestået på samme kode; `--force` kører alt) – aldrig hele pakken, ingen e2e.
