@@ -2,6 +2,7 @@
 
 Flyttet fra CLAUDE.md 17/11-2026 (så CLAUDE.md er kort i hver session). Nyeste først. Tilføj en linje øverst ved hver udgivelse.
 
+- 2026-11-28 – Skudt live (v0.40.0): 2026-11-28 – 2026-beskæring ved spilstart (e5fc6b13/31b7eb16, genudgivet efter konflikt i cm-flow-2026.ts): cmRaw.mem26 i world-cm.json, newgame bruger mem26, ingen opfyldning; Maximum 35.186 → 17.406 spillere; 2001 uændret. + startlønnen (a73980c4): cmContractInit.ts bruger 0x85e960's løn (databasens £/cmGbp) på 2026/27 – før spillets moderne løn pr. spiller, så +0x10/+0x14 afveg (Swansea 6.610 mod oraklets 22.000); nu som oraklets dagsbillede 14/7. Sæson 1 (størrelse 2, frø 1): PL køb £62,7m → £102,9m (orakel £206m), salg £103,8m → £156,3m (£365m), England £105,4m → £152,5m (£314m), Saudi £2,3m → £12,7m (£66m). 2001-fingeraftryk uændret (15427a4165b53eb4). Rest: engelske købere byder ~1/3 så ofte aug–nov (få mål i 0x83f3a0). + e2e-trinnet for bud på egen spiller afviser markedets egne ubesvarede bud først (c5016264).
 - 2026-11-28 – Skudt live (v0.40.0): Hastighed: 0x8c5cf0 tilbudsløkke (cmGen/fast_8c5cf0.ts) + 0x842e10 pladsløkke 0x843063 (cmGen/fast_842e10.ts, PC_HOOK); CM_GEN_FAST=0 slår fra; fingeraftryk bit for bit (2001 15427a4165b53eb4, sent 2004-gem); sent gem 19-31/3-2004 23,0 -> 18,0 s/dag (tung maskine)
 - 2026-11-28 – Skudt live (v0.40.0): Brødtekster 1:1: transfer.aiWithdrew/notForSale
 - 2026-11-28 – Skudt live (v0.40.0): 2026-11-28 – Ingen nyhed uden brødtekst: 82 nyhedstyper fik .body på alle 10 sprog; tests/newsAllLangs.test.ts kræver det; scripts/news-bodies.ts
