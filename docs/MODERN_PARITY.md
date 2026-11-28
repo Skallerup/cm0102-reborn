@@ -4,6 +4,40 @@ Undersøgelse 17/11-2026 (ingen kodeændringer). Ejeren: "Kig ind i alle de ting
 dem på 2026/2027." Regel (CLAUDE.md): 2001-specifikke **tal** (priser, lønniveau, g.econ-kalibreringer) må ikke overføres; originalens **logik**
 (regler, beslutninger, AI, motor) bør gælde for begge databaser, hvor dataene tillader det.
 
+## Gen-måling 27/11-2026 (readWorld/world-cm.json, origin/main 2c7e7679) – delvis
+
+Baggrund: indtil bde9bc4e læste soak/perf-fingerprint/features/grid-season/snap-verify/econ-run 2026/27 uden world-cm.json. De fleste `scripts/cm-*-2026.ts` bag tallene nedenfor
+fletter dog selv world-cm.json (Object.assign), så deres gamle tal er ikke nødvendigvis forkerte – men koden er flyttet siden (bl.a. holdarkets udlændingegrænse, v0.39.0).
+Kun tre målinger blev færdige (koordinatoren stoppede resten efter 4,5 t; en kø i delt scratchpad blev desuden overskrevet af en anden agent): **kamp (halv sæson 11/7 → 1/1-27, 2 frø), økonomi (hel sæson, Brentford)**.
+Alle øvrige tal i dokumentet (marked, bestyrelse, stab, kontrakter, medier, spejdere/disciplin, Europa, landshold) er IKKE gen-målt og står som før (scripts: `scripts/cm-<emne>-2026.ts`).
+
+| Tal | Gammelt (doc, 20/11) | Nyt 27/11 | Vurdering |
+|---|---|---|---|
+| Kamp, liga, mål/kamp (gitter) | 2,77 (Brentford), 2,79 (Leeds) | 2,91 (Brentford frø 1, 1079 kampe), 2,98 (Wrexham frø 2, 1075) – measure 7424e9ed5b6b / 766148efc4d4 | +0,1–0,2; 2001: 3,06 – nærmere originalen |
+| Gule/kamp liga | 1,93 / 2,07 | 1,57 / 1,53 | **falder 20–25 %**; 2001: 1,34 – nu tættere på |
+| Røde/kamp liga | 0,13 / 0,19 | 0,17 / 0,14 | uændret inden for støj (2001: 0,12) |
+| Skader/kamp liga | 0,54 / 0,58 | 0,57 / 0,57 | uændret (2001: 0,62) |
+| Pokal mål/kamp | – | 3,08 / 3,25 | højere end liga; kontroller mod 2001 |
+| Europa-kampe (gitter) mål/kamp | 3,36 / 3,18 (zone) | 2,76 / 2,69 (gitter, 563 kampe) | nu gitter, ikke zone – lavere end 2001 (3,24) |
+| Venskabskampe mål/kamp | – | 2,16 / 2,09 (252–261 kampe) | – |
+| Klubber i verdenen | 656 | 1.205 (med euroClubs) | – |
+| Finans: klubber i minus, start / midt / slut | start 0→25, slut 110 (656 klubber) | 123 / 209 / 269 af 1.205 | **tallet er ikke sammenligneligt (flere klubber), men 10 % → 22 % ved slut er højt**; skyldes sandsynligvis euroClubs' skjulte klubber |
+| PL i minus (slut) | 3 af 20 | 0 af 20 (saldo median €172,6m, min €68,1m) | bedre end før |
+| Championship i minus (slut) | 1 af 24 | 0 af 24 (midt: 5; median €34,9m) | – |
+| PL omsætning / løn | €3,77 mia / 127 % | €3,19 mia / **142 %** (løn €4,54 mia) | **løn over omsætning – forkert niveau** (2001: løn ≈ 60–70 % af omsætning) |
+| Championship løn/omsætning | 82 % | 94 % (omsætning €0,98 mia) | stiger |
+| PL tv / præmier / udbytte | €52m / €771m / €420m | €110m / €876m / €458m | tv stadig meget lavt (€4,8m pr. klub) |
+| PL billetindtægt (gate) | – | €992m (€31m pr. klub), merch €1.005m | merchandise ≈ gate – mistænkeligt højt |
+| PL transfers in / out | – | €1.467m / €483m | køb 3× salg – ubalance |
+
+### De 5 største afvigelser (forslag til næste port-opgaver)
+1. **Lønninger over omsætning i PL (142 %)** og i Championship (94 %): lønsum 0x598370 × cmGbp-faktor (PL 0,1741) mod posterne i 0x59a5d0/0x682e10/0x683010; undersøg om lønnen (DB-£) omregnes med en anden faktor end indtægterne (kandidat: minimumsindtægter/merch uden gate-skalering).
+2. **Tv-penge PL €110m (€4,8m pr. klub)** mod præmier €876m: tv-rettigheder 0x683010 læser FinanceTable, som i første sæson er tom – originalen har samme mønster, men 2026-niveauet er urealistisk lavt; mål mod orakel på 2001-sæson 2.
+3. **Merchandise ≈ gate (€1,0 mia mod €1,0 mia i PL)**: merch-formlen (omdømme/stjerner × cmGbp) ser skaleret forkert ud på 2026/27.
+4. **Klubber i minus 269 af 1.205 ved sæsonslut (22 %)** – især de skjulte euroClubs (`HE…`) og lavere rækker uden indtægter; undersøg om skjulte klubber bør have økonomi/ikke tælles.
+5. **Transfers: PL køber for €1,47 mia mod salg €0,48 mia** (signOn €398m!): Signing On Fee ser forkert skaleret ud; gen-mål cm-market-2026 (ikke gjort her) og sammenlign med ejerens skærmbilleder.
+Desuden ikke gen-målt: marked, bestyrelse, stab, kontrakter, medier, Europa, landshold – kør `scripts/cm-*-2026.ts` via measure.mjs (≈ 15–25 min hver) på ny kode.
+
 ## 0. Kontakterne og hvad de bygger på (kortlagt 20/11)
 
 Regel (CLAUDE.md "Altid som originalen", 18/11): en port gates aldrig på 2001-databasen (`cmActive`/`isOriginal2001`/`cmDatabase === 'original'`),
