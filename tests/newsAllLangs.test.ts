@@ -95,7 +95,7 @@ const BUILT = [/^board\.update$/, /^cmban\.h/, /^cmban\.fa\./, /^cm\.req$/, /^cm
 const BY_PARAM: [RegExp, string][] = [
   [/^cmfine\./, 'cmfine.b.'], [/^cmret\./, 'cmret.b.'], [/^cmcal\.tv$/, 'cmcal.tvb.'], [/^cmprize\./, 'cmprize.b.'], [/^cmfe\./, 'cmfe.b.'],
   [/^cmint\.r\./, 'cmint.r.body'], [/^cmint\./, 'cmint.b.'], [/^cmaw\.mh\./, 'cmaw.mb.'], [/^cmaw\.yh\./, 'cmaw.yb.'], [/^cm\.staffRenew(Ok|No)$/, 'cm.rn.'],
-  [/^transfer\.cm7$/, 'transfer.cm7.b.'], [/^transfer\.cmLoanCancelled$/, 'transfer.cmLoanCancelled.b.'], [/^transfer\.cmBidRej$/, 'transfer.cmBidRej.b'],
+  [/^transfer\.cm7$/, 'transfer.cm7.b.'], [/^transfer\.cmBidSeen$/, 'transfer.cmBidSeen.b.'], [/^transfer\.cmLoanCancelled$/, 'transfer.cmLoanCancelled.b.'], [/^transfer\.cmBidRej$/, 'transfer.cmBidRej.b'],
 ];
 /** fælles tekster/varianter (bodyKey i common.tsx): alle skal findes; tom liste = `${key}.body` og `${key}.body0` (reservekampe uden stadion) */
 const ROUTES: [RegExp, string[]][] = [
