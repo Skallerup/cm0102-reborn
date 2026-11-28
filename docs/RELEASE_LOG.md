@@ -2,6 +2,7 @@
 
 Flyttet fra CLAUDE.md 17/11-2026 (så CLAUDE.md er kort i hver session). Nyeste først. Tilføj en linje øverst ved hver udgivelse.
 
+- 2026-11-28 – Skudt live (v0.40.0): Ønskelister: 0x8c9720 → 0x843e10 mode 4 → interesserede klubbers genudfyldning (mode 1, 0x83f3a0) læses nu tilbage (cmSlMoved). 2001-fp 30b363c7e4c3be4b -> 255bfe0d555de69c (fra 21/7); 2026 PL-køb 1/1 frø1 70,5->55,8, frø2 57,5->25,7 (støj).
 - 2026-11-28 – Skudt live (v0.40.0): Fællesskab #35 (Bruno £1,2m/uge): årsag = før-91fb2f68-startløn (£89.400 orig-£) + 0x860f10 alder>31 & krav>75.000 -> 250.000 · 1/cmGbp 0,1741; rettet af 91fb2f68, regressionstest i tests/cmWill2026.test.ts, scripts/bruno-probe.ts
 - 2026-11-28 – Skudt live (v0.40.0): Boldholderen 0x7109f0: [esp+0x4a/0x4b] = sub_6ce310 med første ben + føring = 6ce310(…,1); 0x711133 skriver 3,5 i [esp+0x60]; +0x8d46 signed bytes. CL-spor cl1 (oracle/runs, COMP=326): 5/24 kampe ens hele kampen (før 1). grid-free cl1: 1,68 mål/11,6 skud = oraklets niveau → rest ligger i inddata. 2001-fingeraftryk slut 724cf1ebd9016183 / samlet d6b13cbca85a8761
 - 2026-11-28 – Skudt live (v0.40.0): Ønskelisternes par: blokstørrelse ved p−4 (realloc 0x945667 i 0x8423f0) – par før nr. 101 gik tabt; PL-køb 2026 til 1/1 45,9 -> 73,7 (orakel 108,9); 2001-fingeraftryk ændret fra start
