@@ -503,11 +503,15 @@ let pctx: CmPlayerCtx = {};
 export function setCmPlayerCtx(c: CmPlayerCtx): void { pctx = c; }
 
 /** 0x4cbb60 CONTRACT_MANAGER::get_squad_placement: 1 reserverne, 2 førsteholdet (staff +0x5e bit 0 – sat af 0x83cb40; hos os Player.reserves),
- *  0 for klubber uden reservehold (0x542740: B-hold, spanske, tyske og portugisiske klubber m.fl. – *estimeret*: kun landene) */
+ *  0 for klubber uden reservehold (0x542740 club_has_reserve_team: klubben har en B-holdspartner 0x540a50(klub, 0, 1) ≠ 0, eller den ligger
+ *  i Spanien [0x9cf488], Tyskland [0x9cf314] eller Portugal [0x9cf434] – notes/reserve-matches.md) */
 export const NO_RESERVES = new Set(['Spain', 'Germany', 'Portugal']);
+/** 0x542740 for klubber (landsholdenes gren bruges ikke her): B-holdsparret (cmBTeam.ts linkedClub) eller landet */
+export const clubHasReserves = (g: GameState, club: number): boolean =>
+  !linkedClub(g, club) && !NO_RESERVES.has(g.nations[g.clubs?.[club]?.nation ?? -1]?.name ?? '');
 export function squadPlacement(g: GameState, p: Player, club: number): number {
   const c = g.clubs?.[club];
-  if (!c || p.club !== club || NO_RESERVES.has(g.nations[c.nation]?.name ?? '')) return 0;
+  if (!c || p.club !== club || !clubHasReserves(g, club)) return 0;
   return p.cmPlace ?? (p.reserves ? 1 : 2);
 }
 

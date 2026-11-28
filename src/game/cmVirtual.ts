@@ -37,7 +37,7 @@ import type { GameState, Player, Staff } from './types';
 const s16 = (v: number) => (v << 16) >> 16;
 import { ATTRS } from './attributes';
 import { addPlayer, dropPlayer, onGameSwitch, playersEpoch, squad } from './state';
-import { cmActive, cmIntlOn, cmLogic, clubRepMem, NO_RESERVES } from './cmPlayerData';
+import { cmActive, cmIntlOn, cmLogic, clubRepMem, clubHasReserves } from './cmPlayerData';
 
 /** (MODERN_PARITY §0 E) fyldspillerne 0x90dae0: 2001-verdenen, eller en CM-database i ægte tilstand fra et spil startet med dem (g.cmVirt –
  *  newgame.ts). Ældre 2026/27-spil beholder spillets reservehold (season.ts fillSquad). */
@@ -99,8 +99,8 @@ function templateFits(p: Player, grp: number): boolean {
   }
 }
 
-/** 0x542740: klubben har reservehold (+0x5e = 1/2) – almindelige klubber: ikke i Spanien, Tyskland eller Portugal (som cmPlayerData's squadPlacement) */
-const hasReserves = (g: GameState, cid: number) => !NO_RESERVES.has(g.nations[g.clubs[cid]?.nation ?? -1]?.name ?? '');
+/** 0x542740: klubben har reservehold (+0x5e = 1/2) – ingen B-holdspartner og ikke i Spanien, Tyskland eller Portugal (cmPlayerData's clubHasReserves) */
+const hasReserves = clubHasReserves;
 /** nation +0x11c: landet har spilbare ligaer */
 const nationActive = (g: GameState, nation: number) => g.activeNations.includes(nation);
 /** [0xadadfc][division] ≠ 0: klubbens liga spilles */

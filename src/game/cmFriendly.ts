@@ -14,7 +14,8 @@
 // (arrangøren = den planlæggende klub) → 0x5c5570; svaret 0x5c5f40 efter omdømmet samme opdatering (cmFriendlyOffers.ts) → kampen.
 // Turnéernes kampe går samme vej (0x5c4040 → 0x5c6f00(klub, dato, modstander, ude) → 0x5c5570). Er den indbudte et menneske, får han
 // nyheden "… friendly proposal" og svarer selv (Respond – invitationsskærmen 0x4744b0).
-// *estimeret*: [0x9cf6f8] = Intertoto (cmClubEuro 330), bsearch-startpladsen i 0x5c4cb0 (første med niveauet), turnéens ledighed (0x5c6b70
+// [0x9cf6f8] = Intertoto (cmClubEuro 330): 0x60efd0 sætter den til turneringen med navnet "Inter-toto Cup" (0x60fdf6–0x60fe08, strengen
+// 0x9db50c; 0x601a40 nulstiller den til −1). *estimeret*: bsearch-startpladsen i 0x5c4cb0 (første med niveauet), turnéens ledighed (0x5c6b70
 // for begge klubber). Modstanderens trup: originalen fylder trupper med for få spillere op med genererede spillere før kampen (cmVirtual.ts).
 import type { GameState } from './types';
 import { cmActive, cmLogic, cmRand, clubRepMem } from './cmPlayerData';
@@ -51,7 +52,7 @@ const rivals = (g: GameState, a: number, b: number) => {
   const ra = g.cmCrowd?.[a], rb = g.cmCrowd?.[b];
   return (!!ra && [ra[6], ra[7], ra[8]].includes(b)) || (!!rb && [rb[6], rb[7], rb[8]].includes(a));
 };
-/** [0x9cf6f8]: *estimeret* som Intertoto */
+/** [0x9cf6f8] = "Inter-toto Cup" (0x60efd0: 0x951c50-sammenligningen 0x60fdfc med 0x9db50c → mov [0x9cf6f8], id 0x60fe08) */
 const inIntertoto = (g: GameState, club: number) => cmClubEuro(g, club) === 330;
 /** 0x600a50(klub, 1, 1, 0, 0): klubbens manager er en af menneskenes staffposter. I originalen kører forkørslen 0x5cc850 (create_game 0x828110)
  *  før menneskets manager sidder i klubben (club +0xcf) – oraklet crowd1: menneskets Arsenal får en turné (dag 206/208/210), ejerens Man Utd en
