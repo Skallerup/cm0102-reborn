@@ -22,6 +22,7 @@
 // TRANSFER_MANAGER's tilbud er spillets åbne bud (uden rival- og forhandlingslister); skaderne 0x62ed70 fra konditionsmodulet; arbejdstilladelsen
 // 0x8c7950 = rules2001.ts workPermitGranted (spil startet med porten: cmPermit.ts cmWorkPermit – originalens 0x8c7950); lejeregler 0x8d0040 = rules2001.ts loanBlocked; spillerens svar på et kontrakttilbud til en fri spiller
 // kommer straks (originalen venter på hans beslutningsdato 0x4cd230).
+import { SCOUT_RUMOUR } from './cmRumQueue';
 import type { Club, GameState, Player, Staff } from './types';
 import { type CmCtx, type CmMem, G, getContract, clubAt, SparseMem } from './cmMem';
 import { holidayOpt_5fea50, humanClub0 } from './cmHoliday';
@@ -2439,6 +2440,8 @@ export function cmScoutAddRumour(g: GameState, p: Player, club: number, rand: (n
   if (!cmShortlistOn(g) || !g.clubs[club] || p.club === club) return null;
   return rumourCore(g, p, club, rand, 1, 3.15, true);
 }
+
+SCOUT_RUMOUR.fn = cmScoutAddRumour;
 
 /** 0x8f49e4–0x8f4c07 / 0x7b6c0d–0x7b6e86: `a3` = 0x846920's tredje argument, `thr` = viljens grænse, `will` = rygtet får viljen (ellers 0) */
 function rumourCore(g: GameState, p: Player, buyer: number, rand: (n: number) => number, a3: number, thr: number, will: boolean): { amt: number; will: number } | null {

@@ -18,3 +18,7 @@ export function cmRumourAdd(g: GameState, p: Player, club: number, amt: number, 
   st.q.push({ p: p.id, c: club, d: g.date, st: 0, amt: Math.max(0, Math.min(Math.round(amt), feeCap(g, club))), will, from: p.club || 0 });
   st.q.sort((a, b) => a.p - b.p || a.c - b.c);
 }
+
+/** spejderrapportens rygte (cmShortlistGame.ts cmScoutAddRumour – registreres der, så cmScout.ts ikke trækker ønskelisterne og transfers.ts ind) */
+export type ScoutRumour = (g: GameState, p: Player, club: number, rand: (n: number) => number) => { amt: number; will: number } | null;
+export const SCOUT_RUMOUR: { fn: ScoutRumour | null } = { fn: null };

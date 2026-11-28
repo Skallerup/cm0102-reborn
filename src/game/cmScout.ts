@@ -37,8 +37,7 @@ import { isResFixture } from './cmReserves';
 import { addNews } from './state';
 import { asOwner, isHumanClub } from './humans';
 import { clubRepMem, cmActive, cmMediaOn, cmRand, cmScoutLogic, statusCode } from './cmPlayerData';
-import { cmScoutAddRumour } from './cmShortlistGame';
-import { cmRumourAdd } from './cmRumQueue';
+import { SCOUT_RUMOUR, cmRumourAdd } from './cmRumQueue';
 import { cmGbp } from './cmMoney';
 import { cmClubLevelOf, cmStaffAttr, scoutJudgement } from './cmStaff';
 import { cmKnowSee } from './cmKnow';
@@ -177,7 +176,7 @@ export function reportOnPlayer(g: GameState, s: Staff, p: Player, force: 0 | 1 |
   // 0x7b6bfb–0x7b6e86: mindst 3 stjerner → mediets rygte om interessen (add_rumour 0x754740 med udbudsprisen – cmShortlistGame.ts
   // cmScoutAddRumour); rand-kaldene i rapportens talrække før arbejdstilladelsens
   if ((ab > 2 || pot > 2) && cmMediaOn(g)) {
-    const r = cmScoutAddRumour(g, p, club, rnd);
+    const r = SCOUT_RUMOUR.fn?.(g, p, club, rnd) ?? null;
     if (r) cmRumourAdd(g, p, club, r.amt / cmGbp(g, club), r.will);
   }
   // 0x7b6e99/0x7b6eb7: 0x8c7560(…, 1) og 0x8c7950(spiller, land, 0, 0, 1) – med tilfældighed (rand(1000), 2 × rand(3), 2 × rand(10)). Spil startet
