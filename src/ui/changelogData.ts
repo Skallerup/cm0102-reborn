@@ -13,6 +13,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '2026-11-28',
     title: { da: 'Mere af det originale CM 01/02', en: 'More of the original CM 01/02' },
     items: [
+      { da: "Scout Player vises ikke længere, mens spilleren allerede er givet en spejderopgave og rapporten ikke er afleveret (udvidet tilstand og moderne udseende; originalens menu er uændret)", en: "Scout Player is no longer shown while the player has already been assigned to a scout and the report has not been delivered (extended mode and modern look; the original menu is unchanged)" },
       { da: "Intern: hurtigere test før udgivelse (ingen ændring i spillet).", en: "Internal: faster pre-release checks (no change to the game)." },
       { da: "Kampmotoren: en sjælden fejl, hvor kampen stoppede uden forklaring ved en dødbold, giver nu en fejlmeddelelse med kampens tilstand, så årsagen kan findes.", en: "Match engine: a rare error where a match stopped at a set piece without explanation now reports the match state, so the cause can be found." },
       { da: "Computerklubberne finder nu straks et nyt mål til ønskelisten, når en spiller, de var efter, bliver solgt til en anden klub (som i originalen).", en: "Computer clubs now immediately find a new shortlist target when a player they were chasing is sold to another club (as in the original)." },
