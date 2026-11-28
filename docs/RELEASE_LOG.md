@@ -2,6 +2,7 @@
 
 Flyttet fra CLAUDE.md 17/11-2026 (så CLAUDE.md er kort i hver session). Nyeste først. Tilføj en linje øverst ved hver udgivelse.
 
+- 2026-11-28 – Skudt live (v0.40.0): Regens' kontraktudløb = i dag + 1 år (0x85e960 gren 0x85ec97/0x85edc0 via 0x7a6f10 → 0x4c7950); oraklet: 133 regens 24/3-02 → 24/3-03. 2001-fingeraftryk 51f58c809eb4b275 → b3bf933102055fa2.
 - 2026-11-28 – Skudt live (v0.40.0): K5 230→228: [0x9cf6f8] = Inter-toto Cup bekræftet (0x60efd0 0x60fe08); 0x542740 med B-holdsparret i squadPlacement/cmVirtual; 2001-fingeraftryk uændret eee5f6d7bd038cce
 - 2026-11-28 – Skudt live (v0.40.0): Kontraktens startdato +0x25 ved spilstarten (0x85e960 0x85eba8/0x85ecf8 → Contract.cmStart); bit 2 PL 17/11 51 -> 28 (oraklet 24); 2001-fingeraftryk eee5f6d7bd038cce -> 22976dd32ef3ec74
 - 2026-11-28 – Skudt live (v0.40.0): Offer Trial 1:1 (0x8724a3/0x8f8be0/0x8fb9e0/0x4ce4e0/0x4cf720/0x4c9b76/0x8e8a60 kode 3, cmTrial.ts); 2001-fingeraftryk uændret
