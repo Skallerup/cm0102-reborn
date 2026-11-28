@@ -2,6 +2,7 @@
 
 Flyttet fra CLAUDE.md 17/11-2026 (så CLAUDE.md er kort i hver session). Nyeste først. Tilføj en linje øverst ved hver udgivelse.
 
+- 2026-11-28 – Skudt live (v0.40.0): Fællesskab #35 (Bruno £1,2m/uge): årsag = før-91fb2f68-startløn (£89.400 orig-£) + 0x860f10 alder>31 & krav>75.000 -> 250.000 · 1/cmGbp 0,1741; rettet af 91fb2f68, regressionstest i tests/cmWill2026.test.ts, scripts/bruno-probe.ts
 - 2026-11-28 – Skudt live (v0.40.0): Boldholderen 0x7109f0: [esp+0x4a/0x4b] = sub_6ce310 med første ben + føring = 6ce310(…,1); 0x711133 skriver 3,5 i [esp+0x60]; +0x8d46 signed bytes. CL-spor cl1 (oracle/runs, COMP=326): 5/24 kampe ens hele kampen (før 1). grid-free cl1: 1,68 mål/11,6 skud = oraklets niveau → rest ligger i inddata. 2001-fingeraftryk slut 724cf1ebd9016183 / samlet d6b13cbca85a8761
 - 2026-11-28 – Skudt live (v0.40.0): Ønskelisternes par: blokstørrelse ved p−4 (realloc 0x945667 i 0x8423f0) – par før nr. 101 gik tabt; PL-køb 2026 til 1/1 45,9 -> 73,7 (orakel 108,9); 2001-fingeraftryk ændret fra start
 - 2026-11-28 – Skudt live (v0.40.0): 2026-11-28 – AI-tilstanden 0x6df460 (fcb1eb0f): sameDivision = klubbernes land ens (0x6df87d klub +0x53), compLink = fixture+0x14 (0x6df8a0) – før ctx.league, så Europa fik R·2 + ligadel i stedet for R·0,9. Normal-DB 31/12 frø 1/2: CL 2,65/2,73 → 2,24/2,40 (orakel 2,04), UEFA 2,28/2,31 → 1,94/1,93 (1,81), skud 16,7 → 15,6 (13,7). Venskabskampe samme land ændres også. Værktøj k7-eurogoals.ts. Rest: fuld motor CL 2,35–2,55 mod 2,18, skud 15,5 mod 11,6–13,1.
