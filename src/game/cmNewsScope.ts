@@ -92,6 +92,12 @@ export interface TransferNewsIn {
   /** stab: ikke-spillerpostens omdømme [+8, +0xa, +0xc] UDEN ×0,25 – 0x5407e0 (omdømmet set fra køberen, 0x8d1978) læser personen selv;
    *  kun 0x8d16ad's tal (C/H/W i reglerne) er skaleret for træner, spejder og fysioterapeut */
   seen?: [number, number, number];
+  /** buddets +0x2d (offentligt bud: 1/2) – flag 0x20 kræver det for omdømmereglen (0x8d15b1) */
+  pub?: number;
+  /** 0x8e7b50(offer, 0, 0, 0, 0, 1) beregnet af kalderen (£) – ellers weightedValue herunder */
+  w?: number;
+  /** buddets +0x2f (kontrakttilbud): ax = 500 (0x8d172d). Uden: byttehandlen som før */
+  contract?: boolean;
 }
 
 /** 0x8e7b50(offer, 0, 0, 0, 0, 1) uden formuebåndet (1,0): gebyret + (1 − 25·0,005)·klausulen + byttespillernes værdi (+0x52), i £ */
@@ -109,29 +115,43 @@ function weightedValue(g: GameState, x: TransferNewsIn, buyer: number): number {
  */
 export function transferNewsToMe(g: GameState, p: Player, buyer: Club, x: TransferNewsIn): boolean {
   if (human(g, buyer.id)) return true;                                       // 0x8dc30f: send_to_all_managers
+  return offerNewsToMe(g, p, buyer, x, 0x5f);
+}
+
+/**
+ * collect_offer_news_recipients 0x8d1130(offer, flag, ud, 30) for den aktive menneskelige manager. Flagene: 1 køber, 2 sælger, 4 andre bydende
+ * mennesker (+ moderklubben ved leje), 8 mennesker med spilleren på shortlisten, 0x10 omdømmereglen, 0x20 omdømmereglen kun for et offentligt
+ * bud (+0x2d ≠ 0), 0x40 divisionsreglerne (købers planlægger-plads 0x8d160f gælder uden 0x40). Kaldere: 0x8dbef0 handlen (0x5f), post_offer_news
+ * 0x8d3090 buddet (0x3e) og 0x8e1780 lejebuddet (0x2e). Uden flag 1/2 er køberens/sælgerens manager udelukket (0x8d1aca/0x8d1adc).
+ */
+export function offerNewsToMe(g: GameState, p: Player, buyer: Club, x: TransferNewsIn, flags: number): boolean {
   const M = g.clubs[g.userClub];
   if (!M) return false;                                                      // kun managere med klub (klubbernes managere / +0x39)
   const seller = x.seller;
   // flag 2 / 1: sælger og køber (menneske)
-  if (seller && M.id === seller.id) return true;
-  if (M.id === buyer.id) return true;
+  if (seller && M.id === seller.id) return !!(flags & 2);
+  if (M.id === buyer.id) return !!(flags & 1);
   // flag 4: moderklubben ved leje (kontrakten 0x4cf6d0 hos en anden end køberen) og de andre bydende mennesker
-  const parent = x.staff ? undefined : p.loan?.from;
-  if (parent && p.club !== buyer.id && parent === M.id) return true;
-  if (!x.staff && g.offers.some((o) => o.id !== x.offerId && o.player === p.id && o.buyer === M.id && o.buyer !== buyer.id
-    && (o.status === 'pending' || o.status === 'negotiating' || o.status === 'countered' || o.status === 'accepted'))) return true;
+  if (flags & 4) {
+    const parent = x.staff ? undefined : p.loan?.from;
+    if (parent && p.club !== buyer.id && parent === M.id) return true;
+    if (!x.staff && g.offers.some((o) => o.id !== x.offerId && o.player === p.id && o.buyer === M.id && o.buyer !== buyer.id
+      && (o.status === 'pending' || o.status === 'negotiating' || o.status === 'countered' || o.status === 'accepted'))) return true;
+  }
   // flag 8: mennesker med spilleren på shortlisten (ikke køberen)
-  if (!x.staff && g.shortlist?.includes(p.id) && M.id !== buyer.id) return true;
-  // flag 0x10 / 0x40
+  if (flags & 8 && !x.staff && g.shortlist?.includes(p.id) && M.id !== buyer.id) return true;
+  // flag 0x10 (0x8d15a9) – med 0x20 kun for et offentligt bud (0x8d15b1: +0x2d)
+  if (!(flags & 0x10) || (flags & 0x20 && !x.pub)) return false;
+  const divRules = !!(flags & 0x40);
   const [H, C, W] = reps(p);
   const sellerDiv = divisionOf(g, seller), buyerDiv = divisionOf(g, buyer);
-  const w = weightedValue(g, x, buyer.id);
+  const w = x.w ?? weightedValue(g, x, buyer.id);
   // 0x8d160f: købers planlægger-plads for spilleren (rolle 0xb, gruppe < 3) og gebyret (+0x1b) ≥ £1.000.000
   const slot = x.staff ? undefined : g.cmPlan?.[buyer.id]?.s.find((r) => r[3] === p.id && r[0] === 0xb);
   let buyerDivFlag = !!slot && ((slot[2] & 0x1e) < 6) && Math.round(x.fee * cmGbp(g, buyer.id)) >= 1_000_000;
   let all = false, cont = false, nat = false, sellerDivFlag = false;
   const conts: number[] = [], nats: number[] = [];
-  const ax = x.swap?.length ? 500 : s16(ftol(3000 - w * 0.0006));
+  const ax = (x.contract ?? !!x.swap?.length) ? 500 : s16(ftol(3000 - w * 0.0006));
   const cap = (v: number) => Math.min(v, 9750);
   const T3 = cap(ax + 7200);
   if (W > cap(ax + 9200)) all = true;
@@ -149,7 +169,7 @@ export function transferNewsToMe(g: GameState, p: Player, buyer: Club, x: Transf
       // (+0x22 > 20 og landsholdskontrakten +0x24 med omdømme > 5500: spillerne har ingen landsholdskontrakt hos os)
     }
     nats.push(natP, natS, natB);
-  } else {
+  } else if (divRules) {
     if (sellerDiv) {
       const lim = 350 * divRep(g, sellerDiv);
       if ((C > lim && C > 2500) || (!x.staff && 9.0 - C * 0.00025 < statAvg(p, 2, 0x12, 6.5))) sellerDivFlag = true;

@@ -116,6 +116,8 @@ export interface SlBid {
   /** build_bid's tidsnibble +0x30 & 0xf (0x8e75bd/0x8e76c5: kontrakttilbud til en spiller MED kontrakt (forkontrakt/Bosman) 3 → 4, ellers 0 → 1;
    *  5 = med kompensation 0x8d0780) og kontraktens udløb +0x2d (nibble 3/4: get_offer_completion_date 0x8cee70 → det fremtidige skifte) */
   tm?: number; until?: string;
+  /** build_bid's forhandlingsnibble +0x31 & 0xf (1 ikke til forhandling – 0x8e658c, 2 endeligt): nyheden 0x8d3090's plads 0xe */
+  neg?: number;
 }
 export interface SlFree { kind: 'free'; buyer: number; player: number }
 /** add_rumour 0x754740(staff, klub, beløb £, vilje) fra 0x83f3a0 (0x84079d/0x840c4b): mediernes kø (cmRumours.ts) */
@@ -1982,7 +1984,7 @@ function addBid(S: SlMem, r: number, loan: boolean, lt?: { until: string; share:
   }
   S.events.push({ kind: 'bid', id, buyer, player: p.id, fee: loan ? 0 : eur(m.s32(r + 0x1b)), loan: loan || m.u8(r + 0x1f) === 1,
     months: Math.max(0, s8(m.u8(r + 0x40))), sellOn: Math.max(0, s8(m.u8(r + 0x3f))), lgFee: eur(m.s32(r + 0x35)), lgApps: m.u8(r + 0x39) || 10,
-    intFee: eur(m.s32(r + 0x3a)), intApps: m.u8(r + 0x3e) || 10, pub: m.u8(r + 0x2d), max: maxOf(S, buyer, p), days, ...(lt ? { loanUntil: lt.until, loanShare: lt.share } : {}), ...tmx, ...f7 });
+    intFee: eur(m.s32(r + 0x3a)), intApps: m.u8(r + 0x3e) || 10, pub: m.u8(r + 0x2d), neg: m.u8(r + 0x31) & 0xf, max: maxOf(S, buyer, p), days, ...(lt ? { loanUntil: lt.until, loanShare: lt.share } : {}), ...tmx, ...f7 });
   return id;
 }
 

@@ -1,9 +1,10 @@
 // Transfers, kontrakter og AI-transfermarked (forbedring #7: behovsstyrede AI-klubber).
 import { holidayOpt, humanClub0, onHoliday } from './cmHoliday';
-import { cmLeaveFrom, cmLogic, cmMarketOn, cmMediaOn, cmRand, setRequestHooks, setStatusCode } from './cmPlayerData';
+import { clubRepMem, cmLeaveFrom, cmLogic, cmMarketOn, cmMediaOn, cmRand, setRequestHooks, setStatusCode } from './cmPlayerData';
 import { SQUAD_STATUSES } from './squadStatus';
 import { cmBidChance, cmInterested, cmRequestNews } from './cmTransferList';
-import { transferNewsToMe } from './cmNewsScope';
+import { offerNewsToMe, transferNewsToMe } from './cmNewsScope';
+import { intlOnDuty } from './cmFitnessGame';
 import { cmSignContractMorale } from './cmMedia';
 import { cmLoanEndOk, cmLoanRules, isOriginal2001, loanBlocked, loanRecallOn, noteLoan, noteLoanEnd, permitOk, type LoanMsg } from './rules2001';
 import { A, naturalRole } from './attributes';
@@ -127,6 +128,7 @@ function sellerName(id: number) {
   return id ? gs().clubs[id]?.name ?? '?' : '-';
 }
 const pname = (p: Player) => `${p.first} ${p.last}`.trim();
+const s16 = (v: number) => (v << 16) >> 16;
 
 // ---------- værdi og krav ----------
 
@@ -695,6 +697,7 @@ function cmReviewHumanCounter(o: TransferOffer): void {
   o.status = 'pending';
   o.respondBy = addDays(g.date, 3);
   asOwner(o.seller, () => addNews({ cat: 'transfer', key: 'transfer.aiFinalOffer', params: { club: buyer.name, player: pname(p), last: p.last || pname(p), fee: o.fee }, link: { kind: 'offer', id: o.id } }));
+  if (o.cmAi || cmShortlistOn(g)) cmBidNewsOthers(o, p, buyer);   // 0x8c0810 → 0x8be300 → 0x8d3090 til de andre (shortlisten …)
 }
 
 /** Kontraktforhandling: brugeren tilbyder løn og længde */
@@ -2090,6 +2093,7 @@ export function cmShortlistApply(events: SlEvent[]) {
       if (refusedBy(p, buyer.id)) continue;
       g.offers.push(o);
       asOwner(p.club, () => addNews({ cat: 'transfer', key: e.loan ? 'transfer.incomingLoan' : 'transfer.incomingBid', params: { club: buyer.name, player: pname(p), fee: o.fee }, link: { kind: 'offer', id: o.id } }));
+      cmBidNewsOthers(o, p, buyer, e);
       continue;
     }
     if (human7) o.cm7 = true;
@@ -2121,6 +2125,7 @@ export function cmShortlistApply(events: SlEvent[]) {
     // add_transfer_offer 0x8be300: køberens gamle (lukkede) bud på ham i tabellen fjernes (remove_offer 0x8d0f60), det nye tager pladsen
     if (g.cmTmKept?.length) g.cmTmKept = g.cmTmKept.filter((k) => k.buyer !== o.buyer || k.player !== o.player);
     g.offers.push(o);
+    cmBidNewsOthers(o, p, buyer, e);   // 0x8be8eb/0x8be8f5
   }
 }
 /** lejekontraktens tilbud (0x85e590: +0x35 = (… & 0xc6) | 6) – 0x4ce4e0 læser kun typen (6 → 0x846920) */
@@ -2135,15 +2140,83 @@ function offerStatus(o: TransferOffer): Player['squadStatus'] {
  *  transfer" 0xa91668), ellers efter plads 0x12 og datoen (0xc/0xd): tidsnibble 5 → 0x8d0bb0's dato (i dag → plads 0x12 = 0: "current
  *  international transfer window" 0xa91794, ellers 5: "next … starting on" 0xa91870), ellers 3 med kontraktens udløb, når det ligger efter i dag
  *  ("join when his current contract expires on" 0xa91980; uden dato 0xa91708). Kompensationslinjen 0xa8f6ec, når +0x1b ≠ 0. */
-function cm7News(o: TransferOffer, p: Player, buyer: Club, e: SlBid): void {
+function cm7Body(o: TransferOffer, e: SlBid): { body: string; date: string } {
   const g = gs(), today = g.date.slice(0, 10);
-  const seller = g.clubs[o.seller];
   let body = 'plain', date = '';
   if (e.ct === 1 || e.ct === 3) body = 'free';
   else if (e.tm === 5) { date = cmCompletionDate(g, o); body = date === today ? 'cur' : 'win'; }
   else if (e.exp && today < e.exp) { body = 'exp'; date = e.exp; }
+  return { body, date };
+}
+function cm7News(o: TransferOffer, p: Player, buyer: Club, e: SlBid): void {
+  const g = gs();
+  const seller = g.clubs[o.seller];
+  const { body, date } = cm7Body(o, e);
   asOwner(o.seller, () => addNews({ cat: 'transfer', key: 'transfer.cm7', params: { club: buyer.name, from: seller?.name ?? '', player: pname(p), body, ...(date ? { date } : {}), ...(o.fee > 0 ? { fee: o.fee } : {}) },
     link: { kind: 'player', id: p.id } }));
+}
+/**
+ * add_transfer_offer 0x8be300 → post_offer_news 0x8d3090 (køb, nyheden 0xfa0: 0x8d1130(offer, 0x3e)) / 0x8e1780 (leje, 0xfb5: 0x2e) – også
+ * computerkøberens endelige bud efter et modbud (0x8c0810 → 0x8be300). Modtagerne ud over sælgeren (han får 'transfer.incomingBid'/'transfer.cm7'):
+ * de andre bydende mennesker, mennesker med spilleren på shortlisten (0x842180 → 0x7f7490) og – kun for et offentligt bud (+0x2d, flag 0x20) –
+ * omdømmereglen (cmNewsScope.ts offerNewsToMe; lejebuddet har ingen omdømmeregel). Køberen er udelukket (intet flag 1).
+ * Teksten vises af 0x8d3520 (lejen 0x8e19c0) for en seer, der ikke styrer sælgerklubben (plads 5 med en anden manager +0xcf → "{Club 2}'s"):
+ * overskriften "{Club} transfer bid for {Player}" (0xa8f578) / "{Club} loan offer for {Player}" (0xa9c3d4); brødteksten efter
+ * T = get_total_value 0x8e7a70(0, 1, 0, 1) (plads 0xa) mod gebyret F +0x1b (plads 8), byttespillerne (plads 0x17), forhandlingsnibblen +0x31
+ * (plads 0xe: 1 non-negotiable, 2 final) og plads 0x10 (1: spilleren på landsholdsophold, staff +0x24 → 0x5409b0 – "U21 starlet" med
+ * landsholdets navn, plads 0x11; 2: klubrekord 0x4486c0). Svarlinjen efter buddets levende tilstand (common.tsx). Kontrakttilbuddet (+0x2f ≠ 0)
+ * har kontraktteksterne (cm7Body; den klubløse: 0xa91390 uden "{Club 2}'s"). Et bud uden sælgerklub og uden kontrakttilbud findes ikke
+ * (build_bid til en klubløs sætter altid +0x2f) – det springes over.
+ */
+function cmBidNewsOthers(o: TransferOffer, p: Player, buyer: Club, e?: SlBid): void {
+  const g = gs();
+  if (!cmMediaOn(g) || isHumanClub(buyer.id)) return;
+  const seller = o.seller ? g.clubs[o.seller] : undefined;
+  const k7 = !o.loan && !!e?.free7 && !!e.k;
+  if (!seller && !k7) return;
+  let ctx: { c: ReturnType<typeof valueCtx>; t: BidTerms } | null = null;
+  const cx = () => (ctx ??= { c: valueCtx(g, p, buyer.id), t: termsOf(o) });
+  forEachHuman(() => {
+    const me = g.userClub;
+    if (!me || me === o.seller || me === o.buyer || (g.options.transferNews ?? 'big') === 'own') return;
+    const w = o.loan ? undefined : weightedValue(cx().t, cx().c, false, false, false, true);
+    if (!offerNewsToMe(g, p, buyer, { seller, fee: o.fee, swap: o.swap, offerId: o.id, pub: o.pub, w, contract: k7 }, o.loan ? 0x2e : 0x3e)) return;
+    const base = { club: buyer.name, from: seller?.name ?? '', player: pname(p), oid: o.id };
+    if (o.loan) {
+      addNews({ cat: 'transfer', key: 'transfer.cmLoanSeen', params: { ...base, date: o.loanUntil ?? '' }, link: { kind: 'player', id: p.id } });
+      return;
+    }
+    if (k7) {
+      const { body, date } = seller ? cm7Body(o, e!) : { body: 'plainFree', date: '' };
+      addNews({ cat: 'transfer', key: 'transfer.cm7', params: { ...base, body, ...(date ? { date } : {}), ...(o.fee > 0 ? { fee: o.fee } : {}) }, link: { kind: 'player', id: p.id } });
+      return;
+    }
+    const { c, t } = cx();
+    const F = totalValue(t, c, true, true, false), T = totalValue(t, c, false, true, true);
+    const sw = o.swap ?? [];
+    const neg = o.final ? 2 : (e?.neg ?? 0);
+    // plads 0x10: 1 landsholdet (staff +0x24 ≠ 0 → 0x5409b0), 2 klubrekorden 0x4486c0(offer, 1): F ≥ 50R + 500.000, F ≥ trunc(0,1·R²), F ≠ 0
+    // og F > club_records +0x313 (R = købers omdømme +0x80)
+    const u21 = intlOnDuty(p);
+    const R = s16(clubRepMem(g, buyer.id));
+    const rec = F >= 50 * R + 500_000 && F >= Math.trunc(R * R * 0.1) && F !== 0 && F > (g.cmRecFee?.[buyer.id] ?? -1);
+    const nn = neg === 1 ? 'Nn' : neg === 2 ? 'Fin' : '';
+    let body: string;
+    if (T > F) {
+      if (sw.length) body = `wp${nn}`;
+      else if (nn) body = `w${nn}`;
+      else body = u21 ? 'u21' : rec ? 'wRec' : 'w';
+    } else if (sw.length) body = F > 0 ? `op${nn}` : `x${nn}`;
+    else if (F <= 0) body = `f${nn}`;
+    else if (nn) body = `o${nn}`;
+    else if (u21 && rec) body = 'u21Rec';
+    else if (u21 && F >= 500_000) body = 'u21';
+    else body = rec ? 'oRec' : 'o';
+    const k = c.k ?? GBP;
+    addNews({ cat: 'transfer', key: 'transfer.cmBidSeen', params: { ...base, body, fee: o.fee, fee2: Math.round(T / k),
+      ...(u21 ? { nation: g.nations[p.nation]?.name ?? '' } : {}), ...(sw.length ? { swn: sw.map((id) => (g.players[id] ? pname(g.players[id]) : '')).join('|') } : {}) },
+      link: { kind: 'player', id: p.id } });
+  });
 }
 /** målinger (fejlsøgning): computer → computer-svarene på ønskelisternes bud */
 export const CM_AIAI = { delayed: 0, money: 0, declined: 0, noContract: 0, free: 0, freeRefused: 0, freeDone: 0, pre: 0, preFut: 0, preDone: 0, loan: 0, loanOk: 0, bid: 0, accept: 0, counter: 0, counterOk: 0, reject: 0, refused: 0, withdrawn: 0, follow: 0, review: 0, rebid: 0, rules: 0, done: 0, open: 0, openDays: 0 };
@@ -2365,6 +2438,7 @@ function cmAiAiDue(cx: SlDueCtx) {
       o.final = true;
       o.status = 'pending';
       o.respondBy = addDays(g.date, cx.delay(p.id, buyer.id, 0x8c0810));
+      cmBidNewsOthers(o, p, buyer);   // 0x8c0810 → 0x8be300 → 0x8d3090 (endeligt: +0x31 = 2)
       continue;
     }
     // 0x4ce4e0 på beslutningsdagen: venter et andet bud på ham i tilstand 0/1/5/6 (0x8cd150), udsættes beslutningen 2 dage. Ellers gennemgår

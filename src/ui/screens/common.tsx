@@ -3,7 +3,7 @@ import { compName, dateFmt, getLang, has, money, moneyCm, moneyWage, natName, t 
 import { useNav, type Route } from '../core';
 import { ClubLink, PlayerLink } from '../components';
 import type { NewsItem } from '../../game/types';
-import { offerAnswerFee } from '../../game/offerFee';
+import { cmOfferState, offerAnswerFee } from '../../game/offerFee';
 import { gs, onGameSwitch } from '../../game/state';
 import { cmScoutReportBody } from '../cmScoutNews';
 import { cmScoutAsgParams } from '../cmScoutAsgNews';
@@ -75,7 +75,15 @@ export function newsParams(n: NewsItem): Record<string, string | number> {
   // budet på menneskets stab (0x8d3520, 0xa91afc): "… a job as {job}" – jobnavnet uden artikel
   if (n.key === 'cm.stBid' && typeof p.job === 'number') p.job = t(`cm.stm.j.${p.job}`);
   // kontrakttilbuddet til menneskets spiller (0x8d3520) og aftalen (0xfb3, 0xa9bbec): originalens datoform "10th November 1998"
-  if ((n.key === 'transfer.cm7' || n.key === 'transfer.cmAgreed') && typeof p.date === 'string') p.date = cmLongDate(p.date);
+  if ((n.key === 'transfer.cm7' || n.key === 'transfer.cmAgreed' || n.key === 'transfer.cmLoanSeen') && typeof p.date === 'string') p.date = cmLongDate(p.date);
+  // budnyheden til de andre (0x8d3520): byttespillerne 1 → navnet, 2 "A and B", 3 "A, B and C", flere "<n> players" (0xa91c40/0xa91bc0/0xa91ba0);
+  // landsholdet (plads 0x11, staff +0x24) med navnet
+  if (n.key === 'transfer.cmBidSeen') {
+    const sw = typeof p.swn === 'string' && p.swn ? p.swn.split('|') : [];
+    p.list = sw.length === 1 ? sw[0] : sw.length === 2 ? t('transfer.cmBidSeen.l2', { a: sw[0], b: sw[1] })
+      : sw.length === 3 ? t('transfer.cmBidSeen.l3', { a: sw[0], b: sw[1], c: sw[2] }) : t('transfer.cmBidSeen.ln', { n: sw.length });
+    if (typeof p.nation === 'string') p.nation = natName(p.nation);
+  }
   // PLAYER_REGEN (cmRetire.ts): stabsjobbet i brødteksten – 0x53ac40 ("Coach") eller 0x53ad00 ("coach", jl)
   if (n.key.startsWith('cmret.') && typeof p.job === 'number') p.job = t(`cmret.${p.jl ? 'jl' : 'j'}.${p.job}`);
   if (n.key.startsWith('cm.stm.') && typeof p.job === 'number') { const jn = t(`cm.stm.j.${p.job}`); p.job = getLang() === 'en' ? `${/^[aeiou]/i.test(jn) ? 'an' : 'a'} ${jn}` : jn; }
@@ -270,6 +278,8 @@ function bodyKey(n: NewsItem): string {
   if (n.key === 'cm.stBid') return n.params?.fee ? 'cm.stBid.body' : 'cm.stBid.body0';
   // build_bid's kontrakttilbud til menneskets spiller (tilstand 7, 0x8d3520): brødteksten er valgt i spillet; aftalen 0xfb3 med/uden beløb
   if (n.key === 'transfer.cm7') return `transfer.cm7.b.${String(n.params?.body ?? 'plain')}`;
+  // budnyheden til de andre mennesker (0x8d3090 → 0x8d3520): brødteksten er valgt i spillet (cmBidNewsOthers)
+  if (n.key === 'transfer.cmBidSeen') return `transfer.cmBidSeen.b.${String(n.params?.body ?? 'o')}`;
   // 0x8e2570: lejen annulleret – brødteksten pr. grund (med "{klub}'s" når modtageren ikke styrer spillerens klub)
   if (n.key === 'transfer.cmLoanCancelled') return `transfer.cmLoanCancelled.b.${String(n.params?.body ?? 'deadline')}`;
   // 0xfb3 (0x8e08e0): uden kontraktklub (den klubløse) 0xa9be10 "The transfer of X to Y has been agreed."
@@ -300,6 +310,15 @@ function offerAnswer(n: NewsItem): string {
   if (n.key === 'sqn.request') return n.params?.done ? `\n\n${t('sqn.submitted')}` : '';
   // European Squad: "25 players were registered."
   if (n.key === 'eur.request') return n.params?.done !== undefined ? `\n\n${t('eur.registered', { n: Number(n.params.done) })}` : '';
+  // budnyheden til de andre (0x8d3520 / leje 0x8e19c0): svaret efter buddets levende tilstand +0x2c, med sælgerens navn
+  if ((n.key === 'transfer.cmBidSeen' || n.key === 'transfer.cmLoanSeen') && n.params?.oid !== undefined) {
+    const st = cmOfferState(gs(), Number(n.params.oid));
+    const club = String(n.params.from ?? '');
+    const k = n.key === 'transfer.cmLoanSeen'
+      ? (st === 2 ? 'transfer.ans.rejected' : st === 1 ? 'transfer.ans.negotiate' : st === 8 || st === 0xf ? 'transfer.ans.accepted' : '')
+      : (st === 1 ? 'transfer.ans.negotiate' : st === 5 ? 'transfer.ans.accepted' : st === 2 ? 'transfer.ans.rejected' : st === 0x11 ? 'transfer.ans.delayed' : '');
+    return k ? `\n\n${t(k, { club })}` : '';
+  }
   if (n.link?.kind !== 'offer') return '';
   const g = gs();
   // CM 01/02 "Offer contract to X" (0x8d7fb0): tilbuddets +0x10 læst levende – 1 "have offered a contract", 4 "have decided to withdraw the transfer bid"

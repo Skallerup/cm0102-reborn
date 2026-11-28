@@ -588,6 +588,11 @@ export function youthIntake() {
 export function recordMove(p: Player, to: number, fee: number, loan = false, swap = false, bosman = false) {
   const g = gs();
   recordsAfterMove(p, to, fee, loan);
+  // club_records 0x448760 (finalise_transfer 0x8c9390): købets gebyr +0x1b (£, køberens penge) over klubbens rekord +0x313 – kun med en sælgerklub
+  if (!loan && p.club && fee > 0) {
+    const gbp = Math.round(fee * cmGbp(g, to));
+    if (gbp > (g.cmRecFee?.[to] ?? -1)) (g.cmRecFee ??= {})[to] = gbp;
+  }
   (p.moves ??= []).push({ season: g.season, date: g.date, from: p.club, to, fee, ...(loan ? { loan: true } : {}), ...(swap ? { swap: true } : {}), ...(bosman ? { bosman: true } : {}) });
   if (p.moves.length > 20) p.moves.shift();
 }

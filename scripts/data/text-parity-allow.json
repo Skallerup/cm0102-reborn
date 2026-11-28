@@ -1314,6 +1314,34 @@
     {
       "key": "scout.assignment",
       "reason": "Scouting.tsx – kun uden den originale database (Shell.tsx: ægte CM 01/02 åbner Transfers → Scout #1)"
+    },
+    {
+      "key": "transfer.cmBidSeen.b.w",
+      "reason": "Budnyhedens tekst er exe-strengen 0xa90d98 (0x8d3520) ordret – strengudtrækket har slået fortsættelseslinjen \"4 million)> for {}<%s - Club name 2…\" sammen for alle \"worth\"-varianterne, så K3 ikke kan samle \"worth … for\"; teksten ER originalens"
+    },
+    {
+      "key": "transfer.cmBidSeen.b.wNn",
+      "reason": "Budnyhedens tekst er exe-strengen 0xa91260 (0x8d3520) ordret – strengudtrækket har slået fortsættelseslinjen \"4 million)> for {}<%s - Club name 2…\" sammen for alle \"worth\"-varianterne, så K3 ikke kan samle \"worth … for\"; teksten ER originalens"
+    },
+    {
+      "key": "transfer.cmBidSeen.b.wFin",
+      "reason": "Budnyhedens tekst er exe-strengen 0xa911b4 (0x8d3520) ordret – strengudtrækket har slået fortsættelseslinjen \"4 million)> for {}<%s - Club name 2…\" sammen for alle \"worth\"-varianterne, så K3 ikke kan samle \"worth … for\"; teksten ER originalens"
+    },
+    {
+      "key": "transfer.cmBidSeen.b.wRec",
+      "reason": "Budnyhedens tekst er exe-strengen 0xa9101c (0x8d3520) ordret – strengudtrækket har slået fortsættelseslinjen \"4 million)> for {}<%s - Club name 2…\" sammen for alle \"worth\"-varianterne, så K3 ikke kan samle \"worth … for\"; teksten ER originalens"
+    },
+    {
+      "key": "transfer.cmBidSeen.b.wp",
+      "reason": "Budnyhedens tekst er exe-strengen 0xa90ae4 (0x8d3520) ordret – strengudtrækket har slået fortsættelseslinjen \"4 million)> for {}<%s - Club name 2…\" sammen for alle \"worth\"-varianterne, så K3 ikke kan samle \"worth … for\"; teksten ER originalens"
+    },
+    {
+      "key": "transfer.cmBidSeen.b.wpNn",
+      "reason": "Budnyhedens tekst er exe-strengen 0xa90ca8 (0x8d3520) ordret – strengudtrækket har slået fortsættelseslinjen \"4 million)> for {}<%s - Club name 2…\" sammen for alle \"worth\"-varianterne, så K3 ikke kan samle \"worth … for\"; teksten ER originalens"
+    },
+    {
+      "key": "transfer.cmBidSeen.b.wpFin",
+      "reason": "Budnyhedens tekst er exe-strengen 0xa90bc4 (0x8d3520) ordret – strengudtrækket har slået fortsættelseslinjen \"4 million)> for {}<%s - Club name 2…\" sammen for alle \"worth\"-varianterne, så K3 ikke kan samle \"worth … for\"; teksten ER originalens"
     }
   ],
   "patterns": [

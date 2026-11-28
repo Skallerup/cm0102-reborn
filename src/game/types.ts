@@ -1390,6 +1390,9 @@ export interface GameState {
   /** TRANSFER_MANAGER: de lukkede computer → computer-bud, originalen beholder i budtabellen, til den planlagte remove_offer 0x8d0f60 (0x8c63a0):
    *  tilstanden +0x2c, runderne +0x2e og dagen, de fjernes (cmShortlistGame.ts writeOffers, transfers.ts cmTmClose) */
   cmTmKept?: CmTmKept[];
+  /** club_records +0x313 (0x452710): klubbens rekordgebyr betalt (£, −1 = intet endnu – 0x452fe0), sat af 0x448760 i finalise_transfer 0x8c9390
+   *  ved et køb med en sælgerklub og et gebyr > rekorden; læses af 0x4486c0 (budnyhedens "smash their transfer record", plads 0x10 bit 2) */
+  cmRecFee?: Record<number, number>;
   /** spillets startdato ([0xdd6ec8]) */
   cmStart?: string;
   cmNationRep?: number[];
