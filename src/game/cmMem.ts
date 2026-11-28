@@ -29,6 +29,7 @@ const PAGE = 12;
 const PMASK = (1 << PAGE) - 1;
 /** det fælles tomme andet niveau (kun null) i SparseMem's sidetabel */
 const NOPAGES: (Uint8Array | null)[] = new Array(1024).fill(null);
+const NOPAGE = new Uint8Array(0);
 /** genbrugte sider (SparseMem.release) – nulstilles, før de bruges igen */
 const POOL: Uint8Array[] = [];
 let POOL_MAX = 24000;
@@ -54,17 +55,23 @@ export class SparseMem implements CmMem {
   private dir: (Uint8Array | null)[][] = new Array(1024).fill(NOPAGES);
   /** en hukommelse nedenunder, som læsninger går igennem til, når siden ikke er her (skrivninger kopierer siden først via `miss`) */
   private under: SparseMem | null = null;
+  /** (hastighed 28/11) den sidst slåede egne side (sidenummer, indhold) – kun egne sider (ikke den underliggendes); nulstilles, når sidetabellen
+   *  ændres andet end ved en ny side (adoptPage, exportPages, importPages, keepPages, release) */
+  private cp = -1;
+  private cb: Uint8Array = NOPAGE;
   constructor(miss?: (page: number, mem: SparseMem) => void, under?: SparseMem) { this.miss = miss; this.under = under ?? null; }
   /** siden til læsning: egen, ellers den underliggende hukommelses (uden kopi), ellers en ny */
   private rp(p: number): Uint8Array {
+    if (p === this.cp) return this.cb;
     const b = this.dir[p >>> 10][p & 1023];
-    if (b !== null) return b;
+    if (b !== null) { this.cp = p; this.cb = b; return b; }
     if (this.under) { const u = this.under.dir[p >>> 10][p & 1023]; if (u !== null) return u; }
     return this.page(p)!;
   }
   page(p: number, create = true): Uint8Array | undefined {
+    if (p === this.cp) return this.cb;
     const b = this.dir[p >>> 10][p & 1023];
-    if (b !== null) return b;
+    if (b !== null) { this.cp = p; this.cb = b; return b; }
     if (!create) return undefined;
     const r = POOL.pop();
     let nb: Uint8Array;
@@ -81,7 +88,7 @@ export class SparseMem implements CmMem {
   adoptPage(p: number, src: SparseMem): boolean {
     const st = src.dir[p >>> 10], b = st[p & 1023];
     if (b === null) return false;
-    st[p & 1023] = null; src.pages.delete(p);
+    st[p & 1023] = null; src.pages.delete(p); src.cp = -1; this.cp = -1;
     const t = this.dir[p >>> 10], nb = t[p & 1023];
     t[p & 1023] = b; this.pages.set(p, b);
     if (nb && nb !== b && POOL.length < POOL_MAX && !VIEWS.has(nb)) POOL.push(nb);
@@ -104,7 +111,12 @@ export class SparseMem implements CmMem {
     if (o <= PMASK - 3) { const b = this.rp(a >>> PAGE); return (b[o] | (b[o + 1] << 8) | (b[o + 2] << 16) | (b[o + 3] << 24)) >>> 0; }
     return (this.u16(a) | (this.u16(a + 2) << 16)) >>> 0;
   }
-  s32(a: number): number { return this.u32(a) | 0; }
+  s32(a: number): number {
+    a >>>= 0;
+    const o = a & PMASK;
+    if (o <= PMASK - 3) { const b = this.rp(a >>> PAGE); return b[o] | (b[o + 1] << 8) | (b[o + 2] << 16) | (b[o + 3] << 24); }
+    return (this.u16(a) | (this.u16(a + 2) << 16)) | 0;
+  }
   f32(a: number): number { this.dv.setUint32(0, this.u32(a), true); return this.dv.getFloat32(0, true); }
   f64(a: number): number { this.dv.setUint32(0, this.u32(a), true); this.dv.setUint32(4, this.u32(a + 4), true); return this.dv.getFloat64(0, true); }
   w8(a: number, v: number): void { a >>>= 0; this.page(a >>> PAGE)![a & PMASK] = v & 0xff; }
@@ -131,6 +143,7 @@ export class SparseMem implements CmMem {
    *  stadig levede. */
   exportPages(): { nums: Int32Array; data: Uint8Array[] } {
     const nums = new Int32Array(this.pages.size), data: Uint8Array[] = [];
+    this.cp = -1;
     let i = 0;
     // løbende stykke: et udsnit af en importeret tabel (seg, fra … til) eller nye sider, der kopieres
     let seg: Uint8Array | null = null, from = 0, to = 0;
@@ -167,7 +180,7 @@ export class SparseMem implements CmMem {
    *  udsnit af de modtagne tabeller (ingen kopi pr. side). De hidtidige sider går ikke til puljen (hukommelse: de bygges forfra i en ny
    *  arbejder og erstattes straks – ~95 MB, der ellers lå i puljen hele portionen). */
   importPages(x: { nums: Int32Array; data: Uint8Array[] }): void {
-    this.pages.clear(); this.dir.fill(NOPAGES);
+    this.pages.clear(); this.dir.fill(NOPAGES); this.cp = -1;
     let n = 0;
     for (const d of x.data) n += d.length >>> PAGE;
     if (n !== x.nums.length) throw new Error('importPages: sider og indhold passer ikke');
@@ -190,7 +203,7 @@ export class SparseMem implements CmMem {
    *  behøver indholdet ikke sendes med. En side, der ikke findes her, er en fejl (afsenderens hukommelse var ikke den samme). */
   keepPages(nums: Int32Array): void {
     const old = this.pages;
-    this.pages = new Map();
+    this.pages = new Map(); this.cp = -1;
     this.dir = new Array(1024).fill(NOPAGES);
     for (const p of nums) {
       const b = old.get(p);
@@ -205,6 +218,7 @@ export class SparseMem implements CmMem {
   }
   /** siderne tilbage til puljen (hukommelsen bruges ikke mere – ønskelisternes dag bygger 18.000 sider à 4 KB hver dag) */
   release(): void {
+    this.cp = -1;
     // udsnit af en importeret tabel genbruges ikke: tabellen gives videre (exportPages) og må ikke nulstilles som en ny side
     for (const b of this.pages.values()) if (POOL.length < POOL_MAX && !VIEWS.has(b)) POOL.push(b);
     // (hastighed, 25/11) sidetabellens andet niveau (1024 pladser à 8 bytes pr. 4 MB-område – en hukommelse rører ~30 områder) genbruges også

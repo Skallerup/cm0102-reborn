@@ -22,7 +22,7 @@ import { registerCarry } from './carry';
 import { cmBodyOn, cmGeneratedNow, cmRand, STAFF_STATE_OFF } from './cmPlayerData';
 import { staffIntrinsic, staffShown } from './engine/grid/roleScore';
 import { npShown } from './cmStaffInit';
-import { allPlayersEpochNow, gs, hasGame, onGameSwitch } from './state';
+import { gs, hasGame, playerListOf } from './state';
 
 // ---------------------------------------------------------------- posten
 
@@ -572,16 +572,7 @@ function rollRecurring(c: FitCtx, r: CmFit, e: CmInjury): void {
   }
   bestP.cmFit!.rt = -1; bestP.cmFit!.rl = 0;
 }
-let realCache: { g: GameState; players: GameState['players']; epoch: number; list: Player[] } | null = null;
-onGameSwitch(() => { realCache = null; });
-function playerList(g: GameState): Player[] {
-  const epoch = allPlayersEpochNow();
-  if (realCache && realCache.g === g && realCache.players === g.players && realCache.epoch === epoch) return realCache.list;
-  const list: Player[] = [], all = g.players;
-  for (const k in all) { const p = all[k]; if (p) list.push(p); }
-  realCache = { g, players: g.players, epoch, list };
-  return list;
-}
+const playerList = playerListOf;
 /** 0x62e6cc: behandlingen af en tilbagevendende skade (type 11..59): 0 → 0x4e, 1 → 0x4f, 2 → 0x4d */
 const TREAT = [0, 1, 1, 2, 2, 2, 0, 1, 2, 1, 2, 2, 0, 2, 1, 1, 1, 1, 2, 0, 1, 2, 2, 2, 0, 1, 1, 2, 2, 2, 0, 2, 2, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1];
 const clubRep = (g: GameState, club: Club) => g.cmClubRep?.[club.id] ?? club.rep * 100;

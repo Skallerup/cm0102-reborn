@@ -373,6 +373,18 @@ export const playersEpoch = () => realPlayersEpoch;
 /** som realPlayersEpoch, men også for fyldspillerne (virtual) */
 let allPlayersEpoch = 0;
 export const allPlayersEpochNow = () => allPlayersEpoch;
+/** (hastighed) alle spillere i Object.values' rækkefølge (heltalsnøgler stigende) fra en liste, der genbruges, så længe ingen spiller er kommet til
+ *  eller forsvundet (addPlayer/dropPlayer/removePlayer – allPlayersEpoch) og spillerobjektet er det samme. Listen må ikke ændres af kalderen. */
+let playerListCache: { g: GameState; players: GameState['players']; epoch: number; list: Player[] } | null = null;
+onGameSwitch(() => { playerListCache = null; });
+export function playerListOf(g: GameState): Player[] {
+  const c = playerListCache;
+  if (c && c.g === g && c.players === g.players && c.epoch === allPlayersEpoch) return c.list;
+  const list: Player[] = [], all = g.players;
+  for (const k in all) { const p = all[k]; if (p) list.push(p); }
+  playerListCache = { g, players: g.players, epoch: allPlayersEpoch, list };
+  return list;
+}
 
 export function addPlayer(p: Player) {
   if (!p.virtual) realPlayersEpoch++;

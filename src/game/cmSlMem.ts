@@ -352,7 +352,10 @@ export function buildSlWantMem(g: GameState, clubs: Iterable<number>, opts: { ca
   gbpOf = (cid) => cmGbp(g, cid);
   const incr = ENV.CM_SL_INCR !== '0';
   let B = incr ? BASES.get(g) : undefined;
-  if (!B) { B = { P: new SparseMem(), fp: new IdMap(), fs: new IdMap(), fpPref: new IdMap(), prefs: new IdMap(), prefMax: 0 }; if (incr) BASES.set(g, B); SLMEM_STATS.builds++; }
+  // (hastighed 28/11) en ny varig hukommelse, som dagens overtager (moveBase – spilstartens portioner: kalderen nulstiller den bagefter, resetSlBase):
+  // fingeraftrykkene sammenlignes aldrig (ingen gamle) og bruges ikke af en senere opbygning – de regnes og gemmes ikke (samme sider)
+  let noFp = false;
+  if (!B) { B = { P: new SparseMem(), fp: new IdMap(), fs: new IdMap(), fpPref: new IdMap(), prefs: new IdMap(), prefMax: 0 }; if (incr) BASES.set(g, B); SLMEM_STATS.builds++; noFp = !!opts.moveBase && ENV.CM_SL_NOFP !== '0'; }
   const P = B.P;
   const date = g.date;
   const dYear = Number(date.slice(0, 4)), dMd = Number(date.slice(5, 7)) * 100 + Number(date.slice(8, 10));
@@ -432,6 +435,12 @@ export function buildSlWantMem(g: GameState, clubs: Iterable<number>, opts: { ca
   for (const id of ids) {
     let es = multi.get(id);
     if (!es) { ONE[0] = one[id]!; es = ONE; }
+    if (noFp) {
+      changed.push([id, es === ONE ? [es[0]] : es]);
+      if (es.length === 1) { if (es[0].pref >= 0) B.prefs.set(id, [es[0].pref]); }
+      else { const pr = es.filter((e) => e.pref >= 0).map((e) => e.pref); if (pr.length) B.prefs.set(id, pr); }
+      continue;
+    }
     let n = 0, n2 = 0, ns = 0;
     const old = B.fp.get(id), oldP = B.fpPref.get(id);
     for (const e of es) n2 = fpPref(scr2, n2, e, staffOfId);

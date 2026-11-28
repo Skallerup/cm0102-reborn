@@ -400,7 +400,10 @@ export function boardEnv(g: GameState, todayIso = g.date, startIso?: string, laz
     if (sh) sh.persons = persons;
     // landstrænerne er med, også når de kun er i hukommelsen (cmExtra: uden klub i spillet) – originalens landshold har dem som manager
     const natM = new Set(Object.values(g.cmBoard?.nm ?? {}));
-    for (const s of Object.values(g.staff).sort((a, b) => a.id - b.id)) if (s.cmNp && (!s.cmExtra || natM.has(s.id))) { const p = staffPerson(g, s, today); persons.push(p); byId.set(p.id, p); }
+    // (hastighed 28/11) staben efter id: Object.values står allerede sådan (heltalsnøgler stigende, nøgle = id) – sorteringen kun, hvis ikke
+    const sv = Object.values(g.staff);
+    for (let i = 1; i < sv.length; i++) if (sv[i - 1].id > sv[i].id) { sv.sort((a, b) => a.id - b.id); break; }
+    for (const s of sv) if (s.cmNp && (!s.cmExtra || natM.has(s.id))) { const p = staffPerson(g, s, today); persons.push(p); byId.set(p.id, p); }
     for (const h of humanRefs(g)) { const p = humanPerson(g, h); persons.push(p); byId.set(p.id, p); }
     return persons;
   };

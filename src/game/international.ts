@@ -9,7 +9,7 @@ import { naturalRole } from './attributes';
 import { asOwner, forEachHuman, isHumanClub } from './humans';
 import { regionOf } from './leagues';
 import { Rng, hash, rng } from './rng';
-import { addNews, gs, hasGame, onGameSwitch } from './state';
+import { addNews, gs, hasGame, onGameSwitch, playerListOf } from './state';
 import { NO_CARRY, registerCarry } from './carry';
 import { cmAppsAfterMatch } from './transfers';
 import { autoSelect, newTactic } from './tactics';
@@ -102,10 +102,11 @@ function byNation(): Map<number, Player[]> {
     // (hastighed) alderen 17–36 som tekstsammenligning af ISO-datoerne: alder ≥ 17 ⇔ dob ≤ (år − 17)-MM-DD, alder > 36 ⇔ dob ≤ (år − 37)-MM-DD
     // (samme som ageOn for datoer på formen ÅÅÅÅ-MM-DD; andre former går gennem ageOn)
     const Y = Number(g.date.slice(0, 4)), md = g.date.slice(4, 10), lo = `${Y - 17}${md}`, hi = `${Y - 37}${md}`, isoD = g.date.length >= 10 && Y >= 1037;
-    // (hastighed) for…in: samme rækkefølge som Object.values (heltalsnøgler stigende) uden et array med alle spillere
-    const all = g.players;
-    for (const k in all) {
-      const p = all[k];
+    // (hastighed) samme rækkefølge som Object.values (heltalsnøgler stigende) – den genbrugte spillerliste (state.ts playerListOf; 28/11 – før for…in
+    // over alle nøgler ved hver opbygning: i forkørslen to gange pr. landskamp)
+    const all = playerListOf(g);
+    for (let i = 0; i < all.length; i++) {
+      const p = all[i];
       if (p.injury || p.ca < 60) continue;
       const dob = p.dob;
       if (isoD && dob.length === 10 && dob[4] === '-' && dob[7] === '-') { if (dob > lo || dob <= hi) continue; }
