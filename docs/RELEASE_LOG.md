@@ -2,6 +2,7 @@
 
 Flyttet fra CLAUDE.md 17/11-2026 (så CLAUDE.md er kort i hver session). Nyeste først. Tilføj en linje øverst ved hver udgivelse.
 
+- 2026-11-28 – Skudt live (v0.40.0): Budskærm: sidste bud huskes pr. spiller (g.lastBid)
 - 2026-11-28 – Skudt live (v0.40.0): Staff Search Interested 0x807450 (np+0xc mod klub+0x80+5000, 0x844780 check=1 >= 3,15; cmStaffSearchInterested), stabens kontraktskærm med rullelister (0x4e2280 id 7/8/25), cl.neg.assistBonus (10 sprog); ren UI/filter – 2001-fingeraftryk uændret (intet motorkald ændret)
 - 2026-11-28 – Skudt live (v0.40.0): 2026-11-28 – Spilstarten som originalen på alle CM-databaser (63be8f77): cmStartGame uden season<2020-gate – 2026/27 får reserveposterne 0x52638a (world-cm.json cmTrim), klubløses/manglende CA, cmMem, ankomst klippet til start−35, ingen opdigtede i 22+-trupper. 2001-fingeraftryk uændret 22976dd32ef3ec74.
 - 2026-11-28 – Skudt live (v0.40.0): Regens' kontraktudløb = i dag + 1 år (0x85e960 gren 0x85ec97/0x85edc0 via 0x7a6f10 → 0x4c7950); oraklet: 133 regens 24/3-02 → 24/3-03. 2001-fingeraftryk 51f58c809eb4b275 → b3bf933102055fa2.
