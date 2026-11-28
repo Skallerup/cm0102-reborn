@@ -2,6 +2,7 @@
 
 Flyttet fra CLAUDE.md 17/11-2026 (så CLAUDE.md er kort i hver session). Nyeste først. Tilføj en linje øverst ved hver udgivelse.
 
+- 2026-11-28 – Skudt live (v0.40.0): 2026-11-28 – K7-måling (8cf8e49e): k7-seasons nøgler oraklets handler på staff-id – id genbruges af regens, så senere billeder talte samme post igen. Oraklet fri 167/289/280 -> 96/177/262, klubløs skriver under 114/229/178 -> 95/190/177, forkontrakt 175/143/164 -> 139/128/161. K7g nr. 2 var en målefejl (vores 83/194/322: -14/+10/+23 %). Rest: udløber -> anden klub S2 +20 % (unge under 21 forlænges for sjældent; oraklet har 76 unge med udløb 24/3-03, vi 0). EXP/PROBE_EXP-udtræk.
 - 2026-11-28 – Skudt live (v0.40.0): Budnyheden post_offer_news 0x8d3090/0x8e1780 til de andre mennesker (0x8d1130 flag 0x3e/0x2e: shortlist, andre bydende, omdømme kun for offentlige bud), tekst 0x8d3520/0x8e19c0, club_records +0x313 (g.cmRecFee). 2001-fingeraftryk NONEWS=1 OMIT=cmRecFee uændret bee151b3ff1574b3.
 - 2026-11-28 – Skudt live (v0.40.0): Scout Player skjules under igangværende spejderopgave
 - 2026-11-28 – Skudt live (v0.40.0): 2026-11-28 – Testværn (e44c7017): scripts/test.mjs fast (vagter K3/K5/ændringslog/i18nAll/worldBuild/envDeterminism/låsetrin + direkte importører/omtale; tunge > 60 s kun i CI), ship.sh fast som standard (--full-tests = related), e2e kun ved src/public-ændringer og samtidig med testene; agentfiler/CLAUDE.md opdateret.
