@@ -2121,7 +2121,11 @@ export const SL_MOVED = { n: 0, slot: 0, holder: 0, own: 0, old: 0 };
 export function cmSlMoved(g: GameState, p: Player, to: number, buyer: number, swap: number[] = []): void {
   if (!cmShortlistOn(g) || !g.cmPlan || ENV.CM_SL_MOVED === '0') return;   // (CM_SL_MOVED=0: til målinger før/efter)
   const from = p.club, home = p.loan?.from ?? p.club;
-  const clubs = [...new Set([to, from, home, buyer].filter((c) => c && g.cmPlan![c]))];
+  // (0x843e10(staff, gammel klub, 4, 2) @0x843e6c: 0x842180's interesserede klubber – parrene med ham – får 0x843e10(staff, klub, 1, 2): målet
+  // ryddes og pladsen genudfyldes 0x83f3a0. Før læste vi kun køberens/sælgerens pladser tilbage, så de andre klubbers nye mål gik tabt, og
+  // pladsen stod med en spiller, der var solgt til en anden – til næste trupplan)
+  const interested = (g.cmSlPairs ?? []).filter(([pid]) => pid === p.id).map(([, c]) => c);
+  const clubs = [...new Set([to, from, home, buyer, ...interested].filter((c) => c && g.cmPlan![c]))];
   if (!clubs.length) return;
   const own = !DUE_S;
   const S = DUE_S ?? buildSlMem(g);
