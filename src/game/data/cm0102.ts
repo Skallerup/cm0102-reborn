@@ -134,6 +134,10 @@ export interface CMWorld extends WorldData {
     /** ligaer, der kun kører med deres land (build-cm-data.mts RUN_HIDDEN): skjult-id → kørende id, niveau og reglerne (også for ligaen over) */
     runWith?: Record<string, { id: string; tier: number; rules: Record<string, Record<string, unknown>> }>;
     euroClubs?: { leagues: CMWorld['leagues']; clubs: CMWorld['clubs']; players: CMWorld['players']; ratings: CMWorld['ratings']; clubRep: Record<number, number> };
+    /** (28/11, kun 2026/27's world-cm.json) spilstartens trim som den originale databases (0x524d70 / 0x5267c0 – build-cm-data.mts): `p` spiller-id →
+     *  0 = aldrig i hukommelsen, ellers de nationer, hvis valg beholder ham (mangler = altid); `c` klub-id → 1 = altid, ellers nationerne (mangler =
+     *  aldrig). newgame.ts bruger det i ægte tilstand som CMRatings.tc/clubMem med memAll */
+    mem26?: { p: Record<number, 0 | number[]>; c: Record<number, 1 | number[]> };
     /** (2026/27, MODERN_PARITY 12) nation +0x77/+0x78/+0x79 (sprogene) pr. nationsindeks – originalens sprogtabel (cmLanguage.ts) */
     nationLang?: number[][];
     /** (2026/27, MODERN_PARITY 4) originalens økonomi ved start (£) som CMWorld.clubFinance: [saldo (club.dat 101), gns. tilskuere (115), træningsanlæg (127)] */

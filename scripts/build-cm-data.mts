@@ -791,6 +791,29 @@ if (cmSide && staffBx2026.size) cmSide.staffBx = Object.fromEntries([...staffBx2
 if (cmSide && staffMem2026.size) cmSide.staffMem = Object.fromEntries([...staffMem2026].sort((a, b) => a[0] - b[0]));
 // landsholdene (staff +0x24): nat_club.dat's id'er følger club.dat's (A-holdet = antallet af klubber + nationens id)
 if (cmSide && staffBx2026.size && files['nat_club.dat']) cmSide.natOff = new DataView(files['nat_club.dat']).getInt32(0, true);
+// (28/11, "Altid som originalen") 2026/27: originalens spilstart-trim 0x524d70 database_trim_staff_tables (spillerne) og 0x5267c0
+// database_trim_club_table (klubberne) på samme måde som den originale database (parseCM0102 { allClubs, cmMem } – Maximum, CM_DBSIZE=2: størrelse 2)
+// → world-cm.json cmRaw.mem26 (world.json uændret): p = spiller-id → 0 (aldrig i hukommelsen) eller de nationer (indeks), hvis valg beholder ham
+// (mangler = altid); c = klub-id → 1 (altid) eller nationerne (mangler = aldrig). Gælder world.json's og euroClubs' spillere/klubber; newgame.ts
+// fjerner dem uden for hukommelsen ved et nyt spil i ægte tilstand (før havde de ikke-valgte landes klubber fulde trupper – probe: England valgt,
+// Maximum: 11.143 af 23.615)
+if (cmSide && !process.env.NO_MEM26) {
+  const wm = parseCM0102(files, { maxTiers: 4, allClubs: true, cmMem: true });
+  if (wm.nations.length !== w.nations.length || wm.nations.some((n, i) => n.name !== w.nations[i].name)) throw new Error('mem26: nationerne passer ikke');
+  const p: Record<number, 0 | number[]> = {}, c: Record<number, 1 | number[]> = {};
+  const all = [...w.players, ...(euroClubs?.players ?? [])];
+  let kept = 0, never = 0, sel = 0;
+  for (const r of all) {
+    const id = r[F.id] as number, rt = wm.ratings[id];
+    const v = rt ? (rt.tc !== undefined ? rt.tc : rt.tf) : undefined;
+    if (v === undefined || v === 1) { kept++; continue; }
+    if (v === 0 || !v.length) { p[id] = 0; never++; } else { p[id] = v.slice().sort((a, b) => a - b); sel++; }
+  }
+  const cm = wm.cmRaw?.clubMem ?? {};
+  for (const row of [...w.clubs, ...(euroClubs?.clubs ?? [])]) { const v = cm[row[0] as number]; if (v !== undefined) c[row[0] as number] = v; }
+  cmSide.mem26 = { p, c };
+  console.error(`0x524d70/0x5267c0 (${process.env.CM_DBSIZE === '2' ? 'størrelse 2' : 'Maximum'}): spillere altid ${kept}, efter valg ${sel}, aldrig ${never}; klubber i trimmet ${Object.keys(c).length} af ${w.clubs.length + (euroClubs?.clubs.length ?? 0)}`);
+}
 writeFileSync(out, JSON.stringify(w));
 const kb = Math.round(statSync(out).size / 1024);
 if (cmSide) {

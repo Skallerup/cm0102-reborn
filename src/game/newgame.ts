@@ -303,13 +303,18 @@ export function createGameBase(world: WorldData, o: NewGameOptions): NewGameCtx 
 
   // (den originale database) de skjulte ligaers klubber kun med mindst én spiller i hukommelsen for de valgte lande (CMRatings.tc – fx Englands
   // non-league, når England er valgt); de øvrige spilbare landes inaktive divisioner kommer ikke med
-  const tcOk = (id: number) => { const tc = cm?.ratings[id]?.tc; return tc === undefined || tc === 1 || (Array.isArray(tc) && tc.some((n) => o.activeNations.includes(n))); };
+  // (28/11, "Altid som originalen") 2026/27 i ægte tilstand: samme trim fra world-cm.json (cmRaw.mem26 – 0x524d70/0x5267c0 som den originale database)
+  const mem26 = cmRawLogic ? cm?.cmRaw?.mem26 : undefined;
+  const tcOk = (id: number) => {
+    const tc = mem26 ? (mem26.p[id] === undefined ? 1 : mem26.p[id]) : cm?.ratings[id]?.tc;
+    return tc === undefined || tc === 1 || (Array.isArray(tc) && tc.some((n) => o.activeNations.includes(n)));
+  };
   const hiddenWithPlayers = new Set<number>();
   if (cm) { const Fp = Object.fromEntries(world.playerFields.map((f, i) => [f, i])); for (const r of world.players) if (r[Fp.club] && tcOk(r[Fp.id] as number)) hiddenWithPlayers.add(r[Fp.club] as number); }
   // 0x5267c0 database_trim_club_table (world-filens cmRaw.clubMem: 1 = altid, ellers de nationer, hvis valg beholder klubben) – de spilbare
   // landes skjulte klubber også uden spillere i hukommelsen (fx Englands non-league med omdømme over 500)
-  const clubMem = cm?.cmRaw?.clubMem;
-  const memAll = !!cm?.cmRaw?.memAll && !!clubMem;
+  const clubMem = mem26 ? mem26.c : cm?.cmRaw?.clubMem;
+  const memAll = !!mem26 || (!!cm?.cmRaw?.memAll && !!clubMem);
   const memKeep = (id: number) => { const v = clubMem?.[id]; return v === undefined ? hiddenWithPlayers.has(id) : v === 1 || v.some((n) => o.activeNations.includes(n)); };
   // Klubber
   for (const [id, name, short, nation, league, stadium, seats] of world.clubs) {
@@ -358,7 +363,8 @@ export function createGameBase(world: WorldData, o: NewGameOptions): NewGameCtx 
     if (club && !g.clubs[club]) continue;
     // de klubløse (CMRatings.tf): i ægte tilstand dem, originalens 0x524d70 beholder for de valgte lande; ellers som før kun CA 120+
     // de skjulte ligaers spillere uden for talentudvalget (CMRatings.tc – fx Englands non-league): kun når 0x524d70 beholder dem for de valgte lande
-    if (club && !tcOk(r[F.id] as number)) continue;
+    // (2026/27, mem26) også de klubløse: samme 0x524d70 (world-cm.json har hans svar som klubspiller eller klubløs)
+    if ((club || mem26) && !tcOk(r[F.id] as number)) continue;
     const tf = club ? undefined : rtOf(r[F.id] as number)?.tf;
     if (tf !== undefined) {
       if (cmStartGame ? tf === 0 || (Array.isArray(tf) && !tf.some((n) => o.activeNations.includes(n))) : rtOf(r[F.id] as number)!.ca < 120) continue;
@@ -490,7 +496,7 @@ export function createGameBase(world: WorldData, o: NewGameOptions): NewGameCtx 
     if (cmStartGame && sq.length >= 22) continue;
     // (24/11) trimmet for alle (memAll): de ikke-valgte landes klubber har kun hukommelsens spillere (0x524d70) – som de skjulte klubber ingen opdigtede
     // (oraklet 14/7-01, England valgt: Italiens klubber 222 spillere); kampene stiller fyldspillerne 0x90dae0 (cmVirtual.ts)
-    if (cmStartGame && memAll && !o.activeNations.includes(c.nation)) continue;
+    if ((cmStartGame || mem26) && memAll && !o.activeNations.includes(c.nation)) continue;
     const lvl = sq.length >= 12 ? median(sq.map((p) => p.ca)) : (leagueLevel.get(c.league) ?? 90) - 4;
     fillSquad(c, sq, lvl, date, seed);
   }
