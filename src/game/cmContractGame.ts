@@ -273,7 +273,7 @@ export function buildWantMem(g: GameState, clubs: Iterable<number>, opts: { full
       for (let i = 0; i < 3; i++) m.w32(k + 0x10 + 4 * i, b[i]);
       (p.contract.cmClauses ?? [0, 0, 0, 0, 0]).forEach((v, i) => m.w8(k + 0x1c + i, v));
       m.w32(k + 0x21, Math.round((p.contract.cmClauseFee ?? 0) * cmGbp(g, p.loan?.from ?? p.club)));
-      const j = p.joined ?? p.cmJoined;
+      const j = p.contract.cmStart ?? p.joined ?? p.cmJoined;   // +0x25: kontraktens start (0x85e960/forlængelsen), ellers ankomsten
       if (j) { const [d, y] = isoDay(j); m.w16(k + 0x25, d); m.w16(k + 0x27, y); m.w32(k + 0x29, leap(y)); }
       const [d, y] = isoDay(p.contract.expires); m.w16(k + 0x2d, d); m.w16(k + 0x2f, y); m.w32(k + 0x31, leap(y));
       m.w8(k + 0x35, 2 | (p.contract.partTime ? 0x80 : 0));

@@ -28,7 +28,8 @@
 // (cmRand – originalens globale rækkefølge over alle personer kan ikke genskabes uden hele hukommelsen).
 // *Estimeret* (ikke fundet/ikke koblet): ligaens op-/nedrykningsflag (+0xbe/+0xd9/+0xc1) = spillets regler (promoted/playoff/relegated;
 // nederste række i et spilbart land med flere rækker: nedrykning),
-// skjulte ligaer = ingen ligapost; kontraktens startdato +0x25 (0x85eba8–0x85ec92) bruges ikke (spillets Started = ankomstdatoen).
+// skjulte ligaer = ingen ligapost.
+//   startdatoen +0x25 (0x85eba8–0x85ec92 / 0x85ecf8–0x85ed7f): ankomsten staff +0x3e, men året rykkes frem (initialStart_85e960 → Contract.cmStart).
 import type { Contract, GameState, Player } from './types';
 import { ageOn } from './dates';
 import { ATTRS } from './attributes';
@@ -188,6 +189,32 @@ export function initContractBytes(g: GameState, p: Player): void {
   c.b4e = 4; c.b44 = 0; c.b45 = 0; c.b3e = 0; c.b3f = 0;
 }
 
+const leapY = (y: number) => y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0);
+const doyOf = (iso: string): [number, number] => { const y = +iso.slice(0, 4); return [Math.round((Date.UTC(y, +iso.slice(5, 7) - 1, +iso.slice(8, 10)) - Date.UTC(y, 0, 1)) / 864e5), y]; };
+const isoOfDoy = (d: number, y: number) => new Date(Date.UTC(y, 0, 1) + Math.min(d, leapY(y) ? 365 : 364) * 864e5).toISOString().slice(0, 10);
+
+/** 0x85e960's startdato +0x25/+0x27 ved spilstarten (i dag = spillets start [0xdd6ec8]): +0x25 = ankomsten staff +0x3e (dagen i året bliver),
+ *  år = hele år siden (0x54cc30: i dag − ankomsten, et år lånt, når dagen i året er mindre). Databasens løn (grenen 0x85eba8, f = staff +0x4e):
+ *  f > 32.500 og år > 1 → spillets startår; ellers f > 21.250 og spillerpostens +0x11 (forsvar) = 20 → startåret; ellers (alder < 24 eller > 29)
+ *  og år > 2 → i år − 2; ellers år > 3 → i år − 3. Uden databasens løn (0x85ecf8, standardlønnen 0x864550): ankomsten før i dag og år > 2 →
+ *  i år − 1. Ingen ankomstdato eller ankomsten ikke før i dag uden databasens løn → null (spillets ankomst gælder som før). */
+export function initialStart_85e960(today: string, joined: string | undefined, db: { wage: number; defender: number } | null, age: number): string | null {
+  if (!joined) return null;
+  const [td, ty] = doyOf(today), [jd, jy] = doyOf(joined);
+  const before = jy < ty || (jy === ty && jd < td);
+  if (!before && !db) return null;
+  const years = before ? ty - jy - (td < jd ? 1 : 0) : 0;
+  let y = jy;
+  if (db) {
+    const f = Math.fround(db.wage);
+    if (f > 32500 && years > 1) y = ty;
+    else if (f > 21250 && db.defender === 20) y = ty;
+    else if ((age < 24 || age > 29) && years > 2) y = ty - 2;
+    else if (years > 3) y = ty - 3;
+  } else if (years > 2) y = ty - 1;
+  return y === jy ? joined.slice(0, 10) : isoOfDoy(jd, y);
+}
+
 /** nyt spil: alle databasens spillere med klub og kontrakt (kun cmLogic). `dbWage`: spiller-id → databasens ugeløn (£).
  *  `unset` = spillerne med +0xc = −1 (databasens løn mangler eller er over 15 · omdømmet) – 0x83a1b0 fylder dem ud efter trupplanen
  *  (cmWageGame.ts cmWageFillNewGame). Deres bonusser regnes af standardlønnen 0x864550(staff, klub, 0, −1, 0xb, 0) som i 0x85eca3. */
@@ -215,6 +242,10 @@ export function cmContractsNewGame(g: GameState, dbWage: Map<number, number>, se
     // lønloftet +0x14 (Swansea £6,6k mod oraklets £22k, Brentford £34k mod £65k), som ønskelisternes mål og tilbud regner med, afveg.
     // De afviste (−1) udfylder 0x83a1b0 (cmWageFillNewGame). Den originale database har ingen g.cmGbp – uændret.
     if (g.cmGbp && o.wage >= 0) p.contract!.wage = Math.max(0, Math.round(o.wage / k));
+    // 0x85eba8/0x85ecf8: startdatoen +0x25 (før: ankomsten – en ældre ankomst gav aldrig 0x866620's bonus for en ny kontrakt, så for mange
+    // ville have ny kontrakt (+0x45 bit 2) og blev ikke beholdt i trupplanen 0x83e89d)
+    const st = initialStart_85e960(g.date.slice(0, 10), p.joined ?? p.cmJoined, unset.has(p.id) ? null : { wage: x.dbWage, defender: x.pos[2] ?? 0 }, x.age);
+    if (st) p.contract!.cmStart = st;
     initContractBytes(g, p);
     n++;
   }
