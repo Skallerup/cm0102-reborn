@@ -2,6 +2,7 @@
 
 Flyttet fra CLAUDE.md 17/11-2026 (så CLAUDE.md er kort i hver session). Nyeste først. Tilføj en linje øverst ved hver udgivelse.
 
+- 2026-11-28 – Skudt live (v0.40.0): 2026-11-28 – Nyt spil hurtigere (72ebe7e8): SparseMem én-sides cache + s32 direkte, portionernes nye varige hukommelse uden fingeraftryk (CM_SL_NOFP), byNation via playerListOf, allPersons sorterer kun hvis nødvendigt. Node Maximum (tråd-CPU, 12 portioner, 2 runder): fitness 6,67 → 6,18 s, shortlists 29,0 → 28,7 s, Normal inden for støj. Bit for bit: ng sha Normal/Maximum/2026, fp2001 bfa4c22479be1768, fp2026 Wrexham 96aca1559ce513c2.
 - 2026-11-28 – Skudt live (v0.40.0): 2026-11-28 – K7-måling (8cf8e49e): k7-seasons nøgler oraklets handler på staff-id – id genbruges af regens, så senere billeder talte samme post igen. Oraklet fri 167/289/280 -> 96/177/262, klubløs skriver under 114/229/178 -> 95/190/177, forkontrakt 175/143/164 -> 139/128/161. K7g nr. 2 var en målefejl (vores 83/194/322: -14/+10/+23 %). Rest: udløber -> anden klub S2 +20 % (unge under 21 forlænges for sjældent; oraklet har 76 unge med udløb 24/3-03, vi 0). EXP/PROBE_EXP-udtræk.
 - 2026-11-28 – Skudt live (v0.40.0): Budnyheden post_offer_news 0x8d3090/0x8e1780 til de andre mennesker (0x8d1130 flag 0x3e/0x2e: shortlist, andre bydende, omdømme kun for offentlige bud), tekst 0x8d3520/0x8e19c0, club_records +0x313 (g.cmRecFee). 2001-fingeraftryk NONEWS=1 OMIT=cmRecFee uændret bee151b3ff1574b3.
 - 2026-11-28 – Skudt live (v0.40.0): Scout Player skjules under igangværende spejderopgave
