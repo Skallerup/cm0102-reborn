@@ -3641,7 +3641,11 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
       // boldholderen (0x712292–0x7122c0): flags 2 + (sub_6cb780's frie løb [esp+0x68] ≠ 0), io = det taktiske felt
       // uden felt skriver sub_6bce80 −1, −1 i ioX/ioY (0x6bd58f) – boldholderens løb klemmer det til (0, 0) (0x7139f1)
       _runTarget: (self: Situation) => lazyTarget ??= (() => { const tc = tacOf(self.mode); const t = GRID_UNKNOWN.runTarget(m, p, 2 + (self.clearRun ? 1 : 0), [tc.x, tc.y], rand); return t ? { found: true, tx: t[0], ty: t[1] } : { found: false, tx: -1, ty: -1 }; })(),
-      _tacOf: tacOf, clockTicks: m.clock, ownGoals: m.goals[p.side], oppGoals: m.goals[opp], lead: m.goals[p.side] - m.goals[opp],
+      // 0x7110e2 sub_6ce310(side, &[esp+0x4a], &[esp+0x4b], …, 0): egne/modstandernes mål MED første kamp (dobbeltkampe – Europa); 0x711a0a
+      // sub_6ce310(…, 1)'s returværdi = samlet målforskel (1 ved udebanemålsføring) – før kun kampens egne mål
+      ...(() => { const a = score6ce310(shotEnv, p.side, 0), b = score6ce310(shotEnv, p.side, 1);
+        return { ownGoals: a.own, oppGoals: a.opp, lead: b.away ? 1 : ((b.own - b.opp) << 24) >> 24 }; })(),
+      _tacOf: tacOf, clockTicks: m.clock,
       teamMode: m.aiMode[p.side], protectLead: protectLead(p.side), oppOffsideTrap: (m.teamFlags[opp] & 0x400) !== 0,
       goalPathBlocked: H.isCrossingPosition(p.view!, 4, gr), sightCheckFails: foot.foot !== 2 && foot.foot !== p.strongFoot, possessionCounter: m.touchCount[p.side],
     };

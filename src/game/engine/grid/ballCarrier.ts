@@ -316,10 +316,14 @@ export function decideBallCarrier(s: Situation, rand: Rand = defaultRand): Decis
   // --- "space" (word +0x29), 0x7110f5..0x71133f
   let space: number;
   let challenge = (s.challenge << 16) >> 16;                                     // sub_6bcbd0's ord [esp+0x70]
+  // [esp+0x60] = sub_6c3950 (nærmeste modstander); 0x711122–0x711133 SKRIVER 3,5 i den, når den er større (intet pres) – de senere læsninger
+  // (0x711e96/0x711ec3/0x711ed4 lige ved eget mål, 0x7121d6/0x7121f3 pladsen at løbe i, 0x7136c0 andet tjek) ser 3,5 (før kun lokalt i pladsen)
+  let nearestOpp = s.nearestOpp;
   if (s.mode === 4) space = 350; // 0x711339
   else if (h === -1) space = 200; // 0x7111f3
   else if (s.pressure === 0) {
-    space = trunc(Math.min(s.nearestOpp, 3.5) * 60 + 57); // 3.5 @0x968e38, 60 @0x96d7b0, 57 @0x96d844
+    if (nearestOpp > 3.5) nearestOpp = 3.5;                                      // 0x711126 fcomp 3,5 @0x968e38 → mov [esp+0x60], 3,5f
+    space = trunc(nearestOpp * 60 + 57); // 60 @0x96d7b0, 57 @0x96d844
   } else {
     // 0x711159–0x711164: et negativt ord [esp+0x70] SKRIVES til 0 – de senere læsninger (0x712279, 0x7129f7, 0x712d3f) ser 0
     if (challenge < 0) challenge = 0;
@@ -455,8 +459,8 @@ export function decideBallCarrier(s: Situation, rand: Rand = defaultRand): Decis
     return { kind: 'loftedBall', clearance: true, arg: 1 };
 
   // --- under pressure in his own box (nearest opponent <= 1.5) or own third (< 1.0): maybe clear, 0x711e5a
-  if ((inOwnBox(c) && s.nearestOpp <= 1.5) || (ownThird(c) && s.nearestOpp < 1.0)) {
-    if (rand(trunc(3000 - s.nearestOpp * 1000)) > rand(P + 2000) && h !== -1 && s.mode !== 4)
+  if ((inOwnBox(c) && nearestOpp <= 1.5) || (ownThird(c) && nearestOpp < 1.0)) {
+    if (rand(trunc(3000 - nearestOpp * 1000)) > rand(P + 2000) && h !== -1 && s.mode !== 4)
       return { kind: 'loftedBall', clearance: true, arg: 0 };
   }
 
@@ -474,8 +478,8 @@ export function decideBallCarrier(s: Situation, rand: Rand = defaultRand): Decis
   }
 
   // --- space to run into, 0x71217d (keeper or in his own box: holding gets the bonus instead)
-  if (!c.isGoalkeeper && !inOwnBox(c)) R += trunc((c.dribbling - 20 + s.nearestOpp * 7.5) * 120);
-  else H += trunc(s.nearestOpp * 500 - 1200);
+  if (!c.isGoalkeeper && !inOwnBox(c)) R += trunc((c.dribbling - 20 + nearestOpp * 7.5) * 120);
+  else H += trunc(nearestOpp * 500 - 1200);
 
   // --- back to goal in the attacking half: turn and run, 0x71220c
   if (!goalMouth(c) && !s.facingGoal && attHalf(c)) R += 2000 - P;
@@ -627,7 +631,7 @@ export function decideBallCarrier(s: Situation, rand: Rand = defaultRand): Decis
         else if (attHalf(c) && (central(c.x) || c.flairRoll >= rand(120))) { /* keep the shot */ }
         else if (s.mode === 4) { /* keep */ }
         else if (pass && pass.hasTarget) act = PASS;
-        else if (h < 3 && s.nearestOpp > 1.5) {
+        else if (h < 3 && nearestOpp > 1.5) {
           if (c.lastAction === 2) act = RUN; // TODO action 2 unknown
           else act = rand(trunc(c.dribbling)) + c.flairRoll >= rand(50) ? RUN : HOLD;
         } else {
