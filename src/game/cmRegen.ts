@@ -309,11 +309,18 @@ export function cmRegenPlan(g: GameState, rec: RegenSeed, id: number): CmRegenPl
   else if ((!loaded && rand(15) !== 0) || rand(10) === 0) club = pickFromList(g, view, rand);
   let contractEnd: string | undefined;
   if (club) {
-    // 0x7a6f10: under 19 → om 2 år, ellers om 1 + rand(6) år; dagen rand(28) + 1 i landets sæsonslutmåned (0x4d45f0); computerklubber højst 1/1 om 5 år
+    // 0x7a6f10: staff +0x46 = under 19 → om 2 år, ellers om 1 + rand(6) år; dagen rand(28) + 1 i landets sæsonslutmåned (0x4d45f0)
     const y = age < 19 ? year + 2 : year + rand(6) + 1;
     const month = NATION_MONTH[g.nations[club.nation]?.name ?? ''] ?? 6;
     const day = rand(28) + 1;
-    contractEnd = !isHumanClub(club.id) && y > year + 5 ? `${year + 5}-01-01` : `${y}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const staffEnd = `${y}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;   // staff +0x46 (0x7a7061)
+    // 0x7a7078 add_staff_contract 0x4c7950 → generate_initial_contract 0x85e960: staff +0x4e (databasens løn) er 0 for en regen (0x7a6f76) →
+    // grenen 0x85ec97: er spillets start [0xdd6ec8] før i dag (0x85ecda), bliver udløbet i dag + 1 år (0x85edc0: +0x2f = år + 1, +0x2d = dagens
+    // dagnummer) – ellers staff +0x46 (0x85ed82). Målt i oraklet (s1-3.9.60-e1): alle regens efter starten udløber dag-for-dag et år senere.
+    const start = g.cmFitStart ?? g.date;
+    const end = start < g.date ? (() => { const doy = dayNo(g.date) - dayNo(`${year}-01-01`); return new Date(Date.UTC(year + 1, 0, 1 + doy)).toISOString().slice(0, 10); })() : staffEnd;
+    // 0x7a70ff: computerklubber højst dag 0 om 5 år (kontraktens +0x2f)
+    contractEnd = !isHumanClub(club.id) && +end.slice(0, 4) > year + 5 ? `${year + 5}-01-01` : end;
   } else if (age < 20) {
     // 0x7acf61: klubløs og under 20
     if (cur > 1250) cur = 1250;
