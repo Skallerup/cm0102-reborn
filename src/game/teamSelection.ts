@@ -19,9 +19,9 @@ import { cmLogic } from './cmPlayerData';
 /** cmReserveMatches.ts RSV_COMP (reserveturneringen [0x9cf684]) */
 const RSV_COMP = 'RSV';
 
-export type SelKey = 'unav' | 'cup' | 'res' | 'unreg' | 'awol' | 'loanC' | 'loanM' | 'ban' | 'inj' | 'wp' | 'quota';
-/** 0x8cf5e0's koder → beskedens nøgle (0x726b75–0x726d7f); 3–7 (prøvespiller, anden klub, fristerne) giver vores regler ikke */
-const CODE_KEY: Record<number, SelKey> = { 1: 'cup', 2: 'res', 8: 'unreg', 9: 'awol', 0xa: 'loanC', 0xb: 'loanM' };
+export type SelKey = 'unav' | 'cup' | 'trial' | 'res' | 'unreg' | 'awol' | 'loanC' | 'loanM' | 'ban' | 'inj' | 'wp' | 'quota';
+/** 0x8cf5e0's koder → beskedens nøgle (0x726b75–0x726d7f); 3 prøvespiller (0xa175a0/0xa178c0 – cmTrial.ts), 4–7 (anden klub, fristerne) giver vores regler ikke */
+const CODE_KEY: Record<number, SelKey> = { 1: 'cup', 2: 'res', 3: 'trial', 8: 'unreg', 9: 'awol', 0xa: 'loanC', 0xb: 'loanM' };
 
 /** skadetype 0x4d–0x51 (0x62ed70): "currently unavailable for selection" */
 const unavailable = (p: Player) => /^cm(7[7-9]|8[01])$/.test(p.injury?.key ?? '');

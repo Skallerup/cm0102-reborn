@@ -28,6 +28,8 @@ import { cmAvailability, cmFutureLines } from '../../game/cmTransferList';
 import { arrangedMove } from '../../game/cmStatusCode';
 import { cmLongDate } from '../cmBanText';
 import { trialOf } from '../../game/trials';
+import { cmCanOfferTrial } from '../../game/cmTrial';
+import { TrialPanel, offerTrialClick } from '../trialOffer';
 import type { Player, TransferOffer } from '../../game/types';
 import { POSITIONS, SIDES } from '../../game/types';
 import { compName, dateFmt, money, moneyFull, moneyWage, natName, t } from '../../i18n';
@@ -598,6 +600,7 @@ export function ClassicPlayer({ id }: { id: number }) {
   const [statusOpen, setStatusOpen] = useState(false);
   const [discOpen, setDiscOpen] = useState(false);
   const [nickOpen, setNickOpen] = useState(false);
+  const [trialOpen, setTrialOpen] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
   const [repRole, setRepRole] = useState<'physio' | 'coach' | null>(null);
   useEffect(() => setMsg(''), [id]);
@@ -684,6 +687,8 @@ export function ClassicPlayer({ id }: { id: number }) {
       if (!authentic()) items.push({ key: 'enq', label: t('player.enquire'), onClick: () => act(dispatch<string>({ t: 'enquire', pid: p.id })) });
     } else {
       items.push({ key: 'offer', label: t('player.offerContract'), disabled: !open, title: closedTip, onClick: () => act(dispatch<TransferOffer | string>({ t: 'bid', pid: p.id, fee: 0, loan: false })) });
+      // CM 01/02 Offer Trial (0x8724a3, kommando 0x17 → 0x8892fe – cmTrial.ts)
+      if (authentic() && cmCanOfferTrial(g, p)) items.push({ key: 'cmtrial', label: t('cl.trial.menu'), onClick: () => offerTrialClick(p, () => setTrialOpen(true)) });
       if (!trialOf(p.id) && !authentic()) items.push({ key: 'trial', label: t('trial.invite'), onClick: () => { const r = dispatch<string>({ t: 'trial', pid: p.id }); setMsg(r === 'ok' ? t('trial.invited') : t(`trial.err.${r}`)); } });
     }
     if (canPreContract(p)) items.push({ key: 'pre', label: t('player.preContract'), onClick: () => act(dispatch<TransferOffer | string>({ t: 'preContract', pid: p.id })) });
@@ -722,6 +727,7 @@ export function ClassicPlayer({ id }: { id: number }) {
   const cmNegOffer = cmNeg !== null ? g.offers.find((o) => o.id === cmNeg) : undefined;
   if (cmNegOffer && cmTalksOpen(g, cmNegOffer)) return <div><ClassicNegotiation offer={cmNegOffer} onClose={() => setCmNeg(null)} /></div>;
   if (noteOpen) return <div><Head menu={false} title={`${p.first} ${p.last}`.trim()} /><NotePanel p={p} onClose={() => setNoteOpen(false)} /></div>;
+  if (trialOpen && !p.club) return <div><Head menu={false} title={`${p.first} ${p.last}`.trim()} /><TrialPanel p={p} onClose={() => setTrialOpen(false)} /></div>;
   if (nickOpen) return <div><Head menu={false} title={`${p.first} ${p.last}`.trim()} /><NicknamePanel p={p} onClose={() => setNickOpen(false)} /></div>;
   if (repRole && mine) return <div><Head menu={false} title={`${p.first} ${p.last}`.trim()} /><StaffReportPanel p={p} role={repRole} onClose={() => setRepRole(null)} onDone={() => { setRepRole(null); nav({ name: 'inbox' }); }} /></div>;
   if (discOpen && mine) return <div><Head menu={false} title={`${p.first} ${p.last}`} /><DisciplinePanel p={p} onClose={() => setDiscOpen(false)} onDone={(m) => { setDiscOpen(false); setMsg(m); }} /></div>;

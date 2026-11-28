@@ -14,6 +14,7 @@ import { cmShortlistAddRumour } from './cmShortlistGame';
 import { submitEuroSquad } from './euroSquad';
 import { replacePlayer } from './draft';
 import { endTrial, inviteTrial } from './trials';
+import { cmOfferTrial } from './cmTrial';
 import { arrangeFriendly, cancelFriendly, type FriendlyKind } from './friendlies';
 import { cmFrAnswer, cmFrArrange, cmFrCancel, cmFrInvite, cmFrTour, frDn } from './cmFriendlyOffers';
 import { applyStyle, briefing, type StyleKey } from './onboarding';
@@ -124,6 +125,8 @@ export type Action =
   | { t: 'setRules'; rules: 'modern' | 'classic' }
   | { t: 'draftReplace'; out: number; inn: number }
   | { t: 'trial'; pid: number; end?: boolean }
+  // originalens Offer Trial (cmTrial.ts – Trial Period 0x8f8be0 → Yes 0x8fb9e0)
+  | { t: 'cmTrial'; pid: number; weeks: number }
   | { t: 'friendly'; opp: number; date: string; kind: FriendlyKind }
   | { t: 'friendlyCancel'; date: string }
   // originalens venskabskampe (cmFriendlyOffers.ts – kun den originale database i ægte tilstand)
@@ -348,6 +351,7 @@ export function applyAction(a: Action): unknown {
     case 'campCancel': return cancelCamp() ? 'ok' : 'error';
     case 'setRules': g.options.rules = a.rules; return 'ok';
     case 'draftReplace': return replacePlayer(gs().userClub, a.out, a.inn);
+    case 'cmTrial': return cmOfferTrial(g, a.pid, a.weeks);
     case 'trial': if (a.end) { endTrial(a.pid); return 'ok'; } return inviteTrial(a.pid);
     case 'friendly': return arrangeFriendly(a.opp, a.date, a.kind);
     case 'friendlyCancel': cancelFriendly(a.date); return 'ok';

@@ -1151,7 +1151,10 @@ export function renewContract(pid: number, wage: number, years: number, clauses?
   // trupstatussen fra Set Role At Club, vægtet med viljen 0x846920 (cmContractAnswer). Før: spillets eget skøn (agentens accept-faktor)
   const cmAns = cmLogic(g) ? cmContractAnswer(g, p, club.id, { ...offerTerms(g, wage, years, cl, club.id), expires: renewalExpiry(p.contract?.expires, years, g.date) }, p.squadStatus) : null;
   if (cmAns ? cmAns.accept : wage + clausesWorthFor(p, club.id, wage, years, cl) >= demand * AGENT_RULES[agentOf(p).style].accept) {
+    const wasTrial = p.contract?.cmType === 5;
     p.contract = { wage, expires: renewalExpiry(p.contract?.expires, years, g.date), ...cl };
+    // en prøvespiller (cmTrial.ts) får en almindelig kontrakt: sign_contract 0x4cf9d5 – +0x4f's høje nibble fra tilbuddets trupstatus (ikke 8)
+    if (wasTrial) setStatusCode(p);
     wageRecalc(g, club.id);   // (sign_contract 0x4cf720 → 0x598370)
     // CM 01/02 0x8c38b0 → Finance::add_signing_on 0x5998e0 (blokken; kun originalens økonomi – bookBlock tjekker cmFinOn)
     if (cl.signOn) { club.balance -= cl.signOn; club.finance.signOn = (club.finance.signOn ?? 0) + cl.signOn; bookBlockEur(g, club, CMK.signOn, cl.signOn); }

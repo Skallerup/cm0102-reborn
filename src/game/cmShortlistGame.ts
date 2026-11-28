@@ -2659,8 +2659,38 @@ export function cmHumanLoanCheck(g: GameState, p: Player, buyer: number): CmLoan
   }
 }
 
-/** 0x8f0e40(staff, klub, grund, 1) / 0x8d0187–0x8d0357: beskeden for can_club_bid_for_player 0x8ce990's grund ved en leje */
-function bidMsg(g: GameState, p: Player, buyer: Club, why: number, player: string): LoanMsg | undefined {
+/** Action-menuens Offer Trial 0x888260 (handling 0x17, 0x8892fe): can_club_bid_for_player 0x8ce990(staff, klub, &grund, 0) nej → 0x8f0e40(staff,
+ *  klub, grund, art 2) "Cannot trial {spiller}" (0xa9f688) med grundens tekst (som lejens, men 0x19/0x28 0xa9f29c "… not allowed to trial non …",
+ *  0x1a 0xa9f3dc "… not allowed to trial …"); ja → Trial Period 0x8f8be0 (ok). Null uden for ønskelisterne (intet tjek). */
+export function cmHumanTrialCheck(g: GameState, p: Player, buyer: number): CmLoanCheck | null {
+  const bc = g.clubs[buyer];
+  if (!cmShortlistOn(g) || !bc) return null;
+  ensureCmp();
+  const hold: { S?: SlMem } = {};
+  const M = smallWantMem(g, [buyer], hold);
+  const club = M.W.clubOf(buyer);
+  // den klubløse er ikke i klubbernes poster: en post uden klub (staff +0x39 = 0) som talkMem (cmContractGame.ts)
+  const st = M.W.staffOf(p) || M.W.addGenerated(p, 0);
+  if (!st || !club) return null;
+  const m = M.c.m;
+  const memOf = new Map<number, number>(), byMem = new Map<number, Player>();
+  for (const [q, a] of M.W.players) { const id = m.s32(a); memOf.set(q.id, id); byMem.set(id, q); }
+  memOf.set(p.id, m.s32(st)); byMem.set(m.s32(st), p);
+  const S: SlMem = hold.S = { M, m, c: M.c, g, slm: m.u32(m.u32(0xde1f54) + 0x856), memOf, byMem, clubAdr: (cid) => M.W.clubOf(cid), events: [], slotted: new Set() };
+  writeOffers(S);
+  try {
+    m.w16(CANLOAN_WHY, 0);
+    if (!slCall(M.c, 0x8ce990, m.u32(0xde1f54), st, club, CANLOAN_WHY, 0)) return { ok: false, head: 'cannot', msg: bidMsg(g, p, bc, m.u16(CANLOAN_WHY), `${p.first} ${p.last}`.trim(), 'trial') };
+    return { ok: true };
+  } finally {
+    (m as SparseMem).release();
+  }
+}
+
+/** 0x8f0e40(staff, klub, grund, 1) / 0x8d0187–0x8d0357: beskeden for can_club_bid_for_player 0x8ce990's grund ved en leje (art 2 = prøvetid:
+ *  nationalitetsreglerne har deres egne tekster 0xa9f29c/0xa9f3dc) */
+function bidMsg(g: GameState, p: Player, buyer: Club, why: number, player: string, art: 'loan' | 'trial' = 'loan'): LoanMsg | undefined {
+  const nk = art === 'trial' ? 'cl.trialr' : 'cl.loanr';
   const club = (c: Club | undefined) => c?.short || c?.name || '';
   const fut = g.offers.find((o) => o.player === p.id && o.status === 'accepted' && !!o.cmFut);
   switch (why) {
@@ -2669,9 +2699,9 @@ function bidMsg(g: GameState, p: Player, buyer: Club, why: number, player: strin
     case 0x21: return { key: 'cl.loanr.accepted', params: { player, club: club(g.clubs[fut?.buyer ?? p.contract?.futureClub ?? p.loan?.from ?? p.club]) } };
     case 0x12: case 0x20: return { key: 'cl.loanr.setTo', params: { player, club: club(fut ? g.clubs[fut.buyer] : undefined) } };
     case 0x29: return { key: 'cl.pl.loanNonEu', params: { club: club(buyer) } };
-    case 0x19: return { key: 'cl.loanr.nonNat', params: { club: club(buyer), nat: cmNatAdj(g, g.nations.findIndex((n) => n.name === 'Pays Basque')) } };
-    case 0x28: return { key: 'cl.loanr.nonNat', params: { club: club(buyer), nat: cmNatAdj(g, buyer.nation) } };
-    case 0x1a: return { key: 'cl.loanr.nat', params: { club: club(buyer), nat: cmNatAdj(g, g.nations.findIndex((n) => n.name === 'Spain')) } };
+    case 0x19: return { key: `${nk}.nonNat`, params: { club: club(buyer), nat: cmNatAdj(g, g.nations.findIndex((n) => n.name === 'Pays Basque')) } };
+    case 0x28: return { key: `${nk}.nonNat`, params: { club: club(buyer), nat: cmNatAdj(g, buyer.nation) } };
+    case 0x1a: return { key: `${nk}.nat`, params: { club: club(buyer), nat: cmNatAdj(g, g.nations.findIndex((n) => n.name === 'Spain')) } };
     default: return undefined;
   }
 }

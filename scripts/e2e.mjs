@@ -1496,6 +1496,32 @@ async function run(look) {
     await page.locator('.cx-foot-btns button', { hasText: 'Back' }).click();
     await page.waitForSelector('.cx-bid', { state: 'detached', timeout: 5000 });
   });
+  // CM 01/02 Offer Trial (cmTrial.ts – kun i ægte tilstand): Action ▾ Offer Trial på en klubløs → Trial Period (− 2 weeks +) → Back
+  if (look === 'klassisk' && ENGINE_GRID) await step('Offer Trial på en klubløs (klassisk, ægte tilstand)', async () => {
+    const pid = await gs(() => { const g = window.__cm.gs(); window.__e2eTrialMode = g.options.mode; g.options.mode = 'authentic'; window.__cm.notify(); return Object.values(g.players).find((p) => !p.club && !p.loan && !p.virtual && !g.offers.some((o) => o.player === p.id))?.id; });
+    try {
+      if (pid === undefined) throw new Error('ingen klubløs spiller');
+      await go({ name: 'player', id: pid });
+      await page.locator('.cx-act .cx-drop-btn').click();
+      const acts = await page.locator('.cx-drop-pop').innerText();
+      if (!/Offer Trial/.test(acts)) throw new Error(`Offer Trial mangler i Action-menuen: ${acts}`);
+      await page.locator('.cx-drop-pop button, .cx-drop-pop [role=menuitem]', { hasText: 'Offer Trial' }).first().click();
+      // 0x8ce990 kan sige nej ("Cannot trial …" – Ok); ellers Trial Period med 2 uger
+      const dlg = page.locator('[data-trial]');
+      if (await dlg.count() || await dlg.waitFor({ timeout: 3000 }).then(() => true, () => false)) {
+        if (!(await dlg.innerText()).includes('2 weeks')) throw new Error('Trial Period starter ikke på 2 weeks');
+        await dlg.locator('button[aria-label="+"]').click();
+        if (!(await dlg.innerText()).includes('3 weeks')) throw new Error('+ gav ikke 3 weeks');
+        if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-trial.png` });
+        await dlg.locator('button', { hasText: 'Back' }).click();
+        await page.waitForSelector('[data-trial]', { state: 'detached', timeout: 5000 });
+      } else {
+        await page.locator('.cx-confirm button').last().click();
+      }
+    } finally {
+      await gs(() => { const g = window.__cm.gs(); g.options.mode = window.__e2eTrialMode; window.__cm.notify(); });
+    }
+  });
   // CM 01/02's budskærm med den originale database (cmTransferBid.ts): alle rækker kan ændres, bytte via trupskærmen, buddet gemmer klausulerne
   if (look === 'klassisk' && ENGINE_GRID) await step('budskærmen: rater, videresalg, klausuler, offentligt og bytte (original)', async () => {
     // originalens budskærm gælder kun i ægte tilstand (cmActive) – e2e-spillet er udvidet

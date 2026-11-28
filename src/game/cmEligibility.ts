@@ -22,7 +22,7 @@
 // og de indskiftede, +0x32 ≠ 0xff), og som er en af databasens personer, sin post (0x4ad030, hvis han ikke har en) og posten +8 = holdets klub.
 // Posterne nulstilles med turneringens sæson (0x4a1c50) – hos os g.cmCupTied pr. turnering og sæson, kun for pokalerne med reglen ovenfor.
 //
-// Ikke porteret: kode 3 (prøvespillere – findes ikke i spillet), 2/4/5/6/7 (andre landes regler, ikke Englands) og Europas tilmelding for computerens
+// Kode 3 (prøvespillere – cmTrial.ts): trialBar nedenfor. Ikke porteret: 2/4/5/6/7 (andre landes regler, ikke Englands) og Europas tilmelding for computerens
 // klubber SQUAD_MANAGER::select_euro_registered_players 0x85aae0 (computerens klubber regnes som tilmeldte; menneskets er European Squad,
 // euroSquad.ts).
 //
@@ -69,25 +69,39 @@ function registered(p: Player): boolean {
 
 /** EUROPE_RULES +0x18 0x5832e0 */
 function europeRule(g: GameState, p: Player, f: Fixture, comp: Competition): number {
-  if (cmGeneratedNow(p) || ageOn(p.dob, g.date) < 20 || !EURO_LISTED.has(comp.id)) return cmLoanBase(g, p, f);
+  if (cmGeneratedNow(p) || ageOn(p.dob, g.date) < 20 || !EURO_LISTED.has(comp.id)) return trialBar(p, f, 'Europe') || cmLoanBase(g, p, f);
   const r = f.cm ? baseRound(f.cm.w30) : -1;
-  if (comp.id === 'UIC') { if (r !== 150) return cmLoanBase(g, p, f); }
+  if (comp.id === 'UIC') { if (r !== 150) return trialBar(p, f, 'Europe') || cmLoanBase(g, p, f); }
   else if (r === 230 || r === 160) return 0;
   return registered(p) ? 0 : 8;
 }
+
+/** regelobjekterne med +0x15 = 1 (Finland 0x5a9a5a, Skotland 0x7f649a, Spanien 0x893db1 – alle andre 0 fra TRANSFER_RULES 0x8e84d5):
+ *  grundreglens prøvespillerregel springes over */
+const TRIAL_FREE = new Set(['Finland', 'Scotland', 'Spain']);
+/** 0x8e8a60's første regel: +0x15 = 0, turneringen er hverken en reserveturnering (0x7e6f20) eller en venskabsturnering (0x5c6710) og
+ *  hovedkontrakten (0x4cf5a0) er af type 5 (prøvetid, cmTrial.ts) → 3 ("Trialist … is not allowed to play in this fixture.") */
+function trialBar(p: Player, f: Fixture, rulesNat: string): 0 | 3 {
+  if (p.contract?.cmType !== 5 || p.loan || TRIAL_FREE.has(rulesNat)) return 0;
+  if (f.comp === 'RSV' || f.comp === 'FRIENDLY') return 0;
+  return 3;
+}
+/** grundreglen 0x8e8a60 (prøvetiden, så lejeklausulerne) */
+const baseRule = (g: GameState, p: Player, f: Fixture, rulesNat: string) => trialBar(p, f, rulesNat) || cmLoanBar(g, p, f);
 
 /** 0x8cf5e0: hvorfor spilleren ikke må spille kampen (0 = må) – kun spil med originalens logik (cmLogic) */
 export function cmIneligible(g: GameState, p: Player, f: Fixture): number {
   if (!cmLogic(g)) return 0;
   if (f.home > -1000 && p.injury?.key === 'awol') return 9;                    // 0x418f60(staff, 0)
   const comp = g.comps[f.comp];
+  // uden turnering (venskabskampe – 0x8d2fa0: intet regelsæt) og reservekampene (0x7e6f20 – prøvespillerne må spille)
   if (!comp) return cmLoanBar(g, p, f);
   if (comp.type === 'continental') return comp.id === 'ESC' || EURO_LISTED.has(comp.id) ? europeRule(g, p, f, comp) : 0;
   const nat = comp.nation >= 0 ? g.nations[comp.nation]?.name ?? '' : '';
   // de øvrige europæiske lande har Europas regelsæt – deres hjemlige turneringer er ikke i listen (grundreglen); lande uden regelsæt: 0
-  if (!cmKeyRules(nat)) return regionOf(nat) === 'europe' ? cmLoanBar(g, p, f) : 0;
+  if (!cmKeyRules(nat)) return regionOf(nat) === 'europe' ? baseRule(g, p, f, 'Europe') : 0;
   if (cupTiedComp(g, comp) && cupTied(g, p, comp)) return 1;
-  return cmLoanBar(g, p, f);
+  return baseRule(g, p, f, nat);
 }
 
 /** turneringens Comp_Stats-post +8 for spilleren (klubben, han sidst spillede for i turneringen i år) */

@@ -75,7 +75,7 @@ export function newsParams(n: NewsItem): Record<string, string | number> {
   // budet på menneskets stab (0x8d3520, 0xa91afc): "… a job as {job}" – jobnavnet uden artikel
   if (n.key === 'cm.stBid' && typeof p.job === 'number') p.job = t(`cm.stm.j.${p.job}`);
   // kontrakttilbuddet til menneskets spiller (0x8d3520) og aftalen (0xfb3, 0xa9bbec): originalens datoform "10th November 1998"
-  if ((n.key === 'transfer.cm7' || n.key === 'transfer.cmAgreed' || n.key === 'transfer.cmLoanSeen') && typeof p.date === 'string') p.date = cmLongDate(p.date);
+  if ((n.key === 'transfer.cm7' || n.key === 'transfer.cmAgreed' || n.key === 'transfer.cmLoanSeen' || n.key === 'cmTrial.accepts') && typeof p.date === 'string') p.date = cmLongDate(p.date);
   // budnyheden til de andre (0x8d3520): byttespillerne 1 → navnet, 2 "A and B", 3 "A, B and C", flere "<n> players" (0xa91c40/0xa91bc0/0xa91ba0);
   // landsholdet (plads 0x11, staff +0x24) med navnet
   if (n.key === 'transfer.cmBidSeen') {

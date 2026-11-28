@@ -45,6 +45,7 @@ import { benchSize, maxSubs, legacyExtended, origLogic } from './rules';
 import { recordsAfterMatch } from './records';
 import { campDaily } from './camp';
 import { trialsDaily } from './trials';
+import { cmTrialDaily } from './cmTrial';
 import { friendliesDaily } from './friendlies';
 import { cmFriendlyDay, cmFriendlyPrerunDay } from './cmFriendly';
 import { achievementsAfterMatch } from './achievements';
@@ -815,6 +816,8 @@ function newDay() {
   cmStaffNpDaily(g);
   // CONTRACT_MANAGER::daily_update 0x4c7ac0: computerklubbernes forlængelser, udløb og frigivelser (cmContractManager.ts)
   cmContractManagerDay(g);
+  // menneskets prøvetid (Offer Trial – 0x4ce4e0-svarene og prøvekontrakternes udløb 0x4c9b76, cmTrial.ts)
+  cmTrialDaily(g);
   // 0x4c7ec5: spillernes værdi +0x52 (0x4d0c60 – cmValueGame.ts)
   cmValuesDaily(g);
   // … og spillets eget udløb for dem, originalen ikke har i hukommelsen (season.ts)

@@ -641,6 +641,14 @@ export function cmContractAnswer(g: GameState, p: Player, clubId: number, o: CmO
   return { score, x, t, accept: t > 2.75 };
 }
 
+/** CONTRACT_MANAGER::resolve_contract_offers 0x4ce4e0 for et prøvetidstilbud (type 5, 0x4ce9f4): viljen 0x846920(staff, klub, 0, 1, 8, 0) –
+ *  trupstatus 8 (prøvespiller); ja, når den er over `best` 2,75 og ikke under 3,15. Null uden for cmLogic. */
+export function cmTrialWill(g: GameState, p: Player, clubId: number): number | null {
+  const T = talkMem(g, p, clubId, 0x4ce4e0);
+  if (!T) return null;
+  return slCall(T.M.c, 0x846920, slmOf(T.M.c.m), T.st, T.club, 0, 1, 8, 0);
+}
+
 export type { ContractClauses };
 
 // ---------------------------------------------------------------- stab (cmStaffMove.ts)

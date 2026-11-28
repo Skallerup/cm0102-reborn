@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { origLogic } from '../../game/rules';
 import { trialOf } from '../../game/trials';
+import { cmCanOfferTrial } from '../../game/cmTrial';
+import { authentic } from '../../game/rules';
+import { TrialModal, offerTrialClick } from '../trialOffer';
 import { bidClauseWorth } from '../../game/clauses';
 import { IncomingOffersFor } from './Transfers';
 import { askConfirm } from '../confirm';
@@ -58,6 +61,7 @@ function ModernPlayer({ id }: { id: number }) {
   const [loanOutOpen, setLoanOut] = useState(false);
   const [listOpen, setListOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
+  const [cmTrial, setCmTrial] = useState(false);
   if (!p) return <div><Head title={t('player.gone')} /></div>;
   const mine = p.club === g.userClub && !!g.userClub;
   const k = knowledgeOf(p);
@@ -188,7 +192,8 @@ function ModernPlayer({ id }: { id: number }) {
                   {p.club > 0 && <button onClick={() => act(dispatch<string>({ t: 'enquire', pid: p.id }))}>{t('player.enquire')}</button>}
                   {p.club > 0 && !windowOpen() && <span className="muted" style={{ fontSize: 12 }}>{t('transfer.windowOpens', { date: dateFmt(nextWindow()) })}</span>}
                   {!p.club && <button className="primary" disabled={!windowOpen()} title={windowOpen() ? undefined : t('transfer.windowOpens', { date: dateFmt(nextWindow()) })} onClick={() => act(dispatch<TransferOffer | string>({ t: 'bid', pid: p.id, fee: 0, loan: false }))}>{t('player.offerContract')}</button>}
-                  {!p.club && (trialOf(p.id)
+                  {!p.club && authentic() && cmCanOfferTrial(g, p) && <button data-cmtrial="1" onClick={() => offerTrialClick(p, () => setCmTrial(true))}>{t('cl.trial.menu')}</button>}
+                  {!p.club && !authentic() && (trialOf(p.id)
                     ? <span className="tag good" title={t('trial.until', { date: dateFmt(trialOf(p.id)!.end) })}>🧪 {t('trial.onTrial', { date: dateFmt(trialOf(p.id)!.end) })}</span>
                     : <button onClick={() => { const r = dispatch<string>({ t: 'trial', pid: p.id }); setMsg(r === 'ok' ? t('trial.invited') : t(`trial.err.${r}`)); }}>🧪 {t('trial.invite')}</button>)}
                   {canPreContract(p) && <button onClick={() => act(dispatch<TransferOffer | string>({ t: 'preContract', pid: p.id }))}>{t('player.preContract')}</button>}
@@ -279,6 +284,7 @@ function ModernPlayer({ id }: { id: number }) {
         ? <OrigBidModal pid={p.id} loan={bid === 'loan'} change={bid === 'change'} onClose={() => setBid(false)} onSent={(o) => { setBid(false); act(o); }} />
         : <BidModal pid={p.id} offerId={typeof bid === 'number' ? bid : undefined} onClose={() => setBid(false)} onDone={(r) => { setBid(false); act(r); }} />)}
       {listOpen && <ListModal pid={p.id} onClose={() => setListOpen(false)} />}
+      {cmTrial && !p.club && <TrialModal p={p} onClose={() => setCmTrial(false)} />}
       {statusOpen && <OrigTransferStatus pid={p.id} onClose={() => setStatusOpen(false)} />}
       {canRecallLoan(p, g.userClub) && (
         <div className="insight" style={{ marginTop: 8 }}>{t('loan.onLoanAt', { club: g.clubs[p.club]?.name ?? '' })} <button className="small" onClick={() => { void askEndLoan(p, false); }}>{t('loan.recall')}</button></div>

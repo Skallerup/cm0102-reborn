@@ -1408,6 +1408,8 @@ export interface GameState {
   cmPermit?: Record<number, import('./cmPermit').PermitEntry>;
   /** Comp_Stats-posternes +8 for pokalerne med pokalbundne spillere (cmEligibility.ts): turnering → sæson og spiller → klubben, han sidst spillede for */
   cmCupTied?: Record<string, { s: number; m: Record<number, number> }>;
+  /** menneskets åbne prøvetidstilbud (Offer Trial 0x8fb9e0 → CONTRACT_MANAGER-tilbud type 5, svaret 0x4ce4e0 – cmTrial.ts) */
+  cmTrials?: import('./cmTrial').CmTrialOffer[];
   /** 0x8c7950's tilstand (cmPermit.ts cmWorkPermit): landskampshistorikken TRANSFER_MANAGER +0x86e[id·8] +3/+5, landsholdenes kamptal
    *  [[0xb74318]+4] nation·110 + 2 og (uden originalens FIFA-liste g.intl.cmFifa) FIFA_RANKINGS' resultatliste – findes = modulet er slået til */
   cmWp?: import('./cmPermit').CmWp;
