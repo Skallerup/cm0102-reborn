@@ -2146,6 +2146,7 @@ Object.assign(tr, {
   "ng.step.fitness": "Kondisyon ve sakatlıklar kontrol ediliyor...",
   "ng.step.plan": "Kadrolar planlanıyor...",
   "ng.step.scouting": "Gözlemciler gönderiliyor...",
+  "ng.step.convert": "Kayıtlı oyun dönüştürülüyor...",
   "ng.step.done": "Başlıyoruz...",
   "ng.step.shortlists": "Kulüpler transfer listelerini hazırlıyor...",
   "ng.safeHint": "Geçen sefer tarayıcı oyunu oluşturulurken kapattı. Oyun artık daha az bellek kullanan daha küçük adımlarla oluşturuluyor – biraz daha uzun sürer, sayfayı açık bırakın.",

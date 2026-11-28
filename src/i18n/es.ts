@@ -2146,6 +2146,7 @@ Object.assign(es, {
   "ng.step.fitness": "Comprobando el estado físico y las lesiones...",
   "ng.step.plan": "Planificando las plantillas...",
   "ng.step.scouting": "Enviando a los ojeadores...",
+  "ng.step.convert": "Convirtiendo la partida guardada...",
   "ng.step.done": "Saque inicial...",
   "ng.step.shortlists": "Los clubes preparan sus listas de objetivos...",
   "ng.safeHint": "La última vez el navegador cerró el juego mientras se creaba. Ahora se crea en pasos más pequeños que usan menos memoria; tarda un poco más, deja la página abierta.",

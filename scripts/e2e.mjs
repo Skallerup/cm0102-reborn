@@ -99,13 +99,13 @@ async function run(look) {
     return true;
   };
   let n = 0;
-  const step = async (name, fn) => {
+  const step = async (name, fn, stepLimitMs) => {
     const before = errors.length;
     const t0 = Date.now();
     try {
       // (25/11) et trin, der hænger (fx page.evaluate uden tidsgrænse), må ikke låse hele udgivelsen: STEP_TIMEOUT_MS (standard 15 min) pr. trin
       let timer;
-      const limit = Number(process.env.STEP_TIMEOUT_MS ?? 900000);
+      const limit = Number(process.env.STEP_TIMEOUT_MS ?? stepLimitMs ?? 900000);
       await Promise.race([fn(), new Promise((_, rej) => { timer = setTimeout(() => rej(new Error(`trinnet hang i over ${Math.round(limit / 1000)} s`)), limit); })]).finally(() => clearTimeout(timer));
       if (errors.length > before) throw new Error(`sidefejl: ${errors.slice(before).join(' | ')}`);
       console.log(`  ✓ ${look}: ${name} (${Date.now() - t0} ms)`);
@@ -2386,44 +2386,82 @@ async function run(look) {
   // gamle gemte spil (game/cmConvert.ts): en kopi af spillet uden originalens lag gemmes som "gammelt" spil → Restore Saved Game viser
   // "Old version" og "Convert to original (copy)" → bekræftelsen → fremdriften → rapporten → Continue åbner det konverterede spil (en ny kopi)
   if (look === 'klassisk' && ENGINE_GRID) await step('gammelt gemt spil → Convert to original (copy)', async () => {
-    await page.evaluate(async () => {
-      const base = '/cm0102-reborn/src/game/';
-      const { storeSave, forgetLast } = await import(/* @vite-ignore */ `${base}save.ts`);
-      const { serializeState } = await import(/* @vite-ignore */ `${base}snapshot.ts`);
-      const g = JSON.parse(JSON.stringify(window.__cm.gs()));
-      g.options.mode = 'extended';
-      for (const k of ['cmSaveVer', 'cmBoard', 'cmFin', 'cmPlan']) delete g[k];
-      g.id = 'save-e2eold';
-      await storeSave({ id: g.id, manager: g.manager.name, club: 'E2E Old Save', date: g.date, saved: new Date().toISOString() }, await serializeState(g));
-      forgetLast();
-    });
-    // det løbende spils autogem (2,5 s) husker det igen som "seneste" – vent det ud, glem det og gå straks til startmenuen
-    await page.waitForTimeout(3500);
-    await page.evaluate(() => localStorage.removeItem('cm0102.last'));
-    await page.goto(URL);
-    await page.waitForSelector('.cxs [data-field=restore]', { timeout: 60000 });
-    await page.locator('[data-field=restore]').click();
-    const row = page.locator('[data-saves] .cxs-it', { hasText: 'E2E Old Save' });
-    await row.locator('.cxs-oldver').waitFor({ timeout: 60000 });
-    if (!(await row.locator('.cxs-oldver[data-ext]').count())) throw new Error('det gamle udvidede spil mangler mærket "Udvidet (gammel)"');
-    if (await page.locator('[data-saves] .cxs-it[data-kind=current] .cxs-conv').count()) throw new Error('et nyt spil har konverteringsknappen');
-    await row.locator('[data-convert=oldOriginal]').click();
-    await page.waitForSelector('.cx-confirm, .confirm-box', { timeout: 120000 });
-    if (!/copy/i.test(await page.locator('.cx-confirm, .confirm-box').first().innerText())) throw new Error('bekræftelsen nævner ikke kopien');
-    await page.locator('.cx-confirm button.primary, .confirm-box button.primary').first().click();
-    // (en fejl i konverteringen står i .cxs-err – testen fejler straks i stedet for at vente forgæves)
-    await page.waitForSelector('[data-convdone], .cxs-err', { timeout: 1500000 });
-    if (await page.locator('.cxs-err').count()) throw new Error(`konverteringen fejlede: ${(await page.locator('.cxs-err').first().innerText()).slice(0, 300)}`);
-    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-konvertering-rapport.png` });
-    const rep = await page.locator('[data-convdone]').innerText();
-    if (!/next season/i.test(rep) && !/new season/i.test(rep)) throw new Error(`rapporten nævner ikke kalenderen: ${rep}`);
-    await page.locator('.cx-foot .cx-next').click();
-    await page.waitForFunction(() => { try { return !!window.__cm.gs(); } catch { return false; } }, null, { timeout: 180000 });
-    await page.waitForSelector('.cx-side', { timeout: 120000 });
-    const st = await page.evaluate(() => { const g = window.__cm.gs(); return { id: g.id, mode: g.options.mode, ver: g.cmSaveVer, news: g.news.some((n) => n.key === 'conv.done') }; });
-    if (st.id === 'save-e2eold' || st.mode !== 'authentic' || !st.ver || !st.news) throw new Error(`det konverterede spil: ${JSON.stringify(st)}`);
-    await checkScreen('konverteret spil');
-  });
+    // (28/11, trinnet hang >900 s tre gange 26/11 + 27/11 22:11, ikke genskabt i 26 isolerede kørsler med og uden CPU-belastning) Alle faser har nu en
+    // egen tidsgrænse og et navn, og hver ventende side-evaluering har tidsgrænse – et hængende trin fejler hurtigt med fasen, den sidste fremdrift,
+    // om hovedtråden svarer og konverteringens konsollinjer; konverteringen forsøges én gang til (det gamle gem ligger allerede i IndexedDB).
+    const logs = [];
+    const onConsole = (m) => { const s = m.text(); if (/ngtrace|Konvert|conversion|worker|handoff|SilenceGuard|timeout/i.test(s)) logs.push(`${((Date.now() - T0) / 1000).toFixed(0)}s ${s.slice(0, 160)}`); };
+    page.on('console', onConsole);
+    const T0 = Date.now();
+    let phase = 'start';
+    const within = (p, ms, what) => new Promise((res, rej) => { const id = setTimeout(() => rej(new Error(`${what}: ingen svar i ${Math.round(ms / 1000)} s`)), ms); p.then((v) => { clearTimeout(id); res(v); }, (e) => { clearTimeout(id); rej(e); }); });
+    /** siden svarer (hovedtråden fri) og viser: fremdriftsteksten, evt. fejl/rapport */
+    const probe = () => within(page.evaluate(() => ({ run: document.querySelector('.cx-running, .cxs-prog, .cx-prog')?.textContent?.slice(0, 90) ?? '', err: document.querySelector('.cxs-err')?.textContent?.slice(0, 200) ?? '', done: !!document.querySelector('[data-convdone]') })), 10000, 'hovedtråden').catch(() => null);
+    const diag = async () => { const pr = await probe(); return `fase "${phase}" efter ${Math.round((Date.now() - T0) / 1000)} s; side: ${pr ? JSON.stringify(pr) : 'hovedtråden svarer ikke'}; konsol: ${logs.slice(-6).join(' | ') || '(ingen)'}`; };
+    try {
+      phase = 'gem det gamle spil';
+      await within(page.evaluate(async () => {
+        const base = '/cm0102-reborn/src/game/';
+        const { storeSave, forgetLast } = await import(/* @vite-ignore */ `${base}save.ts`);
+        const { serializeState } = await import(/* @vite-ignore */ `${base}snapshot.ts`);
+        const g = JSON.parse(JSON.stringify(window.__cm.gs()));
+        g.options.mode = 'extended';
+        for (const k of ['cmSaveVer', 'cmBoard', 'cmFin', 'cmPlan']) delete g[k];
+        g.id = 'save-e2eold';
+        await storeSave({ id: g.id, manager: g.manager.name, club: 'E2E Old Save', date: g.date, saved: new Date().toISOString() }, await serializeState(g));
+        forgetLast();
+      }), 240000, 'gemmer det gamle spil (storeSave)');
+      // det løbende spils autogem (2,5 s) husker det igen som "seneste" – vent det ud, glem det og gå straks til startmenuen
+      await page.waitForTimeout(3500);
+      for (let attempt = 1; ; attempt++) {
+        try {
+          phase = `forsøg ${attempt}: startmenu`;
+          await within(page.evaluate(() => localStorage.removeItem('cm0102.last')), 15000, 'localStorage');
+          await page.goto(URL);
+          await page.waitForSelector('.cxs [data-field=restore]', { timeout: 60000 });
+          await page.locator('[data-field=restore]').click();
+          const row = page.locator('[data-saves] .cxs-it', { hasText: 'E2E Old Save' });
+          await row.locator('.cxs-oldver').waitFor({ timeout: 60000 });
+          if (!(await row.locator('.cxs-oldver[data-ext]').count())) throw new Error('det gamle udvidede spil mangler mærket "Udvidet (gammel)"');
+          if (await page.locator('[data-saves] .cxs-it[data-kind=current] .cxs-conv').count()) throw new Error('et nyt spil har konverteringsknappen');
+          phase = `forsøg ${attempt}: bekræftelsen`;
+          await row.locator('[data-convert=oldOriginal]').click();
+          await page.waitForSelector('.cx-confirm, .confirm-box', { timeout: 120000 });
+          if (!/copy/i.test(await page.locator('.cx-confirm, .confirm-box').first().innerText())) throw new Error('bekræftelsen nævner ikke kopien');
+          await page.locator('.cx-confirm button.primary, .confirm-box button.primary').first().click();
+          // konverteringen (normalt ~1 min): rapporten eller en fejl (.cxs-err); står fremdriften stille i 5 min, eller tager den over 8 min, fejler forsøget med diagnosen
+          phase = `forsøg ${attempt}: konvertering`;
+          const t1 = Date.now();
+          let last = '', lastChange = Date.now();
+          for (;;) {
+            const pr = await probe();
+            if (pr && (pr.done || pr.err)) break;
+            const sig = pr ? pr.run : 'frossen';
+            if (sig !== last) { last = sig; lastChange = Date.now(); }
+            if (Date.now() - lastChange > 300000) throw new Error(`konverteringens fremdrift står stille i 5 min (${await diag()})`);
+            if (Date.now() - t1 > 480000) throw new Error(`konverteringen tog over 8 min (${await diag()})`);
+            await page.waitForTimeout(5000);
+          }
+          if (await page.locator('.cxs-err').count()) throw new Error(`konverteringen fejlede: ${(await page.locator('.cxs-err').first().innerText()).slice(0, 300)}`);
+          if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-konvertering-rapport.png` });
+          const rep = await page.locator('[data-convdone]').innerText();
+          if (!/next season/i.test(rep) && !/new season/i.test(rep)) throw new Error(`rapporten nævner ikke kalenderen: ${rep}`);
+          phase = `forsøg ${attempt}: åbn det konverterede spil`;
+          await page.locator('.cx-foot .cx-next').click();
+          await page.waitForFunction(() => { try { return !!window.__cm.gs(); } catch { return false; } }, null, { timeout: 180000 });
+          await page.waitForSelector('.cx-side', { timeout: 120000 });
+          const st = await within(page.evaluate(() => { const g = window.__cm.gs(); return { id: g.id, mode: g.options.mode, ver: g.cmSaveVer, news: g.news.some((n) => n.key === 'conv.done') }; }), 30000, 'læser spillet');
+          if (st.id === 'save-e2eold' || st.mode !== 'authentic' || !st.ver || !st.news) throw new Error(`det konverterede spil: ${JSON.stringify(st)}`);
+          await checkScreen('konverteret spil');
+          break;
+        } catch (e) {
+          if (attempt >= 2 || /konverteringen fejlede|mærket|konverteringsknappen|kopien|kalenderen|det konverterede spil:|rå oversættelsesnøgle|tom/.test(e.message)) throw new Error(`${e.message} [${await diag()}]`);
+          console.log(`    (forsøg ${attempt} mislykkedes: ${e.message.split('\n')[0].slice(0, 300)} – prøver igen)`);
+          await page.screenshot({ path: `${OUT}/${look}-konvertering-forsoeg${attempt}.png` }).catch(() => {});
+        }
+      }
+    } finally { page.off('console', onConsole); }
+  }, 1500000);
   await ctx.close();
 }
 

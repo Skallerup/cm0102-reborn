@@ -6678,6 +6678,7 @@ Object.assign(nb, {
   "ng.step.fitness": "Sjekker form og skader...",
   "ng.step.plan": "Planlegger troppene...",
   "ng.step.scouting": "Sender ut speiderne...",
+  "ng.step.convert": "Konverterer det lagrede spillet...",
   "ng.step.done": "Avspark...",
   "ng.step.shortlists": "Klubbene lager ønskelister...",
   "ng.safeHint": "Forrige gang lukket nettleseren spillet mens det ble opprettet. Nå bygges det i mindre trinn som bruker mindre minne – det tar litt lenger tid, la siden være åpen.",
