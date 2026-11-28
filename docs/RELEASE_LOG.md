@@ -2,6 +2,7 @@
 
 Flyttet fra CLAUDE.md 17/11-2026 (så CLAUDE.md er kort i hver session). Nyeste først. Tilføj en linje øverst ved hver udgivelse.
 
+- 2026-11-28 – Skudt live (v0.40.0): 2026-11-28 – Testværn (e44c7017): scripts/test.mjs fast (vagter K3/K5/ændringslog/i18nAll/worldBuild/envDeterminism/låsetrin + direkte importører/omtale; tunge > 60 s kun i CI), ship.sh fast som standard (--full-tests = related), e2e kun ved src/public-ændringer og samtidig med testene; agentfiler/CLAUDE.md opdateret.
 - 2026-11-28 – Skudt live (v0.40.0): pick_taker 0x6ceb90 uden kandidat: fatal 0x3e89 med tilstanden (nedbrud aa97721d7bdd7bc0) – diagnose, årsag ikke fundet
 - 2026-11-28 – Skudt live (v0.40.0): Ønskelister: 0x8c9720 → 0x843e10 mode 4 → interesserede klubbers genudfyldning (mode 1, 0x83f3a0) læses nu tilbage (cmSlMoved). 2001-fp 30b363c7e4c3be4b -> 255bfe0d555de69c (fra 21/7); 2026 PL-køb 1/1 frø1 70,5->55,8, frø2 57,5->25,7 (støj).
 - 2026-11-28 – Skudt live (v0.40.0): Fællesskab #35 (Bruno £1,2m/uge): årsag = før-91fb2f68-startløn (£89.400 orig-£) + 0x860f10 alder>31 & krav>75.000 -> 250.000 · 1/cmGbp 0,1741; rettet af 91fb2f68, regressionstest i tests/cmWill2026.test.ts, scripts/bruno-probe.ts
