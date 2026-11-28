@@ -95,7 +95,7 @@ async function ours(): Promise<Out> {
   const { fromRow } = await import('../src/game/cmSquadPlanGame');
   const w = JSON.parse(readFileSync(process.env.WORLD!, 'utf8')) as WorldData;
   const eng = w.nations.findIndex((x) => x.name === 'England');
-  createGame(w, { managerName: 'Test Smoke', managerNation: eng, clubId: w.clubs.find((c) => c[1] === 'Arsenal')![0], activeNations: [eng], lang: 'en', masking: true, seed: 1, mode: 'authentic' });
+  createGame(w, { managerName: 'Test Smoke', managerNation: eng, clubId: w.clubs.find((c) => c[1] === 'Arsenal')![0], activeNations: [eng], lang: 'en', masking: true, seed: +(process.env.SEED ?? 1), mode: 'authentic' });
   let g: GameState = gs();
   const grp = (cid: number) => { const c = g.clubs[cid]; if (!c) return '-'; if (c.nation !== eng) return 'X'; return TIER[g.comps[c.league]?.name ?? g.leagues[c.league]?.name ?? ''] ?? 'NL'; };
   const bids = new Map<number, Bid>(), trs = new Map<string, Tr>(), plans: Plan[] = [];
