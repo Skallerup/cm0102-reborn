@@ -2,6 +2,7 @@
 
 Flyttet fra CLAUDE.md 17/11-2026 (så CLAUDE.md er kort i hver session). Nyeste først. Tilføj en linje øverst ved hver udgivelse.
 
+- 2026-11-28 – Skudt live (v0.40.0): 2026-11-27 – Opdigtede spillere fjernes fra gamle gem (5ef0708d): purgeFakes.ts, g.fixes 'fakePurge'; Normal S2 14.244 → 6.723 spillere, gem 7,9 → 4,1 MB.
 - 2026-11-28 – Skudt live (v0.40.0): 2026-11-27 – Vagten ved nyt spil (a2acab52): forkørslen efter 'done' 97 % uden besked → falsk alarm efter 120 s. beat.ts-hjerteslag, SilenceGuard = max(120 s, ¼ synlig tid).
 - 2026-11-27 – Skudt live (v0.39.0): 2026-11-27 – Ren sammenligningsside (4a2dce67): ComparePage; as.benchHint/opt.aboutText rettet på 10 sprog.
 - 2026-11-27 – Skudt live (v0.39.0): 2026-11-27 – Ikke-EU-/udlændingegrænse (a7326db9/727ac9b0): regelobjekt 0x8cf7e0/0x8cf6b0 via 0x8d2fa0 (28 lande, 0x8d26b0; England/DK/SE 3 ikke-EU 0x579c50, NO 2, FR 5/3, DE 3/5 …), tælling 0x8cf880 (11 + bænk, EU/udlænding 0x53d740/0x53d980), computerens rettelse 0x6e8910 (quotaFix, højst 2) i pick_team 0x6dd44e, Team Selection 0x7272b7, assistentens assistantSelect (autoSelect + quotaFix), Next Match Match Rules 0x45df0b (0x98f51c/0x98f550/0x98f4dc). Fingeraftryk 2001 → 663d2458949dc5cb.
