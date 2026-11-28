@@ -13,6 +13,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '2026-11-28',
     title: { da: 'Mere af det originale CM 01/02', en: 'More of the original CM 01/02' },
     items: [
+      { da: "Interne målinger af 2026/27 opdateret.", en: "Internal 2026/27 measurements updated." },
       { da: "Nyt spil: overdragelsen mellem spilstartens trin er nu sikker i alle browsere (Chrome på Android kunne gå i stå på 'fitness 17 %') – spillet sendes igen, hvis det ikke kommer frem, i stedet for at vente for evigt.", en: "New game: the hand-over between the game-start steps is now safe in every browser (Chrome on Android could stall at 'fitness 17%') – the game is resent if it does not arrive instead of waiting forever." },
       { da: "Interne regler for udgivelser.", en: "Internal release rules." },
       { da: "Nyt spil på telefoner med lidt hukommelse: ønskelisternes trin sender mindre data mellem arbejderne, og en afbrudt spilstart melder nu enhedens hukommelse.", en: "New game on low-memory phones: the shortlist steps pass less data between workers, and an interrupted game start now reports the device's memory." },
