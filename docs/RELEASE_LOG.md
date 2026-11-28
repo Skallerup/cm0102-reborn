@@ -2,6 +2,7 @@
 
 Flyttet fra CLAUDE.md 17/11-2026 (så CLAUDE.md er kort i hver session). Nyeste først. Tilføj en linje øverst ved hver udgivelse.
 
+- 2026-11-28 – Skudt live (v0.40.0): 2026-11-28 – Android-nedbrud i ønskelisterne (14b41666/17701891): Android-brugeren døde ved overgangen portion 0 → 1 (ikke Englands klubber); sider sendes nu kun som numre (~12 MB mindre pr. overgang); NewGameInterrupted viser mem/cores/hidden først. Bit for bit-fejl rettet: scanOf-cachen (0x598800) fra forkørslen genbrugtes i ét forløb – nulstilles pr. trin (newgame-phases-check ENS igen). Ikke løst: selve nedbruddet (ikke genskabt på desktop).
 - 2026-11-28 – Skudt live (v0.40.0): 2026-11-27 – Dagens fart/gem (5f21e3d5/6c3386bb/c90386c8/28c4f761): nyheder ring 100 (0x785d40); sæsonskiftet lavede ~7.400 opdigtede spillere – nu som newgame memAll (Normal S2 14,2k → 6,7k, gem 7,9 → 4,1 MB). day-times.ts, perf-days.mjs.
 - 2026-11-28 – Skudt live (v0.40.0): 2026-11-27 – Formandens/klubbens yndlinge og uvenner (c234f8a7/fd6c2320/f04714c0): 0x697c40 §15/0x69a287 lofter/bunde, 0x69d1b0 kandidatscore; cmRaw.chairPrefs (staff +0x65) i world-original*/world-cm. Starttillid ±230 → ±50. Kræver nyt spil.
 - 2026-11-28 – Skudt live (v0.40.0): 2026-11-27 – Opdigtede spillere fjernes fra gamle gem (5ef0708d): purgeFakes.ts, g.fixes 'fakePurge'; Normal S2 14.244 → 6.723 spillere, gem 7,9 → 4,1 MB.
