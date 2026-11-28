@@ -2,6 +2,7 @@
 
 Flyttet fra CLAUDE.md 17/11-2026 (så CLAUDE.md er kort i hver session). Nyeste først. Tilføj en linje øverst ved hver udgivelse.
 
+- 2026-11-28 – Skudt live (v0.40.0): Reserveposternes nationalitet 0x526402 = tilfældig beholdt persons (rand(antal − reserver − 16)) – CMTrim.kx; world-filer genbygget (kun cmTrim). Størrelse 2: reserveposter ENG 77–84 % -> 61–66 % (oraklet 63 %); K7 S1 klubløse slut +15/+21/+18 % -> +13/+16/+14 % (measure f4ee92f5935e/fe212d131c81/d8428064a4bb). 2001-fingeraftryk 22976dd32ef3ec74 -> 96a775ae21a16480 (e7f702dff495).
 - 2026-11-28 – Skudt live (v0.40.0): Budskærm: sidste bud huskes pr. spiller (g.lastBid)
 - 2026-11-28 – Skudt live (v0.40.0): Staff Search Interested 0x807450 (np+0xc mod klub+0x80+5000, 0x844780 check=1 >= 3,15; cmStaffSearchInterested), stabens kontraktskærm med rullelister (0x4e2280 id 7/8/25), cl.neg.assistBonus (10 sprog); ren UI/filter – 2001-fingeraftryk uændret (intet motorkald ændret)
 - 2026-11-28 – Skudt live (v0.40.0): 2026-11-28 – Spilstarten som originalen på alle CM-databaser (63be8f77): cmStartGame uden season<2020-gate – 2026/27 får reserveposterne 0x52638a (world-cm.json cmTrim), klubløses/manglende CA, cmMem, ankomst klippet til start−35, ingen opdigtede i 22+-trupper. 2001-fingeraftryk uændret 22976dd32ef3ec74.
