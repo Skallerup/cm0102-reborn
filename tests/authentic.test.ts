@@ -43,4 +43,20 @@ describe('ægte CM 01/02', () => {
     expect(t.bench.length).toBeGreaterThanOrEqual(3);
     for (let i = 0; i < 70; i++) { const r = continueGame(); if (r.match !== undefined) quickPlayUserMatch(); }
   }, 120_000);
+  // (28/11) forkørslen (0x5cc850) spiller menneskets kampe før startdatoen (England først: start 11/7; Brøndbys venskabskampe 5/7 og 9/7) –
+  // assistentens elleve gælder kun kampen, managerens udtagelse er stadig tom ved start (sim.ts prerunPlay). Før: 11 udtaget (e2e i CI)
+  it('kampe i forkørslen udtager ikke holdet (2026/27, England + Danmark, Brøndby)', () => {
+    const w0 = JSON.parse(readFileSync('public/data/world.json', 'utf8')) as WorldData;
+    const w = { ...w0, cmRaw: JSON.parse(readFileSync('public/data/world-cm.json', 'utf8')).cmRaw } as WorldData;
+    const nat = (n: string) => w.nations.findIndex((x) => x.name === n);
+    const cid = w.clubs.find((c) => String(c[1]).startsWith('Brøndby'))![0] as number;
+    createGame(w, { managerName: 'T', managerNation: nat('Denmark'), clubId: cid, activeNations: [nat('England'), nat('Denmark')], lang: 'en', masking: true, seed: 101895241, mode: 'authentic' });
+    const g = gs();
+    expect(g.date).toBe('2026-07-11');
+    const before = Object.values(g.fixtures).filter((f) => (f.home === cid || f.away === cid) && f.date < g.date);
+    expect(before.length).toBeGreaterThan(0);
+    expect(before.every((f) => !!f.result)).toBe(true);
+    expect(g.tactic!.lineup.filter(Boolean)).toHaveLength(0);
+    expect(g.tactic!.bench).toHaveLength(0);
+  }, 120_000);
 });

@@ -1345,9 +1345,17 @@ function holidayDaily() {
 }
 
 // (runde 10C) forkørslen af Europas kampe før spillets start (newgame.ts kalder krogen; continueGame tager dem, hvis krogen manglede)
-compHooks.euroCatchUp = (g) => cmEuroCatchUp(g, (f) => simulateFixture(f, true, false));
-compHooks.euroPrerunDay = (g, iso) => cmEuroPlayDay(g, iso, (f) => simulateFixture(f, true, false));
-compHooks.friendlyPrerunDay = (g, iso, slot) => cmFriendlyPrerunDay(g, iso, slot, (f) => simulateFixture(f, true, false));
+// (28/11) forkørslens kampe ændrer ikke managerens udtagelse: spillet starter med 442_default uden spillere (newgame.ts cmLoadPreset – originalens
+// startbillede), også når menneskets klub har en kamp før startdatoen (2026/27 med England først og en dansk klub: venskabskampe 5/7 og 9/7 før
+// start 11/7). Før gemte userTactic assistentens elleve fra forkørslen i g.tactic, så holdet var udtaget fra start (e2e/authentic.test).
+const prerunPlay = (f: Fixture): MatchReport => {
+  const g = gs();
+  const own = g.tactic;
+  try { return simulateFixture(f, true, false); } finally { g.tactic = own; }
+};
+compHooks.euroCatchUp = (g) => cmEuroCatchUp(g, prerunPlay);
+compHooks.euroPrerunDay = (g, iso) => cmEuroPlayDay(g, iso, prerunPlay);
+compHooks.friendlyPrerunDay = (g, iso, slot) => cmFriendlyPrerunDay(g, iso, slot, prerunPlay);
 compHooks.playOverdue = playOverdue;
 // klubøkonomiens begivenheder (cmFinEvents.ts): transferbudgettet 0x598800 og betalingsstandsningens værdier
 finHooks.budget = cmTransferBudgetRaw;

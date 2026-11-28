@@ -14,6 +14,9 @@ const OUT = 'e2e-shots';
 const only = process.argv[2];
 // E2E_ENGINE=original: den originale database (Arsenal) med originalens kampmotor (gittermotoren) – kun klassisk
 const ENGINE_GRID = process.env.E2E_ENGINE === 'original';
+// CI (28/11): GitHubs maskine bygger et nyt spil 2–3× langsommere end Mac mini'en (nyt spil klassisk 86 s mod 39 s) – de lange ventetider
+// (≥ 20 s: nyt spil, verden, database) ganges med E2E_TIMEOUT_FACTOR (standard 3) i CI; de korte (tjek af, at noget IKKE findes) er urørte
+const T = (ms) => (process.env.CI ? ms * Number(process.env.E2E_TIMEOUT_FACTOR ?? 3) : ms);
 mkdirSync(OUT, { recursive: true });
 
 const server = spawn('npx', ['vite', '--port', String(PORT), '--strictPort'], { stdio: 'ignore', env: { ...process.env, BROWSER: 'none' } });
@@ -45,7 +48,7 @@ async function run(look) {
   const t = (k) => page.evaluate((key) => window.__cm.t(key), k);
   const go = (r) => page.evaluate((route) => window.__cmNav(route), r);
   // venter på testkrogen (window.__cm) – efter genindlæsning/nyt spil sættes den først, når spillet er hentet
-  const gs = async (fn, arg) => { await page.waitForFunction(() => !!window.__cm && !!window.__cmNav, null, { timeout: 30000 }); return page.evaluate(fn, arg); };
+  const gs = async (fn, arg) => { await page.waitForFunction(() => !!window.__cm && !!window.__cmNav, null, { timeout: T(30000) }); return page.evaluate(fn, arg); };
   // klassisk taktik (CM 01/02): ændringer er en kladde, der først gemmes med Ok i bundbjælken
   const tacOk = async () => { if (look !== 'klassisk') return; await page.locator('.cx-foot .cx-tac-ok').click(); await page.waitForTimeout(150); };
   // klassisk (CM 01/02): Continue Game venter på trøjenummerlisten (beskeden 4/8) – Respond → Submit → Yes
@@ -147,10 +150,14 @@ async function run(look) {
     await page.locator('[data-field=restore]').click(); await page.waitForSelector('[data-saves]'); await page.locator('.cx-foot .cx-back').click();
     await page.waitForSelector('[data-field=new]');
     await page.locator('[data-field=new]').click();
-    await page.waitForSelector('.cxs-lrow', { timeout: 60000 });
+    await page.waitForSelector('.cxs-lrow', { timeout: T(60000) });
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-start-02-leagues.png` });
     const own = ENGINE_GRID ? { club: 'Arsenal', nation: 'England' } : { club: 'Brøndby', nation: 'Denmark' };
     if (own.nation !== 'England') await page.locator(`.cxs-lrow[data-nation="${own.nation}"] [data-sl=selected]`).click();
+    // (28/11) standardkørslen er en dansk karriere: England (forvalgt efter sproget) fravælges, så Danmark er hovedlandet (start 1/7). Med England
+    // først starter spillet 11/7, og Brøndbys venskabskampe før det spilles i forkørslen – trinnene nedenfor (Last Match uden kampe …) forudsætter
+    // et spil uden kampe; forkørslen med menneskets kampe dækkes af tests/authentic.test.ts
+    if (!ENGINE_GRID && (await page.locator('.cxs-lrow.lg-sel[data-nation="England"]').count())) await page.locator('.cxs-lrow[data-nation="England"] [data-sl=selected]').click();
     if (ENGINE_GRID) await page.locator('.cxs-lrow[data-nation="Denmark"] [data-sl=selected]').click();
     if ((await page.locator('.cxs-lrow.lg-sel').count()) < 1) throw new Error('intet land er valgt');
     // BACKGROUND: et land kan sættes som baggrundsland (kun i baggrunden, ikke spilbart) og fjernes igen; SELECTED gør det spilbart
@@ -171,7 +178,7 @@ async function run(look) {
       if (h < 400) throw new Error(`Select Start Season er kun ${Math.round(h)} px høj`);
       await page.locator('.cx-foot .cx-next').click();
     }
-    await page.waitForSelector('[data-name=first]', { timeout: 20000 });
+    await page.waitForSelector('[data-name=first]', { timeout: T(20000) });
     await page.fill('[data-name=first]', 'E2E'); await page.fill('[data-name=second]', 'Tester');
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-start-03-name.png` });
     await page.locator('.cx-foot .cx-next').click();
@@ -179,12 +186,12 @@ async function run(look) {
     if ((await page.locator('.cxs-it.sel').count()) !== 1) throw new Error('ingen forvalgt nationalitet');
     await page.locator('.cx-foot .cx-next').click();
     // Select Team venter på den midlertidige verden (bygges, mens man skriver navn) – baggrundslandet (Frankrig) har ingen spilbare klubber
-    await page.waitForSelector('[data-club]', { timeout: 120000 });
+    await page.waitForSelector('[data-club]', { timeout: T(120000) });
     if (await page.locator('[data-club="Paris Saint-Germain"]').count()) throw new Error('et BACKGROUND-lands klub kan vælges');
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-start-06-team.png` });
     await page.locator(`[data-club="${own.club}"]`).click();
     // klubbens ÆGTE skærme: spillets egen trup (SquadClassic), faner og nederste knapper, Take Control i titelbjælken
-    await page.waitForSelector('.cx-sq-orig, .cx-sq-cols', { timeout: 20000 });
+    await page.waitForSelector('.cx-sq-orig, .cx-sq-cols', { timeout: T(20000) });
     if ((await page.locator('.cx-sq-row, .cx-sq-name').count()) < 11) throw new Error('klubbens trup er tom');
     if ((await page.locator('.cx-tabrow button').count()) < 5) throw new Error('klubbens faner mangler');
     if (!(await page.locator('[data-take]').count())) throw new Error('Take Control mangler i titelbjælken');
@@ -211,11 +218,11 @@ async function run(look) {
     await page.locator('.cx-foot .cx-next').click();
     // indlæsningen vises i skærmens bund med trin og procent; siden må ikke fryse
     const t0 = Date.now();
-    await page.waitForSelector('.cx-running .cx-run-bar', { timeout: 20000 });
+    await page.waitForSelector('.cx-running .cx-run-bar', { timeout: T(20000) });
     const barW = await page.locator('.cx-running .cx-run-bar').evaluate((el) => el.getBoundingClientRect().width);
     if (barW < 300) throw new Error(`indlæsningsbjælken er kun ${Math.round(barW)} px bred (skal fylde bundbjælken)`);
     await page.screenshot({ path: `${OUT}/${look}-nyt-spil-loader.png` });
-    await page.waitForFunction(() => { try { return window.__cm.gs().manager.name === 'E2E Tester' && !!window.__cm.gs().userClub; } catch { return false; } }, null, { timeout: 90000 });
+    await page.waitForFunction(() => { try { return window.__cm.gs().manager.name === 'E2E Tester' && !!window.__cm.gs().userClub; } catch { return false; } }, null, { timeout: T(90000) });
     const mgr = await page.evaluate(() => window.__cm.gs().manager.name);
     if (mgr !== 'E2E Tester') throw new Error(`managerens navn blev "${mgr}"`);
     if (ENGINE_GRID) console.log(`    nyt spil: ${((Date.now() - t0) / 1000).toFixed(1)} s`);
@@ -223,7 +230,7 @@ async function run(look) {
   else await step('nyt spil', async () => {
     await page.goto(URL);
     await page.getByRole('button', { name: await t('start.new') }).first().click();
-    await page.waitForFunction(() => !!window.__cmPick, null, { timeout: 30000 });
+    await page.waitForFunction(() => !!window.__cmPick, null, { timeout: T(30000) });
     await page.getByPlaceholder(await t('start.managerPlaceholder')).fill('E2E Tester');
     // valget af officiel 01/02-database: tre udgaver under den originale – og tilbage til standarddatabasen
     if (look === 'moderne') {
@@ -233,7 +240,7 @@ async function run(look) {
       if ((await page.evaluate(() => localStorage.getItem('cm0102.dbver'))) !== '3.9.68') throw new Error('3.9.68 blev ikke valgt');
       await page.locator('.db-ver-opt').first().click();
       await page.locator('.db-opt', { hasText: await t('db.modern') }).first().click();
-      await page.waitForFunction(() => !!window.__cmPick, null, { timeout: 30000 });
+      await page.waitForFunction(() => !!window.__cmPick, null, { timeout: T(30000) });
       await page.waitForTimeout(1500);
     }
     if (!(await page.evaluate((id) => window.__cmPick(id), ENGINE_GRID ? 676 : 1920))) throw new Error('klubben findes ikke');
@@ -241,10 +248,10 @@ async function run(look) {
     // nyt spil kører i en Web Worker med en indlæsningsskærm (NewGameLoader) – siden må ikke fryse
     const t0 = Date.now();
     if (ENGINE_GRID) {
-      await page.waitForSelector('.ng-loader .ng-bar span.on', { timeout: 20000 });
+      await page.waitForSelector('.ng-loader .ng-bar span.on', { timeout: T(20000) });
       await page.screenshot({ path: `${OUT}/${look}-nyt-spil-loader.png` });
     }
-    await page.waitForFunction(() => { try { return !!window.__cm.gs().userClub; } catch { return false; } }, null, { timeout: 90000 });
+    await page.waitForFunction(() => { try { return !!window.__cm.gs().userClub; } catch { return false; } }, null, { timeout: T(90000) });
     if (ENGINE_GRID) console.log(`    nyt spil: ${((Date.now() - t0) / 1000).toFixed(1)} s`);
   });
 
@@ -394,7 +401,8 @@ async function run(look) {
       for (const it of ['Club', 'Next Opposition', 'Youth Players', 'Nation', 'Region']) if (!(await page.locator('.cx-drop-pop', { hasText: it }).count())) throw new Error(`Assign Scout ▸ ${it} mangler`);
     }
     await page.locator('.cx-drop-pop >> text=Next Opposition').first().click();
-    if (ENGINE_GRID) {
+    // (28/11) originalens logik på alle CM-databaser i ægte tilstand (også 2026/27): ingen bekræftelse
+    if (await gs(() => window.__cm.gs().dbKind === 'cm0102' && window.__cm.gs().options.mode === 'authentic')) {
       // originalen sætter opgaven straks (0x80ee1c) – ingen bekræftelse
       await page.waitForTimeout(300);
       if (await page.locator('.cx-confirm').count()) throw new Error('Next Opposition: originalen spørger ikke');
@@ -501,7 +509,7 @@ async function run(look) {
     if (n !== 1) throw new Error('fornyelsestilbuddet blev ikke sendt');
   });
   // den originale database i ægte tilstand: originalens træningsskærm (TrainingCm.tsx) – skemaer, Edit, tildeling, Ok
-  const cmTrain = () => gs(() => { const g = window.__cm.gs(); return g.dbKind === 'cm0102' && g.options.mode === 'authentic' && (g.dbYear ?? g.season) < 2020; });
+  const cmTrain = () => gs(() => { const g = window.__cm.gs(); return g.dbKind === 'cm0102' && g.options.mode === 'authentic'; });   // (28/11) også 2026/27 (TrainingClassic.tsx cmBodyOn – 'Altid som originalen')
   if (look === 'klassisk') await step('træning som CM 01/02: opret/ændr skema, tildel spillere, Ok', async () => {
     if (!(await cmTrain())) return;
     await go({ name: 'training' });
@@ -1471,8 +1479,15 @@ async function run(look) {
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-bud.png` });
     // CM 01/02: pilen ved beløbet giver faste beløb (£0 … £20M), Exchange åbner "Add Player To … Transfer Bid"
     await page.locator('.cx-bid-amt .cx-drop-btn').first().click();
-    await page.locator('.cx-drop-pop button', { hasText: /^£1(\.00)?M$/ }).first().click();
-    if (!/£1(\.00)?M/.test(await page.locator('.cx-bid-amt .cx-drop-btn').first().innerText())) throw new Error('beløbslisten satte ikke £1M');
+    // (28/11) listens beløb følger ligaens pengeniveau (cmMoney – 2026/27 i Danmark: £0, £425K, £1.1M …): vælg det tredje, ikke et fast £1M
+    const amt = page.locator('.cx-drop-pop button').nth(2);
+    // beløbet som tal: listen viser £1.1M, knappen evt. £1,100,000
+    const norm = (x) => { const m = x.replace(/,/g, '').match(/£([\d.]+)([KM]?)/); return m ? Math.round(Number(m[1]) * (m[2] === 'M' ? 1e6 : m[2] === 'K' ? 1e3 : 1)) : x.trim(); };
+    const want = norm(await amt.innerText());
+    await amt.click();
+    // (listens etiket er afrundet – feltet viser det præcise beløb, fx £1.08M for £1.1M)
+    const got = norm(await page.locator('.cx-bid-amt .cx-drop-btn').first().innerText());
+    if (typeof got !== 'number' || typeof want !== 'number' || Math.abs(got - want) > want * 0.1) throw new Error(`beløbslisten satte ikke ${want} (${got})`);
     await page.locator('.cx-bid .cx-bid-tools button', { hasText: 'Exchange' }).click();
     await page.waitForSelector('.cx-exch', { timeout: 5000 });
     if (!(await page.locator('.cx-exch .cx-sq-row').count()) && !(await page.locator('.cx-exch-none').innerText()).includes('not interested in a part-exchange deal')) throw new Error('Exchange-skærmen er tom');
@@ -2060,7 +2075,8 @@ async function run(look) {
       if (ENGINE_GRID && process.env.E2E_TRACE) console.log('    trace', i, clicked, await page.evaluate(() => { const g = window.__cm.gs(); return `${g.date} pending=${!!g.pendingFixture} conf=${!!document.querySelector('.cx-confirm')} sub=${document.querySelector('.cx-confirm .cx-subtitle')?.textContent ?? ''} title=${document.querySelector('.cx-head h1, .cx-title')?.textContent ?? ''}`; }));
       await page.waitForTimeout(400);
     }
-    if (look === 'klassisk' && !selSeen && !ENGINE_GRID) throw new Error('Team Selection blev ikke vist for en skadet spiller');
+    // (28/11) som ENGINE_GRID: originalens logik gælder alle CM-databaser i ægte tilstand (også 2026/27) – samme undtagelse
+    if (look === 'klassisk' && !selSeen && !ENGINE_GRID && !(await gs(() => window.__cm.gs().dbKind === 'cm0102' && window.__cm.gs().options.mode === 'authentic'))) throw new Error('Team Selection blev ikke vist for en skadet spiller');
     // trøjenummer-trinnet tog nummeret fra en holdkammerat – originalen kræver et nummer før kampen
     if (look === 'klassisk' && !sqnMissingSeen && !ENGINE_GRID) throw new Error('Squad Numbers blev ikke vist før kampen for en spiller uden nummer');
     await page.getByRole('button', { name: kick }).first().click({ timeout: 10000 });
@@ -2068,7 +2084,7 @@ async function run(look) {
     const toEnd = page.getByRole('button', { name: await t('match.toEnd') });
     const doneSel = look === 'klassisk' ? page.locator('.cx-side .cx-continue.continue') : page.getByRole('button', { name: await t('match.continue') }).first();
     for (let i = 0; i < 60 && !(await doneSel.isVisible().catch(() => false)); i++) {
-      if (look === 'klassisk') { if (i === 0) await page.screenshot({ path: `${OUT}/klassisk-kamp.png` }); if (i === 0) { for (const k of [1, 2]) { await page.locator('.cx-side > button.cx-sbtn', { hasText: 'Tactics' }).nth(k - 1).click(); await page.waitForSelector('.cx-mt-tools', { timeout: 60000 }); await page.waitForTimeout(300); await page.screenshot({ path: `${OUT}/klassisk-kamptaktik-${k}.png` }); if (k === 2) { { const op = await page.evaluate(() => { const sl = document.querySelector('.cx-mt .cx-tac-slot'); if (!sl) return 1; sl.classList.add('inj'); const o = Number(getComputedStyle(sl.querySelector('.cx-tac-dot')).opacity); sl.classList.remove('inj'); return o; }); if (op > 0.5) throw new Error(`skadet spiller på banen er ikke nedtonet: ${op}`); } await page.locator('.cx-mt .c-name .link').first().click(); await page.waitForSelector('.cx-pl', { timeout: 10000 }); await page.locator('.cx-foot .cx-back').click(); await page.waitForSelector('.cx-side .cx-minute', { timeout: 10000 }); { const m0 = await page.locator('.cx-side .cx-minute').textContent(); await page.waitForTimeout(1500); const m1 = await page.locator('.cx-side .cx-minute').textContent(); if (m0 !== m1) throw new Error(`kampen startede selv efter en tur til spillersiden: ${m0} → ${m1}`); } } if (await page.locator('.cx-foot .cx-mt-cancel').isVisible().catch(() => false)) { await page.locator('.cx-mt-tools .cx-drop-btn', { hasText: 'Tactics' }).click(); await page.locator('.cx-drop-pop [role=menuitem], .cx-drop-pop button', { hasText: 'Team Instructions' }).first().click(); await page.waitForSelector('.cx-tidlg', { timeout: 5000 }); await page.locator('.cx-tidlg .cx-tich', { hasText: 'Attacking' }).click(); { const on = await page.locator('.cx-tidlg .cx-tich.on').allTextContents(); if (!on.includes('Attacking')) throw new Error(`Attacking ikke valgt: ${on}`); } await page.waitForTimeout(400); await page.screenshot({ path: `${OUT}/klassisk-teaminstr-0.png` }); await page.locator('.cx-tidlg-arrow').first().click(); await page.waitForSelector('.cx-tidlg-menu'); await page.screenshot({ path: `${OUT}/klassisk-teaminstr.png` }); await page.locator('.cx-tidlg-menu button').first().click(); await page.locator('.cx-tidlg-foot button', { hasText: 'Ok' }).click(); await page.waitForSelector('.cx-tidlg', { state: 'detached', timeout: 5000 }); { const sl = page.locator('.cx-mt .cx-tac-slot').nth(6); const bb = await sl.boundingBox(); const n0 = await page.locator('.cx-mt svg.runs line').count(); await page.mouse.move(bb.x + bb.width / 2, bb.y + bb.height / 2); await page.mouse.down({ button: 'right' }); await page.mouse.move(bb.x + bb.width / 2 + 60, bb.y + bb.height / 2 - 70, { steps: 8 }); await page.mouse.up({ button: 'right' }); await page.waitForTimeout(200); const n1 = await page.locator('.cx-mt svg.runs line').count(); if (n1 !== n0 + 1) throw new Error(`løbepil i kampen: ${n0} → ${n1}`); if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-kamp-loeb.png` }); } await page.locator('.cx-mt-tools .cx-drop-btn', { hasText: 'Edit' }).click(); { const bb = await page.locator('.cx-drop-pop').first().boundingBox(); const vw = page.viewportSize().width; if (!bb || bb.x < 0 || bb.x + bb.width > vw + 1) throw new Error(`Edit-menuen ligger uden for skærmen: ${JSON.stringify(bb)}`); } if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-edit.png` }); await page.keyboard.press('Escape'); } const cancel = page.locator('.cx-foot .cx-mt-cancel'); if (await cancel.isVisible().catch(() => false)) { await cancel.click(); await page.waitForTimeout(200); const yes2 = page.locator('.cx-confirm button.primary'); if (await yes2.isVisible().catch(() => false)) { if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-changesmade.png` }); await yes2.click(); } } } } if (i === 0) { for (const n of ['Match Stats', 'Action Zones', 'Match Report', 'Player Ratings', 'Latest Scores', 'League Table']) { const b = page.getByRole('button', { name: n, exact: true }).first(); if (await b.isVisible().catch(() => false)) { await b.click(); await page.waitForTimeout(200); await checkScreen(n); await page.screenshot({ path: `${OUT}/klassisk-kamp-${n.replace(/ /g, '')}.png` }); } } } await page.keyboard.press('e'); }
+      if (look === 'klassisk') { if (i === 0) await page.screenshot({ path: `${OUT}/klassisk-kamp.png` }); if (i === 0) { for (const k of [1, 2]) { await page.locator('.cx-side > button.cx-sbtn', { hasText: 'Tactics' }).nth(k - 1).click(); await page.waitForSelector('.cx-mt-tools', { timeout: T(60000) }); await page.waitForTimeout(300); await page.screenshot({ path: `${OUT}/klassisk-kamptaktik-${k}.png` }); if (k === 2) { { const op = await page.evaluate(() => { const sl = document.querySelector('.cx-mt .cx-tac-slot'); if (!sl) return 1; sl.classList.add('inj'); const o = Number(getComputedStyle(sl.querySelector('.cx-tac-dot')).opacity); sl.classList.remove('inj'); return o; }); if (op > 0.5) throw new Error(`skadet spiller på banen er ikke nedtonet: ${op}`); } await page.locator('.cx-mt .c-name .link').first().click(); await page.waitForSelector('.cx-pl', { timeout: 10000 }); await page.locator('.cx-foot .cx-back').click(); await page.waitForSelector('.cx-side .cx-minute', { timeout: 10000 }); { const m0 = await page.locator('.cx-side .cx-minute').textContent(); await page.waitForTimeout(1500); const m1 = await page.locator('.cx-side .cx-minute').textContent(); if (m0 !== m1) throw new Error(`kampen startede selv efter en tur til spillersiden: ${m0} → ${m1}`); } } if (await page.locator('.cx-foot .cx-mt-cancel').isVisible().catch(() => false)) { await page.locator('.cx-mt-tools .cx-drop-btn', { hasText: 'Tactics' }).click(); await page.locator('.cx-drop-pop [role=menuitem], .cx-drop-pop button', { hasText: 'Team Instructions' }).first().click(); await page.waitForSelector('.cx-tidlg', { timeout: 5000 }); await page.locator('.cx-tidlg .cx-tich', { hasText: 'Attacking' }).click(); { const on = await page.locator('.cx-tidlg .cx-tich.on').allTextContents(); if (!on.includes('Attacking')) throw new Error(`Attacking ikke valgt: ${on}`); } await page.waitForTimeout(400); await page.screenshot({ path: `${OUT}/klassisk-teaminstr-0.png` }); await page.locator('.cx-tidlg-arrow').first().click(); await page.waitForSelector('.cx-tidlg-menu'); await page.screenshot({ path: `${OUT}/klassisk-teaminstr.png` }); await page.locator('.cx-tidlg-menu button').first().click(); await page.locator('.cx-tidlg-foot button', { hasText: 'Ok' }).click(); await page.waitForSelector('.cx-tidlg', { state: 'detached', timeout: 5000 }); { const sl = page.locator('.cx-mt .cx-tac-slot').nth(6); const bb = await sl.boundingBox(); const n0 = await page.locator('.cx-mt svg.runs line').count(); await page.mouse.move(bb.x + bb.width / 2, bb.y + bb.height / 2); await page.mouse.down({ button: 'right' }); await page.mouse.move(bb.x + bb.width / 2 + 60, bb.y + bb.height / 2 - 70, { steps: 8 }); await page.mouse.up({ button: 'right' }); await page.waitForTimeout(200); const n1 = await page.locator('.cx-mt svg.runs line').count(); if (n1 !== n0 + 1) throw new Error(`løbepil i kampen: ${n0} → ${n1}`); if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-kamp-loeb.png` }); } await page.locator('.cx-mt-tools .cx-drop-btn', { hasText: 'Edit' }).click(); { const bb = await page.locator('.cx-drop-pop').first().boundingBox(); const vw = page.viewportSize().width; if (!bb || bb.x < 0 || bb.x + bb.width > vw + 1) throw new Error(`Edit-menuen ligger uden for skærmen: ${JSON.stringify(bb)}`); } if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-edit.png` }); await page.keyboard.press('Escape'); } const cancel = page.locator('.cx-foot .cx-mt-cancel'); if (await cancel.isVisible().catch(() => false)) { await cancel.click(); await page.waitForTimeout(200); const yes2 = page.locator('.cx-confirm button.primary'); if (await yes2.isVisible().catch(() => false)) { if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-changesmade.png` }); await yes2.click(); } } } } if (i === 0) { for (const n of ['Match Stats', 'Action Zones', 'Match Report', 'Player Ratings', 'Latest Scores', 'League Table']) { const b = page.getByRole('button', { name: n, exact: true }).first(); if (await b.isVisible().catch(() => false)) { await b.click(); await page.waitForTimeout(200); await checkScreen(n); await page.screenshot({ path: `${OUT}/klassisk-kamp-${n.replace(/ /g, '')}.png` }); } } } await page.keyboard.press('e'); }
       if (await toEnd.isVisible().catch(() => false)) await toEnd.click().catch(() => {});
       // pause med holdsnak/udskiftning: fortsæt
       const resume = page.getByRole('button', { name: await t('match.resume') }).first();
@@ -2233,7 +2249,7 @@ async function run(look) {
     await go({ name: 'competitions' });
     for (const [k, id] of ids.entries()) {
       // (ønskelisterne: en kørsel kan tage et minut i dagens Web Worker – vent, til bjælken er væk, før næste klik)
-      await page.waitForSelector('.cx-running', { state: 'detached', timeout: 300000 }).catch(() => {}); await page.locator('.cx-side .cx-continue').first().click({ timeout: 10000 });
+      await page.waitForSelector('.cx-running', { state: 'detached', timeout: T(300000) }).catch(() => {}); await page.locator('.cx-side .cx-continue').first().click({ timeout: 10000 });
       await page.waitForSelector(`.cx-nrow.on[data-id="${id}"]`, { timeout: 5000 });
       await page.waitForTimeout(150);
       const unread = await gs((x) => x.filter((i) => !window.__cm.gs().news.find((n) => n.id === i)?.read), ids);
@@ -2248,7 +2264,7 @@ async function run(look) {
   if (look === 'klassisk') await step('Continue Game viser fremdrift > 2 % og hvad der sker', async () => {
     await gs(() => { const g = window.__cm.gs(); for (const n of g.news) n.read = true; for (const o of g.offers) if (o.status === 'pending' && o.seller === g.userClub) o.status = 'rejected'; g.jobOffers.length = 0; const c = g.clubs[g.userClub]; c.sqnDue = undefined; c.euroDue = undefined; window.__cm.notify(); });
     await go({ name: 'competitions' });
-    await page.waitForSelector('.cx-running', { state: 'detached', timeout: 300000 }).catch(() => {});
+    await page.waitForSelector('.cx-running', { state: 'detached', timeout: T(300000) }).catch(() => {});
     await page.locator('.cx-side .cx-continue').first().click({ timeout: 10000 });
     let maxPct = 0, seen = 0, shot = false;
     const steps = new Set();
@@ -2287,7 +2303,7 @@ async function run(look) {
     });
     const d0 = await gs(() => window.__cm.gs().date);
     await go({ name: 'competitions' });
-    await page.waitForSelector('.cx-running', { state: 'detached', timeout: 300000 }).catch(() => {});
+    await page.waitForSelector('.cx-running', { state: 'detached', timeout: T(300000) }).catch(() => {});
     await page.locator('.cx-side .cx-continue').first().click({ timeout: 10000 });
     await page.waitForSelector(`.cx-nrow.on[data-id="${id.nid}"]`, { timeout: 5000 });
     if (!(await page.locator('.cx-side .cx-continue').isDisabled())) throw new Error('Continue Game er ikke grå på et ubesvaret bud');
@@ -2330,8 +2346,8 @@ async function run(look) {
         ob.observe(document.body, { childList: true, subtree: true });
       });
       // (ønskelisterne: en kørsel kan tage et minut i dagens Web Worker – vent, til bjælken er væk, før næste klik)
-      await page.waitForSelector('.cx-running', { state: 'detached', timeout: 300000 }).catch(() => {}); await page.locator('.cx-side .cx-continue').first().click({ timeout: 10000 });
-      await page.waitForFunction(() => window.__bar.off >= 0 || performance.now() - window.__bar.t0 > 120000, null, { timeout: 130000, polling: 50 });
+      await page.waitForSelector('.cx-running', { state: 'detached', timeout: T(300000) }).catch(() => {}); await page.locator('.cx-side .cx-continue').first().click({ timeout: 10000 });
+      await page.waitForFunction(() => window.__bar.off >= 0 || performance.now() - window.__bar.t0 > 120000, null, { timeout: T(130000), polling: 50 });
       const m = await gs(() => window.__bar);
       const days = await gs((d0) => Math.round((Date.parse(window.__cm.gs().date) - Date.parse(d0)) / 86400000), saved.date);
       console.log(`    bjælken: i DOM'en efter ${Math.round(m.on)} ms, tegnet efter ${Math.round(m.paint)} ms, væk efter ${Math.round(m.off)} ms (${days} dage simuleret)`);
@@ -2351,7 +2367,7 @@ async function run(look) {
     for (let i = 0; i < 200; i++) {
       // først når forrige Continue Game er færdig (Web Worker): ellers ser svarhjælperen gårsdagens tilstand (fx før Squad Numbers 4/8),
       // og klikket rammer bagefter en grå Continue Game (den sporadiske fejl 20/11)
-      await page.waitForSelector('.cx-running', { state: 'detached', timeout: 300000 }).catch(() => {});
+      await page.waitForSelector('.cx-running', { state: 'detached', timeout: T(300000) }).catch(() => {});
       const st = await gs(() => { const g = window.__cm.gs(); return { pf: g.pendingFixture, done: g.dayDone, date: g.date }; });
       if (st.pf) break;
       const yes = page.locator('.cx-confirm button.primary');
@@ -2359,7 +2375,7 @@ async function run(look) {
       if (await answerSquadNumbers()) continue;
       if (await page.locator('.cx-md-panel').isVisible().catch(() => false) && !st.done) { watched++; if (process.env.SHOTS && watched === 1) await page.screenshot({ path: `${OUT}/klassisk-kampdag-uden-egen.png` }); }
       // (ønskelisterne: en kørsel kan tage et minut i dagens Web Worker – vent, til bjælken er væk, før næste klik)
-      await page.waitForSelector('.cx-running', { state: 'detached', timeout: 300000 }).catch(() => {});
+      await page.waitForSelector('.cx-running', { state: 'detached', timeout: T(300000) }).catch(() => {});
       // grå (en nyhed kræver svar, der først kom med den netop færdige kørsel): svar i næste runde
       if (await page.locator('.cx-side .cx-continue').first().isDisabled().catch(() => false) && await answerSquadNumbers()) continue;
       try { await page.locator('.cx-side .cx-continue').first().click({ timeout: 10000 }); } catch (e) {
@@ -2421,15 +2437,15 @@ async function run(look) {
           phase = `forsøg ${attempt}: startmenu`;
           await within(page.evaluate(() => localStorage.removeItem('cm0102.last')), 15000, 'localStorage');
           await page.goto(URL);
-          await page.waitForSelector('.cxs [data-field=restore]', { timeout: 60000 });
+          await page.waitForSelector('.cxs [data-field=restore]', { timeout: T(60000) });
           await page.locator('[data-field=restore]').click();
           const row = page.locator('[data-saves] .cxs-it', { hasText: 'E2E Old Save' });
-          await row.locator('.cxs-oldver').waitFor({ timeout: 60000 });
+          await row.locator('.cxs-oldver').waitFor({ timeout: T(60000) });
           if (!(await row.locator('.cxs-oldver[data-ext]').count())) throw new Error('det gamle udvidede spil mangler mærket "Udvidet (gammel)"');
           if (await page.locator('[data-saves] .cxs-it[data-kind=current] .cxs-conv').count()) throw new Error('et nyt spil har konverteringsknappen');
           phase = `forsøg ${attempt}: bekræftelsen`;
           await row.locator('[data-convert=oldOriginal]').click();
-          await page.waitForSelector('.cx-confirm, .confirm-box', { timeout: 120000 });
+          await page.waitForSelector('.cx-confirm, .confirm-box', { timeout: T(120000) });
           if (!/copy/i.test(await page.locator('.cx-confirm, .confirm-box').first().innerText())) throw new Error('bekræftelsen nævner ikke kopien');
           await page.locator('.cx-confirm button.primary, .confirm-box button.primary').first().click();
           // konverteringen (normalt ~1 min): rapporten eller en fejl (.cxs-err); står fremdriften stille i 5 min, eller tager den over 8 min, fejler forsøget med diagnosen
@@ -2451,8 +2467,8 @@ async function run(look) {
           if (!/next season/i.test(rep) && !/new season/i.test(rep)) throw new Error(`rapporten nævner ikke kalenderen: ${rep}`);
           phase = `forsøg ${attempt}: åbn det konverterede spil`;
           await page.locator('.cx-foot .cx-next').click();
-          await page.waitForFunction(() => { try { return !!window.__cm.gs(); } catch { return false; } }, null, { timeout: 180000 });
-          await page.waitForSelector('.cx-side', { timeout: 120000 });
+          await page.waitForFunction(() => { try { return !!window.__cm.gs(); } catch { return false; } }, null, { timeout: T(180000) });
+          await page.waitForSelector('.cx-side', { timeout: T(120000) });
           const st = await within(page.evaluate(() => { const g = window.__cm.gs(); return { id: g.id, mode: g.options.mode, ver: g.cmSaveVer, news: g.news.some((n) => n.key === 'conv.done') }; }), 30000, 'læser spillet');
           if (st.id === 'save-e2eold' || st.mode !== 'authentic' || !st.ver || !st.news) throw new Error(`det konverterede spil: ${JSON.stringify(st)}`);
           await checkScreen('konverteret spil');
@@ -2491,23 +2507,23 @@ async function editor() {
   };
   await step('opret database og ret en spiller', async () => {
     await page.goto(URL);
-    await page.waitForFunction(() => !!window.__cm, null, { timeout: 30000 });
-    await page.waitForSelector('.cxs [data-field=editor]', { timeout: 30000 });
+    await page.waitForFunction(() => !!window.__cm, null, { timeout: T(30000) });
+    await page.waitForSelector('.cxs [data-field=editor]', { timeout: T(30000) });
     await page.locator('[data-field=editor]').click();
     await page.waitForSelector('.cxl', { timeout: 10000 });
     await page.getByPlaceholder(await t('ed.newName')).fill('E2E Legends');
     await page.getByRole('button', { name: await t('ed.create'), exact: true }).click();
     // udgaven: Skalidis findes kun i 3.9.68 – i 3.9.60 foreslår editoren udgaven, i 3.9.68 findes han
     const verSel = page.getByLabel(await t('ed.version'));
-    await page.getByPlaceholder(await t('ed.searchPlayer')).fill('Skalidis', { timeout: 60000 });
-    await page.getByTestId('ed-otherver').waitFor({ timeout: 20000 });
+    await page.getByPlaceholder(await t('ed.searchPlayer')).fill('Skalidis', { timeout: T(60000) });
+    await page.getByTestId('ed-otherver').waitFor({ timeout: T(20000) });
     await verSel.selectOption('3.9.68');
-    await page.getByRole('row', { name: /Skalidis/ }).first().click({ timeout: 60000 });
+    await page.getByRole('row', { name: /Skalidis/ }).first().click({ timeout: T(60000) });
     await page.getByRole('button', { name: await t('ed.save'), exact: true }).first().click();
     await page.getByTestId('ed-banner').waitFor({ timeout: 5000 });
     await page.getByRole('button', { name: await t('common.close'), exact: true }).first().click();
     await verSel.selectOption('3.9.60');
-    await page.getByPlaceholder(await t('ed.searchPlayer')).fill('Tsigalko', { timeout: 60000 });
+    await page.getByPlaceholder(await t('ed.searchPlayer')).fill('Tsigalko', { timeout: T(60000) });
     await page.getByRole('row', { name: /Maxim Tsigalko/ }).click();
     await page.getByRole('textbox', { name: await t('ed.first') }).fill('Maksim');
     await page.locator('label', { hasText: await t('ed.pa') }).locator('select').selectOption('-2');
@@ -2516,12 +2532,12 @@ async function editor() {
   });
   await step('nyt spil med databasen', async () => {
     await page.getByRole('button', { name: await t('ed.play'), exact: true }).first().click();
-    await page.waitForFunction(() => !!window.__cmPick, null, { timeout: 60000 });
+    await page.waitForFunction(() => !!window.__cmPick, null, { timeout: T(60000) });
     await page.getByText('E2E Legends').first().waitFor();
     await page.getByPlaceholder(await t('start.managerPlaceholder')).fill('E2E Editor');
     if (!(await page.evaluate(() => window.__cmPick(window.__cmClubId('Millwall'))))) throw new Error('Millwall findes ikke');
     await page.getByRole('button', { name: await t('start.begin') }).click();
-    await page.waitForFunction(() => { try { return !!window.__cm.gs().userClub; } catch { return false; } }, null, { timeout: 60000 });
+    await page.waitForFunction(() => { try { return !!window.__cm.gs().userClub; } catch { return false; } }, null, { timeout: T(60000) });
     const p = await page.evaluate(() => Object.values(window.__cm.gs().players).find((x) => x.last === 'Tsigalko' && x.pos[0] < 15));
     if (p?.first !== 'Maksim') throw new Error(`navnet slog ikke igennem: ${p?.first}`);
     // PA -2 som i originalen (playerInit.ts): oftest 120-200, 1 ud af 20 op til 49 lavere – men aldrig under CA.
@@ -2531,19 +2547,19 @@ async function editor() {
   // fejl 16/11: et tryk på det allerede valgte databasekort nulstillede verdenen uden at hente den igen ("Loading player database…" for evigt)
   await step('Editor → nyt spil: tryk på det valgte databasekort hænger ikke', async () => {
     await page.goto(URL);
-    await page.waitForFunction(() => !!window.__cm, null, { timeout: 30000 });
-    await page.waitForSelector('.cxs [data-field=editor]', { timeout: 30000 });
+    await page.waitForFunction(() => !!window.__cm, null, { timeout: T(30000) });
+    await page.waitForSelector('.cxs [data-field=editor]', { timeout: T(30000) });
     await page.locator('[data-field=editor]').click();
     await page.waitForSelector('.cxl', { timeout: 10000 });
     await page.getByRole('button', { name: await t('ed.play'), exact: true }).first().click();
-    await page.waitForFunction(() => !!window.__cmPick, null, { timeout: 60000 });
+    await page.waitForFunction(() => !!window.__cmPick, null, { timeout: T(60000) });
     if (await page.locator('.db-opt.on').count() !== 1) throw new Error('intet (eller flere) valgt databasekort');
     await page.locator('.db-opt.on').first().click();
-    await page.waitForFunction(() => !!window.__cmPick && !document.body.innerText.includes('Loading player database'), null, { timeout: 20000 });
+    await page.waitForFunction(() => !!window.__cmPick && !document.body.innerText.includes('Loading player database'), null, { timeout: T(20000) });
     await page.getByPlaceholder(await t('start.managerPlaceholder')).fill('E2E Valgt');
     if (!(await page.evaluate(() => window.__cmPick(window.__cmClubId('Millwall'))))) throw new Error('Millwall findes ikke');
     await page.getByRole('button', { name: await t('start.begin') }).click();
-    await page.waitForFunction(() => { try { return !!window.__cm.gs().userClub; } catch { return false; } }, null, { timeout: 60000 });
+    await page.waitForFunction(() => { try { return !!window.__cm.gs().userClub; } catch { return false; } }, null, { timeout: T(60000) });
   });
   await ctx.close();
 }
@@ -2569,8 +2585,8 @@ async function multiplayer() {
   };
   await step('Network Play har det klassiske look', async () => {
     await page.goto(URL);
-    await page.waitForFunction(() => !!window.__cm, null, { timeout: 30000 });
-    await page.waitForSelector('.cxs [data-field=network]', { timeout: 30000 });
+    await page.waitForFunction(() => !!window.__cm, null, { timeout: T(30000) });
+    await page.waitForSelector('.cxs [data-field=network]', { timeout: T(30000) });
     await page.locator('[data-field=network]').click();
     await page.waitForSelector('.cxl', { timeout: 10000 });
     const look = await page.evaluate(() => {
@@ -2587,9 +2603,9 @@ async function multiplayer() {
   });
   await step('Create online game bruger det klassiske nyt-spil-forløb (D1)', async () => {
     await page.locator('.cxl button.primary', { hasText: /Create online game/ }).click();
-    await page.waitForSelector('[data-cxs=leagues]', { timeout: 30000 });
+    await page.waitForSelector('[data-cxs=leagues]', { timeout: T(30000) });
     if (await page.locator('.cxl:visible, .start-card:visible').count()) throw new Error('den gamle nyt-spil-formular vises');
-    await page.waitForSelector('[data-nation]', { timeout: 60000 });
+    await page.waitForSelector('[data-nation]', { timeout: T(60000) });
     await page.locator('.cx-next').click();
     await page.waitForSelector('[data-cxs=name]', { timeout: 10000 });
     await page.locator('[data-name=first]').fill('Test');
@@ -2605,11 +2621,13 @@ async function multiplayer() {
   await step('Join via ?room= bruger nyt-spil-trinnene, optagne klubber er Taken (D2)', async () => {
     // et ægte snapshot fra et hurtigt nyt spil i en separat side
     const p2 = await ctx.newPage();
+    // (28/11) samme init som siden: sessionStorage (cm0102.play) gælder kun fanen – uden den viste p2 forsiden, og [data-field=quick] kom aldrig
+    await p2.addInitScript(() => { localStorage.setItem('cm0102.lang', 'en'); localStorage.setItem('cm-theme', 'retro'); sessionStorage.setItem('cm0102.play', '1'); });
     await p2.goto(URL);
-    await p2.waitForFunction(() => !!window.__cm, null, { timeout: 30000 });
-    await p2.waitForSelector('[data-field=quick]', { timeout: 30000 });
+    await p2.waitForFunction(() => !!window.__cm, null, { timeout: T(30000) });
+    await p2.waitForSelector('[data-field=quick]', { timeout: T(30000) });
     await p2.locator('[data-field=quick]').click();
-    await p2.waitForFunction(() => { try { return !!window.__cm.gs()?.userClub; } catch { return false; } }, null, { timeout: 180000 });
+    await p2.waitForFunction(() => { try { return !!window.__cm.gs()?.userClub; } catch { return false; } }, null, { timeout: T(180000) });
     const snap = await p2.evaluate(async () => {
       const blob = await window.__cm.serializeState(window.__cm.gs());
       const bytes = new Uint8Array(await blob.arrayBuffer());
@@ -2620,12 +2638,12 @@ async function multiplayer() {
     await page.route('https://snap.test/**', (r) => r.fulfill({ contentType: 'application/gzip', body: Buffer.from(snap.b64, 'base64') }));
     await page.route(/\/api\/mp\?code=ZKH84/, (r) => r.fulfill({ contentType: 'application/json', body: JSON.stringify({ code: 'ZKH84', host: 'h1', status: 'playing', version: 1, snapshot: 'https://snap.test/s.gz', date: '2001-07-14', lastApplied: 0, actionCount: 0, settings: {}, processing: null, lastTurn: '', players: [{ pid: 'h1', name: 'Host M', club: snap.club, ready: false, joined: '' }] }) }));
     await page.goto(`${URL}?room=ZKH84`);
-    await page.waitForSelector('[data-cxs=name]', { timeout: 30000 });
+    await page.waitForSelector('[data-cxs=name]', { timeout: T(30000) });
     if (await page.locator('.cxl:visible, .start-card:visible').count()) throw new Error('den gamle join-formular vises');
     await page.locator('[data-name=first]').fill('Test');
     await page.locator('[data-name=second]').fill('Joiner');
     await page.locator('.cx-next').click();
-    await page.waitForSelector('[data-cxs=nation] [data-nat]', { timeout: 60000 });
+    await page.waitForSelector('[data-cxs=nation] [data-nat]', { timeout: T(60000) });
     await page.locator('[data-nat]').first().click();
     await page.locator('.cx-next').click();
     await page.waitForSelector('[data-cxs=team] [data-club]', { timeout: 10000 });
@@ -2647,7 +2665,7 @@ async function multiplayer() {
       const p2 = await c2.newPage();
       await p2.addInitScript(() => { localStorage.setItem('cm0102.lang', 'en'); });
       await p2.goto(URL);
-      await p2.waitForSelector('.lp-newsband', { timeout: 30000 });
+      await p2.waitForSelector('.lp-newsband', { timeout: T(30000) });
       const info = await p2.evaluate(() => ({ text: document.body.innerText, retro: !!document.querySelector('.lp.lp-retro'), over: document.documentElement.scrollWidth - window.innerWidth, nost: document.querySelectorAll('.lp-nost q').length }));
       if (!info.retro) throw new Error('forsiden mangler det nostalgiske design');
       if (!/free/i.test(info.text) || !/online/i.test(info.text)) throw new Error('forsiden nævner ikke gratis/online');
@@ -2665,7 +2683,7 @@ async function multiplayer() {
     const p2 = await c2.newPage();
     await p2.addInitScript(() => { localStorage.setItem('cm0102.lang', 'en'); });
     await p2.goto(`${URL}?draft=1`);
-    await p2.waitForSelector('.lp:not(.lp-retro)', { timeout: 30000 });
+    await p2.waitForSelector('.lp:not(.lp-retro)', { timeout: T(30000) });
     if (!/draft/i.test(await p2.evaluate(() => document.body.innerText))) throw new Error('draft-siden vises ikke');
     await c2.close();
   });
@@ -2674,7 +2692,7 @@ async function multiplayer() {
     const p2 = await c2.newPage();
     await p2.addInitScript(() => { localStorage.setItem('cm0102.lang', 'en'); localStorage.setItem('cm-theme', 'retro'); });
     await p2.goto(`${URL}?modern=1`);
-    await p2.waitForSelector('.cxs [data-field=opts]', { timeout: 30000 });
+    await p2.waitForSelector('.cxs [data-field=opts]', { timeout: T(30000) });
     if (await p2.locator('.lp-retro').count()) throw new Error('forsiden vistes');
     if ((await p2.evaluate(() => localStorage.getItem('cm0102.modern'))) !== '1') throw new Error('det moderne blev ikke husket');
     await p2.locator('[data-field=settings]').click();
@@ -2712,26 +2730,26 @@ async function danish() {
   };
   await step('nyt spil på dansk', async () => {
     await page.goto(URL);
-    await page.waitForFunction(() => !!window.__cm, null, { timeout: 30000 });
+    await page.waitForFunction(() => !!window.__cm, null, { timeout: T(30000) });
     await page.waitForSelector('.cxs [data-field=new]');
     await page.locator('[data-field=new]').click();
-    await page.waitForSelector('.cxs-lrow', { timeout: 60000 });
+    await page.waitForSelector('.cxs-lrow', { timeout: T(60000) });
     // Danmark er forvalgt på dansk (sprogets land)
     if (!(await page.locator('.cxs-lrow.lg-sel', { hasText: 'Danmark' }).count())) await page.locator('.cxs-lrow', { hasText: 'Danmark' }).locator('[data-sl=selected]').click();
     await page.locator('.cx-foot .cx-next').click();
     if (await page.locator('[data-season]').first().waitFor({ timeout: 3000 }).then(() => true).catch(() => false)) await page.locator('.cx-foot .cx-next').click();
-    await page.waitForSelector('[data-name=first]', { timeout: 20000 });
+    await page.waitForSelector('[data-name=first]', { timeout: T(20000) });
     await page.fill('[data-name=first]', 'E2E'); await page.fill('[data-name=second]', 'Dansker');
     await page.locator('.cx-foot .cx-next').click();
     await page.waitForSelector('[data-nat]');
     await page.locator('.cx-foot .cx-next').click();
-    await page.waitForSelector('[data-club]', { timeout: 120000 });
+    await page.waitForSelector('[data-club]', { timeout: T(120000) });
     await page.locator('[data-club="Vejle"]').click();
     await page.waitForSelector('[data-take]');
     await page.locator('[data-take]').click();
     await page.waitForSelector('[data-confirm]');
     await page.locator('.cx-foot .cx-next').click();
-    await page.waitForFunction(() => { try { return window.__cm.gs().manager.name === 'E2E Dansker' && !!window.__cm.gs().userClub; } catch { return false; } }, null, { timeout: 120000 });
+    await page.waitForFunction(() => { try { return window.__cm.gs().manager.name === 'E2E Dansker' && !!window.__cm.gs().userClub; } catch { return false; } }, null, { timeout: T(120000) });
   });
   await step('nyhederne ved spilstart (overskrift og brødtekst)', async () => {
     await go({ name: 'inbox' });
@@ -2786,7 +2804,7 @@ async function landscapePhone() {
       if (!b || b.y + b.height > foot.y + 2) throw new Error(`startmenuens felt "${f}" ligger bag bundknapperne i liggende format`);
     }
     await page.locator('[data-field=new]').click();
-    await page.waitForSelector('.cxs-lrow', { timeout: 60000 });
+    await page.waitForSelector('.cxs-lrow', { timeout: T(60000) });
     const lh = await page.locator('.cxs-list').first().evaluate((el) => el.getBoundingClientRect().height);
     if (lh < 120) throw new Error(`Select League(s): listen er kun ${Math.round(lh)} px høj i liggende format`);
     if (errors.length) throw new Error(`sidefejl: ${errors.join(' | ')}`);

@@ -19,6 +19,24 @@ const seoHtml = {
   },
 }
 
+// CI (28/11): GitHubs maskiner er 2–5× langsommere pr. testfil end Mac mini'en og har ingen createGame-cache (tests/helpers/gameCache.ts) – de
+// faste tidsgrænser i testfilerne (`}, 120_000)` og `{ timeout: 600_000 }`, sat efter lokale tider) vinder over `--testTimeout`, så tunge tests
+// faldt på tiden alene (authentic, gridSim, gridStats, newsTypes, miniReport, cmBoard, scoutBgMatch). I CI ganges de med CI_TIMEOUT_FACTOR
+// (standard 5) – kun tidsgrænserne; et forløb, der hænger, fejler stadig. Lokalt (også scripts/test.mjs) urørt.
+const ciTimeouts = {
+  name: 'ci-test-timeouts',
+  enforce: 'pre' as const,
+  transform(code: string, id: string) {
+    if (!process.env.CI || !process.env.VITEST || !/\/tests\/[^/]+\.test\.tsx?$/.test(id)) return null;
+    const k = Number(process.env.CI_TIMEOUT_FACTOR ?? 5);
+    const scale = (n: string) => String(Math.round(Number(n.replace(/_/g, '')) * k));
+    const out = code
+      .replace(/^(\s*\}\s*,\s*)(\d[\d_]{3,})(\s*\))/gm, (_m, a: string, n: string, b: string) => a + scale(n) + b)
+      .replace(/(\{\s*timeout:\s*)(\d[\d_]{3,})/g, (_m, a: string, n: string) => a + scale(n));
+    return out === code ? null : { code: out, map: null };
+  },
+}
+
 if (!process.env.CI && process.env.CM_GAME_CACHE === undefined) process.env.CM_GAME_CACHE = '1';   // arves af test-workers
 
 export default defineConfig({
@@ -28,6 +46,7 @@ export default defineConfig({
   plugins: [
     react(),
     seoHtml,
+    ciTimeouts,
     VitePWA({
       // prompt: siden genindlæser aldrig af sig selv – en ny version tages i brug ved næste besøg eller via knappen (ui/UpdateToast.tsx)
       registerType: 'prompt',
