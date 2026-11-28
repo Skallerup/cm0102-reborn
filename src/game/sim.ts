@@ -644,7 +644,10 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
     }
   }
   // præmiepenge i Europa
-  if (comp?.type === 'continental' && modern26() && !g.econ) {
+  if (comp?.type === 'continental' && modern26() && !g.econ && cmFinOn(g) && typeof comp.meta?.cmEuro === 'string') {
+    // originalens økonomi og originalens Europa (cmEurope.ts): præmierne betales kun af originalens kode – Cup::pay_round_prize_money 0x522240
+    // (cmFinance.ts cupTieDone) og gruppe-/pointpengene (compHooks.prize). UEFA-fordelingen nedenfor kom oveni (PL £82m af £160m, orakel fin2026 £84m i alt)
+  } else if (comp?.type === 'continental' && modern26() && !g.econ) {
     // den kalibrerede moderne økonomi (econ26.ts): UEFA's 2025/26-fordeling – deltagelse og værdisøjle i ligafasen, resultatpræmier, runde-/finalebeløb
     const tie = f.tieId !== undefined ? comp.ties.find((t) => t.id === f.tieId) : undefined;
     const nLP = Number((comp.meta as { matchdays?: number } | undefined)?.matchdays ?? 8);
