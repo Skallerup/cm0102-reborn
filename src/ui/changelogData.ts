@@ -13,6 +13,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '2026-11-28',
     title: { da: 'Mere af det originale CM 01/02', en: 'More of the original CM 01/02' },
     items: [
+      { da: "Alle nyheder har nu en brødtekst på alle 10 sprog (bestyrelsens svar, træningslejr, væddemål, jobansøgning m.fl.).", en: "Every news item now has a body text in all 10 languages (board replies, training camp, bets, job applications and more)." },
       { da: "Interne regler for oversættelser.", en: "Internal translation rules." },
       { da: "Klublegende-nyheden (og nyhederne om klubrekord, rekordsalg/-køb og legende i staben) har nu en brødtekst på alle sprog – den var tom før.", en: "The club-legend news (and the club record, record sale/signing and legend-joins-staff news) now has a body text in every language – it was empty before." },
       { da: "⚠ Kræver et nyt spil: 2026/27: databasens lejeaftaler ved spilstart er nu alle med – også Premier League-klubbernes unge spillere udlejet til League One og League Two (207 udlejede fra PL ved start som originalen, før 123).", en: "⚠ Requires a new game: 2026/27: all of the database's loan deals now start with the game – including Premier League youngsters loaned to League One and League Two (207 loaned out from the PL at the start, as in the original; previously 123)." },
