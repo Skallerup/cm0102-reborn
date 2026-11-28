@@ -8,6 +8,8 @@ import { gs } from '../src/game/state';
 import { continueGame, quickPlayUserMatch } from '../src/game/sim';
 import { checkRetirement, cmRetireInjury, npStaffOf, retireBody } from '../src/game/cmRetire';
 import { ageOn } from '../src/game/dates';
+import { repairRetiredIntl } from '../src/game/save';
+import { VIRTUAL_ID0 } from '../src/game/cmVirtual';
 import type { GameState, Player } from '../src/game/types';
 
 let g: GameState;
@@ -113,6 +115,39 @@ describe('dagene (0x7a59e0)', () => {
     expect(g.cmRetLog?.some(([, a]) => a === ageOn(p.dob, g.date) || a === ageOn(p.dob, g.date) - 1)).toBe(true);
     if (e.club === g.userClub) expect(g.news.some((n) => n.key === 'cmret.ret' || n.key === 'cmret.shock')).toBe(true);
   }, 600_000);
+  it('0x775ba0/0x7aace0: den pensionerede forlader landsholdets trup og A-puljen (gruppens sidste ind på pladsen) – ingen erstatning', () => {
+    const L = g.cmRet!.list, sq = g.intl!.cmSq!;
+    // en udtaget-ved-pension-kandidat i sin nationalitets A-pulje, ikke gruppens laveste (0x775bea: kun når gruppens +0xf er under hans omdømme)
+    let e: (typeof L)[number] | undefined, gr = -1;
+    for (const x of L) {
+      const p = x.st ? undefined : g.players[x.id];
+      if (!p?.club || ageOn(p.dob, g.date) < 30) continue;
+      const k = sq.pool?.[p.nation]?.[0]?.findIndex((l) => l.indexOf(p.id) >= 0 && l.indexOf(p.id) < l.length - 1) ?? -1;
+      if (k >= 0) { e = x; gr = k; break; }
+    }
+    expect(e).toBeDefined();
+    const p = g.players[e!.id], grp = sq.pool![p.nation][0][gr];
+    const last = grp[grp.length - 1], at = grp.indexOf(p.id), n0 = grp.length;
+    expect(sq.poolMin![p.nation][1][gr]).toBeLessThan(10000);
+    const list = ((sq.sq[p.nation] ??= [null, null, null])[0] ??= { ids: [], from: g.date, until: '2001-09-01', max: 26, second: 22 });
+    list.ids.push(p.id);
+    const other = list.ids.filter((id) => id !== p.id);
+    e!.r = e!.a = 2001100;
+    day();
+    expect(g.players[p.id]).toBeUndefined();
+    expect(sq.sq[p.nation][0]!.ids).toEqual(other);                            // ingen erstatning
+    const g2 = sq.pool![p.nation][0][gr];
+    if (sq.poolDate !== g.date) { expect(g2.length).toBe(n0 - 1); expect(g2[at]).toBe(last); }
+    expect(g2.includes(p.id)).toBe(false);
+  }, 600_000);
+  it('save.ts repairRetiredIntl: gamle gems hængende id\'er ud af trupperne og landstrænerens udtagelse – én gang', () => {
+    const x = { players: { 1: {}, 2: {} }, manager: { national: { nation: 3, picks: [1, 9, 2] } },
+      intl: { results: [], history: [], cmSq: { sq: { 3: [{ ids: [1, 7, 2, VIRTUAL_ID0 + 1], from: '', until: '', max: 26, second: 22 }, null, null] } } } } as unknown as GameState;
+    repairRetiredIntl(x);
+    expect(x.intl!.cmSq!.sq[3][0]!.ids).toEqual([1, 2, VIRTUAL_ID0 + 1]);
+    expect(x.manager.national!.picks).toEqual([1, 2]);
+    expect(x.fixes).toContain('intlRetired');
+  });
   it('0x7a7f20: skaden giver en post med årsag 8 inden for skadens halve længde', () => {
     const p = Object.values(g.players).find((x) => x.club && g.clubs[x.club].nation === eng && !g.cmRet!.list.some((e) => e.id === x.id))!;
     cmRetireInjury(g, p, 40);

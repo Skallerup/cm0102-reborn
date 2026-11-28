@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { deserializeState, serializeState } from '../src/game/snapshot';
 import { gs, setGame, squadIds } from '../src/game/state';
-import { upgradeLoaded, ensureAllNumbers, repairStaleOffers, repairFakePlayers } from '../src/game/save';
+import { upgradeLoaded, ensureAllNumbers, repairStaleOffers, repairFakePlayers, repairRetiredIntl } from '../src/game/save';
 import { captureCarry } from '../src/game/carry';
 import { continueGame, quickPlayUserMatch } from '../src/game/sim';
 import { fakeCandidates } from '../src/game/purgeFakes';
@@ -15,7 +15,7 @@ import type { GameState } from '../src/game/types';
 
 const [file, daysS = '30'] = process.argv.slice(2);
 setGame(await deserializeState(new Blob([readFileSync(file)])));
-upgradeLoaded(); ensureAllNumbers(); repairStaleOffers();
+upgradeLoaded(); ensureAllNumbers(); repairStaleOffers(); repairRetiredIntl();
 const g = gs();
 const act = new Set(g.activeNations);
 const visible = (cid: number) => isHumanClub(cid) || (!!g.clubs[cid] && act.has(g.clubs[cid].nation));

@@ -25,6 +25,8 @@ import { isHumanClub } from './humans';
 import { dropStaleOffers } from './offerLive';
 import { repairPositions } from './playerInit';
 import { purgeInvisibleFakes } from './purgeFakes';
+import { dropFromSquads } from './cmIntlSquad';
+import { VIRTUAL_ID0 } from './cmVirtual';
 
 export interface SaveMeta {
   id: string;
@@ -311,6 +313,14 @@ export function repairStaleOffers(g: GameState = gs()): void {
   (g.fixes ??= []).push('staleOffers');
 }
 
+/** (28/11) gemte spil fra før cmIntlRetire (cmIntlSquad.ts – 0x775ba0/0x7aace0): pensionerede spillere stod tilbage i landsholdstrupperne og den
+ *  menneskelige landstræners udtagelse (id'er, der ikke findes) – de fjernes én gang ved indlæsningen */
+export function repairRetiredIntl(g: GameState = gs()): void {
+  if (g.draft || g.fixes?.includes('intlRetired')) return;
+  dropFromSquads(g, (id) => id < VIRTUAL_ID0 && !g.players[id]);
+  (g.fixes ??= []).push('intlRetired');
+}
+
 /** (27/11) gemte spil fra før 6c3386bb: sæsonskiftets opdigtede spillere i de ikke-valgte landes klubber (purgeFakes.ts) – de usynlige fjernes
  *  én gang ved indlæsningen (originalen har kun fyldspillerne 0x90dae0 omkring kampene) */
 export function repairFakePlayers(g: GameState = gs()): void {
@@ -515,6 +525,7 @@ export async function loadGame(id: string): Promise<boolean> {
   repairOldMarket();
   repairStaleOffers();
   repairFakePlayers();
+  repairRetiredIntl();
   rememberLast({ kind: 'local', id });
   return true;
 }
@@ -531,6 +542,7 @@ export async function openPreview(blob: Blob, label: string, theme?: string): Pr
   repairOldMarket();
   repairStaleOffers();
   repairFakePlayers();
+  repairRetiredIntl();
   notify();
 }
 
@@ -557,6 +569,7 @@ export async function importSave(file: File): Promise<boolean> {
     repairOldMarket();
     repairStaleOffers();
     repairFakePlayers();
+  repairRetiredIntl();
     await saveGame();
     return true;
   } catch {

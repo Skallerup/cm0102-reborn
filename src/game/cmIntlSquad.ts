@@ -51,6 +51,9 @@ export interface CmSquad { ids: number[]; from: string; until: string; max: numb
 export interface CmIntlSquads {
   /** puljerne (0x76abf0) pr. land: [A-grupper, U21-grupper], hver gruppe spiller-id'er efter hjemmeomdømmet */
   pool?: Record<number, [number[][], number[][]]>;
+  /** A-puljens gruppepost +0 (landets antal, 0x76d810) og +0xf pr. gruppe (laveste omdømme ved opbygningen 0x76abf0: start 10000, min ved
+   *  tilføjelse, den sidstes ved indsættelse i en fuld gruppe) – læst af remove_player 0x775ba0 */
+  poolMin?: Record<number, [number, number[]]>;
   poolDate?: string;
   /** de udtagne trupper pr. land: [A, 'B', U21] */
   sq: Record<number, (CmSquad | null)[]>;
@@ -92,10 +95,11 @@ function caps(count: number, u21: boolean): number[] {
 }
 
 /** én gruppe som originalen: tilføjet til den er fuld, så qsort (0x778ed0, højeste omdømme først) og indsættelse af bedre spillere */
-function insert(list: { id: number; rep: number }[], cap: number, e: { id: number; rep: number }): void {
+function insert(list: { id: number; rep: number }[], cap: number, e: { id: number; rep: number }, min?: number[], gr = 0): void {
   if (!cap) return;
   if (list.length < cap) {
     list.push(e);
+    if (min && e.rep < min[gr]) min[gr] = e.rep;                                   // 0x76ad90
     if (list.length === cap) msvcQsort(list, (a, b) => b.rep - a.rep);
     return;
   }
@@ -104,6 +108,7 @@ function insert(list: { id: number; rep: number }[], cap: number, e: { id: numbe
   while (j >= 0 && !(e.rep < list[j].rep)) j--;
   list.splice(j + 1, 0, e);
   list.length = cap;
+  if (min) min[gr] = list[cap - 1].rep;                                            // 0x76ae8c
 }
 
 export function buildPools(g: GameState): void {
@@ -111,6 +116,8 @@ export function buildPools(g: GameState): void {
   const counts = nationCounts(g);
   const work = new Map<number, [{ id: number; rep: number }[][], { id: number; rep: number }[][]]>();
   const get = (n: number) => { let w = work.get(n); if (!w) { w = [[[], [], [], []], [[], [], [], []]]; work.set(n, w); } return w; };
+  const mins = new Map<number, [number, number[]]>();
+  const minOf = (n: number, cnt: number) => { let m = mins.get(n); if (!m) mins.set(n, (m = [cnt, [10000, 10000, 10000, 10000]])); return m[1]; };   // 0x76ac0a
   const ids = Object.keys(g.players).map(Number).sort((a, b) => a - b);
   for (const id of ids) {
     const p = g.players[id];
@@ -129,7 +136,7 @@ export function buildPools(g: GameState): void {
       const cnt = counts.get(n) ?? 0;
       const w = get(n);
       const gr = group(rec, cnt, false);
-      insert(w[0][gr], caps(cnt, false)[gr], { id, rep });
+      insert(w[0][gr], caps(cnt, false)[gr], { id, rep }, minOf(n, cnt), gr);
       if (age <= 21 && (p.caps ?? 0) < 5) {
         const gu = group(rec, cnt, true);
         insert(w[1][gu], caps(cnt, true)[gu], { id, rep });
@@ -138,6 +145,7 @@ export function buildPools(g: GameState): void {
   }
   s.pool = {};
   for (const [n, w] of work) s.pool[n] = [w[0].map((l) => l.map((e) => e.id)), w[1].map((l) => l.map((e) => e.id))];
+  s.poolMin = Object.fromEntries(mins);
   s.poolDate = g.date;
 }
 
@@ -526,6 +534,42 @@ export function selectFinals(g: GameState, field: number[], tour: string, first:
 
 /** 0x456740: datoen a ligger efter b */
 const after = (a: string, b: string) => a > b;
+
+/** de udtagne trupper og den menneskelige landstræners udtagelse uden de spillere, `gone` siger – antallet fjernet */
+export function dropFromSquads(g: GameState, gone: (id: number) => boolean): number {
+  let n = 0;
+  for (const list of Object.values(g.intl?.cmSq?.sq ?? {})) for (const q of list) {
+    if (!q || !q.ids.some(gone)) continue;
+    const k = q.ids.length;
+    q.ids = q.ids.filter((id) => !gone(id));
+    n += k - q.ids.length;
+  }
+  for (const m of [g.manager, ...(g.humans ?? []).map((h) => h.manager)]) {
+    const nj = m?.national;
+    if (nj?.picks?.some(gone)) { const k = nj.picks.length; nj.picks = nj.picks.filter((id) => !gone(id)); n += k - nj.picks.length; }
+  }
+  return n;
+}
+
+/** pensioneringen (process_retirements 0x7a59e0): NationalTeams::remove_player 0x775ba0 (0x7a5c32) og landsholdsdelen af
+ *  retire_from_playing_staff 0x7aace0. 0x775ba0: ud af nationalitetens (+0x1a) A-pulje – gruppen 0x76d810(spiller, puljen, 0), kun når gruppens
+ *  laveste omdømme ved opbygningen (+0xf) er under hans nu (spillerpost +9); fundet → gruppens sidste flyttes ind på pladsen, antallet −1 (U21-puljen og
+ *  andet statsborgerskab røres ikke) – og ud af landsholdets trupliste (+0x24 → club +0xd7, pladsen 0), +0x24 = 0, +0x5e &= 3. 0x7aace0: ud af
+ *  landsholdets taktik (0x896c60(hold, staff, 0/1, 1)) – her den menneskelige landstræners udtagelse. Ingen erstatning. */
+export function cmIntlRetire(g: GameState, p: Player): void {
+  const s = g.intl?.cmSq;
+  if (!s) return;
+  const pool = s.pool?.[p.nation]?.[0], mn = s.poolMin?.[p.nation];
+  if (pool && mn) {
+    const rec = playerRecord(p);
+    const gr = group(rec, mn[0], false);
+    if (mn[1][gr] < s16(repW(rec, 9))) {                                             // 0x775bea
+      const L = pool[gr], i = L ? L.indexOf(p.id) : -1;
+      if (i >= 0) { L[i] = L[L.length - 1]; L.pop(); }                                // 0x775c61
+    }
+  }
+  dropFromSquads(g, (id) => id === p.id);
+}
 
 /** NationalTeams::withdraw_injured_player 0x775cd0 (kaldt af Injury::add_injury 0x62d994 for en spiller på et landshold, staff +0x24): skadet i mindst
  *  14 dage → ud af truppen, hvis den stadig gælder (slutdatoen +0x3a efter i dag) og holdet ikke er på slutrundeophold (listen this+0: 0x76c304 –

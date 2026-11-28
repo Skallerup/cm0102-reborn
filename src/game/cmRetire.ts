@@ -34,6 +34,7 @@ import { JOB_CODE } from './cmStaff';
 import { ATTRS } from './attributes';
 import { playerRecordInto } from './engine/grid/aiTeam';
 import { cmHasCaPost, ensureCmInt } from './cmDevelop';
+import { cmIntlRetire } from './cmIntlSquad';
 import { cmNpResInit, cmNpResOn, findStaffRetirements, npOnRetire, settleStaff } from './cmStaffRetire';
 
 export interface CmRetEntry {
@@ -447,6 +448,7 @@ function retire(g: GameState, p: Player, e: CmRetEntry, today: string, rand: Ran
   for (const c of Object.values(g.clubs)) if (c.shortlist?.includes(p.id)) c.shortlist = c.shortlist.filter((id) => id !== p.id);
   const club = p.club;
   if (club) dropFromTactic(g, p, club);
+  cmIntlRetire(g, p);                                                                // 0x7a5c32 0x775ba0 / 0x7aace0 (+0x24)
   const age = ageOn(p.dob, today);
   // 0x7a5cdb (cmStaffRetire.ts): uden ikke-spillerpost evt. reservepuljens første (spil startet med puljen)
   const np = s ?? (mem && cmNpResOn(g) ? npOnRetire(g, p, rand) ?? undefined : undefined);
