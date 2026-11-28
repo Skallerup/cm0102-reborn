@@ -2,6 +2,7 @@
 
 Flyttet fra CLAUDE.md 17/11-2026 (så CLAUDE.md er kort i hver session). Nyeste først. Tilføj en linje øverst ved hver udgivelse.
 
+- 2026-11-28 – Skudt live (v0.40.0): Budnyheden post_offer_news 0x8d3090/0x8e1780 til de andre mennesker (0x8d1130 flag 0x3e/0x2e: shortlist, andre bydende, omdømme kun for offentlige bud), tekst 0x8d3520/0x8e19c0, club_records +0x313 (g.cmRecFee). 2001-fingeraftryk NONEWS=1 OMIT=cmRecFee uændret bee151b3ff1574b3.
 - 2026-11-28 – Skudt live (v0.40.0): Scout Player skjules under igangværende spejderopgave
 - 2026-11-28 – Skudt live (v0.40.0): 2026-11-28 – Testværn (e44c7017): scripts/test.mjs fast (vagter K3/K5/ændringslog/i18nAll/worldBuild/envDeterminism/låsetrin + direkte importører/omtale; tunge > 60 s kun i CI), ship.sh fast som standard (--full-tests = related), e2e kun ved src/public-ændringer og samtidig med testene; agentfiler/CLAUDE.md opdateret.
 - 2026-11-28 – Skudt live (v0.40.0): pick_taker 0x6ceb90 uden kandidat: fatal 0x3e89 med tilstanden (nedbrud aa97721d7bdd7bc0) – diagnose, årsag ikke fundet
