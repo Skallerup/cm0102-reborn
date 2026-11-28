@@ -2273,6 +2273,9 @@ async function run(look) {
     const id = await gs(() => {
       const g = window.__cm.gs();
       for (const n of g.news) n.read = true;
+      // (28/11) markedets egne ubesvarede bud på menneskets spillere (computerens købere – flere på 2026/27 med databasens løn) ville Continue Game
+      // åbne først: de afvises, så trinnet kun ser sit eget bud
+      for (const x of g.offers) if (x.seller === g.userClub && x.buyer !== g.userClub && ['pending', 'countered', 'negotiating'].includes(x.status)) x.status = 'rejected';
       const p = Object.values(g.players).find((x) => x.club === g.userClub);
       const buyer = Number(Object.keys(g.clubs).find((c) => Number(c) !== g.userClub && g.clubs[c].nation === g.clubs[g.userClub].nation));
       const o = { id: g.nextId.offer++, player: p.id, buyer, seller: g.userClub, fee: 1000000, loan: false, status: 'pending', created: g.date, respondBy: g.date };
