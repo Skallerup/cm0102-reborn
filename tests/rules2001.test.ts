@@ -2,7 +2,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { createGame, type WorldData } from '../src/game/newgame';
-import { continueGame, quickPlayUserMatch } from '../src/game/sim';
 import { gs, squad, setClub } from '../src/game/state';
 import { recallLoan } from '../src/game/transfers';
 import { appealBan, awolMonthly } from '../src/game/rules2001';
@@ -23,11 +22,10 @@ const loanAway = () => {
 };
 
 describe('2001-regler', () => {
-  it('original database: kald hjem fra leje efter 28 dage, utilfredse spillere kan udeblive', () => {
+  it('original database: kald hjem fra leje (ingen frist – 0x4ccca0), utilfredse spillere kan udeblive', () => {
     const g = start('world-original.json', 'Leeds United');
     const p = loanAway();
-    expect(recallLoan(p.id)).toBe('loan.recallTooSoon');
-    for (let i = 0; i < 30; i++) { const r = continueGame(); if (r.match !== undefined) quickPlayUserMatch(); }
+    // (udvidet tilstand: uden originalens daglige lejeslut kommer han hjem med det samme)
     expect(recallLoan(p.id)).toBe('loan.recalled');
     expect(p.club).toBe(g.userClub);
     for (const x of squad(g.userClub)) x.unhappy = 100;

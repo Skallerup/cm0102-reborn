@@ -14,7 +14,7 @@ import { NO_CARRY, registerCarry } from './carry';
 import { Rng, hash, hash01, rng } from './rng';
 import { recordDevelopment } from './training';
 import { merchStarSigning } from './finance';
-import { addNews, addPlayer, gs, inSetup, loanedOut, movePlacement, newsRelevant, setClub, squad } from './state';
+import { addNews, addPlayer, gs, inSetup, loanedOut, movePlacement, newsRelevant, setClub, squad, wageRecalc } from './state';
 import { clubLevel, knowFull, registerAskingPrice } from './scouting';
 import { clubStrategy } from './strategy';
 import { SHIFT_WEEKS } from './board';
@@ -1149,6 +1149,7 @@ export function renewContract(pid: number, wage: number, years: number, clauses?
   const cmAns = cmLogic(g) ? cmContractAnswer(g, p, club.id, { ...offerTerms(g, wage, years, cl, club.id), expires: renewalExpiry(p.contract?.expires, years, g.date) }, p.squadStatus) : null;
   if (cmAns ? cmAns.accept : wage + clausesWorthFor(p, club.id, wage, years, cl) >= demand * AGENT_RULES[agentOf(p).style].accept) {
     p.contract = { wage, expires: renewalExpiry(p.contract?.expires, years, g.date), ...cl };
+    wageRecalc(g, club.id);   // (sign_contract 0x4cf720 → 0x598370)
     // CM 01/02 0x8c38b0 → Finance::add_signing_on 0x5998e0 (blokken; kun originalens økonomi – bookBlock tjekker cmFinOn)
     if (cl.signOn) { club.balance -= cl.signOn; club.finance.signOn = (club.finance.signOn ?? 0) + cl.signOn; bookBlockEur(g, club, CMK.signOn, cl.signOn); }
     const hadDemand = !!p.demand;
@@ -2842,26 +2843,45 @@ export function recallRule(pid: number): { ok: boolean; msg?: LoanMsg } {
   return p && me && cmMarketOn(g) ? cmLoanEndOk(me, p) : { ok: true };
 }
 
+/** Spillerskærmens menu 0x871800: "Recall From Loan" (0xa85550) – på leje (0x4cf6d0), kontraktklubben er menneskets, og lejekontrakten er ikke
+ *  allerede afbrudt (+0x35 & 0x3f ≠ 7); "Terminate Loan Deal" (0xa85578) – på leje og hans klub (+0x39 = lejeklubben) er menneskets */
+export const canRecallLoan = (p: Player, club: number) => !!p.loan && p.loan.from === club && !p.loan.ended && loanRecallOn();
+export const canTerminateLoan = (p: Player, club: number) => !!p.loan && p.club === club && loanRecallOn();
+
 /**
- * Kald en udlejet spiller hjem (CM 01/02: "Recall from loan" – loanRecallOn: CM-databaserne i ægte tilstand). Tidligst 28 dage efter
- * lejeaftalen (*estimeret*: originalens frist er ikke fundet). Lejeklubben får besked.
+ * Recall From Loan / Terminate Loan Deal (CM 01/02: dialogen 0x8fbcc0, "Yes" 0x8fc0e0 → CONTRACT_MANAGER 0x4ccca0(spilleren, menneskets klub)):
+ * lejekontraktens slutdato (+0x2d) bliver i morgen og arten (+0x35) 7 – lejen slutter dagen efter i 0x4c8077 (end_loan 0x4d07e0, uden
+ * 0x4da590's "loan finishes", season.ts endLoanIfDue). Ingen frist i originalen. Nyheden 0x4db0b0 (0xfb8) går kun til den anden klub, når den
+ * er menneskets (0x7875e0): ved Recall lejeklubben, ved Terminate moderklubben. Menneskets egen besked er dialogens boks
+ * ("… recalled from loan" 0xaa17a4 / "… loan terminated" 0xaa17d8, "… will return to … tomorrow." 0xaa1744 – UI'et).
+ * (Uden originalens daglige lejeslut – cmShortlistOn – kommer han hjem med det samme.)
  */
-export function recallLoan(pid: number): string {
+function endLoanEarly(pid: number, terminate: boolean): string {
   const g = gs();
   const p = g.players[pid];
-  if (!p || !p.loan || p.loan.from !== g.userClub || !loanRecallOn()) return 'error';
-  // CM 01/02: Recall-dialogen 0x8fbcc0 spørger først 0x8d0530(klub, staff, besked, i dag, 0) – lejeregler.ts cmLoanEndOk (UI'et viser beskeden)
+  if (!p?.loan || !(terminate ? canTerminateLoan(p, g.userClub) : canRecallLoan(p, g.userClub))) return 'error';
+  // 0x8fbcc0 spørger først 0x8d0530(menneskets klub, staff, besked, i dag, 0) – rules2001.ts cmLoanEndOk (UI'et viser beskeden)
   if (!recallRule(pid).ok) return 'error';
-  // (lejens start: flytningen til lejeklubben – Player.joined er moderklubbens dato med originalens marked, se completeTransfer)
-  const since = [...(p.moves ?? [])].reverse().find((x) => x.loan && x.to === p.club)?.date ?? p.joined;
-  if (since && daysBetween(since, g.date) < 28) return 'loan.recallTooSoon';
-  const at = g.clubs[p.club];
-  setClub(p, g.userClub);
-  p.loan = null;
-  if (!cmMarketOn(g)) p.joined = g.date;   // (end_loan 0x4d07e0 rører ikke staff +0x3e – se completeTransfer)
-  addNews({ cat: 'transfer', key: 'loan.recalledNews', params: { player: pname(p), club: at?.name ?? '' }, link: { kind: 'player', id: p.id } });
-  return 'loan.recalled';
+  const loanClub = p.club, parent = p.loan.from;
+  const other = terminate ? parent : loanClub;
+  const cn = (id: number) => g.clubs[id]?.name ?? '';
+  const params = { player: pname(p), club1: cn(terminate ? loanClub : parent), club2: cn(loanClub), club3: cn(parent) };
+  if (cmShortlistOn(g)) {
+    p.loan.until = addDays(g.date, 1);
+    p.loan.ended = 1;
+  } else {
+    setClub(p, parent);
+    p.loan = null;
+    if (!cmMarketOn(g)) p.joined = g.date;   // (end_loan 0x4d07e0 rører ikke staff +0x3e – se completeTransfer)
+  }
+  if (other > 0 && isHumanClub(other)) asOwner(other, () => addNews({ cat: 'transfer', key: terminate ? 'loan.terminatedNews' : 'loan.recalledNews', params, link: { kind: 'player', id: p.id } }));
+  return terminate ? 'loan.terminated' : 'loan.recalled';
 }
+
+/** Recall From Loan (menneskets udlejede spiller) */
+export const recallLoan = (pid: number): string => endLoanEarly(pid, false);
+/** Terminate Loan Deal (menneskets indlejede spiller) */
+export const terminateLoan = (pid: number): string => endLoanEarly(pid, true);
 
 /**
  * Transferlisten ved spilstart (som i CM 01/02, hvor listen ikke er tom på dag 1): hver AI-klub sætter 0-3 spillere til

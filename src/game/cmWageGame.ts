@@ -166,7 +166,7 @@ export function writeLoanContract(m: SparseMem, id: number, p: Player, gbp: numb
   const k = K0 + 80 * (LOAN_IX + id);
   m.w32(ROWS0 + 79 * id + 4, LOAN_IX + id);
   m.w32(k + 4, p.club); m.w32(k + 0xc, Math.round(p.contract.wage * (l.share ?? 0) * gbp));
-  m.w8(k + 0x35, 6);
+  m.w8(k + 0x35, l.ended ? 7 : 6);   // (Recall/Terminate 0x4ccca0: +0x35 & 0xc7 | 7)
   const [d, y] = isoDay(l.until.slice(0, 10));
   m.w16(k + 0x2d, d); m.w16(k + 0x2f, y);
   // 0x8c0f40 → 0x85e590: +0x4e = 4, +0x4f lav nibble = sproget i lejeklubben (0x7c6830, højst 10), +0x25 = lejens start (i dag ved tilbuddet);
@@ -430,6 +430,9 @@ export function buildWageMem(g: GameState, clubs: Iterable<number>, unset: Set<n
     // (2026/27 uden originalens økonomi – g.cmFin: lønsummen af kontrakterne i hukommelsen)
     if (recalc || !g.cmFin) { m.w32(f + 0x14, 0); recalcWages_598370(c, f); recalcWages_598370(c, f); }
     else m.w32(f + 0x14, getMaxWage_5968d0(c, f, 0, -1));
+    // bestyrelsens forhøjelse 0x598340 lever i +0x14 til klubbens næste 0x598370 (CmFinRec.cap14)
+    const k14 = g.cmFin?.[cid]?.cap14;
+    if (k14 !== undefined) m.w32(f + 0x14, k14);
   }
   let gen = count;
   return {

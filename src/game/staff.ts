@@ -1,5 +1,5 @@
 // Staff: ansæt, fyr og køb fri fra andre klubber
-import { addNews, gs } from './state';
+import { addNews, gs, wageRecalc } from './state';
 import { addDays } from './dates';
 import { isMultiplayer, ownerOf, withHuman } from './humans';
 import { hash01 } from './rng';
@@ -99,6 +99,7 @@ function doHire(id: number, wage?: number): HireResult {
   s.assignment = null;
   s.wage = wage ?? Math.round(s.wage * (poached ? 1.1 : 1));
   s.expires = `${Number(g.date.slice(0, 4)) + 2}-06-30`;
+  wageRecalc(g, club.id);   // (sign_contract 0x4cf720 → 0x598370)
   return 'ok';
 }
 

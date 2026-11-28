@@ -5,7 +5,9 @@ import { boardRequestAvailable, decideUltimatum, issueUltimatum, ultimatumOffere
 import { newRec, isoToCm } from '../src/game/cmBoard';
 import { ultimatumBody, ultimatumConfirm, ultimatumTitle } from '../src/game/cmBoardText';
 import { createGame, type WorldData } from '../src/game/newgame';
-import { gs } from '../src/game/state';
+import { cmAdjustMaxWage, cmFinCap14 } from '../src/game/cmBudget';
+import { updateWageBill } from '../src/game/cmFinance';
+import { gs, wageRecalc } from '../src/game/state';
 import { act } from '../src/game/actions';
 import { meetBoardAvailable } from '../src/game/board';
 
@@ -80,6 +82,18 @@ describe('i spillet (3.9.60, ægte tilstand): anmodning → nyhed med Ultimatum 
   it('Man Utd: ungdommen grå (anlæg 20), stadionanmodningen giver nyheden 0x1786, og et afslag kan følges af ultimatummet', () => {
     createGame(world, { managerName: 'M S', managerNation: eng, clubId: mu, activeNations: [eng], lang: 'en', masking: true, seed: 3, mode: 'authentic' });
     const g = gs();
+    // Finance +0x14 (0x5968d0(fin, 0, −1)) og adjust_max_wage 0x598340: +0x14 × (pct + 100) %, indtil klubbens næste 0x598370
+    const cap = cmFinCap14(g, mu);
+    expect(cap).toBeGreaterThan(0);
+    cmAdjustMaxWage(g, mu, 10);
+    expect(g.cmFin![mu].cap14).toBe(Math.trunc(110 * 0.01 * cap));
+    expect(cmFinCap14(g, mu)).toBe(Math.trunc(110 * 0.01 * cap));
+    updateWageBill(g, g.clubs[mu], g.cmFin![mu]);                 // søndagens 0x598370 (0x59bf7f) regner +0x14 om
+    expect(g.cmFin![mu].cap14).toBeUndefined();
+    expect(cmFinCap14(g, mu)).toBe(cap);
+    cmAdjustMaxWage(g, mu, 10);
+    wageRecalc(g, mu);                                            // sign_contract/sign_loan/end_loan → 0x598370
+    expect(g.cmFin![mu].cap14).toBeUndefined();
     g.clubs[mu].facilities = 20;
     expect(meetBoardAvailable('youth')).toBe(false);
     expect(meetBoardAvailable('stadium')).toBe(true);

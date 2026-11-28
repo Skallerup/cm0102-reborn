@@ -2,7 +2,7 @@
 // Titelbjælke med "Navn (Klub)" og en Action-menu, fanerne Profil · Skader & karantæner · Kontrakt · Transfer · Historik.
 // Profil-fanen viser alle synlige egenskaber i fire alfabetiske kolonner, statistik pr. turnering og positionen nederst.
 // Alle handlinger (bud, forespørgsel, liste, forlængelse, udlejning, scout, sammenligning …) ligger i Action-menuen.
-import { loanBlocked, loanRecallOn } from '../../game/rules2001';
+import { loanBlocked } from '../../game/rules2001';
 import { useEffect, useState, type ReactNode } from 'react';
 import { A, GROUPS, POSITIONS_LABEL, type AttrKey } from '../../game/attributes';
 import { act as dispatch } from '../../game/actions';
@@ -15,7 +15,8 @@ import { cmKnowOn } from '../../game/cmKnow';
 import { authentic, extended } from '../../game/rules';
 import { avgRating } from '../../game/season';
 import { SCHEDULES } from '../../game/training';
-import { askingPrice, canPreContract, interestedClubs, approachOpen, loanApproach, myPendingBid, recallRule, nextWindow, releaseCost } from '../../game/transfers';
+import { askingPrice, canPreContract, interestedClubs, approachOpen, loanApproach, myPendingBid, canRecallLoan, canTerminateLoan, nextWindow, releaseCost } from '../../game/transfers';
+import { askEndLoan } from '../loanEnd';
 import { cmActive, cmLogic, cmMarketOn, cmMediaOn, statCell, statColumns } from '../../game/cmPlayerData';
 import { squadMoveOption } from '../../game/cmBTeam';
 import { cmTalksOpen } from '../../game/cmTransferTalks';
@@ -642,13 +643,10 @@ export function ClassicPlayer({ id }: { id: number }) {
       { key: 'coachrep', label: t('cl.pl.coachRep'), disabled: !Object.values(g.staff).some((s) => s.club === g.userClub && (s.role === 'coach' || s.role === 'assistant')), onClick: () => setRepRole('coach') },
     );
   }
-  // CM 01/02 (kun den originale database): kald en udlejet spiller hjem
-  // (originalens marked: Recall-dialogen 0x8fbcc0 spørger først 0x8d0530 – nej → "Cannot recall {spiller}" med beskeden)
-  if (p.loan?.from === g.userClub && loanRecallOn()) items.push({ key: 'recall', label: t('loan.recall'), onClick: () => {
-    const r = recallRule(p.id);
-    if (!r.ok) void askNotice(r.msg ? t(r.msg.key, r.msg.params) : '', { head: t('cl.loanr.recallHead', { player: `${p.first} ${p.last}`.trim() }) });
-    else setMsg(t(dispatch<string>({ t: 'recallLoan', pid: p.id })));
-  } });
+  // CM 01/02 (menuen 0x871800): Terminate Loan Deal (0xa85578) for en indlejet spiller og Recall From Loan (0xa85550) for en udlejet – dialogen
+  // 0x8fbcc0 spørger først 0x8d0530 (nej → "Cannot recall/terminate …" med beskeden), så bekræftelsen og 0x4ccca0 (src/ui/loanEnd.ts)
+  if (canTerminateLoan(p, g.userClub)) items.push({ key: 'terminate', label: t('loan.terminate'), onClick: () => { void askEndLoan(p, true); } });
+  if (canRecallLoan(p, g.userClub)) items.push({ key: 'recall', label: t('loan.recall'), onClick: () => { void askEndLoan(p, false); } });
   if (!g.draft && !mine && g.userClub > 0) {
     // CM 01/02: Add To Shortlist · Approach To Buy · Approach To Loan · Scout Player · Set Nickname · — · Create Manager Note · Compare Players
     items.push({ key: 'short', label: shortlisted ? t('cl.pl.unshortlist') : t('cl.pl.shortlist'), onClick: () => dispatch({ t: 'shortlist', pid: p.id, on: !shortlisted }) });

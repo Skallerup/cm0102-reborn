@@ -19,7 +19,7 @@ import type { Club, Fixture, GameState, MatchReport, Staff } from './types';
 import { squad, addNews } from './state';
 import { cmActive, cmBoardLogic, cmLogic, cmRand, clubRepMem, postHooks } from './cmPlayerData';
 import { cmGbp } from './cmMoney';
-import { cmFundsAfterDeal, cmTransferBudget } from './cmBudget';
+import { cmAdjustMaxWage, cmFinCap14, cmFundsAfterDeal, cmTransferBudget } from './cmBudget';
 import { personalFill_535a80, personality_535ea4 } from './cmStaffInit';
 import { financeStatus } from './cmSquadPlan';
 import { cmClubPredictValue, cmSquadPlanNewManager } from './cmSquadPlanGame';
@@ -859,8 +859,8 @@ export function cmBoardScreenText(g: GameState): string | null {
 }
 
 /** 0x6a8810 handle_board_request(klub, anmodning) – 1 stadion, 2 træningsanlæg, 3 transferpenge, 4 løn og 5 tid (notes/board/notes-C-match.md
- *  §6c). *Estimeret* i 3/4: sæsonen i gang (inWin), lønloftet Finance +0x14 (klubbens højeste ugeløn) og adjust_max_wage 0x598340 (lønbudgettet
- *  + R.b5 %). Svaret er nyheden 0x1786 (tekst
+ *  §6c). *Estimeret* i 3/4: sæsonen i gang (inWin). Lønloftet Finance +0x14 og adjust_max_wage 0x598340: cmBudget.ts cmFinCap14/cmAdjustMaxWage
+ *  (CmFinRec.cap14). Svaret er nyheden 0x1786 (tekst
  *  0x6a9470); null = ikke porteret / intet svar. Bevillingerne (b2 0x40/0x80) bygger først ved sæsonslut i originalen (0x59cfa0 – ikke porteret). */
 export function cmBoardRequest(g: GameState, req: 1 | 2 | 3 | 4 | 5): string | null {
   if (!cmBoardOn(g)) return null;
@@ -945,12 +945,10 @@ export function cmBoardRequest(g: GameState, req: 1 | 2 | 3 | 4 | 5): string | n
     return reply(0);
   }
   if (req === 4) {
-    // 0x6a8e60 (løn): Finance +0x14 (lønloftet get_max_wage) > 60000 → nej – hos os klubbens højeste ugeløn (£, *estimeret*)
+    // 0x6a8e60 (løn): Finance +0x14 (lønloftet 0x5968d0(fin, 0, −1) fra seneste 0x598370 – cmBudget.ts cmFinCap14) > 60000 → nej
     if (!okRep(5000)) return reply(0xb);
     if (R.b5) return reply(6);
-    let top = 0;
-    for (const p of squad(c)) top = Math.max(top, (p.contract?.wage ?? 0) * gbpOf(g, c));
-    if (top > 60000) return reply(4);
+    if (cmFinCap14(g, c) > 60000) return reply(4);
     let x = ch ? s8(10 - business) : 0;
     const k = env.wealthBand(c);
     x = s8(x + (k === -1 ? -5 : k === 0 ? 5 : k === 1 ? 10 : k === 2 ? 15 : -15));
@@ -958,8 +956,8 @@ export function cmBoardRequest(g: GameState, req: 1 | 2 | 3 | 4 | 5): string | n
     const a = x > 0 ? rand(x) : 0, b = rand(100);   // rand med x ≤ 0 (åbent spørgsmål i notes-C-match.md): 0
     if (a <= b) return reply(4);
     R.b5 = (ch ? (s8(ch.amb) > 5 ? s8(ch.amb) - 5 : 5) : rand(10) + 5) & 0xff;
-    // Finance::adjust_max_wage(fin, R.b5) 0x598340 (ikke porteret): lønbudgettet hæves med R.b5 % (*estimeret*)
-    club.wageBudget = Math.round((club.wageBudget * (1 + s8(R.b5) / 100)) / 100) * 100;
+    // 0x6a91b0 Finance::adjust_max_wage(fin, R.b5) 0x598340: +0x14 × (R.b5 + 100) % – til klubbens næste 0x598370 (søndagens løn)
+    cmAdjustMaxWage(g, c, R.b5);
     return reply(0);
   }
   if (R.b3 & 1) return reply(6);
@@ -985,9 +983,8 @@ export function cmUltimatumReq(g: GameState, n: { key: string; params: Record<st
 
 /** "Yes" i 0x9064a0's bekræftelse: 0x6ad610 issue_ultimatum (manageren, hans klub, anmodningen) – tilhængernes nyhed (0x178f type 1), bestyrelsens
  *  svar (type 3) og følgerne. Spillets data: stemningen = g.cmClubMood, status = cmClubStat[0], nation +0x85 = cmNationBoard, formanden = cmChair
- *  (+ Business fra cmFin), Finance = saldo/formuebånd/transferbudget som i 0x6a8810. *Afvigelse*: lønloftet Finance +0x14 (get_max_wage 0x5968d0) og
- *  adjust_max_wage 0x598340 findes ikke i spillet (anmodning 4 når aldrig hertil – 0x6a8810's anmodning 3/4 er ikke porteret); ved svar 1 på
- *  anmodning 1/2 ændrer originalen intet ud over nyheden. */
+ *  (+ Business fra cmFin), Finance = saldo/formuebånd/transferbudget som i 0x6a8810 og lønloftet +0x14 (cmFinCap14); svar 1 på anmodning 4 →
+ *  adjust_max_wage 0x598340 (cmAdjustMaxWage); ved svar 1 på anmodning 1/2 ændrer originalen intet ud over nyheden. */
 export function cmBoardUltimatum(g: GameState, req: number): boolean {
   if (!cmBoardOn(g)) return false;
   const c = g.userClub, club = g.clubs[c];
@@ -1003,9 +1000,11 @@ export function cmBoardUltimatum(g: GameState, req: number): boolean {
     clubRep: clubRepMem(g, c), status: g.cmClubStat?.[c]?.[0] ?? 1, facilities: club.facilities, nat85: env.nat85(club.nation),
     cap: crowd[5], mood: g.cmClubMood?.[c] ?? 0,
     chair: ch ? { patience: ch.b1d, amb: ch.amb, business: g.cmFin?.[c]?.chair?.[0] ?? 10 } : null,
-    fin: { balance: env.balance(c), band: env.wealthBand(c), transferBudget: env.transferBudget(c), wageCap: 0 },
+    fin: { balance: env.balance(c), band: env.wealthBand(c), transferBudget: env.transferBudget(c), wageCap: cmFinCap14(g, c) },
   };
   const o = issueUltimatum(x, R, rnd(g, dayNum(g.date), 0x6ad610, req));
+  // svar 1 på anmodning 4: 0x6acee8 Finance::adjust_max_wage(fin, R +5) 0x598340
+  if (o.wagePct !== undefined) cmAdjustMaxWage(g, c, o.wagePct);
   const short = club.short || club.name, name = g.manager.name;
   const post = (type: number, sub: number) => addNews({ cat: 'board', key: 'board.cm', params: boardParams({ k: 'u', type, req, res: o.res, sub, club: club.name, short, m: name, st: club.stadium ?? '', small: o.fansStadium, poor: o.fansTraining }), link: { kind: 'club', id: c } });
   if (o.fans) post(1, o.fans);

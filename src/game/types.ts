@@ -223,7 +223,9 @@ export interface Player {
   /** share = andel af lønnen lejeklubben betaler (0-1, standard 1) */
   /** noCup/noAgainst: lejekontraktens +0x1c/+0x1d = 0 ("Cannot play in cup matches" / "… against <moderklub>" – cmLoan.ts cmLoanBar) */
   /** res: hovedkontraktens +0x35 bit 0x40 – han stod på moderklubbens reservehold ved lejens start (state.ts loanPlacement) */
-  loan: { from: number; until: string; share?: number; fee?: number; option?: number; noCup?: true; noAgainst?: true; res?: 1 } | null;
+  loan: { from: number; until: string; share?: number; fee?: number; option?: number; noCup?: true; noAgainst?: true; res?: 1;
+    /** lejekontraktens art 7 (+0x35): Recall/Terminate 0x4ccca0 har sat slutdatoen til dagen efter – 0x4c8077 sender ingen "loan finishes" */
+    ended?: 1 } | null;
   stats: SeasonStats;
   history: CareerLine[];
   /** Klubskifter i spillet: hvorhen, hvornår og for hvad */

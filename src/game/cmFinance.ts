@@ -77,6 +77,9 @@ export interface CmFinRec {
   chair: [number, number, number, number] | null;
   /** blokkene (£): denne måned, sidste måned, denne sæson, sidste sæson */
   tm: number[]; lm: number[]; ty: number[]; ly: number[];
+  /** +0x14 lønloftet efter bestyrelsens forhøjelse (adjust_max_wage 0x598340, £) – indtil klubbens næste 0x598370 (søndagens løn 0x59bf7f,
+   *  sign_contract/sign_loan/end_loan/0x4d0b50), der regner det om (0x5968d0(fin, 0, −1)); uden = det omregnede */
+  cap14?: number;
 }
 
 /** (MODERN_PARITY 4) originalens økonomi gælder: en CM-database i ægte tilstand (cmLogic – for den originale database = cmActive), ikke
@@ -346,6 +349,7 @@ const supporters = (g: GameState, c: Club) => g.cmSup?.[c.id] ?? 5000;
 /** ugens lønsum (£): spillernes og stabens kontrakter, udfyldningen under 15 spillere og omdømmeleddet */
 export type WageIdx = { loanOut: Map<number, Player[]>; staff: Map<number, Staff[]> };
 export function updateWageBill(g: GameState, c: Club, r: CmFinRec, idx?: WageIdx): void {
+  delete r.cap14;   // (+0x14 = 0x5968d0(0, −1) igen)
   let wb = 0, top = 0, n = 0;
   const k0 = gbp(g, c);
   // kontrakterne i CONTRACT_MANAGER (+0): kun personerne i hukommelsen – i et ikke-indlæst land er resten af truppen ikke med i originalen

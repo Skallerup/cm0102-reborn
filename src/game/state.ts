@@ -245,6 +245,13 @@ export function movePlacement(g: GameState, p: Player): void {
 
 /** Flyt spiller mellem klubber og hold indekset opdateret. `left`: hvordan han forlader den gamle klub (Playing Career – CareerLeft); uden
  *  udledes lejens start/slut af p.loan */
+/** Finance::recalc_wages 0x598370 for klubben uden for søndagen (en kontrakt laves/slettes): bestyrelsens forhøjede lønloft +0x14 (adjust_max_wage
+ *  0x598340, CmFinRec.cap14) regnes om – lønsummen +0xc/+0x10 føres som før kun om søndagen (cmFinance.ts) */
+export function wageRecalc(g: GameState, club: number): void {
+  const r = club > 0 ? g.cmFin?.[club] : undefined;
+  if (r && r.cap14 !== undefined) delete r.cap14;
+}
+
 export function setClub(p: Player, club: number, left?: CareerLeft) {
   if (movedIds.length < 100000) movedIds.push(p.id); else moveGen++;
   if (p.club) {
@@ -277,6 +284,8 @@ export function setClub(p: Player, club: number, left?: CareerLeft) {
   // staff +0x5e (første-/reserveholdet) ved lejens start (sign_loan 0x4d0380 + 0x540980(staff, 1) @0x8c270e) og slut (end_loan 0x4d0ad3–0x4d0b2b)
   if (loanMove) loanPlacement(gs(), p, p.loan!.from === p.club);
   if (moved) { p.cmStats = undefined; if (!loanMove) p.cmContract = undefined; if (hasGame()) { cmPermitMove(gs(), p, club); if (!loanLeg) cmStaffStateMove(gs(), p, p.club, club); } }
+  // sign_contract 0x4cf720 (0x4cfe10/0x4d007b), sign_loan 0x4d01e0, end_loan 0x4d07e0 og 0x4d0b50: 0x598370 for begge klubber – +0x14 regnes om
+  if (moved && hasGame()) { wageRecalc(gs(), p.club); wageRecalc(gs(), club); }
   p.club = club;
   // en nyindkøbt spiller kommer på førsteholdet: reserve-mærket hører til den gamle klub (spillerrapport #25: Obi og Arthur
   // stod som reserver hos ejeren – røde, uden "+ Sub" og uden at kunne vælges)

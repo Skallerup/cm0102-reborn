@@ -135,6 +135,23 @@ export function cmBoardWageAllow(g: GameState, p: Player, clubId: number, role?:
   return w === null ? null : w / cmGbp(g, clubId);
 }
 
+/** Finance +0x14 (£): lønloftet 0x5968d0(fin, 0, −1) fra klubbens seneste 0x598370 – eller bestyrelsens forhøjelse 0x598340 (CmFinRec.cap14), til
+ *  næste 0x598370. Bestyrelsens anmodning 4 (0x6a8e60) og ultimatummet 0x6aca50 læser det. 0 uden finanspost. */
+export function cmFinCap14(g: GameState, clubId: number): number {
+  if (!g.clubs[clubId]) return 0;
+  const M = buildWantMem(g, [clubId]);
+  const fin = M.W.finOf(clubId);
+  return fin ? M.c.m.s32(fin + 0x14) : 0;
+}
+
+/** Finance::adjust_max_wage(fin, pct) 0x598340: +0x14 = ftol((pct + 100) · 0,01 · +0x14) – pct er en byte med fortegn (R +5) */
+export function cmAdjustMaxWage(g: GameState, clubId: number, pct: number): void {
+  const r = g.cmFin?.[clubId];
+  if (!r) return;
+  const cur = cmFinCap14(g, clubId);
+  r.cap14 = Math.trunc(((((pct << 24) >> 24) + 100) * 0.01) * cur);
+}
+
 /** som cmBoardWageAllow, i £ (skærmparameterens heltal) */
 export function cmBoardWageAllowGbp(g: GameState, p: Player, clubId: number, role?: import('./squadStatus').SquadStatus): number | null {
   if (!cmLogic(g) || !g.clubs[clubId]) return null;

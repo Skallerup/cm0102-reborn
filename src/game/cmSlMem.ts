@@ -585,7 +585,7 @@ export function buildSlWantMem(g: GameState, clubs: Iterable<number>, opts: { ca
   writeHolidayMem(m, g);
   for (const cid of clubIds) { const pr = g.clubs[cid].cmPrefs; if (pr) for (let k = 0; k < 3; k++) m.w32(clubAdr(cid) + 0x9b + 4 * k, byPid.get(pr[k]) ?? 0); }
   // (2026/27 uden originalens økonomi – g.cmFin) lønsummen +0xc/+0x10 af kontrakterne som buildWageMem: 0x598370 to gange (den første med +0x14 = 0)
-  for (const cid of clubIds) { const f = finAdr(cid); if (!g.cmFin) { m.w32(f + 0x14, 0); recalcWages_598370(wc, f); recalcWages_598370(wc, f); } else m.w32(f + 0x14, getMaxWage_5968d0(wc, f, 0, -1)); }
+  for (const cid of clubIds) { const f = finAdr(cid); if (!g.cmFin) { m.w32(f + 0x14, 0); recalcWages_598370(wc, f); recalcWages_598370(wc, f); } else m.w32(f + 0x14, getMaxWage_5968d0(wc, f, 0, -1)); const k14 = g.cmFin?.[cid]?.cap14; if (k14 !== undefined) m.w32(f + 0x14, k14); }
   let gen = count;
   const W: WageMem = {
     c: wc,

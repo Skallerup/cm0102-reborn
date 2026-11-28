@@ -196,7 +196,8 @@ function endLoanIfDue(p: Player, today: string) {
   if (p.loan && p.loan.until <= today && !exerciseLoanOption(p)) {
     // CM 01/02: "[person]'s loan finishes" – til begge klubbers managere
     const loanClub = p.club, from = p.loan.from;
-    for (const c of [from, loanClub]) asOwner(c, () => addNews({ cat: 'transfer', key: 'transfer.loanEnded', params: { player: `${p.first} ${p.last}`.trim(), club: g.clubs[loanClub]?.name ?? '', from: g.clubs[from]?.name ?? '' }, link: { kind: 'player', id: p.id } }));
+    // (art 7 – afbrudt af Recall/Terminate 0x4ccca0: 0x4c8077 springer 0x4da590(staff, 6, 0) over)
+    if (!p.loan.ended) for (const c of [from, loanClub]) asOwner(c, () => addNews({ cat: 'transfer', key: 'transfer.loanEnded', params: { player: `${p.first} ${p.last}`.trim(), club: g.clubs[loanClub]?.name ?? '', from: g.clubs[from]?.name ?? '' }, link: { kind: 'player', id: p.id } }));
     setClub(p, p.loan.from);
     p.loan = null;
     noteLoanEnd(loanClub);

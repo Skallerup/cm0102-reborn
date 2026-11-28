@@ -33,7 +33,7 @@ import { answerBet, proposeBet, sendJab } from './rivalry';
 import { isHumanClub, removeHuman } from './humans';
 import { addNews, gs, notify, pickNumber, squad } from './state';
 import {
-  acceptCounter, bidNow, cmCompleteAgreed, enquire, loanOut, makeBid, rebid, negotiate, raiseBid, releasePlayer, renewContract, offerRenewalLater, respondToOffer, setListPrice, startPreContract, toggleListed, recallLoan } from './transfers';
+  acceptCounter, bidNow, cmCompleteAgreed, enquire, loanOut, makeBid, rebid, negotiate, raiseBid, releasePlayer, renewContract, offerRenewalLater, respondToOffer, setListPrice, startPreContract, toggleListed, recallLoan, terminateLoan } from './transfers';
 import { addBot } from './bots';
 import { markChatRead, sendChat } from './chat';
 import type { RejectReason } from './will';
@@ -71,6 +71,7 @@ export type Action =
   | { t: 'release'; pid: number }
   | { t: 'loanOut'; pid: number; club: number; share: number; fee: number }
   | { t: 'recallLoan'; pid: number }
+  | { t: 'terminateLoan'; pid: number }
   | { t: 'nationalOffer'; accept: boolean }
   | { t: 'resignNational' }
   | { t: 'nationalSquad'; pids: number[] }
@@ -193,7 +194,7 @@ const EXTENDED_ONLY = new Set<Action['t']>(['matchTalk', 'teamTalk', 'talk', 'tr
 const AUTHENTIC_TALKS = new Set(['warning', 'fine', 'fineHeavy', 'drop']);
 
 /** originalens genererede fyldspillere (cmVirtual.ts) kan hverken købes, lejes, sælges, fritstilles eller få kontrakt */
-const VIRTUAL_BLOCK = new Set<Action['t']>(['listed', 'cmTransferStatus', 'squadStatus', 'release', 'loanOut', 'recallLoan', 'enquire', 'bid', 'preContract',
+const VIRTUAL_BLOCK = new Set<Action['t']>(['listed', 'cmTransferStatus', 'squadStatus', 'release', 'loanOut', 'recallLoan', 'terminateLoan', 'enquire', 'bid', 'preContract',
   'shortlist', 'negotiate', 'renew', 'renewLater', 'nickname', 'reserves', 'bTeam', 'trial', 'talk', 'interact', 'appealBan', 'staffReport']);
 
 export function applyAction(a: Action): unknown {
@@ -254,6 +255,7 @@ export function applyAction(a: Action): unknown {
     case 'release': return releasePlayer(a.pid);
     case 'loanOut': return loanOut(a.pid, a.club, a.share, a.fee);
     case 'recallLoan': return recallLoan(a.pid);
+    case 'terminateLoan': return terminateLoan(a.pid);
     case 'nationalOffer': return answerNationalOffer(a.accept);
     case 'resignNational': return resignNational();
     case 'nationalSquad': return selectNationalSquad(a.pids);

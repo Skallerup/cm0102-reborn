@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { origLogic } from '../../game/rules';
-import { loanRecallOn } from '../../game/rules2001';
 import { trialOf } from '../../game/trials';
 import { bidClauseWorth } from '../../game/clauses';
 import { IncomingOffersFor } from './Transfers';
@@ -37,7 +36,8 @@ import { OrigTransferStatus } from './OrigStatus';
 import { cmLogic, cmMarketOn } from '../../game/cmPlayerData';
 import { cmScoutOn } from '../../game/cmScout';
 import { cmTalksOpen } from '../../game/cmTransferTalks';
-import { approachOpen, loanApproach, myPendingBid, recallRule } from '../../game/transfers';
+import { approachOpen, loanApproach, myPendingBid, canRecallLoan, canTerminateLoan } from '../../game/transfers';
+import { askEndLoan } from '../loanEnd';
 import { loanBlocked } from '../../game/rules2001';
 import { askNotice } from '../confirm';
 import { agentOf } from '../../game/agents';
@@ -280,8 +280,11 @@ function ModernPlayer({ id }: { id: number }) {
         : <BidModal pid={p.id} offerId={typeof bid === 'number' ? bid : undefined} onClose={() => setBid(false)} onDone={(r) => { setBid(false); act(r); }} />)}
       {listOpen && <ListModal pid={p.id} onClose={() => setListOpen(false)} />}
       {statusOpen && <OrigTransferStatus pid={p.id} onClose={() => setStatusOpen(false)} />}
-      {p.loan?.from === g.userClub && loanRecallOn() && (
-        <div className="insight" style={{ marginTop: 8 }}>{t('loan.onLoanAt', { club: g.clubs[p.club]?.name ?? '' })} <button className="small" onClick={() => { const r = recallRule(p.id); if (!r.ok) void askNotice(r.msg ? t(r.msg.key, r.msg.params) : '', { head: t('cl.loanr.recallHead', { player: `${p.first} ${p.last}`.trim() }) }); else setMsg(t(dispatch<string>({ t: 'recallLoan', pid: p.id }))); }}>{t('loan.recall')}</button></div>
+      {canRecallLoan(p, g.userClub) && (
+        <div className="insight" style={{ marginTop: 8 }}>{t('loan.onLoanAt', { club: g.clubs[p.club]?.name ?? '' })} <button className="small" onClick={() => { void askEndLoan(p, false); }}>{t('loan.recall')}</button></div>
+      )}
+      {canTerminateLoan(p, g.userClub) && (
+        <div className="insight" style={{ marginTop: 8 }}><button className="small" onClick={() => { void askEndLoan(p, true); }}>{t('loan.terminate')}</button></div>
       )}
       {loanOutOpen && <LoanOutModal pid={p.id} onClose={() => setLoanOut(false)} onDone={(r) => { setLoanOut(false); act(r); }} />}
       {neg && <NegotiationModal offer={neg.offer} renewPid={neg.renew} onClose={() => setNeg(null)} />}
