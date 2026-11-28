@@ -2,6 +2,7 @@
 
 Flyttet fra CLAUDE.md 17/11-2026 (så CLAUDE.md er kort i hver session). Nyeste først. Tilføj en linje øverst ved hver udgivelse.
 
+- 2026-11-28 – Skudt live (v0.40.0): 2026-11-28 – Dobbelte Europapræmier i 2026/27 (68579421): econ26 euroPrize blev betalt via addPrize oveni originalens Cup::pay_round_prize_money 0x522240/gruppepenge – springes nu over ved cmFinOn + comp.meta.cmEuro. PL-præmier £159,8m → £75,4m (orakel 2026 £83,9m). Værktøjer cm-flow-2026.ts, cm-nat-start-2026.ts. Rest: verdens handel halvt så stor (udlandet køber lidt, PL lejer næsten ikke ud: 52 mod ~290 spillere i ny klub).
 - 2026-11-28 – Skudt live (v0.40.0): 2026-11-28 – e2e-konverteringstrinnet robust (05a63fc7): ikke genskabt i 18 kørsler (10 uden, 8 med belastning); trinnet har nu faser med tidsgrænser på hver page.evaluate, livstegn hvert 5 s, stilstand 5 min/8 min → ét nyt forsøg og diagnostisk fejl. Spilfejl: ng.step.convert manglede i alle sprog (rå nøgle i fremdriften) – tilføjet på 10 sprog.
 - 2026-11-28 – Skudt live (v0.40.0): 2026-11-28 – k7-cand-state.ts (09c55f35): 67 par med samme CA/PA har vidt forskellig 0x840d80-score (Gerrard→Leeds 26571 mod 42800) – mistanke: kendskab 0x5408c0.
 - 2026-11-28 – Skudt live (v0.40.0): 2026-11-28 – planSquad 0x83cb40 @0x83cc2b–0x83ccca (4557b79d): 0x844540(klub, −1) åbne bud → +4 = 2 uændret, ellers porten 0x83cc88 springes over. NL-købsbud aug–okt gns. 44 → 59,5 (orakel 85). Fingeraftryk → 43cb25b456c31b5c.

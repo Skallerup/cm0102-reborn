@@ -13,6 +13,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '2026-11-28',
     title: { da: 'Mere af det originale CM 01/02', en: 'More of the original CM 01/02' },
     items: [
+      { da: "2026/27: Europapræmierne følger nu kun originalen – klubberne fik også den moderne UEFA-fordeling oveni (Premier League-klubbernes præmiepenge var næsten dobbelt så store som i CM 01/02).", en: "2026/27: European prize money now follows the original only – clubs were also paid the modern UEFA distribution on top (Premier League clubs' prize money was almost twice that of CM 01/02)." },
       { da: "Under konvertering af et gemt spil vises nu en rigtig tekst ('Konverterer det gemte spil...') i stedet for en teknisk nøgle.", en: "While converting a saved game, the progress bar now shows proper text ('Converting the saved game...') instead of a raw key." },
       { da: "Interne måleværktøjer til computerklubbernes vurdering.", en: "Internal measuring tools for AI club valuation." },
       { da: "Computerklubbernes trupplan springer ikke længere over, når der står åbne bud (som originalen) – flere købsbud fra klubber uden for ligaerne.", en: "Computer clubs' squad planning no longer skips its run while bids are open (as in the original) – more transfer bids from non-league clubs." },
