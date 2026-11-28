@@ -8,6 +8,16 @@ import { continueGame, quickPlayUserMatch } from '../src/game/sim';
 import { gs } from '../src/game/state';
 import { compHooks } from '../src/game/hooks';
 import { K } from '../src/game/cmFinance';
+import { CM_SETUP_INJURIES, CM_SETUP_LOANS } from '../src/game/data/cmPreseason';
+
+// OLD_PRESEASON=<fil.ts>: en ældre cmPreseason.ts' 2026-lister (før/efter-måling af en genbygning)
+if (process.env.OLD_PRESEASON) {
+  const txt = readFileSync(process.env.OLD_PRESEASON, 'utf8');
+  const obj = (name: string) => JSON.parse(new RegExp(`export const ${name}[^=]*= (\\{.*\\});`).exec(txt)![1]) as Record<string, unknown>;
+  (CM_SETUP_INJURIES as Record<string, unknown>)['2026'] = obj('CM_SETUP_INJURIES')['2026'];
+  (CM_SETUP_LOANS as Record<string, unknown>)['2026'] = obj('CM_SETUP_LOANS')['2026'];
+  console.log(`OLD_PRESEASON: ${(CM_SETUP_LOANS['2026'] ?? []).length} lejer`);
+}
 
 const until = process.argv[2] ?? '2027-06-10';
 // WORLD=<world-fil> (fx world-original.json – 2001 til sammenligning med oracle-pl-moves.ts); uden: world.json + world-cm.json
@@ -22,6 +32,12 @@ const M = (v: number) => (v / 1e6).toFixed(1);
 const PL = new Set(Object.values(g.clubs).filter((c) => c.league === 'CM7').map((c) => c.id));
 const natName = (n: number) => g.nations[n]?.name ?? String(n);
 const start0 = new Map(Object.values(g.players).map((p) => [p.id, p.club]));
+// databasens klub (world-rækken) – som oraklets save-udtræk (staff.dat +57 mod den gemte +57): også databasens lejer (player_setup.cfg) tæller
+const FW = Object.fromEntries(w.playerFields.map((f, i) => [f, i]));
+const db0 = new Map(w.players.map((r) => [r[FW.id] as number, r[FW.club] as number]));
+const startLoans = new Map<string, number>();
+for (const p of Object.values(g.players)) if (p.loan && PL.has(p.loan.from)) { const t = g.clubs[p.club]; const k = !t ? '-' : PL.has(t.id) ? 'PL' : natName(t.nation) === 'England' ? `ENG ${t.league}` : natName(t.nation); startLoans.set(k, (startLoans.get(k) ?? 0) + 1); }
+console.log(`PL-klubbernes udlejede ved start: ${[...startLoans.values()].reduce((a, b) => a + b, 0)} – ${[...startLoans].sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(', ')}`);
 console.log(`start ${g.date} · PL ${PL.size} klubber: ${[...PL].map((id) => g.clubs[id].name).join(', ')}`);
 console.log(`aktive lande ${(g.activeNations ?? []).map(natName).join(', ')}`);
 
@@ -95,5 +111,15 @@ for (const p of Object.values(g.players)) {
   const k = !t ? 'klubløs' : PL.has(t.id) ? 'PL' : natName(t.nation);
   const e = out.get(k) ?? [0, 0]; e[0]++; if (p.loan) e[1]++; out.set(k, e);
 }
+const outDb = new Map<string, [number, number]>();
+for (const p of Object.values(g.players)) {
+  const c0 = db0.get(p.id);
+  if (c0 === undefined || !PL.has(c0) || p.club === c0) continue;
+  const t = p.club ? g.clubs[p.club] : undefined;
+  const k = !t ? 'klubløs' : PL.has(t.id) ? 'PL' : natName(t.nation) === 'England' ? `ENG ${t.league}` : natName(t.nation);
+  const e = outDb.get(k) ?? [0, 0]; e[0]++; if (p.loan) e[1]++; outDb.set(k, e);
+}
+console.log(`som oraklets udtræk – databasens PL-spillere i en anden klub ved slut: ${[...outDb.values()].reduce((a, b) => a + b[0], 0)} (antal, heraf lejet):`);
+for (const [k, [n, l]] of [...outDb.entries()].sort((a, b) => b[1][0] - a[1][0])) console.log(`  ${k} ${n} (${l})`);
 console.log('PL-spillere i en ny klub ved slut pr. land (antal, heraf lejet):');
 for (const [k, [n, l]] of [...out.entries()].sort((a, b) => b[1][0] - a[1][0])) console.log(`  ${k} ${n} (${l})`);
