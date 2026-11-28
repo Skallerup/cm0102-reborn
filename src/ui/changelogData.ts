@@ -13,6 +13,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '2026-11-28',
     title: { da: 'Mere af det originale CM 01/02', en: 'More of the original CM 01/02' },
     items: [
+      { da: "Nyhedernes brødtekster for tilbagetrukket bud og 'ikke til salg' følger nu originalens tekster (10 sprog)", en: "Withdrawn-offer and not-for-sale news texts now match the original wording (10 languages)" },
       { da: "Alle nyheder har nu en brødtekst på alle 10 sprog (bestyrelsens svar, træningslejr, væddemål, jobansøgning m.fl.).", en: "Every news item now has a body text in all 10 languages (board replies, training camp, bets, job applications and more)." },
       { da: "Interne regler for oversættelser.", en: "Internal translation rules." },
       { da: "Klublegende-nyheden (og nyhederne om klubrekord, rekordsalg/-køb og legende i staben) har nu en brødtekst på alle sprog – den var tom før.", en: "The club-legend news (and the club record, record sale/signing and legend-joins-staff news) now has a body text in every language – it was empty before." },

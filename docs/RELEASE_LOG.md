@@ -2,6 +2,7 @@
 
 Flyttet fra CLAUDE.md 17/11-2026 (så CLAUDE.md er kort i hver session). Nyeste først. Tilføj en linje øverst ved hver udgivelse.
 
+- 2026-11-28 – Skudt live (v0.40.0): Brødtekster 1:1: transfer.aiWithdrew/notForSale
 - 2026-11-28 – Skudt live (v0.40.0): 2026-11-28 – Ingen nyhed uden brødtekst: 82 nyhedstyper fik .body på alle 10 sprog; tests/newsAllLangs.test.ts kræver det; scripts/news-bodies.ts
 - 2026-11-28 – Skudt live (v0.40.0): 2026-11-28 – Regel (3a4762cf, ejerens ønske): nye tekster oversættes altid til alle 10 sprog (CLAUDE.md + .claude/agents/*.md); ingen tom tekst eller rå nøgle.
 - 2026-11-28 – Skudt live (v0.40.0): 2026-11-28 – Rekordbogens nyheder uden brødtekst (694b72ec, ejerens melding): recb.news.legend/goals/sale/buy/legendStaff manglede .body (newsBody → tom) – tilføjet på 10 sprog; tests/newsAllLangs.test.ts kræver overskrift på alle sprog for alle bogstavelige nyhedsnøgler. Rest: ~75 nyhedsnøgler uden .body (mp.joined, job.applied, board.*, camp.*) – tjek mod originalens nyheder.
