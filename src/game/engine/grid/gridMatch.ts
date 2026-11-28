@@ -942,7 +942,12 @@ export const GRID_UNKNOWN = {
       if (!best || sc > bestScore) { best = p; bestScore = sc; }                         // 0x6cf5ac–0x6cf5bf
     }
     if (excluded) return best as GP;                                                      // med liste: 0, når ingen kandidat
-    return best ?? m.gp.find((o) => o.side === side && o.active)!;                         // originalen: fatal 0x3e89
+    const any = best ?? m.gp.find((o) => o.side === side && o.active);
+    if (any) return any;
+    // originalen: fatal 0x3e89 (ingen kandidat). Før kom undefined tilbage, og kalderen (loop.ts tick / place) faldt på `.x` uden spor
+    // (nedbrud aa97721d7bdd7bc0, 28/11) – fejlen bærer nu tilstanden, så næste rapport viser, hvilken side der stod uden spillere
+    const sideInfo = (s: number) => { const a = m.gp.filter((o) => o.side === s); return `${a.length}/${a.filter((o) => o.active).length}/${a.filter((o) => o.active && o.slot >= 0 && o.slot <= 10).length}`; };
+    throw new Error(`pick_taker 0x3e89: side ${side} state ${state} poss ${m.poss} mstate ${m.state} clock ${m.clock} ball ${bx},${by} carrier ${m.carrier ? 1 : 0} sides(gp/active/xi) ${sideInfo(0)} ${sideInfo(1)}`);
   },
   /** dommerpostens bytes, når GridMatchCtx.official mangler: medianen af de 21 engelske dommere i officials.dat 3.9.60 (byte 0x22 > 0) –
    *  +0x24 0, Discipline (0x25) 11, +0x27 0, +0x28 19 (+0x29 = official29). Hvordan originalen vælger kampens dommer, er ikke læst. */
