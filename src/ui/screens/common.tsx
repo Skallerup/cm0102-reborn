@@ -282,6 +282,12 @@ function bodyKey(n: NewsItem): string {
   // 0xfbb (0x8e3780): byttespilleren uden arbejdstilladelse – beløbslinjen kun, når beløbet steg; 0xfb9 (0x8e2cd0): byttespillernes varianter
   if (n.key === 'transfer.cmPermitSwap') return n.params?.adj ? 'transfer.cmPermitSwap.bodyFee' : 'transfer.cmPermitSwap.body';
   if (n.key === 'transfer.cmPermitWait' && (n.params?.w === 'all' || n.params?.w === 'for')) return `transfer.cmPermitWait.${n.params.w}`;
+  // fælles brødtekster: bestyrelsens forventning (board.exp.*), managerens modsvar (jab.botBack.1-3), spillerens svar på afvisningen (reject.r.*),
+  // pressemødet uden overskrift (med referatet, hvis der er et)
+  if (n.key.startsWith('board.exp.')) return 'board.exp.title.body';
+  if (n.key.startsWith('jab.botBack.')) return 'jab.botBack.body';
+  if (n.key.startsWith('reject.r.')) return 'reject.r.body';
+  if (n.key === 'press.reportPlain') return n.params?.body ? 'press.report.body' : 'press.reportPlain.body';
   return `${n.key}.body`;
 }
 
